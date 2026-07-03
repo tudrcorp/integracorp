@@ -35,33 +35,32 @@ it('expone filtros y descarga para reporte de afiliaciones individuales', functi
         ->toContain('affiliateStatusOptions');
 
     expect($reportAction)
-        ->toContain('plan_id')
-        ->toContain('affiliate_status')
-        ->toContain('AUDIT_BUSINESS_INDIVIDUAL_AFFILIATIONS_EXPORT');
+        ->toContain('AUDIT_BUSINESS_INDIVIDUAL_AFFILIATIONS_EXPORT')
+        ->toContain("Select::make('plan_id')")
+        ->toContain("modalSubmitActionLabel('Descargar')")
+        ->toContain("modalCancelActionLabel('Cancelar')")
+        ->toContain('redirect()->route($auditRoute')
+        ->toContain('successNotification(null)');
 
     expect($action)
         ->toContain('IndividualAffiliationsReportExportAction::make');
 
     expect($businessTable)
-        ->toContain('IndividualAffiliationsExportAction::make')
-        ->toContain('AffiliationExportIosPresentation::apply');
+        ->toContain("BulkAction::make('exportAffiliationsCsv')")
+        ->toContain('business.affiliations.export-csv')
+        ->not->toContain('AffiliationExportIosPresentation::apply');
 
     expect($operationsTable)
-        ->toContain('AUDIT_OPERATIONS_AFFILIATES_EXPORT')
-        ->toContain('AffiliationExportIosPresentation::apply')
-        ->toContain('operations.affiliates.export-report');
+        ->toContain("BulkAction::make('exportAffiliatesCsv')")
+        ->toContain('operations.affiliates.export-csv')
+        ->toContain('affiliate_ids');
 
     $administrationTable = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Affiliations/Tables/AffiliationsTable.php');
 
     expect($administrationTable)
         ->toContain('IndividualAffiliationsReportExportAction::make')
-        ->toContain('AffiliationExportIosPresentation::apply')
         ->toContain('AUDIT_ADMINISTRATION_INDIVIDUAL_AFFILIATIONS_EXPORT')
         ->toContain('administration.affiliations.export-report');
-
-    expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/Filament/AffiliationExportIosPresentation.php'))
-        ->toContain('Exportar Afiliados')
-        ->toContain('aviso-btn-ios-success');
 });
 
 it('expone el job y comando de exportacion de afiliaciones individuales', function (): void {

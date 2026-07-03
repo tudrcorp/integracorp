@@ -211,6 +211,30 @@ Route::get('business/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportC
     ->middleware(['web', 'auth'])
     ->name('business.helpdesks.export-csv');
 
+Route::get('business/export-affiliation-corporates-report', App\Http\Controllers\CorporateAffiliationsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporates.export-report');
+
+Route::get('business/export-affiliation-corporates-csv', App\Http\Controllers\AffiliationCorporateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporates.export-csv');
+
+Route::get('business/export-affiliate-corporates-csv', App\Http\Controllers\AffiliateCorporateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliate-corporates.export-csv');
+
+Route::get('business/export-affiliates-csv', App\Http\Controllers\AffiliateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliates.export-csv');
+
+Route::get('business/export-affiliations-csv', App\Http\Controllers\AffiliationExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliations.export-csv');
+
+Route::get('business/export-affiliations-report', App\Http\Controllers\IndividualAffiliationsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliations.export-report');
+
 Route::get('administration/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('administration.helpdesks.export-csv');
@@ -223,6 +247,30 @@ Route::get('administration/export-agents-csv', App\Http\Controllers\AgentExportC
     ->middleware(['web', 'auth'])
     ->name('administration.agents.export-csv');
 
+Route::get('administration/export-affiliation-corporates-report', App\Http\Controllers\CorporateAffiliationsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliation-corporates.export-report');
+
+Route::get('administration/export-affiliation-corporates-csv', App\Http\Controllers\AffiliationCorporateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliation-corporates.export-csv');
+
+Route::get('administration/export-affiliate-corporates-csv', App\Http\Controllers\AffiliateCorporateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliate-corporates.export-csv');
+
+Route::get('administration/export-affiliations-report', App\Http\Controllers\IndividualAffiliationsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliations.export-report');
+
+Route::get('administration/export-affiliations-csv', App\Http\Controllers\AffiliationExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliations.export-csv');
+
+Route::get('administration/export-affiliates-csv', App\Http\Controllers\AffiliateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliates.export-csv');
+
 Route::get('operations/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('operations.helpdesks.export-csv');
@@ -230,6 +278,22 @@ Route::get('operations/export-helpdesks-csv', App\Http\Controllers\HelpdeskExpor
 Route::get('operations/export-indicadores-de-desempeno-csv', App\Http\Controllers\IndicadoresDeDesempenoExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('operations.indicadores-de-desempeno.export-csv');
+
+Route::get('operations/export-affiliate-corporates-report', App\Http\Controllers\CorporateAffiliationsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.affiliate-corporates.export-report');
+
+Route::get('operations/export-affiliate-corporates-csv', App\Http\Controllers\AffiliateCorporateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.affiliate-corporates.export-csv');
+
+Route::get('operations/export-affiliates-report', App\Http\Controllers\IndividualAffiliationsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.affiliates.export-report');
+
+Route::get('operations/export-affiliates-csv', App\Http\Controllers\AffiliateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.affiliates.export-csv');
 
 Route::get('marketing/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
     ->middleware(['web', 'auth'])
@@ -444,6 +508,17 @@ Route::post('business/affiliation-corporates/tarjeta-qr/associate-plan', [
 ])
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-corporate-tarjeta-qr.associate-plan');
+
+Route::post('business/company-associates/tarjeta-qr/associate-inclusion', [
+    TarjetaAfiliacionController::class,
+    'associateCompanyAssociateInclusionQr',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.company-associate-tarjeta-qr.associate-inclusion');
+
+Route::get('business/notifications/bell-alert', App\Http\Controllers\Business\DatabaseNotificationBellAlertController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.notifications.bell-alert');
 
 Route::post('business/affiliation-corporates/documents/regenerate-async/{affiliationCorporate}', [
     AffiliationCorporateBusinessDocumentsController::class,

@@ -35,6 +35,8 @@ class AffiliationCorporateInfolist
 
     private const IOS_INSET_GROUP_CLASS = 'rounded-xl border border-slate-200/60 bg-slate-50/50 p-3 dark:border-white/10 dark:bg-white/[0.04] sm:p-4';
 
+    private const IOS_REPEATABLE_TABLE_SCROLL_CLASS = 'min-w-0 max-w-full overflow-x-auto overscroll-x-contain [&_table]:w-full [&_table]:min-w-[68rem] [&_table]:table-fixed [&_td]:align-top [&_td]:break-words [&_th]:whitespace-nowrap [&_th]:text-xs [&_th]:leading-tight';
+
     private static function statusColor(?string $state): string
     {
         return match ($state) {
@@ -465,105 +467,58 @@ class AffiliationCorporateInfolist
                                     ->schema([
                                         Grid::make(1)
                                             ->extraAttributes([
-                                                'class' => self::IOS_INNER_CLASS,
+                                                'class' => self::IOS_INNER_CLASS.' min-w-0 overflow-hidden',
                                             ])
                                             ->schema([
                                                 RepeatableEntry::make('corporateAffiliates')
                                                     ->label('')
                                                     ->placeholder('No hay afiliados asociados a esta afiliación corporativa.')
+                                                    ->extraAttributes([
+                                                        'class' => self::IOS_REPEATABLE_TABLE_SCROLL_CLASS,
+                                                    ])
                                                     ->table([
-                                                        TableColumn::make('Nombre'),
-                                                        TableColumn::make('Identificación'),
-                                                        TableColumn::make('Cargo'),
-                                                        TableColumn::make('Unidad de negocio'),
-                                                        TableColumn::make('Línea de servicio'),
-                                                        TableColumn::make('Teléfono'),
-                                                        TableColumn::make('Correo'),
-                                                        TableColumn::make('Estatus'),
-                                                        TableColumn::make('Documento'),
-                                                        TableColumn::make('Documento ILS'),
+                                                        TableColumn::make('Nombre')->width('20%'),
+                                                        TableColumn::make('Identificación')->width('8%'),
+                                                        TableColumn::make('Correo')->width('10%'),
+                                                        TableColumn::make('Estatus')->width('5%'),
+                                                        TableColumn::make('Código ILS')->width('7%')->wrapHeader(),
+                                                        TableColumn::make('Desde')->width('6%'),
+                                                        TableColumn::make('Hasta')->width('6%'),
                                                     ])
                                                     ->schema([
                                                         TextEntry::make('first_name')
                                                             ->label('Nombre')
                                                             ->icon(Heroicon::OutlinedUser)
+                                                            ->lineClamp(2)
                                                             ->formatStateUsing(fn (mixed $state, $record): string => trim(((string) ($state ?? '')).' '.((string) ($record->last_name ?? ''))) ?: '—'),
                                                         TextEntry::make('nro_identificacion')
                                                             ->label('Identificación')
-                                                            ->icon(Heroicon::OutlinedIdentification)
-                                                            ->copyable()
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('position_company')
-                                                            ->label('Cargo')
-                                                            ->badge()
-                                                            ->color('gray')
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('businessUnit.definition')
-                                                            ->label('Unidad de negocio')
-                                                            ->icon(Heroicon::OutlinedBuildingOffice2)
-                                                            ->badge()
-                                                            ->weight('semibold')
-                                                            ->color(fn (?string $state, AffiliateCorporate $record, ViewRecord $livewire): string => self::affiliateBusinessContextColor(
-                                                                $record->business_unit_id,
-                                                                $livewire->getRecord()->business_unit_id,
-                                                            ))
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('businessLine.definition')
-                                                            ->label('Línea de servicio')
-                                                            ->icon(Heroicon::OutlinedQueueList)
-                                                            ->badge()
-                                                            ->weight('semibold')
-                                                            ->color(fn (?string $state, AffiliateCorporate $record, ViewRecord $livewire): string => self::affiliateBusinessContextColor(
-                                                                $record->business_line_id,
-                                                                $livewire->getRecord()->business_line_id,
-                                                            ))
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('phone')
-                                                            ->label('Teléfono')
-                                                            ->icon(Heroicon::OutlinedPhone)
                                                             ->copyable()
                                                             ->placeholder('—'),
                                                         TextEntry::make('email')
                                                             ->label('Correo')
-                                                            ->icon(Heroicon::OutlinedEnvelope)
                                                             ->copyable()
-                                                            ->placeholder('—')
-                                                            ->wrap(),
+                                                            ->placeholder('—'),
                                                         TextEntry::make('status')
                                                             ->label('Estatus')
                                                             ->badge()
                                                             ->color(fn (?string $state): string => self::affiliateStatusColor($state))
                                                             ->placeholder('—'),
-                                                        ImageEntry::make('document')
-                                                            ->label('Documento')
-                                                            ->disk('public')
-                                                            ->visibility('public')
-                                                            ->imageHeight(56)
-                                                            ->extraImgAttributes([
-                                                                'class' => 'rounded-lg border border-slate-200/80 shadow-sm object-cover bg-white',
-                                                                'loading' => 'lazy',
-                                                            ])
-                                                            ->url(fn (AffiliateCorporate $record): ?string => filled($record->document)
-                                                                ? asset('storage/'.$record->document)
-                                                                : null)
-                                                            ->openUrlInNewTab()
-                                                            ->visible(fn (AffiliateCorporate $record): bool => self::documentIsImage($record->document))
+                                                        TextEntry::make('vaucherIls')
+                                                            ->label('Código ILS')
+                                                            ->icon(Heroicon::OutlinedTicket)
+                                                            ->badge()
+                                                            ->color('info')
+                                                            ->copyable()
                                                             ->placeholder('—'),
-                                                        ImageEntry::make('document_ils')
-                                                            ->label('Documento ILS')
-                                                            ->disk('public')
-                                                            ->visibility('public')
-                                                            ->imageHeight(56)
-                                                            ->extraImgAttributes([
-                                                                'class' => 'rounded-lg border border-slate-200/80 shadow-sm object-cover bg-white',
-                                                                'loading' => 'lazy',
-                                                            ])
-                                                            ->url(fn (AffiliateCorporate $record): ?string => filled($record->document_ils)
-                                                                ? asset('storage/'.$record->document_ils)
-                                                                : null)
-                                                            ->openUrlInNewTab()
-                                                            ->visible(fn (AffiliateCorporate $record): bool => self::documentIsImage($record->document_ils))
-                                                            ->placeholder('—'),
+                                                        TextEntry::make('dateInit')
+                                                            ->label('Vigencia desde')
+                                                            ->icon(Heroicon::OutlinedCalendarDays)
+                                                            ->formatStateUsing(fn (mixed $state): string => self::formatLegacyDateColumn($state) ?? '—'),
+                                                        TextEntry::make('dateEnd')
+                                                            ->label('Vigencia hasta')
+                                                            ->icon(Heroicon::OutlinedCalendarDays)
+                                                            ->formatStateUsing(fn (mixed $state): string => self::formatLegacyDateColumn($state) ?? '—'),
                                                     ])
                                                     ->columnSpanFull(),
                                             ]),
@@ -655,10 +610,10 @@ class AffiliationCorporateInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Pagos e ILS')
+                        Tab::make('Pagos')
                             ->icon(Heroicon::OutlinedBanknotes)
                             ->schema([
-                                Section::make('Pagos e ILS')
+                                Section::make('Pagos')
                                     ->description('Frecuencia, montos y vigencia del voucher ILS.')
                                     ->icon(Heroicon::OutlinedBanknotes)
                                     ->extraAttributes([
@@ -688,51 +643,6 @@ class AffiliationCorporateInfolist
                                                             ->money('USD')
                                                             ->weight('semibold'),
                                                     ]),
-                                                TextEntry::make('vaucher_ils')
-                                                    ->label('Voucher ILS')
-                                                    ->icon(Heroicon::OutlinedDocumentText)
-                                                    ->badge()
-                                                    ->color('success')
-                                                    ->copyable()
-                                                    ->placeholder('—'),
-                                                TextEntry::make('date_payment_initial_ils')
-                                                    ->label('Pago ILS desde')
-                                                    ->icon(Heroicon::OutlinedCalendarDays)
-                                                    ->formatStateUsing(function (mixed $state): ?string {
-                                                        if (blank($state)) {
-                                                            return null;
-                                                        }
-                                                        try {
-                                                            return Carbon::parse($state)->format('d/m/Y');
-                                                        } catch (\Throwable) {
-                                                            return (string) $state;
-                                                        }
-                                                    })
-                                                    ->placeholder('—'),
-                                                TextEntry::make('date_payment_final_ils')
-                                                    ->label('Pago ILS hasta')
-                                                    ->icon(Heroicon::OutlinedCalendarDays)
-                                                    ->formatStateUsing(function (mixed $state): ?string {
-                                                        if (blank($state)) {
-                                                            return null;
-                                                        }
-                                                        try {
-                                                            return Carbon::parse($state)->format('d/m/Y');
-                                                        } catch (\Throwable) {
-                                                            return (string) $state;
-                                                        }
-                                                    })
-                                                    ->placeholder('—'),
-                                                TextEntry::make('document_ils')
-                                                    ->label('Archivo documento ILS')
-                                                    ->icon(Heroicon::OutlinedDocumentArrowDown)
-                                                    ->color('primary')
-                                                    ->formatStateUsing(fn (mixed $state): ?string => self::formatStoredFileName($state))
-                                                    ->url(fn (AffiliationCorporate $record): ?string => filled($record->document_ils)
-                                                        ? asset('storage/'.$record->document_ils)
-                                                        : null)
-                                                    ->openUrlInNewTab()
-                                                    ->placeholder('—'),
                                             ]),
                                     ])
                                     ->columnSpanFull(),

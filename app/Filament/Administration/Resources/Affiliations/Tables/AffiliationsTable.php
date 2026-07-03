@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace App\Filament\Administration\Resources\Affiliations\Tables;
 
 use App\Filament\Administration\Resources\Affiliations\AffiliationResource;
+use App\Http\Controllers\AffiliateExportCsvController;
 use App\Http\Controllers\AffiliationController;
+use App\Http\Controllers\AffiliationExportCsvController;
 use App\Mail\UploadPayment;
 use App\Models\Affiliation;
 use App\Models\User;
 use App\Support\AffiliationPaymentBcvRateCalculator;
 use App\Support\AffiliationPaymentTotalAdjustment;
 use App\Support\BcvOfficialRate;
-use App\Support\Exports\IndividualAffiliationsReportExportAction;
-use App\Support\Filament\AffiliationExportIosPresentation;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -472,18 +472,6 @@ class AffiliationsTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
-            ->headerActions([
-                AffiliationExportIosPresentation::apply(
-                    IndividualAffiliationsReportExportAction::make(
-                        name: 'exportAdministrationIndividualAffiliations',
-                        auditEvent: 'AUDIT_ADMINISTRATION_INDIVIDUAL_AFFILIATIONS_EXPORT',
-                        auditRoute: 'administration.affiliations.export-report',
-                        modalHeading: 'Exportar afiliaciones individuales',
-                        modalDescription: 'Descargue un reporte con datos de afiliación y afiliados. Los filtros son opcionales.',
-                        planHelperText: 'Filtra por el plan de la afiliación o del afiliado.',
-                    )
-                ),
-            ])
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()
@@ -1275,6 +1263,48 @@ class AffiliationsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('exportAffiliationsCsv')
+                        ->label('Exportar Afiliaciones')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una afiliación')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $token = AffiliationExportCsvController::storeFiltersAndGetToken([
+                                'affiliation_ids' => $records->pluck('id')->all(),
+                            ], 'administration');
+
+                            return redirect()->route('administration.affiliations.export-csv', ['token' => $token]);
+                        }),
+                    BulkAction::make('exportAffiliatesCsv')
+                        ->label('Exportar Afiliados')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una afiliación')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $token = AffiliateExportCsvController::storeFiltersAndGetToken([
+                                'affiliation_ids' => $records->pluck('id')->all(),
+                            ], 'administration');
+
+                            return redirect()->route('administration.affiliates.export-csv', ['token' => $token]);
+                        }),
                     DeleteBulkAction::make(),
                     BulkAction::make('pay_multiple_affiliations')
                         ->label('Pagar afiliaciones')
