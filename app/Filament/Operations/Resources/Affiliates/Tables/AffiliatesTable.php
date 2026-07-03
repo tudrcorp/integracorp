@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\Affiliates\Tables;
 
 use App\Filament\Exports\AffiliateExporter;
+use App\Support\Exports\IndividualAffiliationsReportExportAction;
+use App\Support\Filament\AffiliationExportIosPresentation;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -248,6 +250,18 @@ class AffiliatesTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
+            ->headerActions([
+                AffiliationExportIosPresentation::apply(
+                    IndividualAffiliationsReportExportAction::make(
+                        name: 'exportOperationsAffiliates',
+                        auditEvent: 'AUDIT_OPERATIONS_AFFILIATES_EXPORT',
+                        auditRoute: 'operations.affiliates.export-report',
+                        modalHeading: 'Exportar afiliados individuales',
+                        modalDescription: 'Descargue un reporte con datos de afiliación y afiliados. Los filtros son opcionales.',
+                        planHelperText: 'Filtra por el plan del afiliado o de la afiliación asociada.',
+                    )
+                ),
+            ])
             ->recordActions([
                 ViewAction::make()
                     ->icon(Heroicon::OutlinedEye)

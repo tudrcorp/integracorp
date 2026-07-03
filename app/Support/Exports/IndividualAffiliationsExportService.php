@@ -6,29 +6,117 @@ namespace App\Support\Exports;
 
 use App\Models\Affiliate;
 use App\Models\Affiliation;
+use App\Support\CsvExportStream;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class IndividualAffiliationsExportService
 {
+    /**
+     * @return array<string, string>
+     */
+    public static function affiliateStatusOptions(): array
+    {
+        return [
+            'ACTIVO' => 'Activo',
+            'INACTIVO' => 'Inactivo',
+            'EXCLUIDO' => 'Excluido',
+        ];
+    }
+
+    /**
+     * @param  array{plan_id?: int|string|null, affiliate_status?: string|null}  $filters
+     */
+    public static function affiliationQuery(array $filters = []): Builder
+    {
+        $query = Affiliation::query()
+            ->with(self::eagerLoads())
+            ->orderBy('id');
+
+        if (filled($filters['plan_id'] ?? null)) {
+            $planId = (int) $filters['plan_id'];
+
+            $query->where(function (Builder $planQuery) use ($planId): void {
+                $planQuery
+                    ->where('plan_id', $planId)
+                    ->orWhereHas('affiliates', fn (Builder $affiliateQuery): Builder => $affiliateQuery->where('plan_id', $planId));
+            });
+        }
+
+        if (filled($filters['affiliate_status'] ?? null)) {
+            $status = (string) $filters['affiliate_status'];
+
+            $query->whereHas('affiliates', fn (Builder $affiliateQuery): Builder => $affiliateQuery->where('status', $status));
+        }
+
+        return $query;
+    }
+
+    /**
+     * @param  array{plan_id?: int|string|null, affiliate_status?: string|null}  $filters
+     */
+    public function streamCsv(array $filters = []): StreamedResponse
+    {
+        $filename = self::buildReportFilename($filters, 'csv');
+
+        return response()->streamDownload(function () use ($filters): void {
+            $handle = CsvExportStream::openOutput();
+
+            if ($handle === false) {
+                return;
+            }
+
+            fputcsv($handle, self::headers());
+            $this->writeRows($filters, fn (array $row) => fputcsv($handle, $row));
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * @param  array{plan_id?: int|string|null, affiliate_status?: string|null}  $filters
+     */
+    public function downloadXlsx(array $filters = []): BinaryFileResponse
+    {
+        $filename = self::buildReportFilename($filters, 'xlsx');
+        $path = tempnam(sys_get_temp_dir(), 'individual_affiliations_');
+
+        if ($path === false) {
+            abort(500, 'No se pudo preparar el archivo temporal.');
+        }
+
+        $path .= '.xlsx';
+
+        $writer = new Writer;
+        $writer->openToFile($path);
+        $writer->addRow(Row::fromValues(self::headers()));
+        $this->writeRows($filters, fn (array $row) => $writer->addRow(Row::fromValues($row)));
+        $writer->close();
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
     /**
      * @throws RuntimeException
      */
     public function create(): ScheduledExportResult
     {
         $startedAt = microtime(true);
-        $affiliationCount = 0;
-        $affiliateCount = 0;
-        $rowCount = 0;
-
         $exportConfig = config('scheduled-exports.exports.individual_affiliations', []);
         $baseDirectory = (string) config('scheduled-exports.directory', 'scheduled-exports');
         $subDirectory = (string) ($exportConfig['directory'] ?? 'individual-affiliations');
         $directory = trim($baseDirectory.'/'.$subDirectory, '/');
-        $filename = $this->buildFilename((string) ($exportConfig['filename_prefix'] ?? 'integracorp_afiliaciones_individuales'));
+        $filename = $this->buildScheduledFilename((string) ($exportConfig['filename_prefix'] ?? 'integracorp_afiliaciones_individuales'));
         $temporaryPath = storage_path('app/'.$directory.'/tmp/'.$filename);
 
         File::ensureDirectoryExists(dirname($temporaryPath));
@@ -37,40 +125,7 @@ final class IndividualAffiliationsExportService
         $writer->openToFile($temporaryPath);
         $writer->addRow(Row::fromValues(self::headers()));
 
-        Affiliation::query()
-            ->with([
-                'agent:id,name,code_agent',
-                'plan:id,description',
-                'coverage:id,price',
-                'city:id,definition',
-                'state:id,definition',
-                'affiliates.plan:id,description',
-                'affiliates.coverage:id,price',
-                'affiliates.country:id,name',
-                'affiliates.state:id,definition',
-                'affiliates.city:id,definition',
-            ])
-            ->orderBy('id')
-            ->chunkById(100, function ($affiliations) use (&$affiliationCount, &$affiliateCount, &$rowCount, $writer): void {
-                foreach ($affiliations as $affiliation) {
-                    /** @var Affiliation $affiliation */
-                    $affiliationCount++;
-
-                    if ($affiliation->affiliates->isEmpty()) {
-                        $writer->addRow(Row::fromValues(self::mapRow($affiliation, null)));
-                        $rowCount++;
-
-                        continue;
-                    }
-
-                    foreach ($affiliation->affiliates as $affiliate) {
-                        /** @var Affiliate $affiliate */
-                        $affiliateCount++;
-                        $writer->addRow(Row::fromValues(self::mapRow($affiliation, $affiliate)));
-                        $rowCount++;
-                    }
-                }
-            });
+        $counts = $this->writeRows([], fn (array $row) => $writer->addRow(Row::fromValues($row)));
 
         $writer->close();
 
@@ -93,9 +148,9 @@ final class IndividualAffiliationsExportService
             publicRelativePath: $publicRelativePath,
             bytes: $bytes,
             durationSeconds: microtime(true) - $startedAt,
-            affiliationCount: $affiliationCount,
-            affiliateCount: $affiliateCount,
-            rowCount: $rowCount,
+            affiliationCount: $counts['affiliationCount'],
+            affiliateCount: $counts['affiliateCount'],
+            rowCount: $counts['rowCount'],
         );
     }
 
@@ -186,6 +241,107 @@ final class IndividualAffiliationsExportService
     }
 
     /**
+     * @return array{
+     *     affiliationCount: int,
+     *     affiliateCount: int,
+     *     rowCount: int,
+     * }
+     */
+    private function writeRows(array $filters, callable $writeRow): array
+    {
+        $affiliationCount = 0;
+        $affiliateCount = 0;
+        $rowCount = 0;
+        $hasFilters = filled($filters['plan_id'] ?? null) || filled($filters['affiliate_status'] ?? null);
+
+        self::affiliationQuery($filters)->chunkById(100, function ($affiliations) use (&$affiliationCount, &$affiliateCount, &$rowCount, $writeRow, $filters, $hasFilters): void {
+            foreach ($affiliations as $affiliation) {
+                /** @var Affiliation $affiliation */
+                $affiliationCount++;
+                $affiliates = self::filteredAffiliates($affiliation, $filters);
+
+                if ($affiliates->isEmpty()) {
+                    if (! $hasFilters) {
+                        $writeRow(self::mapRow($affiliation, null));
+                        $rowCount++;
+                    }
+
+                    continue;
+                }
+
+                foreach ($affiliates as $affiliate) {
+                    /** @var Affiliate $affiliate */
+                    $affiliateCount++;
+                    $writeRow(self::mapRow($affiliation, $affiliate));
+                    $rowCount++;
+                }
+            }
+        });
+
+        return [
+            'affiliationCount' => $affiliationCount,
+            'affiliateCount' => $affiliateCount,
+            'rowCount' => $rowCount,
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function eagerLoads(): array
+    {
+        return [
+            'agent:id,name,code_agent',
+            'plan:id,description',
+            'coverage:id,price',
+            'city:id,definition',
+            'state:id,definition',
+            'affiliates.plan:id,description',
+            'affiliates.coverage:id,price',
+            'affiliates.country:id,name',
+            'affiliates.state:id,definition',
+            'affiliates.city:id,definition',
+        ];
+    }
+
+    /**
+     * @param  array{plan_id?: int|string|null, affiliate_status?: string|null}  $filters
+     * @return Collection<int, Affiliate>
+     */
+    private static function filteredAffiliates(Affiliation $affiliation, array $filters): Collection
+    {
+        $affiliates = $affiliation->affiliates;
+
+        if (filled($filters['affiliate_status'] ?? null)) {
+            $affiliates = $affiliates->where('status', (string) $filters['affiliate_status']);
+        }
+
+        if (filled($filters['plan_id'] ?? null)) {
+            $affiliates = $affiliates->where('plan_id', (int) $filters['plan_id']);
+        }
+
+        return $affiliates->values();
+    }
+
+    /**
+     * @param  array{plan_id?: int|string|null, affiliate_status?: string|null}  $filters
+     */
+    private static function buildReportFilename(array $filters, string $extension): string
+    {
+        $parts = ['reporte_afiliaciones_individuales'];
+
+        if (filled($filters['plan_id'] ?? null)) {
+            $parts[] = 'plan_'.(int) $filters['plan_id'];
+        }
+
+        if (filled($filters['affiliate_status'] ?? null)) {
+            $parts[] = strtolower((string) $filters['affiliate_status']);
+        }
+
+        return implode('_', $parts).'_'.now()->format('Y-m-d_His').'.'.$extension;
+    }
+
+    /**
      * @return list<string|int|float|null>
      */
     private static function mapRow(Affiliation $affiliation, ?Affiliate $affiliate): array
@@ -267,7 +423,7 @@ final class IndividualAffiliationsExportService
         return null;
     }
 
-    private function buildFilename(string $prefix): string
+    private function buildScheduledFilename(string $prefix): string
     {
         return sprintf('%s_%s.xlsx', $prefix, now()->format('Y-m-d_His'));
     }
