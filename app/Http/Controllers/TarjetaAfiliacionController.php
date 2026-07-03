@@ -32,9 +32,11 @@ class TarjetaAfiliacionController extends Controller
 
         $data['plan_tarjeta_etiqueta'] = TarjetaAfiliacionQrPlanCatalog::displayTagForPlan($planId, $planDescription);
         $coberturaVal = $data['cobertura'] ?? null;
-        $data['cobertura_display'] = (filled($coberturaVal) && $coberturaVal !== '')
-            ? number_format((float) $coberturaVal, 2, ',', '.').' US$'
-            : '';
+        $data['cobertura_display'] = match (true) {
+            ! filled($coberturaVal) || $coberturaVal === '' => '',
+            is_numeric($coberturaVal) => number_format((float) $coberturaVal, 2, ',', '.').' US$',
+            default => (string) $coberturaVal,
+        };
         $data['plan_qr_filename'] = TarjetaAfiliacionQrPlanCatalog::resolveQrFilename($planId, $planDescription);
         $data['plan_qr_absolute_path'] = self::resolveQrAbsolutePath($data['plan_qr_filename']);
         $data['plan_qr_size_px'] = 73;
@@ -52,6 +54,27 @@ class TarjetaAfiliacionController extends Controller
     public function associateCorporatePlanQr(Request $request): JsonResponse
     {
         return $this->storePlanQr($request, 'corporate');
+    }
+
+    public function associateCompanyAssociateInclusionQr(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'qr_image' => ['required', 'image', 'mimes:png', 'max:2048'],
+        ]);
+
+        Storage::disk('public')->putFileAs(
+            'tarjeta-afiliacion/planes',
+            $request->file('qr_image'),
+            'qr-plan-inclusion.png',
+        );
+
+        return response()->json([
+            'ok' => true,
+            'plan' => 'INCLUSIÓN',
+            'affiliation_scope' => 'company_associate',
+            'filename' => 'qr-plan-inclusion.png',
+            'public_url' => asset('storage/tarjeta-afiliacion/planes/qr-plan-inclusion.png'),
+        ]);
     }
 
     private function storePlanQr(Request $request, string $affiliationScope): JsonResponse

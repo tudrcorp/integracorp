@@ -12,6 +12,7 @@ use App\Filament\Business\Resources\Companies\Pages\ViewCompany;
 use App\Filament\Business\Resources\Companies\Schemas\CompanyForm;
 use App\Filament\Business\Resources\Companies\Schemas\CompanyInfolist;
 use App\Filament\Business\Resources\Companies\Tables\CompaniesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\Company;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class CompanyResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Company::class;
 
     protected static ?string $cluster = NuevosNegociosCluster::class;

@@ -15,6 +15,7 @@ trait ValidatesPlanGeneratorPopulation
         PlanGeneratorPopulationValidator::assertMatchesOrFail(
             (string) ($state['population_summary'] ?? ''),
             (array) ($state['rate_rows'] ?? []),
+            $state['population_unit'] ?? null,
         );
     }
 }

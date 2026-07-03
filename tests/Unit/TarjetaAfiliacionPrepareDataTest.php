@@ -40,3 +40,31 @@ it('prepara datos de vista de tarjeta usando plan_id para qr extendido', functio
 
     expect($data['plan_qr_filename'])->toBe('qr-plan-11.png');
 });
+
+it('prepara cobertura textual y plan inclusion para tarjetas de nuevos negocios', function () {
+    $data = TarjetaAfiliacionController::prepareDataForTarjetaPdfView([
+        'name' => 'Asociado Demo',
+        'ci' => 'V-123',
+        'code' => 'NB-1-2',
+        'plan' => 'INCLUSIÓN',
+        'frecuencia' => 'CONTADO',
+        'cobertura' => 'LOCAL',
+        'desde' => '02/07/2026',
+        'hasta' => '02/07/2026',
+    ]);
+
+    expect($data['plan_tarjeta_etiqueta'])->toBe('INCLUSIÓN')
+        ->and($data['cobertura_display'])->toBe('LOCAL')
+        ->and($data['frecuencia'])->toBe('CONTADO');
+});
+
+it('la plantilla pdf de tarjeta incluye recomendacion centrada debajo del carnet', function (): void {
+    $blade = file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/tarjeta-afiliado.blade.php');
+
+    expect($blade)
+        ->toContain('carnet-title')
+        ->toContain('carnet-recommendation-inner')
+        ->toContain('width: 66.667%')
+        ->toContain('no es un requisito obligatorio')
+        ->toContain('Recomendamos que nuestro afiliado conserve su tarjeta cerca de sus documentos personales.');
+});

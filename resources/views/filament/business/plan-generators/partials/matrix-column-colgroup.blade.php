@@ -9,20 +9,30 @@
     $planWidthMm = PlanGeneratorMatrixColumnLayout::planColumnWidthMm($columnCount);
 @endphp
 <colgroup>
-    <col
-        @if ($usePdfWidths)
-            style="width: {{ PlanGeneratorMatrixColumnLayout::rateAgeWidthMm() }}mm"
-        @else
-            class="pg-col-rate-age"
-        @endif
-    >
-    <col
-        @if ($usePdfWidths)
-            style="width: {{ PlanGeneratorMatrixColumnLayout::ratePopWidthMm() }}mm"
-        @else
-            class="pg-col-rate-pop"
-        @endif
-    >
+    @if ($type === 'group-total')
+        <col
+            @if ($usePdfWidths)
+                style="width: {{ PlanGeneratorMatrixColumnLayout::leadWidthMm() }}mm"
+            @else
+                class="pg-col-lead"
+            @endif
+        >
+    @else
+        <col
+            @if ($usePdfWidths)
+                style="width: {{ PlanGeneratorMatrixColumnLayout::rateAgeWidthMm() }}mm"
+            @else
+                class="pg-col-rate-age"
+            @endif
+        >
+        <col
+            @if ($usePdfWidths)
+                style="width: {{ PlanGeneratorMatrixColumnLayout::ratePopWidthMm() }}mm"
+            @else
+                class="pg-col-rate-pop"
+            @endif
+        >
+    @endif
     @foreach ($columns as $column)
         <col
             @if ($usePdfWidths)

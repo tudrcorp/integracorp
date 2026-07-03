@@ -6,6 +6,8 @@
     $columns = (array) ($columns ?? []);
     $rows = (array) ($rows ?? []);
     $rateRows = (array) ($rateRows ?? []);
+    $populationUnitLabel = (string) ($populationUnitLabel ?? 'Población');
+    $includeMonthlyTotal = (bool) ($includeMonthlyTotal ?? false);
     $columnCount = count($columns);
 @endphp
 
@@ -92,7 +94,7 @@
                                 Tarifa individual Anual
                             </th>
                             <th class="border border-[#1e40af] px-2 py-2.5 text-center font-bold uppercase">
-                                Población
+                                {{ $populationUnitLabel }}
                             </th>
                             @foreach ($columns as $column)
                                 <th class="border border-[#1e40af] px-2 py-2.5 text-center font-bold uppercase">
@@ -139,5 +141,6 @@
     @include('filament.business.plan-generators.partials.group-total-matrix', [
         'columns' => $columns,
         'rateRows' => $rateRows,
+        'includeMonthlyTotal' => (bool) ($includeMonthlyTotal ?? false),
     ])
 </div>

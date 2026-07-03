@@ -8,6 +8,8 @@
     $columnsFingerprint = PlanGeneratorMatrixState::columnsFingerprint($columns);
     $rows = (array) ($rows ?? []);
     $rateRows = (array) ($rateRows ?? []);
+    $populationUnitLabel = (string) ($populationUnitLabel ?? 'Población');
+    $includeMonthlyTotal = (bool) ($includeMonthlyTotal ?? false);
     $columnCount = count($columns);
     $benefitOptions = collect($benefitOptions ?? [])
         ->map(fn ($benefit): string => (string) $benefit)
@@ -15,7 +17,7 @@
         ->values();
 @endphp
 
-<div class="pg-stacked-matrices space-y-4" wire:key="pg-stacked-editor-{{ $columnsFingerprint }}">
+<div class="pg-stacked-matrices space-y-4" wire:key="pg-stacked-editor-{{ $columnsFingerprint }}-{{ \Illuminate\Support\Str::slug($populationUnitLabel) }}-{{ (int) $includeMonthlyTotal }}">
     @include('filament.business.plan-generators.partials.matrix-alignment-styles', ['columns' => $columns])
 
     <div class="flex flex-wrap items-center gap-2">
@@ -171,7 +173,7 @@
             <thead>
                 <tr class="bg-[#1d4ed8] text-white">
                     <th class="border border-[#1e40af] px-3 py-2.5 text-left font-bold uppercase tracking-wide">Tarifa individual Anual</th>
-                    <th class="border border-[#1e40af] px-3 py-2.5 text-center font-bold uppercase">Población</th>
+                    <th class="border border-[#1e40af] px-3 py-2.5 text-center font-bold uppercase">{{ $populationUnitLabel }}</th>
                     @include('filament.business.plan-generators.partials.matrix-plan-column-headers', ['columns' => $columns, 'type' => 'rates'])
                     <th class="border border-[#1e40af] px-2 py-2.5 w-10"></th>
                 </tr>
@@ -209,5 +211,6 @@
     @include('filament.business.plan-generators.partials.group-total-matrix', [
         'columns' => $columns,
         'rateRows' => $rateRows,
+        'includeMonthlyTotal' => (bool) ($includeMonthlyTotal ?? false),
     ])
 </div>

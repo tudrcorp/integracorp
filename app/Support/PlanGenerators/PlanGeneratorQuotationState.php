@@ -44,7 +44,7 @@ final class PlanGeneratorQuotationState
 
             $synced[] = [
                 'page_number' => $pageNumber,
-                'image' => $existing['image'] ?? $existing['image_path'] ?? null,
+                'image' => self::toFileUploadState($existing['image'] ?? $existing['image_path'] ?? null),
             ];
         }
 
@@ -94,11 +94,25 @@ final class PlanGeneratorQuotationState
 
             $synced[] = [
                 'page_number' => $pageNumber,
-                'image' => $existing['image'] ?? $existing['image_path'] ?? null,
+                'image' => self::toFileUploadState($existing['image'] ?? $existing['image_path'] ?? null),
             ];
         }
 
         return $synced;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function toFileUploadState(mixed $image): array
+    {
+        $path = self::extractImagePath($image);
+
+        if ($path === null) {
+            return [];
+        }
+
+        return [$path => $path];
     }
 
     public static function expectedImagePageCount(int $pageCount, ?int $planPageNumber): int
@@ -204,7 +218,7 @@ final class PlanGeneratorQuotationState
         foreach ($pages as $page) {
             $formPages[] = [
                 'page_number' => (int) $page->page_number,
-                'image' => $page->image_path,
+                'image' => self::toFileUploadState($page->image_path),
             ];
         }
 

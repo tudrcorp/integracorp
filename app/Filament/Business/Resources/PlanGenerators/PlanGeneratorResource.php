@@ -12,6 +12,7 @@ use App\Filament\Business\Resources\PlanGenerators\Pages\ViewPlanGenerator;
 use App\Filament\Business\Resources\PlanGenerators\Schemas\PlanGeneratorForm;
 use App\Filament\Business\Resources\PlanGenerators\Schemas\PlanGeneratorInfolist;
 use App\Filament\Business\Resources\PlanGenerators\Tables\PlanGeneratorsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\PlanGenerator;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -23,6 +24,8 @@ use UnitEnum;
 
 class PlanGeneratorResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = PlanGenerator::class;
 
     protected static ?string $navigationLabel = 'Generador de Planes';

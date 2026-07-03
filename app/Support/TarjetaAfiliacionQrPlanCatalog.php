@@ -155,6 +155,7 @@ class TarjetaAfiliacionQrPlanCatalog
             'INICIAL' => 'qr-plan-inicial.png',
             'IDEAL' => 'qr-plan-ideal.png',
             'ESPECIAL' => 'qr-plan-especial.png',
+            'INCLUSIÓN' => 'qr-plan-inclusion.png',
             default => null,
         };
     }
@@ -167,6 +168,7 @@ class TarjetaAfiliacionQrPlanCatalog
             'PLAN INICIAL', 'INICIAL' => 'INICIAL',
             'PLAN IDEAL', 'IDEAL' => 'IDEAL',
             'PLAN ESPECIAL', 'ESPECIAL' => 'ESPECIAL',
+            'PLAN INCLUSIÓN', 'PLAN INCLUSION', 'INCLUSIÓN', 'INCLUSION' => 'INCLUSIÓN',
             default => '',
         };
     }

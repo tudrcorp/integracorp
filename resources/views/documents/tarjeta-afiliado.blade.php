@@ -147,6 +147,40 @@
 
             }
 
+            .carnet-title {
+                position: absolute;
+                top: 300px;
+                right: 75px;
+                left: 0;
+                text-align: center;
+            }
+
+            .carnet-title p {
+                margin: 0;
+            }
+
+            .carnet-recommendation {
+                position: absolute;
+                top: 600px;
+                right: 75px;
+                left: 0;
+                text-align: center;
+            }
+
+            .carnet-recommendation-inner {
+                width: 66.667%;
+                margin: 0 auto;
+                text-align: center;
+                font-size: 9px;
+                line-height: 1.45;
+                color: #333333;
+                font-family: Helvetica, Arial, sans-serif;
+            }
+
+            .carnet-recommendation-inner p {
+                margin: 0;
+            }
+
         </style>
 
     </head>
@@ -154,7 +188,7 @@
 
         <!-- Primera página: Imagen de fondo -->
         <div class="cover" style="background-image: url('{{ public_path('storage/certificados/fondo-certificado.png') }}'); ">
-            <div style="position: absolute; top: 300px; right: 385px; margin-top: 0px; padding: 0px; margin-left: 0px">
+            <div class="carnet-title">
                 <p><span style="font-weight: bold; color: #305B93; font-size: 25px; font-style: arial;">TARJETA DEL AFILIADO</span></p>
             </div>
             <div style="position: absolute; top: 10px; right: 75px; margin-top: 0px; padding: 0px; margin-left: 0px">
@@ -193,7 +227,17 @@
             <div style="position: absolute; top: 533px; left: 190px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
                 {{ $data['cobertura_display'] }}
             </div>
+            <div class="carnet-recommendation">
+                <div class="carnet-recommendation-inner">
+                    <p>
+                        Recomendamos que nuestro afiliado conserve su tarjeta cerca de sus documentos personales.
+                        Este carnet <strong>no es un requisito obligatorio</strong> para solicitar el servicio,
+                        si el cliente presenta una eventualidad puede identificarse con su Nombre y Número de Cédula.
+                    </p>
+                </div>
+            </div>
         </div>
+
         <script type="text/php">
             if ( isset($pdf) ) {
                 $pdf->page_script('

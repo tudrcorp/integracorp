@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Companies\Pages;
 
+use App\Filament\Business\Resources\Companies\Actions\CompanyTableActions;
 use App\Filament\Business\Resources\Companies\CompanyResource;
 use App\Models\Company;
 use App\Support\Companies\CompanyAssociateRegistrar;
@@ -26,9 +27,15 @@ class ViewCompany extends ViewRecord
 
     private const IOS_SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success'.self::IOS_BUTTON_BASE;
 
+    private const IOS_WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning'.self::IOS_BUTTON_BASE;
+
     protected function getHeaderActions(): array
     {
         return [
+            CompanyTableActions::sendPublicRegistrationLinkAction()
+                ->extraAttributes([
+                    'class' => self::IOS_WARNING_BUTTON_CLASS,
+                ]),
             Action::make('openRegistrationLink')
                 ->label('Abrir enlace público')
                 ->icon('heroicon-o-link')

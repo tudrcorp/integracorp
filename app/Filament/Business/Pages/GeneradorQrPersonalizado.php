@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Pages;
 
+use App\Support\Companies\CompanyAssociateInclusionQrCatalog;
 use App\Support\TarjetaAfiliacionQrPlanCatalog;
 use BackedEnum;
 use Filament\Pages\Page;
@@ -39,6 +40,16 @@ class GeneradorQrPersonalizado extends Page
     public function getCorporateQrPlanOptions(): array
     {
         return TarjetaAfiliacionQrPlanCatalog::corporateSelectOptions();
+    }
+
+    public function getCompanyAssociateInclusionPdfUrl(): string
+    {
+        return CompanyAssociateInclusionQrCatalog::pdfPublicUrl();
+    }
+
+    public function getCompanyAssociateInclusionLogoUrl(): string
+    {
+        return CompanyAssociateInclusionQrCatalog::logoPublicUrl();
     }
 
     public static function shouldRegisterNavigation(): bool

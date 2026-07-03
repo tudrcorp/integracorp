@@ -16,6 +16,8 @@ class PlanGenerator extends Model
         'issued_at',
         'agent_name',
         'population_summary',
+        'population_unit',
+        'include_monthly_total',
         'brand_color',
         'quotation_page_count',
         'plan_page_number',
@@ -32,6 +34,7 @@ class PlanGenerator extends Model
             'issued_at' => 'date',
             'quotation_page_count' => 'integer',
             'plan_page_number' => 'integer',
+            'include_monthly_total' => 'boolean',
         ];
     }
 

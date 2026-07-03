@@ -38,6 +38,14 @@ it('estatus del plan usa PRE-APROBADO como valor por defecto', function (): void
         ->toContain('->default(\'PRE-APROBADO\')->change()');
 });
 
+it('crear plan generado redirige a la infolist del registro creado', function (): void {
+    $create = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Pages/CreatePlanGenerator.php');
+
+    expect($create)
+        ->toContain('protected function getRedirectUrl(): string')
+        ->toContain("PlanGeneratorResource::getUrl('view', ['record' => \$this->getRecord()])");
+});
+
 it('aprobar cotizacion cambia estatus a APROBADA y redirige al registro de empresa', function (): void {
     $view = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Pages/ViewPlanGenerator.php');
     $resource = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/PlanGeneratorResource.php');
@@ -209,14 +217,20 @@ it('formulario generador incluye matrices alineadas con columnas compartidas', f
         ->toContain('plan_page_number')
         ->toContain('quotation_pages')
         ->toContain('plan-generator-quotation')
+        ->toContain('PlanGeneratorImageGallery')
+        ->toContain('quotation-page-gallery-button')
+        ->toContain('quotation-gallery-modal')
         ->toContain('Agregar columna')
         ->toContain('stacked-matrices-editor')
+        ->toContain('include_monthly_total')
         ->toContain('Matrices del plan')
         ->toContain('Propuesta comercial')
         ->toContain('control_number')
         ->toContain('client_data')
         ->toContain('issued_at')
         ->toContain('agent_name')
+        ->toContain('population_unit')
+        ->toContain('ToggleButtons::make(\'population_unit\')')
         ->toContain('population_summary')
         ->toContain('ColorPicker::make(\'brand_color\')')
         ->toContain('PlanGeneratorBrandColor::DEFAULT')
@@ -227,7 +241,7 @@ it('formulario generador incluye matrices alineadas con columnas compartidas', f
     expect($stacked)
         ->toContain('Beneficios del Plan')
         ->toContain('Tarifa individual Anual')
-        ->toContain('Población')
+        ->toContain('$populationUnitLabel')
         ->toContain('pg-stacked-editor')
         ->toContain('addMatrixRow')
         ->toContain('addRateRow');
@@ -329,7 +343,7 @@ it('infolist y vista muestran matrices alineadas del plan generado', function ()
         ->toContain('Propuesta Comercial')
         ->toContain('Nro. Control:')
         ->toContain('Datos del cliente:')
-        ->toContain('Población:');
+        ->toContain('$populationUnitLabel');
 });
 
 it('cuerpo de cotizacion sincroniza paginas y valida imagenes', function (): void {
@@ -341,9 +355,14 @@ it('cuerpo de cotizacion sincroniza paginas y valida imagenes', function (): voi
 
     expect($synced)->toHaveCount(3)
         ->and(array_column($synced, 'page_number'))->toBe([1, 2, 4])
-        ->and($synced[0]['image'])->toBe('a.jpg')
-        ->and($synced[1]['image'])->toBe('b.jpg')
-        ->and($synced[2]['image'])->toBe('c.jpg');
+        ->and(App\Support\PlanGenerators\PlanGeneratorQuotationState::extractImagePath($synced[0]['image']))->toBe('a.jpg')
+        ->and(App\Support\PlanGenerators\PlanGeneratorQuotationState::extractImagePath($synced[1]['image']))->toBe('b.jpg')
+        ->and(App\Support\PlanGenerators\PlanGeneratorQuotationState::extractImagePath($synced[2]['image']))->toBe('c.jpg');
+
+    expect(App\Support\PlanGenerators\PlanGeneratorQuotationState::toFileUploadState('plan-generator-quotation/a.jpg'))
+        ->toBe(['plan-generator-quotation/a.jpg' => 'plan-generator-quotation/a.jpg'])
+        ->and(App\Support\PlanGenerators\PlanGeneratorQuotationState::toFileUploadState(null))
+        ->toBe([]);
 
     expect(App\Support\PlanGenerators\PlanGeneratorQuotationValidator::validationMessage(2, 1, [
         ['page_number' => 2, 'image' => null],
@@ -431,7 +450,23 @@ it('validador de poblacion exige que el total coincida con la suma por rango eta
         ]))->toBeNull()
         ->and($validator::validationMessage('101 personas', [
             'r1' => ['population' => 10],
-        ]))->toContain('debe ser igual a la suma');
+        ]))->toContain('debe ser igual a la suma')
+        ->and($validator::helperText('1000', [
+            'r1' => ['population' => 500],
+            'r2' => ['population' => 500],
+        ], 'meses'))->toContain('mes(es)');
+});
+
+it('enum de unidad de poblacion expone etiquetas y opciones', function (): void {
+    $unit = App\Enums\PlanGeneratorPopulationUnit::class;
+
+    expect($unit::Poblacion->label())->toBe('Población')
+        ->and($unit::Meses->label())->toBe('Meses')
+        ->and($unit::Dias->label())->toBe('Días')
+        ->and($unit::Horas->label())->toBe('Horas')
+        ->and($unit::resolve('horas'))->toBe($unit::Horas)
+        ->and($unit::resolve(null))->toBe($unit::Poblacion)
+        ->and($unit::options())->toHaveKeys(['poblacion', 'meses', 'dias', 'horas']);
 });
 
 it('layout de columnas alinea bloque de planes entre matrices', function (): void {
@@ -450,6 +485,9 @@ it('layout de columnas alinea bloque de planes entre matrices', function (): voi
         ->toContain('PlanGeneratorMatrixColumnLayout')
         ->toContain('usePdfWidths')
         ->toContain('pg-col-rate-age')
+        ->toContain('pg-col-lead')
+        ->toContain('rateAgeWidthMm')
+        ->toContain('leadWidthMm')
         ->toContain('pg-col-plan');
 });
 
@@ -483,19 +521,54 @@ it('total grupal calcula anual semestral y trimestral por columna', function ():
     expect($totals['annual']['col-a'])->toEqual(265 * 29 + 289 * 72)
         ->and($totals['semestral']['col-a'])->toEqual((265 * 29 + 289 * 72) / 2)
         ->and($totals['trimestral']['col-a'])->toEqual((265 * 29 + 289 * 72) / 4)
-        ->and(App\Support\PlanGenerators\PlanGeneratorGroupTotalCalculator::formatGroupTotal(28493.0))->toBe('$28.493');
+        ->and($totals['mensual']['col-a'])->toEqual((265 * 29 + 289 * 72) / 12)
+        ->and(App\Support\PlanGenerators\PlanGeneratorGroupTotalCalculator::formatGroupTotal(28493.0))->toBe('$28.493')
+        ->and(App\Support\PlanGenerators\PlanGeneratorGroupTotalCalculator::groupTotalRows(false))->toHaveCount(3)
+        ->and(App\Support\PlanGenerators\PlanGeneratorGroupTotalCalculator::groupTotalRows(true))->toHaveCount(4)
+        ->and(collect(App\Support\PlanGenerators\PlanGeneratorGroupTotalCalculator::groupTotalRows(true))->pluck('label')->last())->toBe('Total Mensual');
 
     $partial = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/plan-generators/partials/group-total-matrix.blade.php');
     expect($partial)
         ->toContain('Total Grupal')
-        ->toContain('aria-hidden="true"')
-        ->toContain('Tarifa anual')
-        ->toContain('Tarifa Semestral')
-        ->toContain('Tarifa Trimestral');
+        ->not->toContain('aria-hidden="true"')
+        ->not->toContain('pg-col-rate-pop')
+        ->toContain('groupTotalRows')
+        ->toContain('includeMonthlyTotal');
+
+    $pdfBody = file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/partials/plan-generator-plan-body.blade.php');
+    expect($pdfBody)
+        ->toContain('Total grupal')
+        ->not->toMatch('/Total Grupal<\/th>\s*<th[^>]*>\s*<\/th>/');
 
     $benefitStatus = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/plan-generators/partials/benefit-cell-status-preview.blade.php');
     expect($benefitStatus)
         ->not->toContain('Incluido')
         ->toContain('bg-rose-100')
         ->toContain('−');
+});
+
+it('galeria de imagenes del generador de planes expone recurso y registro automatico', function (): void {
+    $resource = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGeneratorImages/PlanGeneratorImageResource.php');
+    $gallery = App\Support\PlanGenerators\PlanGeneratorImageGallery::class;
+    $modal = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/plan-generators/quotation-gallery-modal.blade.php');
+    $button = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/plan-generators/quotation-page-gallery-button.blade.php');
+    $concern = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Pages/Concerns/InteractsWithPlanGeneratorQuotationGallery.php');
+
+    expect($resource)
+        ->toContain('Galería de imágenes')
+        ->toContain('PlanGeneratorImage::class');
+
+    expect($gallery::nameFromPath('plan-generator-quotation/portada-2026.jpg'))->toBe('Portada 2026');
+
+    expect($modal)
+        ->toContain('selectQuotationGalleryImage')
+        ->toContain('Galería de imágenes');
+
+    expect($button)
+        ->toContain('Elegir de la galería')
+        ->toContain('openQuotationGalleryPicker');
+
+    expect($concern)
+        ->toContain('selectQuotationGalleryImage')
+        ->toContain('quotationGalleryPickerPageNumber');
 });

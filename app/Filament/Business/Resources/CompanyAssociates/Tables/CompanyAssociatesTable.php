@@ -196,6 +196,7 @@ class CompanyAssociatesTable
                         ->label('Ver asociado'),
                     CompanyAssociatesTableActions::uploadVoucherIlsAction(),
                     CompanyAssociatesTableActions::generateCarnetAction(),
+                    CompanyAssociatesTableActions::previewInclusionQrAction(),
                     CompanyAssociatesTableActions::openCarnetAction(),
                 ]),
             ]);

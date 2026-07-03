@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\PlanGenerators\Pages;
 
 use App\Filament\Business\Resources\PlanGenerators\Pages\Concerns\InteractsWithPlanGeneratorMatrix;
+use App\Filament\Business\Resources\PlanGenerators\Pages\Concerns\InteractsWithPlanGeneratorQuotationGallery;
 use App\Filament\Business\Resources\PlanGenerators\Pages\Concerns\ValidatesPlanGeneratorPopulation;
 use App\Filament\Business\Resources\PlanGenerators\Pages\Concerns\ValidatesPlanGeneratorQuotation;
 use App\Filament\Business\Resources\PlanGenerators\PlanGeneratorResource;
@@ -15,6 +16,7 @@ use Filament\Resources\Pages\EditRecord;
 class EditPlanGenerator extends EditRecord
 {
     use InteractsWithPlanGeneratorMatrix;
+    use InteractsWithPlanGeneratorQuotationGallery;
     use ValidatesPlanGeneratorPopulation;
     use ValidatesPlanGeneratorQuotation;
 

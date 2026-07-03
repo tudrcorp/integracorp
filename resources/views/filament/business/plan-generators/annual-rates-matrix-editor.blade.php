@@ -3,6 +3,7 @@
     /** @var array<string, array<string, mixed>> $rateRows */
     $columns = (array) ($columns ?? []);
     $rateRows = (array) ($rateRows ?? []);
+    $populationUnitLabel = (string) ($populationUnitLabel ?? 'Población');
     $columnCount = count($columns);
 @endphp
 
@@ -31,7 +32,7 @@
                             Tarifa individual Anual
                         </th>
                         <th class="border border-[#1e40af] px-3 py-2.5 text-center font-bold uppercase min-w-[100px]">
-                            Población
+                            {{ $populationUnitLabel }}
                         </th>
                         @foreach ($columns as $column)
                             <th class="border border-[#1e40af] px-2 py-2.5 text-center font-bold uppercase min-w-[120px]">
