@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Companies\CompanyAssociateRegistrar;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,6 +20,8 @@ class CompanyResponsible extends Model
         'email',
         'state_id',
         'zone_id',
+        'contract_start_date',
+        'contract_end_date',
         'contracted_days',
     ];
 
@@ -28,6 +31,8 @@ class CompanyResponsible extends Model
     protected function casts(): array
     {
         return [
+            'contract_start_date' => 'date',
+            'contract_end_date' => 'date',
             'contracted_days' => 'integer',
         ];
     }
@@ -50,5 +55,20 @@ class CompanyResponsible extends Model
     public function associates(): HasMany
     {
         return $this->hasMany(CompanyAssociate::class);
+    }
+
+    public function consumedRegistrationDays(): int
+    {
+        return CompanyAssociateRegistrar::consumedDaysByResponsible($this);
+    }
+
+    public function availableRegistrationDays(): int
+    {
+        return CompanyAssociateRegistrar::availableDaysForResponsible($this);
+    }
+
+    public function hasExhaustedRegistrationDays(): bool
+    {
+        return CompanyAssociateRegistrar::hasExhaustedRegistrationDays($this);
     }
 }

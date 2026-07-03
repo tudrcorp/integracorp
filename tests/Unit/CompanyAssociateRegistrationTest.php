@@ -13,6 +13,22 @@ it('calcula edad desde fecha de nacimiento', function (): void {
     expect(CompanyAssociateRegistrar::calculateAge('1990-01-15'))->toBeInt();
 });
 
+it('calcula dias entre fechas de contrato del responsable', function (): void {
+    expect(CompanyAssociateRegistrar::calculateDaysBetween('2026-01-01', '2026-01-31'))->toBe(30);
+    expect(CompanyAssociateRegistrar::calculateDaysBetween('2026-01-31', '2026-01-01'))->toBeNull();
+});
+
+it('normaliza telefono internacional con prefijo de pais', function (): void {
+    expect(CompanyAssociateRegistrar::normalizeInternationalPhone(' +58 412 701 8390 '))
+        ->toBe('+584127018390');
+});
+
+it('calcula dias restantes del responsable restando dias del periodo', function (): void {
+    expect(CompanyAssociateRegistrar::remainingContractedDays(100, 30))->toBe(70);
+    expect(CompanyAssociateRegistrar::remainingContractedDays(10, 12))->toBe(-2);
+    expect(CompanyAssociateRegistrar::remainingContractedDays(50, null))->toBeNull();
+});
+
 it('formulario publico de asociados expone componente livewire y ruta', function (): void {
     $livewire = file_get_contents(dirname(__DIR__, 2).'/app/Livewire/CompanyAssociateRegistration.php');
     $view = file_get_contents(dirname(__DIR__, 2).'/resources/views/livewire/company-associate-registration.blade.php');
@@ -24,22 +40,53 @@ it('formulario publico de asociados expone componente livewire y ruta', function
         ->toContain('CompanyAssociateRegistration')
         ->toContain('startNewRegistration')
         ->toContain('resolveResponsible')
+        ->toContain('recalculateResponsibleDays')
+        ->toContain('resolvedResponsibleStartDate')
+        ->toContain('resolvedResponsibleContractedDays')
+        ->toContain('resolvedResponsibleConsumedDays')
+        ->toContain('responsibleDaysExhausted')
+        ->toContain('remainingDaysAfterRegistration')
+        ->toContain('consumedDaysByResponsible')
+        ->toContain('registration_period_days')
+        ->toContain('responsibleCalculatedDays')
+        ->toContain('responsibleRemainingDays')
         ->toContain('registered_at')
         ->toContain('WithFileUploads')
         ->toContain('Rule::unique(\'company_associates\', \'email\')')
-        ->toContain('Ya existe un asociado registrado con esta cédula de identidad.')
+        ->toContain('normalizeInternationalPhone')
+        ->toContain('regex:/^\+[1-9]\d{6,14}$/')
+        ->toContain('flightDate')
+        ->toContain('flightTime')
+        ->toContain('flight_date')
+        ->toContain('Ya existe un asociado registrado con este documento de identidad.')
         ->toContain('contactPhone\' => [\'required\'')
         ->toContain('contactEmail\' => [\'required\'');
 
     expect($view)
         ->toContain('startNewRegistration')
         ->toContain('Realizar nuevo registro')
+        ->toContain('Fecha desde')
+        ->toContain('Fecha hasta')
+        ->toContain('wire:model.live="resolvedResponsibleStartDate"')
+        ->toContain('wire:model.live="resolvedResponsibleEndDate"')
+        ->toContain('type="date"')
+        ->toContain('Número de días')
+        ->toContain('Días restantes del responsable')
+        ->toContain('Registro no disponible')
+        ->toContain('responsibleDaysExhausted')
         ->toContain('logoNewTDG.png')
         ->toContain('logoTDG.png')
         ->toContain('toggleTheme')
         ->toContain('theme-toggle')
         ->toContain('responsibleIdentityCard')
-        ->toContain('identityDocument')
+        ->toContain('Documento de Identidad')
+        ->toContain('Ej: 12345678')
+        ->toContain('Fecha de vuelo')
+        ->toContain('Hora de vuelo')
+        ->toContain('Incluya el prefijo del país')
+        ->toContain('+584127018390')
+        ->toContain('identityDocuments')
+        ->toContain('multiple')
         ->toContain('contactFullName')
         ->toContain('Documento de identidad <span class="text-[color:var(--accent)]">*</span>');
 
@@ -53,6 +100,12 @@ it('formulario publico de asociados expone componente livewire y ruta', function
         ->toContain('registered_at')
         ->toContain('identity_document')
         ->toContain('company_responsible_id');
+
+    $responsibleMigration = file_get_contents(dirname(__DIR__, 2).'/database/migrations/2026_07_03_114516_add_contract_dates_to_company_responsibles_table.php');
+
+    expect($responsibleMigration)
+        ->toContain('contract_start_date')
+        ->toContain('contract_end_date');
 });
 
 it('recurso filament de asociados lista relaciones con empresa y responsable', function (): void {
@@ -71,13 +124,19 @@ it('recurso filament de asociados lista relaciones con empresa y responsable', f
         ->toContain('responsible.full_name')
         ->toContain('registered_at');
 
-    expect($infolist)->toContain('registered_at')->toContain('identity_document');
+    expect($infolist)->toContain('registered_at')->toContain('identity_document')
+        ->toContain('identity-documents-gallery')
+        ->toContain('identityDocumentPaths')
+        ->toContain('Documento de identidad')
+        ->toContain('Fecha de vuelo')
+        ->toContain('Hora de vuelo');
 
     expect($companyInfolist)
         ->toContain('Enlace público')
         ->toContain('public_registration_url')
         ->toContain('CompanyAssociateRegistrar::publicRegistrationUrl')
-        ->toContain('responsibles-associates-panel');
+        ->toContain('responsibles-associates-panel')
+        ->toContain('días contratados, consumidos y restantes');
 
     expect($infolist)
         ->toContain('Tab::make(\'Voucher ILS\')')
@@ -98,9 +157,13 @@ it('panel de responsables incluye modal de voucher ils', function (): void {
         ->toContain('voucherIlsAction')
         ->toContain('expandedResponsibles')
         ->toContain('toggleResponsible')
-        ->toContain('isResponsibleExpanded');
+        ->toContain('isResponsibleExpanded')
+        ->toContain('associates_consumed_days_sum');
 
     expect($view)
+        ->toContain('Días consumidos:')
+        ->toContain('Días restantes:')
+        ->toContain('días contratados')
         ->toContain('mountAction(\'voucherIls\'')
         ->toContain('x-filament-actions::modals')
         ->toContain('Voucher ILS')
@@ -122,7 +185,11 @@ it('panel de responsables incluye modal de voucher ils', function (): void {
 
     expect($model)
         ->toContain('hasVoucherIls')
-        ->toContain('voucherIlsDocumentUrl');
+        ->toContain('voucherIlsDocumentUrl')
+        ->toContain('registration_period_days')
+        ->toContain('flight_date')
+        ->toContain('flight_time')
+        ->toContain('identity_documents');
 });
 
 it('tabla de asociados soporta vista agrupada y filtrada por responsable', function (): void {
@@ -163,6 +230,7 @@ it('tabla de asociados soporta vista agrupada y filtrada por responsable', funct
         ->toContain('scopedResponsible')
         ->toContain('CompanyAssociatesTableActions::uploadVoucherIlsAction')
         ->toContain('CompanyAssociatesTableActions::generateCarnetAction')
+        ->toContain('CompanyAssociatesTableActions::previewInclusionQrAction')
         ->toContain('CompanyAssociatesTableActions::openCarnetAction');
 });
 
@@ -179,10 +247,16 @@ it('soportes de voucher ils y carnet centralizan la logica de negocio', function
     expect($carnet)
         ->toContain('TAR-NB-')
         ->toContain('generateTarjetaAfiliacion')
-        ->toContain('tarjeta-afiliacion');
+        ->toContain('tarjeta-afiliacion')
+        ->toContain('INCLUSIÓN')
+        ->toContain('LOCAL')
+        ->toContain('CONTADO');
 
     expect($actions)
         ->toContain('uploadVoucherIls')
         ->toContain('generateCarnet')
-        ->toContain('openCarnet');
+        ->toContain('previewInclusionQr')
+        ->toContain('openCarnet')
+        ->toContain('hasVoucherIls()')
+        ->toContain('CompanyAssociateVoucherIlsDocumentsNotifier::queueGenerationAfterVoucherSave');
 });

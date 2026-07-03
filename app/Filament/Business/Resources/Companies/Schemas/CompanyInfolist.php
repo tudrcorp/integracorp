@@ -240,7 +240,7 @@ class CompanyInfolist
     private static function responsiblesSection(): Section
     {
         return Section::make('Responsables y asociados')
-            ->description('Cada responsable con el detalle de los usuarios, asociados o clientes registrados bajo su cédula.')
+            ->description('Cada responsable muestra días contratados, consumidos y restantes, junto con los asociados registrados bajo su cédula.')
             ->icon(Heroicon::OutlinedUserGroup)
             ->extraAttributes([
                 'class' => self::IOS_SECTION_CLASS,

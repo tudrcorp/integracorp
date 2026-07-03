@@ -6,6 +6,7 @@ namespace App\Livewire\Business;
 
 use App\Models\Company;
 use App\Models\CompanyAssociate;
+use App\Support\Companies\CompanyAssociateVoucherIlsDocumentsNotifier;
 use App\Support\Companies\CompanyAssociateVoucherIlsUpdater;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
@@ -44,6 +45,7 @@ class CompanyResponsiblesAssociatesPanel extends Component implements HasActions
             ->with([
                 'responsibles' => fn ($query) => $query
                     ->withCount('associates')
+                    ->withSum('associates as associates_consumed_days_sum', 'registration_period_days')
                     ->with([
                         'state',
                         'zone',
@@ -89,7 +91,15 @@ class CompanyResponsiblesAssociatesPanel extends Component implements HasActions
                 fn (): bool => blank($this->mountedAssociate()?->document_ils),
             ))
             ->action(function (array $arguments, array $data): void {
-                CompanyAssociateVoucherIlsUpdater::save($this->resolveAssociate($arguments), $data);
+                $associate = $this->resolveAssociate($arguments);
+
+                CompanyAssociateVoucherIlsUpdater::save($associate, $data);
+
+                $userId = auth()->id();
+
+                if (is_int($userId)) {
+                    CompanyAssociateVoucherIlsDocumentsNotifier::queueGenerationAfterVoucherSave($associate->getKey(), $userId);
+                }
             })
             ->successNotification(function (array $arguments): Notification {
                 $associate = $this->resolveAssociate($arguments);
@@ -97,7 +107,7 @@ class CompanyResponsiblesAssociatesPanel extends Component implements HasActions
                 return Notification::make()
                     ->success()
                     ->title('Voucher ILS guardado')
-                    ->body('La información del voucher se registró correctamente para '.$associate->full_name.'.');
+                    ->body('El voucher de '.$associate->full_name.' se registró correctamente. La tarjeta y el QR se están generando en segundo plano.');
             });
     }
 

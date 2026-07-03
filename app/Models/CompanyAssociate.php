@@ -18,12 +18,18 @@ class CompanyAssociate extends Model
         'age',
         'email',
         'phone',
+        'flight_date',
+        'flight_time',
         'sex',
         'contact_full_name',
         'contact_phone',
         'contact_email',
         'identity_document',
+        'identity_documents',
         'registered_at',
+        'registration_start_date',
+        'registration_end_date',
+        'registration_period_days',
         'vaucher_ils',
         'date_init',
         'date_end',
@@ -39,7 +45,44 @@ class CompanyAssociate extends Model
             'birth_date' => 'date',
             'age' => 'integer',
             'registered_at' => 'datetime',
+            'registration_start_date' => 'date',
+            'registration_end_date' => 'date',
+            'registration_period_days' => 'integer',
+            'flight_date' => 'date',
+            'identity_documents' => 'array',
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function identityDocumentPaths(): array
+    {
+        $documents = $this->identity_documents;
+
+        if (is_array($documents) && $documents !== []) {
+            return array_values(array_filter(
+                $documents,
+                fn (mixed $path): bool => is_string($path) && filled($path),
+            ));
+        }
+
+        if (filled($this->identity_document)) {
+            return [(string) $this->identity_document];
+        }
+
+        return [];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function identityDocumentUrls(): array
+    {
+        return array_map(
+            fn (string $path): string => asset('storage/'.$path),
+            $this->identityDocumentPaths(),
+        );
     }
 
     public function company(): BelongsTo

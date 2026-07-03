@@ -83,7 +83,7 @@
                         <div class="h-px flex-1 bg-[color:var(--field-border)]"></div>
                     </div>
 
-                    <div class="max-w-xl">
+                    <div>
                         <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
                             Cédula del responsable <span class="text-[color:var(--accent)]">*</span>
                         </label>
@@ -108,6 +108,90 @@
                                     <p class="text-sm font-semibold text-[color:var(--text-primary)]">{{ $resolvedResponsibleName }}</p>
                                     <p class="mt-1 text-xs text-[color:var(--success-text)]">Responsable verificado para esta empresa</p>
                                 </div>
+
+                                @if ($responsibleDaysExhausted)
+                                    <div
+                                        class="mt-4 rounded-2xl border border-[color:var(--error-text)]/20 bg-[color:var(--error-bg)] px-4 py-4">
+                                        <p class="text-sm font-semibold text-[color:var(--error-text)]">
+                                            Registro no disponible
+                                        </p>
+                                        <p class="mt-2 text-sm text-[color:var(--text-secondary)]">
+                                            Este responsable ha consumido los
+                                            {{ number_format((int) $resolvedResponsibleContractedDays, 0, ',', '.') }}
+                                            días contratados. No es posible registrar un nuevo asociado.
+                                        </p>
+                                    </div>
+                                @else
+                                    <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
+                                        <div>
+                                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                                                Fecha desde <span class="text-[color:var(--accent)]">*</span>
+                                            </label>
+                                            <input type="date" wire:model.live="resolvedResponsibleStartDate"
+                                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 text-[color:var(--text-primary)] outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
+                                            @error('resolvedResponsibleStartDate')
+                                                <p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+
+                                        <div>
+                                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                                                Fecha hasta <span class="text-[color:var(--accent)]">*</span>
+                                            </label>
+                                            <input type="date" wire:model.live="resolvedResponsibleEndDate"
+                                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 text-[color:var(--text-primary)] outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
+                                            @error('resolvedResponsibleEndDate')
+                                                <p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+
+                                        <div>
+                                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                                                Número de días
+                                            </label>
+                                            <div
+                                                class="flex min-h-[50px] items-center rounded-2xl border border-[color:var(--field-border)] bg-white/30 px-4 py-3 dark:bg-white/5">
+                                                <span class="text-lg font-semibold text-[color:var(--text-primary)]">{{ $responsibleCalculatedDays ?? '—' }}</span>
+                                                @if ($responsibleCalculatedDays !== null)
+                                                    <span class="ml-2 text-xs uppercase tracking-wide text-[color:var(--text-muted)]">días</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @if ($responsibleRemainingDays !== null)
+                                        <div @class([
+                                            'mt-4 rounded-2xl border px-4 py-3',
+                                            'border-[color:var(--error-text)]/20 bg-[color:var(--error-bg)]' => $responsibleRemainingDays < 0,
+                                            'border-[color:var(--accent)]/20 bg-[color:var(--accent)]/5' => $responsibleRemainingDays >= 0,
+                                        ])>
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+                                                Días restantes del responsable
+                                            </p>
+                                            <p @class([
+                                                'mt-1 text-2xl font-bold',
+                                                'text-[color:var(--error-text)]' => $responsibleRemainingDays < 0,
+                                                'text-[color:var(--accent)]' => $responsibleRemainingDays >= 0,
+                                            ])>
+                                                {{ number_format($responsibleRemainingDays, 0, ',', '.') }}
+                                                <span class="text-sm font-semibold text-[color:var(--text-secondary)]">
+                                                    {{ abs($responsibleRemainingDays) === 1 ? 'día' : 'días' }}
+                                                </span>
+                                            </p>
+                                            <p class="mt-2 text-xs text-[color:var(--text-muted)]">
+                                                {{ number_format((int) $resolvedResponsibleConsumedDays, 0, ',', '.') }}
+                                                de
+                                                {{ number_format((int) $resolvedResponsibleContractedDays, 0, ',', '.') }}
+                                                días contratados ya fueron consumidos.
+                                            </p>
+                                            @if ($responsibleRemainingDays < 0)
+                                                <p class="mt-2 text-sm text-[color:var(--error-text)]">
+                                                    El período seleccionado supera los días disponibles del responsable.
+                                                </p>
+                                            @endif
+                                        </div>
+                                    @endif
+                                @endif
                             @elseif (filled($responsibleIdentityCard))
                                 <p class="mt-3 text-sm text-[color:var(--error-text)]">
                                     No se encontró un responsable con esa cédula en esta empresa.
@@ -121,6 +205,7 @@
                     </div>
                 </section>
 
+                @unless ($responsibleDaysExhausted)
                 <section
                     class="rounded-[2rem] border border-[color:var(--glass-border)] bg-[color:var(--glass-bg)] p-6 shadow-[var(--glass-shadow)] backdrop-blur-[40px] sm:p-8">
                     <div class="mb-6 flex items-center gap-4">
@@ -143,9 +228,9 @@
 
                         <div>
                             <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
-                                Cédula de Identidad <span class="text-[color:var(--accent)]">*</span>
+                                Documento de Identidad <span class="text-[color:var(--accent)]">*</span>
                             </label>
-                            <input type="text" wire:model="identityCard" placeholder="Ej: V-87654321"
+                            <input type="text" wire:model="identityCard" placeholder="Ej: 12345678"
                                 class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
                             @error('identityCard')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
                         </div>
@@ -172,24 +257,6 @@
 
                         <div>
                             <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
-                                Correo electrónico
-                            </label>
-                            <input type="email" wire:model="email" placeholder="correo@ejemplo.com"
-                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
-                            @error('email')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
-                        </div>
-
-                        <div>
-                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
-                                Teléfono
-                            </label>
-                            <input type="tel" wire:model="phone" placeholder="Ej: 0414-1234567"
-                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
-                            @error('phone')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
-                        </div>
-
-                        <div>
-                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
                                 Sexo <span class="text-[color:var(--accent)]">*</span>
                             </label>
                             <select wire:model="sex"
@@ -199,6 +266,46 @@
                                 <option value="FEMENINO">FEMENINO</option>
                             </select>
                             @error('sex')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div>
+                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                                Correo electrónico
+                            </label>
+                            <input type="email" wire:model="email" placeholder="correo@ejemplo.com"
+                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
+                            @error('email')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div>
+                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                                Teléfono <span class="text-[color:var(--accent)]">*</span>
+                            </label>
+                            <input type="tel" wire:model.live.debounce.300ms="phone" inputmode="tel" autocomplete="tel"
+                                placeholder="+584127018390"
+                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
+                            <p class="mt-2 text-xs text-[color:var(--text-muted)]">
+                                Incluya el prefijo del país. Ej: +584127018390
+                            </p>
+                            @error('phone')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div>
+                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                                Fecha de vuelo <span class="text-[color:var(--accent)]">*</span>
+                            </label>
+                            <input type="date" wire:model="flightDate"
+                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
+                            @error('flightDate')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div>
+                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                                Hora de vuelo <span class="text-[color:var(--accent)]">*</span>
+                            </label>
+                            <input type="time" wire:model="flightTime"
+                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
+                            @error('flightTime')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
                         </div>
                     </div>
                 </section>
@@ -255,13 +362,20 @@
 
                     <div
                         class="rounded-[1.5rem] border border-dashed border-[color:var(--field-border)] bg-white/30 p-6 dark:bg-white/5">
-                        <input type="file" wire:model="identityDocument" accept="image/*"
+                        <input type="file" wire:model="identityDocuments" accept="image/*" multiple
                             class="block w-full cursor-pointer text-sm text-[color:var(--text-secondary)] file:mr-4 file:rounded-full file:border-0 file:bg-[color:var(--accent)] file:px-5 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:file:opacity-90">
-                        <p class="mt-3 text-xs text-[color:var(--text-muted)]">Formatos de imagen · Máximo 5 MB</p>
-                        @error('identityDocument')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
+                        <p class="mt-3 text-xs text-[color:var(--text-muted)]">Formatos de imagen · Máximo 5 MB por archivo · Puede cargar uno o más documentos</p>
+                        @error('identityDocuments')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
+                        @error('identityDocuments.*')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
 
-                        <div wire:loading wire:target="identityDocument" class="mt-3 text-sm text-[color:var(--text-secondary)]">
-                            Cargando documento...
+                        @if (count($identityDocuments) > 0)
+                            <p class="mt-3 text-sm text-[color:var(--text-secondary)]">
+                                {{ count($identityDocuments) }} {{ count($identityDocuments) === 1 ? 'documento seleccionado' : 'documentos seleccionados' }}
+                            </p>
+                        @endif
+
+                        <div wire:loading wire:target="identityDocuments" class="mt-3 text-sm text-[color:var(--text-secondary)]">
+                            Cargando documentos...
                         </div>
                     </div>
                 </section>
@@ -278,11 +392,13 @@
                     </p>
                     <button type="submit"
                         class="inline-flex items-center justify-center rounded-full bg-[color:var(--accent)] px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:scale-[0.98] active:scale-[0.96] disabled:opacity-60"
-                        wire:loading.attr="disabled" wire:target="submit,identityDocument">
+                        wire:loading.attr="disabled" wire:target="submit,identityDocuments"
+                        @disabled($responsibleRemainingDays !== null && $responsibleRemainingDays < 0)>
                         <span wire:loading.remove wire:target="submit">Registrar asociado</span>
                         <span wire:loading wire:target="submit">Procesando registro...</span>
                     </button>
                 </div>
+                @endunless
             </form>
         @endif
     </div>
