@@ -2,6 +2,7 @@
 
 namespace App\Filament\Projects\Resources\ProjectManagement\Projects;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Projects\Resources\ProjectManagement\Projects\Pages\CreateProject;
 use App\Filament\Projects\Resources\ProjectManagement\Projects\Pages\EditProject;
 use App\Filament\Projects\Resources\ProjectManagement\Projects\Pages\ListProjects;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class ProjectResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Project::class;
 
     protected static ?string $navigationLabel = 'Proyectos';

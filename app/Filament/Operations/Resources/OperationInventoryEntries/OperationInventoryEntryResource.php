@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationInventoryEntries;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\OperationInventoryEntries\Pages\CreateOperationInventoryEntry;
 use App\Filament\Operations\Resources\OperationInventoryEntries\Pages\EditOperationInventoryEntry;
 use App\Filament\Operations\Resources\OperationInventoryEntries\Pages\ListOperationInventoryEntries;
@@ -21,6 +22,8 @@ use UnitEnum;
 
 class OperationInventoryEntryResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = OperationInventoryEntry::class;
 
     protected static ?string $navigationLabel = 'Entradas de Inventario';

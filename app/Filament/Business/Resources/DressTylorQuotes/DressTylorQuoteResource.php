@@ -9,6 +9,7 @@ use App\Filament\Business\Resources\DressTylorQuotes\Pages\ViewDressTylorQuote;
 use App\Filament\Business\Resources\DressTylorQuotes\Schemas\DressTylorQuoteForm;
 use App\Filament\Business\Resources\DressTylorQuotes\Schemas\DressTylorQuoteInfolist;
 use App\Filament\Business\Resources\DressTylorQuotes\Tables\DressTylorQuotesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\DressTylorQuote;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class DressTylorQuoteResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = DressTylorQuote::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-swatch';

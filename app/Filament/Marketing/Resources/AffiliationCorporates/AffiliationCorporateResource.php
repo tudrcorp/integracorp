@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\AffiliationCorporates;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Marketing\Resources\AffiliationCorporates\Pages\CreateAffiliationCorporate;
 use App\Filament\Marketing\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
 use App\Filament\Marketing\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
@@ -10,18 +11,17 @@ use App\Filament\Marketing\Resources\AffiliationCorporates\Schemas\AffiliationCo
 use App\Filament\Marketing\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
 use App\Filament\Marketing\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
 use App\Models\AffiliationCorporate;
-use App\Models\Permission;
-use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class AffiliationCorporateResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = AffiliationCorporate::class;
 
     // protected static string|BackedEnum|null $navigationIcon = 'heroicon-m-user-group';
@@ -62,25 +62,5 @@ class AffiliationCorporateResource extends Resource
             'view' => ViewAffiliationCorporate::route('/{record}'),
             'edit' => EditAffiliationCorporate::route('/{record}/edit'),
         ];
-    }
-
-    public static function canAccess(): bool
-    {
-        $module = 'MARKETING';
-        $permission = Permission::where('module', $module)->where('slug', 'afiliaciones-corporativas')->first();
-
-        // si es superadmin, retornar true
-        if (in_array('SUPERADMIN', Auth::user()->departament)) {
-            return true;
-        }
-
-        if (in_array($module, Auth::user()->departament)) {
-            if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
-                return true;
-            }
-        }
-
-        return false;
-
     }
 }

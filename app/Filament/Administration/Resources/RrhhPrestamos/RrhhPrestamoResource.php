@@ -7,6 +7,7 @@ use App\Filament\Administration\Resources\RrhhPrestamos\Pages\EditRrhhPrestamo;
 use App\Filament\Administration\Resources\RrhhPrestamos\Pages\ListRrhhPrestamos;
 use App\Filament\Administration\Resources\RrhhPrestamos\Schemas\RrhhPrestamoForm;
 use App\Filament\Administration\Resources\RrhhPrestamos\Tables\RrhhPrestamosTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\RrhhPrestamo;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -16,6 +17,8 @@ use UnitEnum;
 
 class RrhhPrestamoResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = RrhhPrestamo::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'RRHH';

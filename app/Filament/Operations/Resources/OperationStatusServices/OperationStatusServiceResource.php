@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationStatusServices;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\OperationStatusServices\Pages\CreateOperationStatusService;
 use App\Filament\Operations\Resources\OperationStatusServices\Pages\EditOperationStatusService;
 use App\Filament\Operations\Resources\OperationStatusServices\Pages\ListOperationStatusServices;
@@ -21,6 +22,8 @@ use UnitEnum;
 
 class OperationStatusServiceResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = OperationStatusService::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACION';

@@ -8,6 +8,7 @@ use App\Filament\Business\Resources\AffiliationRenovationHistories\Pages\ListAff
 use App\Filament\Business\Resources\AffiliationRenovationHistories\Pages\ViewAffiliationRenovationHistory;
 use App\Filament\Business\Resources\AffiliationRenovationHistories\Schemas\AffiliationRenovationHistoryInfolist;
 use App\Filament\Business\Resources\AffiliationRenovationHistories\Tables\AffiliationRenovationHistoriesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\AffiliationRenovationHistory;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -20,6 +21,8 @@ use UnitEnum;
 
 class AffiliationRenovationHistoryResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = AffiliationRenovationHistory::class;
 
     protected static ?string $navigationLabel = 'Histórico de renovaciones';

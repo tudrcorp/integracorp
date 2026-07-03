@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationOnCallUsers;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\OperationOnCallUsers\Pages\CreateOperationOnCallUser;
 use App\Filament\Operations\Resources\OperationOnCallUsers\Pages\EditOperationOnCallUser;
 use App\Filament\Operations\Resources\OperationOnCallUsers\Pages\ListOperationOnCallUsers;
@@ -10,19 +11,17 @@ use App\Filament\Operations\Resources\OperationOnCallUsers\Schemas\OperationOnCa
 use App\Filament\Operations\Resources\OperationOnCallUsers\Schemas\OperationOnCallUserInfolist;
 use App\Filament\Operations\Resources\OperationOnCallUsers\Tables\OperationOnCallUsersTable;
 use App\Models\OperationOnCallUser;
-use App\Models\Permission;
-use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use UnitEnum;
 
 class OperationOnCallUserResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = OperationOnCallUser::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACION';
@@ -63,76 +62,28 @@ class OperationOnCallUserResource extends Resource
         ];
     }
 
-    public static function canViewAny(): bool
-    {
-        return self::userMayAccessGuardDutyRoles();
-    }
-
     public static function canView(Model $record): bool
     {
-        return self::userMayAccessGuardDutyRoles();
+        return static::canAccess();
     }
 
     public static function canCreate(): bool
     {
-        return self::userMayAccessGuardDutyRoles();
+        return static::canAccess();
     }
 
     public static function canEdit(Model $record): bool
     {
-        return self::userMayAccessGuardDutyRoles();
+        return static::canAccess();
     }
 
     public static function canDelete(Model $record): bool
     {
-        return self::userMayAccessGuardDutyRoles();
+        return static::canAccess();
     }
 
     public static function canDeleteAny(): bool
     {
-        return self::userMayAccessGuardDutyRoles();
-    }
-
-    /**
-     * Permiso `OPERACIONES` / slug `roles-de-guardia` + entrada en `user_permissions`,
-     * o usuario con departamento SUPERADMIN. Requiere fila en `permissions` (semilla).
-     */
-    protected static function userMayAccessGuardDutyRoles(): bool
-    {
-        $user = Auth::user();
-        if ($user === null) {
-            return false;
-        }
-
-        $departments = $user->departament ?? [];
-        if (! is_array($departments)) {
-            $departments = filled($departments) ? [$departments] : [];
-        }
-
-        if (in_array('SUPERADMIN', $departments, true)) {
-            return true;
-        }
-
-        $permission = Permission::query()
-            ->where('module', 'OPERACIONES')
-            ->where('slug', 'roles-de-guardia')
-            ->first();
-
-        if ($permission === null) {
-            Log::warning('OPERACIONES: permiso «roles-de-guardia» ausente; acceso a Roles de Guardia denegado.', [
-                'user_id' => $user->id,
-            ]);
-
-            return false;
-        }
-
-        if (! in_array('OPERACIONES', $departments, true)) {
-            return false;
-        }
-
-        return UserPermission::query()
-            ->where('user_id', $user->id)
-            ->where('permission_id', $permission->id)
-            ->exists();
+        return static::canAccess();
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\AccountsReceivables;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\AccountsReceivables\Pages\ListAccountsReceivables;
 use App\Filament\Operations\Resources\AccountsReceivables\Pages\ViewAccountsReceivable;
 use App\Filament\Operations\Resources\AccountsReceivables\Schemas\AccountsReceivableInfolist;
@@ -16,6 +17,8 @@ use UnitEnum;
 
 class AccountsReceivableResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = OperationAccountsReceivable::class;
 
     protected static ?string $navigationLabel = 'Cuentas por cobrar';

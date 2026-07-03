@@ -9,6 +9,7 @@ use App\Filament\Business\Resources\Agencies\Pages\ViewAgency;
 use App\Filament\Business\Resources\Agencies\Schemas\AgencyForm;
 use App\Filament\Business\Resources\Agencies\Schemas\AgencyInfolist;
 use App\Filament\Business\Resources\Agencies\Tables\AgenciesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\Agency;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -19,6 +20,8 @@ use UnitEnum;
 
 class AgencyResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Agency::class;
 
     protected static ?string $navigationLabel = 'Agencias De Corretaje';

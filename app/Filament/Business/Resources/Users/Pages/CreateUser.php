@@ -4,6 +4,8 @@ namespace App\Filament\Business\Resources\Users\Pages;
 
 use App\Filament\Business\Resources\Users\Schemas\UserForm;
 use App\Filament\Business\Resources\Users\UserResource;
+use App\Support\Filament\UserFormPermissionOptions;
+use App\Support\Filament\UserNavigationAccess;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 
@@ -26,6 +28,13 @@ class CreateUser extends CreateRecord
     protected function afterCreate(): void
     {
         if ($this->pendingPermissionIds !== []) {
+            $this->pendingPermissionIds = UserNavigationAccess::mergeAnalystDefaultPermissionIds(
+                $this->pendingPermissionIds,
+                $this->record->departament ?? [],
+            );
+        }
+
+        if ($this->pendingPermissionIds !== []) {
             $pivotValues = [
                 'created_by' => Auth::user()->name,
                 'updated_by' => Auth::user()->name,
@@ -44,11 +53,21 @@ class CreateUser extends CreateRecord
     private function mergePermissionsFromModuleFields(array $data): array
     {
         $permissionIds = [];
-        foreach (UserForm::getDepartamentModules() as $module) {
-            $key = "permissions_{$module}";
-            if (! empty($data[$key]) && is_array($data[$key])) {
-                $permissionIds = array_merge($permissionIds, $data[$key]);
-                unset($data[$key]);
+        foreach (UserForm::getPermissionAssignableModules() as $module) {
+            foreach (array_keys(UserFormPermissionOptions::groupedOptionsForModule($module)) as $navigationGroup) {
+                $key = UserForm::permissionGroupFieldKey($module, $navigationGroup);
+
+                if (! empty($data[$key]) && is_array($data[$key])) {
+                    $permissionIds = array_merge($permissionIds, $data[$key]);
+                    unset($data[$key]);
+                }
+            }
+
+            $legacyKey = UserForm::permissionFieldKey($module);
+
+            if (! empty($data[$legacyKey]) && is_array($data[$legacyKey])) {
+                $permissionIds = array_merge($permissionIds, $data[$legacyKey]);
+                unset($data[$legacyKey]);
             }
         }
         $data['permissions'] = array_values(array_unique($permissionIds));

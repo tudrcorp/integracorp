@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\TelemedicinePatients;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\CreateTelemedicinePatient;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\EditTelemedicinePatient;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\ListTelemedicinePatients;
@@ -23,6 +24,8 @@ use UnitEnum;
 
 class TelemedicinePatientResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = TelemedicinePatient::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-ui-user-profile';

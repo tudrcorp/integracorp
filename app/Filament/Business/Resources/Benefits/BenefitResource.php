@@ -2,31 +2,32 @@
 
 namespace App\Filament\Business\Resources\Benefits;
 
-use UnitEnum;
-use BackedEnum;
-use App\Models\Benefit;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use App\Filament\Business\Resources\Benefits\Pages\EditBenefit;
-use App\Filament\Business\Resources\Benefits\Pages\ViewBenefit;
-use App\Filament\Business\Resources\Benefits\Pages\ListBenefits;
 use App\Filament\Business\Resources\Benefits\Pages\CreateBenefit;
+use App\Filament\Business\Resources\Benefits\Pages\EditBenefit;
+use App\Filament\Business\Resources\Benefits\Pages\ListBenefits;
+use App\Filament\Business\Resources\Benefits\Pages\ViewBenefit;
 use App\Filament\Business\Resources\Benefits\Schemas\BenefitForm;
-use App\Filament\Business\Resources\Benefits\Tables\BenefitsTable;
 use App\Filament\Business\Resources\Benefits\Schemas\BenefitInfolist;
+use App\Filament\Business\Resources\Benefits\Tables\BenefitsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
+use App\Models\Benefit;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
+use UnitEnum;
 
 class BenefitResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Benefit::class;
 
     protected static ?string $navigationLabel = 'Beneficios';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-adjustments-vertical';
 
-    protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACIÓN';
 
     public static function form(Schema $schema): Schema
     {
@@ -58,14 +59,5 @@ class BenefitResource extends Resource
             'view' => ViewBenefit::route('/{record}'),
             'edit' => EditBenefit::route('/{record}/edit'),
         ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
-        if (in_array('SUPERADMIN', auth()->user()->departament)) {
-            return true;
-        }
-        return false;
     }
 }

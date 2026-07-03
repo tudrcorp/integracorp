@@ -7,24 +7,25 @@ use App\Filament\Business\Resources\ConfigCostoBenefits\Pages\EditConfigCostoBen
 use App\Filament\Business\Resources\ConfigCostoBenefits\Pages\ListConfigCostoBenefits;
 use App\Filament\Business\Resources\ConfigCostoBenefits\Schemas\ConfigCostoBenefitForm;
 use App\Filament\Business\Resources\ConfigCostoBenefits\Tables\ConfigCostoBenefitsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\ConfigCostoBenefit;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class ConfigCostoBenefitResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = ConfigCostoBenefit::class;
 
     protected static ?string $navigationLabel = 'Porcentajes';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-swatch';
 
-    protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACIÓN';
 
     public static function form(Schema $schema): Schema
     {
@@ -50,14 +51,5 @@ class ConfigCostoBenefitResource extends Resource
             'create' => CreateConfigCostoBenefit::route('/create'),
             'edit' => EditConfigCostoBenefit::route('/{record}/edit'),
         ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
-        if (in_array('SUPERADMIN', auth()->user()->departament)) {
-            return true;
-        }
-        return false;
     }
 }

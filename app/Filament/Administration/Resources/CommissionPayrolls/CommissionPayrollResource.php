@@ -7,21 +7,23 @@ use App\Filament\Administration\Resources\CommissionPayrolls\Pages\EditCommissio
 use App\Filament\Administration\Resources\CommissionPayrolls\Pages\ListCommissionPayrolls;
 use App\Filament\Administration\Resources\CommissionPayrolls\Schemas\CommissionPayrollForm;
 use App\Filament\Administration\Resources\CommissionPayrolls\Tables\CommissionPayrollsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\CommissionPayroll;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
 class CommissionPayrollResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = CommissionPayroll::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ADMINISTRACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = 'ADMINISTRACIÓN';
 
     protected static ?string $navigationLabel = 'Reporte de Comisiones';
 

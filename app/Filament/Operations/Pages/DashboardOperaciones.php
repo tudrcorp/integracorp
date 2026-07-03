@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Pages;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Widgets\Dashboard\FinishedServicesMonthlyChart;
 use App\Filament\Operations\Widgets\Dashboard\OperationsDashboardStatsOverview;
 use App\Filament\Operations\Widgets\Dashboard\TopPatientsMedicalDischargeChart;
@@ -13,6 +14,8 @@ use Filament\Support\Icons\Heroicon;
 
 class DashboardOperaciones extends Dashboard
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $navigationLabel = 'Dashboard Operaciones';
 
     protected static ?string $title = 'Dashboard Operaciones';

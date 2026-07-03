@@ -8,6 +8,7 @@ use App\Enums\FormaPago;
 use App\Enums\StatusPago;
 use App\Enums\StatusVaucher;
 use App\Filament\Administration\Resources\TdevReports\Actions\TdevReportPaymentModalActions;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Http\Controllers\LogController;
 use App\Models\TdevReport;
 use App\Services\TdevReports\TdevReportCommissionFromPercentageUpdater;
@@ -24,6 +25,7 @@ use UnitEnum;
 
 class CompensacionVaucher extends Page
 {
+    use AuthorizesDepartmentNavigation;
     use WithFileUploads;
 
     protected static string|UnitEnum|null $navigationGroup = 'COMPENSACION TDEV';

@@ -7,6 +7,7 @@ namespace App\Filament\Business\Pages;
 use App\Enums\CorporateAgendaActivityType;
 use App\Enums\CorporateAgendaInvitationStatus;
 use App\Enums\CorporateAgendaSocialPlatform;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\CorporateAgendaActivity;
 use App\Models\CorporateAgendaActivityParticipant;
 use App\Models\CorporateAgendaSocialPublication;
@@ -30,6 +31,7 @@ use UnitEnum;
 
 class AgendaCorporativa extends Page
 {
+    use AuthorizesDepartmentNavigation;
     use WithFileUploads;
 
     // protected static string|UnitEnum|null $navigationGroup = 'SOLICITUDES';

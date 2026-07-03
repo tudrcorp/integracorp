@@ -11,6 +11,7 @@ use App\Filament\Business\Resources\Affiliations\RelationManagers\PaidMembership
 use App\Filament\Business\Resources\Affiliations\Schemas\AffiliationForm;
 use App\Filament\Business\Resources\Affiliations\Schemas\AffiliationInfolist;
 use App\Filament\Business\Resources\Affiliations\Tables\AffiliationsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\Affiliation;
 use BackedEnum;
 use Carbon\Carbon;
@@ -21,6 +22,8 @@ use UnitEnum;
 
 class AffiliationResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Affiliation::class;
 
     protected static ?string $navigationLabel = 'Individuales';

@@ -9,6 +9,7 @@ use App\Filament\Administration\Resources\AnnualCollections\Pages\ViewAnnualColl
 use App\Filament\Administration\Resources\AnnualCollections\Schemas\AnnualCollectionForm;
 use App\Filament\Administration\Resources\AnnualCollections\Schemas\AnnualCollectionInfolist;
 use App\Filament\Administration\Resources\AnnualCollections\Tables\AnnualCollectionsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\AnnualCollection;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class AnnualCollectionResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = AnnualCollection::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-list';

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationInventoryOutflows;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\OperationInventoryOutflows\Pages\CreateOperationInventoryOutflow;
 use App\Filament\Operations\Resources\OperationInventoryOutflows\Pages\EditOperationInventoryOutflow;
 use App\Filament\Operations\Resources\OperationInventoryOutflows\Pages\ListOperationInventoryOutflows;
@@ -21,6 +22,8 @@ use UnitEnum;
 
 class OperationInventoryOutflowResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = OperationInventoryOutflow::class;
 
     protected static ?string $navigationLabel = 'Salidas de Inventario';

@@ -7,6 +7,7 @@ use App\Filament\Administration\Resources\RrhhCargos\Pages\EditRrhhCargo;
 use App\Filament\Administration\Resources\RrhhCargos\Pages\ListRrhhCargos;
 use App\Filament\Administration\Resources\RrhhCargos\Schemas\RrhhCargoForm;
 use App\Filament\Administration\Resources\RrhhCargos\Tables\RrhhCargosTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\RrhhCargo;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -16,6 +17,8 @@ use UnitEnum;
 
 class RrhhCargoResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = RrhhCargo::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'RRHH';

@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\Users\Schemas;
 
 use App\Models\Rol;
+use App\Models\User;
+use App\Support\Filament\UserCredentialSynchronizer;
 use App\Support\Filament\UserFormPermissionOptions;
+use App\Support\Filament\UserPermissionFormUi;
+use App\Support\Filament\UserRoleFormUi;
 use App\Support\Filament\UserRoleProfiles;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
@@ -13,16 +17,18 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Unique;
 
 class UserForm
 {
@@ -31,6 +37,13 @@ class UserForm
     private const IOS_SECTION_CLASS = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
 
     private const IOS_INNER_CLASS = 'rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
+
+    /** @var list<string> */
+    private const PERMISSIONS_EXCLUDED_MODULES = [
+        'SISTEMAS',
+        'SUPERADMIN',
+        'TELEMEDICINA',
+    ];
 
     /**
      * Módulos/departamentos desde la tabla rols (campo name).
@@ -43,46 +56,134 @@ class UserForm
     }
 
     /**
+     * Módulos visibles en la pestaña de permisos granulares.
+     *
+     * @return array<int, string>
+     */
+    public static function getPermissionAssignableModules(): array
+    {
+        return array_values(array_filter(
+            self::getDepartamentModules(),
+            fn (string $module): bool => ! in_array($module, self::PERMISSIONS_EXCLUDED_MODULES, true),
+        ));
+    }
+
+    /**
+     * Clave segura para Livewire (evita guiones/espacios en nombres de módulo como MODERADOR-INTRANET).
+     */
+    public static function permissionFieldKey(string $module): string
+    {
+        return 'permissions_mod_'.Str::slug($module, '_');
+    }
+
+    public static function permissionGroupFieldKey(string $module, string $navigationGroup): string
+    {
+        return self::permissionFieldKey($module).'_nav_'.Str::slug($navigationGroup, '_');
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function allPermissionFieldKeys(): array
+    {
+        $keys = [];
+
+        foreach (self::getPermissionAssignableModules() as $module) {
+            foreach (array_keys(UserFormPermissionOptions::groupedOptionsForModule($module)) as $navigationGroup) {
+                $keys[] = self::permissionGroupFieldKey($module, $navigationGroup);
+            }
+
+            $keys[] = self::permissionFieldKey($module);
+        }
+
+        return array_values(array_unique($keys));
+    }
+
+    public static function moduleFromPermissionFieldKey(string $fieldKey): ?string
+    {
+        if (! str_starts_with($fieldKey, 'permissions_mod_')) {
+            return null;
+        }
+
+        $fieldSlug = substr($fieldKey, strlen('permissions_mod_'));
+
+        if (str_contains($fieldSlug, '_nav_')) {
+            $fieldSlug = Str::before($fieldSlug, '_nav_');
+        }
+
+        foreach (self::getDepartamentModules() as $module) {
+            if (Str::slug($module, '_') === $fieldSlug) {
+                return $module;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @return list<Section>
      */
     public static function permissionModuleSections(): array
     {
-        return collect(self::getDepartamentModules())
+        return collect(self::getPermissionAssignableModules())
             ->map(function (string $module): Section {
-                return Section::make($module)
-                    ->description(function (Get $get) use ($module): string {
-                        $selected = count($get("permissions_{$module}") ?? []);
-                        $total = UserFormPermissionOptions::countForModule($module);
+                $total = UserFormPermissionOptions::countForModule($module);
+                $groupedOptions = UserFormPermissionOptions::groupedOptionsForModule($module);
+                $groupCount = count($groupedOptions);
 
-                        if ($total === 0) {
-                            return 'Sin permisos configurados para este módulo.';
-                        }
-
-                        return "{$selected} de {$total} permisos seleccionados";
-                    })
-                    ->icon(Heroicon::OutlinedLockClosed)
+                return Section::make(UserPermissionFormUi::moduleDisplayLabel($module))
+                    ->description(UserPermissionFormUi::moduleMenuSubtitle($module))
+                    ->icon(UserPermissionFormUi::moduleIcon($module))
                     ->collapsible()
-                    ->collapsed(fn (Get $get): bool => empty($get("permissions_{$module}")))
+                    ->collapsed()
                     ->visible(fn (Get $get): bool => in_array($module, $get('departament') ?? [], true))
                     ->extraAttributes([
-                        'class' => self::IOS_SECTION_CLASS,
+                        'class' => UserPermissionFormUi::moduleSectionClass($module),
                     ])
                     ->schema([
+                        Placeholder::make('permission_module_header_'.Str::slug($module, '_'))
+                            ->hiddenLabel()
+                            ->content(UserPermissionFormUi::moduleHeaderHtml($module, $total, $groupCount)),
                         Grid::make(1)
                             ->extraAttributes([
-                                'class' => self::IOS_INNER_CLASS,
+                                'class' => 'user-perm-groups-stack',
                             ])
-                            ->schema([
-                                CheckboxList::make("permissions_{$module}")
-                                    ->label('Permisos disponibles')
-                                    ->options(
-                                        fn (): array => UserFormPermissionOptions::optionsForModule($module)
-                                    )
-                                    ->bulkToggleable()
-                                    ->live()
-                                    ->columns(['default' => 1, 'sm' => 2, 'lg' => 3])
-                                    ->gridDirection('row'),
-                            ]),
+                            ->schema(
+                                collect($groupedOptions)
+                                    ->map(function (array $options, string $navigationGroup) use ($module): Section {
+                                        $optionCount = count($options);
+
+                                        return Section::make()
+                                            ->key('user_perm_'.Str::slug($module, '_').'_'.Str::slug($navigationGroup, '_'))
+                                            ->heading(UserPermissionFormUi::groupHeaderHtml($navigationGroup, $optionCount, $module))
+                                            ->collapsible()
+                                            ->collapsed($optionCount > 8)
+                                            ->compact()
+                                            ->extraAttributes([
+                                                'class' => UserPermissionFormUi::groupCardClass($module),
+                                            ])
+                                            ->schema([
+                                                Grid::make(1)
+                                                    ->extraAttributes([
+                                                        'class' => 'user-perm-checkbox-shell',
+                                                    ])
+                                                    ->schema([
+                                                        CheckboxList::make(self::permissionGroupFieldKey($module, $navigationGroup))
+                                                            ->hiddenLabel()
+                                                            ->options($options)
+                                                            ->bulkToggleable()
+                                                            ->searchable($optionCount >= 5)
+                                                            ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
+                                                            ->gridDirection('row')
+                                                            ->extraAttributes([
+                                                                'class' => 'user-perm-checkbox-list',
+                                                            ]),
+                                                    ]),
+                                            ]);
+                                    })
+                                    ->values()
+                                    ->all()
+                            ),
                     ]);
             })
             ->all();
@@ -96,6 +197,7 @@ class UserForm
                 Tabs::make('userFormTabs')
                     ->columnSpanFull()
                     ->persistTab()
+                    ->persistTabInQueryString('userTab')
                     ->extraAttributes([
                         'class' => self::TABS_CONTAINER,
                     ])
@@ -186,9 +288,129 @@ class UserForm
                                             ]),
                                     ]),
                             ]),
+                        Tab::make('Correo y contraseña')
+                            ->icon(Heroicon::OutlinedEnvelope)
+                            ->visibleOn('edit')
+                            ->schema([
+                                Section::make('Credenciales de acceso')
+                                    ->description('Actualiza el correo y la contraseña del usuario. Si es agente o agencia, el correo también se sincronizará en su ficha comercial.')
+                                    ->icon(Heroicon::OutlinedKey)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                Placeholder::make('credentials_sync_hint')
+                                                    ->hiddenLabel()
+                                                    ->content(function (?User $record): HtmlString {
+                                                        if ($record === null) {
+                                                            return new HtmlString('');
+                                                        }
+
+                                                        $hints = [];
+
+                                                        if ($record->is_agent || $record->is_subagent) {
+                                                            $agent = UserCredentialSynchronizer::resolveLinkedAgent($record, (string) $record->email);
+                                                            $hints[] = $agent !== null
+                                                                ? 'Agente vinculado: '.e((string) ($agent->code_agent ?? 'AGT-000'.$agent->id)).' · '.e((string) $agent->name)
+                                                                : 'Perfil agente: se sincronizará el correo en la tabla de agentes al guardar.';
+                                                        }
+
+                                                        if ($record->is_agency && in_array($record->agency_type, ['MASTER', 'GENERAL'], true)) {
+                                                            $agency = UserCredentialSynchronizer::resolveLinkedAgency($record, (string) $record->email);
+                                                            $hints[] = $agency !== null
+                                                                ? 'Agencia vinculada: '.e((string) ($agency->code ?? '')).' · '.e((string) ($agency->name_corporative ?? ''))
+                                                                : 'Perfil agencia '.$record->agency_type.': se sincronizará el correo en la tabla de agencias al guardar.';
+                                                        }
+
+                                                        if ($hints === []) {
+                                                            return new HtmlString(
+                                                                '<p class="text-sm text-slate-600 dark:text-slate-300">Los cambios de credenciales quedan registrados en la traza de seguridad del sistema.</p>'
+                                                            );
+                                                        }
+
+                                                        return new HtmlString(
+                                                            '<ul class="list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300">'
+                                                            .implode('', array_map(
+                                                                fn (string $hint): string => '<li>'.$hint.'</li>',
+                                                                $hints,
+                                                            ))
+                                                            .'</ul>'
+                                                        );
+                                                    }),
+                                                Grid::make(['default' => 1, 'sm' => 2])
+                                                    ->schema([
+                                                        TextInput::make('email')
+                                                            ->label('Correo electrónico')
+                                                            ->prefixIcon('heroicon-m-envelope')
+                                                            ->required()
+                                                            ->email()
+                                                            ->unique(table: User::class, ignoreRecord: true)
+                                                            ->rules([
+                                                                fn (?User $record): \Closure => function (string $attribute, mixed $value, \Closure $fail) use ($record): void {
+                                                                    if (! is_string($value) || $record === null) {
+                                                                        return;
+                                                                    }
+
+                                                                    if ($record->is_agent || $record->is_subagent) {
+                                                                        $agent = UserCredentialSynchronizer::resolveLinkedAgent($record, (string) $record->email);
+                                                                        $agentRule = (new Unique('agents', 'email'))
+                                                                            ->when(
+                                                                                $agent !== null,
+                                                                                fn (Unique $rule): Unique => $rule->ignore($agent->id),
+                                                                            );
+
+                                                                        if (\Illuminate\Support\Facades\Validator::make(
+                                                                            ['email' => $value],
+                                                                            ['email' => $agentRule],
+                                                                        )->fails()) {
+                                                                            $fail('El correo ya está registrado en otro agente.');
+                                                                        }
+                                                                    }
+
+                                                                    if ($record->is_agency && in_array($record->agency_type, ['MASTER', 'GENERAL'], true)) {
+                                                                        $agency = UserCredentialSynchronizer::resolveLinkedAgency($record, (string) $record->email);
+                                                                        $agencyRule = (new Unique('agencies', 'email'))
+                                                                            ->when(
+                                                                                $agency !== null,
+                                                                                fn (Unique $rule): Unique => $rule->ignore($agency->id),
+                                                                            );
+
+                                                                        if (\Illuminate\Support\Facades\Validator::make(
+                                                                            ['email' => $value],
+                                                                            ['email' => $agencyRule],
+                                                                        )->fails()) {
+                                                                            $fail('El correo ya está registrado en otra agencia.');
+                                                                        }
+                                                                    }
+                                                                },
+                                                            ]),
+                                                        TextInput::make('password')
+                                                            ->label('Nueva contraseña')
+                                                            ->password()
+                                                            ->revealable()
+                                                            ->dehydrated(fn (?string $state): bool => filled($state))
+                                                            ->minLength(8)
+                                                            ->same('password_confirmation')
+                                                            ->helperText('Déjala en blanco si no deseas cambiar la contraseña.'),
+                                                        TextInput::make('password_confirmation')
+                                                            ->label('Confirmar contraseña')
+                                                            ->password()
+                                                            ->revealable()
+                                                            ->dehydrated(false),
+                                                    ]),
+                                            ]),
+                                    ]),
+                            ]),
                         Tab::make('Roles del usuario')
                             ->icon(Heroicon::OutlinedShieldCheck)
                             ->schema([
+                                View::make(UserRoleFormUi::stylesView())
+                                    ->columnSpanFull(),
                                 Section::make('Roles del Usuario')
                                     ->description('Activa los perfiles funcionales que aplican a este usuario.')
                                     ->icon(Heroicon::OutlinedShieldCheck)
@@ -204,11 +426,18 @@ class UserForm
                                                 Grid::make(1)
                                                     ->schema(
                                                         collect(UserRoleProfiles::formGroupedDefinitions())
-                                                            ->map(function (array $roles, string $groupLabel): Fieldset {
-                                                                return Fieldset::make($groupLabel)
+                                                            ->map(function (array $roles, string $groupLabel): Section {
+                                                                return Section::make($groupLabel)
+                                                                    ->compact()
+                                                                    ->extraAttributes([
+                                                                        'class' => UserRoleFormUi::groupShellClass($groupLabel),
+                                                                    ])
                                                                     ->schema([
-                                                                        Grid::make(['default' => 1, 'sm' => 2])
-                                                                            ->schema(UserRoleProfiles::formTogglesForGroup($roles)),
+                                                                        Grid::make(['default' => 1, 'md' => 2])
+                                                                            ->extraAttributes([
+                                                                                'class' => UserRoleFormUi::togglesGridClass(),
+                                                                            ])
+                                                                            ->schema(UserRoleProfiles::formTogglesForGroup($roles, $groupLabel)),
                                                                     ]);
                                                             })
                                                             ->values()
@@ -220,8 +449,10 @@ class UserForm
                         Tab::make('Permisos')
                             ->icon(Heroicon::OutlinedKey)
                             ->schema([
+                                View::make(UserPermissionFormUi::stylesView())
+                                    ->columnSpanFull(),
                                 Section::make('Permisos por módulo')
-                                    ->description('Otorga permisos granulares según los módulos asignados al usuario.')
+                                    ->description('Asigna los ítems de menú a los que puede acceder el usuario. Los permisos se muestran agrupados igual que en la barra lateral del panel.')
                                     ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
@@ -229,17 +460,15 @@ class UserForm
                                     ->schema([
                                         Grid::make(1)
                                             ->extraAttributes([
-                                                'class' => self::IOS_INNER_CLASS,
+                                                'class' => self::IOS_INNER_CLASS.' user-perm-tab-inner',
                                             ])
                                             ->schema([
+                                                Placeholder::make('permissions_intro')
+                                                    ->hiddenLabel()
+                                                    ->content(UserPermissionFormUi::permissionsIntroHtml()),
                                                 Placeholder::make('permissions_empty_state')
                                                     ->hiddenLabel()
-                                                    ->content(new HtmlString(
-                                                        '<div class="rounded-xl border border-dashed border-slate-300/90 bg-slate-50/80 px-4 py-6 text-center dark:border-white/15 dark:bg-white/[0.03]">'
-                                                        .'<p class="text-sm font-medium text-slate-700 dark:text-slate-200">Sin módulos seleccionados</p>'
-                                                        .'<p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Selecciona al menos un módulo en la pestaña «Información del usuario» para configurar permisos.</p>'
-                                                        .'</div>'
-                                                    ))
+                                                    ->content(UserPermissionFormUi::permissionsEmptyStateHtml())
                                                     ->visible(fn (Get $get): bool => empty($get('departament'))),
                                                 ...self::permissionModuleSections(),
                                             ]),

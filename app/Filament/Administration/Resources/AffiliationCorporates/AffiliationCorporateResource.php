@@ -13,6 +13,7 @@ use App\Filament\Administration\Resources\AffiliationCorporates\RelationManagers
 use App\Filament\Administration\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
 use App\Filament\Administration\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
 use App\Filament\Administration\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\AffiliationCorporate;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -22,6 +23,8 @@ use UnitEnum;
 
 class AffiliationCorporateResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = AffiliationCorporate::class;
 
     protected static ?string $navigationLabel = 'Corporativas';

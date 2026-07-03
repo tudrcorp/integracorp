@@ -9,23 +9,25 @@ use App\Filament\Business\Resources\BusinessAppointments\Pages\ViewBusinessAppoi
 use App\Filament\Business\Resources\BusinessAppointments\Schemas\BusinessAppointmentsForm;
 use App\Filament\Business\Resources\BusinessAppointments\Schemas\BusinessAppointmentsInfolist;
 use App\Filament\Business\Resources\BusinessAppointments\Tables\BusinessAppointmentsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\BusinessAppointments;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
 class BusinessAppointmentsResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = BusinessAppointments::class;
 
     protected static ?string $navigationLabel = 'Citas';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-calendar';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ESTRUCTURA COMERCIAL';
+    protected static string|UnitEnum|null $navigationGroup = 'ESTRUCTURA COMERCIAL';
 
     protected static ?int $navigationSort = 7;
 
