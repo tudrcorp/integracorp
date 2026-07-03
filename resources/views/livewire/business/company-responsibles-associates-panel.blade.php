@@ -1,12 +1,15 @@
 @php
     use App\Filament\Business\Resources\CompanyAssociates\CompanyAssociateResource;
     use App\Support\Companies\CompanyAssociatesTableContext;
+    use App\Support\Companies\CompanyAssociateRegistrar;
 @endphp
 
 <div class="space-y-5">
     @forelse ($responsibles as $responsible)
         @php
             $associatesCount = $responsible->associates_count ?? $responsible->associates->count();
+            $consumedDays = (int) ($responsible->associates_consumed_days_sum ?? CompanyAssociateRegistrar::consumedDaysByResponsible($responsible));
+            $remainingDays = max(0, (int) $responsible->contracted_days - $consumedDays);
             $isExpanded = $this->isResponsibleExpanded((int) $responsible->id);
         @endphp
         <div
@@ -31,6 +34,11 @@
                         @if (filled($responsible->email))
                             <span>Correo Electrónico: <strong class="text-slate-700 dark:text-slate-200">{{ $responsible->email }}</strong></span>
                         @endif
+                        <span>Días consumidos: <strong class="text-slate-700 dark:text-slate-200">{{ number_format($consumedDays, 0, ',', '.') }}</strong></span>
+                        <span>Días restantes: <strong @class([
+                            'text-slate-700 dark:text-slate-200' => $remainingDays > 0,
+                            'text-rose-600 dark:text-rose-300' => $remainingDays <= 0,
+                        ])>{{ number_format($remainingDays, 0, ',', '.') }}</strong></span>
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
@@ -48,7 +56,14 @@
                     @endif
                     <span
                         class="inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
-                        {{ number_format((int) $responsible->contracted_days, 0, ',', '.') }} días
+                        {{ number_format((int) $responsible->contracted_days, 0, ',', '.') }} días contratados
+                    </span>
+                    <span @class([
+                        'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
+                        'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' => $remainingDays > 0,
+                        'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300' => $remainingDays <= 0,
+                    ])>
+                        {{ number_format($remainingDays, 0, ',', '.') }} días restantes
                     </span>
                     @if ($associatesCount > 0)
                         <button

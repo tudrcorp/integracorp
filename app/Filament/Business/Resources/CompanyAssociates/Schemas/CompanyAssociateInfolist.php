@@ -6,6 +6,7 @@ namespace App\Filament\Business\Resources\CompanyAssociates\Schemas;
 
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -62,12 +63,17 @@ class CompanyAssociateInfolist
                 Grid::make(1)->extraAttributes(['class' => self::IOS_INNER_CLASS])->schema([
                     Grid::make()->columns(['default' => 1, 'lg' => 3])->schema([
                         TextEntry::make('full_name')->label('Nombre y Apellido')->weight('semibold')->columnSpan(['default' => 1, 'lg' => 2]),
-                        TextEntry::make('identity_card')->label('Cédula')->badge()->color('gray')->copyable(),
+                        TextEntry::make('identity_card')->label('Documento de identidad')->badge()->color('gray')->copyable(),
                         TextEntry::make('birth_date')->label('Fecha de nacimiento')->date('d/m/Y'),
                         TextEntry::make('age')->label('Edad')->suffix(' años')->badge()->color('info'),
                         TextEntry::make('sex')->label('Sexo')->badge()->color('gray'),
                         TextEntry::make('email')->label('Correo')->icon(Heroicon::OutlinedEnvelope)->copyable()->placeholder('—'),
                         TextEntry::make('phone')->label('Teléfono')->icon(Heroicon::OutlinedPhone)->copyable()->placeholder('—'),
+                        TextEntry::make('flight_date')->label('Fecha de vuelo')->date('d/m/Y')->placeholder('—'),
+                        TextEntry::make('flight_time')
+                            ->label('Hora de vuelo')
+                            ->formatStateUsing(fn (?string $state): string => filled($state) ? substr($state, 0, 5) : '—')
+                            ->placeholder('—'),
                     ]),
                 ]),
             ]);
@@ -113,10 +119,15 @@ class CompanyAssociateInfolist
             ->extraAttributes(['class' => self::IOS_SECTION_CLASS])
             ->schema([
                 Grid::make(1)->extraAttributes(['class' => self::IOS_INNER_CLASS])->schema([
-                    ImageEntry::make('identity_document')
-                        ->label('Imagen cargada')
-                        ->disk('public')
-                        ->height(320),
+                    TextEntry::make('identity_documents_count')
+                        ->label('Documentos cargados')
+                        ->state(fn ($record): string => (string) count($record->identityDocumentPaths()))
+                        ->badge()
+                        ->color('info'),
+                    ViewEntry::make('identity_documents_gallery')
+                        ->label('Imágenes')
+                        ->view('filament.business.company-associates.identity-documents-gallery')
+                        ->columnSpanFull(),
                 ]),
             ]);
     }

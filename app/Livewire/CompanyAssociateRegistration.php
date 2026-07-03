@@ -6,6 +6,7 @@ namespace App\Livewire;
 
 use App\Models\Company;
 use App\Models\CompanyAssociate;
+use App\Models\CompanyResponsible;
 use App\Support\Companies\CompanyAssociateRegistrar;
 use App\Support\Companies\CompanyAssociateRegistrationNotifier;
 use App\Support\SecurityAudit;
@@ -27,6 +28,22 @@ class CompanyAssociateRegistration extends Component
 
     public ?int $resolvedResponsibleId = null;
 
+    public ?int $resolvedResponsibleContractedDays = null;
+
+    public ?int $resolvedResponsibleConsumedDays = null;
+
+    public ?int $resolvedResponsibleAvailableDays = null;
+
+    public bool $responsibleDaysExhausted = false;
+
+    public ?string $resolvedResponsibleStartDate = null;
+
+    public ?string $resolvedResponsibleEndDate = null;
+
+    public ?int $responsibleCalculatedDays = null;
+
+    public ?int $responsibleRemainingDays = null;
+
     public string $fullName = '';
 
     public string $identityCard = '';
@@ -41,13 +58,17 @@ class CompanyAssociateRegistration extends Component
 
     public string $sex = '';
 
+    public string $flightDate = '';
+
+    public string $flightTime = '';
+
     public string $contactFullName = '';
 
     public string $contactPhone = '';
 
     public string $contactEmail = '';
 
-    public $identityDocument;
+    public $identityDocuments = [];
 
     public bool $submitted = false;
 
@@ -72,10 +93,52 @@ class CompanyAssociateRegistration extends Component
         $this->age = CompanyAssociateRegistrar::calculateAge($this->birthDate);
     }
 
+    public function updatedPhone(?string $value): void
+    {
+        $this->phone = CompanyAssociateRegistrar::normalizeInternationalPhone($value);
+    }
+
+    public function updatedResolvedResponsibleStartDate(): void
+    {
+        $this->recalculateResponsibleDays();
+    }
+
+    public function updatedResolvedResponsibleEndDate(): void
+    {
+        $this->recalculateResponsibleDays();
+    }
+
+    public function recalculateResponsibleDays(): void
+    {
+        $this->responsibleCalculatedDays = CompanyAssociateRegistrar::calculateDaysBetween(
+            $this->resolvedResponsibleStartDate,
+            $this->resolvedResponsibleEndDate,
+        );
+
+        if ($this->resolvedResponsibleAvailableDays === null) {
+            $this->responsibleRemainingDays = null;
+
+            return;
+        }
+
+        $this->responsibleRemainingDays = CompanyAssociateRegistrar::remainingDaysAfterRegistration(
+            $this->resolvedResponsible(),
+            $this->responsibleCalculatedDays,
+        );
+    }
+
     public function resolveResponsible(): void
     {
         $this->resolvedResponsibleName = null;
         $this->resolvedResponsibleId = null;
+        $this->resolvedResponsibleContractedDays = null;
+        $this->resolvedResponsibleConsumedDays = null;
+        $this->resolvedResponsibleAvailableDays = null;
+        $this->responsibleDaysExhausted = false;
+        $this->resolvedResponsibleStartDate = null;
+        $this->resolvedResponsibleEndDate = null;
+        $this->responsibleCalculatedDays = null;
+        $this->responsibleRemainingDays = null;
 
         if (blank($this->responsibleIdentityCard)) {
             return;
@@ -92,6 +155,18 @@ class CompanyAssociateRegistration extends Component
 
         $this->resolvedResponsibleName = $responsible->full_name;
         $this->resolvedResponsibleId = $responsible->id;
+        $this->resolvedResponsibleContractedDays = (int) $responsible->contracted_days;
+        $this->resolvedResponsibleConsumedDays = CompanyAssociateRegistrar::consumedDaysByResponsible($responsible);
+        $this->resolvedResponsibleAvailableDays = CompanyAssociateRegistrar::availableDaysForResponsible($responsible);
+        $this->responsibleDaysExhausted = CompanyAssociateRegistrar::hasExhaustedRegistrationDays($responsible);
+        $this->resolvedResponsibleStartDate = $responsible->contract_start_date?->format('Y-m-d');
+        $this->resolvedResponsibleEndDate = $responsible->contract_end_date?->format('Y-m-d');
+        $this->recalculateResponsibleDays();
+    }
+
+    protected function resolvedResponsible(): CompanyResponsible
+    {
+        return CompanyResponsible::query()->findOrFail($this->resolvedResponsibleId);
     }
 
     public function startNewRegistration(): void
@@ -103,6 +178,12 @@ class CompanyAssociateRegistration extends Component
     public function submit(): void
     {
         $this->resolveResponsible();
+
+        if ($this->responsibleDaysExhausted) {
+            $this->addError('resolvedResponsibleId', 'Este responsable ha consumido el total de días contratados. No es posible registrar un nuevo asociado.');
+
+            return;
+        }
 
         $validated = $this->validate(
             $this->rules(),
@@ -117,15 +198,31 @@ class CompanyAssociateRegistration extends Component
             return;
         }
 
+        if ($this->responsibleCalculatedDays === null || $this->responsibleRemainingDays === null || $this->responsibleRemainingDays < 0) {
+            $this->addError('resolvedResponsibleEndDate', 'Los días del período seleccionado exceden los días disponibles del responsable.');
+
+            return;
+        }
+
         $registeredAt = now();
         $associateId = null;
 
         try {
             DB::transaction(function () use ($validated, $age, $registeredAt, &$associateId): void {
-                $documentPath = $this->identityDocument->store(
-                    'company-associates/identity-documents',
-                    'public',
-                );
+                $responsible = $this->resolvedResponsible();
+
+                if (CompanyAssociateRegistrar::remainingDaysAfterRegistration($responsible, $this->responsibleCalculatedDays) < 0) {
+                    throw new \RuntimeException('Responsible registration days exhausted.');
+                }
+
+                $documentPaths = [];
+
+                foreach ($this->identityDocuments as $document) {
+                    $documentPaths[] = $document->store(
+                        'company-associates/identity-documents',
+                        'public',
+                    );
+                }
 
                 $associate = CompanyAssociate::create([
                     'company_id' => $this->company->getKey(),
@@ -135,13 +232,19 @@ class CompanyAssociateRegistration extends Component
                     'birth_date' => $validated['birthDate'],
                     'age' => $age,
                     'email' => $validated['email'] ?: null,
-                    'phone' => $validated['phone'] ?: null,
+                    'phone' => $validated['phone'],
+                    'flight_date' => $validated['flightDate'],
+                    'flight_time' => $validated['flightTime'],
                     'sex' => $validated['sex'],
                     'contact_full_name' => $validated['contactFullName'],
                     'contact_phone' => $validated['contactPhone'],
                     'contact_email' => $validated['contactEmail'],
-                    'identity_document' => $documentPath,
+                    'identity_document' => $documentPaths[0] ?? null,
+                    'identity_documents' => $documentPaths,
                     'registered_at' => $registeredAt,
+                    'registration_start_date' => $this->resolvedResponsibleStartDate,
+                    'registration_end_date' => $this->resolvedResponsibleEndDate,
+                    'registration_period_days' => $this->responsibleCalculatedDays,
                 ]);
 
                 $associateId = $associate->getKey();
@@ -172,17 +275,27 @@ class CompanyAssociateRegistration extends Component
             'responsibleIdentityCard',
             'resolvedResponsibleName',
             'resolvedResponsibleId',
+            'resolvedResponsibleContractedDays',
+            'resolvedResponsibleConsumedDays',
+            'resolvedResponsibleAvailableDays',
+            'responsibleDaysExhausted',
+            'resolvedResponsibleStartDate',
+            'resolvedResponsibleEndDate',
+            'responsibleCalculatedDays',
+            'responsibleRemainingDays',
             'fullName',
             'identityCard',
             'birthDate',
             'age',
             'email',
             'phone',
+            'flightDate',
+            'flightTime',
             'sex',
             'contactFullName',
             'contactPhone',
             'contactEmail',
-            'identityDocument',
+            'identityDocuments',
         ]);
     }
 
@@ -193,7 +306,34 @@ class CompanyAssociateRegistration extends Component
     {
         return [
             'responsibleIdentityCard' => ['required', 'string', 'max:20'],
-            'resolvedResponsibleId' => ['required', 'integer'],
+            'resolvedResponsibleId' => [
+                'required',
+                'integer',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($this->responsibleDaysExhausted) {
+                        $fail('Este responsable ha consumido el total de días contratados. No es posible registrar un nuevo asociado.');
+                    }
+                },
+            ],
+            'resolvedResponsibleStartDate' => ['required', 'date'],
+            'resolvedResponsibleEndDate' => [
+                'required',
+                'date',
+                'after_or_equal:resolvedResponsibleStartDate',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($this->responsibleDaysExhausted) {
+                        return;
+                    }
+
+                    if ($this->responsibleRemainingDays === null) {
+                        return;
+                    }
+
+                    if ($this->responsibleRemainingDays < 0) {
+                        $fail('Los días del período seleccionado exceden los días disponibles del responsable.');
+                    }
+                },
+            ],
             'fullName' => ['required', 'string', 'max:255'],
             'identityCard' => [
                 'required',
@@ -211,18 +351,21 @@ class CompanyAssociateRegistration extends Component
                         ->contains(fn (CompanyAssociate $associate): bool => CompanyAssociateRegistrar::normalizeIdentityCard($associate->identity_card) === $normalized);
 
                     if ($exists) {
-                        $fail('Ya existe un asociado registrado con esta cédula de identidad.');
+                        $fail('Ya existe un asociado registrado con este documento de identidad.');
                     }
                 },
             ],
             'birthDate' => ['required', 'date', 'before:today'],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('company_associates', 'email')],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'phone' => ['required', 'string', 'max:20', 'regex:/^\+[1-9]\d{6,14}$/'],
+            'flightDate' => ['required', 'date', 'after_or_equal:today'],
+            'flightTime' => ['required', 'date_format:H:i'],
             'sex' => ['required', Rule::in(['MASCULINO', 'FEMENINO'])],
             'contactFullName' => ['required', 'string', 'max:255'],
             'contactPhone' => ['required', 'string', 'max:30'],
             'contactEmail' => ['required', 'email', 'max:255'],
-            'identityDocument' => ['required', 'image', 'max:5120'],
+            'identityDocuments' => ['required', 'array', 'min:1'],
+            'identityDocuments.*' => ['required', 'image', 'max:5120'],
         ];
     }
 
@@ -233,12 +376,22 @@ class CompanyAssociateRegistration extends Component
     {
         return [
             'resolvedResponsibleId.required' => 'No se encontró un responsable con esa cédula para esta empresa.',
+            'resolvedResponsibleStartDate.required' => 'Debe seleccionar la fecha desde del responsable.',
+            'resolvedResponsibleEndDate.required' => 'Debe seleccionar la fecha hasta del responsable.',
+            'resolvedResponsibleEndDate.after_or_equal' => 'La fecha hasta debe ser igual o posterior a la fecha desde.',
             'email.unique' => 'Ya existe un asociado registrado con este correo electrónico.',
+            'phone.required' => 'El teléfono es obligatorio.',
+            'phone.regex' => 'Ingrese el teléfono con prefijo de país. Ej: +584127018390',
+            'flightDate.required' => 'Debe seleccionar la fecha de vuelo.',
+            'flightDate.after_or_equal' => 'La fecha de vuelo no puede ser anterior a hoy.',
+            'flightTime.required' => 'Debe seleccionar la hora de vuelo.',
+            'flightTime.date_format' => 'La hora de vuelo no es válida.',
             'contactPhone.required' => 'El teléfono del contacto de emergencia es obligatorio.',
             'contactEmail.required' => 'El correo del contacto de emergencia es obligatorio.',
-            'identityDocument.required' => 'Debe cargar el documento de identidad.',
-            'identityDocument.image' => 'El documento debe ser una imagen válida.',
-            'identityDocument.max' => 'El documento no puede superar 5 MB.',
+            'identityDocuments.required' => 'Debe cargar al menos un documento de identidad.',
+            'identityDocuments.min' => 'Debe cargar al menos un documento de identidad.',
+            'identityDocuments.*.image' => 'Cada documento debe ser una imagen válida.',
+            'identityDocuments.*.max' => 'Cada documento no puede superar 5 MB.',
         ];
     }
 

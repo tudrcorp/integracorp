@@ -69,6 +69,9 @@ final class CompanyAssociatesGroupPalette
             filled($record->responsible?->contracted_days)
                 ? number_format((int) $record->responsible->contracted_days, 0, ',', '.').' días contratados'
                 : null,
+            $record->responsible !== null
+                ? number_format($record->responsible->availableRegistrationDays(), 0, ',', '.').' días restantes'
+                : null,
         ]);
 
         return implode(' · ', $parts) ?: 'Grupo de asociados';

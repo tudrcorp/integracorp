@@ -6,12 +6,15 @@ namespace App\Filament\Business\Resources\Companies\Schemas;
 
 use App\Models\State;
 use App\Models\Zone;
+use App\Support\Companies\CompanyAssociateRegistrar;
 use App\Support\Companies\CompanyResponsibleDays;
 use Closure;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 use Livewire\Component;
 
@@ -99,6 +102,21 @@ class CompanyResponsibleRepeater
                 ->options(fn (): array => Zone::query()->orderBy('zone', 'asc')->pluck('zone', 'id')->all())
                 ->searchable()
                 ->preload(),
+            DatePicker::make('contract_start_date')
+                ->label('Fecha desde')
+                ->native(false)
+                ->displayFormat('d/m/Y')
+                ->live(onBlur: true)
+                ->afterStateUpdated(fn (Set $set, Get $get) => self::syncContractedDaysFromDates($set, $get))
+                ->prefixIcon(Heroicon::OutlinedCalendarDays),
+            DatePicker::make('contract_end_date')
+                ->label('Fecha hasta')
+                ->native(false)
+                ->displayFormat('d/m/Y')
+                ->live(onBlur: true)
+                ->afterStateUpdated(fn (Set $set, Get $get) => self::syncContractedDaysFromDates($set, $get))
+                ->prefixIcon(Heroicon::OutlinedCalendarDays)
+                ->afterOrEqual('contract_start_date'),
             TextInput::make('contracted_days')
                 ->label('Nro. de Días Contratados')
                 ->numeric()
@@ -108,5 +126,17 @@ class CompanyResponsibleRepeater
                 ->live(onBlur: true)
                 ->prefixIcon(Heroicon::OutlinedCalendarDays),
         ];
+    }
+
+    private static function syncContractedDaysFromDates(Set $set, Get $get): void
+    {
+        $days = CompanyAssociateRegistrar::calculateDaysBetween(
+            $get('contract_start_date'),
+            $get('contract_end_date'),
+        );
+
+        if ($days !== null) {
+            $set('contracted_days', $days);
+        }
     }
 }

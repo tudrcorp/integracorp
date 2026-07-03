@@ -209,6 +209,8 @@ class RegisterCompany extends Page
                 'email' => $responsible['email'] ?? null,
                 'state_id' => $responsible['state_id'] ?? null,
                 'zone_id' => $responsible['zone_id'] ?? null,
+                'contract_start_date' => $responsible['contract_start_date'] ?? null,
+                'contract_end_date' => $responsible['contract_end_date'] ?? null,
                 'contracted_days' => (int) ($responsible['contracted_days'] ?? 0),
             ]);
         }
