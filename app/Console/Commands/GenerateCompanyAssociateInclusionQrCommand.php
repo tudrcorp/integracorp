@@ -16,8 +16,8 @@ class GenerateCompanyAssociateInclusionQrCommand extends Command
 
     public function handle(): int
     {
-        if (! CompanyAssociateInclusionQrGenerator::isGenerationEnabled()) {
-            $this->warn('La generación del QR de inclusión está deshabilitada en producción.');
+        if (! CompanyAssociateInclusionQrGenerator::isAutomaticGenerationEnabled()) {
+            $this->warn('La generación automática del QR de inclusión está deshabilitada en producción.');
 
             return self::SUCCESS;
         }

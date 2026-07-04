@@ -23,6 +23,25 @@ it('expone rutas publicas del pdf, qr y logo de inclusion', function (): void {
         ->and(CompanyAssociateInclusionQrCatalog::LOGO_CENTER_SCALE)->toBe(0.42);
 });
 
+it('usa dominio de produccion para la url publica del pdf cuando app url es de desarrollo', function (): void {
+    app()->detectEnvironment(fn (): string => 'production');
+    config([
+        'services.company_associate_inclusion.public_url' => null,
+        'app.url' => 'https://integracorp.test',
+    ]);
+
+    expect(CompanyAssociateInclusionQrCatalog::pdfPublicUrl())
+        ->toBe('https://integracorp.tudrgroup.com/storage/tarjeta-afiliacion/documentos/canales-de-comunicacion.pdf');
+});
+
+it('permite sobreescribir la url publica del qr de inclusion por configuracion', function (): void {
+    config([
+        'services.company_associate_inclusion.public_url' => 'https://mi-dominio.com',
+    ]);
+
+    expect(CompanyAssociateInclusionQrCatalog::publicBaseUrl())->toBe('https://mi-dominio.com');
+});
+
 it('expone url de vista previa cuando el qr existe', function (): void {
     $qrPath = \Illuminate\Support\Facades\Storage::disk('public')->path(CompanyAssociateInclusionQrCatalog::qrStoragePath());
 
@@ -40,8 +59,8 @@ it('expone url de vista previa cuando el qr existe', function (): void {
 });
 
 it('genera pdf y qr de inclusion con logo corporativo en el centro', function (): void {
-    if (! CompanyAssociateInclusionQrGenerator::isGenerationEnabled()) {
-        expect(CompanyAssociateInclusionQrGenerator::isGenerationEnabled())->toBeFalse();
+    if (! CompanyAssociateInclusionQrGenerator::isAutomaticGenerationEnabled()) {
+        expect(CompanyAssociateInclusionQrGenerator::isAutomaticGenerationEnabled())->toBeFalse();
 
         return;
     }
@@ -67,10 +86,9 @@ it('registra ruta para asociar qr de inclusion en nuevos negocios', function ():
 
     expect($routes)->toContain('business.company-associate-tarjeta-qr.associate-inclusion');
     expect($generator)
-        ->toContain('isGenerationEnabled')
+        ->toContain('isAutomaticGenerationEnabled')
         ->toContain("environment('production')");
     expect($blade)
         ->toContain('downloadAndAssociateInclusionBtn')
-        ->toContain('nuevos negocios (Inclusión)')
-        ->toContain("@unless (app()->environment('production'))");
+        ->toContain('nuevos negocios (Inclusión)');
 });

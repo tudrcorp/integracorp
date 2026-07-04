@@ -43,7 +43,7 @@ it('expone notificador asincrono para documentos despues del voucher', function 
 
 it('asegura qr de inclusion publicado cuando falta pero existe el pdf', function (): void {
     expect(method_exists(CompanyAssociateInclusionQrGenerator::class, 'ensurePublished'))->toBeTrue()
-        ->and(method_exists(CompanyAssociateInclusionQrGenerator::class, 'isGenerationEnabled'))->toBeTrue();
+        ->and(method_exists(CompanyAssociateInclusionQrGenerator::class, 'isAutomaticGenerationEnabled'))->toBeTrue();
 });
 
 it('arma mensaje de exito con informacion principal del asociado', function (): void {
