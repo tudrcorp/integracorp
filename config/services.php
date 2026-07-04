@@ -72,6 +72,10 @@ return [
 
     'company_associate_inclusion' => [
         'public_url' => env('COMPANY_ASSOCIATE_INCLUSION_PUBLIC_URL'),
+        'production_pdf_url' => env(
+            'COMPANY_ASSOCIATE_INCLUSION_PRODUCTION_PDF_URL',
+            'https://integracorp.tudrgroup.com/storage/tarjeta-afiliacion/documentos/canales-de-comunicacion.pdf',
+        ),
     ],
 
 ];

@@ -31,7 +31,22 @@ it('usa dominio de produccion para la url publica del pdf cuando app url es de d
     ]);
 
     expect(CompanyAssociateInclusionQrCatalog::pdfPublicUrl())
-        ->toBe('https://integracorp.tudrgroup.com/storage/tarjeta-afiliacion/documentos/canales-de-comunicacion.pdf');
+        ->toBe(CompanyAssociateInclusionQrCatalog::PRODUCTION_PDF_PUBLIC_URL);
+});
+
+it('usa url de produccion del pdf cuando el host es integracorp tudrgroup com', function (): void {
+    app()->detectEnvironment(fn (): string => 'staging');
+
+    $request = \Illuminate\Http\Request::create(
+        'https://integracorp.tudrgroup.com/business',
+        'GET',
+        server: ['HTTP_HOST' => 'integracorp.tudrgroup.com'],
+    );
+    app()->instance('request', $request);
+
+    expect(CompanyAssociateInclusionQrCatalog::shouldUseProductionPdfUrl())->toBeTrue()
+        ->and(CompanyAssociateInclusionQrCatalog::pdfPublicUrl())
+        ->toBe(CompanyAssociateInclusionQrCatalog::PRODUCTION_PDF_PUBLIC_URL);
 });
 
 it('permite sobreescribir la url publica del qr de inclusion por configuracion', function (): void {
