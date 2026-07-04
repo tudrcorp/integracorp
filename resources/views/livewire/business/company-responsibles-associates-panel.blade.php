@@ -8,7 +8,7 @@
     @forelse ($responsibles as $responsible)
         @php
             $associatesCount = $responsible->associates_count ?? $responsible->associates->count();
-            $consumedDays = (int) ($responsible->associates_consumed_days_sum ?? CompanyAssociateRegistrar::consumedDaysByResponsible($responsible));
+            $consumedDays = (int) ($responsible->associates_count ?? CompanyAssociateRegistrar::consumedDaysByResponsible($responsible));
             $remainingDays = max(0, (int) $responsible->contracted_days - $consumedDays);
             $isExpanded = $this->isResponsibleExpanded((int) $responsible->id);
         @endphp

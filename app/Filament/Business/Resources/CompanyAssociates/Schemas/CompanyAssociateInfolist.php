@@ -74,6 +74,9 @@ class CompanyAssociateInfolist
                             ->label('Hora de vuelo')
                             ->formatStateUsing(fn (?string $state): string => filled($state) ? substr($state, 0, 5) : '—')
                             ->placeholder('—'),
+                        TextEntry::make('state.definition')->label('Estado')->placeholder('—'),
+                        TextEntry::make('city.definition')->label('Ciudad')->placeholder('—'),
+                        TextEntry::make('observations')->label('Observaciones')->columnSpanFull()->placeholder('—'),
                     ]),
                 ]),
             ]);

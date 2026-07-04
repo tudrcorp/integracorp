@@ -12,6 +12,8 @@ use Illuminate\Support\Str;
 
 final class CompanyAssociateRegistrar
 {
+    public const int DAYS_PER_REGISTRATION = 1;
+
     public static function normalizeIdentityCard(?string $value): string
     {
         return Str::upper(trim(str_replace([' ', '.', '-'], '', (string) $value)));
@@ -53,7 +55,7 @@ final class CompanyAssociateRegistrar
 
     public static function consumedDaysByResponsible(CompanyResponsible $responsible): int
     {
-        return (int) $responsible->associates()->sum('registration_period_days');
+        return (int) $responsible->associates()->count() * self::DAYS_PER_REGISTRATION;
     }
 
     public static function availableDaysForResponsible(CompanyResponsible $responsible): int
@@ -66,15 +68,11 @@ final class CompanyAssociateRegistrar
         return self::availableDaysForResponsible($responsible) <= 0;
     }
 
-    public static function remainingDaysAfterRegistration(CompanyResponsible $responsible, ?int $calculatedDays): ?int
+    public static function remainingDaysAfterRegistration(CompanyResponsible $responsible, ?int $daysToConsume = null): int
     {
-        $available = self::availableDaysForResponsible($responsible);
+        $daysToConsume ??= self::DAYS_PER_REGISTRATION;
 
-        if ($calculatedDays === null) {
-            return $available;
-        }
-
-        return $available - $calculatedDays;
+        return self::availableDaysForResponsible($responsible) - $daysToConsume;
     }
 
     public static function parseToStartOfDay(mixed $value): ?Carbon
