@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Models\City;
 use App\Models\Company;
 use App\Models\CompanyAssociate;
 use App\Models\CompanyResponsible;
+use App\Models\State;
 use App\Support\Companies\CompanyAssociateRegistrar;
 use App\Support\Companies\CompanyAssociateRegistrationNotifier;
 use App\Support\SecurityAudit;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
 
@@ -36,12 +39,6 @@ class CompanyAssociateRegistration extends Component
 
     public bool $responsibleDaysExhausted = false;
 
-    public ?string $resolvedResponsibleStartDate = null;
-
-    public ?string $resolvedResponsibleEndDate = null;
-
-    public ?int $responsibleCalculatedDays = null;
-
     public ?int $responsibleRemainingDays = null;
 
     public string $fullName = '';
@@ -57,6 +54,12 @@ class CompanyAssociateRegistration extends Component
     public string $phone = '';
 
     public string $sex = '';
+
+    public ?int $stateId = null;
+
+    public ?int $cityId = null;
+
+    public string $observations = '';
 
     public string $flightDate = '';
 
@@ -98,33 +101,38 @@ class CompanyAssociateRegistration extends Component
         $this->phone = CompanyAssociateRegistrar::normalizeInternationalPhone($value);
     }
 
-    public function updatedResolvedResponsibleStartDate(): void
+    public function updatedStateId(): void
     {
-        $this->recalculateResponsibleDays();
+        $this->cityId = null;
     }
 
-    public function updatedResolvedResponsibleEndDate(): void
+    /**
+     * @return array<int, string>
+     */
+    #[Computed]
+    public function states(): array
     {
-        $this->recalculateResponsibleDays();
+        return State::query()
+            ->orderBy('definition')
+            ->pluck('definition', 'id')
+            ->all();
     }
 
-    public function recalculateResponsibleDays(): void
+    /**
+     * @return array<int, string>
+     */
+    #[Computed]
+    public function cities(): array
     {
-        $this->responsibleCalculatedDays = CompanyAssociateRegistrar::calculateDaysBetween(
-            $this->resolvedResponsibleStartDate,
-            $this->resolvedResponsibleEndDate,
-        );
-
-        if ($this->resolvedResponsibleAvailableDays === null) {
-            $this->responsibleRemainingDays = null;
-
-            return;
+        if (blank($this->stateId)) {
+            return [];
         }
 
-        $this->responsibleRemainingDays = CompanyAssociateRegistrar::remainingDaysAfterRegistration(
-            $this->resolvedResponsible(),
-            $this->responsibleCalculatedDays,
-        );
+        return City::query()
+            ->where('state_id', $this->stateId)
+            ->orderBy('definition')
+            ->pluck('definition', 'id')
+            ->all();
     }
 
     public function resolveResponsible(): void
@@ -135,9 +143,6 @@ class CompanyAssociateRegistration extends Component
         $this->resolvedResponsibleConsumedDays = null;
         $this->resolvedResponsibleAvailableDays = null;
         $this->responsibleDaysExhausted = false;
-        $this->resolvedResponsibleStartDate = null;
-        $this->resolvedResponsibleEndDate = null;
-        $this->responsibleCalculatedDays = null;
         $this->responsibleRemainingDays = null;
 
         if (blank($this->responsibleIdentityCard)) {
@@ -159,9 +164,7 @@ class CompanyAssociateRegistration extends Component
         $this->resolvedResponsibleConsumedDays = CompanyAssociateRegistrar::consumedDaysByResponsible($responsible);
         $this->resolvedResponsibleAvailableDays = CompanyAssociateRegistrar::availableDaysForResponsible($responsible);
         $this->responsibleDaysExhausted = CompanyAssociateRegistrar::hasExhaustedRegistrationDays($responsible);
-        $this->resolvedResponsibleStartDate = $responsible->contract_start_date?->format('Y-m-d');
-        $this->resolvedResponsibleEndDate = $responsible->contract_end_date?->format('Y-m-d');
-        $this->recalculateResponsibleDays();
+        $this->responsibleRemainingDays = $this->resolvedResponsibleAvailableDays;
     }
 
     protected function resolvedResponsible(): CompanyResponsible
@@ -180,7 +183,7 @@ class CompanyAssociateRegistration extends Component
         $this->resolveResponsible();
 
         if ($this->responsibleDaysExhausted) {
-            $this->addError('resolvedResponsibleId', 'Este responsable ha consumido el total de días contratados. No es posible registrar un nuevo asociado.');
+            $this->addError('resolvedResponsibleId', 'Este responsable ha consumido el total de días contratados. No es posible registrar un nuevo afiliado.');
 
             return;
         }
@@ -198,12 +201,6 @@ class CompanyAssociateRegistration extends Component
             return;
         }
 
-        if ($this->responsibleCalculatedDays === null || $this->responsibleRemainingDays === null || $this->responsibleRemainingDays < 0) {
-            $this->addError('resolvedResponsibleEndDate', 'Los días del período seleccionado exceden los días disponibles del responsable.');
-
-            return;
-        }
-
         $registeredAt = now();
         $associateId = null;
 
@@ -211,7 +208,7 @@ class CompanyAssociateRegistration extends Component
             DB::transaction(function () use ($validated, $age, $registeredAt, &$associateId): void {
                 $responsible = $this->resolvedResponsible();
 
-                if (CompanyAssociateRegistrar::remainingDaysAfterRegistration($responsible, $this->responsibleCalculatedDays) < 0) {
+                if (CompanyAssociateRegistrar::remainingDaysAfterRegistration($responsible) < 0) {
                     throw new \RuntimeException('Responsible registration days exhausted.');
                 }
 
@@ -236,15 +233,16 @@ class CompanyAssociateRegistration extends Component
                     'flight_date' => $validated['flightDate'],
                     'flight_time' => $validated['flightTime'],
                     'sex' => $validated['sex'],
+                    'state_id' => $validated['stateId'],
+                    'city_id' => $validated['cityId'],
+                    'observations' => $validated['observations'] ?: null,
                     'contact_full_name' => $validated['contactFullName'],
                     'contact_phone' => $validated['contactPhone'],
                     'contact_email' => $validated['contactEmail'],
                     'identity_document' => $documentPaths[0] ?? null,
                     'identity_documents' => $documentPaths,
                     'registered_at' => $registeredAt,
-                    'registration_start_date' => $this->resolvedResponsibleStartDate,
-                    'registration_end_date' => $this->resolvedResponsibleEndDate,
-                    'registration_period_days' => $this->responsibleCalculatedDays,
+                    'registration_period_days' => CompanyAssociateRegistrar::DAYS_PER_REGISTRATION,
                 ]);
 
                 $associateId = $associate->getKey();
@@ -279,9 +277,6 @@ class CompanyAssociateRegistration extends Component
             'resolvedResponsibleConsumedDays',
             'resolvedResponsibleAvailableDays',
             'responsibleDaysExhausted',
-            'resolvedResponsibleStartDate',
-            'resolvedResponsibleEndDate',
-            'responsibleCalculatedDays',
             'responsibleRemainingDays',
             'fullName',
             'identityCard',
@@ -292,6 +287,9 @@ class CompanyAssociateRegistration extends Component
             'flightDate',
             'flightTime',
             'sex',
+            'stateId',
+            'cityId',
+            'observations',
             'contactFullName',
             'contactPhone',
             'contactEmail',
@@ -311,26 +309,7 @@ class CompanyAssociateRegistration extends Component
                 'integer',
                 function (string $attribute, mixed $value, \Closure $fail): void {
                     if ($this->responsibleDaysExhausted) {
-                        $fail('Este responsable ha consumido el total de días contratados. No es posible registrar un nuevo asociado.');
-                    }
-                },
-            ],
-            'resolvedResponsibleStartDate' => ['required', 'date'],
-            'resolvedResponsibleEndDate' => [
-                'required',
-                'date',
-                'after_or_equal:resolvedResponsibleStartDate',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($this->responsibleDaysExhausted) {
-                        return;
-                    }
-
-                    if ($this->responsibleRemainingDays === null) {
-                        return;
-                    }
-
-                    if ($this->responsibleRemainingDays < 0) {
-                        $fail('Los días del período seleccionado exceden los días disponibles del responsable.');
+                        $fail('Este responsable ha consumido el total de días contratados. No es posible registrar un nuevo afiliado.');
                     }
                 },
             ],
@@ -351,7 +330,7 @@ class CompanyAssociateRegistration extends Component
                         ->contains(fn (CompanyAssociate $associate): bool => CompanyAssociateRegistrar::normalizeIdentityCard($associate->identity_card) === $normalized);
 
                     if ($exists) {
-                        $fail('Ya existe un asociado registrado con este documento de identidad.');
+                        $fail('Ya existe un afiliado registrado con este documento de identidad.');
                     }
                 },
             ],
@@ -361,6 +340,13 @@ class CompanyAssociateRegistration extends Component
             'flightDate' => ['required', 'date', 'after_or_equal:today'],
             'flightTime' => ['required', 'date_format:H:i'],
             'sex' => ['required', Rule::in(['MASCULINO', 'FEMENINO'])],
+            'stateId' => ['required', 'integer', Rule::exists('states', 'id')],
+            'cityId' => [
+                'required',
+                'integer',
+                Rule::exists('cities', 'id')->where(fn ($query) => $query->where('state_id', $this->stateId)),
+            ],
+            'observations' => ['nullable', 'string', 'max:2000'],
             'contactFullName' => ['required', 'string', 'max:255'],
             'contactPhone' => ['required', 'string', 'max:30'],
             'contactEmail' => ['required', 'email', 'max:255'],
@@ -376,16 +362,17 @@ class CompanyAssociateRegistration extends Component
     {
         return [
             'resolvedResponsibleId.required' => 'No se encontró un responsable con esa cédula para esta empresa.',
-            'resolvedResponsibleStartDate.required' => 'Debe seleccionar la fecha desde del responsable.',
-            'resolvedResponsibleEndDate.required' => 'Debe seleccionar la fecha hasta del responsable.',
-            'resolvedResponsibleEndDate.after_or_equal' => 'La fecha hasta debe ser igual o posterior a la fecha desde.',
-            'email.unique' => 'Ya existe un asociado registrado con este correo electrónico.',
+            'email.unique' => 'Ya existe un afiliado registrado con este correo electrónico.',
             'phone.required' => 'El teléfono es obligatorio.',
             'phone.regex' => 'Ingrese el teléfono con prefijo de país. Ej: +584127018390',
             'flightDate.required' => 'Debe seleccionar la fecha de vuelo.',
             'flightDate.after_or_equal' => 'La fecha de vuelo no puede ser anterior a hoy.',
             'flightTime.required' => 'Debe seleccionar la hora de vuelo.',
             'flightTime.date_format' => 'La hora de vuelo no es válida.',
+            'stateId.required' => 'Debe seleccionar un estado.',
+            'stateId.exists' => 'El estado seleccionado no es válido.',
+            'cityId.required' => 'Debe seleccionar una ciudad.',
+            'cityId.exists' => 'La ciudad seleccionada no pertenece al estado indicado.',
             'contactPhone.required' => 'El teléfono del contacto de emergencia es obligatorio.',
             'contactEmail.required' => 'El correo del contacto de emergencia es obligatorio.',
             'identityDocuments.required' => 'Debe cargar al menos un documento de identidad.',

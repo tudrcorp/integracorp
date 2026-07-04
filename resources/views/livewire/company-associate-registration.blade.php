@@ -30,7 +30,7 @@
             <div class="order-2 sm:order-1">
                 <p class="text-xs font-bold uppercase tracking-[0.24em] text-[color:var(--text-muted)]">Tu Doctor Group</p>
                 <h1 class="mt-2 text-2xl font-semibold tracking-tight text-[color:var(--text-primary)] sm:text-3xl">
-                    Registro de Asociado
+                    Registro de Afiliado
                 </h1>
                 <p class="mt-2 max-w-xl text-sm text-[color:var(--text-secondary)]">
                     Complete el formulario para registrarse bajo la empresa
@@ -67,7 +67,7 @@
                         Realizar nuevo registro
                     </button>
                     <p class="mt-3 text-xs text-[color:var(--text-muted)]">
-                        Puede registrar otro asociado bajo la misma empresa.
+                        Puede registrar otro afiliado bajo la misma empresa.
                     </p>
                 </div>
             </div>
@@ -118,61 +118,17 @@
                                         <p class="mt-2 text-sm text-[color:var(--text-secondary)]">
                                             Este responsable ha consumido los
                                             {{ number_format((int) $resolvedResponsibleContractedDays, 0, ',', '.') }}
-                                            días contratados. No es posible registrar un nuevo asociado.
+                                            días contratados. No es posible registrar un nuevo afiliado.
                                         </p>
                                     </div>
                                 @else
-                                    <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
-                                        <div>
-                                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
-                                                Fecha desde <span class="text-[color:var(--accent)]">*</span>
-                                            </label>
-                                            <input type="date" wire:model.live="resolvedResponsibleStartDate"
-                                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 text-[color:var(--text-primary)] outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
-                                            @error('resolvedResponsibleStartDate')
-                                                <p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>
-                                            @enderror
-                                        </div>
-
-                                        <div>
-                                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
-                                                Fecha hasta <span class="text-[color:var(--accent)]">*</span>
-                                            </label>
-                                            <input type="date" wire:model.live="resolvedResponsibleEndDate"
-                                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 text-[color:var(--text-primary)] outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
-                                            @error('resolvedResponsibleEndDate')
-                                                <p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>
-                                            @enderror
-                                        </div>
-
-                                        <div>
-                                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
-                                                Número de días
-                                            </label>
-                                            <div
-                                                class="flex min-h-[50px] items-center rounded-2xl border border-[color:var(--field-border)] bg-white/30 px-4 py-3 dark:bg-white/5">
-                                                <span class="text-lg font-semibold text-[color:var(--text-primary)]">{{ $responsibleCalculatedDays ?? '—' }}</span>
-                                                @if ($responsibleCalculatedDays !== null)
-                                                    <span class="ml-2 text-xs uppercase tracking-wide text-[color:var(--text-muted)]">días</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-
                                     @if ($responsibleRemainingDays !== null)
-                                        <div @class([
-                                            'mt-4 rounded-2xl border px-4 py-3',
-                                            'border-[color:var(--error-text)]/20 bg-[color:var(--error-bg)]' => $responsibleRemainingDays < 0,
-                                            'border-[color:var(--accent)]/20 bg-[color:var(--accent)]/5' => $responsibleRemainingDays >= 0,
-                                        ])>
+                                        <div
+                                            class="mt-4 rounded-2xl border border-[color:var(--accent)]/20 bg-[color:var(--accent)]/5 px-4 py-3">
                                             <p class="text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
                                                 Días restantes del responsable
                                             </p>
-                                            <p @class([
-                                                'mt-1 text-2xl font-bold',
-                                                'text-[color:var(--error-text)]' => $responsibleRemainingDays < 0,
-                                                'text-[color:var(--accent)]' => $responsibleRemainingDays >= 0,
-                                            ])>
+                                            <p class="mt-1 text-2xl font-bold text-[color:var(--accent)]">
                                                 {{ number_format($responsibleRemainingDays, 0, ',', '.') }}
                                                 <span class="text-sm font-semibold text-[color:var(--text-secondary)]">
                                                     {{ abs($responsibleRemainingDays) === 1 ? 'día' : 'días' }}
@@ -182,13 +138,8 @@
                                                 {{ number_format((int) $resolvedResponsibleConsumedDays, 0, ',', '.') }}
                                                 de
                                                 {{ number_format((int) $resolvedResponsibleContractedDays, 0, ',', '.') }}
-                                                días contratados ya fueron consumidos.
+                                                días contratados ya fueron consumidos. Cada registro consume 1 día.
                                             </p>
-                                            @if ($responsibleRemainingDays < 0)
-                                                <p class="mt-2 text-sm text-[color:var(--error-text)]">
-                                                    El período seleccionado supera los días disponibles del responsable.
-                                                </p>
-                                            @endif
                                         </div>
                                     @endif
                                 @endif
@@ -307,6 +258,46 @@
                                 class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
                             @error('flightTime')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
                         </div>
+
+                        <div>
+                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                                Estado <span class="text-[color:var(--accent)]">*</span>
+                            </label>
+                            <select wire:model.live="stateId"
+                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
+                                <option value="">Seleccione</option>
+                                @foreach ($this->states as $id => $definition)
+                                    <option value="{{ $id }}">{{ $definition }}</option>
+                                @endforeach
+                            </select>
+                            @error('stateId')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div>
+                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                                Ciudad <span class="text-[color:var(--accent)]">*</span>
+                            </label>
+                            <select wire:model="cityId" @disabled(blank($stateId))
+                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white/5">
+                                <option value="">Seleccione</option>
+                                @foreach ($this->cities as $id => $definition)
+                                    <option value="{{ $id }}">{{ $definition }}</option>
+                                @endforeach
+                            </select>
+                            @if (blank($stateId))
+                                <p class="mt-2 text-xs text-[color:var(--text-muted)]">Seleccione primero un estado.</p>
+                            @endif
+                            @error('cityId')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="md:col-span-2 xl:col-span-4">
+                            <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+                                Observaciones
+                            </label>
+                            <textarea wire:model="observations" rows="3" placeholder="Información adicional relevante para el registro"
+                                class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5"></textarea>
+                            @error('observations')<p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>@enderror
+                        </div>
                     </div>
                 </section>
 
@@ -393,8 +384,8 @@
                     <button type="submit"
                         class="inline-flex items-center justify-center rounded-full bg-[color:var(--accent)] px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:scale-[0.98] active:scale-[0.96] disabled:opacity-60"
                         wire:loading.attr="disabled" wire:target="submit,identityDocuments"
-                        @disabled($responsibleRemainingDays !== null && $responsibleRemainingDays < 0)>
-                        <span wire:loading.remove wire:target="submit">Registrar asociado</span>
+                        @disabled($responsibleDaysExhausted)>
+                        <span wire:loading.remove wire:target="submit">Registrar afiliado</span>
                         <span wire:loading wire:target="submit">Procesando registro...</span>
                     </button>
                 </div>

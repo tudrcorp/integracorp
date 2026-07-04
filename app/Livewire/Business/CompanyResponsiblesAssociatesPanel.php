@@ -45,7 +45,6 @@ class CompanyResponsiblesAssociatesPanel extends Component implements HasActions
             ->with([
                 'responsibles' => fn ($query) => $query
                     ->withCount('associates')
-                    ->withSum('associates as associates_consumed_days_sum', 'registration_period_days')
                     ->with([
                         'state',
                         'zone',

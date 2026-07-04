@@ -21,6 +21,9 @@ class CompanyAssociate extends Model
         'flight_date',
         'flight_time',
         'sex',
+        'state_id',
+        'city_id',
+        'observations',
         'contact_full_name',
         'contact_phone',
         'contact_email',
@@ -93,6 +96,16 @@ class CompanyAssociate extends Model
     public function responsible(): BelongsTo
     {
         return $this->belongsTo(CompanyResponsible::class, 'company_responsible_id');
+    }
+
+    public function state(): BelongsTo
+    {
+        return $this->belongsTo(State::class);
+    }
+
+    public function city(): BelongsTo
+    {
+        return $this->belongsTo(City::class);
     }
 
     public function hasVoucherIls(): bool
