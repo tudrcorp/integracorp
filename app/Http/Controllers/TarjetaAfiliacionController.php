@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Plan;
+use App\Support\Companies\CompanyAssociateInclusionQrGenerator;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\TarjetaAfiliacionQrPlanCatalog;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -58,6 +59,13 @@ class TarjetaAfiliacionController extends Controller
 
     public function associateCompanyAssociateInclusionQr(Request $request): JsonResponse
     {
+        if (! CompanyAssociateInclusionQrGenerator::isGenerationEnabled()) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'La generación del QR de inclusión está deshabilitada en producción.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'qr_image' => ['required', 'image', 'mimes:png', 'max:2048'],
         ]);

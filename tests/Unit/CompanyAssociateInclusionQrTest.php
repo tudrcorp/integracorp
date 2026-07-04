@@ -40,6 +40,12 @@ it('expone url de vista previa cuando el qr existe', function (): void {
 });
 
 it('genera pdf y qr de inclusion con logo corporativo en el centro', function (): void {
+    if (! CompanyAssociateInclusionQrGenerator::isGenerationEnabled()) {
+        expect(CompanyAssociateInclusionQrGenerator::isGenerationEnabled())->toBeFalse();
+
+        return;
+    }
+
     $pdfFixture = sys_get_temp_dir().'/canales-comunicacion-test.pdf';
     file_put_contents($pdfFixture, '%PDF-1.4 test');
 
@@ -57,9 +63,14 @@ it('genera pdf y qr de inclusion con logo corporativo en el centro', function ()
 it('registra ruta para asociar qr de inclusion en nuevos negocios', function (): void {
     $routes = file_get_contents(dirname(__DIR__, 2).'/routes/web.php');
     $blade = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/generador-qr-personalizado.blade.php');
+    $generator = file_get_contents(dirname(__DIR__, 2).'/app/Support/Companies/CompanyAssociateInclusionQrGenerator.php');
 
     expect($routes)->toContain('business.company-associate-tarjeta-qr.associate-inclusion');
+    expect($generator)
+        ->toContain('isGenerationEnabled')
+        ->toContain("environment('production')");
     expect($blade)
         ->toContain('downloadAndAssociateInclusionBtn')
-        ->toContain('nuevos negocios (Inclusión)');
+        ->toContain('nuevos negocios (Inclusión)')
+        ->toContain("@unless (app()->environment('production'))");
 });
