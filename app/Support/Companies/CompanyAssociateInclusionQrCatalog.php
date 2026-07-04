@@ -39,14 +39,37 @@ final class CompanyAssociateInclusionQrCatalog
         return self::QR_STORAGE_DIRECTORY.'/'.self::LOGO_FILENAME;
     }
 
+    public static function publicBaseUrl(): string
+    {
+        $configured = config('services.company_associate_inclusion.public_url');
+
+        if (filled($configured)) {
+            return rtrim((string) $configured, '/');
+        }
+
+        if (app()->environment('production')) {
+            return 'https://integracorp.tudrgroup.com';
+        }
+
+        if (! app()->runningInConsole() && app()->bound('request')) {
+            $request = request();
+
+            if (filled($request->getHttpHost())) {
+                return $request->getSchemeAndHttpHost();
+            }
+        }
+
+        return rtrim((string) config('app.url'), '/');
+    }
+
     public static function pdfPublicUrl(): string
     {
-        return asset('storage/'.self::pdfStoragePath());
+        return self::publicBaseUrl().'/storage/'.self::pdfStoragePath();
     }
 
     public static function qrPublicUrl(): string
     {
-        return asset('storage/'.self::qrStoragePath());
+        return self::publicBaseUrl().'/storage/'.self::qrStoragePath();
     }
 
     public static function qrExists(): bool

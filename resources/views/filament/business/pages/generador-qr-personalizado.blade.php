@@ -573,7 +573,6 @@
                         Aplicar QR a tarjetas corporativas
                     </button>
 
-                    @unless (app()->environment('production'))
                     <div class="field" style="margin-top: 16px;">
                         <label for="associationPlanInclusion">Asociar QR a tarjeta — nuevos negocios (Inclusión)</label>
                         <input
@@ -586,7 +585,6 @@
                     <button id="downloadAndAssociateInclusionBtn" class="btn-download" type="button">
                         Aplicar QR a tarjetas de nuevos negocios
                     </button>
-                    @endunless
 
                     <p class="badge">
                         Generador local de QR. Si agregas logo o formas muy extremas, valida con dos moviles antes de usarlo en produccion.
@@ -646,11 +644,12 @@
                 const associateCorporateRoute = @js(route('business.affiliation-corporate-tarjeta-qr.associate-plan'));
                 const associateInclusionRoute = @js(route('business.company-associate-tarjeta-qr.associate-inclusion'));
                 const defaultInclusionLogoUrl = @js($this->getCompanyAssociateInclusionLogoUrl());
+                const defaultInclusionPdfUrl = @js($this->getCompanyAssociateInclusionPdfUrl());
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || @js(csrf_token());
 
                 function buildPayload() {
                     if (!elements.useContactPayload.checked) {
-                        return elements.qrData.value.trim() || 'https://integracorp.tudrgroup.com/';
+                        return elements.qrData.value.trim() || defaultInclusionPdfUrl;
                     }
 
                     const name = elements.qrData.value.trim() || 'Integracorp';

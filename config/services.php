@@ -70,4 +70,8 @@ return [
         'placeholder_phone' => env('CHAT_INDIVIDUAL_QUOTE_PLACEHOLDER_PHONE', '00000000000'),
     ],
 
+    'company_associate_inclusion' => [
+        'public_url' => env('COMPANY_ASSOCIATE_INCLUSION_PUBLIC_URL'),
+    ],
+
 ];

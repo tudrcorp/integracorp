@@ -11,9 +11,17 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 final class CompanyAssociateInclusionQrGenerator
 {
-    public static function isGenerationEnabled(): bool
+    public static function isAutomaticGenerationEnabled(): bool
     {
         return ! app()->environment('production');
+    }
+
+    /**
+     * @deprecated Use isAutomaticGenerationEnabled()
+     */
+    public static function isGenerationEnabled(): bool
+    {
+        return self::isAutomaticGenerationEnabled();
     }
 
     /**
@@ -27,8 +35,8 @@ final class CompanyAssociateInclusionQrGenerator
      */
     public static function generate(string $pdfSourcePath): array
     {
-        if (! self::isGenerationEnabled()) {
-            throw new RuntimeException('La generación del QR de inclusión está deshabilitada en producción.');
+        if (! self::isAutomaticGenerationEnabled()) {
+            throw new RuntimeException('La generación automática del QR de inclusión está deshabilitada en producción.');
         }
 
         if (! is_file($pdfSourcePath)) {
@@ -63,10 +71,6 @@ final class CompanyAssociateInclusionQrGenerator
 
     public static function storeQrFromUpload(string $absolutePngPath): void
     {
-        if (! self::isGenerationEnabled()) {
-            throw new RuntimeException('La generación del QR de inclusión está deshabilitada en producción.');
-        }
-
         if (! is_file($absolutePngPath)) {
             throw new RuntimeException('No se encontró la imagen PNG del QR para almacenar.');
         }
@@ -88,7 +92,7 @@ final class CompanyAssociateInclusionQrGenerator
 
     public static function ensurePublished(): void
     {
-        if (! self::isGenerationEnabled()) {
+        if (! self::isAutomaticGenerationEnabled()) {
             return;
         }
 
