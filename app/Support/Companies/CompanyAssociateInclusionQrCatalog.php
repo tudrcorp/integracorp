@@ -24,6 +24,8 @@ final class CompanyAssociateInclusionQrCatalog
 
     public const QR_STORAGE_DIRECTORY = 'tarjeta-afiliacion/planes';
 
+    public const PRODUCTION_PDF_PUBLIC_URL = 'https://integracorp.tudrgroup.com/storage/tarjeta-afiliacion/documentos/canales-de-comunicacion.pdf';
+
     public static function pdfStoragePath(): string
     {
         return self::PDF_STORAGE_DIRECTORY.'/'.self::PDF_FILENAME;
@@ -64,7 +66,28 @@ final class CompanyAssociateInclusionQrCatalog
 
     public static function pdfPublicUrl(): string
     {
+        if (self::shouldUseProductionPdfUrl()) {
+            $configured = config('services.company_associate_inclusion.production_pdf_url');
+
+            return filled($configured)
+                ? (string) $configured
+                : self::PRODUCTION_PDF_PUBLIC_URL;
+        }
+
         return self::publicBaseUrl().'/storage/'.self::pdfStoragePath();
+    }
+
+    public static function shouldUseProductionPdfUrl(): bool
+    {
+        if (app()->environment('production')) {
+            return true;
+        }
+
+        if (app()->bound('request')) {
+            return request()->getHost() === 'integracorp.tudrgroup.com';
+        }
+
+        return false;
     }
 
     public static function qrPublicUrl(): string
