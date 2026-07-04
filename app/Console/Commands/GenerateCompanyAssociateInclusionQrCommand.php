@@ -16,6 +16,12 @@ class GenerateCompanyAssociateInclusionQrCommand extends Command
 
     public function handle(): int
     {
+        if (! CompanyAssociateInclusionQrGenerator::isGenerationEnabled()) {
+            $this->warn('La generación del QR de inclusión está deshabilitada en producción.');
+
+            return self::SUCCESS;
+        }
+
         $pdfPath = (string) ($this->option('pdf') ?: storage_path('app/imports/canales-de-comunicacion.pdf'));
 
         try {

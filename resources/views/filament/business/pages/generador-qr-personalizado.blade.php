@@ -573,6 +573,7 @@
                         Aplicar QR a tarjetas corporativas
                     </button>
 
+                    @unless (app()->environment('production'))
                     <div class="field" style="margin-top: 16px;">
                         <label for="associationPlanInclusion">Asociar QR a tarjeta — nuevos negocios (Inclusión)</label>
                         <input
@@ -585,6 +586,7 @@
                     <button id="downloadAndAssociateInclusionBtn" class="btn-download" type="button">
                         Aplicar QR a tarjetas de nuevos negocios
                     </button>
+                    @endunless
 
                     <p class="badge">
                         Generador local de QR. Si agregas logo o formas muy extremas, valida con dos moviles antes de usarlo en produccion.
@@ -920,7 +922,7 @@
                     }
                 });
 
-                elements.downloadAndAssociateInclusionBtn.addEventListener('click', async () => {
+                elements.downloadAndAssociateInclusionBtn?.addEventListener('click', async () => {
                     try {
                         const pngBlob = await buildQrBlob('png');
                         await associateInclusionQr(pngBlob, associateInclusionRoute);
