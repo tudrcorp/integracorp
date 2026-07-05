@@ -72,6 +72,8 @@ final class CompanyAssociateCarnetGenerator
             'ci' => $associate->identity_card,
             'code' => self::associateCode($associate),
             'plan' => self::PLAN_LABEL,
+            'template_key' => 'inclusion',
+            'plan_qr_filename' => 'qr-plan-inclusion.png',
             'frecuencia' => self::PAYMENT_FREQUENCY_LABEL,
             'cobertura' => self::COVERAGE_LABEL,
             'desde' => filled($associate->date_init)

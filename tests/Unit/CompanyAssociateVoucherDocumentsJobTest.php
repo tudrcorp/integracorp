@@ -23,7 +23,8 @@ it('el job genera qr, carnet y notifica al analista sin encolar la notificacion'
         ->toContain('CompanyAssociateInclusionQrGenerator::ensurePublished')
         ->toContain('CompanyAssociateCarnetGenerator::generate')
         ->toContain('CompanyAssociateDocumentsAnalystNotifier::notifySuccess')
-        ->toContain('CompanyAssociateDocumentsAnalystNotifier::notifyFailure');
+        ->toContain('CompanyAssociateDocumentsAnalystNotifier::notifyFailure')
+        ->toContain("config('affiliate-card.documents_queue'");
 
     expect($notifier)
         ->toContain('notifyNow')
