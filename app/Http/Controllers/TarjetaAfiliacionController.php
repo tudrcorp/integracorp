@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Plan;
+use App\Support\AffiliateCard\AffiliateCardStampedPdfGenerator;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\TarjetaAfiliacionQrPlanCatalog;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -135,11 +136,6 @@ class TarjetaAfiliacionController extends Controller
                 throw new \Exception('No se proporcionó un código válido para generar la tarjeta.');
             }
 
-            if ($applyResourceLimits) {
-                ini_set('memory_limit', '512M');
-                set_time_limit(60);
-            }
-
             $name_pdf = isset($data['output_filename']) && is_string($data['output_filename']) && $data['output_filename'] !== ''
                 ? $data['output_filename']
                 : 'TAR-'.$data['code'].'.pdf';
@@ -153,14 +149,29 @@ class TarjetaAfiliacionController extends Controller
 
             $dataForView = $data;
             unset($dataForView['output_filename']);
-            $data = self::prepareDataForTarjetaPdfView($dataForView);
+            $preparedData = self::prepareDataForTarjetaPdfView($dataForView);
 
-            $pdf = Pdf::loadView('documents.tarjeta-afiliado', compact('data'));
+            if (AffiliateCardStampedPdfGenerator::canGenerate($preparedData)) {
+                AffiliateCardStampedPdfGenerator::generate($preparedData, $fullPath);
+
+                if (! $silent) {
+                    Log::info("Tarjeta de afiliación generada por estampado: {$name_pdf}");
+                }
+
+                return true;
+            }
+
+            if ($applyResourceLimits) {
+                ini_set('memory_limit', '512M');
+                set_time_limit(60);
+            }
+
+            $pdf = Pdf::loadView('documents.tarjeta-afiliado', ['data' => $preparedData]);
             DomPdfBatchRenderOptions::apply($pdf);
             $pdf->save($fullPath);
 
             if (! $silent) {
-                Log::info("Tarjeta de afiliación generada con éxito: {$name_pdf}");
+                Log::info("Tarjeta de afiliación generada con DomPDF: {$name_pdf}");
             }
 
             return true;

@@ -24,6 +24,8 @@ class GenerateCompanyAssociateDocumentsAfterVoucherJob implements ShouldQueue
 
     public int $tries = 3;
 
+    public int $timeout = 120;
+
     /**
      * @return array<int, int>
      */
@@ -35,7 +37,9 @@ class GenerateCompanyAssociateDocumentsAfterVoucherJob implements ShouldQueue
     public function __construct(
         public int $associateId,
         public int $requestedByUserId,
-    ) {}
+    ) {
+        $this->onQueue((string) config('affiliate-card.documents_queue', 'documents'));
+    }
 
     public function handle(): void
     {

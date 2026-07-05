@@ -99,6 +99,50 @@ class UserForm
         return array_values(array_unique($keys));
     }
 
+    /**
+     * @param  array<string, mixed>  $state
+     * @return list<int>
+     */
+    public static function extractPermissionIdsFromState(array $state): array
+    {
+        $departments = is_array($state['departament'] ?? null)
+            ? array_values(array_filter(
+                $state['departament'],
+                fn (mixed $department): bool => is_string($department) && trim($department) !== '',
+            ))
+            : [];
+
+        $permissionIds = [];
+
+        foreach (self::getPermissionAssignableModules() as $module) {
+            if (! in_array($module, $departments, true)) {
+                continue;
+            }
+
+            foreach (array_keys(UserFormPermissionOptions::groupedOptionsForModule($module)) as $navigationGroup) {
+                $key = self::permissionGroupFieldKey($module, $navigationGroup);
+                $value = $state[$key] ?? null;
+
+                if (is_array($value)) {
+                    foreach ($value as $id) {
+                        $permissionIds[] = (int) $id;
+                    }
+                }
+            }
+
+            $legacyKey = self::permissionFieldKey($module);
+            $legacyValue = $state[$legacyKey] ?? null;
+
+            if (is_array($legacyValue)) {
+                foreach ($legacyValue as $id) {
+                    $permissionIds[] = (int) $id;
+                }
+            }
+        }
+
+        return array_values(array_unique($permissionIds));
+    }
+
     public static function moduleFromPermissionFieldKey(string $fieldKey): ?string
     {
         if (! str_starts_with($fieldKey, 'permissions_mod_')) {

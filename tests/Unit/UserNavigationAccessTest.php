@@ -56,11 +56,29 @@ it('deniega acceso si el usuario no tiene el modulo en departament', function ()
     expect(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['cotizador-individual']))->toBeFalse();
 });
 
-it('permite acceso completo al modulo cuando no hay permisos granulares asignados', function (): void {
+it('deniega acceso al menu del modulo cuando no hay permisos granulares asignados', function (): void {
     $user = makeNavigationUser(['NEGOCIOS', 'ADMINISTRACION']);
 
-    expect(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['cotizador-individual']))->toBeTrue()
-        ->and(UserNavigationAccess::canAccessMenuItem($user, 'ADMINISTRACION', ['afiliaciones-individuales']))->toBeTrue();
+    expect(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['cotizador-individual']))->toBeFalse()
+        ->and(UserNavigationAccess::canAccessMenuItem($user, 'ADMINISTRACION', ['afiliaciones-individuales']))->toBeFalse();
+});
+
+it('concede permisos por defecto de negocios aun sin permisos granulares en base de datos', function (): void {
+    $user = makeNavigationUser(['NEGOCIOS']);
+
+    expect(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['agenda-corporativa']))->toBeTrue()
+        ->and(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['calendarios-tdg']))->toBeTrue()
+        ->and(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['cotizador-individual']))->toBeFalse();
+});
+
+it('restringe administracion cuando el usuario no tiene permisos granulares en ese modulo', function (): void {
+    $user = makeNavigationUser(['NEGOCIOS', 'ADMINISTRACION'], [
+        'NEGOCIOS' => ['account-manager'],
+    ]);
+
+    expect(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['account-manager']))->toBeTrue()
+        ->and(UserNavigationAccess::canAccessMenuItem($user, 'ADMINISTRACION', ['afiliaciones-individuales']))->toBeFalse()
+        ->and(UserNavigationAccess::canAccessMenuItem($user, 'ADMINISTRACION', ['ventas']))->toBeFalse();
 });
 
 it('restringe acceso granular por modulo cuando hay permisos asignados', function (): void {

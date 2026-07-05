@@ -131,7 +131,7 @@ final class UserPermissionFormUi
             .'</div>'
             .'<div class="min-w-0 space-y-1.5">'
             .'<p class="user-perm-intro-title text-sm font-semibold">Control granular de acceso al menú</p>'
-            .'<p class="user-perm-intro-body text-sm leading-relaxed">Los permisos están organizados por <strong>módulo</strong> y por <strong>grupo de navegación</strong>, igual que en el panel lateral. Si no marcas ninguno en un módulo, el usuario conservará acceso completo a ese módulo.</p>'
+            .'<p class="user-perm-intro-body text-sm leading-relaxed">Los permisos están organizados por <strong>módulo</strong> y por <strong>grupo de navegación</strong>, igual que en el panel lateral. Si no marcas ninguno en un módulo, el usuario <strong>no verá ítems de menú</strong> en ese módulo hasta que le asignes permisos explícitos.</p>'
             .'</div>'
             .'</div>'
             .'</div>'

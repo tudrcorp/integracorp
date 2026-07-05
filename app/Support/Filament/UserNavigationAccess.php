@@ -149,7 +149,7 @@ final class UserNavigationAccess
         }
 
         if (! self::userHasAnyModulePermission($user, $module)) {
-            return true;
+            return false;
         }
 
         return self::userHasAnyPermissionSlug($user, $module, $permissionSlugs);
