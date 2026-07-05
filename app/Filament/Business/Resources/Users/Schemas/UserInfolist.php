@@ -57,6 +57,11 @@ class UserInfolist
                                                     ->schema([
                                                         TextEntry::make('name')
                                                             ->label('Nombre y Apellido del usuario'),
+                                                        TextEntry::make('identity_card')
+                                                            ->label('Documento de identidad')
+                                                            ->icon(Heroicon::OutlinedIdentification)
+                                                            ->placeholder('—')
+                                                            ->copyable(),
                                                         TextEntry::make('phone')
                                                             ->label('Numero de Telefono'),
                                                         TextEntry::make('birth_date')

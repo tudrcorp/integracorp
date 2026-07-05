@@ -8,6 +8,7 @@ use App\Models\Rol;
 use App\Models\User;
 use App\Support\Filament\UserCredentialSynchronizer;
 use App\Support\Filament\UserFormPermissionOptions;
+use App\Support\Filament\UserModulesFormUi;
 use App\Support\Filament\UserPermissionFormUi;
 use App\Support\Filament\UserRoleFormUi;
 use App\Support\Filament\UserRoleProfiles;
@@ -233,6 +234,52 @@ class UserForm
             ->all();
     }
 
+    /**
+     * @return array<int, mixed>
+     */
+    public static function modulesTabSchema(): array
+    {
+        return [
+            View::make(UserModulesFormUi::stylesView())
+                ->columnSpanFull(),
+            Section::make('Paneles INTEGRACORP')
+                ->description('Selecciona los módulos a los que tendrá acceso este usuario.')
+                ->icon(Heroicon::OutlinedSquares2x2)
+                ->extraAttributes([
+                    'class' => self::IOS_SECTION_CLASS,
+                ])
+                ->schema([
+                    Grid::make(1)
+                        ->extraAttributes([
+                            'class' => self::IOS_INNER_CLASS.' user-modules-tab-inner',
+                        ])
+                        ->schema([
+                            Placeholder::make('modules_intro')
+                                ->hiddenLabel()
+                                ->content(UserModulesFormUi::modulesIntroHtml()),
+                            Placeholder::make('modules_selection_summary')
+                                ->hiddenLabel()
+                                ->content(fn (Get $get): HtmlString => UserModulesFormUi::selectionSummaryHtml($get('departament'))),
+                            CheckboxList::make('departament')
+                                ->label('Módulos asignados')
+                                ->options(fn (): array => UserModulesFormUi::moduleOptions())
+                                ->columns(['default' => 1, 'lg' => 2])
+                                ->gridDirection('row')
+                                ->bulkToggleable()
+                                ->searchable()
+                                ->required()
+                                ->live()
+                                ->extraAttributes([
+                                    'class' => 'user-modules-checkbox-list',
+                                ]),
+                            Placeholder::make('modules_permissions_hint')
+                                ->hiddenLabel()
+                                ->content(UserModulesFormUi::permissionsHintHtml()),
+                        ]),
+                ]),
+        ];
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -267,6 +314,14 @@ class UserForm
                                                             ->label('Nombre y Apellido del usuario')
                                                             ->prefixIcon('heroicon-m-user')
                                                             ->required(),
+                                                        TextInput::make('identity_card')
+                                                            ->label('Documento de identidad')
+                                                            ->prefixIcon('heroicon-m-identification')
+                                                            ->placeholder('Ej: V-12345678')
+                                                            ->maxLength(20)
+                                                            ->required(fn (?User $record): bool => $record === null)
+                                                            ->unique(table: User::class, ignoreRecord: true)
+                                                            ->helperText('Formato sugerido: V-12345678 o E-12345678'),
                                                         TextInput::make('phone')
                                                             ->label('Telefono')
                                                             ->prefixIcon('heroicon-m-phone')
@@ -282,14 +337,6 @@ class UserForm
                                                             ->required()
                                                             ->email()
                                                             ->hiddenOn('edit'),
-                                                        Select::make('departament')
-                                                            ->label('Módulo(s) al que pertenece el usuario')
-                                                            ->prefixIcon('heroicon-m-squares-2x2')
-                                                            ->required()
-                                                            ->live()
-                                                            ->helperText('Define los módulos con acceso. Los permisos se configuran en la pestaña «Permisos».')
-                                                            ->options(fn () => Rol::query()->orderBy('name')->pluck('name', 'name'))
-                                                            ->multiple(),
                                                         Select::make('status')
                                                             ->label('Estado')
                                                             ->prefixIcon('heroicon-m-signal')
@@ -332,6 +379,9 @@ class UserForm
                                             ]),
                                     ]),
                             ]),
+                        Tab::make('Módulos')
+                            ->icon(Heroicon::OutlinedSquares2x2)
+                            ->schema(self::modulesTabSchema()),
                         Tab::make('Correo y contraseña')
                             ->icon(Heroicon::OutlinedEnvelope)
                             ->visibleOn('edit')

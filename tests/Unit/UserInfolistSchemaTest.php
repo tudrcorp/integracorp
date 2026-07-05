@@ -23,5 +23,7 @@ it('infolist de usuario usa pestañas del sistema', function (): void {
         ->toContain('IOS_INNER_CLASS')
         ->toContain("Tabs::make('userInfolistTabs')")
         ->toContain("Tab::make('Información del usuario')")
-        ->toContain("Tab::make('Rol del usuario')");
+        ->toContain("Tab::make('Rol del usuario')")
+        ->toContain('identity_card')
+        ->toContain('Documento de identidad');
 });

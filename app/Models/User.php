@@ -59,6 +59,7 @@ class User extends Authenticatable implements FilamentUser
         'doctor_id',
         'supplier_id',
         'phone',
+        'identity_card',
 
     ];
 
