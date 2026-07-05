@@ -10,7 +10,9 @@ use App\Models\User;
 use App\Support\Filament\UserCredentialSynchronizer;
 use App\Support\Filament\UserFormPermissionOptions;
 use App\Support\Filament\UserPageHeader;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -123,5 +125,53 @@ class EditUser extends EditRecord
                 passwordChanged: $this->passwordWasChanged,
             );
         }
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
+    protected function getSavedNotification(): ?Notification
+    {
+        /** @var User $user */
+        $user = $this->getRecord();
+
+        return Notification::make()
+            ->success()
+            ->icon(Heroicon::OutlinedCheckCircle)
+            ->title('Usuario actualizado')
+            ->body($this->savedNotificationBody($user))
+            ->duration(6000);
+    }
+
+    private function savedNotificationBody(User $user): string
+    {
+        $lines = [
+            (string) $user->name,
+            (string) $user->email,
+        ];
+
+        $permissionCount = count($this->pendingPermissionIds);
+
+        if ($permissionCount === 0) {
+            $lines[] = 'Permisos de menú: ninguno asignado en los módulos seleccionados.';
+        } elseif ($permissionCount === 1) {
+            $lines[] = 'Permisos de menú: 1 pantalla asignada.';
+        } else {
+            $lines[] = "Permisos de menú: {$permissionCount} pantallas asignadas.";
+        }
+
+        $emailChanged = ($this->originalEmailBeforeSave ?? (string) $user->email) !== (string) $user->email;
+
+        if ($emailChanged && $this->passwordWasChanged) {
+            $lines[] = 'Credenciales actualizadas y sincronizadas en perfiles vinculados.';
+        } elseif ($emailChanged) {
+            $lines[] = 'Correo actualizado y sincronizado en perfiles vinculados.';
+        } elseif ($this->passwordWasChanged) {
+            $lines[] = 'Contraseña actualizada correctamente.';
+        }
+
+        return implode("\n", $lines);
     }
 }

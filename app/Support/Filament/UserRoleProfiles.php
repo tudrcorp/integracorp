@@ -54,6 +54,21 @@ class UserRoleProfiles
             ->count();
     }
 
+    /**
+     * @return list<string>
+     */
+    public static function activeRoleLabels(User $user): array
+    {
+        $labels = collect(self::groupedDefinitions())
+            ->flatten(1)
+            ->filter(fn (array $role): bool => (bool) $user->{$role['field']})
+            ->pluck('label')
+            ->values()
+            ->all();
+
+        return $labels === [] ? ['Sin perfiles'] : $labels;
+    }
+
     public static function totalCount(): int
     {
         return count(self::fields());

@@ -21,7 +21,10 @@ it('pagina editar usuario muestra encabezado principal y sincroniza credenciales
     expect($php)->not->toBeFalse()
         ->toContain('UserPageHeader::make($user, context: \'edit\')')
         ->toContain('UserCredentialSynchronizer::syncRelatedRecordsAndAudit')
-        ->toContain('Hash::make');
+        ->toContain('Hash::make')
+        ->toContain('savedNotificationBody')
+        ->toContain('Heroicon::OutlinedCheckCircle')
+        ->not->toContain('->send()');
 });
 
 it('sincronizador de credenciales registra trazas de seguridad', function (): void {

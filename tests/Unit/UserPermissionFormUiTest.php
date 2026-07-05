@@ -15,5 +15,6 @@ it('ui de permisos incluye estilos y temas por modulo', function (): void {
         ->and($ui)->toContain('user-perm-stat-pill')
         ->and($styles)->toContain('.dark .user-perm-intro')
         ->and($styles)->toContain('.user-perm-module--negocios { border-left:')
-        ->and($styles)->toContain('.user-perm-checkbox-list .fi-fo-checkbox-list-option:has(.fi-checkbox-input:checked)');
+        ->and($styles)->toContain('.user-perm-checkbox-list .fi-fo-checkbox-list-option:has(.fi-checkbox-input:checked)')
+        ->and($ui)->toContain('pestaña <strong>Módulos</strong>');
 });
