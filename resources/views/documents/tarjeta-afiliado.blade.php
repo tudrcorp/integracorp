@@ -80,12 +80,24 @@
                 top: 0;
                 left: 0;
                 width: 100%;
-                height: 100%;
-                z-index: -1;
-                background-size: cover;
-                background-position: center;
-                background-repeat: no-repeat;
-                /* page-break-after: always; */
+                min-height: 100vh;
+            }
+
+            .cover-template-image {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                z-index: 0;
+            }
+
+            .cover-field {
+                position: absolute;
+                z-index: 1;
+                margin: 0;
+                padding: 0;
+                font-weight: bold;
+                font-size: 12px;
             }
 
 
@@ -147,55 +159,20 @@
 
             }
 
-            .carnet-title {
-                position: absolute;
-                top: 300px;
-                right: 75px;
-                left: 0;
-                text-align: center;
-            }
-
-            .carnet-title p {
-                margin: 0;
-            }
-
-            .carnet-recommendation {
-                position: absolute;
-                top: 600px;
-                right: 75px;
-                left: 0;
-                text-align: center;
-            }
-
-            .carnet-recommendation-inner {
-                width: 66.667%;
-                margin: 0 auto;
-                text-align: center;
-                font-size: 9px;
-                line-height: 1.45;
-                color: #333333;
-                font-family: Helvetica, Arial, sans-serif;
-            }
-
-            .carnet-recommendation-inner p {
-                margin: 0;
-            }
-
         </style>
 
     </head>
     <body>
 
-        <!-- Primera página: Imagen de fondo -->
-        <div class="cover" style="background-image: url('{{ public_path('storage/certificados/fondo-certificado.png') }}'); ">
-            <div class="carnet-title">
-                <p><span style="font-weight: bold; color: #305B93; font-size: 25px; font-style: arial;">TARJETA DEL AFILIADO</span></p>
-            </div>
-            <div style="position: absolute; top: 10px; right: 75px; margin-top: 0px; padding: 0px; margin-left: 0px">
-                <img src="{{ public_path('storage/certificados/tarjeta-afiliado.png') }}" style="width: 100%;" alt="">
-            </div>
+        <!-- Primera página: plantilla completa del carnet -->
+        <div class="cover">
+            <img
+                class="cover-template-image"
+                src="{{ public_path('storage/certificados/tarjeta-afiliado.png') }}"
+                alt=""
+            >
             @if (! empty($data['plan_qr_absolute_path']))
-                <div style="position: absolute; top: {{ $data['plan_qr_top_px'] }}px; right: {{ $data['plan_qr_right_px'] }}px; margin: 0; padding: 0;">
+                <div class="cover-field" style="top: {{ $data['plan_qr_top_px'] }}px; right: {{ $data['plan_qr_right_px'] }}px;">
                     <img
                         src="{{ $data['plan_qr_absolute_path'] }}"
                         style="width: {{ $data['plan_qr_size_px'] }}px; height: {{ $data['plan_qr_size_px'] }}px;"
@@ -203,38 +180,29 @@
                     >
                 </div>
             @endif
-            <div style="position: absolute; top: 423px; right: 458px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div class="cover-field" style="top: 335px; left: 251px;">
                 {{ $data['code'] }}
             </div>
-            <div style="position: absolute; top: 440px; left: 138px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div class="cover-field" style="top: 354px; left: 115px;">
                 {{ $data['name_first_part'] }}<br>{{ $data['name_second_part'] }}
             </div>
-            <div style="position: absolute; top: 475px; left: 155px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div class="cover-field" style="top: 402px; left: 80px;">
                 {{ $data['ci'] }}
             </div>
-            <div style="position: absolute; top: 497px; left: 164px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div class="cover-field" style="top: 426px; left: 95px;">
                 {{ $data['plan_tarjeta_etiqueta'] }}
             </div>
-            <div style="position: absolute; top: 494px; right: 323px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div class="cover-field" style="top: 423px; left: 440px;">
                 {{ $data['desde'] }}
             </div>
-            <div style="position: absolute; top: 515px; left: 235px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div class="cover-field" style="top: 450px; left: 195px;">
                 {{ $data['frecuencia'] }}
             </div>
-            <div style="position: absolute; top: 511px; right: 323px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div class="cover-field" style="top: 443px; left: 440px;">
                 {{ $data['hasta'] }}
             </div>
-            <div style="position: absolute; top: 533px; left: 190px; margin-top: 0px; padding: 0px; margin-left: 0px; font-weight: bold; font-size: 12px;">
+            <div class="cover-field" style="top: 473.5px; left: 130px;">
                 {{ $data['cobertura_display'] }}
-            </div>
-            <div class="carnet-recommendation">
-                <div class="carnet-recommendation-inner">
-                    <p>
-                        Recomendamos que nuestro afiliado conserve su tarjeta cerca de sus documentos personales.
-                        Este carnet <strong>no es un requisito obligatorio</strong> para solicitar el servicio,
-                        si el cliente presenta una eventualidad puede identificarse con su Nombre y Número de Cédula.
-                    </p>
-                </div>
             </div>
         </div>
 

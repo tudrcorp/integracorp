@@ -59,7 +59,7 @@ it('layout usa posiciones calibradas contra tarjeta-afiliado blade', function ()
 
     expect($layout)
         ->toContain('CANVAS_WIDTH_PX = 793.7')
-        ->toContain("'right_px' => 458")
+        ->toContain("'left_px' => 408")
         ->toContain("'cobertura'")
         ->toContain("'frecuencia'");
 });

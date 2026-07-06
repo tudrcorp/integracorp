@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\GenerateAndDeliverCompanyAssociateDocumentsAfterRegistrationJob;
 use App\Jobs\NotifyAnalystsOfCompanyAssociateRegistrationJob;
 use App\Models\Company;
 use App\Models\CompanyAssociate;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Bus;
 
 uses(Tests\TestCase::class);
 
-it('el registro publico encola notificaciones para analistas', function (): void {
+it('el registro publico encola notificaciones y documentos para analistas y afiliado', function (): void {
     $livewire = file_get_contents(dirname(__DIR__, 2).'/app/Livewire/CompanyAssociateRegistration.php');
 
     expect($livewire)
@@ -120,12 +121,16 @@ it('construye mensaje detallado con empresa responsable y alerta ils', function 
     expect(CompanyAssociatesTableContext::associateViewUrl(1))->toContain('/business/nuevos-negocios/company-associates/1');
 });
 
-it('el notificador despacha el job correspondiente', function (): void {
+it('el notificador despacha los jobs de alerta y documentos', function (): void {
     Bus::fake();
 
     CompanyAssociateRegistrationNotifier::notify(99);
 
     Bus::assertDispatched(NotifyAnalystsOfCompanyAssociateRegistrationJob::class, function (NotifyAnalystsOfCompanyAssociateRegistrationJob $job): bool {
+        return $job->associateId === 99;
+    });
+
+    Bus::assertDispatched(GenerateAndDeliverCompanyAssociateDocumentsAfterRegistrationJob::class, function (GenerateAndDeliverCompanyAssociateDocumentsAfterRegistrationJob $job): bool {
         return $job->associateId === 99;
     });
 });

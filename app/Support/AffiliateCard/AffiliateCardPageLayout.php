@@ -33,15 +33,15 @@ final class AffiliateCardPageLayout
      * }>
      */
     private const FIELD_POSITIONS = [
-        'code' => ['right_px' => 458, 'top_px' => 423, 'width_mm' => 42, 'align' => 'R'],
-        'name_first_part' => ['left_px' => 138, 'top_px' => 440, 'width_mm' => 70, 'align' => 'L'],
-        'name_second_part' => ['left_px' => 138, 'top_px' => 454, 'width_mm' => 70, 'align' => 'L'],
-        'ci' => ['left_px' => 155, 'top_px' => 475, 'width_mm' => 55, 'align' => 'L'],
-        'plan' => ['left_px' => 164, 'top_px' => 497, 'width_mm' => 45, 'align' => 'L'],
-        'frecuencia' => ['left_px' => 235, 'top_px' => 515, 'width_mm' => 35, 'align' => 'L'],
-        'cobertura' => ['left_px' => 190, 'top_px' => 533, 'width_mm' => 40, 'align' => 'L'],
-        'desde' => ['right_px' => 303, 'top_px' => 494, 'width_mm' => 28, 'align' => 'R'],
-        'hasta' => ['right_px' => 303, 'top_px' => 511, 'width_mm' => 28, 'align' => 'R'],
+        'code' => ['left_px' => 251, 'top_px' => 335, 'width_mm' => 42, 'align' => 'L'],
+        'name_first_part' => ['left_px' => 115, 'top_px' => 354, 'width_mm' => 70, 'align' => 'L'],
+        'name_second_part' => ['left_px' => 115, 'top_px' => 368, 'width_mm' => 70, 'align' => 'L'],
+        'ci' => ['left_px' => 80, 'top_px' => 402, 'width_mm' => 55, 'align' => 'L'],
+        'plan' => ['left_px' => 95, 'top_px' => 426, 'width_mm' => 45, 'align' => 'L'],
+        'frecuencia' => ['left_px' => 195, 'top_px' => 450, 'width_mm' => 35, 'align' => 'L'],
+        'cobertura' => ['left_px' => 130, 'top_px' => 473.5, 'width_mm' => 40, 'align' => 'L'],
+        'desde' => ['left_px' => 440, 'top_px' => 423, 'width_mm' => 28, 'align' => 'L'],
+        'hasta' => ['left_px' => 440, 'top_px' => 443, 'width_mm' => 28, 'align' => 'L'],
     ];
 
     /**

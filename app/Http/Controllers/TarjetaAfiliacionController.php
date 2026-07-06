@@ -40,9 +40,9 @@ class TarjetaAfiliacionController extends Controller
         };
         $data['plan_qr_filename'] = TarjetaAfiliacionQrPlanCatalog::resolveQrFilename($planId, $planDescription);
         $data['plan_qr_absolute_path'] = self::resolveQrAbsolutePath($data['plan_qr_filename']);
-        $data['plan_qr_size_px'] = 73;
-        $data['plan_qr_top_px'] = 450;
-        $data['plan_qr_right_px'] = 210;
+        $data['plan_qr_size_px'] = 86;
+        $data['plan_qr_top_px'] = 372;
+        $data['plan_qr_right_px'] = 109;
 
         return $data;
     }

@@ -45,7 +45,7 @@ final class CompanyAssociateCarnetGenerator
 
         return [
             'filename' => $filename,
-            'preview_url' => asset('storage/tarjeta-afiliacion/'.$filename).'?t='.time(),
+            'preview_url' => self::publicUrlFor($associate) ?? asset('storage/tarjeta-afiliacion/'.$filename),
             'absolute_path' => $absolutePath,
         ];
     }
@@ -62,11 +62,51 @@ final class CompanyAssociateCarnetGenerator
         return is_file($path) ? $path : null;
     }
 
+    public static function publicUrlFor(CompanyAssociate $associate): ?string
+    {
+        $path = self::absolutePathFor($associate);
+
+        if ($path === null) {
+            return null;
+        }
+
+        return asset('storage/tarjeta-afiliacion/'.self::filenameFor($associate)).'?v='.filemtime($path);
+    }
+
+    /**
+     * @return array{desde: string, hasta: string}
+     */
+    public static function cardValidityDates(CompanyAssociate $associate): array
+    {
+        if (filled($associate->date_init) || filled($associate->date_end)) {
+            return [
+                'desde' => (string) ($associate->date_init ?? ''),
+                'hasta' => (string) ($associate->date_end ?? ''),
+            ];
+        }
+
+        $flightDate = self::formatFlightDate($associate->flight_date);
+
+        if ($flightDate !== '') {
+            return [
+                'desde' => $flightDate,
+                'hasta' => $flightDate,
+            ];
+        }
+
+        return [
+            'desde' => $associate->registered_at?->format('d/m/Y') ?? '',
+            'hasta' => '',
+        ];
+    }
+
     /**
      * @return array<string, mixed>
      */
     private static function payloadFor(CompanyAssociate $associate, string $filename): array
     {
+        $validity = self::cardValidityDates($associate);
+
         return [
             'name' => $associate->full_name,
             'ci' => $associate->identity_card,
@@ -76,12 +116,36 @@ final class CompanyAssociateCarnetGenerator
             'plan_qr_filename' => 'qr-plan-inclusion.png',
             'frecuencia' => self::PAYMENT_FREQUENCY_LABEL,
             'cobertura' => self::COVERAGE_LABEL,
-            'desde' => filled($associate->date_init)
-                ? (string) $associate->date_init
-                : ($associate->registered_at?->format('d/m/Y') ?? ''),
-            'hasta' => (string) ($associate->date_end ?? ''),
+            'desde' => $validity['desde'],
+            'hasta' => $validity['hasta'],
             'output_filename' => $filename,
         ];
+    }
+
+    public static function formatFlightDate(mixed $flightDate): string
+    {
+        if (blank($flightDate)) {
+            return '';
+        }
+
+        if ($flightDate instanceof \DateTimeInterface) {
+            return $flightDate->format('d/m/Y');
+        }
+
+        $stringValue = trim((string) $flightDate);
+
+        foreach (['Y-m-d', 'd-m-Y', 'd/m/Y'] as $format) {
+            try {
+                return \Carbon\Carbon::createFromFormat($format, $stringValue)->format('d/m/Y');
+            } catch (\Throwable) {
+            }
+        }
+
+        try {
+            return \Carbon\Carbon::parse($stringValue)->format('d/m/Y');
+        } catch (\Throwable) {
+            return '';
+        }
     }
 
     private static function associateCode(CompanyAssociate $associate): string

@@ -7,7 +7,6 @@ namespace App\Filament\Business\Resources\CompanyAssociates\Actions;
 use App\Models\CompanyAssociate;
 use App\Support\Companies\CompanyAssociateCarnetGenerator;
 use App\Support\Companies\CompanyAssociateInclusionQrCatalog;
-use App\Support\Companies\CompanyAssociateVoucherIlsDocumentsNotifier;
 use App\Support\Companies\CompanyAssociateVoucherIlsUpdater;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -36,17 +35,11 @@ final class CompanyAssociatesTableActions
             ))
             ->action(function (CompanyAssociate $record, array $data): void {
                 CompanyAssociateVoucherIlsUpdater::save($record, $data);
-
-                $userId = auth()->id();
-
-                if (is_int($userId)) {
-                    CompanyAssociateVoucherIlsDocumentsNotifier::queueGenerationAfterVoucherSave($record->getKey(), $userId);
-                }
             })
             ->successNotification(fn (CompanyAssociate $record): Notification => Notification::make()
                 ->success()
                 ->title('Voucher ILS guardado')
-                ->body('El voucher de '.$record->full_name.' se registró correctamente. La tarjeta y el QR se están generando en segundo plano.'));
+                ->body('El voucher de '.$record->full_name.' se registró correctamente.'));
     }
 
     public static function generateCarnetAction(): Action
@@ -58,9 +51,8 @@ final class CompanyAssociatesTableActions
             ->requiresConfirmation()
             ->modalIcon(Heroicon::OutlinedIdentification)
             ->modalHeading(fn (CompanyAssociate $record): string => 'Generar carnet — '.$record->full_name)
-            ->modalDescription('Se generará la tarjeta PDF del asociado con sus datos personales y la vigencia ILS registrada, si existe.')
+            ->modalDescription('Se generará la tarjeta PDF del asociado con sus datos personales y la vigencia según la fecha de vuelo o el voucher ILS registrado.')
             ->modalSubmitActionLabel('Generar carnet')
-            ->visible(fn (CompanyAssociate $record): bool => $record->hasVoucherIls())
             ->action(function (CompanyAssociate $record): void {
                 try {
                     $result = CompanyAssociateCarnetGenerator::generate($record);
@@ -101,7 +93,7 @@ final class CompanyAssociatesTableActions
                 'qrPreviewUrl' => CompanyAssociateInclusionQrCatalog::qrPreviewUrl(),
                 'pdfDestinationUrl' => CompanyAssociateInclusionQrCatalog::pdfPublicUrl(),
             ]))
-            ->visible(fn (CompanyAssociate $record): bool => $record->hasVoucherIls() && CompanyAssociateInclusionQrCatalog::qrExists())
+            ->visible(fn (CompanyAssociate $record): bool => CompanyAssociateInclusionQrCatalog::qrExists())
             ->action(fn (): null => null);
     }
 
@@ -111,11 +103,8 @@ final class CompanyAssociatesTableActions
             ->label('Abrir carnet')
             ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
             ->color('gray')
-            ->url(fn (CompanyAssociate $record): ?string => ($path = CompanyAssociateCarnetGenerator::absolutePathFor($record))
-                ? asset('storage/tarjeta-afiliacion/'.CompanyAssociateCarnetGenerator::filenameFor($record))
-                : null)
+            ->url(fn (CompanyAssociate $record): ?string => CompanyAssociateCarnetGenerator::publicUrlFor($record))
             ->openUrlInNewTab()
-            ->visible(fn (CompanyAssociate $record): bool => $record->hasVoucherIls()
-                && CompanyAssociateCarnetGenerator::absolutePathFor($record) !== null);
+            ->visible(fn (CompanyAssociate $record): bool => CompanyAssociateCarnetGenerator::absolutePathFor($record) !== null);
     }
 }
