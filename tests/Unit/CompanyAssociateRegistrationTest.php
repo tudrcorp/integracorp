@@ -264,13 +264,14 @@ it('soportes de voucher ils y carnet centralizan la logica de negocio', function
         ->toContain('tarjeta-afiliacion')
         ->toContain('INCLUSIÓN')
         ->toContain('LOCAL')
-        ->toContain('CONTADO');
+        ->toContain('CONTADO')
+        ->toContain('cardValidityDates')
+        ->toContain('formatFlightDate');
 
     expect($actions)
         ->toContain('uploadVoucherIls')
         ->toContain('generateCarnet')
         ->toContain('previewInclusionQr')
         ->toContain('openCarnet')
-        ->toContain('hasVoucherIls()')
-        ->toContain('CompanyAssociateVoucherIlsDocumentsNotifier::queueGenerationAfterVoucherSave');
+        ->not->toContain('CompanyAssociateVoucherIlsDocumentsNotifier::queueGenerationAfterVoucherSave');
 });

@@ -20,7 +20,7 @@ it('prepara datos de vista de tarjeta con etiqueta de plan y cobertura formatead
 
     expect($data['plan_tarjeta_etiqueta'])->toBe('IDEAL')
         ->and($data['plan_qr_filename'])->toBe('qr-plan-ideal.png')
-        ->and($data['plan_qr_size_px'])->toBe(73)
+        ->and($data['plan_qr_size_px'])->toBe(86)
         ->and($data['cobertura_display'])->toBe('100,50 US$')
         ->and($data['name_first_part'])->not->toBeEmpty();
 });
@@ -58,13 +58,13 @@ it('prepara cobertura textual y plan inclusion para tarjetas de nuevos negocios'
         ->and($data['frecuencia'])->toBe('CONTADO');
 });
 
-it('la plantilla pdf de tarjeta incluye recomendacion centrada debajo del carnet', function (): void {
+it('la plantilla pdf de tarjeta usa la imagen completa del carnet como fondo', function (): void {
     $blade = file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/tarjeta-afiliado.blade.php');
 
     expect($blade)
-        ->toContain('carnet-title')
-        ->toContain('carnet-recommendation-inner')
-        ->toContain('width: 66.667%')
-        ->toContain('no es un requisito obligatorio')
-        ->toContain('Recomendamos que nuestro afiliado conserve su tarjeta cerca de sus documentos personales.');
+        ->toContain('storage/certificados/tarjeta-afiliado.png')
+        ->toContain('cover-template-image')
+        ->not->toContain('fondo-certificado.png')
+        ->not->toContain('carnet-title')
+        ->not->toContain('carnet-recommendation-inner');
 });
