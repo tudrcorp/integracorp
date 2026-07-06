@@ -14,6 +14,14 @@ final class PermissionNavigationGroupResolver
 
     public static function groupForPermission(Permission $permission): string
     {
+        if (strtoupper((string) $permission->module) === 'NEGOCIOS') {
+            $actionGroup = BusinessFilamentActionPermissionRegistry::navigationGroupForSlug((string) $permission->slug);
+
+            if ($actionGroup !== null) {
+                return $actionGroup;
+            }
+        }
+
         $class = self::resolveClassForPermission($permission);
 
         if ($class === null) {

@@ -25,5 +25,7 @@ it('estructura el formulario de afiliados corporativos en secciones sin eliminar
         ->toContain('ColumnGroup::make(\'Voucher ILS\'')
         ->toContain('ils_status')
         ->toContain('has_voucher_ils')
-        ->toContain('AffiliateVaucherIlsRemainingDays');
+        ->toContain('AffiliateVaucherIlsRemainingDays')
+        ->toContain('BusinessFilamentActionAccess::userCan')
+        ->toContain('BusinessFilamentActionPermissionRegistry::CREATE_CORPORATE_AFFILIATE');
 });
