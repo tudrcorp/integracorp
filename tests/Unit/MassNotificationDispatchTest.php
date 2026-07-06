@@ -26,7 +26,16 @@ it('MassNotificationDispatchService busca campañas programadas pendientes', fun
     expect($src)->toContain('dueScheduledNotifications')
         ->and($src)->toContain("whereNotNull('date_programed')")
         ->and($src)->toContain("where('is_sent', false)")
-        ->and($src)->toContain('applyApprovedScope');
+        ->and($src)->toContain('applyApprovedScope')
+        ->and(substr_count($src, 'class MassNotificationDispatchService'))->toBe(1);
+});
+
+it('MassNotificationDispatchResult existe como clase separada del servicio', function (): void {
+    $resultSrc = file_get_contents(dirname(__DIR__, 2).'/app/Support/MassNotificationDispatchResult.php');
+    $serviceSrc = file_get_contents(dirname(__DIR__, 2).'/app/Support/MassNotificationDispatchService.php');
+
+    expect($resultSrc)->toContain('class MassNotificationDispatchResult')
+        ->and($serviceSrc)->not->toContain('class MassNotificationDispatchResult');
 });
 
 it('los jobs de envío masivo reciben el id del destinatario', function (): void {
