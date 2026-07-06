@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\BusinessAppointmentExportCsvController;
 use App\Http\Controllers\CityExportCsvController;
 use App\Http\Controllers\CorporateQuoteExportCsvController;
 use App\Http\Controllers\IndividualQuoteExportCsvController;
@@ -26,6 +27,27 @@ it('rechaza la descarga csv de ciudades cuando el token no existe o expiro', fun
     $controller = new CityExportCsvController;
 
     $request = Request::create('/business/export-cities-csv', 'GET', [
+        'token' => 'token-inexistente',
+    ]);
+
+    expect(fn (): mixed => $controller($request))
+        ->toThrow(HttpException::class, 'Token de exportación no válido o expirado.');
+});
+
+it('guarda los ids seleccionados en cache para exportacion de citas', function (): void {
+    $token = BusinessAppointmentExportCsvController::storeIdsAndGetToken(['7', 12, '20']);
+
+    expect($token)->toBeString()->not->toBeEmpty();
+
+    $cachedIds = Cache::pull('business_appointment_export_csv_'.$token);
+
+    expect($cachedIds)->toBe([7, 12, 20]);
+});
+
+it('rechaza la descarga csv de citas cuando el token no existe o expiro', function (): void {
+    $controller = new BusinessAppointmentExportCsvController;
+
+    $request = Request::create('/business/export-business-appointments-csv', 'GET', [
         'token' => 'token-inexistente',
     ]);
 
@@ -98,6 +120,7 @@ it('rechaza la descarga csv de renovaciones cuando el token no existe o expiro',
 
 it('tiene registradas las rutas nombradas de exportacion csv del panel business', function (): void {
     expect(route('business.cities.export-csv', ['token' => 'x']))->toBeString();
+    expect(route('business.business-appointments.export-csv', ['token' => 'x']))->toBeString();
     expect(route('business.corporate-quotes.export-csv', ['token' => 'x']))->toBeString();
     expect(route('business.individual-quotes.export-csv', ['token' => 'x']))->toBeString();
     expect(route('business.renovations.export-csv', ['token' => 'x']))->toBeString();
@@ -105,7 +128,7 @@ it('tiene registradas las rutas nombradas de exportacion csv del panel business'
 
 it('expone exportacion csv en las tablas del panel business', function (): void {
     $tableFiles = [
-        'app/Filament/Business/Resources/Cities/Tables/CitiesTable.php',
+        'app/Filament/Business/Resources/BusinessAppointments/Tables/BusinessAppointmentsTable.php',
         'app/Filament/Business/Resources/CorporateQuotes/Tables/CorporateQuotesTable.php',
         'app/Filament/Business/Resources/IndividualQuotes/Tables/IndividualQuotesTable.php',
     ];
@@ -117,6 +140,9 @@ it('expone exportacion csv en las tablas del panel business', function (): void 
             ->toContain("->label('Exportar CSV')")
             ->toContain('exportCsvController');
     }
+
+    expect(file_get_contents(base_path('app/Filament/Business/Resources/BusinessAppointments/Tables/BusinessAppointmentsTable.php')))
+        ->toContain("'business.business-appointments.export-csv'");
 
     expect(file_get_contents(base_path('app/Filament/Business/Resources/Renovations/Tables/RenovationsTable.php')))
         ->toContain("'business.renovations.export-csv'");

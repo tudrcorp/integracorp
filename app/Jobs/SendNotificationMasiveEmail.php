@@ -2,76 +2,48 @@
 
 namespace App\Jobs;
 
-use Throwable;
-use App\Models\User;
-use Filament\Actions\Action;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Queue\SerializesModels;
-use Barryvdh\Debugbar\Facades\Debugbar;
-use Filament\Notifications\Notification;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Foundation\Queue\Queueable;
-use App\Mail\SendMailPropuestaPlanEspecial;
+use App\Models\MassNotification;
 use App\Services\NotificationMasiveService;
+use App\Support\MassNotificationRecipientDelivery;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class SendNotificationMasiveEmail implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $record;
-    protected $email;
+    public int $tries = 5;
 
-    /**
-     * Número máximo de intentos.
-     *
-     * @var int
-     */
-    public $tries = 5;
+    public int $backoff = 3;
 
-    /**
-     * Tiempo en segundos para esperar antes de reintentar (opcional).
-     *
-     * @var int
-     */
-    public $backoff = 3; // Espera 3 segundos entre intentos
+    public function __construct(
+        protected string $email,
+        protected MassNotification $massNotification,
+        protected int $dataNotificationId,
+    ) {}
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct($record, $email)
-    {
-        $this->record = $record;
-        $this->email = $email;
-    }
-
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
-        $this->sendNotifications();
+        NotificationMasiveService::sendEmail($this->email, $this->massNotification);
+        MassNotificationRecipientDelivery::markEmailSent($this->dataNotificationId);
     }
 
-    private function sendNotifications()
-    {
-        $masiveNotification = new NotificationMasiveService();
-        $masiveNotification->sendEmail($this->record, $this->email);
-    }
-
-    /**
-     * Handle a job failure.
-     * Trabajo Fallido
-     */
     public function failed(?Throwable $exception): void
     {
-        Log::info("SendNotificationMasiveEmail: FAILED", [
+        MassNotificationRecipientDelivery::markEmailFailed(
+            $this->dataNotificationId,
+            $exception?->getMessage() ?? 'Error desconocido en el job de correo',
+        );
+
+        Log::info('SendNotificationMasiveEmail: FAILED', [
+            'data_notification_id' => $this->dataNotificationId,
+            'email' => $this->email,
             'exception' => $exception,
         ]);
-
     }
 }

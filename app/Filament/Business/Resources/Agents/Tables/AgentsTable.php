@@ -3,8 +3,8 @@
 namespace App\Filament\Business\Resources\Agents\Tables;
 
 use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
-use App\Filament\Exports\AgentExporter;
 use App\Http\Controllers\AgencyController;
+use App\Http\Controllers\AgentExportCsvController;
 use App\Http\Controllers\NotificationController;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
@@ -25,7 +25,6 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -1061,7 +1060,26 @@ class AgentsTable
                             }
                         })
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
-                    ExportBulkAction::make()->exporter(AgentExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
+                    BulkAction::make('exportCsvController')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos un agente')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = AgentExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('business.agents.export-csv', ['token' => $token]);
+                        }),
                 ]),
             ])
             ->striped();

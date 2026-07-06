@@ -157,93 +157,14 @@
 
         <div
             style="position: absolute; top: 620px; right: 10px; margin-top: 20px; padding: 20px; margin-right: 20px; width: 700px;">
-            <table style="width: 100%; font-type: Helvetica, sans-serif;">
-                <tr style="background-color: #082f62; font-size: 10px;">
-
-                    <th style="font-weight: bold; color: white;">RANGO DE EDAD</th>
-                    <th style="font-weight: bold; color: white;">POBLACIÓN</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 1K</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 2K</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 3K</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 5K</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 10K</th>
-
-                </tr>
-                @foreach ($data as $key => $value)
-                    <tr>
-                        <td style="font-weight: bold; font-size: 10px;">{{ $key }} años</td>
-                        <td style="font-weight: bold; font-size: 10px;">
-                            {{ $value[0]->total_persons > 1 ? $value[0]->total_persons . ' Persona(s)' : '' }}</td>
-
-                        @foreach ($value as $value2)
-                            <td style="font-weight: bold; font-size: 10px;">{{ round($value2->subtotal_anual) }} US$
-                            </td>
-                        @endforeach
-                    </tr>
-                @endforeach
-            </table>
-            @php
-                // Inicializar array para almacenar los totales por columna
-                $totalColumns = [0, 0, 0, 0, 0]; // Para US$1K a US$10K (5 columnas)
-
-                // Recorrer los datos para sumar por columna
-                foreach ($data as $key => $value) {
-                    if ($value[0]->total_persons == 1) {
-                        foreach ($value[0] as $index => $item) {
-                            if (isset($totalColumns[$index])) {
-                                $totalColumns[$index] = round($item[0]->subtotal_anual);
-                            }
-                        }
-                    }
-                    if ($value[0]->total_persons > 1) {
-                        foreach ($value as $index => $item) {
-                            if (isset($totalColumns[$index])) {
-                                $totalColumns[$index] += round($item->subtotal_anual);
-                            }
-                        }
-                    }
-                }
-
-            @endphp
-            <table style="width: 100%; border-collapse: collapse; font-type: Helvetica, sans-serif;">
-                <tbody>
-                    <tr>
-                        <td colspan="3"
-                            style="font-weight: bold; color: white; font-size: 10px; width: 88px; background-color: #082f62">
-                            TARIFA GRUPAL ANUAL</td>
-
-                        @foreach ($totalColumns as $total)
-                            <td style="text-align: center; font-weight: bold; font-size: 10px;">
-                                {{ round($total, 2) }} US$
-                            </td>
-                        @endforeach
-                    </tr>
-                    <tr>
-                        <td colspan="3"
-                            style="font-weight: bold; color: white; font-size: 10px; width: 88px; background-color: #082f62">
-                            TARIFA GRUPAL SEMESTRAL</td>
-
-
-                        @foreach ($totalColumns as $total)
-                            <td style="text-align: center; font-weight: bold; font-size: 10px;">
-                                {{ round($total / 2) }} US$
-                            </td>
-                        @endforeach
-                    </tr>
-                    <tr>
-                        <td colspan="3"
-                            style="font-weight: bold; color: white; font-size: 10px; width: 88px; background-color: #082f62">
-                            TARIFA GRUPAL TRIMESTRAL</td>
-
-
-                        @foreach ($totalColumns as $total)
-                            <td style="text-align: center; font-weight: bold; font-size: 10px;">
-                                {{ round($total / 4) }} US$
-                            </td>
-                        @endforeach
-                    </tr>
-                </tbody>
-            </table>
+            @include('livewire.partials.quote-pdf-coverage-table', [
+                'coverageColumns' => $coverageColumns,
+                'tableRows' => $tableRows,
+                'totals' => $totals,
+                'headerBackground' => '#082f62',
+                'labelColspan' => 3,
+                'populationOnlyIfMultiple' => true,
+            ])
         </div>
 
 

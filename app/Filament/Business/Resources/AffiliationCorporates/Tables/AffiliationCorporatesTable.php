@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\Tables;
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Exports\AffiliationCorporateExporter;
 use App\Http\Controllers\AffiliationCorporateController;
+use App\Http\Controllers\AffiliationCorporatePopulationExportCsvController;
 use App\Mail\UploadPayment;
 use App\Models\AffiliationCorporate;
 use App\Models\User;
@@ -13,6 +14,7 @@ use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportBulkAction;
@@ -38,6 +40,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -1197,6 +1200,26 @@ class AffiliationCorporatesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     ExportBulkAction::make()->exporter(AffiliationCorporateExporter::class)->label('Exportar XLS')->color('info')->deselectRecordsAfterCompletion(),
+                    BulkAction::make('exportPopulationCsv')
+                        ->label('Exportar CSV con población')
+                        ->icon('heroicon-o-users')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una afiliación')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = AffiliationCorporatePopulationExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('business.affiliation-corporates.export-population-csv', ['token' => $token]);
+                        }),
                     DeleteBulkAction::make(),
                 ]),
             ])

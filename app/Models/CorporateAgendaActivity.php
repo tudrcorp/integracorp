@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\CorporateAgendaActivityType;
+use App\Enums\CorporateAgendaDepartment;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,7 @@ class CorporateAgendaActivity extends Model
         'start_time',
         'end_time',
         'activity_type',
+        'department',
         'has_google_meet',
         'google_meet_url',
         'description',
@@ -28,6 +30,7 @@ class CorporateAgendaActivity extends Model
             'start_time' => 'string',
             'end_time' => 'string',
             'activity_type' => CorporateAgendaActivityType::class,
+            'department' => CorporateAgendaDepartment::class,
             'has_google_meet' => 'boolean',
         ];
     }

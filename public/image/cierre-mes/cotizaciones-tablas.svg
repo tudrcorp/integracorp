@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none">
+  <rect width="400" height="320" rx="24" fill="#0ea5e918"/>
+  <rect x="60" y="180" width="40" height="80" rx="6" fill="#0ea5e9"/>
+  <rect x="115" y="140" width="40" height="120" rx="6" fill="#0064a1"/>
+  <rect x="170" y="100" width="40" height="160" rx="6" fill="#0ea5e9"/>
+  <rect x="225" y="120" width="40" height="140" rx="6" fill="#10b981"/>
+  <rect x="280" y="80" width="40" height="180" rx="6" fill="#0064a1"/>
+  <path d="M60 270 Q200 200 340 230" stroke="#0ea5e9" stroke-width="2" fill="none" opacity="0.6"/>
+  <circle cx="340" cy="230" r="6" fill="#0ea5e9"/>
+  <rect x="80" y="40" width="240" height="36" rx="8" fill="#ffffff10" stroke="#ffffff20"/>
+  <text x="200" y="63" text-anchor="middle" fill="#0ea5e9" font-family="system-ui" font-size="13">Resumen de cotizaciones</text>
+</svg>

@@ -6,6 +6,9 @@ use App\Filament\Administration\Resources\Helpdesks\Widgets\HelpdeskStatusWeekly
 use App\Filament\Administration\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk as AdministrationStatsOverviewHelpdesk;
 use App\Filament\Business\Resources\Agencies\Widgets\ControlActividadInteraccion as AgenciesControlActividadInteraccion;
 use App\Filament\Business\Resources\Agents\Widgets\ControlActividadInteraccion;
+use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\CorporateQuoteRequestChannelChart;
+use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\CorporateQuoteRequestCreatorsChart;
+use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\StatsOverviewTotalCorporateQuoteRequest;
 use App\Filament\Business\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart;
 use App\Filament\Business\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\ProspectAgentTasksByUserChart;
@@ -25,6 +28,8 @@ use App\Observers\ObservationCommercialStructureObserver;
 use Filament\Support\Colors\Color;
 use Filament\Support\Facades\FilamentColor;
 use Filament\Support\Facades\FilamentTimezone;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
@@ -48,6 +53,9 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('app.filament.business.resources.agents.widgets.control-actividad-interaccion', ControlActividadInteraccion::class);
         Livewire::component('app.filament.business.resources.agencies.widgets.control-actividad-interaccion', AgenciesControlActividadInteraccion::class);
         Livewire::component('app.filament.business.resources.prospect-agents.widgets.prospect-agent-tasks-by-user-chart', ProspectAgentTasksByUserChart::class);
+        Livewire::component('app.filament.business.resources.corporate-quote-requests.widgets.stats-overview-total-corporate-quote-request', StatsOverviewTotalCorporateQuoteRequest::class);
+        Livewire::component('app.filament.business.resources.corporate-quote-requests.widgets.corporate-quote-request-creators-chart', CorporateQuoteRequestCreatorsChart::class);
+        Livewire::component('app.filament.business.resources.corporate-quote-requests.widgets.corporate-quote-request-channel-chart', CorporateQuoteRequestChannelChart::class);
 
         Livewire::component('app.filament.business.resources.helpdesks.widgets.helpdesk-status-weekly-chart', HelpdeskStatusWeeklyChart::class);
         Livewire::component('app.filament.business.resources.helpdesks.widgets.stats-overview-helpdesk', StatsOverviewHelpdesk::class);
@@ -66,6 +74,11 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.supplier-acceptance-letters-chart', SupplierAcceptanceLettersChart::class);
 
         FilamentTimezone::set('America/Caracas');
+
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::BODY_END,
+            fn (): \Illuminate\Contracts\View\View => view('filament.hooks.session-expired-modal'),
+        );
 
         ObservationCommercialStructure::observe(ObservationCommercialStructureObserver::class);
 

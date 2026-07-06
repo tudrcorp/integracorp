@@ -3,7 +3,7 @@
 namespace App\Filament\Business\Resources\Agencies\Tables;
 
 use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
-use App\Filament\Exports\AgencyExporter;
+use App\Http\Controllers\AgencyExportCsvController;
 use App\Http\Controllers\NotificationController;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
@@ -24,7 +24,6 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -809,7 +808,26 @@ class AgenciesTable
                             }
                         })
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
-                    ExportBulkAction::make()->exporter(AgencyExporter::class)->label('Exportar XLS')->color('warning')->deselectRecordsAfterCompletion(),
+                    BulkAction::make('exportCsvController')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una agencia')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = AgencyExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('business.agencies.export-csv', ['token' => $token]);
+                        }),
                 ]),
             ])
             ->striped();

@@ -4,10 +4,7 @@ namespace App\Filament\Marketing\Resources\MassNotifications\Pages;
 
 use App\Filament\Marketing\Resources\MassNotifications\MassNotificationResource;
 use App\Http\Controllers\NotificationController;
-use App\Jobs\SendNotificationMasive;
-use App\Jobs\SendNotificationMasiveEmail;
-use App\Models\DataNotification;
-use App\Models\User;
+use App\Support\MassNotificationDispatchService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
@@ -60,7 +57,7 @@ class ViewMassNotification extends ViewRecord
                         ->required(),
                     TextInput::make('name')
                         ->label('Nombre y Apellido')
-                        ->helperText('Opcional! solo si es personalizada')
+                        ->helperText('Opcional! solo si es personalizada'),
                 ])
                 ->action(function ($record, $data) {
 
@@ -92,23 +89,24 @@ class ViewMassNotification extends ViewRecord
                         ->required(),
                     TextInput::make('name')
                         ->label('Nombre y Apellido')
-                        ->helperText('Opcional! solo si es personalizada')
+                        ->helperText('Opcional! solo si es personalizada'),
                 ])
                 ->action(function ($record, $data) {
-
                     try {
+                        $success = NotificationController::sendNotificationEmailSingle($record, $data);
 
-                        NotificationController::sendNotificationEmailSingle($record, $data);
+                        $this->record->refresh();
 
                         Notification::make()
-                            ->body('La notificación fue enviada exitosamente.')
-                            ->success()
+                            ->body($success
+                                ? 'La notificación de prueba fue enviada exitosamente.'
+                                : 'No se pudo enviar la prueba. Revisa los logs del sistema.')
+                            ->{$success ? 'success' : 'danger'}()
                             ->send();
                     } catch (\Throwable $th) {
                         Log::error($th);
                     }
                 }),
-
 
             Action::make('send_notification')
                 ->label('Envío Masivo')
@@ -120,36 +118,20 @@ class ViewMassNotification extends ViewRecord
                     return $record->status == 'POR-APROBAR';
                 })
                 ->action(function ($record) {
-
                     try {
-                        $recordID = $record->id;
-                        $array_channels = $record->channels;
-
-                        $infoNotificacionArray = $record->toArray();
-
-                        for ($i = 0; $i < count($array_channels); $i++) {
-                            if ($array_channels[$i] == 'whatsapp') {
-                                $dataNotificationArray = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
-                                for ($j = 0; $j < count($dataNotificationArray); $j++) {
-                                    SendNotificationMasive::dispatch($dataNotificationArray[$j], $infoNotificacionArray)->onQueue('system');
-                                }
-                            }
-                            if ($array_channels[$i] == 'email') {
-
-                                $array = DataNotification::where('mass_notification_id', $record->id)->get()->toArray();
-                                for ($j = 0; $j < count($array); $j++) {
-                                    SendNotificationMasiveEmail::dispatch($array[$j]['email'], $record)->onQueue('system');
-                                }
-                            }
-                        }
+                        $result = MassNotificationDispatchService::dispatch($record);
 
                         Notification::make()
-                            ->body('La notificación fue enviada exitosamente. Integracorp le notificara cuando el proceso finalice.')
-                            ->success()
+                            ->body($result->message)
+                            ->{$result->success ? 'success' : 'warning'}()
                             ->send();
-                            
                     } catch (\Throwable $th) {
                         Log::error($th);
+
+                        Notification::make()
+                            ->body('No se pudo encolar el envío masivo. Revisa los logs del sistema.')
+                            ->danger()
+                            ->send();
                     }
                 }),
         ];

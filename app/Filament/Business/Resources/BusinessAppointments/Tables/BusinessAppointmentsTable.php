@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\BusinessAppointments\Tables;
 
 use App\Filament\Business\Resources\BusinessAppointments\BusinessAppointmentLabels;
+use App\Http\Controllers\BusinessAppointmentExportCsvController;
 use App\Models\BusinessAppointments;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -151,6 +153,26 @@ class BusinessAppointmentsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('exportCsvController')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una cita')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = BusinessAppointmentExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('business.business-appointments.export-csv', ['token' => $token]);
+                        }),
                     DeleteBulkAction::make()
                         ->requiresConfirmation()
                         ->label('Eliminar seleccionadas')

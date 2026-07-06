@@ -22,7 +22,16 @@ it('registra la agenda corporativa en el panel business con UI compatible light 
         ->toContain('public function previousMonth(): void')
         ->toContain('public function nextMonth(): void')
         ->toContain('public function goToday(): void')
-        ->toContain('corporateCalendarHeading(): string');
+        ->toContain('corporateCalendarHeading(): string')
+        ->toContain('shouldShowCorporateAgendaFilters(): bool')
+        ->toContain('corporateAgendaFilterDepartment')
+        ->toContain('getDepartmentOptionsProperty')
+        ->toContain('CorporateAgendaDepartment')
+        ->toContain('clearCorporateAgendaFilters')
+        ->toContain('calendarVisibleActivitiesBetween')
+        ->toContain('getNavigationBadge')
+        ->toContain('has_pending_invitation')
+        ->toContain('fi-agenda-corporativa-nav-item--has-pending-badge');
 
     expect($viewContents)->toContain('corporate-calendar-shell');
 
@@ -30,6 +39,8 @@ it('registra la agenda corporativa en el panel business con UI compatible light 
         ->toContain('wire:click="previousMonth"')
         ->toContain('wire:click="goToday"')
         ->toContain('wire:click="nextMonth"')
+        ->toContain('corporate-agenda-header-filters')
+        ->toContain('shouldShowCorporateAgendaFilters')
         ->toContain("\$day['is_past_date']")
         ->toContain('dark:border-white/10')
         ->toContain('dark:bg-slate-900/70');

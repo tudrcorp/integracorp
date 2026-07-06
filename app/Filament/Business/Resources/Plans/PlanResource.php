@@ -2,21 +2,19 @@
 
 namespace App\Filament\Business\Resources\Plans;
 
-use UnitEnum;
-use BackedEnum;
-use App\Models\Plan;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use App\Filament\Business\Resources\Plans\Pages\EditPlan;
-use App\Filament\Business\Resources\Plans\Pages\ViewPlan;
-use App\Filament\Business\Resources\Plans\Pages\ListPlans;
 use App\Filament\Business\Resources\Plans\Pages\CreatePlan;
+use App\Filament\Business\Resources\Plans\Pages\EditPlan;
+use App\Filament\Business\Resources\Plans\Pages\ListPlans;
+use App\Filament\Business\Resources\Plans\Pages\ViewPlan;
 use App\Filament\Business\Resources\Plans\Schemas\PlanForm;
-use App\Filament\Business\Resources\Plans\Tables\PlansTable;
 use App\Filament\Business\Resources\Plans\Schemas\PlanInfolist;
+use App\Filament\Business\Resources\Plans\Tables\PlansTable;
+use App\Models\Plan;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
+use UnitEnum;
 
 class PlanResource extends Resource
 {
@@ -26,7 +24,7 @@ class PlanResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-swatch';
 
-    protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACIÓN';
 
     public static function form(Schema $schema): Schema
     {
@@ -62,10 +60,11 @@ class PlanResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
-        if (in_array('SUPERADMIN', auth()->user()->departament)) {
-            return true;
-        }
-        return false;
+        return static::canAccess();
+    }
+
+    public static function canAccess(): bool
+    {
+        return in_array('SUPERADMIN', auth()->user()->departament ?? [], true);
     }
 }

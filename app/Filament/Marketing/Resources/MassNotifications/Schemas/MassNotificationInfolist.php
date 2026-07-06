@@ -39,6 +39,12 @@ class MassNotificationInfolist
                                     ->label('Encabezado de la Notificación(Opcional):')
                                     ->badge()
                                     ->color('success'),
+                                TextEntry::make('email_subject')
+                                    ->label('Asunto del correo:')
+                                    ->badge()
+                                    ->color('success')
+                                    ->placeholder('---')
+                                    ->visible(fn (MassNotification $record): bool => in_array('email', (array) $record->channels, true)),
 
                                 TextEntry::make('channels')
                                     ->label('Canales de Envío:')
@@ -48,7 +54,81 @@ class MassNotificationInfolist
                                     ->label('Fecha de Envío Programado:')
                                     ->default(fn (MassNotification $record) => $record->date_programed?->format('d/m/Y H:i') ?? '---')
                                     ->badge()
-                                    ->color('success'),
+                                    ->color('success')
+                                    ->helperText(fn (MassNotification $record): ?string => $record->isScheduledForFuture() && ! $record->is_sent
+                                        ? 'El envío se ejecutará automáticamente en esta fecha (requiere schedule activo).'
+                                        : ($record->is_sent ? 'Esta notificación ya fue encolada para envío.' : null)),
+                                TextEntry::make('is_sent')
+                                    ->label('Encolada para envío:')
+                                    ->formatStateUsing(fn (bool $state): string => $state ? 'Sí' : 'No')
+                                    ->badge()
+                                    ->color(fn (bool $state): string => $state ? 'success' : 'gray'),
+                                Fieldset::make('Métricas de envío (correo)')
+                                    ->schema([
+                                        TextEntry::make('email_metrics_sent')
+                                            ->label('Enviados')
+                                            ->state(fn (MassNotification $record): int => $record->deliveryStats()['email']['sent'])
+                                            ->badge()
+                                            ->color('success'),
+                                        TextEntry::make('email_metrics_failed')
+                                            ->label('Fallidos')
+                                            ->state(fn (MassNotification $record): int => $record->deliveryStats()['email']['failed'])
+                                            ->badge()
+                                            ->color('danger'),
+                                        TextEntry::make('email_metrics_pending')
+                                            ->label('Pendientes')
+                                            ->state(fn (MassNotification $record): int => $record->deliveryStats()['email']['pending'])
+                                            ->badge()
+                                            ->color('warning'),
+                                        TextEntry::make('email_metrics_skipped')
+                                            ->label('Omitidos')
+                                            ->state(fn (MassNotification $record): int => $record->deliveryStats()['email']['skipped'])
+                                            ->badge()
+                                            ->color('gray'),
+                                        TextEntry::make('test_email_success_count')
+                                            ->label('Pruebas enviadas')
+                                            ->badge()
+                                            ->color('info'),
+                                        TextEntry::make('test_email_failed_count')
+                                            ->label('Pruebas fallidas')
+                                            ->badge()
+                                            ->color('danger'),
+                                        TextEntry::make('last_test_email_to')
+                                            ->label('Última prueba a')
+                                            ->placeholder('—')
+                                            ->columnSpan(2),
+                                        TextEntry::make('last_test_email_at')
+                                            ->label('Fecha última prueba')
+                                            ->dateTime('d/m/Y H:i')
+                                            ->placeholder('—'),
+                                    ])
+                                    ->columns(4)
+                                    ->visible(fn (MassNotification $record): bool => in_array('email', (array) $record->channels, true)),
+                                Fieldset::make('Métricas de envío (WhatsApp)')
+                                    ->schema([
+                                        TextEntry::make('whatsapp_metrics_sent')
+                                            ->label('Enviados')
+                                            ->state(fn (MassNotification $record): int => $record->deliveryStats()['whatsapp']['sent'])
+                                            ->badge()
+                                            ->color('success'),
+                                        TextEntry::make('whatsapp_metrics_failed')
+                                            ->label('Fallidos')
+                                            ->state(fn (MassNotification $record): int => $record->deliveryStats()['whatsapp']['failed'])
+                                            ->badge()
+                                            ->color('danger'),
+                                        TextEntry::make('whatsapp_metrics_pending')
+                                            ->label('Pendientes')
+                                            ->state(fn (MassNotification $record): int => $record->deliveryStats()['whatsapp']['pending'])
+                                            ->badge()
+                                            ->color('warning'),
+                                        TextEntry::make('whatsapp_metrics_skipped')
+                                            ->label('Omitidos')
+                                            ->state(fn (MassNotification $record): int => $record->deliveryStats()['whatsapp']['skipped'])
+                                            ->badge()
+                                            ->color('gray'),
+                                    ])
+                                    ->columns(4)
+                                    ->visible(fn (MassNotification $record): bool => in_array('whatsapp', (array) $record->channels, true)),
                                 TextEntry::make('status')
                                     ->label('Estatus:')
                                     ->color('success')

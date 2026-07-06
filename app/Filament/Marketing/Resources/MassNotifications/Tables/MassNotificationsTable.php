@@ -4,10 +4,9 @@ namespace App\Filament\Marketing\Resources\MassNotifications\Tables;
 
 use App\Filament\Marketing\Resources\MassNotifications\Schemas\MassNotificationFolderForm;
 use App\Http\Controllers\NotificationController;
-use App\Jobs\SendNotificationMasive;
-use App\Jobs\SendNotificationMasiveEmail;
 use App\Models\DataNotification;
 use App\Models\MassNotificationFolder;
+use App\Support\MassNotificationDispatchService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -137,16 +136,15 @@ class MassNotificationsTable
                                 ->helperText('Opcional! solo si es personalizada'),
                         ])
                         ->action(function ($record, $data) {
-
                             try {
-
-                                NotificationController::sendNotificationEmailSingle($record, $data);
+                                $success = NotificationController::sendNotificationEmailSingle($record, $data);
 
                                 Notification::make()
-                                    ->body('La notificación fue enviada exitosamente.')
-                                    ->success()
+                                    ->body($success
+                                        ? 'La notificación de prueba fue enviada exitosamente.'
+                                        : 'No se pudo enviar la prueba. Revisa los logs del sistema.')
+                                    ->{$success ? 'success' : 'danger'}()
                                     ->send();
-
                             } catch (\Throwable $th) {
                                 Log::error($th);
                             }
@@ -162,44 +160,13 @@ class MassNotificationsTable
                             return $record->status == 'POR-APROBAR';
                         })
                         ->action(function ($record) {
-
                             try {
-                                $infoNotificationArray = $record->toArray();
-
-                                $recipients = DataNotification::query()
-                                    ->where('mass_notification_id', $record->id)
-                                    ->get();
-
-                                if ($recipients->isEmpty()) {
-                                    Notification::make()
-                                        ->body('No hay destinatarios asociados a esta notificación. Primero asocia data (Agencias / Agentes / etc.).')
-                                        ->warning()
-                                        ->send();
-
-                                    return;
-                                }
-
-                                $channels = $record->channels ?? [];
-
-                                foreach ($recipients as $recipient) {
-                                    $dataNotificationArray = $recipient->toArray();
-
-                                    foreach ($channels as $channel) {
-                                        if ($channel === 'whatsapp') {
-                                            SendNotificationMasive::dispatch($dataNotificationArray, $infoNotificationArray)->onQueue('system');
-                                        }
-
-                                        if ($channel === 'email' && filled($recipient->email)) {
-                                            SendNotificationMasiveEmail::dispatch($recipient->email, $record)->onQueue('system');
-                                        }
-                                    }
-                                }
+                                $result = MassNotificationDispatchService::dispatch($record);
 
                                 Notification::make()
-                                    ->body('Envío encolado exitosamente. Integracorp te notificará cuando el proceso finalice.')
-                                    ->success()
+                                    ->body($result->message)
+                                    ->{$result->success ? 'success' : 'warning'}()
                                     ->send();
-
                             } catch (\Throwable $th) {
                                 Log::error($th);
 

@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\CorporateQuotes\Tables;
 
 use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
 use App\Http\Controllers\CorporateQuoteExportCsvController;
+use App\Http\Controllers\CorporateQuotePopulationExportCsvController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
@@ -12,6 +13,7 @@ use App\Jobs\SendNotificacionUploadDataCorporate;
 use App\Mail\MailLinkIndividualQuote;
 use App\Models\CorporateQuote;
 use App\Models\User;
+use App\Support\CorporateQuotePdfGenerator;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -417,7 +419,9 @@ class CorporateQuotesTable
 
                             try {
 
-                                if (! file_exists(public_path('storage/quotes/'.$record->code.'.pdf'))) {
+                                $path = public_path('storage/quotes/'.$record->code.'.pdf');
+
+                                if (! file_exists($path) && ! CorporateQuotePdfGenerator::regenerateIfMissing($record)) {
                                     SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_PDF_DOWNLOAD_FAILED', 'business.corporate-quotes.download', [
                                         'panel' => 'business',
                                         'corporate_quote_id' => $record->id,
@@ -427,7 +431,7 @@ class CorporateQuotesTable
 
                                     Notification::make()
                                         ->title('NOTIFICACIÓN')
-                                        ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
+                                        ->body('El documento asociado a la cotización no se encuentra disponible. Verifique que la cotización tenga detalles y tarifas configuradas.')
                                         ->icon('heroicon-s-x-circle')
                                         ->iconColor('warning')
                                         ->warning()
@@ -435,20 +439,10 @@ class CorporateQuotesTable
 
                                     return;
                                 }
-                                /**
-                                 * Descargar el documento asociado a la cotizacion
-                                 * ruta: storage/
-                                 */
-                                $path = public_path('storage/quotes/'.$record->code.'.pdf');
 
-                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_PDF_DOWNLOADED', 'business.corporate-quotes.download', [
-                                    'panel' => 'business',
-                                    'corporate_quote_id' => $record->id,
-                                    'code' => $record->code,
-                                    'path' => $path,
+                                return redirect()->route('business.corporate-quotes.pdf.download', [
+                                    'corporateQuote' => $record->id,
                                 ]);
-
-                                return response()->download($path);
                             } catch (\Throwable $th) {
                                 SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_PDF_DOWNLOAD_FAILED', 'business.corporate-quotes.download', [
                                     'panel' => 'business',
@@ -805,6 +799,26 @@ class CorporateQuotesTable
                             $token = CorporateQuoteExportCsvController::storeIdsAndGetToken($ids);
 
                             return redirect()->route('business.corporate-quotes.export-csv', ['token' => $token]);
+                        }),
+                    BulkAction::make('exportPopulationCsv')
+                        ->label('Exportar CSV con población')
+                        ->icon('heroicon-o-users')
+                        ->color('info')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una cotización')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = CorporateQuotePopulationExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('business.corporate-quotes.export-population-csv', ['token' => $token]);
                         }),
                     DeleteBulkAction::make(),
                 ]),

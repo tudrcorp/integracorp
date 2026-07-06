@@ -23,6 +23,8 @@ class HelpDesk extends Model
         'created_by',
         'updated_by',
         'observation',
+        'latest_note_at',
+        'latest_note_by',
         'cc_colaboradores',
         'ticket_type',
         'team',
@@ -34,6 +36,7 @@ class HelpDesk extends Model
         return [
             'cc_colaboradores' => 'array',
             'team_members' => HelpdeskTeamMembersCast::class,
+            'latest_note_at' => 'datetime',
         ];
     }
 

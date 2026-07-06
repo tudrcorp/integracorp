@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Business\Pages;
 
 use App\Enums\CorporateAgendaActivityType;
+use App\Enums\CorporateAgendaDepartment;
 use App\Enums\CorporateAgendaInvitationStatus;
 use App\Enums\CorporateAgendaSocialPlatform;
 use App\Models\CorporateAgendaActivity;
@@ -12,8 +13,10 @@ use App\Models\CorporateAgendaActivityParticipant;
 use App\Models\CorporateAgendaSocialPublication;
 use App\Models\RrhhColaborador;
 use App\Services\CorporateAgendaInvitationWhatsAppService;
+use App\Support\CorporateAgendaPendingInvitationCounter;
 use BackedEnum;
 use Carbon\Carbon;
+use Filament\Navigation\NavigationItem;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -28,6 +31,8 @@ use Illuminate\Validation\ValidationException;
 use Livewire\WithFileUploads;
 use UnitEnum;
 
+use function Filament\Support\original_request;
+
 class AgendaCorporativa extends Page
 {
     use WithFileUploads;
@@ -39,6 +44,44 @@ class AgendaCorporativa extends Page
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;
 
     protected static ?int $navigationSort = 2;
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = CorporateAgendaPendingInvitationCounter::pendingInvitationCountForAuthenticatedUser();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'verdeApple';
+    }
+
+    /**
+     * @return array<NavigationItem>
+     */
+    public static function getNavigationItems(): array
+    {
+        $hasPendingBadge = static::getNavigationBadge() !== null;
+
+        return [
+            NavigationItem::make(static::getNavigationLabel())
+                ->group(static::getNavigationGroup())
+                ->parentItem(static::getNavigationParentItem())
+                ->icon(static::getNavigationIcon())
+                ->activeIcon(static::getActiveNavigationIcon())
+                ->isActiveWhen(fn (): bool => original_request()->routeIs(static::getNavigationItemActiveRoutePattern()))
+                ->sort(static::getNavigationSort())
+                ->badge(static::getNavigationBadge(), color: static::getNavigationBadgeColor())
+                ->badgeTooltip(static::getNavigationBadgeTooltip())
+                ->url(static::getNavigationUrl())
+                ->extraAttributes([
+                    'class' => $hasPendingBadge
+                        ? 'fi-agenda-corporativa-nav-item fi-agenda-corporativa-nav-item--has-pending-badge'
+                        : 'fi-agenda-corporativa-nav-item',
+                ]),
+        ];
+    }
 
     protected string $view = 'filament.business.pages.agenda-corporativa';
 
@@ -89,6 +132,7 @@ class AgendaCorporativa extends Page
      *     start_time:string|null,
      *     end_time:string|null,
      *     activity_type:string|null,
+     *     department:string|null,
      *     has_google_meet:bool,
      *     google_meet_url:string|null,
      *     participant_ids:array<int>,
@@ -99,6 +143,7 @@ class AgendaCorporativa extends Page
         'start_time' => '08:00',
         'end_time' => '09:00',
         'activity_type' => null,
+        'department' => null,
         'has_google_meet' => false,
         'google_meet_url' => null,
         'participant_ids' => [],
@@ -110,6 +155,8 @@ class AgendaCorporativa extends Page
     public string $collaboratorSearch = '';
 
     public string $invitationRejectionNote = '';
+
+    public string $corporateAgendaFilterDepartment = '';
 
     /** @var array<int>|null */
     protected ?array $currentCollaboratorIdsCache = null;
@@ -129,6 +176,21 @@ class AgendaCorporativa extends Page
     public function corporateCalendarHeading(): string
     {
         return 'Agenda Corporativa';
+    }
+
+    public function shouldShowCorporateAgendaFilters(): bool
+    {
+        return true;
+    }
+
+    public function getHasActiveCorporateAgendaFiltersProperty(): bool
+    {
+        return $this->corporateAgendaFilterDepartment !== '';
+    }
+
+    public function clearCorporateAgendaFilters(): void
+    {
+        $this->corporateAgendaFilterDepartment = '';
     }
 
     public function calendarDayInteractionsEnabled(): bool
@@ -196,15 +258,16 @@ class AgendaCorporativa extends Page
         $start = $cursor->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY);
         $end = $cursor->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
         $monthCacheKey = sprintf(
-            'agenda-corporativa:calendar-days:%s:%s:%s:%s',
+            'agenda-corporativa:calendar-days:%s:%s:%s:%s:%s',
             Auth::id() ?? 'guest',
             md5(json_encode($this->currentCollaboratorIds())),
             $start->toDateString(),
             $end->toDateString(),
+            $this->corporateAgendaFilterDepartment,
         );
 
         $payload = Cache::remember($monthCacheKey, now()->addSeconds(45), function () use ($start, $end): array {
-            $monthActivities = $this->visibleActivitiesBetween($start, $end)
+            $monthActivities = $this->calendarVisibleActivitiesBetween($start, $end)
                 ->with([
                     'participants:id,activity_id,rrhh_colaborador_id,invitation_status',
                     'participants.colaborador:id,fullName,emailCorporativo,emailPersonal,avatar,user_id',
@@ -229,6 +292,8 @@ class AgendaCorporativa extends Page
         /** @var Collection<string, Collection<int, CorporateAgendaSocialPublication>> $monthPublications */
         $monthPublications = $payload['publications'];
 
+        $pendingInvitationCountsByDate = CorporateAgendaPendingInvitationCounter::pendingInvitationCountsByDateForAuthenticatedUser($start, $end);
+
         $days = [];
         $day = $start->copy();
 
@@ -238,13 +303,21 @@ class AgendaCorporativa extends Page
             $isPastDate = $day->lt(now()->startOfDay());
             $activities = $monthActivities->get($day->toDateString(), collect());
             $publications = $monthPublications->get($day->toDateString(), collect());
+            $dateKey = $day->toDateString();
+            $pendingInvitationCount = (int) ($pendingInvitationCountsByDate[$dateKey] ?? 0);
+            $isFilteredOut = $isCurrentMonth
+                && $this->hasActiveCorporateAgendaFilters
+                && $activities->isEmpty();
 
             $days[] = [
-                'date' => $day->toDateString(),
+                'date' => $dateKey,
                 'day_number' => (int) $day->format('j'),
                 'is_current_month' => $isCurrentMonth,
                 'is_today' => $isToday,
                 'is_past_date' => $isPastDate,
+                'has_pending_invitation' => $pendingInvitationCount > 0,
+                'pending_invitation_count' => $pendingInvitationCount,
+                'is_filtered_out' => $isFilteredOut,
                 ...$this->buildDayVisuals($activities, $publications, $isCurrentMonth),
             ];
 
@@ -263,7 +336,7 @@ class AgendaCorporativa extends Page
         $startOfWeek = $baseDate->copy()->startOfWeek(Carbon::MONDAY);
         $endOfWeek = $baseDate->copy()->endOfWeek(Carbon::SUNDAY);
 
-        $activitiesByDate = $this->visibleActivitiesBetween($startOfWeek, $endOfWeek)
+        $activitiesByDate = $this->calendarVisibleActivitiesBetween($startOfWeek, $endOfWeek)
             ->with(['participants:id,activity_id,rrhh_colaborador_id'])
             ->orderBy('activity_date')
             ->orderBy('start_time')
@@ -275,18 +348,27 @@ class AgendaCorporativa extends Page
             ->get()
             ->groupBy(fn (CorporateAgendaSocialPublication $publication): string => $publication->publication_date->toDateString());
 
+        $pendingInvitationCountsByDate = CorporateAgendaPendingInvitationCounter::pendingInvitationCountsByDateForAuthenticatedUser($startOfWeek, $endOfWeek);
+
         $days = [];
         $cursor = $startOfWeek->copy();
         while ($cursor->lessThanOrEqualTo($endOfWeek)) {
             $dateKey = $cursor->toDateString();
             $publications = $publicationsByDate->get($dateKey, collect());
+            $pendingInvitationCount = (int) ($pendingInvitationCountsByDate[$dateKey] ?? 0);
+            $dayActivities = $activitiesByDate->get($dateKey, collect());
+            $isFilteredOut = $this->hasActiveCorporateAgendaFilters && $dayActivities->isEmpty();
+
             $days[] = [
                 'date' => $dateKey,
                 'day_label' => Str::upper($cursor->translatedFormat('D')),
                 'day_number' => (int) $cursor->format('j'),
                 'is_today' => $cursor->isToday(),
                 'is_selected' => $dateKey === $this->selectedWeekDate,
-                'activity_count' => $activitiesByDate->get($dateKey, collect())->count(),
+                'activity_count' => $dayActivities->count(),
+                'has_pending_invitation' => $pendingInvitationCount > 0,
+                'pending_invitation_count' => $pendingInvitationCount,
+                'is_filtered_out' => $isFilteredOut,
                 'social_platforms' => $this->resolveSocialPlatformsForPublications($publications),
                 'social_badges' => $this->resolveSocialBadgesForPublications($publications, includeMedia: false),
             ];
@@ -302,7 +384,7 @@ class AgendaCorporativa extends Page
      */
     public function getWeekSelectedDayActivitiesProperty(): Collection
     {
-        return $this->visibleActivitiesBetween(
+        return $this->calendarVisibleActivitiesBetween(
             Carbon::parse($this->selectedWeekDate)->startOfDay(),
             Carbon::parse($this->selectedWeekDate)->endOfDay(),
         )
@@ -526,9 +608,6 @@ class AgendaCorporativa extends Page
         } else {
             $this->selectedSocialPublicationId = null;
             $this->isCreatingSocialPublication = false;
-            if (! $this->isCreatingActivity && $this->selectedActivityId === null) {
-                $this->isCreatingActivity = true;
-            }
         }
     }
 
@@ -553,7 +632,7 @@ class AgendaCorporativa extends Page
         $this->selectedWeekDate = $this->selectedDate;
         $this->selectedActivityId = null;
         $this->selectedSocialPublicationId = null;
-        $this->isCreatingActivity = $workspace === 'activities';
+        $this->isCreatingActivity = false;
         $this->isCreatingSocialPublication = $workspace === 'marketing';
         $this->modalWorkspace = in_array($workspace, ['activities', 'marketing'], true) ? $workspace : 'activities';
         $this->newNote = '';
@@ -563,6 +642,7 @@ class AgendaCorporativa extends Page
             'start_time' => '08:00',
             'end_time' => '09:00',
             'activity_type' => null,
+            'department' => null,
             'has_google_meet' => false,
             'google_meet_url' => null,
             'participant_ids' => [],
@@ -602,6 +682,7 @@ class AgendaCorporativa extends Page
             'start_time' => '08:00',
             'end_time' => '09:00',
             'activity_type' => null,
+            'department' => null,
             'has_google_meet' => false,
             'google_meet_url' => null,
             'participant_ids' => [],
@@ -646,6 +727,7 @@ class AgendaCorporativa extends Page
             'activityForm.start_time' => ['required', 'date_format:H:i'],
             'activityForm.end_time' => ['required', 'date_format:H:i', 'after:activityForm.start_time'],
             'activityForm.activity_type' => ['required', Rule::in(array_keys(CorporateAgendaActivityType::options()))],
+            'activityForm.department' => ['required', Rule::in(CorporateAgendaDepartment::values())],
             'activityForm.has_google_meet' => ['required', 'boolean'],
             'activityForm.google_meet_url' => ['nullable', 'url', 'required_if:activityForm.has_google_meet,true'],
             'activityForm.participant_ids' => ['nullable', 'array'],
@@ -657,6 +739,7 @@ class AgendaCorporativa extends Page
         $startTime = (string) $validated['activityForm']['start_time'];
         $endTime = (string) $validated['activityForm']['end_time'];
         $type = (string) $validated['activityForm']['activity_type'];
+        $department = (string) $validated['activityForm']['department'];
         $hasMeet = (bool) $validated['activityForm']['has_google_meet'];
         $meetUrl = $hasMeet ? (string) ($validated['activityForm']['google_meet_url'] ?? '') : null;
         $participantIds = array_values(array_unique(array_map('intval', $validated['activityForm']['participant_ids'] ?? [])));
@@ -689,6 +772,7 @@ class AgendaCorporativa extends Page
                 'start_time' => $startTime,
                 'end_time' => $endTime,
                 'activity_type' => $type,
+                'department' => $department,
                 'has_google_meet' => $hasMeet,
                 'google_meet_url' => $meetUrl !== '' ? $meetUrl : null,
                 'description' => $description,
@@ -699,6 +783,7 @@ class AgendaCorporativa extends Page
                 'start_time' => $startTime,
                 'end_time' => $endTime,
                 'activity_type' => $type,
+                'department' => $department,
                 'has_google_meet' => $hasMeet,
                 'google_meet_url' => $meetUrl !== '' ? $meetUrl : null,
                 'description' => $description,
@@ -798,17 +883,7 @@ class AgendaCorporativa extends Page
         $activity->delete();
 
         $this->selectedActivityId = null;
-        $this->isCreatingActivity = true;
-        $this->activityForm = [
-            'activity_date' => $this->selectedDate,
-            'start_time' => '08:00',
-            'end_time' => '09:00',
-            'activity_type' => null,
-            'has_google_meet' => false,
-            'google_meet_url' => null,
-            'participant_ids' => [],
-            'description' => null,
-        ];
+        $this->isCreatingActivity = false;
         $this->newNote = '';
         $this->invitationRejectionNote = '';
 
@@ -863,6 +938,14 @@ class AgendaCorporativa extends Page
     public function rejectMeet(int $activityId): void
     {
         $this->respondToMeetInvitation($activityId, CorporateAgendaInvitationStatus::Rejected);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getDepartmentOptionsProperty(): array
+    {
+        return CorporateAgendaDepartment::options();
     }
 
     /**
@@ -999,6 +1082,7 @@ class AgendaCorporativa extends Page
                 'start_time',
                 'end_time',
                 'activity_type',
+                'department',
                 'has_google_meet',
                 'google_meet_url',
                 'description',
@@ -1153,6 +1237,7 @@ class AgendaCorporativa extends Page
             'start_time' => Str::of((string) $activity->start_time)->substr(0, 5)->toString(),
             'end_time' => Str::of((string) $activity->end_time)->substr(0, 5)->toString(),
             'activity_type' => $activity->activity_type?->value,
+            'department' => $activity->department?->value,
             'has_google_meet' => (bool) $activity->has_google_meet,
             'google_meet_url' => $activity->google_meet_url,
             'participant_ids' => $activity->participants->pluck('rrhh_colaborador_id')->map(fn (mixed $id): int => (int) $id)->values()->all(),
@@ -1210,6 +1295,17 @@ class AgendaCorporativa extends Page
                 });
             }
         });
+    }
+
+    private function calendarVisibleActivitiesBetween(Carbon $start, Carbon $end): Builder
+    {
+        $query = $this->visibleActivitiesBetween($start, $end);
+
+        if ($this->hasActiveCorporateAgendaFilters) {
+            $query->where('department', $this->corporateAgendaFilterDepartment);
+        }
+
+        return $query;
     }
 
     /**

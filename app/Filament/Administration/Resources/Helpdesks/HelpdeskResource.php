@@ -10,6 +10,7 @@ use App\Filament\Administration\Resources\Helpdesks\Schemas\HelpdeskForm;
 use App\Filament\Administration\Resources\Helpdesks\Schemas\HelpdeskInfolist;
 use App\Filament\Administration\Resources\Helpdesks\Tables\HelpdesksTable;
 use App\Filament\Concerns\AuthorizesHelpdeskTicketCreation;
+use App\Filament\Concerns\RegistersHelpdeskUnreadNoteNavigation;
 use App\Models\HelpDesk;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -22,6 +23,7 @@ use UnitEnum;
 class HelpdeskResource extends Resource
 {
     use AuthorizesHelpdeskTicketCreation;
+    use RegistersHelpdeskUnreadNoteNavigation;
 
     protected static ?string $model = HelpDesk::class;
 

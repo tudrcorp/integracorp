@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MassNotificationRecipientDelivery;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,6 +25,17 @@ class MassNotification extends Model
         'reason',
         'date_programed',
         'header_title',
+        'email_subject',
+        'test_email_success_count',
+        'test_email_failed_count',
+        'last_test_email_to',
+        'last_test_email_at',
+        'last_test_email_error',
+        'test_whatsapp_success_count',
+        'test_whatsapp_failed_count',
+        'last_test_whatsapp_to',
+        'last_test_whatsapp_at',
+        'last_test_whatsapp_error',
         'channels',
         'type',
     ];
@@ -31,6 +43,10 @@ class MassNotification extends Model
     protected $casts = [
         'channels' => 'array',
         'date_programed' => 'datetime',
+        'is_sent' => 'boolean',
+        'is_approved' => 'boolean',
+        'last_test_email_at' => 'datetime',
+        'last_test_whatsapp_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -63,5 +79,21 @@ class MassNotification extends Model
     public function dataNotifications(): HasMany
     {
         return $this->hasMany(DataNotification::class, 'mass_notification_id', 'id');
+    }
+
+    /**
+     * @return array{
+     *     email: array{sent: int, failed: int, pending: int, skipped: int},
+     *     whatsapp: array{sent: int, failed: int, pending: int, skipped: int}
+     * }
+     */
+    public function deliveryStats(): array
+    {
+        return MassNotificationRecipientDelivery::summarizeForNotification($this->id);
+    }
+
+    public function isScheduledForFuture(): bool
+    {
+        return $this->date_programed !== null && $this->date_programed->isFuture();
     }
 }

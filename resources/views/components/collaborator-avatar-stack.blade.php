@@ -34,8 +34,19 @@
                     @endif
 
                     @if (filled($avatar['name'] ?? null))
-                        <div class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-slate-200/80 bg-white/95 px-2 py-1 text-[11px] font-semibold text-slate-800 shadow-lg group-hover/av:block dark:border-white/10 dark:bg-slate-900/95 dark:text-slate-100">
-                            {{ $avatar['name'] }}
+                        <div class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 hidden w-max max-w-[15rem] -translate-x-1/2 rounded-lg border border-slate-200/80 bg-white/95 px-2.5 py-1.5 text-left shadow-lg group-hover/av:block dark:border-white/10 dark:bg-slate-900/95">
+                            <p class="text-sm font-semibold leading-snug text-black dark:text-slate-100">
+                                {{ $avatar['name'] }}
+                            </p>
+                            @if (! empty($avatar['activity_titles']))
+                                <div class="mt-1 space-y-0.5 border-t border-slate-200/80 pt-1 dark:border-slate-700/80">
+                                    @foreach ($avatar['activity_titles'] as $activityTitle)
+                                        <p class="text-xs font-medium leading-snug text-black dark:text-slate-200">
+                                            {{ $activityTitle }}
+                                        </p>
+                                    @endforeach
+                                </div>
+                            @endif
                         </div>
                     @endif
                 </div>
@@ -58,10 +69,10 @@
                         @php
                             $detail = $item['detail'] ?? $item['offices'] ?? null;
                         @endphp
-                        <li class="text-[11px] leading-snug text-slate-700 dark:text-slate-200">
-                            <span class="font-semibold text-slate-900 dark:text-slate-50">{{ $item['name'] }}</span>
+                        <li class="text-xs leading-snug text-black dark:text-slate-200">
+                            <span class="text-sm font-semibold text-black dark:text-slate-50">{{ $item['name'] }}</span>
                             @if (filled($detail))
-                                <span class="text-slate-500 dark:text-slate-400"> — {{ $detail }}</span>
+                                <span class="font-medium text-black dark:text-slate-300"> — {{ $detail }}</span>
                             @endif
                         </li>
                     @endforeach

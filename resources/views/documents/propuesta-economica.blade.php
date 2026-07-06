@@ -85,7 +85,18 @@
 
     @livewire('propuesta-economica.propuesta-economica-page-2')
 
-    @if($details['plan'] == 1)
+    @php
+        $layout = $layout ?? ($details['layout'] ?? null);
+        if ($layout === null) {
+            $layout = match ((int) ($details['plan'] ?? 0)) {
+                1 => 'inicial',
+                3 => 'especial',
+                default => 'ideal',
+            };
+        }
+    @endphp
+
+    @if($layout === 'inicial')
         @livewire(
         'planes-cotizacion-individual',
         [
@@ -96,30 +107,32 @@
     )
     @endif
 
-    @if($details['plan'] == 2)
+    @if($layout === 'ideal')
         @livewire(
             'planes-cotizacion-individual-ideal',
             [
                 'data' => $group_collect,
                 'name' => $details['name'],
                 'name_user' => $name_user,
-                'number_control' => Str::contains($details['code'], 'COT-IND-') ? 
-                                    str_replace('COT-IND-', '', $details['code']) : 
-                                    str_replace('COT-CORP-', '', $details['code'])
+                'number_control' => Str::contains($details['code'], 'COT-IND-') ?
+                                    str_replace('COT-IND-', '', $details['code']) :
+                                    str_replace('COT-CORP-', '', $details['code']),
+                'planId' => $details['plan'],
             ]
         )
     @endif
 
-    @if($details['plan'] == 3)
+    @if($layout === 'especial')
         @livewire(
             'planes-cotizacion-individual-especial',
             [
                 'data' => $group_collect,
                 'name' => $details['name'],
                 'name_user' => $name_user,
-                'number_control' => Str::contains($details['code'], 'COT-IND-') ? 
-                                    str_replace('COT-IND-', '', $details['code']) : 
-                                    str_replace('COT-CORP-', '', $details['code'])
+                'number_control' => Str::contains($details['code'], 'COT-IND-') ?
+                                    str_replace('COT-IND-', '', $details['code']) :
+                                    str_replace('COT-CORP-', '', $details['code']),
+                'planId' => $details['plan'],
             ]
         )
         @livewire('propuesta-economica.propuesta-economica-plan-especial')

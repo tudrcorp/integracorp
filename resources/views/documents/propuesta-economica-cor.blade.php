@@ -102,7 +102,8 @@
             [
                 'data' => $group_collect,
                 'name' => $details['name'],
-                'name_user' => $name_user
+                'name_user' => $name_user,
+                'planId' => $details['plan'],
 
             ]
         )
@@ -114,7 +115,8 @@
             [
                 'data' => $group_collect,
                 'name' => $details['name'],
-                'name_user' => $name_user
+                'name_user' => $name_user,
+                'planId' => $details['plan'],
 
             ]
         )

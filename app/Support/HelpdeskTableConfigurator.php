@@ -58,9 +58,20 @@ final class HelpdeskTableConfigurator
                     ->orderByDesc('updated_at');
             })
             ->columns(self::columns($includeTeamColumns, $modalActionsClass))
-            ->recordClasses(fn ($record): array => in_array($record->status, HelpdeskTaskStatusOptions::terminalStatuses(), true)
-                ? []
-                : [self::recordPriorityRowClass($record->priority)])
+            ->recordClasses(function (HelpDesk $record): array {
+                if (in_array($record->status, HelpdeskTaskStatusOptions::terminalStatuses(), true)) {
+                    $classes = [];
+                } else {
+                    $classes = [self::recordPriorityRowClass($record->priority)];
+                }
+
+                $unreadClass = HelpdeskUnreadNoteTracker::recordRowClass($record);
+                if ($unreadClass !== '') {
+                    $classes[] = $unreadClass;
+                }
+
+                return $classes;
+            })
             ->filters([])
             ->recordActions(self::recordActions(
                 $modalActionsClass,
@@ -347,7 +358,9 @@ final class HelpdeskTableConfigurator
                         'class' => $modalActionsClass::IOS_SUCCESS_BTN,
                     ]),
             )
-            ->action(fn (): null => null);
+            ->action(function (HelpDesk $record): void {
+                HelpdeskUnreadNoteTracker::markAsRead($record, Auth::user());
+            });
     }
 
     /**
@@ -378,6 +391,8 @@ final class HelpdeskTableConfigurator
                         'class' => $modalActionsClass::IOS_SUCCESS_BTN,
                     ])
             )
-            ->action(fn (): null => null);
+            ->action(function (HelpDesk $record): void {
+                HelpdeskUnreadNoteTracker::markAsRead($record, Auth::user());
+            });
     }
 }

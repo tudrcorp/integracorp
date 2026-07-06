@@ -11,6 +11,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
@@ -67,7 +68,17 @@ class MassNotificationForm
                                             'required' => 'Debe seleccionar al menos un canal.',
                                         ])
                                         ->label('Canal de notificación')
-                                        ->multiple(),
+                                        ->multiple()
+                                        ->live(),
+                                    TextInput::make('email_subject')
+                                        ->label('Asunto del correo')
+                                        ->helperText('Solo aplica cuando el canal incluye correo electrónico. Este texto aparecerá como asunto del mensaje.')
+                                        ->maxLength(255)
+                                        ->visible(fn (Get $get): bool => in_array('email', (array) $get('channels'), true))
+                                        ->required(fn (Get $get): bool => in_array('email', (array) $get('channels'), true))
+                                        ->validationMessages([
+                                            'required' => 'El asunto del correo es obligatorio cuando se envía por email.',
+                                        ]),
                                     TextInput::make('date_programed')
                                         ->label('Fecha programada')
                                         ->type('datetime-local')

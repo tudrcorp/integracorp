@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\AnulateAgentQuotes;
+use App\Jobs\DispatchScheduledMassNotifications;
 use App\Jobs\ExpireOperationServiceOrders;
 use App\Jobs\PrepareAffiliationRenovations;
 use App\Jobs\SendCollaboratorAnniversaryNotification;
@@ -52,3 +53,8 @@ Schedule::job(new AnulateAgentQuotes, 'system')->dailyAt('23:00');
  * Caduca órdenes de servicio no finalizadas dentro de los 10 días posteriores a su aprobación.
  */
 Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('6:30');
+
+/**
+ * Dispara notificaciones masivas cuya fecha programada ya venció.
+ */
+Schedule::job(new DispatchScheduledMassNotifications, 'system')->everyMinute();

@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\IndividualQuotes\Pages;
 
 use App\Filament\Business\Resources\IndividualQuotes\IndividualQuoteResource;
 use App\Models\IndividualQuote;
+use App\Support\IndividualQuotePdfGenerator;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
@@ -53,11 +54,12 @@ class ViewIndividualQuote extends ViewRecord
 
                     try {
 
-                        if (! file_exists(public_path('storage/quotes/'.$record->code.'.pdf'))) {
+                        $path = public_path('storage/quotes/'.$record->code.'.pdf');
 
+                        if (! file_exists($path) && ! IndividualQuotePdfGenerator::regenerateIfMissing($record)) {
                             Notification::make()
                                 ->title('NOTIFICACIÓN')
-                                ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
+                                ->body('El documento asociado a la cotización no se encuentra disponible. Verifique que la cotización tenga detalles y tarifas configuradas.')
                                 ->icon('heroicon-s-x-circle')
                                 ->iconColor('warning')
                                 ->warning()
@@ -65,11 +67,6 @@ class ViewIndividualQuote extends ViewRecord
 
                             return;
                         }
-                        /**
-                         * Descargar el documento asociado a la cotizacion
-                         * ruta: storage/
-                         */
-                        $path = public_path('storage/quotes/'.$record->code.'.pdf');
 
                         return response()->download($path);
 

@@ -12,6 +12,8 @@ use App\Http\Controllers\Business\MarkHelpdeskTicketInProgressController;
 use App\Http\Controllers\BusinessAgencyFichaPdfController;
 use App\Http\Controllers\BusinessAgentFichaPdfController;
 use App\Http\Controllers\BusinessAppointmentsController;
+use App\Http\Controllers\CierreMesController;
+use App\Http\Controllers\CorporateQuotePdfController;
 use App\Http\Controllers\DoctorNurseFichaPdfController;
 use App\Http\Controllers\FormularioExternoController;
 use App\Http\Controllers\HelpdeskAttachmentDownloadController;
@@ -157,6 +159,14 @@ Route::get('business/export-travel-agencies-csv', App\Http\Controllers\TravelAge
     ->middleware(['web', 'auth'])
     ->name('business.travel-agencies.export-csv');
 
+Route::get('business/export-agencies-csv', App\Http\Controllers\AgencyExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.agencies.export-csv');
+
+Route::get('business/export-agents-csv', App\Http\Controllers\AgentExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.agents.export-csv');
+
 Route::get('business/export-corporate-quote-requests-csv', App\Http\Controllers\CorporateQuoteRequestExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('business.corporate-quote-requests.export-csv');
@@ -165,9 +175,21 @@ Route::get('business/export-cities-csv', App\Http\Controllers\CityExportCsvContr
     ->middleware(['web', 'auth'])
     ->name('business.cities.export-csv');
 
+Route::get('business/export-business-appointments-csv', App\Http\Controllers\BusinessAppointmentExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.business-appointments.export-csv');
+
 Route::get('business/export-corporate-quotes-csv', App\Http\Controllers\CorporateQuoteExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('business.corporate-quotes.export-csv');
+
+Route::get('business/export-corporate-quotes-population-csv', App\Http\Controllers\CorporateQuotePopulationExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.corporate-quotes.export-population-csv');
+
+Route::get('business/export-affiliation-corporates-population-csv', App\Http\Controllers\AffiliationCorporatePopulationExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporates.export-population-csv');
 
 Route::get('business/export-individual-quotes-csv', App\Http\Controllers\IndividualQuoteExportCsvController::class)
     ->middleware(['web', 'auth'])
@@ -327,6 +349,10 @@ Route::get('business/dress-tylor-quotes/{record}/pdf', function (string $record)
 })
     ->middleware(['web', 'auth'])
     ->name('business.dress-tylor-quotes.pdf');
+
+Route::get('business/corporate-quotes/{corporateQuote}/pdf', [CorporateQuotePdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('business.corporate-quotes.pdf.download');
 
 Route::get('administration/aviso-cobro/download/{collection}', function (Collection $collection) {
     return \App\Http\Controllers\CollectionController::generateAndDownloadAvisoDeCobro($collection);
@@ -1797,6 +1823,8 @@ Route::get('/ldi/{transaction_id}', [UtilsController::class, 'show'])
  *
  * @return void
  */
+Route::get('/cierre-mes', CierreMesController::class);
+
 Route::get('/carta-bienvenida-agencia', function () {
     // Doc en PDF
     $pdf = Pdf::loadView('documents.carta-bienvenida-agencia');

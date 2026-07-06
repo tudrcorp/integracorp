@@ -8,6 +8,8 @@ use App\Jobs\ResendEmailPropuestaEconomica;
 use App\Models\Agency;
 use App\Models\Bitacora;
 use App\Models\IndividualQuote;
+use App\Models\Plan;
+use App\Support\IndividualQuotePdfGenerator;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -225,12 +227,7 @@ class IndividualQuotesTable
                     ->indicator('Estatus'),
                 SelectFilter::make('plan')
                     ->label('Tipo de plan')
-                    ->options([
-                        1 => 'Plan Inicial',
-                        2 => 'Plan Ideal',
-                        3 => 'Plan Especial',
-                        'CM' => 'MultiPlan',
-                    ])
+                    ->options(fn (): array => self::planFilterOptions())
                     ->searchable()
                     ->preload()
                     ->indicator('Plan'),
@@ -256,7 +253,9 @@ class IndividualQuotesTable
 
                             try {
 
-                                if (! file_exists(public_path('storage/quotes/'.$record->code.'.pdf'))) {
+                                $path = public_path('storage/quotes/'.$record->code.'.pdf');
+
+                                if (! file_exists($path) && ! IndividualQuotePdfGenerator::regenerateIfMissing($record)) {
                                     SecurityAudit::log('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_PDF_DOWNLOAD_FAILED', 'business.individual-quotes.download', [
                                         'panel' => 'business',
                                         'individual_quote_id' => $record->id,
@@ -266,7 +265,7 @@ class IndividualQuotesTable
 
                                     Notification::make()
                                         ->title('NOTIFICACIÓN')
-                                        ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
+                                        ->body('El documento asociado a la cotización no se encuentra disponible. Verifique que la cotización tenga detalles y tarifas configuradas.')
                                         ->icon('heroicon-s-x-circle')
                                         ->iconColor('warning')
                                         ->warning()
@@ -274,11 +273,6 @@ class IndividualQuotesTable
 
                                     return;
                                 }
-                                /**
-                                 * Descargar el documento asociado a la cotizacion
-                                 * ruta: storage/
-                                 */
-                                $path = public_path('storage/quotes/'.$record->code.'.pdf');
 
                                 SecurityAudit::log('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_PDF_DOWNLOADED', 'business.individual-quotes.download', [
                                     'panel' => 'business',
@@ -617,14 +611,40 @@ class IndividualQuotesTable
         return self::$agenciesByCodeCache;
     }
 
+    private static ?Collection $plansByIdCache = null;
+
+    private static function plansById(): Collection
+    {
+        if (self::$plansByIdCache === null) {
+            self::$plansByIdCache = Plan::query()->get()->keyBy('id');
+        }
+
+        return self::$plansByIdCache;
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    private static function planFilterOptions(): array
+    {
+        $options = Plan::query()
+            ->where('type', 'BASICO')
+            ->where('status', 'ACTIVO')
+            ->orderBy('description')
+            ->pluck('description', 'id')
+            ->all();
+
+        $options['CM'] = 'MultiPlan';
+
+        return $options;
+    }
+
     private static function planLabel(mixed $plan): string
     {
         return match (true) {
-            $plan === '1' || $plan === 1 => 'Plan Inicial',
-            $plan === '2' || $plan === 2 => 'Plan Ideal',
-            $plan === '3' || $plan === 3 => 'Plan Especial',
             $plan === 'CM' => 'MultiPlan',
             $plan === null, $plan === '' => '—',
+            is_numeric($plan) => self::plansById()->get((int) $plan)?->description ?? (string) $plan,
             default => (string) $plan,
         };
     }
