@@ -21,12 +21,14 @@ use App\Models\State;
 use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
 use App\Support\AffiliationAffiliateTypeSynchronizer;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -56,7 +58,8 @@ class AffiliationForm
 
     public static function configure(Schema $schema): Schema
     {
-        $data_records = session()->get('data_records');
+        $data_records = session()->get('data_records') ?? [];
+        $quoteRecord = is_array($data_records[0] ?? null) ? $data_records[0] : [];
 
         return $schema
             ->components([
@@ -74,6 +77,27 @@ class AffiliationForm
                             // Esta seccion solo puede ser vista por el administrador general del mudilo de negocios
                                     ->hidden(fn ($operation) => Auth::user()->is_business_admin != 1 && $operation === 'edit')
                                     ->schema([
+                                        Fieldset::make('Plan generado asociado')
+                                            ->visible(fn (): bool => PlanGeneratorPreAffiliationSession::isActive())
+                                            ->schema([
+                                                TextInput::make('plan_generator_control_number')
+                                                    ->label('Nro. Control')
+                                                    ->default(fn (): string => (string) (PlanGeneratorPreAffiliationSession::get()['plan']['control_number'] ?? ''))
+                                                    ->disabled()
+                                                    ->dehydrated(false),
+                                                TextInput::make('plan_generator_name')
+                                                    ->label('Nombre del plan')
+                                                    ->default(fn (): string => (string) (PlanGeneratorPreAffiliationSession::get()['plan']['name'] ?? ''))
+                                                    ->disabled()
+                                                    ->dehydrated(false)
+                                                    ->columnSpan(['default' => 1, 'lg' => 2]),
+                                                Placeholder::make('plan_generator_rates_summary')
+                                                    ->label('Tarifas grupales')
+                                                    ->content(fn (): string => PlanGeneratorPreAffiliationSession::ratesSummary())
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columns(3)
+                                            ->columnSpanFull(),
                                         TextInput::make('code')
                                             ->label('Código de afiliación')
                                             ->prefixIcon('heroicon-m-clipboard-document-check')
@@ -94,14 +118,21 @@ class AffiliationForm
                                             ->label('Nombre del cliente')
                                             ->prefixIcon('heroicon-m-clipboard-document-check')
                                             ->options(IndividualQuote::all()->pluck('full_name', 'id'))
-                                            ->default($data_records[0]['individual_quote_id'] ?? null)
+                                            ->default($quoteRecord['individual_quote_id'] ?? null)
                                             ->searchable()
                                             ->disabled()
                                             ->dehydrated()
-                                            ->preload(),
+                                            ->preload()
+                                            ->visible(fn (): bool => ! PlanGeneratorPreAffiliationSession::isActive()),
+                                        TextInput::make('plan_generator_client')
+                                            ->label('Cliente del plan generado')
+                                            ->default(fn (): string => (string) (PlanGeneratorPreAffiliationSession::get()['plan']['client_data'] ?? ''))
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->visible(fn (): bool => PlanGeneratorPreAffiliationSession::isActive()),
                                         Select::make('plan_id')
                                             ->options(Plan::all()->pluck('description', 'id'))
-                                            ->default($data_records[0]['plan_id'] ?? null)
+                                            ->default($quoteRecord['plan_id'] ?? null)
                                             ->label('Plan')
                                             ->live()
                                             ->searchable()
@@ -109,19 +140,20 @@ class AffiliationForm
                                             ->disabled()
                                             ->dehydrated()
                                             ->prefixIcon('heroicon-m-clipboard-document-check')
-                                            ->required(),
+                                            ->required(fn (): bool => ! PlanGeneratorPreAffiliationSession::isActive())
+                                            ->visible(fn (): bool => ! PlanGeneratorPreAffiliationSession::isActive()),
                                         Select::make('coverage_id')
                                             ->helperText('Punto(.) para separar miles.')
                                             ->label('Cobertura')
                                             ->live()
                                             ->options(Coverage::all()->pluck('price', 'id'))
-                                            ->default($data_records[0]['coverage_id'] ?? null)
+                                            ->default($quoteRecord['coverage_id'] ?? null)
                                             ->searchable()
-                                            ->required()
+                                            ->required(fn (Get $get): bool => ! PlanGeneratorPreAffiliationSession::isActive() && $get('plan_id') != 1 && $get('plan_id') != null)
                                             ->disabled()
                                             ->dehydrated()
                                             ->prefixIcon('heroicon-s-globe-europe-africa')
-                                            ->hidden(fn (Get $get) => $get('plan_id') == 1 || $get('plan_id') == null)
+                                            ->hidden(fn (Get $get): bool => PlanGeneratorPreAffiliationSession::isActive() || $get('plan_id') == 1 || $get('plan_id') == null)
                                             ->preload(),
                                         Select::make('payment_frequency')
                                             ->label('Frecuencia de pago')
@@ -138,18 +170,18 @@ class AffiliationForm
                                                 'required' => 'Campo Requerido',
                                             ])
                                             ->preload()
-                                            ->afterStateUpdated(function ($state, $set, Get $get) use ($data_records) {
+                                            ->afterStateUpdated(function ($state, $set, Get $get) use ($quoteRecord) {
 
-                                                $set('fee_anual', $data_records[0]['subtotal_anual']);
+                                                $set('fee_anual', $quoteRecord['subtotal_anual'] ?? 0);
 
                                                 if ($get('payment_frequency') == 'ANUAL') {
-                                                    $set('total_amount', $data_records[0]['subtotal_anual']);
+                                                    $set('total_amount', $quoteRecord['subtotal_anual'] ?? 0);
                                                 }
                                                 if ($get('payment_frequency') == 'TRIMESTRAL') {
-                                                    $set('total_amount', $data_records[0]['subtotal_quarterly']);
+                                                    $set('total_amount', $quoteRecord['subtotal_quarterly'] ?? 0);
                                                 }
                                                 if ($get('payment_frequency') == 'SEMESTRAL') {
-                                                    $set('total_amount', $data_records[0]['subtotal_biannual']);
+                                                    $set('total_amount', $quoteRecord['subtotal_biannual'] ?? 0);
                                                 }
 
                                             }),
@@ -439,6 +471,9 @@ class AffiliationForm
                                     ->schema([
                                         TextInput::make('full_name_ti')
                                             ->label('Nombre y Apellido')
+                                            ->default(fn (): ?string => PlanGeneratorPreAffiliationSession::isActive()
+                                                ? (PlanGeneratorPreAffiliationSession::get()['plan']['client_data'] ?? null)
+                                                : null)
                                             ->afterStateUpdatedJs(<<<'JS'
                                         $set('full_name_ti', $state.toUpperCase());
                                     JS)
@@ -684,9 +719,10 @@ class AffiliationForm
                                             ])->columnSpanFull()->columns(2),
                                     ])
                                     ->columnSpanFull()
-                                    ->defaultItems(function (Get $get, Set $set) use ($data_records) {
-                                        // Se reste 1 por el titular, ejempo: La cotización es para 2 personas, el titular y 1 afiliado;
-                                        return $data_records[0]['total_persons'] == 1 ? 1 : $data_records[0]['total_persons'] - 1;
+                                    ->defaultItems(function (Get $get, Set $set) use ($quoteRecord) {
+                                        $totalPersons = (int) ($quoteRecord['total_persons'] ?? 1);
+
+                                        return $totalPersons === 1 ? 1 : $totalPersons - 1;
                                     })
                                     ->addActionLabel('Agregar afiliado'),
                             ]),

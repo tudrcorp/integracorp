@@ -44,6 +44,18 @@ it('expone ajuste por porcentaje en comprobante de pago de afiliaciones administ
         ->and(substr_count($source, 'payment_adjustment_percentage'))->toBeGreaterThanOrEqual(2);
 });
 
+it('expone ajuste por porcentaje en comprobante de pago de afiliaciones business', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Tables/AffiliationsTable.php');
+
+    expect($source)
+        ->toContain('payment_adjustment_percentage')
+        ->toContain('payment_total_preview')
+        ->toContain('AffiliationPaymentTotalAdjustment')
+        ->toContain('applyPaymentTotalPercentageAdjustment')
+        ->toContain('LINK DE PAGO')
+        ->and(substr_count($source, 'payment_adjustment_percentage'))->toBeGreaterThanOrEqual(1);
+});
+
 it('expone ajuste por porcentaje en pago multiple de afiliaciones administration', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Affiliations/Tables/AffiliationsTable.php');
 

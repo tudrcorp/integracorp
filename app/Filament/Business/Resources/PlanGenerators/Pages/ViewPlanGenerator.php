@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\PlanGenerators\Pages;
 
+use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use App\Filament\Business\Resources\Affiliations\AffiliationResource;
 use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
 use App\Filament\Business\Resources\PlanGenerators\PlanGeneratorResource;
 use App\Models\PlanGenerator;
+use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -38,13 +41,24 @@ class ViewPlanGenerator extends ViewRecord
                 ->extraAttributes([
                     'class' => self::IOS_SUCCESS_BUTTON_CLASS,
                 ])
-                ->requiresConfirmation()
                 ->modalHeading('Aprobar cotización')
-                ->modalDescription('Se marcará la cotización como APROBADA y continuarás con el registro de la empresa.')
-                ->modalSubmitActionLabel('Aprobar y continuar')
-                ->action(function (): void {
-                    $this->approveQuote();
-                })
+                ->modalDescription('Seleccione el destino de la pre-afiliación para continuar.')
+                ->modalWidth(Width::TwoExtraLarge)
+                ->extraModalWindowAttributes([
+                    'class' => 'fi-plan-pre-affiliation-modal',
+                ])
+                ->modalContent(fn (): \Illuminate\Contracts\View\View => view('filament.business.plan-generators.pre-affiliation-modal', [
+                    'plan' => $this->getRecord(),
+                ]))
+                ->modalSubmitAction(false)
+                ->modalCancelAction(
+                    fn (Action $action): Action => $action
+                        ->label('Cancelar')
+                        ->color('gray')
+                        ->extraAttributes([
+                            'class' => self::IOS_GRAY_BUTTON_CLASS,
+                        ]),
+                )
                 ->visible(fn (): bool => strtoupper((string) ($this->getRecord()->status ?? '')) === 'PRE-APROBADO'),
             Action::make('back')
                 ->label('Volver')
@@ -89,25 +103,49 @@ class ViewPlanGenerator extends ViewRecord
         ];
     }
 
-    public function approveQuote(): void
+    public function approveQuote(string $destination): void
     {
         /** @var PlanGenerator $plan */
         $plan = $this->getRecord();
 
-        $plan->update(['status' => 'APROBADA']);
-
-        SecurityAudit::log('AUDIT_BUSINESS_PLAN_GENERATOR_APPROVED', 'business.plan-generators.approve-quote', [
+        SecurityAudit::log('AUDIT_BUSINESS_PLAN_GENERATOR_PRE_AFFILIATION_STARTED', 'business.plan-generators.pre-affiliation-start', [
             'plan_generator_id' => $plan->getKey(),
             'plan_name' => $plan->name,
+            'plan_status' => $plan->status,
+            'destination' => $destination,
         ]);
 
+        if ($destination === 'new_business') {
+            PlanGeneratorPreAffiliationSession::store($plan, PlanGeneratorPreAffiliationSession::TYPE_NEW_BUSINESS);
+
+            Notification::make()
+                ->title('Pre-afiliación iniciada')
+                ->body('El plan permanece en estatus PRE-APROBADO. Continúa con el registro de la empresa.')
+                ->success()
+                ->send();
+
+            $this->redirect(PlanGeneratorResource::getUrl('register-company', ['record' => $plan->getKey()]));
+
+            return;
+        }
+
+        PlanGeneratorPreAffiliationSession::store($plan, $destination);
+
+        $redirectUrl = $destination === PlanGeneratorPreAffiliationSession::TYPE_INDIVIDUAL
+            ? AffiliationResource::getUrl('create', panel: 'business')
+            : AffiliationCorporateResource::getUrl('create', panel: 'business');
+
+        $affiliationLabel = $destination === PlanGeneratorPreAffiliationSession::TYPE_INDIVIDUAL
+            ? 'individual'
+            : 'corporativa';
+
         Notification::make()
-            ->title('Cotización aprobada')
-            ->body('Continúa con el registro de la empresa.')
+            ->title('Pre-afiliación iniciada')
+            ->body("El plan permanece en estatus PRE-APROBADO. Complete la pre-afiliación {$affiliationLabel}.")
             ->success()
             ->send();
 
-        $this->redirect(PlanGeneratorResource::getUrl('register-company', ['record' => $plan->getKey()]));
+        $this->redirect($redirectUrl);
     }
 
     public function getTitle(): string|Htmlable

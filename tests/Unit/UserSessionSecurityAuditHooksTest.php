@@ -20,7 +20,8 @@ it('implementa trazabilidad de sesión con duración y panel', function (): void
         ->and($trackerContents)->toContain('AUDIT_USER_SESSION_LOGOUT')
         ->and($trackerContents)->toContain('session_duration_seconds')
         ->and($trackerContents)->toContain('session_duration_human')
-        ->and($trackerContents)->toContain('resolvePanelFromRequestPath');
+        ->and($trackerContents)->toContain('resolvePanelFromRequestPath')
+        ->and($trackerContents)->toContain('PlanGeneratorPreAffiliationSession::forget()');
 });
 
 it('expone categoría de sesiones en tabla de trazas', function (): void {

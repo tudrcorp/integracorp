@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Carbon;
@@ -61,6 +62,8 @@ class UserSessionAuditTracker
             'session_duration_human' => self::durationLabel($durationSeconds),
             'session_started_at' => $startedAt?->toIso8601String(),
         ], $user);
+
+        PlanGeneratorPreAffiliationSession::forget();
 
         session()->forget($sessionKey);
     }

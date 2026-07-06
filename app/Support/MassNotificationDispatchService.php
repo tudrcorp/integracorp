@@ -9,7 +9,7 @@ use App\Models\MassNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
-class MassNotificationDispatchResult
+class MassNotificationDispatchService
 {
     public function __construct(
         public readonly bool $success,

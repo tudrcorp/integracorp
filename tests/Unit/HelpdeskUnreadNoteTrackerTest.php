@@ -16,7 +16,7 @@ it('HelpdeskUnreadNoteTracker expone conteo, detección y marcado de lectura', f
     $path = dirname(__DIR__, 2).'/app/Support/HelpdeskUnreadNoteTracker.php';
 
     expect(file_get_contents($path))
-        ->toContain('class HelpdeskUnreadNoteTracker')
+        ->toContain('class HelpdeskUnreadNoteTrackerTest')
         ->toContain('unreadCountForAuthenticatedUser')
         ->toContain('hasUnreadNotes')
         ->toContain('markAsRead')
@@ -32,7 +32,7 @@ it('HelpdeskTableConfigurator resalta filas con notas sin revisar', function ():
         ->toContain('HelpdeskUnreadNoteTracker::recordRowClass');
 });
 
-it('el trait de navegación helpdesk aplica la clase de pulse cuando hay badge', function (): void {
+it('el trait HelpdeskUnreadNoteTrackerTest navegación helpdesk aplica la clase de pulse cuando hay badge', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Concerns/RegistersHelpdeskUnreadNoteNavigation.php';
 
     expect(file_get_contents($path))

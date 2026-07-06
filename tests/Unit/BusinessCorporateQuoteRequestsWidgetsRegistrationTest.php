@@ -8,7 +8,7 @@ use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\CorporateQuot
 use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\StatsOverviewTotalCorporateQuoteRequest;
 
 it('registra los widgets de resumen y graficos en el listado de solicitudes dress taylor', function (): void {
-    $page = new class extends ListCorporateQuoteRequests
+    $page = new class BusinessCorporateQuoteRequestsWidgetsRegistrationTest ListCorporateQuoteRequests
     {
         public function exposedHeaderWidgets(): array
         {

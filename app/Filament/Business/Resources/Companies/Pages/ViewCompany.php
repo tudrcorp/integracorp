@@ -32,6 +32,10 @@ class ViewCompany extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            CompanyTableActions::uploadPaymentVoucherAction()
+                ->extraAttributes([
+                    'class' => self::IOS_PRIMARY_BUTTON_CLASS,
+                ]),
             CompanyTableActions::sendPublicRegistrationLinkAction()
                 ->extraAttributes([
                     'class' => self::IOS_WARNING_BUTTON_CLASS,

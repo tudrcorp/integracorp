@@ -10,7 +10,7 @@ it('expone contadores de invitaciones pendientes para agenda corporativa', funct
     $shellPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/corporate-calendar-shell.blade.php';
 
     expect(file_get_contents($counterPath))
-        ->toContain('class CorporateAgendaPendingInvitationCounter')
+        ->toContain('class CorporateAgendaPendingInvitationCounterTest')
         ->toContain('pendingInvitationCountForAuthenticatedUser')
         ->toContain('pendingInvitationCountsByDateForAuthenticatedUser')
         ->toContain('CorporateAgendaInvitationStatus::Pending')
