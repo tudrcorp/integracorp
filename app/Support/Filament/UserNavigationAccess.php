@@ -173,6 +173,21 @@ final class UserNavigationAccess
     /**
      * @param  list<string>  $permissionSlugs
      */
+    public static function canPerformModuleAction(User $user, string $module, string $permissionSlug): bool
+    {
+        if (self::isSuperAdmin($user)) {
+            return true;
+        }
+
+        $module = strtoupper($module);
+
+        if (! self::userHasModule($user, $module)) {
+            return false;
+        }
+
+        return self::userHasAnyPermissionSlug($user, $module, [$permissionSlug]);
+    }
+
     public static function userHasAnyPermissionSlug(User $user, string $module, array $permissionSlugs): bool
     {
         $module = strtoupper($module);

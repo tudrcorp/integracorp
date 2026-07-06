@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Permission;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\DepartmentNavigationPermissionRegistry;
 use App\Support\Filament\InternalPanelDepartmentMap;
 use Filament\Facades\Filament;
@@ -88,9 +89,43 @@ class SyncFilamentNavigationPermissionsCommand extends Command
             }
         }
 
+        [$actionCreated, $actionUpdated] = $this->syncBusinessActionPermissions();
+        $created += $actionCreated;
+        $updated += $actionUpdated;
+
         $this->info("Permisos sincronizados: {$created} creados, {$updated} actualizados.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @return array{0: int, 1: int}
+     */
+    private function syncBusinessActionPermissions(): array
+    {
+        $created = 0;
+        $updated = 0;
+
+        foreach (BusinessFilamentActionPermissionRegistry::all() as $slug => $definition) {
+            $permission = Permission::query()->firstOrNew([
+                'slug' => $slug,
+                'module' => 'NEGOCIOS',
+            ]);
+
+            $isNew = ! $permission->exists;
+            $permission->name = $definition['name'];
+            $permission->created_by ??= 'system';
+            $permission->updated_by = 'system';
+            $permission->save();
+
+            if ($isNew) {
+                $created++;
+            } else {
+                $updated++;
+            }
+        }
+
+        return [$created, $updated];
     }
 
     /**

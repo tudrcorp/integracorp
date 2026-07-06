@@ -13,6 +13,8 @@ use App\Models\BusinessUnit;
 use App\Models\Plan;
 use App\Support\AffiliateVaucherIlsRemainingDays;
 use App\Support\AffiliationCorporates\CorporateAffiliateVoucherIlsUpdater;
+use App\Support\Filament\BusinessFilamentActionAccess;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\FilamentDateDisplay;
 use BackedEnum;
 use Carbon\Carbon;
@@ -643,7 +645,9 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 ->send();
                         }
                     })
-                    ->hidden(fn () => ! in_array('SUPERADMIN', Auth::user()?->departament ?? [])),
+                    ->visible(fn (): bool => BusinessFilamentActionAccess::userCan(
+                        BusinessFilamentActionPermissionRegistry::CREATE_CORPORATE_AFFILIATE,
+                    )),
             ])
             ->recordActions([
                 ActionGroup::make([
