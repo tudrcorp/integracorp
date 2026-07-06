@@ -11,6 +11,7 @@ use App\Mail\SendNotificationMailSingle;
 use App\Models\DataNotification;
 use App\Models\Guest;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\MassNotificationRecipientDelivery;
 use App\Support\RunReportMessageFormatter;
 use App\Support\ScheduledNotificationPhones;
 use App\Support\WhatsAppBrandImage;
@@ -2337,25 +2338,48 @@ class NotificationController extends Controller
 
             curl_close($curl);
 
+            if (filled($err)) {
+                MassNotificationRecipientDelivery::recordTestWhatsapp($record, $data['phone'], false, $err);
+
+                return false;
+            }
+
+            MassNotificationRecipientDelivery::recordTestWhatsapp($record, $data['phone'], true);
+
             return true;
 
         } catch (\Throwable $th) {
-            // throw $th;
+            MassNotificationRecipientDelivery::recordTestWhatsapp(
+                $record,
+                $data['phone'] ?? '',
+                false,
+                $th->getMessage(),
+            );
+
+            return false;
         }
 
     }
 
-    public static function sendNotificationEmailSingle($record, $data)
+    public static function sendNotificationEmailSingle($record, $data): bool
     {
 
         try {
 
             Mail::to($data['email'])->send(new SendNotificationMailSingle($record));
+            MassNotificationRecipientDelivery::recordTestEmail($record, $data['email'], true);
 
             return true;
-            // ...
         } catch (\Throwable $th) {
-            // throw $th;
+            MassNotificationRecipientDelivery::recordTestEmail(
+                $record,
+                $data['email'] ?? '',
+                false,
+                $th->getMessage(),
+            );
+            Log::error($th);
+
+            return false;
         }
     }
 

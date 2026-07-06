@@ -2,81 +2,58 @@
 
 namespace App\Jobs;
 
-use Throwable;
-use App\Models\User;
-use Filament\Actions\Action;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Models\MassNotification;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Queue\SerializesModels;
-use Filament\Notifications\Notification;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Foundation\Queue\Queueable;
-use App\Mail\SendMailPropuestaPlanEspecial;
 use App\Services\NotificationMasiveService;
+use App\Support\MassNotificationRecipientDelivery;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
+use Throwable;
 
 class SendNotificationMasive implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $dataNotificationArray;
-    protected $infoNotificationArray;
+    public int $tries = 5;
 
-    public $tries = 5;
+    public int $timeout = 960;
 
-    public int $timeout = 960; // 16 minutes
-
-    /**
-     * Create a new job instance.
-     */
-    public function __construct($dataNotificationArray, $infoNotificationArray) 
-    {
-        $this->dataNotificationArray = $dataNotificationArray;
-        $this->infoNotificationArray = $infoNotificationArray;
-        //
-    }
-
+    public int $backoff = 3;
 
     /**
-     * Execute the job.
+     * @param  array<string, mixed>  $dataNotificationArray
+     * @param  array<string, mixed>  $infoNotificationArray
      */
+    public function __construct(
+        protected array $dataNotificationArray,
+        protected array $infoNotificationArray,
+        protected int $dataNotificationId,
+    ) {}
+
     public function handle(): void
     {
-        try {
-            
-            $this->sendNotifications($this->dataNotificationArray, $this->infoNotificationArray);
-            
-        } catch (Throwable $e) {
-            Log::error($e->getMessage());
-        }
-    }
+        $result = NotificationMasiveService::send($this->dataNotificationArray, $this->infoNotificationArray);
 
-    private function sendNotifications($dataNotificationArray, $infoNotificationArray)
-    {
-        try {
-
-            // $record = MassNotification::findOrFail($infoNotificationArray['id']);
-            
-            $masiveNotification = new NotificationMasiveService();
-            $masiveNotification->send($dataNotificationArray, $infoNotificationArray);
-            
-        } catch (Throwable $e) {
-            Log::error($e->getMessage());
+        if ($result !== true) {
+            throw new RuntimeException('No se pudo enviar la notificación por WhatsApp.');
         }
 
+        MassNotificationRecipientDelivery::markWhatsappSent($this->dataNotificationId);
     }
 
-    /**
-     * Handle a job failure.
-     * Trabajo Fallido
-     */
     public function failed(?Throwable $exception): void
     {
-        Log::info("SendNotificationMasive: FAILED");
-        Log::error($exception->getMessage());
+        MassNotificationRecipientDelivery::markWhatsappFailed(
+            $this->dataNotificationId,
+            $exception?->getMessage() ?? 'Error desconocido en el job de WhatsApp',
+        );
+
+        Log::info('SendNotificationMasive: FAILED', [
+            'data_notification_id' => $this->dataNotificationId,
+            'exception' => $exception,
+        ]);
     }
 }

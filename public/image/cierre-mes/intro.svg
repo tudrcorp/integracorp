@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none">
+  <rect width="400" height="320" rx="24" fill="#0064a118"/>
+  <circle cx="200" cy="130" r="70" fill="#0064a133" stroke="#0064a1" stroke-width="3"/>
+  <path d="M170 130 L190 150 L235 105" stroke="#0ea5e9" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="80" y="220" width="240" height="12" rx="6" fill="#ffffff22"/>
+  <rect x="120" y="250" width="160" height="10" rx="5" fill="#ffffff15"/>
+  <text x="200" y="200" text-anchor="middle" fill="#0ea5e9" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Avances del mes</text>
+</svg>

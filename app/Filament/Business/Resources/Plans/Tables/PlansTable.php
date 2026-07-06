@@ -2,19 +2,20 @@
 
 namespace App\Filament\Business\Resources\Plans\Tables;
 
-
-use Carbon\Carbon;
 use App\Models\Plan;
-use Filament\Tables\Table;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Tables\Filters\Filter;
 use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Select;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
 class PlansTable
@@ -52,6 +53,7 @@ class PlansTable
                         return match ($state) {
                             'ACTIVO' => 'success',
                             'INACTIVO' => 'danger',
+                            default => 'gray',
                         };
                     })
                     ->searchable(),
@@ -76,20 +78,20 @@ class PlansTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
@@ -97,6 +99,10 @@ class PlansTable
             ])
             ->recordActions([
                 ActionGroup::make([
+                    ViewAction::make()
+                        ->label('Ver'),
+                    EditAction::make()
+                        ->label('Editar'),
                     Action::make('update_status')
                         ->label('Actualizar Estatus')
                         ->icon('heroicon-s-check-circle')
@@ -113,14 +119,14 @@ class PlansTable
                         ->action(function (Plan $record, array $data): void {
                             $record->update($data);
                         }),
-                        
+
                     DeleteAction::make()
                         ->label('Eliminar')
                         ->icon('heroicon-o-trash')
                         ->requiresConfirmation()
                         ->color('danger'),
 
-                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
+                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

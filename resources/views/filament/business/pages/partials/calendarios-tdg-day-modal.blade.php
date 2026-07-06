@@ -1,4 +1,11 @@
-<div x-data="{ open: $wire.entangle('isDayModalOpen') }" x-show="open" x-cloak x-transition.opacity class="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6">
+<div
+    x-data="{ open: $wire.entangle('isDayModalOpen'), workspace: 'offices' }"
+    @tdg-modal-workspace-changed.window="workspace = $event.detail.workspace"
+    x-show="open"
+    x-cloak
+    x-transition.opacity
+    class="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6"
+>
     <div class="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]" wire:click="closeDayModal"></div>
 
     <section class="relative z-[81] flex w-full max-w-6xl max-h-[92vh] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-900">
@@ -9,7 +16,7 @@
                         {{ \Carbon\Carbon::parse($selectedDate)->translatedFormat('l d \\d\\e F Y') }}
                     </p>
                     <h3 class="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">
-                        Agenda híbrida TDG
+                        Calendario TDG
                     </h3>
                     <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
                         Oficinas, guardias de operaciones y agenda de trabajo por departamentos.
@@ -23,14 +30,19 @@
 
             <div class="mt-4 grid gap-2 sm:grid-cols-3" role="tablist" aria-label="Espacios de la agenda TDG">
                 @foreach ([
-                'offices' => ['icon' => 'heroicon-o-building-office-2', 'title' => 'Oficinas', 'hint' => 'Centro Lido y Farmadoc'],
-                'guards' => ['icon' => 'heroicon-o-shield-check', 'title' => 'Guardias', 'hint' => '2.1, 2.2 diurnas y guardia nocturna'],
-                'departments' => ['icon' => 'heroicon-o-squares-2x2', 'title' => 'Departamentos', 'hint' => 'Colaboradores de sistemas por área'],
+                'offices' => ['icon' => 'heroicon-o-building-office-2', 'title' => 'Guardias oficinas', 'hint' => 'Centro Lido y Farmadoc'],
+                'guards' => ['icon' => 'heroicon-o-shield-check', 'title' => 'Guardas operaciones', 'hint' => '2.1, 2.2 diurnas y guardia nocturna'],
+                'departments' => ['icon' => 'heroicon-o-squares-2x2', 'title' => 'Guardias sistema', 'hint' => 'Colaboradores de sistemas por área'],
                 ] as $workspaceKey => $workspaceMeta)
-                <button type="button" wire:click="setModalWorkspace('{{ $workspaceKey }}')" class="rounded-2xl border px-3 py-3 text-left transition
-                        {{ $modalWorkspace === $workspaceKey
-                            ? 'border-[#4E8EA2]/80 bg-[#BDD8E9]/90 shadow-[0_8px_22px_rgba(78,142,162,0.25)] dark:border-[#7BBDE8]/70 dark:bg-[#0A4174]/55'
-                            : 'border-slate-200/80 bg-white/80 hover:border-[#7BBDE8]/80 hover:bg-[#BDD8E9]/35 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-[#6EA2B3]/60 dark:hover:bg-[#0A4174]/25' }}" role="tab" aria-selected="{{ $modalWorkspace === $workspaceKey ? 'true' : 'false' }}">
+                <button
+                    type="button"
+                    @click="workspace = '{{ $workspaceKey }}'"
+                    :class="workspace === '{{ $workspaceKey }}'
+                        ? 'rounded-2xl border px-3 py-3 text-left transition border-[#4E8EA2]/80 bg-[#BDD8E9]/90 shadow-[0_8px_22px_rgba(78,142,162,0.25)] dark:border-[#7BBDE8]/70 dark:bg-[#0A4174]/55'
+                        : 'rounded-2xl border px-3 py-3 text-left transition border-slate-200/80 bg-white/80 hover:border-[#7BBDE8]/80 hover:bg-[#BDD8E9]/35 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-[#6EA2B3]/60 dark:hover:bg-[#0A4174]/25'"
+                    role="tab"
+                    :aria-selected="workspace === '{{ $workspaceKey }}'"
+                >
                     <div class="flex items-center gap-2">
                         <span class="inline-flex size-8 items-center justify-center rounded-xl bg-[#7BBDE8]/40 text-[#0A4174] dark:bg-[#4E8EA2]/35 dark:text-[#BDD8E9]">
                             <x-filament::icon :icon="$workspaceMeta['icon']" class="size-4" />
@@ -46,14 +58,12 @@
         </header>
 
         <div class="min-h-0 flex-1 overflow-y-auto p-5">
-            @if (in_array($modalWorkspace, ['offices', 'guards', 'departments'], true))
             <div class="relative mb-4">
                 <x-filament::icon icon="heroicon-o-magnifying-glass" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <input type="search" wire:model.live.debounce.300ms="collaboratorSearch" placeholder="Buscar colaborador por nombre o correo..." class="w-full rounded-xl border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm dark:border-white/10 dark:bg-slate-800 dark:text-slate-100">
             </div>
-            @endif
 
-            @if ($modalWorkspace === 'offices')
+            <div x-show="workspace === 'offices'" x-cloak>
             <div class="grid gap-4 lg:grid-cols-3">
                 @foreach ($this->officeOptions as $officeValue => $officeLabel)
                 @php
@@ -69,7 +79,7 @@
                             <p class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                                 Colaboradores asignados
                                 @if ($selectedCount > 0)
-                                <span class="ml-1 rounded-full bg-cyan-100 px-1.5 py-0.5 text-[10px] text-cyan-800 dark:bg-cyan-500/25 dark:text-cyan-100">{{ $selectedCount }}</span>
+                                <span class="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-800 dark:bg-emerald-500/30 dark:text-emerald-100">{{ $selectedCount }}</span>
                                 @endif
                             </p>
                             @if ($selectedCount > 0)
@@ -82,7 +92,7 @@
                         @if ($selectedCount > 0)
                         <div class="mt-2 space-y-2">
                             @foreach ($selectedCollaborators as $selectedCollaborator)
-                            <div wire:key="office-selected-{{ $officeValue }}-{{ $selectedCollaborator['id'] }}" class="flex items-center gap-3 rounded-xl border border-cyan-200/80 bg-cyan-50/50 px-2 py-2 dark:border-cyan-400/30 dark:bg-cyan-500/10">
+                            <div wire:key="office-selected-{{ $officeValue }}-{{ $selectedCollaborator['id'] }}" class="flex items-center gap-3 rounded-xl border border-emerald-400 bg-emerald-100 px-2 py-2 dark:border-emerald-400/60 dark:bg-emerald-600/25">
                                 @include('filament.business.pages.partials.tdg-colaborador-avatar', ['colaborador' => $selectedCollaborator, 'size' => 'sm'])
                                 <div class="min-w-0 flex-1">
                                     <p class="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">{{ $selectedCollaborator['name'] }}</p>
@@ -112,15 +122,15 @@
                         @endphp
                         <button type="button" wire:key="office-picker-{{ $officeValue }}-{{ $collaborator['id'] }}" wire:click="assignOfficeCollaborator('{{ $officeValue }}', {{ $collaborator['id'] }})" class="flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition
                                         {{ $isSelected
-                                            ? 'border-cyan-400 bg-cyan-50/90 shadow-[0_6px_16px_rgba(34,211,238,0.18)] dark:border-cyan-400/50 dark:bg-cyan-500/15'
-                                            : 'border-slate-200/80 bg-white hover:border-cyan-300 hover:bg-cyan-50/60 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-cyan-400/40' }}">
+                                            ? 'border-emerald-500 bg-emerald-100 shadow-[0_6px_16px_rgba(16,185,129,0.22)] dark:border-emerald-400/60 dark:bg-emerald-600/25'
+                                            : 'border-slate-200/80 bg-white hover:border-emerald-300 hover:bg-emerald-50 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-emerald-400/40 dark:hover:bg-emerald-600/10' }}">
                             @include('filament.business.pages.partials.tdg-colaborador-avatar', ['colaborador' => $collaborator])
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{{ $collaborator['name'] }}</span>
                                 <span class="block truncate text-[11px] text-slate-500 dark:text-slate-400">{{ $collaborator['email'] ?: 'Sin correo' }}</span>
                             </span>
                             @if ($isSelected)
-                            <x-filament::icon icon="heroicon-o-check-circle" class="size-5 shrink-0 text-cyan-600 dark:text-cyan-300" />
+                            <x-filament::icon icon="heroicon-o-check-circle" class="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                             @endif
                         </button>
                         @empty
@@ -138,9 +148,9 @@
             </div>
 
             @include('filament.business.pages.partials.tdg-office-replication-panel')
-            @endif
+            </div>
 
-            @if ($modalWorkspace === 'guards')
+            <div x-show="workspace === 'guards'" x-cloak>
             <div class="mb-4 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 dark:border-amber-400/30 dark:bg-amber-500/10">
                 <label class="inline-flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
                     <input type="checkbox" wire:model.live="useSameGuardCollaborator" class="rounded border-amber-400 text-amber-600 focus:ring-amber-400/50">
@@ -222,9 +232,9 @@
             </div>
 
             @include('filament.business.pages.partials.tdg-guard-replication-panel')
-            @endif
+            </div>
 
-            @if ($modalWorkspace === 'departments')
+            <div x-show="workspace === 'departments'" x-cloak>
             <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">
                 Selecciona los departamentos del día y asigna uno o más colaboradores del área de <span class="font-semibold text-slate-700 dark:text-slate-200">sistemas</span> que los atenderán.
             </p>
@@ -264,7 +274,7 @@
                             <p class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                                 Colaboradores de sistemas
                                 @if ($selectedCount > 0)
-                                <span class="ml-1 rounded-full bg-cyan-100 px-1.5 py-0.5 text-[10px] text-cyan-800 dark:bg-cyan-500/25 dark:text-cyan-100">{{ $selectedCount }}</span>
+                                <span class="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-800 dark:bg-emerald-500/30 dark:text-emerald-100">{{ $selectedCount }}</span>
                                 @endif
                             </p>
                             @if ($selectedCount > 0)
@@ -277,7 +287,7 @@
                         @if ($selectedCount > 0)
                         <div class="mt-2 space-y-2">
                             @foreach ($selectedCollaborators as $selectedCollaborator)
-                            <div wire:key="department-selected-{{ $departmentValue }}-{{ $selectedCollaborator['id'] }}" class="flex items-center gap-3 rounded-xl border border-cyan-200/80 bg-cyan-50/50 px-2 py-2 dark:border-cyan-400/30 dark:bg-cyan-500/10">
+                            <div wire:key="department-selected-{{ $departmentValue }}-{{ $selectedCollaborator['id'] }}" class="flex items-center gap-3 rounded-xl border border-emerald-400 bg-emerald-100 px-2 py-2 dark:border-emerald-400/60 dark:bg-emerald-600/25">
                                 @include('filament.business.pages.partials.tdg-colaborador-avatar', ['colaborador' => $selectedCollaborator, 'size' => 'sm'])
                                 <div class="min-w-0 flex-1">
                                     <p class="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">{{ $selectedCollaborator['name'] }}</p>
@@ -307,8 +317,8 @@
                         @endphp
                         <button type="button" wire:key="department-picker-{{ $departmentValue }}-{{ $collaborator['id'] }}" wire:click="assignDepartmentCollaborator('{{ $departmentValue }}', {{ $collaborator['id'] }})" class="flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition
                                         {{ $isCollaboratorSelected
-                                            ? 'border-cyan-400 bg-cyan-50/90 shadow-[0_6px_16px_rgba(34,211,238,0.18)] dark:border-cyan-400/50 dark:bg-cyan-500/15'
-                                            : 'border-slate-200/80 bg-white hover:border-cyan-300 hover:bg-cyan-50/60 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-cyan-400/40' }}">
+                                            ? 'border-emerald-500 bg-emerald-100 shadow-[0_6px_16px_rgba(16,185,129,0.22)] dark:border-emerald-400/60 dark:bg-emerald-600/25'
+                                            : 'border-slate-200/80 bg-white hover:border-emerald-300 hover:bg-emerald-50 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-emerald-400/40 dark:hover:bg-emerald-600/10' }}">
                             @include('filament.business.pages.partials.tdg-colaborador-avatar', ['colaborador' => $collaborator])
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{{ $collaborator['name'] }}</span>
@@ -331,7 +341,7 @@
                 Selecciona al menos un departamento para asignar colaboradores de sistemas.
             </p>
             @endif
-            @endif
+            </div>
         </div>
 
         <footer class="shrink-0 border-t border-slate-200/80 px-5 py-4 dark:border-white/10">

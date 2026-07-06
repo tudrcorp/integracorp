@@ -7,16 +7,26 @@ use Illuminate\Support\Carbon;
 
 final class HelpdeskObservationAppender
 {
-    public static function append(HelpDesk $record, string $newNote, string $userName): void
+    public static function append(HelpDesk $record, string $newNote, string $userName, ?Carbon $at = null): void
     {
         $newNote = HelpdeskNoteHtmlSanitizer::sanitize(trim($newNote));
-        $merged = self::mergeObservation((string) $record->observation, $newNote, $userName);
+        $merged = self::mergeObservation((string) $record->observation, $newNote, $userName, $at);
         if ($merged === (string) $record->observation) {
             return;
         }
 
+        $tz = (string) config('app.timezone');
+        $moment = $at ?? Carbon::now($tz);
+
         $record->observation = $merged;
         $record->updated_by = $userName;
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('help_desks', 'latest_note_at')
+            && \Illuminate\Support\Facades\Schema::hasColumn('help_desks', 'latest_note_by')) {
+            $record->latest_note_at = $moment;
+            $record->latest_note_by = $userName;
+        }
+
         $record->save();
     }
 

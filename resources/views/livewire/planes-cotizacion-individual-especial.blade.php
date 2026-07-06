@@ -170,82 +170,14 @@
 
         <div
             style="position: absolute; top: 600px; right: 10px; margin-top: 20px; padding: 20px; margin-right: 20px; width: 700px;">
-            <table style="width: 100%; font-type: Helvetica, sans-serif;">
-
-                <tr style="background-color: #529471; font-size: 10px;">
-
-                    <th style="font-weight: bold; color: white;">RANGO DE EDAD</th>
-                    <th style="font-weight: bold; color: white;">POBLACIÓN</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 5K</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 10K</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 20K</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 30K</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 40K</th>
-                    <th style="font-weight: bold; color: white;">TARIFA ANUAL<br>US$ 50K</th>
-
-                </tr>
-                @foreach ($data as $key => $value)
-                    <tr>
-                        <td style="font-weight: bold; font-size: 10px;">{{ $key }} años</td>
-                        <td style="font-weight: bold; font-size: 10px;">{{ $value[0]->total_persons . ' Persona(s)' }}</td>
-
-                        @foreach ($value as $value2)
-                            <td style="font-weight: bold; font-size: 10px;">{{ round($value2->subtotal_anual) }} US$
-                            </td>
-                        @endforeach
-                    </tr>
-                @endforeach
-            </table>
-            @php
-use Illuminate\Support\Facades\Log;
-// Inicializar array para almacenar los totales por columna
-$totalColumns = [0, 0, 0, 0, 0, 0]; // Para US$5K a US$40K (6 columnas)
-
-// Recorrer los datos para sumar por columna
-foreach ($data as $key => $value) {
-    foreach ($value as $index => $item) {
-        if (isset($totalColumns[$index])) {
-            $totalColumns[$index] += round($item->subtotal_anual);
-        }
-    }
-}
-
-            @endphp
-            <table style="width: 100%; border-collapse: collapse; font-type: Helvetica, sans-serif;">
-
-                <tbody>
-                    <tr>
-                        <td colspan="2"
-                            style="font-weight: bold; color: white; font-size: 10px; width: 96px; background-color: #529471">
-                            TARIFA GRUPAL ANUAL</td>
-                        @foreach ($totalColumns as $total)
-                            <td style="text-align: center; font-weight: bold; font-size: 10px;">
-                                {{ round($total, 2) }} US$
-                            </td>
-                        @endforeach
-                    </tr>
-                    <tr>
-                        <td colspan="2"
-                            style="font-weight: bold; color: white; font-size: 10px; width: 96px; background-color: #529471">
-                            TARIFA GRUPAL SEMESTRAL</td>
-                        @foreach ($totalColumns as $total)
-                            <td style="text-align: center; font-weight: bold; font-size: 10px;">
-                                {{ round($total / 2) }} US$
-                            </td>
-                        @endforeach
-                    </tr>
-                    <tr>
-                        <td colspan="2"
-                            style="font-weight: bold; color: white; font-size: 10px; width: 96px; background-color: #529471">
-                            TARIFA GRUPAL TRIMESTRAL</td>
-                        @foreach ($totalColumns as $total)
-                            <td style="text-align: center; font-weight: bold; font-size: 10px;">
-                                {{ round($total / 4) }} US$
-                            </td>
-                        @endforeach
-                    </tr>
-                </tbody>
-            </table>
+            @include('livewire.partials.quote-pdf-coverage-table', [
+                'coverageColumns' => $coverageColumns,
+                'tableRows' => $tableRows,
+                'totals' => $totals,
+                'headerBackground' => '#529471',
+                'labelColspan' => 2,
+                'populationOnlyIfMultiple' => false,
+            ])
         </div>
 
     </div>

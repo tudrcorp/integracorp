@@ -4,9 +4,11 @@ namespace App\Filament\Business\Resources\Plans\Schemas;
 
 use App\Models\AgeRange;
 use App\Models\Benefit;
+use App\Models\BusinessUnit;
 use App\Models\Coverage;
 use App\Models\Limit;
-use App\Support\Plans\PlanCodeGenerator;
+use App\Models\Plan;
+use App\Support\PlanCreationPersistence;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
@@ -32,6 +34,53 @@ use Illuminate\Support\Facades\Auth;
 class PlanForm
 {
     private const IOS_SECTION_CLASS = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+
+    private static function currentPlanId(mixed $livewire): ?int
+    {
+        if (! is_object($livewire) || ! method_exists($livewire, 'getRecord')) {
+            return null;
+        }
+
+        $record = $livewire->getRecord();
+
+        return $record instanceof Plan ? (int) $record->getKey() : null;
+    }
+
+    /**
+     * @return array<int|string, mixed>
+     */
+    private static function availableCatalogCoverages(?int $planId): array
+    {
+        return Coverage::query()
+            ->where('status', 'ACTIVO')
+            ->where(function ($query) use ($planId): void {
+                $query->whereNull('plan_id');
+
+                if ($planId !== null) {
+                    $query->orWhere('plan_id', $planId);
+                }
+            })
+            ->pluck('price', 'id')
+            ->all();
+    }
+
+    /**
+     * @return array<int|string, mixed>
+     */
+    private static function availableCatalogAgeRanges(?int $planId): array
+    {
+        return AgeRange::query()
+            ->where('status', 'ACTIVO')
+            ->where(function ($query) use ($planId): void {
+                $query->whereNull('plan_id')->orWhere('plan_id', 0);
+
+                if ($planId !== null) {
+                    $query->orWhere('plan_id', $planId);
+                }
+            })
+            ->pluck('range', 'id')
+            ->all();
+    }
 
     private static function isPackageMode(Get $get): bool
     {
@@ -114,10 +163,10 @@ class PlanForm
                                 TextInput::make('code')
                                     ->label('Código del plan')
                                     ->prefixIcon('heroicon-m-clipboard-document-check')
-                                    ->default(fn (): string => PlanCodeGenerator::next())
-                                    ->required()
+                                    ->default(fn (): string => PlanCreationPersistence::generatePlanCode())
                                     ->disabled()
                                     ->dehydrated()
+                                    ->required()
                                     ->maxLength(255)
                                     ->columnSpan(1),
 
@@ -127,14 +176,23 @@ class PlanForm
                                     ->required()
                                     ->columnSpan(1),
 
+                                Select::make('business_unit_id')
+                                    ->label('Unidad de negocio')
+                                    ->options(fn (): array => BusinessUnit::query()->pluck('definition', 'id')->all())
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->default(1),
+
                                 Select::make('type')
                                     ->label('Categoría del Plan')
                                     ->options([
                                         'BASICO' => 'BASICO',
-                                        'DRESS-TYLOR' => 'DRESS-TYLOR',
+                                        'DRESS-TAILOR' => 'DRESS-TAILOR',
                                     ])
+                                    ->default('BASICO')
                                     ->required(),
-                                Hidden::make('status')->default('INACTIVO'),
+                                Hidden::make('status')->default('ACTIVO'),
                                 Hidden::make('created_by')->default(Auth::user()->name),
                             ]),
                     ])->collapsible()->columnSpanFull(),
@@ -274,8 +332,13 @@ class PlanForm
                                                         Hidden::make('status')->default('ACTIVO'),
                                                         Hidden::make('created_by')->default(Auth::user()->name),
                                                     ])
-                                                    ->action(function (array $data) {
-                                                        dd($data);
+                                                    ->action(function (array $data, Set $set): void {
+                                                        $benefit = Benefit::query()->create([
+                                                            'description' => $data['description'],
+                                                            'status' => 'ACTIVO',
+                                                            'created_by' => Auth::user()->name,
+                                                        ]);
+                                                        $set('benefit_id', $benefit->id);
                                                     }),
                                             ])),
 
@@ -311,8 +374,14 @@ class PlanForm
                                                                 Hidden::make('created_by')->default(Auth::user()->name),
                                                             ])->columnSpanFull(),
                                                     ])
-                                                    ->action(function (array $data) {
-                                                        dd($data);
+                                                    ->action(function (array $data, Set $set): void {
+                                                        $limit = Limit::query()->create([
+                                                            'description' => $data['description'],
+                                                            'cuota' => $data['cuota'],
+                                                            'status' => 'ACTIVO',
+                                                            'created_by' => Auth::user()->name,
+                                                        ]);
+                                                        $set('benefit_pvp', $limit->id);
                                                     }),
 
                                             ])),
@@ -359,8 +428,13 @@ class PlanForm
                                                                         Hidden::make('created_by')->default(Auth::user()->name),
                                                                     ])->columnSpanFull()->columns(1),
                                                             ])
-                                                            ->action(function (array $data) {
-                                                                dd($data);
+                                                            ->action(function (array $data, Set $set): void {
+                                                                $coverage = Coverage::query()->create([
+                                                                    'price' => $data['price'],
+                                                                    'status' => 'ACTIVO',
+                                                                    'created_by' => Auth::user()->name,
+                                                                ]);
+                                                                $set('coverage_id', $coverage->id);
                                                             }),
                                                     ]))
                                                     ->live()
@@ -391,23 +465,32 @@ class PlanForm
                                                             ->color('success')
                                                             ->modal()
                                                             ->form([
-                                                                Fieldset::make('Formulario para Crear Limite')
+                                                                Fieldset::make('Formulario para Crear Rango de Edad')
                                                                     ->schema([
-                                                                        TextInput::make('description')
-                                                                            ->label('Descripción del Limite')
-                                                                            ->columns(8)
+                                                                        TextInput::make('range')
+                                                                            ->label('Rango de Edad')
                                                                             ->required(),
-                                                                        TextInput::make('cuota')
-                                                                            ->label('Cuota del Limite')
-                                                                            ->columns(4)
+                                                                        TextInput::make('age_init')
+                                                                            ->label('Edad Inicial')
+                                                                            ->required()
+                                                                            ->numeric(),
+                                                                        TextInput::make('age_end')
+                                                                            ->label('Edad Final')
                                                                             ->required()
                                                                             ->numeric(),
                                                                         Hidden::make('status')->default('ACTIVO'),
                                                                         Hidden::make('created_by')->default(Auth::user()->name),
                                                                     ])->columnSpanFull(),
                                                             ])
-                                                            ->action(function (array $data) {
-                                                                dd($data);
+                                                            ->action(function (array $data, Set $set): void {
+                                                                $ageRange = AgeRange::query()->create([
+                                                                    'range' => $data['range'],
+                                                                    'age_init' => $data['age_init'],
+                                                                    'age_end' => $data['age_end'],
+                                                                    'status' => 'ACTIVO',
+                                                                    'created_by' => Auth::user()->name,
+                                                                ]);
+                                                                $set('age_range_id', $ageRange->id);
                                                             }),
 
                                                     ])),
@@ -451,7 +534,7 @@ class PlanForm
                                     ->schema([
                                         Select::make('coverage_id')
                                             ->label('Cobertura')
-                                            ->options(Coverage::all()->where('status', 'ACTIVO')->where('is_assigned', false)->pluck('price', 'id'))
+                                            ->options(fn (mixed $livewire): array => self::availableCatalogCoverages(self::currentPlanId($livewire)))
                                             ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                             ->belowContent(Schema::between([
                                                 Flex::make([
@@ -506,7 +589,7 @@ class PlanForm
                                     ->schema([
                                         Select::make('age_range_id')
                                             ->label('Rango de Edad')
-                                            ->options(AgeRange::all()->where('status', 'ACTIVO')->where('is_assigned', false)->pluck('range', 'id'))
+                                            ->options(fn (mixed $livewire): array => self::availableCatalogAgeRanges(self::currentPlanId($livewire)))
                                             ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                             ->belowContent(Schema::between([
                                                 Action::make('create_general_plan_age_range')

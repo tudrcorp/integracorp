@@ -137,7 +137,7 @@ class PlanInfolist
                                             ->badge()
                                             ->color(fn (?string $state): string => self::planStatusColor($state))
                                             ->placeholder('—'),
-                                        TextEntry::make('businessUnit.name')
+                                        TextEntry::make('businessUnit.definition')
                                             ->label('Unidad de negocio')
                                             ->placeholder('—'),
                                         TextEntry::make('created_by')

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none">
+  <rect width="400" height="320" rx="24" fill="#0064a118"/>
+  <rect x="70" y="60" width="260" height="180" rx="12" fill="#ffffff10" stroke="#0064a1" stroke-width="2"/>
+  <rect x="70" y="60" width="260" height="28" rx="12" fill="#0064a144"/>
+  <circle cx="90" cy="74" r="5" fill="#ef4444"/>
+  <circle cx="106" cy="74" r="5" fill="#f59e0b"/>
+  <circle cx="122" cy="74" r="5" fill="#10b981"/>
+  <rect x="120" y="130" width="160" height="80" rx="12" fill="#0064a1"/>
+  <text x="200" y="165" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="12">Sesión expirada</text>
+  <rect x="150" y="180" width="100" height="24" rx="6" fill="#0ea5e9"/>
+  <text x="200" y="196" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="10">Recargar</text>
+</svg>

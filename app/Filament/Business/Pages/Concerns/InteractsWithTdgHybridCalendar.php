@@ -678,7 +678,7 @@ trait InteractsWithTdgHybridCalendar
         $term = Str::lower(trim($this->collaboratorSearch));
 
         if ($term === '') {
-            return $available->values()->all();
+            return $available->take(30)->values()->all();
         }
 
         return $available
@@ -688,6 +688,7 @@ trait InteractsWithTdgHybridCalendar
 
                 return Str::contains($name, $term) || Str::contains($email, $term);
             })
+            ->take(40)
             ->values()
             ->all();
     }
@@ -746,6 +747,7 @@ trait InteractsWithTdgHybridCalendar
         $this->departmentReplicationMonth = Carbon::parse($this->selectedDate)->format('Y-m');
         $this->hydrateDayFormsFromDatabase();
         $this->isDayModalOpen = true;
+        $this->dispatch('tdg-modal-workspace-changed', workspace: $this->modalWorkspace);
     }
 
     public function closeDayModal(): void
@@ -766,6 +768,8 @@ trait InteractsWithTdgHybridCalendar
 
         $this->modalWorkspace = $workspace;
         $this->collaboratorSearch = '';
+        $this->dispatch('tdg-modal-workspace-changed', workspace: $this->modalWorkspace);
+        $this->skipRender();
     }
 
     public function updatedUseSameGuardCollaborator(bool $value): void
@@ -2138,12 +2142,51 @@ trait InteractsWithTdgHybridCalendar
             'offices' => $this->buildOfficeFilterAvatarsFromPayload(collect($day->officeAssignments)),
             'guards' => $this->buildGuardColaboradorAvatarsFromPayload(collect($day->guardAssignments)),
             'departments' => $this->buildDepartmentColaboradorAvatarsFromPayload(collect($day->departmentColaboradorAssignments)),
-            default => collect($this->buildOfficeFilterAvatarsFromPayload(collect($day->officeAssignments)))
-                ->merge($this->buildGuardColaboradorAvatarsFromPayload(collect($day->guardAssignments)))
-                ->unique(fn (array $avatar): string => Str::lower((string) ($avatar['name'] ?? '')))
-                ->values()
-                ->all(),
+            default => $this->mergeCalendarAvatars(
+                $this->buildOfficeFilterAvatarsFromPayload(collect($day->officeAssignments)),
+                $this->buildGuardColaboradorAvatarsFromPayload(collect($day->guardAssignments)),
+                $this->buildDepartmentColaboradorAvatarsFromPayload(collect($day->departmentColaboradorAssignments)),
+            ),
         };
+    }
+
+    /**
+     * @param  array<int, array{name: string|null, email: string|null, avatar_url: string|null, initials: string, activity_titles: array<int, string>}>  ...$avatarGroups
+     * @return array<int, array{name: string|null, email: string|null, avatar_url: string|null, initials: string, activity_titles: array<int, string>}>
+     */
+    private function mergeCalendarAvatars(array ...$avatarGroups): array
+    {
+        /** @var array<string, array{name: string|null, email: string|null, avatar_url: string|null, initials: string, activity_titles: array<int, string>}> $byNameKey */
+        $byNameKey = [];
+
+        foreach (array_merge(...$avatarGroups) as $avatar) {
+            $nameKey = Str::lower((string) ($avatar['name'] ?? ''));
+
+            if ($nameKey === '') {
+                continue;
+            }
+
+            if (! array_key_exists($nameKey, $byNameKey)) {
+                $byNameKey[$nameKey] = $avatar;
+
+                continue;
+            }
+
+            $existingTitles = $byNameKey[$nameKey]['activity_titles'] ?? [];
+            $incomingTitles = $avatar['activity_titles'] ?? [];
+
+            $byNameKey[$nameKey]['activity_titles'] = collect($existingTitles)
+                ->merge($incomingTitles)
+                ->filter(fn (mixed $title): bool => is_string($title) && $title !== '')
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return collect($byNameKey)
+            ->sortBy(fn (array $avatar): string => Str::lower((string) $avatar['name']))
+            ->values()
+            ->all();
     }
 
     /**

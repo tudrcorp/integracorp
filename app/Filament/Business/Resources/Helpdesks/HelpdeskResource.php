@@ -11,6 +11,7 @@ use App\Filament\Business\Resources\Helpdesks\Schemas\HelpdeskInfolist;
 use App\Filament\Business\Resources\Helpdesks\Tables\HelpdesksTable;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Concerns\AuthorizesHelpdeskTicketCreation;
+use App\Filament\Concerns\RegistersHelpdeskUnreadNoteNavigation;
 use App\Models\HelpDesk;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -24,6 +25,7 @@ class HelpdeskResource extends Resource
 {
     use AuthorizesDepartmentNavigation;
     use AuthorizesHelpdeskTicketCreation;
+    use RegistersHelpdeskUnreadNoteNavigation;
 
     protected static ?string $model = HelpDesk::class;
 

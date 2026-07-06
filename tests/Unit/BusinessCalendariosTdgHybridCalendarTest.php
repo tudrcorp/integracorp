@@ -93,6 +93,8 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain('getOfficeReplicationCalendarDaysProperty')
         ->toContain('getGuardReplicationCalendarDaysProperty')
         ->toContain('getDepartmentReplicationCalendarDaysProperty')
+        ->toContain('dispatch(\'tdg-modal-workspace-changed\'')
+        ->toContain('skipRender()')
         ->toContain('isDaytimeOperationsShift')
         ->toContain('Un colaborador no puede asistir a más de una oficina')
         ->toContain('assignGuardCollaborator')
@@ -106,6 +108,7 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain('TDG_CALENDAR_AVATAR_VISIBLE_LIMIT')
         ->toContain('presentColaboradorAvatarsForDayDisplay')
         ->toContain('buildOfficeFilterAvatarsFromPayload')
+        ->toContain('mergeCalendarAvatars')
         ->toContain('avatars_overflow')
         ->toContain('office_count')
         ->toContain('avatars_tooltip')
@@ -134,7 +137,8 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain('overflow-y-auto')
         ->toContain('group/av')
         ->toContain('group-hover/av:block')
-        ->toContain('$avatar[\'name\']');
+        ->toContain('$avatar[\'name\']')
+        ->toContain('activity_titles');
 
     expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/tdg-calendar-day-avatars.blade.php'))
         ->toContain('x-collaborator-avatar-stack')
@@ -142,7 +146,11 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain('Colaboradores del día');
 
     expect(file_get_contents($modalPath))
-        ->toContain('setModalWorkspace')
+        ->toContain('@tdg-modal-workspace-changed.window')
+        ->toContain("@click=\"workspace = '{{ \$workspaceKey }}'\"")
+        ->toContain("x-show=\"workspace === 'offices'\"")
+        ->toContain("x-show=\"workspace === 'guards'\"")
+        ->toContain("x-show=\"workspace === 'departments'\"")
         ->toContain('filteredCollaboratorOptionsForGuardShift')
         ->toContain('guardia nocturna se asigna de forma independiente')
         ->toContain('assignOfficeCollaborator')
@@ -187,9 +195,9 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
 
     expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/tdg-calendar-header-filters.blade.php'))
         ->toContain('agendaFilterCategory')
-        ->toContain('Solo guardias')
-        ->toContain('Solo oficinas')
-        ->toContain('Solo departamentos')
+        ->toContain('Guardas operaciones')
+        ->toContain('Guardias oficinas')
+        ->toContain('Guardias sistema')
         ->toContain('agendaFilterOffice')
         ->toContain('agendaFilterGuardShift')
         ->toContain('agendaFilterDepartment')

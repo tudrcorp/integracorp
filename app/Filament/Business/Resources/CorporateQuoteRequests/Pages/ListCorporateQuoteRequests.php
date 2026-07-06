@@ -3,6 +3,9 @@
 namespace App\Filament\Business\Resources\CorporateQuoteRequests\Pages;
 
 use App\Filament\Business\Resources\CorporateQuoteRequests\CorporateQuoteRequestResource;
+use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\CorporateQuoteRequestChannelChart;
+use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\CorporateQuoteRequestCreatorsChart;
+use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\StatsOverviewTotalCorporateQuoteRequest;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -22,4 +25,12 @@ class ListCorporateQuoteRequests extends ListRecords
         ];
     }
 
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            StatsOverviewTotalCorporateQuoteRequest::class,
+            CorporateQuoteRequestCreatorsChart::class,
+            CorporateQuoteRequestChannelChart::class,
+        ];
+    }
 }

@@ -1,4 +1,6 @@
 @php
+    \App\Support\HelpdeskUnreadNoteTracker::markAsRead($record, auth()->user());
+
     $timeline = $timeline ?? [];
     $statusLabels = \App\Support\HelpdeskTaskStatusOptions::all();
     $statusHuman = $statusLabels[(string) $record->status] ?? (string) $record->status;

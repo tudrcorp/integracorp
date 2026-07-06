@@ -77,6 +77,10 @@
                 @include('filament.business.pages.partials.tdg-calendar-header-filters')
             @endif
 
+            @if (method_exists($this, 'shouldShowCorporateAgendaFilters') && $this->shouldShowCorporateAgendaFilters())
+                @include('filament.business.pages.partials.corporate-agenda-header-filters')
+            @endif
+
             <div class="relative z-10 overflow-x-auto">
                 @php
                     $isTdgCalendar = method_exists($this, 'shouldShowTdgAgendaFilters') && $this->shouldShowTdgAgendaFilters();
@@ -102,15 +106,19 @@
                     <div class="min-w-[980px] rounded-[1.65rem] border border-slate-200/80 bg-slate-50/70 p-3 shadow-[0_2px_16px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-950/40">
                         <div class="mb-3 grid grid-cols-7 gap-2">
                             @foreach ($this->currentWeekDays as $day)
+                                @php
+                                    $weekDayBorderClass = ($day['has_pending_invitation'] ?? false)
+                                        ? 'border-rose-400 bg-white text-slate-900 shadow-[0_8px_22px_rgba(244,63,94,0.16)] ring-2 ring-rose-500 dark:border-rose-500 dark:bg-slate-900/90 dark:text-slate-100 dark:ring-rose-400'
+                                        : ($day['is_selected']
+                                            ? 'border-cyan-400/55 bg-white text-slate-900 shadow-[0_8px_22px_rgba(15,23,42,0.12)] ring-2 ring-cyan-400/45 dark:border-cyan-400/40 dark:bg-slate-900/90 dark:text-slate-100 dark:shadow-[0_12px_28px_rgba(0,0,0,0.45)] dark:ring-cyan-300/50'
+                                            : 'border-slate-200/80 bg-white/90 text-slate-700 shadow-[0_1px_6px_rgba(15,23,42,0.04)] hover:border-cyan-200/70 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:border-cyan-500/30 dark:hover:bg-slate-800/80');
+                                @endphp
                                 <button
                                     type="button"
                                     wire:click="selectWeekDate('{{ $day['date'] }}')"
                                     wire:loading.attr="disabled"
                                     wire:target="selectWeekDate"
-                                    class="group rounded-2xl border px-2 py-2 text-center transition-all duration-200
-                                    {{ $day['is_selected']
-                                        ? 'border-cyan-400/55 bg-white text-slate-900 shadow-[0_8px_22px_rgba(15,23,42,0.12)] ring-2 ring-cyan-400/45 dark:border-cyan-400/40 dark:bg-slate-900/90 dark:text-slate-100 dark:shadow-[0_12px_28px_rgba(0,0,0,0.45)] dark:ring-cyan-300/50'
-                                        : 'border-slate-200/80 bg-white/90 text-slate-700 shadow-[0_1px_6px_rgba(15,23,42,0.04)] hover:border-cyan-200/70 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:border-cyan-500/30 dark:hover:bg-slate-800/80' }}"
+                                    class="group rounded-2xl border px-2 py-2 text-center transition-all duration-200 {{ $weekDayBorderClass }}"
                                 >
                                     <p class="text-[11px] font-semibold tracking-[0.14em] {{ $day['is_selected'] ? 'text-cyan-600 dark:text-cyan-300' : 'text-slate-500 dark:text-slate-400' }}">
                                         {{ $day['day_label'] }}
@@ -323,6 +331,9 @@
                                         ($day['activity_count'] ?? 0) === 1 => 'bg-gradient-to-r from-[#7DA0CA] to-[#C1E8FF] shadow-[0_3px_8px_rgba(125,160,202,0.20)]',
                                         default => 'bg-transparent',
                                     };
+                                    $pendingInvitationRingClass = ($day['has_pending_invitation'] ?? false)
+                                        ? 'ring-2 ring-rose-500 border-rose-400 dark:ring-rose-400 dark:border-rose-500'
+                                        : ($day['is_today'] ? 'ring-2 ring-cyan-400/60 dark:ring-cyan-300/70' : '');
                                 @endphp
 
                                 <article
@@ -335,7 +346,7 @@
                                         : 'border-transparent bg-slate-100/55 opacity-55 dark:bg-slate-900/40 dark:opacity-45' }}
                                     {{ ($day['is_filtered_out'] ?? false) ? 'opacity-35 saturate-50' : '' }}
                                     {{ $day['is_past_date'] ? 'cursor-not-allowed opacity-75 hover:translate-y-0 hover:shadow-[0_2px_12px_rgba(15,23,42,0.05)] dark:hover:shadow-[0_8px_20px_rgba(0,0,0,0.35)]' : ($day['is_current_month'] ? 'cursor-pointer' : 'cursor-default') }}
-                                    {{ $day['is_today'] ? 'ring-2 ring-cyan-400/60 dark:ring-cyan-300/70' : '' }}"
+                                    {{ $pendingInvitationRingClass }}"
                                 >
                                     <div class="mb-2 flex items-center justify-between gap-2">
                                         <span class="text-2xl font-semibold leading-none tracking-tight {{ $day['is_current_month'] ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-600' }}">

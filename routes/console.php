@@ -2,6 +2,7 @@
 
 use App\Jobs\AnulateAgentQuotes;
 use App\Jobs\BackupDatabase;
+use App\Jobs\DispatchScheduledMassNotifications;
 use App\Jobs\ExpireOperationServiceOrders;
 use App\Jobs\ExportCorporateAffiliations;
 use App\Jobs\ExportIndividualAffiliations;
@@ -106,6 +107,11 @@ Schedule::job(new AnulateAgentQuotes, 'system')->dailyAt('23:00');
  * Caduca órdenes de servicio no finalizadas dentro de los 10 días posteriores a su aprobación.
  */
 Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('7:30');
+
+/**
+ * Dispara notificaciones masivas cuya fecha programada ya venció.
+ */
+Schedule::job(new DispatchScheduledMassNotifications, 'system')->everyMinute();
 
 /**
  * Respaldo completo de la base de datos en .sql (estructura + datos).

@@ -3,46 +3,68 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Filament\Actions\Action;
-use Illuminate\Http\Request;
+use App\Support\IndividualQuotePdfLayout;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class CorporateQuoteController extends Controller
 {
+    private static function ensureQuotesDirectoryExists(): void
+    {
+        $directory = public_path('storage/quotes');
+
+        if (! is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $details
+     */
+    public static function generatePdf(array $details, int|string $user, string $layout): void
+    {
+        match ($layout) {
+            IndividualQuotePdfLayout::Inicial => self::generatePdfPlanIncial($details, $user),
+            IndividualQuotePdfLayout::Especial => self::generatePdfPlanEspecial($details, $user),
+            default => self::generatePdfPlanIdeal($details, $user),
+        };
+    }
+
     public static function generatePdfPlanIncial($details, $user)
     {
         try {
 
-            // ✅ Reconstruye el usuario dentro del job
             $user = User::findOrFail($user);
 
-            $collect = collect($details['data'][0]);
-// dd($collect);
+            $collect = collect($details['data'][0] ?? $details['data'] ?? []);
+
             ini_set('memory_limit', '2048M');
             set_time_limit(120);
 
-            // dd($details, $collect);
-            $name_user = $user->name;
-            $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'collect', 'name_user'));
-            $name_pdf = $details['code'] . '.pdf';
-            $pdf->save(public_path('storage/quotes/' . $name_pdf));
+            self::ensureQuotesDirectoryExists();
+
+            $name_user = $details['agent_name'] ?? $user->name;
+            $layout = $details['layout'] ?? IndividualQuotePdfLayout::Inicial;
+            $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'collect', 'name_user', 'layout'));
+            $name_pdf = $details['code'].'.pdf';
+            $pdf->save(public_path('storage/quotes/'.$name_pdf));
 
             Notification::make()
                 ->title('¡TAREA COMPLETADA!')
-                ->body('📎 ' . $details['code'] . '.pdf ya se encuentra disponible para su descarga.')
+                ->body('📎 '.$details['code'].'.pdf ya se encuentra disponible para su descarga.')
                 ->success()
                 ->actions([
                     Action::make('download')
                         ->label('Descargar archivo')
-                        ->url('/storage/quotes/' . $details['code'] . '.pdf')
+                        ->url('/storage/quotes/'.$details['code'].'.pdf'),
                 ])
                 ->sendToDatabase($user);
         } catch (\Throwable $th) {
 
-            Log::info("generatePdfPlanIncial: FAILED");
+            Log::info('generatePdfPlanIncial: FAILED');
             Log::error($th->getMessage());
 
             Notification::make()
@@ -57,7 +79,6 @@ class CorporateQuoteController extends Controller
     {
         try {
 
-            // ✅ Reconstruye el usuario dentro del job
             $user = User::findOrFail($user);
 
             $collect = collect($details['data']);
@@ -66,24 +87,27 @@ class CorporateQuoteController extends Controller
             ini_set('memory_limit', '2048M');
             set_time_limit(120);
 
-            $name_user = $user->name;
-            $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'group_collect', 'name_user'));
-            $name_pdf = $details['code'] . '.pdf';
-            $pdf->save(public_path('storage/quotes/' . $name_pdf));
+            self::ensureQuotesDirectoryExists();
+
+            $name_user = $details['agent_name'] ?? $user->name;
+            $layout = $details['layout'] ?? IndividualQuotePdfLayout::Ideal;
+            $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'group_collect', 'name_user', 'layout'));
+            $name_pdf = $details['code'].'.pdf';
+            $pdf->save(public_path('storage/quotes/'.$name_pdf));
 
             Notification::make()
                 ->title('¡TAREA COMPLETADA!')
-                ->body('📎 ' . $details['code'] . '.pdf ya se encuentra disponible para su descarga.')
+                ->body('📎 '.$details['code'].'.pdf ya se encuentra disponible para su descarga.')
                 ->success()
                 ->actions([
                     Action::make('download')
                         ->label('Descargar archivo')
-                        ->url('/storage/quotes/' . $details['code'] . '.pdf')
+                        ->url('/storage/quotes/'.$details['code'].'.pdf'),
                 ])
                 ->sendToDatabase($user);
         } catch (\Throwable $th) {
 
-            Log::info("generatePdfPlanIdeal: FAILED");
+            Log::info('generatePdfPlanIdeal: FAILED');
             Log::error($th->getMessage());
 
             Notification::make()
@@ -98,7 +122,6 @@ class CorporateQuoteController extends Controller
     {
         try {
 
-            // ✅ Reconstruye el usuario dentro del job
             $user = User::findOrFail($user);
 
             $collect = collect($details['data']);
@@ -107,30 +130,28 @@ class CorporateQuoteController extends Controller
             ini_set('memory_limit', '2048M');
             set_time_limit(120);
 
-            /**
-             * Logica para generar el pdf
-             * ----------------------------------------------------------------------------------------------------
-             */
-            $name_user = $user->name;
-            $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'group_collect', 'name_user'));
-            $name_pdf = $details['code'] . '.pdf';
-            $pdf->save(public_path('storage/quotes/' . $name_pdf));
+            self::ensureQuotesDirectoryExists();
+
+            $name_user = $details['agent_name'] ?? $user->name;
+            $layout = $details['layout'] ?? IndividualQuotePdfLayout::Especial;
+            $pdf = Pdf::loadView('documents.propuesta-economica', compact('details', 'group_collect', 'name_user', 'layout'));
+            $name_pdf = $details['code'].'.pdf';
+            $pdf->save(public_path('storage/quotes/'.$name_pdf));
 
             Notification::make()
                 ->title('¡TAREA COMPLETADA!')
-                ->body('📎 ' . $details['code'] . '.pdf ya se encuentra disponible para su descarga.')
+                ->body('📎 '.$details['code'].'.pdf ya se encuentra disponible para su descarga.')
                 ->success()
                 ->actions([
                     Action::make('download')
                         ->label('Descargar archivo')
-                        ->url('/storage/quotes/' . $details['code'] . '.pdf')
+                        ->url('/storage/quotes/'.$details['code'].'.pdf'),
                 ])
                 ->sendToDatabase($user);
 
-
         } catch (\Throwable $th) {
 
-            Log::info("generatePdfPlanEspecial: FAILED");
+            Log::info('generatePdfPlanEspecial: FAILED');
             Log::error($th->getMessage());
 
             Notification::make()
@@ -145,7 +166,6 @@ class CorporateQuoteController extends Controller
     {
         try {
 
-            // ✅ Reconstruye el usuario dentro del job
             $user = User::findOrFail($user);
 
             $details_generals = [];
@@ -153,6 +173,7 @@ class CorporateQuoteController extends Controller
                 $details_generals = [
                     'code' => $collect_final[$i]['code'],
                     'name' => $collect_final[$i]['name'],
+                    'agent_name' => $collect_final[$i]['agent_name'] ?? null,
                     'email' => $collect_final[$i]['email'],
                     'phone' => $collect_final[$i]['phone'],
                     'date' => $collect_final[$i]['date'],
@@ -163,59 +184,60 @@ class CorporateQuoteController extends Controller
             ini_set('memory_limit', '2048M');
             set_time_limit(120);
 
-            /**
-             * Datos de la propuesta economica
-             */
+            self::ensureQuotesDirectoryExists();
+
             $data_inicial = null;
             $group_collect_plan_inicial = null;
-            $group_collect_plan_ideal = null;
-            $group_collect_plan_especial = null;
+            $group_collect_plan_ideal = collect();
+            $group_collect_plan_especial = collect();
 
-            for ($i = 0; $i < count($collect_final); $i++) {
-                if ($collect_final[$i]['plan'] == 1 && !empty($collect_final[$i]['data'])) {
-                    $collect_plan_inicial = collect($collect_final[$i]['data']);
-                    $group_collect_plan_inicial = $collect_plan_inicial;
-                }
-                if ($collect_final[$i]['plan'] == 2 && !empty($collect_final[$i]['data'])) {
-                    $collect_plan_ideal = collect($collect_final[$i]['data']);
-                    $group_collect_plan_ideal = $collect_plan_ideal->groupBy('age_range');
-                }
-                if ($collect_final[$i]['plan'] == 3 && !empty($collect_final[$i]['data'])) {
-                    $collect_plan_especial = collect($collect_final[$i]['data']);
-                    $group_collect_plan_especial = $collect_plan_especial->groupBy('age_range');
+            foreach ($collect_final as $planDetails) {
+                $layout = $planDetails['layout'] ?? IndividualQuotePdfLayout::resolve((int) $planDetails['plan']);
+                $data = collect($planDetails['data'] ?? []);
+
+                if ($layout === IndividualQuotePdfLayout::Inicial) {
+                    $group_collect_plan_inicial = $data;
+                    $data_inicial = (array) ($data->first() ?? []);
+                } elseif ($layout === IndividualQuotePdfLayout::Especial) {
+                    $group_collect_plan_especial = $data->groupBy('age_range');
+                } else {
+                    $group_collect_plan_ideal = $group_collect_plan_ideal->merge(
+                        $data->groupBy('age_range')
+                    );
                 }
             }
 
-            if (!empty($group_collect_plan_inicial)) {
-                $data_inicial   =  (array) $group_collect_plan_inicial[0];
-                $data_ideal     = $group_collect_plan_ideal;
-                $data_especial  = $group_collect_plan_especial;
+            if ($group_collect_plan_ideal instanceof Collection && $group_collect_plan_ideal->isEmpty()) {
+                $data_ideal = null;
             } else {
-                $data_ideal     = $group_collect_plan_ideal;
-                $data_especial  = $group_collect_plan_especial;
+                $data_ideal = $group_collect_plan_ideal;
             }
 
+            if ($group_collect_plan_especial instanceof Collection && $group_collect_plan_especial->isEmpty()) {
+                $data_especial = null;
+            } else {
+                $data_especial = $group_collect_plan_especial;
+            }
 
-            $name_user = $user->name;
+            $name_user = $details_generals['agent_name'] ?? $user->name;
             $pdf = Pdf::loadView('documents.propuesta-economica-multiple', compact('data_inicial', 'data_ideal', 'data_especial', 'details_generals', 'name_user'));
-            $name_pdf = $details_generals['code'] . '.pdf';
-            $pdf->save(public_path('storage/quotes/' . $name_pdf));
+            $name_pdf = $details_generals['code'].'.pdf';
+            $pdf->save(public_path('storage/quotes/'.$name_pdf));
 
             Notification::make()
                 ->title('¡TAREA COMPLETADA!')
-                ->body('📎 ' . $details_generals['code'] . '.pdf ya se encuentra disponible para su descarga.')
+                ->body('📎 '.$details_generals['code'].'.pdf ya se encuentra disponible para su descarga.')
                 ->success()
                 ->actions([
                     Action::make('download')
                         ->label('Descargar archivo')
-                        ->url('/storage/quotes/' . $details_generals['code'] . '.pdf')
+                        ->url('/storage/quotes/'.$details_generals['code'].'.pdf'),
                 ])
                 ->sendToDatabase($user);
 
-                
         } catch (\Throwable $th) {
 
-            Log::info("generatePdfMultiple: FAILED");
+            Log::info('generatePdfMultiple: FAILED');
             Log::error($th->getMessage());
 
             Notification::make()

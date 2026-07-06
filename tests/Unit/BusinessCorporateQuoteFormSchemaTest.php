@@ -33,3 +33,17 @@ it('requiere al menos una persona en la cotización', function (): void {
         ->toContain('La cantidad de personas debe ser como mínimo una (1) persona.')
         ->toContain('->minValue(1)');
 });
+
+it('usa repetidor dinámico de rangos de edad desacoplado de ids fijos', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/CorporateQuotes/Schemas/CorporateQuoteForm.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain('emptyQuoteDetailRows')
+        ->toContain('syncQuoteDetailsForPlan')
+        ->toContain("Repeater::make('details_quote')")
+        ->toContain("Repeater::make('details_quote_multiple')")
+        ->not->toContain("Repeater::make('details_quote_plan_inicial')")
+        ->not->toContain("Repeater::make('details_quote_plan_ideal')")
+        ->not->toContain("Repeater::make('details_quote_plan_especial')");
+});

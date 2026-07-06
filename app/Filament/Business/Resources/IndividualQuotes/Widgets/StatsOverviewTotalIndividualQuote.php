@@ -128,7 +128,7 @@ class StatsOverviewTotalIndividualQuote extends StatsOverviewWidget
         $monthLabel = ucfirst($ref->locale(app()->getLocale())->translatedFormat('F'));
 
         return [
-            Stat::make('Cotizaciones año '.$year, number_format($totalAnio))
+            Stat::make('Cotizaciones año '.$year, $totalAnio)
                 ->description('Acumulado del año seleccionado')
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color('info')
@@ -137,7 +137,7 @@ class StatsOverviewTotalIndividualQuote extends StatsOverviewWidget
                     'style' => 'min-height: 130px;',
                 ]),
 
-            Stat::make('Cotizaciones '.$monthLabel, number_format($totalMes))
+            Stat::make('Cotizaciones '.$monthLabel, $totalMes)
                 ->description('Emitidas en el mes seleccionado')
                 ->descriptionIcon('heroicon-m-calendar')
                 ->color('info')

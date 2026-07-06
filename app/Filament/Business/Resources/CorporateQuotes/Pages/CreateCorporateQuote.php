@@ -39,21 +39,16 @@ class CreateCorporateQuote extends CreateRecord
     {
 
         if (! isset($data['observation_dress_tailor'])) {
-            if ($data['plan'] == 1) {
-                // guardar en la variable de sesion los detalles de la cotizacion
-                session()->put('details_quote', $data['details_quote_plan_inicial']);
-            }
-            if ($data['plan'] == 2) {
-                // guardar en la variable de sesion los detalles de la cotizacion
-                session()->put('details_quote', $data['details_quote_plan_ideal']);
-            }
-            if ($data['plan'] == 3) {
-                // guardar en la variable de sesion los detalles de la cotizacion
-                session()->put('details_quote', $data['details_quote_plan_especial']);
-            }
-            if ($data['plan'] == 'CM') {
-                // guardar en la variable de sesion los detalles de la cotizacion
-                session()->put('details_quote', $data['details_quote']);
+            if ($data['plan'] === 'CM') {
+                session()->put('details_quote', $data['details_quote_multiple'] ?? []);
+            } else {
+                $planId = (int) $data['plan'];
+                $details = collect($data['details_quote'] ?? [])
+                    ->map(fn (array $row): array => array_merge($row, ['plan_id' => $planId]))
+                    ->values()
+                    ->all();
+
+                session()->put('details_quote', $details);
             }
 
             $data['code_agency'] = $data['code_agency'] == null ? 'TDG-100' : $data['code_agency'];

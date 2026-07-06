@@ -1,4 +1,6 @@
 @php
+    \App\Support\HelpdeskUnreadNoteTracker::markAsRead($record, auth()->user());
+
     $hasNote = filled(trim((string) ($observation ?? '')));
     $days = max(0, (int) $daysElapsed);
     $daysLabel = $days === 1 ? '1 día' : $days.' días';

@@ -2,66 +2,45 @@
 
 namespace App\Filament\Marketing\Resources\BirthdayNotifications\Tables;
 
-use Filament\Tables\Table;
+use App\Http\Controllers\NotificationController;
+use App\Support\BirthdayNotificationAudience;
 use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Support\Enums\FontWeight;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Actions;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\Layout\Stack;
-use App\Http\Controllers\NotificationController;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class BirthdayNotificationsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
-            ->heading('Listado de Notificaciones de Cumpleaños Grupales(Masivas)')
-            ->description('Aquí puedes ver y gestionar las notificaciones que se han enviado por cumpleaños grupales.')
             ->columns([
                 Stack::make([
                     ImageColumn::make('file')
                         ->imageHeight('auto')
                         ->imageWidth('70%')
                         ->visibility('public'),
-                    
+
                     Stack::make([
                         TextColumn::make('data_type')
-                            ->suffix (function ($record) {
-                                if($record->data_type == 'users'){
-                                    Log::info($record->data_type);
-                                    return ' - Colaboradores/Empleados';
-                                }
-                                if($record->data_type == 'suppliers'){
-                                    return ' - Proveedores';
-                                }
-                                if($record->data_type == 'affiliations'){
-                                    return ' - Afiliados/Clientes';
-                                }
-                                if($record->data_type == 'capemiacs'){
-                                    return ' - CAPEMIAC';
-                                }
-                                if($record->data_type == 'agents'){
-                                    return ' - Agentes';
-                                }
-                            })
+                            ->suffix(fn ($record): string => ($label = BirthdayNotificationAudience::labelForDataType($record->data_type))
+                                ? ' - '.$label
+                                : '')
                             ->badge()
-                        ->color('primary')->weight(FontWeight::Bold),
+                            ->color('primary')->weight(FontWeight::Bold),
                     ]),
                     Stack::make([
                         TextColumn::make('status')
                             ->badge()
-                            ->color(fn($record) => match ($record->status) {
+                            ->color(fn ($record) => match ($record->status) {
                                 'APROBADA' => 'success',
                                 'POR-APROBAR' => 'warning',
                                 default => 'danger',
@@ -112,7 +91,7 @@ class BirthdayNotificationsTable
                                 ->required(),
                             TextInput::make('name')
                                 ->label('Nombre y Apellido')
-                                ->helperText('Opcional! solo si es personalizada')
+                                ->helperText('Opcional! solo si es personalizada'),
                         ])
                         ->action(function ($record, $data) {
                             try {
@@ -143,7 +122,7 @@ class BirthdayNotificationsTable
                                 ->required(),
                             TextInput::make('name')
                                 ->label('Nombre y Apellido')
-                                ->helperText('Opcional! solo si es personalizada')
+                                ->helperText('Opcional! solo si es personalizada'),
                         ])
                         ->action(function ($record, $data) {
 
@@ -163,7 +142,7 @@ class BirthdayNotificationsTable
                 ])
                     ->icon('heroicon-c-ellipsis-vertical')
                     ->color('azulOscuro')
-                    ->button()
+                    ->button(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

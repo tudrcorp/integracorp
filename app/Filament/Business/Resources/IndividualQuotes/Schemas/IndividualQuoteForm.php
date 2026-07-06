@@ -20,6 +20,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
@@ -57,6 +58,39 @@ class IndividualQuoteForm
                 };
             },
         ];
+    }
+
+    /**
+     * @return list<array{plan_id: int, age_range_id: null, total_persons: null}>
+     */
+    private static function emptyQuoteDetailRows(int $planId): array
+    {
+        $count = AgeRange::query()->where('plan_id', $planId)->count();
+
+        if ($count === 0) {
+            return [];
+        }
+
+        return array_map(
+            fn (): array => [
+                'plan_id' => $planId,
+                'age_range_id' => null,
+                'total_persons' => null,
+            ],
+            range(0, $count - 1),
+        );
+    }
+
+    private static function syncQuoteDetailsForPlan(Set $set, mixed $plan): void
+    {
+        if ($plan === 'CM' || blank($plan)) {
+            $set('details_quote', []);
+
+            return;
+        }
+
+        $planId = (int) $plan;
+        $set('details_quote', self::emptyQuoteDetailRows($planId));
     }
 
     public static function configure(Schema $schema): Schema
@@ -187,21 +221,35 @@ class IndividualQuoteForm
                                             ->label('Selecciona el/los planes que desea cotizar:')
                                             ->required()
                                             ->live()
+                                            ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                                self::syncQuoteDetailsForPlan($set, $state);
+                                            })
                                             ->options(function () {
+                                                $planesConBeneficios = Plan::query()
+                                                    ->where('type', 'BASICO')
+                                                    ->where('status', 'ACTIVO')
+                                                    ->get()
+                                                    ->pluck('description', 'id');
 
-                                                $planesConBeneficios = Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->get()->pluck('description', 'id');
-
-                                                // agregar el plan livewire
                                                 $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
 
                                                 return $planesConBeneficios;
                                             })
-                                            ->descriptions([
-                                                1 => 'Edad: 0 a +99 años/ilimitado.',
-                                                2 => 'Edad: 0 a 85 años.',
-                                                3 => 'Edad: 0 a 85 años.',
-                                                'CM' => 'Seleccione más de dos (2) planes.',
-                                            ]),
+                                            ->descriptions(function (): array {
+                                                $descriptions = Plan::query()
+                                                    ->where('type', 'BASICO')
+                                                    ->where('status', 'ACTIVO')
+                                                    ->withCount('ageRanges')
+                                                    ->get()
+                                                    ->mapWithKeys(fn (Plan $plan): array => [
+                                                        $plan->id => $plan->age_ranges_count.' rango(s) de edad disponible(s).',
+                                                    ])
+                                                    ->all();
+
+                                                $descriptions['CM'] = 'Seleccione más de dos (2) planes.';
+
+                                                return $descriptions;
+                                            }),
                                     ]),
                             ]),
                         Tab::make('RANGO DE EDAD')
@@ -211,81 +259,20 @@ class IndividualQuoteForm
                                     ->heading('¡Listo para el último paso! 🏁')
                                     ->schema([
 
-                                        /**
-                                         * REPETER PLAN INICIAl
-                                         */
-                                        Repeater::make('details_quote_plan_inicial')
-                                            ->grid(4)
-                                            ->label('Indique edad y número de afiliados al plan:')
-                                            ->defaultItems(fn (Get $get) => AgeRange::where('plan_id', 1)->count())
-                                            ->addable(false)
-                                            ->rules(self::requireQuoteDetailsRule())
-                                            ->hidden(function (Get $get) {
-                                                if ($get('plan') == 1) {
-                                                    return false;
-                                                }
-
-                                                return true;
-                                            })
-                                            ->table([
-                                                TableColumn::make('Rango de Edad')->width('150px'),
-                                                TableColumn::make('Total de personas'),
-                                            ])
-                                            ->schema([
-                                                Hidden::make('plan_id')->default(1),
-                                                Radio::make('age_range_id')
-                                                    ->label(false)
-
-                                                    ->inLine()
-
-                                                    ->disableOptionWhen(function ($value, $state, Get $get) {
-                                                        return collect($get('../*.age_range_id'))
-                                                            ->reject(fn ($id) => $id == $state)
-                                                            ->filter()
-                                                            ->contains($value);
-                                                    })
-                                                    ->options(function (Get $get) {
-                                                        return AgeRange::where('plan_id', 1)->pluck('range', 'id');
-                                                    })->columnSpan(4),
-                                                Select::make('total_persons')
-                                                    // ->label(false)
-                                                    ->options([
-                                                        1 => 1,
-                                                        2 => 2,
-                                                        3 => 3,
-                                                        4 => 4,
-                                                        5 => 5,
-                                                        6 => 6,
-                                                        7 => 7,
-                                                        8 => 8,
-                                                        9 => 9,
-                                                        10 => 10,
-                                                    ])
-                                                    ->placeholder('Cantidad de personas'),
-                                            ])->columns(2),
-
-                                        /**
-                                         * REPETER PLAN IDEAL
-                                         */
-                                        Repeater::make('details_quote_plan_ideal')
+                                        Repeater::make('details_quote')
                                             ->grid(2)
                                             ->label('Indique edad y número de afiliados al plan:')
-                                            ->defaultItems(fn (Get $get) => AgeRange::where('plan_id', 2)->count())
+                                            ->defaultItems(0)
                                             ->addable(false)
+                                            ->deletable(false)
+                                            ->reorderable(false)
                                             ->rules(self::requireQuoteDetailsRule())
-                                            ->hidden(function (Get $get) {
-                                                if ($get('plan') == 2) {
-                                                    return false;
-                                                }
-
-                                                return true;
-                                            })
+                                            ->visible(fn (Get $get): bool => filled($get('plan')) && $get('plan') !== 'CM')
                                             ->table([
                                                 TableColumn::make('Rango de Edad')->width('300px'),
                                                 TableColumn::make('Total de personas'),
                                             ])
                                             ->schema([
-                                                Hidden::make('plan_id')->default(2),
                                                 Radio::make('age_range_id')
                                                     ->label(false)
                                                     ->inLine()
@@ -296,12 +283,25 @@ class IndividualQuoteForm
                                                             ->filter()
                                                             ->contains($value);
                                                     })
-                                                    ->options(function (Get $get) {
-                                                        return AgeRange::where('plan_id', 2)->pluck('range', 'id');
-                                                    })->columnSpan(4),
+                                                    ->options(function (Get $get): array {
+                                                        $planId = (int) (
+                                                            $get('plan_id')
+                                                            ?? $get('../../plan')
+                                                            ?? 0
+                                                        );
+
+                                                        if ($planId === 0) {
+                                                            return [];
+                                                        }
+
+                                                        return AgeRange::query()
+                                                            ->where('plan_id', $planId)
+                                                            ->pluck('range', 'id')
+                                                            ->all();
+                                                    })
+                                                    ->columnSpan(4),
                                                 Select::make('total_persons')
                                                     ->label(false)
-                                                    // ->native(false)
                                                     ->options([
                                                         1 => 1,
                                                         2 => 2,
@@ -315,73 +315,15 @@ class IndividualQuoteForm
                                                         10 => 10,
                                                     ])
                                                     ->placeholder('Cantidad de personas'),
-                                            ])->columns(4),
-
-                                        /**
-                                         * REPETER PLAN ESPECIAL
-                                         */
-                                        Repeater::make('details_quote_plan_especial')
-                                            ->grid(2)
-                                            ->label('Indique edad y número de afiliados al plan:')
-                                            ->defaultItems(fn (Get $get) => AgeRange::where('plan_id', 3)->count())
-                                            ->addable(false)
-                                            ->rules(self::requireQuoteDetailsRule())
-                                            ->hidden(function (Get $get) {
-                                                if ($get('plan') == 3) {
-                                                    return false;
-                                                }
-
-                                                return true;
-                                            })
-                                            ->table([
-                                                TableColumn::make('Rango de Edad')->width('380px'),
-                                                TableColumn::make('Total de personas'),
+                                                Hidden::make('plan_id'),
                                             ])
-                                            ->schema([
-                                                Hidden::make('plan_id')->default(3),
-                                                Radio::make('age_range_id')
-                                                    ->label(false)
-                                                    ->inLine()
-                                                    ->live()
-                                                    ->disableOptionWhen(function ($value, $state, Get $get) {
-                                                        return collect($get('../*.age_range_id'))
-                                                            ->reject(fn ($id) => $id == $state)
-                                                            ->filter()
-                                                            ->contains($value);
-                                                    })
-                                                    ->options(function (Get $get) {
-                                                        return AgeRange::where('plan_id', 3)->pluck('range', 'id');
-                                                    })->columnSpan(4),
-                                                Select::make('total_persons')
-                                                    ->options([
-                                                        1 => 1,
-                                                        2 => 2,
-                                                        3 => 3,
-                                                        4 => 4,
-                                                        5 => 5,
-                                                        6 => 6,
-                                                        7 => 7,
-                                                        8 => 8,
-                                                        9 => 9,
-                                                        10 => 10,
-                                                    ])
-                                                    ->placeholder('Cantidad de personas'),
-                                            ])->columns(2),
+                                            ->columns(4),
 
-                                        /**
-                                         * REPETER PLAN MULTIPLE
-                                         */
-                                        Repeater::make('details_quote')
+                                        Repeater::make('details_quote_multiple')
                                             ->label('Indique los planes, la edad y número de personas:')
                                             ->addActionLabel('Añadir plan')
                                             ->rules(self::requireQuoteDetailsRule())
-                                            ->hidden(function (Get $get) {
-                                                if ($get('plan') == 'CM') {
-                                                    return false;
-                                                }
-
-                                                return true;
-                                            })
+                                            ->visible(fn (Get $get): bool => $get('plan') === 'CM')
                                             ->schema([
                                                 Radio::make('plan_id')
                                                     ->label('Seleccione una opción y añadir plan:')

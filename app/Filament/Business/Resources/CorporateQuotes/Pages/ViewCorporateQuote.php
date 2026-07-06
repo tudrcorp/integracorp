@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\CorporateQuotes\Pages;
 
 use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
 use App\Models\CorporateQuote;
+use App\Support\CorporateQuotePdfGenerator;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
@@ -53,11 +54,12 @@ class ViewCorporateQuote extends ViewRecord
 
                     try {
 
-                        if (! file_exists(public_path('storage/quotes/'.$record->code.'.pdf'))) {
+                        $path = public_path('storage/quotes/'.$record->code.'.pdf');
 
+                        if (! file_exists($path) && ! CorporateQuotePdfGenerator::regenerateIfMissing($record)) {
                             Notification::make()
                                 ->title('NOTIFICACIÓN')
-                                ->body('El documento asociado a la cotización no se encuentra disponible. Por favor, intente nuevamente en unos segundos.')
+                                ->body('El documento asociado a la cotización no se encuentra disponible. Verifique que la cotización tenga detalles y tarifas configuradas.')
                                 ->icon('heroicon-s-x-circle')
                                 ->iconColor('warning')
                                 ->warning()
@@ -65,13 +67,10 @@ class ViewCorporateQuote extends ViewRecord
 
                             return;
                         }
-                        /**
-                         * Descargar el documento asociado a la cotizacion
-                         * ruta: storage/
-                         */
-                        $path = public_path('storage/quotes/'.$record->code.'.pdf');
 
-                        return response()->download($path);
+                        return redirect()->route('business.corporate-quotes.pdf.download', [
+                            'corporateQuote' => $record->id,
+                        ]);
 
                     } catch (\Throwable $th) {
                         Notification::make()

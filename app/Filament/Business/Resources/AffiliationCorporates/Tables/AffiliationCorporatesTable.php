@@ -6,6 +6,7 @@ use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateRe
 use App\Http\Controllers\AffiliateCorporateExportCsvController;
 use App\Http\Controllers\AffiliationCorporateController;
 use App\Http\Controllers\AffiliationCorporateExportCsvController;
+use App\Http\Controllers\AffiliationCorporatePopulationExportCsvController;
 use App\Mail\UploadPayment;
 use App\Models\AffiliationCorporate;
 use App\Models\User;
@@ -1198,6 +1199,27 @@ class AffiliationCorporatesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    ExportBulkAction::make()->exporter(AffiliationCorporateExporter::class)->label('Exportar XLS')->color('info')->deselectRecordsAfterCompletion(),
+                    BulkAction::make('exportPopulationCsv')
+                        ->label('Exportar CSV con población')
+                        ->icon('heroicon-o-users')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una afiliación')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $ids = $records->pluck('id')->all();
+                            $token = AffiliationCorporatePopulationExportCsvController::storeIdsAndGetToken($ids);
+
+                            return redirect()->route('business.affiliation-corporates.export-population-csv', ['token' => $token]);
+                        }),
                     BulkAction::make('exportAffiliationCorporatesCsv')
                         ->label('Exportar Afiliaciones')
                         ->icon('heroicon-o-arrow-down-tray')

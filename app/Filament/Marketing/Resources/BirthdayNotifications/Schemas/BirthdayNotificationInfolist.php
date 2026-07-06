@@ -2,11 +2,12 @@
 
 namespace App\Filament\Marketing\Resources\BirthdayNotifications\Schemas;
 
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Fieldset;
-use Filament\Infolists\Components\TextEntry;
+use App\Support\BirthdayNotificationAudience;
 use Filament\Infolists\Components\ImageEntry;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 class BirthdayNotificationInfolist
 {
@@ -45,23 +46,9 @@ class BirthdayNotificationInfolist
                                     ->color('success'),
                                 TextEntry::make('data_type')
                                     ->label('Destinatarios:')
-                                    ->suffix(function ($record) {
-                                        if ($record->data_type == 'users') {
-                                            return ' - Colaboradores/Empleados';
-                                        }
-                                        if ($record->data_type == 'suppliers') {
-                                            return ' - Proveedores';
-                                        }
-                                        if ($record->data_type == 'affiliations') {
-                                            return ' - Afiliados/Clientes';
-                                        }
-                                        if ($record->data_type == 'capemiacs') {
-                                            return ' - CAPEMIAC';
-                                        }
-                                        if ($record->data_type == 'agents') {
-                                            return ' - Agentes';
-                                        }
-                                    })
+                                    ->suffix(fn ($record): string => ($label = BirthdayNotificationAudience::labelForDataType($record->data_type))
+                                        ? ' - '.$label
+                                        : '')
                                     ->badge()
                                     ->color('success'),
                                 TextEntry::make('status')
@@ -84,7 +71,7 @@ class BirthdayNotificationInfolist
 
                                                 // Only render the tooltip if the entry contents exceeds the length limit.
                                                 return $state;
-                                            })
+                                            }),
                                     ])->columnSpanFull(),
                             ])->columnSpanFull()->columns(5),
                     ])->columnSpanFull(),

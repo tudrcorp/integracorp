@@ -11,6 +11,7 @@ use App\Models\Agent;
 use App\Models\AgentDocument;
 use App\Models\BirthdayNotification;
 use App\Models\DataNotification;
+use App\Models\MassNotification;
 use App\Models\TelemedicinePatientMedications;
 use App\Support\BirthdayNotificationRunReport;
 use Carbon\Carbon;
@@ -161,25 +162,14 @@ class NotificationMasiveService
      *
      * @return \Illuminate\Http\Response
      */
-    public static function sendEmail($email, $record)
+    public static function sendEmail(string $email, MassNotification $record): void
     {
+        set_time_limit(0);
 
-        try {
+        Log::info('Destinatario:'.$email);
+        Mail::to($email)->send(new NotificationMasiveMail($record->toArray()));
 
-            set_time_limit(0);
-
-            $infoArray = $record->toArray();
-
-            Log::info('Destinatario:'.$email);
-            Mail::to($email)->send(new NotificationMasiveMail($infoArray));
-
-            sleep(5);
-
-            return true;
-
-        } catch (\Throwable $th) {
-            Log::error($th);
-        }
+        sleep(5);
     }
 
     /**

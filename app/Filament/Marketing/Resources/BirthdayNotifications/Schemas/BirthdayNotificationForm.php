@@ -2,24 +2,24 @@
 
 namespace App\Filament\Marketing\Resources\BirthdayNotifications\Schemas;
 
-use Filament\Schemas\Schema;
-use Illuminate\Support\HtmlString;
+use App\Support\BirthdayNotificationAudience;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
-use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Components\Textarea;
-use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\HtmlString;
 
 class BirthdayNotificationForm
 {
-    public static function configure(Schema $schema): Schema
+    public static function configure(Schema $schema, ?string $audience = null): Schema
     {
         return $schema
             ->components([
@@ -32,7 +32,7 @@ class BirthdayNotificationForm
                                     TextInput::make('title')
                                         ->label('Titulo de la notificación')
                                         ->helperText('Este campo es necesario para identificar la notificación y ser visible para asociarla a los destinatarios.')
-                                        
+
                                         ->validationMessages([
                                             'required' => 'El titulo de la notificación es obligatorio.',
                                         ])
@@ -53,15 +53,7 @@ class BirthdayNotificationForm
                                         ->label('Canal de notificación')
                                         ->multiple(),
                                     Select::make('data_type')
-                                        ->options([
-                                            'rrhh_colaboradors'    => 'COLABORADORES/EMPLEADOS',
-                                            'suppliers'            => 'PROVEEDORES',
-                                            'affiliates'           => 'AFILIADOS INDIVIDUALES',
-                                            'affiliate_corporates' => 'AFILIADOS CORPORATIVOS',
-                                            'users'                => 'USUARIOS',
-                                            'capemiacs'            => 'CAPEMIAC',
-                                            'agents'               => 'AGENTES',
-                                        ])
+                                        ->options(BirthdayNotificationAudience::recipientOptionsFor($audience))
                                         ->required()
                                         ->searchable()
                                         ->label('Destinatarios')
@@ -81,7 +73,7 @@ class BirthdayNotificationForm
                                                     'video' => 'El video debe ser de 32MB de tamaño. Formatos permitidos: mp4, 3gp , mov. Si el video es mayor a 32MB no sera cargado correctamente.',
                                                     'url' => 'El URL debe tener como prefijo http:// ó https://. Ejemplo: http://www.pagina.com, https://www.pagina.com, etc. El URL debe ser colocado en el contidenido de la notificación(copy).',
                                                 ])
-                                                
+
                                                 ->live(),
                                         ])->columnSpanFull(),
                                     Fieldset::make('Encabezado de la notificación')
@@ -94,7 +86,7 @@ class BirthdayNotificationForm
                                                 ->helperText('Aquí puedes escribir el titulo de la notificación que se enviará a los usuarios. Ejemplo: Estimado(a):, Sr(a)., Amigo(a), etc.'),
                                         ])->columnSpanFull(),
                                     Fieldset::make('Archivo')
-                                        ->hidden(fn(Get $get) => $get('type') == 'url')
+                                        ->hidden(fn (Get $get) => $get('type') == 'url')
                                         ->schema([
                                             FileUpload::make('file')
                                                 ->label('Archivo de la notificación (Imagen o Video)')
@@ -103,7 +95,7 @@ class BirthdayNotificationForm
                                                 ->validationMessages([
                                                     'required' => 'La imagen es obligatoria.',
                                                 ])
-                                                ->helperText('El tamaño máximo de la imagen debe ser 16MB. Si la imagen es mayor a 16MB no sera cargado correctamente.')
+                                                ->helperText('El tamaño máximo de la imagen debe ser 16MB. Si la imagen es mayor a 16MB no sera cargado correctamente.'),
                                         ])->columnSpanFull(),
                                     Fieldset::make('Contenido de la notificación')
                                         ->schema([
@@ -121,9 +113,9 @@ class BirthdayNotificationForm
 
                                         ])->columnSpanFull(),
                                 ])->columnSpanFull()->columns(3),
-                        ])
+                        ]),
                 ])
-                    ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    ->submitAction(new HtmlString(Blade::render(<<<'BLADE'
                     <x-filament::button
                         type="submit"
                         size="sm"
@@ -131,7 +123,7 @@ class BirthdayNotificationForm
                         Crear Notificación
                     </x-filament::button>
                 BLADE)))
-                    ->columnSpanFull()
+                    ->columnSpanFull(),
             ]);
     }
 }

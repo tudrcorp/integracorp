@@ -1,6 +1,6 @@
 <div class="relative z-10 mb-4 rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/80">
     <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
-        Filtrar agenda
+        Filtrar calendario
     </p>
 
     <div class="grid gap-3 md:grid-cols-2">
@@ -10,10 +10,10 @@
                 wire:model.live="agendaFilterCategory"
                 class="w-full rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-sm text-slate-800 dark:border-white/10 dark:bg-slate-950 dark:text-slate-100"
             >
-                <option value="">Agenda completa</option>
-                <option value="offices">Solo oficinas</option>
-                <option value="guards">Solo guardias</option>
-                <option value="departments">Solo departamentos</option>
+                <option value="">Calendario completo</option>
+                <option value="offices">Guardias oficinas</option>
+                <option value="guards">Guardas operaciones</option>
+                <option value="departments">Guardias sistema</option>
             </select>
         </div>
 
@@ -84,9 +84,9 @@
             <span class="text-[11px] text-slate-500 dark:text-slate-400">Filtro activo:</span>
             @php
                 $categoryLabels = [
-                    'offices' => 'Oficinas',
-                    'guards' => 'Guardias',
-                    'departments' => 'Departamentos',
+                    'offices' => 'Guardias oficinas',
+                    'guards' => 'Guardias operaciones',
+                    'departments' => 'Guardias sistema',
                 ];
             @endphp
             <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-800 dark:bg-slate-700 dark:text-slate-100">

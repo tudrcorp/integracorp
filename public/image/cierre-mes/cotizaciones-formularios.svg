@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none">
+  <rect width="400" height="320" rx="24" fill="#0ea5e918"/>
+  <rect x="90" y="50" width="220" height="220" rx="16" fill="#ffffff12" stroke="#0ea5e9" stroke-width="2"/>
+  <rect x="115" y="80" width="80" height="10" rx="5" fill="#0ea5e9"/>
+  <rect x="115" y="110" width="170" height="32" rx="8" fill="#ffffff10" stroke="#ffffff25"/>
+  <rect x="115" y="155" width="80" height="10" rx="5" fill="#0ea5e9"/>
+  <rect x="115" y="185" width="170" height="32" rx="8" fill="#ffffff10" stroke="#ffffff25"/>
+  <rect x="115" y="230" width="100" height="28" rx="8" fill="#0064a1"/>
+  <text x="165" y="248" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="11">Guardar</text>
+  <path d="M310 90 L340 120 L340 260 L70 260 L70 120 L100 90 Z" stroke="#0ea5e9" stroke-width="2" fill="none" opacity="0.4"/>
+</svg>
