@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Models\Affiliation;
 use Illuminate\Support\HtmlString;
 
 final class AffiliationPaymentTotalAdjustment
@@ -78,5 +79,17 @@ final class AffiliationPaymentTotalAdjustment
         $amount = (float) $value;
 
         return $amount >= 0 ? $amount : null;
+    }
+
+    public static function totalAmountHelperText(Affiliation $record): string
+    {
+        $planDescription = $record->plan?->description ?? '—';
+        $frequency = $record->payment_frequency ?? '—';
+
+        if (filled($record->coverage_id) && $record->coverage !== null) {
+            return 'Plan: '.$planDescription.' - Cobertura: '.$record->coverage->price.' - Frecuencia: '.$frequency;
+        }
+
+        return 'Plan: '.$planDescription.' - Frecuencia: '.$frequency;
     }
 }

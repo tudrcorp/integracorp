@@ -1,22 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Support;
 
 use App\Jobs\SendNotificationMasive;
 use App\Jobs\SendNotificationMasiveEmail;
 use App\Models\DataNotification;
 use App\Models\MassNotification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
-
-class MassNotificationDispatchService
-{
-    public function __construct(
-        public readonly bool $success,
-        public readonly string $message,
-        public readonly int $queuedJobs = 0,
-    ) {}
-}
 
 class MassNotificationDispatchService
 {
@@ -104,7 +98,7 @@ class MassNotificationDispatchService
         return false;
     }
 
-    private static function applyApprovedScope(\Illuminate\Database\Eloquent\Builder $query): void
+    private static function applyApprovedScope(Builder $query): void
     {
         $hasStatus = Schema::hasColumn('mass_notifications', 'status');
         $hasIsApproved = Schema::hasColumn('mass_notifications', 'is_approved');

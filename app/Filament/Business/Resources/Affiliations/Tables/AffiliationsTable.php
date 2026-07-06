@@ -421,13 +421,7 @@ class AffiliationsTable
                                     Grid::make(['default' => 1, 'md' => 2])->schema([
                                         TextInput::make('total_amount')
                                             ->label('Total a pagar')
-                                            ->helperText(function (Affiliation $record): string {
-                                                if (isset($record->coverage_id)) {
-                                                    return 'Plan: '.$record->plan->description.' - Cobertura: '.$record->coverage->price.' - Frecuencia: '.$record->payment_frequency;
-                                                }
-
-                                                return 'Plan: '.$record->plan->description.' - Frecuencia: '.$record->payment_frequency;
-                                            })
+                                            ->helperText(fn (Affiliation $record): string => AffiliationPaymentTotalAdjustment::totalAmountHelperText($record))
                                             ->prefix('US$')
                                             ->default(fn (Affiliation $record): float => (float) ($record->total_amount ?? 0))
                                             ->numeric()

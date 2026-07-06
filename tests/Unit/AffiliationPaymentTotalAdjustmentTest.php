@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Affiliation;
 use App\Support\AffiliationPaymentTotalAdjustment;
 
 it('calcula total ajustado por porcentaje positivo o negativo', function (): void {
@@ -31,6 +32,32 @@ it('muestra guiones en vista previa cuando no hay tasa BCV', function (): void {
         ->toContain('Tasa BCV')
         ->toContain('Total a pagar (VES)')
         ->toContain('>—</dd>');
+});
+
+it('totalAmountHelperText omite cobertura cuando coverage_id es inválido o la relación es null', function (): void {
+    $affiliation = new Affiliation([
+        'coverage_id' => 0,
+        'payment_frequency' => 'ANUAL',
+    ]);
+
+    $affiliation->setRelation('plan', new \App\Models\Plan(['description' => 'Plan Oro']));
+    $affiliation->setRelation('coverage', null);
+
+    expect(AffiliationPaymentTotalAdjustment::totalAmountHelperText($affiliation))
+        ->toBe('Plan: Plan Oro - Frecuencia: ANUAL');
+});
+
+it('totalAmountHelperText incluye cobertura cuando la relación existe', function (): void {
+    $affiliation = new Affiliation([
+        'coverage_id' => 5,
+        'payment_frequency' => 'SEMESTRAL',
+    ]);
+
+    $affiliation->setRelation('plan', new \App\Models\Plan(['description' => 'Plan Plata']));
+    $affiliation->setRelation('coverage', new \App\Models\Coverage(['price' => 25000]));
+
+    expect(AffiliationPaymentTotalAdjustment::totalAmountHelperText($affiliation))
+        ->toBe('Plan: Plan Plata - Cobertura: 25000 - Frecuencia: SEMESTRAL');
 });
 
 it('expone ajuste por porcentaje en comprobante de pago de afiliaciones administration', function (): void {

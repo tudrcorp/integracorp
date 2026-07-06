@@ -11,6 +11,7 @@ use App\Models\Affiliation;
 use App\Models\Log;
 use App\Models\User;
 use App\Support\AffiliationPaymentBcvRateCalculator;
+use App\Support\AffiliationPaymentTotalAdjustment;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -268,14 +269,7 @@ class AffiliationsTable
                                     Grid::make(2)->schema([
                                         TextInput::make('total_amount')
                                             ->label('Total a pagar')
-                                            ->helperText(function ($state, $set, Get $get, Affiliation $record) {
-                                                // dd($record->coverage_id);
-                                                if (isset($record->coverage_id)) {
-                                                    return 'Plan: '.$record->plan->description.' - Cobertura: '.$record->coverage->price.' - Frecuencia: '.$record->payment_frequency;
-                                                }
-
-                                                return 'Plan: '.$record->plan->description.' - Frecuencia: '.$record->payment_frequency;
-                                            })
+                                            ->helperText(fn (Affiliation $record): string => AffiliationPaymentTotalAdjustment::totalAmountHelperText($record))
                                             ->prefix('US$')
                                             ->default(function ($state, $set, Get $get, Affiliation $record) {
                                                 /**
