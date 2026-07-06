@@ -2,6 +2,7 @@
 
 namespace App\Filament\Projects\Resources\ProjectManagement\Groups;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Projects\Resources\ProjectManagement\Groups\Pages\CreateGroup;
 use App\Filament\Projects\Resources\ProjectManagement\Groups\Pages\EditGroup;
 use App\Filament\Projects\Resources\ProjectManagement\Groups\Pages\ListGroups;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class GroupResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Group::class;
 
     protected static ?string $navigationLabel = 'Equipos';
@@ -25,6 +28,8 @@ class GroupResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-users';
 
     protected static string|UnitEnum|null $navigationGroup = 'GESTION DE PROYECTOS';
+
+    protected static ?int $navigationSort = 4;
 
     public static function form(Schema $schema): Schema
     {

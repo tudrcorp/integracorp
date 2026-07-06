@@ -108,7 +108,8 @@ final class ManageCoordinationServiceItemsForm
                                     CoordinationServiceItemsManager::buildManageQuoteLineItemsDefault(
                                         $livewire->getRecord(),
                                         $state,
-                                        (array) ($get('manage_quote_line_items') ?? [])
+                                        (array) ($get('manage_quote_line_items') ?? []),
+                                        CoordinationServiceItemsManager::coveredQuotedViaUnregisteredProvider($get)
                                     )
                                 );
                                 CoordinationServiceItemsManager::syncManageQuoteAggregates($get, $set);
@@ -247,7 +248,11 @@ final class ManageCoordinationServiceItemsForm
                                                 ->maxLength(2000)
                                                 ->columnSpanFull(),
                                         ]),
-                                    ...OperationServiceOrderProviderFormFields::components(),
+                                    ...OperationServiceOrderProviderFormFields::components(
+                                        function (ManageCoordinationServiceItems $livewire, Get $get, Set $set): void {
+                                            CoordinationServiceItemsManager::rebuildManageQuoteLineItems($livewire->getRecord(), $get, $set);
+                                        }
+                                    ),
                                 ])
                                 ->columnSpanFull(),
                         ])
@@ -260,14 +265,18 @@ final class ManageCoordinationServiceItemsForm
                     'class' => OperationServiceOrderUnregisteredProviderFormFields::WIZARD_STEP_CLASS,
                 ])
                 ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::shouldShowUnregisteredProviderWizardStep($livewire->getRecord(), $get))
-                ->schema(OperationServiceOrderUnregisteredProviderFormFields::wizardStepSchema()),
+                ->schema(OperationServiceOrderUnregisteredProviderFormFields::wizardStepSchema(
+                    function (ManageCoordinationServiceItems $livewire, Get $get, Set $set): void {
+                        CoordinationServiceItemsManager::rebuildManageQuoteLineItems($livewire->getRecord(), $get, $set);
+                    }
+                )),
             Step::make('Cotización')
-                ->description('Obligatoria para ítems no cubiertos')
+                ->description('Obligatoria para ítems no cubiertos y cubiertos con proveedor no convenido')
                 ->icon(Heroicon::OutlinedCurrencyDollar)
-                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::nonCoveredSelectedManagementItemKeys(
+                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::shouldShowManageQuoteStep(
                     $livewire->getRecord(),
-                    $get('managed_service_item_keys')
-                ) !== [])
+                    $get
+                ))
                 ->schema([
                     Placeholder::make('manage_service_quote_context')
                         ->hiddenLabel()
@@ -280,34 +289,29 @@ final class ManageCoordinationServiceItemsForm
                     Placeholder::make('manage_service_mixed_quote_types_warning')
                         ->hiddenLabel()
                         ->content(fn (): HtmlString => CoordinationServiceItemsManager::manageServiceMixedQuoteTypesWarning())
-                        ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                            CoordinationServiceItemsManager::nonCoveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
-                        ) === null && CoordinationServiceItemsManager::nonCoveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys')) !== [])
+                        ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::manageQuoteStepResolvedType($livewire->getRecord(), $get) === null
+                            && CoordinationServiceItemsManager::shouldShowManageQuoteStep($livewire->getRecord(), $get))
                         ->columnSpanFull(),
                     Section::make('Datos de la cotización')
-                        ->description('Registre costos y utilidad para los ítems no cubiertos seleccionados.')
+                        ->description('Registre costos y utilidad para los ítems a cotizar.')
                         ->icon(Heroicon::OutlinedBanknotes)
                         ->iconColor('warning')
-                        ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                            CoordinationServiceItemsManager::nonCoveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
-                        ) !== null)
+                        ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::manageQuoteStepResolvedType($livewire->getRecord(), $get) !== null)
                         ->schema([
                             Placeholder::make('manage_service_quote_type_badge')
                                 ->label('Tipo de servicio detectado')
                                 ->content(fn (ManageCoordinationServiceItems $livewire, Get $get): HtmlString => CoordinationServiceItemsManager::manageServiceOrderTypeBadge(
-                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                        CoordinationServiceItemsManager::nonCoveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
-                                    )
+                                    CoordinationServiceItemsManager::manageQuoteStepResolvedType($livewire->getRecord(), $get)
                                 )),
-                            Section::make('Ítems no cubiertos incluidos')
+                            Section::make('Ítems incluidos en la cotización')
                                 ->icon(Heroicon::OutlinedExclamationTriangle)
                                 ->iconColor('danger')
                                 ->schema([
                                     Placeholder::make('manage_service_non_covered_items_table')
                                         ->hiddenLabel()
-                                        ->content(fn (ManageCoordinationServiceItems $livewire, Get $get): HtmlString => CoordinationServiceItemsManager::manageServiceNonCoveredItemsTable(
+                                        ->content(fn (ManageCoordinationServiceItems $livewire, Get $get): HtmlString => CoordinationServiceItemsManager::manageServiceQuoteItemsTable(
                                             $livewire->getRecord(),
-                                            $get('managed_service_item_keys')
+                                            $get
                                         ))
                                         ->columnSpanFull(),
                                 ])
@@ -319,6 +323,7 @@ final class ManageCoordinationServiceItemsForm
                                 ->extraAttributes(['class' => 'fi-manage-quote-params-section'])
                                 ->schema([
                                     Grid::make(1)
+                                        ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::shouldShowManageQuoteSupplierSelect($livewire->getRecord(), $get))
                                         ->schema([
                                             Select::make('manage_quote_supplier_id')
                                                 ->label('Proveedor')
@@ -328,7 +333,7 @@ final class ManageCoordinationServiceItemsForm
                                                     ->all())
                                                 ->searchable()
                                                 ->preload()
-                                                ->required()
+                                                ->required(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::shouldShowManageQuoteSupplierSelect($livewire->getRecord(), $get))
                                                 ->live()
                                                 ->native(false)
                                                 ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
@@ -346,6 +351,11 @@ final class ManageCoordinationServiceItemsForm
                                                 ->placeholder('Se completa al seleccionar el proveedor')
                                                 ->prefixIcon(Heroicon::OutlinedMapPin),
                                         ])
+                                        ->columnSpanFull(),
+                                    Placeholder::make('manage_quote_unregistered_provider_notice')
+                                        ->hiddenLabel()
+                                        ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => ! CoordinationServiceItemsManager::shouldShowManageQuoteSupplierSelect($livewire->getRecord(), $get))
+                                        ->content(new HtmlString('<div class="fi-manage-service-notice fi-manage-service-notice--rose px-5"><p class="font-semibold">Proveedor no convenido</p><p class="mt-1 leading-relaxed opacity-90">La cotización se generará con el proveedor no convenido registrado en el paso anterior.</p></div>'))
                                         ->columnSpanFull(),
                                     TextInput::make('manage_quote_bcv_rate')
                                         ->label('Tasa BCV del día')

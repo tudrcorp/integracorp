@@ -433,4 +433,30 @@ class AffiliationCorporateController extends Controller
             // throw $th;
         }
     }
+
+    /**
+     * @param  iterable<int, \App\Models\AffiliationCorporate>  $records
+     */
+    public static function uploadPaymentMultipleAffiliationCorporates(iterable $records, array $data, string $type_roll): bool
+    {
+        try {
+            foreach ($records as $record) {
+                $paymentData = array_merge($data, [
+                    'total_amount' => $record->total_amount,
+                ]);
+
+                $uploaded = self::uploadPayment($record, $paymentData, $type_roll);
+
+                if ($uploaded !== true) {
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+
+            return false;
+        }
+    }
 }

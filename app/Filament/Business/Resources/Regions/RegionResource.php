@@ -2,31 +2,32 @@
 
 namespace App\Filament\Business\Resources\Regions;
 
-use UnitEnum;
-use BackedEnum;
-use App\Models\Region;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use App\Filament\Business\Resources\Regions\Pages\EditRegion;
-use App\Filament\Business\Resources\Regions\Pages\ViewRegion;
-use App\Filament\Business\Resources\Regions\Pages\ListRegions;
 use App\Filament\Business\Resources\Regions\Pages\CreateRegion;
+use App\Filament\Business\Resources\Regions\Pages\EditRegion;
+use App\Filament\Business\Resources\Regions\Pages\ListRegions;
+use App\Filament\Business\Resources\Regions\Pages\ViewRegion;
 use App\Filament\Business\Resources\Regions\Schemas\RegionForm;
-use App\Filament\Business\Resources\Regions\Tables\RegionsTable;
 use App\Filament\Business\Resources\Regions\Schemas\RegionInfolist;
+use App\Filament\Business\Resources\Regions\Tables\RegionsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
+use App\Models\Region;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
+use UnitEnum;
 
 class RegionResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Region::class;
 
     protected static ?string $navigationLabel = 'Regiones';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-globe-europe-africa';
 
-    protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACIÓN';
 
     public static function form(Schema $schema): Schema
     {
@@ -58,14 +59,5 @@ class RegionResource extends Resource
             'view' => ViewRegion::route('/{record}'),
             'edit' => EditRegion::route('/{record}/edit'),
         ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
-        if (in_array('SUPERADMIN', auth()->user()->departament)) {
-            return true;
-        }
-        return false;
     }
 }

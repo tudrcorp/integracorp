@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Pages;
 
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
+use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -32,11 +33,12 @@ class ListOperationCoordinationServices extends ListRecords
     {
         return [
             'todas' => Tab::make('Todas')
-                ->badge(OperationsSupplierScope::coordinationServiceQuery()->count())
+                ->badge(OperationCoordinationServicesTable::applyHideFullyFinalizedScope(OperationsSupplierScope::coordinationServiceQuery())->count())
                 ->badgeColor('gray')
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
-                ]),
+                ])
+                ->modifyQueryUsing(fn (Builder $query): Builder => OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query)),
             'en_gestion' => Tab::make('EN GESTION')
                 ->badge(OperationsSupplierScope::coordinationServiceQuery()->where('status', 'EN GESTION')->count())
                 ->badgeColor(Color::hex('#ffc107'))

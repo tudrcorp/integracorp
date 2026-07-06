@@ -12,6 +12,8 @@ use App\Http\Controllers\Business\MarkHelpdeskTicketInProgressController;
 use App\Http\Controllers\BusinessAgencyFichaPdfController;
 use App\Http\Controllers\BusinessAgentFichaPdfController;
 use App\Http\Controllers\BusinessAppointmentsController;
+use App\Http\Controllers\BusinessPlanGeneratorPdfController;
+use App\Http\Controllers\BusinessTravelAgencyFichaPdfController;
 use App\Http\Controllers\CierreMesController;
 use App\Http\Controllers\CorporateQuotePdfController;
 use App\Http\Controllers\DoctorNurseFichaPdfController;
@@ -25,6 +27,7 @@ use App\Http\Controllers\Operations\OperationCoordinationClinicDocumentDownloadC
 use App\Http\Controllers\Operations\SupplierDocumentAuditController;
 use App\Http\Controllers\OperationServiceOrderPdfController;
 use App\Http\Controllers\PdfController;
+use App\Http\Controllers\PublicChatController;
 use App\Http\Controllers\SupplierFichaPdfController;
 use App\Http\Controllers\SupplierReportPdfController;
 use App\Http\Controllers\TarjetaAfiliacionController;
@@ -118,6 +121,9 @@ Route::get('/plk/c/{id}', function ($id) {
     ]);
 })->name('corporate-pre-affiliation.create');
 
+Route::get('/nb/{token}', App\Livewire\CompanyAssociateRegistration::class)
+    ->name('company-associates.register');
+
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
@@ -150,6 +156,30 @@ Route::get('operations/doctor-nurses/{doctorNurse}/carta-acceptance/preview', [D
 Route::get('operations/doctor-nurses/{doctorNurse}/carta-acceptance/download', [DoctorNurseDocumentAuditController::class, 'downloadCartaAcceptance'])
     ->middleware(['web', 'auth'])
     ->name('operations.doctor-nurses.carta-acceptance.download');
+
+Route::get('business/companies/{path?}', function (?string $path = null) {
+    $target = '/business/nuevos-negocios/companies';
+
+    if (filled($path)) {
+        $target .= '/'.$path;
+    }
+
+    $query = request()->getQueryString();
+
+    return redirect($query ? "{$target}?{$query}" : $target, 301);
+})->where('path', '.*');
+
+Route::get('business/company-associates/{path?}', function (?string $path = null) {
+    $target = '/business/nuevos-negocios/company-associates';
+
+    if (filled($path)) {
+        $target .= '/'.$path;
+    }
+
+    $query = request()->getQueryString();
+
+    return redirect($query ? "{$target}?{$query}" : $target, 301);
+})->where('path', '.*');
 
 Route::get('business/export-prospect-agents-csv', App\Http\Controllers\ProspectAgentExportCsvController::class)
     ->middleware(['web', 'auth'])
@@ -203,9 +233,65 @@ Route::get('business/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportC
     ->middleware(['web', 'auth'])
     ->name('business.helpdesks.export-csv');
 
+Route::get('business/export-affiliation-corporates-report', App\Http\Controllers\CorporateAffiliationsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporates.export-report');
+
+Route::get('business/export-affiliation-corporates-csv', App\Http\Controllers\AffiliationCorporateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporates.export-csv');
+
+Route::get('business/export-affiliate-corporates-csv', App\Http\Controllers\AffiliateCorporateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliate-corporates.export-csv');
+
+Route::get('business/export-affiliates-csv', App\Http\Controllers\AffiliateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliates.export-csv');
+
+Route::get('business/export-affiliations-csv', App\Http\Controllers\AffiliationExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliations.export-csv');
+
+Route::get('business/export-affiliations-report', App\Http\Controllers\IndividualAffiliationsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliations.export-report');
+
 Route::get('administration/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('administration.helpdesks.export-csv');
+
+Route::get('administration/export-agencies-csv', App\Http\Controllers\AgencyExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.agencies.export-csv');
+
+Route::get('administration/export-agents-csv', App\Http\Controllers\AgentExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.agents.export-csv');
+
+Route::get('administration/export-affiliation-corporates-report', App\Http\Controllers\CorporateAffiliationsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliation-corporates.export-report');
+
+Route::get('administration/export-affiliation-corporates-csv', App\Http\Controllers\AffiliationCorporateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliation-corporates.export-csv');
+
+Route::get('administration/export-affiliate-corporates-csv', App\Http\Controllers\AffiliateCorporateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliate-corporates.export-csv');
+
+Route::get('administration/export-affiliations-report', App\Http\Controllers\IndividualAffiliationsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliations.export-report');
+
+Route::get('administration/export-affiliations-csv', App\Http\Controllers\AffiliationExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliations.export-csv');
+
+Route::get('administration/export-affiliates-csv', App\Http\Controllers\AffiliateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.affiliates.export-csv');
 
 Route::get('operations/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
     ->middleware(['web', 'auth'])
@@ -214,6 +300,22 @@ Route::get('operations/export-helpdesks-csv', App\Http\Controllers\HelpdeskExpor
 Route::get('operations/export-indicadores-de-desempeno-csv', App\Http\Controllers\IndicadoresDeDesempenoExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('operations.indicadores-de-desempeno.export-csv');
+
+Route::get('operations/export-affiliate-corporates-report', App\Http\Controllers\CorporateAffiliationsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.affiliate-corporates.export-report');
+
+Route::get('operations/export-affiliate-corporates-csv', App\Http\Controllers\AffiliateCorporateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.affiliate-corporates.export-csv');
+
+Route::get('operations/export-affiliates-report', App\Http\Controllers\IndividualAffiliationsExportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.affiliates.export-report');
+
+Route::get('operations/export-affiliates-csv', App\Http\Controllers\AffiliateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.affiliates.export-csv');
 
 Route::get('marketing/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
     ->middleware(['web', 'auth'])
@@ -275,6 +377,22 @@ Route::get('business/agencies/{agency}/ficha-pdf/preview', [BusinessAgencyFichaP
 Route::get('business/agencies/{agency}/ficha-pdf/download', [BusinessAgencyFichaPdfController::class, 'download'])
     ->middleware(['web', 'auth'])
     ->name('business.agencies.ficha-pdf.download');
+
+Route::get('business/travel-agencies/{travelAgency}/ficha-pdf/preview', [BusinessTravelAgencyFichaPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('business.travel-agencies.ficha-pdf.preview');
+
+Route::get('business/travel-agencies/{travelAgency}/ficha-pdf/download', [BusinessTravelAgencyFichaPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('business.travel-agencies.ficha-pdf.download');
+
+Route::get('business/plan-generators/{planGenerator}/pdf/preview', [BusinessPlanGeneratorPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('business.plan-generators.pdf.preview');
+
+Route::get('business/plan-generators/{planGenerator}/pdf/download', [BusinessPlanGeneratorPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('business.plan-generators.pdf.download');
 
 Route::get('administration/affiliation-corporates/{affiliationCorporate}/ficha/preview', [AffiliationCorporateFichaPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
@@ -417,6 +535,17 @@ Route::post('business/affiliation-corporates/tarjeta-qr/associate-plan', [
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-corporate-tarjeta-qr.associate-plan');
 
+Route::post('business/company-associates/tarjeta-qr/associate-inclusion', [
+    TarjetaAfiliacionController::class,
+    'associateCompanyAssociateInclusionQr',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.company-associate-tarjeta-qr.associate-inclusion');
+
+Route::get('business/notifications/bell-alert', App\Http\Controllers\Business\DatabaseNotificationBellAlertController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.notifications.bell-alert');
+
 Route::post('business/affiliation-corporates/documents/regenerate-async/{affiliationCorporate}', [
     AffiliationCorporateBusinessDocumentsController::class,
     'regenerateAsync',
@@ -467,6 +596,12 @@ Volt::route('/agent/c/{code?}', 'agentformcreate')->name('volt.agent.create');
 Volt::route('/agency/c/{code?}/{type?}', 'agencyformcreate')->name('volt.agency.create');
 Volt::route('/m/o/c/{code?}', 'agencymasterform')->name('master.organization.create');
 Volt::route('/d/c', 'doctorFormCreate')->name('volt.doctor.create');
+
+// Chat público guiado (UI): página Volt/Livewire en /chat/publico.
+// La interfaz usa AgentOrchestrator directamente; no consume la API HTTP /api/public-chat/*.
+Volt::route('/chat/publico', 'volt.public.ai_chat')->name('volt.public.ai_chat');
+
+Route::redirect('/guia-chat', '/chat/publico', 301)->name('guia-chat');
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
@@ -1773,6 +1908,70 @@ Route::prefix('api')->name('api.')->group(function () {
      */
     Route::post('/info/store', [BusinessAppointmentsController::class, 'store'])
         ->name('info.store');
+
+    /*
+    |--------------------------------------------------------------------------
+    | API — Chat público guiado (guía-chat)
+    |--------------------------------------------------------------------------
+    |
+    | Endpoints JSON para integrar el agente conversacional desde clientes
+    | externos (app móvil, widget, etc.). La página /chat/publico usa Livewire
+    | y no depende de estas rutas; comparten la misma lógica vía AgentOrchestrator.
+    |
+    */
+
+    // POST /api/public-chat/session
+    // Inicia una sesión nueva de chat público. No requiere body.
+    // Respuesta: session_token, state, intent, handoff_requested.
+    Route::post('/public-chat/session', [PublicChatController::class, 'session'])
+        ->name('public-chat.session');
+
+    // POST /api/public-chat/message
+    // Envía un mensaje del usuario y obtiene la respuesta del agente.
+    // Body: message (requerido), session_token (opcional), action_key (opcional, ej. registro_agente).
+    // Respuesta: reply, state, intent, handoff_requested, tool_runs, external_redirect_url.
+    Route::post('/public-chat/message', [PublicChatController::class, 'message'])
+        ->name('public-chat.message');
+
+    // GET /api/public-chat/history?session_token=...
+    // Devuelve el historial de mensajes y el estado actual de una sesión existente.
+    // Query: session_token (requerido).
+    Route::get('/public-chat/history', [PublicChatController::class, 'history'])
+        ->name('public-chat.history');
+
+    /*
+    |--------------------------------------------------------------------------
+    | API — Acciones internas del chat (persistencia)
+    |--------------------------------------------------------------------------
+    |
+    | Invocadas por el orquestador del agente al completar un flujo guiado.
+    | Validan el payload con Form Request y delegan en los servicios de registro.
+    |
+    */
+
+    // POST /api/internal/chat/agent-registration
+    // Registra un agente o subagente capturado en el flujo del chat guiado.
+    // Body validado por RegisterChatAgentRequest (datos personales, contacto, owner_code, etc.).
+    Route::post('/internal/chat/agent-registration', [\App\Http\Controllers\Internal\ChatAgentRegistrationController::class, 'store'])
+        ->name('internal.chat.agent-registration');
+
+    // POST /api/internal/chat/agency-master-registration
+    // Registra una agencia master desde el flujo del chat guiado.
+    // Body validado por RegisterChatAgencyMasterRequest.
+    Route::post('/internal/chat/agency-master-registration', [\App\Http\Controllers\Internal\ChatAgencyMasterRegistrationController::class, 'store'])
+        ->name('internal.chat.agency-master-registration');
+
+    // POST /api/internal/chat/agency-general-registration
+    // Registra una agencia general desde el flujo del chat guiado.
+    // Body validado por RegisterChatAgencyGeneralRequest.
+    Route::post('/internal/chat/agency-general-registration', [\App\Http\Controllers\Internal\ChatAgencyGeneralRegistrationController::class, 'store'])
+        ->name('internal.chat.agency-general-registration');
+
+    // POST /api/internal/chat/individual-quote
+    // Crea una cotización de plan individual recopilada en el chat guiado.
+    // Body validado por RegisterChatIndividualQuoteRequest.
+    Route::post('/internal/chat/individual-quote', [\App\Http\Controllers\Internal\ChatIndividualQuoteController::class, 'store'])
+        ->name('internal.chat.individual-quote');
 });
 
 /**

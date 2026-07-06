@@ -7,6 +7,7 @@ use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\Manage
 use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Http\Controllers\ApiBcvController;
 use App\Http\Controllers\OperationServiceOrderController;
+use App\Models\ObservationCase;
 use App\Models\OperationCoordinationService;
 use App\Models\OperationInventoryUbication;
 use App\Models\OperationServiceOrder;
@@ -24,11 +25,13 @@ use App\Services\OperationServiceOrderPdfService;
 use App\Services\OperationServiceOrderQuotePdfService;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Operations\AccountsReceivableManager;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\CoordinationServiceQuoteManager;
 use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderProviderSelection;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
+use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
@@ -163,6 +166,65 @@ class OperationCoordinationServicesTable
         ];
     }
 
+    private static function coordinationIsManagedByTdg(OperationCoordinationService $record): bool
+    {
+        return mb_strtoupper(trim((string) $record->managed_by)) === 'TDG';
+    }
+
+    private static function managedByBadgeColor(?string $state): string
+    {
+        return match (mb_strtoupper(trim((string) $state))) {
+            'ATENMEDI' => 'success',
+            'TDG' => 'info',
+            default => 'gray',
+        };
+    }
+
+    private static function managedByReassignmentDescription(OperationCoordinationService $record): ?string
+    {
+        if (! self::coordinationIsManagedByTdg($record)) {
+            return null;
+        }
+
+        $reason = TelemedicineCaseTdgReassignmentCoordination::reassignmentReasonFromObservations($record->observations);
+
+        if ($reason === null) {
+            return null;
+        }
+
+        return 'Motivo de Reasignación: '.$reason;
+    }
+
+    private static function patientBusinessLineLabel(OperationCoordinationService $record): string
+    {
+        $fromPatient = $record->telemedicinePatient?->businessLine?->definition;
+
+        if (filled($fromPatient)) {
+            return (string) $fromPatient;
+        }
+
+        if (filled($record->businessLine?->definition)) {
+            return (string) $record->businessLine->definition;
+        }
+
+        return '—';
+    }
+
+    private static function patientBusinessUnitLabel(OperationCoordinationService $record): string
+    {
+        $fromPatient = $record->telemedicinePatient?->businessUnit?->definition;
+
+        if (filled($fromPatient)) {
+            return (string) $fromPatient;
+        }
+
+        if (filled($record->businessUnit?->definition)) {
+            return (string) $record->businessUnit->definition;
+        }
+
+        return '—';
+    }
+
     public static function configure(Table $table): Table
     {
         $selectTdgDoctorForAmbulanceAction = Action::make('selectTdgDoctorForAmbulanceFollowUp')
@@ -284,6 +346,124 @@ class OperationCoordinationServicesTable
                     ->send();
             })
             ->visible(fn (OperationCoordinationService $record): bool => TelemedicineDerivedServiceBadge::specificServiceIsTrasladoEnAmbulancia($record->specific_service));
+
+        $reassignManagedByToTdgAction = Action::make('reassignCoordinationManagedByToTdg')
+            ->modalHeading('Reasignar gestión del servicio a TDG')
+            ->modalDescription(function (OperationCoordinationService $record): Htmlable {
+                $currentManagedBy = filled($record->managed_by)
+                    ? mb_strtoupper((string) $record->managed_by)
+                    : 'Sin asignar';
+
+                $caseNote = filled($record->telemedicine_case_id)
+                    ? 'El caso de telemedicina vinculado también pasará a gestión TDG.'
+                    : 'Esta coordinación no tiene caso de telemedicina vinculado.';
+
+                return new HtmlString(
+                    '<div class="space-y-4 text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
+                    .'<div class="grid gap-3 sm:grid-cols-2">'
+                    .'<div class="rounded-xl border border-gray-200/90 bg-gradient-to-b from-white to-gray-50/90 p-4 shadow-sm dark:border-white/10 dark:from-gray-900 dark:to-gray-950/80">'
+                    .'<p class="text-[0.65rem] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Paciente</p>'
+                    .'<p class="mt-1 text-base font-semibold text-gray-950 dark:text-white">'.e($record->patient ?? '—').'</p>'
+                    .'</div>'
+                    .'<div class="rounded-xl border border-gray-200/90 bg-gradient-to-b from-white to-gray-50/90 p-4 shadow-sm dark:border-white/10 dark:from-gray-900 dark:to-gray-950/80">'
+                    .'<p class="text-[0.65rem] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">N.º referencia</p>'
+                    .'<p class="mt-1 text-base font-semibold text-gray-950 dark:text-white">'.e($record->reference_number ?? '—').'</p>'
+                    .'</div>'
+                    .'</div>'
+                    .'<div class="rounded-xl border border-sky-200/80 bg-gradient-to-br from-sky-50/95 to-white p-4 shadow-inner dark:border-sky-500/25 dark:from-sky-950/40 dark:to-gray-950/90">'
+                    .'<p class="text-sm font-medium text-sky-950 dark:text-sky-50">'
+                    .'Gestión actual: <span class="font-semibold">'.e($currentManagedBy).'</span>'
+                    .' → <span class="font-semibold">TDG</span>'
+                    .'</p>'
+                    .'<p class="mt-2 text-xs text-sky-900/80 dark:text-sky-100/80">'.e($caseNote).'</p>'
+                    .'</div>'
+                    .'</div>'
+                );
+            })
+            ->modalIcon(Heroicon::OutlinedArrowsRightLeft)
+            ->modalIconColor('warning')
+            ->modalWidth(Width::ExtraLarge)
+            ->modalSubmitActionLabel('Sí, reasignar a TDG')
+            ->modalCancelActionLabel('Cancelar')
+            ->modalSubmitAction(
+                fn (Action $action): Action => $action
+                    ->color('success')
+                    ->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('success'),
+                    ])
+            )
+            ->modalCancelAction(
+                fn (Action $action): Action => $action
+                    ->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                    ])
+            )
+            ->closeModalByClickingAway(false)
+            ->form([
+                Textarea::make('reassignment_observation')
+                    ->label('Motivo de la reasignación')
+                    ->placeholder('Ej.: Coordinación con TDG por complejidad del caso, solicitud del cliente, escalamiento operativo…')
+                    ->helperText('Campo obligatorio. Mínimo 10 caracteres. Se guardará en las observaciones de la coordinación y en la bitácora del caso vinculado.')
+                    ->required()
+                    ->minLength(10)
+                    ->maxLength(5000)
+                    ->rows(4)
+                    ->columnSpanFull()
+                    ->validationMessages([
+                        'required' => 'Debes indicar el motivo de la reasignación.',
+                        'minLength' => 'El motivo debe tener al menos 10 caracteres.',
+                    ]),
+            ])
+            ->action(function (OperationCoordinationService $record, array $data): void {
+                $observationText = trim((string) ($data['reassignment_observation'] ?? ''));
+                $bitacoraDescription = TelemedicineCaseTdgReassignmentCoordination::OBSERVATION_PREFIX."\n".'Motivo: '.$observationText;
+                $userId = Auth::id();
+                $userName = (string) (Auth::user()?->name ?? 'SISTEMA');
+
+                DB::transaction(function () use ($record, $bitacoraDescription, $observationText, $userId, $userName): void {
+                    $previousObservations = trim((string) ($record->observations ?? ''));
+
+                    $record->managed_by = 'TDG';
+                    $record->observations = $previousObservations !== ''
+                        ? $previousObservations."\n\n".$bitacoraDescription
+                        : $bitacoraDescription;
+                    $record->updated_by = $userName;
+                    $record->save();
+
+                    if (filled($record->telemedicine_case_id)) {
+                        TelemedicineCase::query()
+                            ->whereKey($record->telemedicine_case_id)
+                            ->update(['managed_by' => 'TDG']);
+
+                        ObservationCase::query()->create([
+                            'telemedicine_case_id' => $record->telemedicine_case_id,
+                            'description' => $bitacoraDescription,
+                            'created_by' => $userId !== null ? (string) $userId : null,
+                        ]);
+                    }
+
+                    OperationServiceOrder::query()
+                        ->where('operation_coordination_service_id', $record->id)
+                        ->update(['managed_by' => 'TDG']);
+
+                    AccountsReceivableManager::createFromTdgReassignment(
+                        $record->fresh() ?? $record,
+                        $observationText,
+                        Auth::user(),
+                    );
+                });
+
+                Notification::make()
+                    ->title('Gestión reasignada a TDG')
+                    ->body(
+                        filled($record->telemedicine_case_id)
+                            ? 'La coordinación, el caso vinculado y sus órdenes de servicio ahora corresponden a TDG. Se generó la cuenta por cobrar correspondiente.'
+                            : 'La coordinación y sus órdenes de servicio ahora corresponden a TDG. Se generó la cuenta por cobrar correspondiente.'
+                    )
+                    ->success()
+                    ->send();
+            })
+            ->visible(fn (OperationCoordinationService $record): bool => ! self::coordinationIsManagedByTdg($record));
 
         $clinicCoordinationDocumentsAction = Action::make('clinicCoordinationDocuments')
             ->label(fn (OperationCoordinationService $record): string => $record->status === 'FINALIZADO'
@@ -876,6 +1056,11 @@ class OperationCoordinationServicesTable
                     'telemedicinePriority',
                     'telemedicineDoctor',
                     'telemedicineCase',
+                    'businessLine:id,definition',
+                    'businessUnit:id,definition',
+                    'telemedicinePatient:id,full_name,business_line_id,business_unit_id',
+                    'telemedicinePatient.businessLine:id,definition',
+                    'telemedicinePatient.businessUnit:id,definition',
                     'telemedicinePatientMedications.operationInventory:id,is_covered',
                     'telemedicinePatientLabs',
                     'telemedicinePatientStudies',
@@ -912,6 +1097,32 @@ class OperationCoordinationServicesTable
                     ->extraAttributes([
                         'class' => 'cursor-pointer underline decoration-dotted underline-offset-2 hover:opacity-90',
                     ]),
+                TextColumn::make('patient_business_line')
+                    ->label('Línea de servicio')
+                    ->state(fn (OperationCoordinationService $record): string => self::patientBusinessLineLabel($record))
+                    ->badge()
+                    ->color('success')
+                    ->placeholder('—')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $innerQuery) use ($search): void {
+                            $innerQuery
+                                ->whereHas('telemedicinePatient.businessLine', fn (Builder $lineQuery): Builder => $lineQuery->where('definition', 'like', "%{$search}%"))
+                                ->orWhereHas('businessLine', fn (Builder $lineQuery): Builder => $lineQuery->where('definition', 'like', "%{$search}%"));
+                        });
+                    }),
+                TextColumn::make('patient_business_unit')
+                    ->label('Unidad de negocio')
+                    ->state(fn (OperationCoordinationService $record): string => self::patientBusinessUnitLabel($record))
+                    ->badge()
+                    ->color('info')
+                    ->placeholder('—')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $innerQuery) use ($search): void {
+                            $innerQuery
+                                ->whereHas('telemedicinePatient.businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"))
+                                ->orWhereHas('businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"));
+                        });
+                    }),
                 TextColumn::make('clinical_management_items')
                     ->label('Ítems clínicos')
                     ->getStateUsing(
@@ -945,10 +1156,28 @@ class OperationCoordinationServicesTable
                 TextColumn::make('managed_by')
                     ->label('Gestionado por')
                     ->badge()
-                    ->color('gray')
+                    ->color(fn (?string $state): string => self::managedByBadgeColor($state))
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? mb_strtoupper($state) : '—')
+                    ->description(fn (OperationCoordinationService $record): ?string => self::managedByReassignmentDescription($record))
+                    ->wrap()
                     ->sortable()
                     ->searchable()
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->action($reassignManagedByToTdgAction)
+                    ->tooltip(fn (OperationCoordinationService $record): ?string => self::coordinationIsManagedByTdg($record)
+                        ? null
+                        : 'Clic para reasignar la gestión del servicio a TDG')
+                    ->extraCellAttributes(fn (OperationCoordinationService $record): array => self::coordinationIsManagedByTdg($record)
+                        ? (self::managedByReassignmentDescription($record) !== null
+                            ? ['class' => 'py-2 align-top', 'style' => 'min-width: 12rem; max-width: 18rem; white-space: normal;']
+                            : [])
+                        : [
+                            'class' => 'transition active:opacity-90',
+                        ])
+                    ->extraAttributes(fn (OperationCoordinationService $record): array => self::coordinationIsManagedByTdg($record)
+                        ? []
+                        : [
+                            'class' => 'cursor-pointer underline decoration-dotted underline-offset-2 hover:opacity-90 active:opacity-75',
+                        ]),
                 TextColumn::make('servicie')
                     ->label('Servicio')
                     ->badge()
@@ -982,18 +1211,6 @@ class OperationCoordinationServicesTable
                             'class' => 'cursor-pointer underline decoration-dotted underline-offset-2 hover:opacity-90 active:opacity-75',
                         ]
                         : [])
-                    ->searchable(),
-                TextColumn::make('businessLine.definition')
-                    ->label('Linea de Servicio')
-                    ->badge()
-                    ->color('success')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('businessUnit.definition')
-                    ->label('Unidad de Negocio')
-                    ->badge()
-                    ->color('success')
-                    ->sortable()
                     ->searchable(),
                 TextColumn::make('reference_number')
                     ->label('Número de Referencia')
@@ -1236,6 +1453,7 @@ class OperationCoordinationServicesTable
                         );
                     }),
             ])
+            ->defaultGroup('telemedicineCase.code')
             ->collapsedGroupsByDefault()
             ->modifyUngroupedRecordActionsUsing(function (Action $action): void {
                 if ($action->getName() === 'selectTdgDoctorForAmbulanceFollowUp') {
@@ -1766,5 +1984,40 @@ class OperationCoordinationServicesTable
         }
 
         return [TelemedicinePriorityFilamentBadge::recordRowClasses($record->telemedicinePriority?->name)];
+    }
+
+    /**
+     * Mantiene visibles únicamente las coordinaciones con trabajo pendiente: se
+     * conservan las que aún no tienen ítems o las que tienen al menos un ítem
+     * PENDIENTE o EN GESTION, y se ocultan aquellas cuyos ítems están todos
+     * cerrados (finalizados/cancelados/caducados), para que el usuario se centre
+     * en lo que debe gestionar y finalizar.
+     */
+    public static function applyHideFullyFinalizedScope(Builder $query): Builder
+    {
+        $openStatuses = ['PENDIENTE', 'EN GESTION'];
+
+        return $query->where(function (Builder $outer) use ($openStatuses): void {
+            $outer
+                ->where(function (Builder $withoutItems): void {
+                    $withoutItems
+                        ->whereDoesntHave('telemedicinePatientMedications')
+                        ->whereDoesntHave('telemedicinePatientLabs')
+                        ->whereDoesntHave('telemedicinePatientStudies')
+                        ->whereDoesntHave('telemedicinePatientSpecialties');
+                })
+                ->orWhereHas('telemedicinePatientMedications', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses))
+                ->orWhereHas('telemedicinePatientLabs', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses))
+                ->orWhereHas('telemedicinePatientStudies', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses))
+                ->orWhereHas('telemedicinePatientSpecialties', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses));
+        });
+    }
+
+    /**
+     * @param  list<string>  $openStatuses
+     */
+    private static function whereItemStatusIsOpen(Builder $query, array $openStatuses): Builder
+    {
+        return $query->whereRaw('UPPER(TRIM(status)) IN (?, ?)', $openStatuses);
     }
 }

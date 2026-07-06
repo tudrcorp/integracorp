@@ -80,6 +80,11 @@ class TelemedicineConsultationPatient extends Model
         return $this->belongsTo(TelemedicineCase::class);
     }
 
+    public function amdInforms()
+    {
+        return $this->hasMany(TelemedicineAmdInform::class, 'telemedicine_consultation_patient_id');
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');

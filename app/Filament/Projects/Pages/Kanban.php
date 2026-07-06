@@ -35,7 +35,7 @@ class Kanban extends Page implements HasTable
 
     protected static ?string $navigationLabel = 'Kanban';
 
-    protected static ?int $navigationSort = 0;
+    protected static ?int $navigationSort = 6;
 
     protected static ?string $title = 'Kanban de actividades';
 

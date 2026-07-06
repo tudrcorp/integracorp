@@ -18,6 +18,7 @@ class AffiliationCorporate extends Model
         'owner_code',
 
         'name_corporate',
+        'affiliation_type',
         'rif',
         'address',
         'city_id',
@@ -34,6 +35,7 @@ class AffiliationCorporate extends Model
         'status',
         'document',
         'observations',
+        'audit_items',
         'payment_frequency',
         'fee_anual',
         'total_amount',
@@ -63,6 +65,7 @@ class AffiliationCorporate extends Model
 
     protected $casts = [
         'service_providers' => 'array',
+        'audit_items' => 'array',
     ];
 
     /**
@@ -115,6 +118,14 @@ class AffiliationCorporate extends Model
     public function affiliationCorporateDocuments(): HasMany
     {
         return $this->hasMany(AffiliationCorporateDocument::class);
+    }
+
+    /**
+     * @return HasMany<\App\Models\AffiliationCorporateObservation, $this>
+     */
+    public function affiliationCorporateObservations(): HasMany
+    {
+        return $this->hasMany(AffiliationCorporateObservation::class)->orderByDesc('created_at');
     }
 
     public function status_log_corporate_affiliations()

@@ -41,7 +41,57 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function insertPublicAiAgentTestAgency(array $attributes): void
 {
-    // ..
+    if (! Illuminate\Support\Facades\Schema::hasTable('agencies')) {
+        Illuminate\Support\Facades\Schema::create('agencies', function (Illuminate\Database\Schema\Blueprint $table): void {
+            $table->id();
+            $table->string('name_corporative')->nullable();
+            $table->string('code')->nullable();
+            $table->string('rif')->nullable();
+        });
+    }
+
+    $row = [
+        'id' => $attributes['id'],
+        'name_corporative' => $attributes['name_corporative'],
+    ];
+
+    if (isset($attributes['code']) && Illuminate\Support\Facades\Schema::hasColumn('agencies', 'code')) {
+        $row['code'] = $attributes['code'];
+    }
+
+    if (Illuminate\Support\Facades\Schema::hasColumn('agencies', 'rif')) {
+        $row['rif'] = $attributes['rif'] ?? null;
+    }
+
+    if (Illuminate\Support\Facades\Schema::hasColumn('agencies', 'email')) {
+        $row['email'] = $attributes['email'] ?? 'chat-agency-'.$attributes['id'].'@test.invalid';
+    }
+
+    if (Illuminate\Support\Facades\Schema::hasColumn('agencies', 'phone')) {
+        $row['phone'] = $attributes['phone'] ?? '04140000000';
+    }
+
+    if (Illuminate\Support\Facades\Schema::hasColumn('agencies', 'agency_type_id')) {
+        $row['agency_type_id'] = $attributes['agency_type_id']
+            ?? Illuminate\Support\Facades\DB::table('agencies')->whereNotNull('agency_type_id')->value('agency_type_id')
+            ?? 1;
+    }
+
+    if (Illuminate\Support\Facades\Schema::hasColumn('agencies', 'status') && ! isset($row['status'])) {
+        $row['status'] = $attributes['status']
+            ?? Illuminate\Support\Facades\DB::table('agencies')->whereNotNull('status')->value('status')
+            ?? 'ACTIVO';
+    }
+
+    Illuminate\Support\Facades\DB::table('agencies')->where('id', $attributes['id'])->delete();
+    Illuminate\Support\Facades\DB::table('agencies')->insert($row);
+}
+
+function ensureSqliteInMemoryDatabaseOrSkip(): void
+{
+    if (config('database.default') !== 'sqlite' || config('database.connections.sqlite.database') !== ':memory:') {
+        test()->markTestSkipped('Este test solo puede ejecutarse con sqlite en memoria para no alterar la base de datos real.');
+    }
 }

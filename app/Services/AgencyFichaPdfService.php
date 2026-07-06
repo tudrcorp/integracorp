@@ -74,8 +74,43 @@ class AgencyFichaPdfService
 
     public static function codeLabel(Agency $agency): string
     {
-        $def = $agency->typeAgency?->definition;
+        $def = $agency->relationLoaded('typeAgency') ? $agency->typeAgency?->definition : null;
 
         return filled($def) ? $def.' — '.$agency->code : (string) $agency->code;
+    }
+
+    public static function whatsappStorageRelativePath(Agency $agency): string
+    {
+        return 'business-fichas/agencies/'.self::filename($agency);
+    }
+
+    public static function persistForWhatsApp(Agency $agency): string
+    {
+        $relativePath = self::whatsappStorageRelativePath($agency);
+        $absolutePath = public_path('storage/'.$relativePath);
+        $directory = dirname($absolutePath);
+
+        if (! is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
+        file_put_contents($absolutePath, self::outputBinary($agency));
+
+        return $relativePath;
+    }
+
+    public static function whatsappCaption(Agency $agency): string
+    {
+        $codeLabel = self::codeLabel($agency);
+        $displayName = (string) ($agency->name_corporative ?? 'Agencia');
+
+        return <<<TEXT
+        📎 *Ficha de agencia*
+
+        Agencia: *{$displayName}*
+        Código: *{$codeLabel}*
+
+        Documento generado por Integracorp · Tu Dr en Casa.
+        TEXT;
     }
 }

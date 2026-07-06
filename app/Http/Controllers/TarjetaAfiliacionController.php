@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Plan;
+use App\Support\AffiliateCard\AffiliateCardStampedPdfGenerator;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\TarjetaAfiliacionQrPlanCatalog;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -32,9 +33,11 @@ class TarjetaAfiliacionController extends Controller
 
         $data['plan_tarjeta_etiqueta'] = TarjetaAfiliacionQrPlanCatalog::displayTagForPlan($planId, $planDescription);
         $coberturaVal = $data['cobertura'] ?? null;
-        $data['cobertura_display'] = (filled($coberturaVal) && $coberturaVal !== '')
-            ? number_format((float) $coberturaVal, 2, ',', '.').' US$'
-            : '';
+        $data['cobertura_display'] = match (true) {
+            ! filled($coberturaVal) || $coberturaVal === '' => '',
+            is_numeric($coberturaVal) => number_format((float) $coberturaVal, 2, ',', '.').' US$',
+            default => (string) $coberturaVal,
+        };
         $data['plan_qr_filename'] = TarjetaAfiliacionQrPlanCatalog::resolveQrFilename($planId, $planDescription);
         $data['plan_qr_absolute_path'] = self::resolveQrAbsolutePath($data['plan_qr_filename']);
         $data['plan_qr_size_px'] = 73;
@@ -52,6 +55,27 @@ class TarjetaAfiliacionController extends Controller
     public function associateCorporatePlanQr(Request $request): JsonResponse
     {
         return $this->storePlanQr($request, 'corporate');
+    }
+
+    public function associateCompanyAssociateInclusionQr(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'qr_image' => ['required', 'image', 'mimes:png', 'max:2048'],
+        ]);
+
+        Storage::disk('public')->putFileAs(
+            'tarjeta-afiliacion/planes',
+            $request->file('qr_image'),
+            'qr-plan-inclusion.png',
+        );
+
+        return response()->json([
+            'ok' => true,
+            'plan' => 'INCLUSIÓN',
+            'affiliation_scope' => 'company_associate',
+            'filename' => 'qr-plan-inclusion.png',
+            'public_url' => asset('storage/tarjeta-afiliacion/planes/qr-plan-inclusion.png'),
+        ]);
     }
 
     private function storePlanQr(Request $request, string $affiliationScope): JsonResponse
@@ -112,11 +136,6 @@ class TarjetaAfiliacionController extends Controller
                 throw new \Exception('No se proporcionó un código válido para generar la tarjeta.');
             }
 
-            if ($applyResourceLimits) {
-                ini_set('memory_limit', '512M');
-                set_time_limit(60);
-            }
-
             $name_pdf = isset($data['output_filename']) && is_string($data['output_filename']) && $data['output_filename'] !== ''
                 ? $data['output_filename']
                 : 'TAR-'.$data['code'].'.pdf';
@@ -130,14 +149,29 @@ class TarjetaAfiliacionController extends Controller
 
             $dataForView = $data;
             unset($dataForView['output_filename']);
-            $data = self::prepareDataForTarjetaPdfView($dataForView);
+            $preparedData = self::prepareDataForTarjetaPdfView($dataForView);
 
-            $pdf = Pdf::loadView('documents.tarjeta-afiliado', compact('data'));
+            if (AffiliateCardStampedPdfGenerator::canGenerate($preparedData)) {
+                AffiliateCardStampedPdfGenerator::generate($preparedData, $fullPath);
+
+                if (! $silent) {
+                    Log::info("Tarjeta de afiliación generada por estampado: {$name_pdf}");
+                }
+
+                return true;
+            }
+
+            if ($applyResourceLimits) {
+                ini_set('memory_limit', '512M');
+                set_time_limit(60);
+            }
+
+            $pdf = Pdf::loadView('documents.tarjeta-afiliado', ['data' => $preparedData]);
             DomPdfBatchRenderOptions::apply($pdf);
             $pdf->save($fullPath);
 
             if (! $silent) {
-                Log::info("Tarjeta de afiliación generada con éxito: {$name_pdf}");
+                Log::info("Tarjeta de afiliación generada con DomPDF: {$name_pdf}");
             }
 
             return true;

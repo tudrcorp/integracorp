@@ -8,6 +8,7 @@ use App\Models\CollaboratorAnniversary;
 use App\Models\RrhhColaborador;
 use App\Support\Concerns\ReportsScheduledExecution;
 use App\Support\ScheduledTaskRunReport;
+use App\Support\WhatsAppBrandImage;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -28,22 +29,37 @@ class SendCollaboratorAnniversaryNotification implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->runWithScheduledReport('Aniversario de colaboradores', function (): void {
-            $today = now();
-            $collaborators = $this->getCollaboratorsWithAnniversaryToday($today);
+        $this->runWithScheduledReport(
+            'Aniversario de colaboradores',
+            function (): void {
+                $today = now();
+                $collaborators = $this->getCollaboratorsWithAnniversaryToday($today);
 
-            ScheduledTaskRunReport::addMetric('Colaboradores con aniversario hoy', $collaborators->count());
+                ScheduledTaskRunReport::addExecutionDetail('Criterio', 'Colaboradores cuyo día/mes de ingreso coincide con hoy');
+                ScheduledTaskRunReport::addExecutionDetail('Canales por colaborador', 'Email + WhatsApp');
+                ScheduledTaskRunReport::setFailureFootnote(
+                    'Cada colaborador se intenta contactar por email y WhatsApp. Un mismo colaborador puede generar hasta 2 fallas si faltan ambos datos.'
+                );
 
-            if ($collaborators->isEmpty()) {
-                Log::info('SendCollaboratorAnniversaryNotification: No hay colaboradores con aniversario hoy.');
+                ScheduledTaskRunReport::addMetric('Colaboradores con aniversario hoy', $collaborators->count());
 
-                return;
-            }
+                if ($collaborators->isEmpty()) {
+                    Log::info('SendCollaboratorAnniversaryNotification: No hay colaboradores con aniversario hoy.');
 
-            foreach ($collaborators as $collaborator) {
-                $this->sendNotifications($collaborator, $today);
-            }
-        });
+                    return;
+                }
+
+                foreach ($collaborators as $collaborator) {
+                    $this->sendNotifications($collaborator, $today);
+                }
+            },
+            'Felicitación automática a colaboradores que cumplen aniversario laboral hoy (mismo día y mes de fecha de ingreso).',
+            [
+                'Solo se procesan colaboradores con aniversario *hoy*, no todo el padrón.',
+                '*Emails enviados* y *WhatsApp enviados* cuentan contactos exitosos por canal.',
+                'Las fallas pueden superar el número de colaboradores porque se evalúan email y teléfono por separado.',
+            ],
+        );
     }
 
     /**
@@ -120,7 +136,13 @@ class SendCollaboratorAnniversaryNotification implements ShouldQueue
                 if (! empty($anniversaryImage)) {
                     NotificationController::notificationBirthday($name, $phone, $content, $anniversaryImage, 'image');
                 } else {
-                    NotificationController::notificationBirthday($name, $phone, $content, '', 'url');
+                    NotificationController::notificationBirthday(
+                        $name,
+                        $phone,
+                        $content,
+                        WhatsAppBrandImage::RELATIVE_PATH,
+                        'image',
+                    );
                 }
                 ScheduledTaskRunReport::incrementMetric('WhatsApp enviados');
                 Log::info("WhatsApp aniversario enviado a {$phone} ({$name})");

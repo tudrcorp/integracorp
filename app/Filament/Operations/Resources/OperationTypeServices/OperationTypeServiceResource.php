@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationTypeServices;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\OperationTypeServices\Pages\CreateOperationTypeService;
 use App\Filament\Operations\Resources\OperationTypeServices\Pages\EditOperationTypeService;
 use App\Filament\Operations\Resources\OperationTypeServices\Pages\ListOperationTypeServices;
@@ -21,6 +22,8 @@ use UnitEnum;
 
 class OperationTypeServiceResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = OperationTypeService::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACION';

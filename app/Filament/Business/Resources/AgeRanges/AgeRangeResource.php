@@ -2,31 +2,32 @@
 
 namespace App\Filament\Business\Resources\AgeRanges;
 
-use UnitEnum;
-use BackedEnum;
-use App\Models\AgeRange;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use App\Filament\Business\Resources\AgeRanges\Pages\EditAgeRange;
-use App\Filament\Business\Resources\AgeRanges\Pages\ViewAgeRange;
-use App\Filament\Business\Resources\AgeRanges\Pages\ListAgeRanges;
 use App\Filament\Business\Resources\AgeRanges\Pages\CreateAgeRange;
+use App\Filament\Business\Resources\AgeRanges\Pages\EditAgeRange;
+use App\Filament\Business\Resources\AgeRanges\Pages\ListAgeRanges;
+use App\Filament\Business\Resources\AgeRanges\Pages\ViewAgeRange;
 use App\Filament\Business\Resources\AgeRanges\Schemas\AgeRangeForm;
-use App\Filament\Business\Resources\AgeRanges\Tables\AgeRangesTable;
 use App\Filament\Business\Resources\AgeRanges\Schemas\AgeRangeInfolist;
+use App\Filament\Business\Resources\AgeRanges\Tables\AgeRangesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
+use App\Models\AgeRange;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
+use UnitEnum;
 
 class AgeRangeResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = AgeRange::class;
 
     protected static ?string $navigationLabel = 'Rango de Edades';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-list-bullet';
 
-    protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACIÓN';
 
     public static function form(Schema $schema): Schema
     {
@@ -53,15 +54,10 @@ class AgeRangeResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'     => ListAgeRanges::route('/'),
-            'create'    => CreateAgeRange::route('/create'),
-            'view'      => ViewAgeRange::route('/{record}'),
-            'edit'      => EditAgeRange::route('/{record}/edit'),
+            'index' => ListAgeRanges::route('/'),
+            'create' => CreateAgeRange::route('/create'),
+            'view' => ViewAgeRange::route('/{record}'),
+            'edit' => EditAgeRange::route('/{record}/edit'),
         ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return false;
     }
 }

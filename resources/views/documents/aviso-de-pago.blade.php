@@ -329,12 +329,14 @@
                         <td class="desc-col">
                             <p class="plan-line">
                                 @if ($data['plan'] == 'PLAN ESPECIAL')
-                                    {{ $data['plan'] }} - AFILIACION {{ $data['frequency'] }}@if ($data['coverage'] != null), COBERTURA: {{ round($data['coverage']) }}US$@endif<br>
+                                    {{ $data['plan'] }} - AFILIACION {{ $data['frequency'] }}@if ($data['coverage'] != null), COBERTURA: US${{ round($data['coverage']) }}@endif<br>
+
                                     ASISTENCIA MEDICA POR PATOLOGIAS LISTADAS<br>
                                     COBERTURA GEOGRAFICA – LOCAL VENEZUELA<br>
                                 @endif
                                 @if ($data['plan'] == 'PLAN IDEAL')
-                                    {{ $data['plan'] }}@if ($data['coverage'] != null), COBERTURA: {{ round($data['coverage']) }}US$@endif<br>
+                                    {{ $data['plan'] }}@if ($data['coverage'] != null), COBERTURA: US${{ round($data['coverage']) }}@endif<br>
+
                                     ASISTENCIA MEDICA POR ACCIDENTES PERSONALES<br>
                                     COBERTURA GEOGRAFICA – LOCAL VENEZUELA<br>
                                 @endif
@@ -346,10 +348,12 @@
                                 PERÍODO DE VIGENCIA DESDE EL {{ $vigenciaDesde }} HASTA EL {{ $vigenciaHasta }}
                             </p>
                         </td>
-                        <td class="amount-col">{{ number_format($data['total_amount'], 2) }}US$</td>
+                        <td class="amount-col">US${{ number_format($data['total_amount'], 2) }}</td>
+
                     </tr>
                     <tr class="total-row">
-                        <td colspan="2">Monto Total: {{ number_format($data['total_amount'], 2) }}US$</td>
+                        <td colspan="2">Monto Total: US${{ number_format($data['total_amount'], 2) }}</td>
+
                     </tr>
                 </tbody>
             </table>

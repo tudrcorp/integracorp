@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\TelemedicineDoctors;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\TelemedicineDoctors\Pages\CreateTelemedicineDoctor;
 use App\Filament\Operations\Resources\TelemedicineDoctors\Pages\EditTelemedicineDoctor;
 use App\Filament\Operations\Resources\TelemedicineDoctors\Pages\ListTelemedicineDoctors;
@@ -19,6 +20,8 @@ use UnitEnum;
 
 class TelemedicineDoctorResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = TelemedicineDoctor::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-doctor';

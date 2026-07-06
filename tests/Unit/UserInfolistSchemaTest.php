@@ -12,15 +12,18 @@ it('configura el infolist User sin error', function (): void {
     expect($configured)->toBeInstanceOf(Schema::class);
 });
 
-it('aplica clases Liquid Glass en User (Business) y el tema', function (): void {
+it('infolist de usuario usa pestañas del sistema', function (): void {
     $php = file_get_contents(__DIR__.'/../../app/Filament/Business/Resources/Users/Schemas/UserInfolist.php');
-    $css = file_get_contents(__DIR__.'/../../resources/css/filament/admin/theme.css');
 
     expect($php)->not->toBeFalse()
-        ->toContain('fi-capemiac-liquid-glass-section')
-        ->toContain('fi-capemiac-liquid-glass-inset');
-
-    expect($css)->not->toBeFalse()
-        ->toContain('.fi-capemiac-liquid-glass-section .fi-section')
-        ->toContain('backdrop-filter');
+        ->toContain('Tabs::make')
+        ->toContain('persistTab')
+        ->toContain('TABS_CONTAINER')
+        ->toContain('IOS_SECTION_CLASS')
+        ->toContain('IOS_INNER_CLASS')
+        ->toContain("Tabs::make('userInfolistTabs')")
+        ->toContain("Tab::make('Información del usuario')")
+        ->toContain("Tab::make('Rol del usuario')")
+        ->toContain('identity_card')
+        ->toContain('Documento de identidad');
 });

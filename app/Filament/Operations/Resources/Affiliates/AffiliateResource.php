@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\Affiliates;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\Affiliates\Pages\CreateAffiliate;
 use App\Filament\Operations\Resources\Affiliates\Pages\EditAffiliate;
 use App\Filament\Operations\Resources\Affiliates\Pages\ListAffiliates;
@@ -27,6 +28,8 @@ use UnitEnum;
 
 class AffiliateResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Affiliate::class;
 
     protected static ?string $navigationLabel = 'Individuales';

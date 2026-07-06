@@ -2,29 +2,31 @@
 
 namespace App\Filament\Business\Resources\BenefitCoverages;
 
-use UnitEnum;
-use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use App\Models\BenefitCoverage;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use App\Filament\Business\Resources\BenefitCoverages\Pages\EditBenefitCoverage;
-use App\Filament\Business\Resources\BenefitCoverages\Pages\ViewBenefitCoverage;
-use App\Filament\Business\Resources\BenefitCoverages\Pages\ListBenefitCoverages;
 use App\Filament\Business\Resources\BenefitCoverages\Pages\CreateBenefitCoverage;
+use App\Filament\Business\Resources\BenefitCoverages\Pages\EditBenefitCoverage;
+use App\Filament\Business\Resources\BenefitCoverages\Pages\ListBenefitCoverages;
+use App\Filament\Business\Resources\BenefitCoverages\Pages\ViewBenefitCoverage;
 use App\Filament\Business\Resources\BenefitCoverages\Schemas\BenefitCoverageForm;
-use App\Filament\Business\Resources\BenefitCoverages\Tables\BenefitCoveragesTable;
 use App\Filament\Business\Resources\BenefitCoverages\Schemas\BenefitCoverageInfolist;
+use App\Filament\Business\Resources\BenefitCoverages\Tables\BenefitCoveragesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
+use App\Models\BenefitCoverage;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Table;
+use UnitEnum;
 
 class BenefitCoverageResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = BenefitCoverage::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string | UnitEnum | null $navigationGroup = 'CONFIGURACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACIÓN';
 
     protected static ?string $navigationLabel = 'Beneficios Y Coberturas';
 
@@ -58,14 +60,5 @@ class BenefitCoverageResource extends Resource
             'view' => ViewBenefitCoverage::route('/{record}'),
             'edit' => EditBenefitCoverage::route('/{record}/edit'),
         ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        //Solo el Administrador General del Modulo de Business puede acceder a este recurso
-        if (in_array('SUPERADMIN', auth()->user()->departament)) {
-            return true;
-        }
-        return false;
     }
 }

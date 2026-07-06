@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Operations;
 
+use Closure;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -22,8 +23,27 @@ final class OperationServiceOrderUnregisteredProviderFormFields
     /**
      * @return array<int, mixed>
      */
-    public static function wizardStepSchema(): array
+    public static function wizardStepSchema(?Closure $onProviderTypeUpdated = null): array
     {
+        $providerTypeField = ToggleButtons::make('unregistered_provider_type')
+            ->label('¿Proveedor jurídico o natural?')
+            ->options([
+                'juridico' => 'Jurídico',
+                'natural' => 'Natural',
+            ])
+            ->icons([
+                'juridico' => Heroicon::OutlinedBuildingOffice2,
+                'natural' => Heroicon::OutlinedUser,
+            ])
+            ->inline()
+            ->required()
+            ->live()
+            ->columnSpanFull();
+
+        if ($onProviderTypeUpdated !== null) {
+            $providerTypeField->afterStateUpdated($onProviderTypeUpdated);
+        }
+
         return [
             Placeholder::make('unregistered_wizard_step_hint')
                 ->hiddenLabel()
@@ -37,20 +57,7 @@ final class OperationServiceOrderUnregisteredProviderFormFields
             Section::make('Tipo de proveedor')
                 ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
                 ->schema([
-                    ToggleButtons::make('unregistered_provider_type')
-                        ->label('¿Proveedor jurídico o natural?')
-                        ->options([
-                            'juridico' => 'Jurídico',
-                            'natural' => 'Natural',
-                        ])
-                        ->icons([
-                            'juridico' => Heroicon::OutlinedBuildingOffice2,
-                            'natural' => Heroicon::OutlinedUser,
-                        ])
-                        ->inline()
-                        ->required()
-                        ->live()
-                        ->columnSpanFull(),
+                    $providerTypeField,
                 ])
                 ->columnSpanFull(),
 
@@ -67,12 +74,9 @@ final class OperationServiceOrderUnregisteredProviderFormFields
         ];
     }
 
-    /**
-     * @return array<int, mixed>
-     */
-    public static function registerToggle(): Toggle
+    public static function registerToggle(?Closure $afterStateUpdated = null): Toggle
     {
-        return Toggle::make('register_unregistered_provider')
+        $toggle = Toggle::make('register_unregistered_provider')
             ->label('Proveedor No Convenido')
             ->helperText('Si activa esta opción, el asistente abrirá un paso adicional para registrar el proveedor.')
             ->live()
@@ -87,6 +91,12 @@ final class OperationServiceOrderUnregisteredProviderFormFields
                 $set('doctor_nurse_id', null);
                 $set('supplier_id', null);
             });
+
+        if ($afterStateUpdated !== null) {
+            $toggle->afterStateUpdated($afterStateUpdated);
+        }
+
+        return $toggle;
     }
 
     /**

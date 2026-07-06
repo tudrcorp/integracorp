@@ -4,19 +4,21 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\AffiliateCorporates\Tables;
 
-use App\Filament\Exports\AffiliateCorporateExporter;
+use App\Http\Controllers\AffiliateCorporateExportCsvController;
 use Carbon\Carbon;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class AffiliateCorporatesTable
 {
@@ -27,6 +29,10 @@ class AffiliateCorporatesTable
             ->heading('Afiliados corporativos')
             ->description('Orden por fecha de registro (más recientes primero).')
             ->striped()
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'affiliationCorporate.businessLine:id,definition',
+                'affiliationCorporate.businessUnit:id,definition',
+            ]))
             ->emptyStateHeading('Sin afiliados corporativos')
             ->emptyStateDescription('No hay registros o no coinciden con la búsqueda y los filtros.')
             ->columns([
@@ -106,6 +112,34 @@ class AffiliateCorporatesTable
                     ->sortable()
                     ->wrap()
                     ->placeholder('—'),
+                TextColumn::make('affiliationCorporate.business_line_id')
+                    ->label('Línea de servicio')
+                    ->formatStateUsing(fn ($record): string => filled($record->affiliationCorporate?->businessLine?->definition)
+                        ? (string) $record->affiliationCorporate->businessLine->definition
+                        : '—')
+                    ->description(fn ($record): ?string => filled($record->affiliationCorporate?->business_line_id)
+                        ? 'ID: '.$record->affiliationCorporate->business_line_id
+                        : null)
+                    ->badge()
+                    ->color('success')
+                    ->placeholder('—')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('affiliationCorporate.businessLine', fn (Builder $lineQuery): Builder => $lineQuery->where('definition', 'like', "%{$search}%"));
+                    }),
+                TextColumn::make('affiliationCorporate.business_unit_id')
+                    ->label('Unidad de negocio')
+                    ->formatStateUsing(fn ($record): string => filled($record->affiliationCorporate?->businessUnit?->definition)
+                        ? (string) $record->affiliationCorporate->businessUnit->definition
+                        : '—')
+                    ->description(fn ($record): ?string => filled($record->affiliationCorporate?->business_unit_id)
+                        ? 'ID: '.$record->affiliationCorporate->business_unit_id
+                        : null)
+                    ->badge()
+                    ->color('info')
+                    ->placeholder('—')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('affiliationCorporate.businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"));
+                    }),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
                     ->money('USD')
@@ -162,11 +196,27 @@ class AffiliateCorporatesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    ExportBulkAction::make()
-                        ->exporter(AffiliateCorporateExporter::class)
-                        ->label('Exportar XLS')
-                        ->color('info')
-                        ->deselectRecordsAfterCompletion(),
+                    BulkAction::make('exportAffiliateCorporatesCsv')
+                        ->label('Exportar Afiliados')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos un afiliado corporativo')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $token = AffiliateCorporateExportCsvController::storeFiltersAndGetToken([
+                                'affiliate_corporate_ids' => $records->pluck('id')->all(),
+                            ], 'operations');
+
+                            return redirect()->route('operations.affiliate-corporates.export-csv', ['token' => $token]);
+                        }),
                 ]),
             ]);
     }

@@ -3,8 +3,9 @@
 namespace App\Filament\Business\Resources\AffiliationCorporates\Tables;
 
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
-use App\Filament\Exports\AffiliationCorporateExporter;
+use App\Http\Controllers\AffiliateCorporateExportCsvController;
 use App\Http\Controllers\AffiliationCorporateController;
+use App\Http\Controllers\AffiliationCorporateExportCsvController;
 use App\Http\Controllers\AffiliationCorporatePopulationExportCsvController;
 use App\Mail\UploadPayment;
 use App\Models\AffiliationCorporate;
@@ -17,7 +18,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
@@ -1219,6 +1219,48 @@ class AffiliationCorporatesTable
                             $token = AffiliationCorporatePopulationExportCsvController::storeIdsAndGetToken($ids);
 
                             return redirect()->route('business.affiliation-corporates.export-population-csv', ['token' => $token]);
+                        }),
+                    BulkAction::make('exportAffiliationCorporatesCsv')
+                        ->label('Exportar Afiliaciones')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una afiliación')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $token = AffiliationCorporateExportCsvController::storeFiltersAndGetToken([
+                                'affiliation_corporate_ids' => $records->pluck('id')->all(),
+                            ], 'business');
+
+                            return redirect()->route('business.affiliation-corporates.export-csv', ['token' => $token]);
+                        }),
+                    BulkAction::make('exportAffiliateCorporatesCsv')
+                        ->label('Exportar Afiliados')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una afiliación')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $token = AffiliateCorporateExportCsvController::storeFiltersAndGetToken([
+                                'affiliation_corporate_ids' => $records->pluck('id')->all(),
+                            ], 'business');
+
+                            return redirect()->route('business.affiliate-corporates.export-csv', ['token' => $token]);
                         }),
                     DeleteBulkAction::make(),
                 ]),

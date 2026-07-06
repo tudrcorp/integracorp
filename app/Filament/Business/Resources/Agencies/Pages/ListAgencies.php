@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\Agencies\Pages;
 
 use App\Filament\Business\Resources\Agencies\AgencyResource;
+use App\Filament\Business\Resources\Agencies\Concerns\QueuesAgencyFichaPdfEmail;
 use App\Filament\Business\Resources\Agencies\Widgets\AgencyGeoChart;
 use App\Filament\Business\Resources\Agencies\Widgets\AgentActiveForEstructureChart;
 use App\Filament\Business\Resources\Agencies\Widgets\ControlActividadInteraccion;
@@ -11,10 +12,9 @@ use App\Filament\Business\Resources\Agencies\Widgets\StatsOverviewAgency;
 use App\Filament\Business\Resources\Agencies\Widgets\TotalEstructureAgency;
 use App\Filament\Business\Resources\Agencies\Widgets\TotalSaleForEstructureChart;
 use App\Http\Controllers\NotificationController;
-use App\Jobs\SendBusinessAgencyFichaPdfMailJob;
 use App\Models\Agency;
 use App\Models\AgencyNoteBlog;
-use App\Support\BusinessAgencyFichaPdfAccess;
+use App\Support\GuiaChat\GuiaChatPublicUrl;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -26,6 +26,7 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Schema;
@@ -34,6 +35,9 @@ use Illuminate\Support\Str;
 class ListAgencies extends ListRecords
 {
     use ExposesTableToWidgets;
+    use QueuesAgencyFichaPdfEmail;
+
+    private const GUIA_CHAT_LINK_AUDIT_ROUTE = 'business.agencies.send-guia-chat-link';
 
     protected static string $resource = AgencyResource::class;
 
@@ -154,7 +158,6 @@ class ListAgencies extends ListRecords
                             }
                         }
 
-                        
                         $baseUrl = rtrim((string) config('parameters.INTEGRACORP_URL'), '/');
                         $link = blank($agencyCode)
                             ? $baseUrl.'/agency/c'
@@ -247,6 +250,109 @@ class ListAgencies extends ListRecords
                             ->title('ENVIO FALLIDO')
                             ->body($th->getMessage())
                             ->icon('heroicon-c-shield-check')
+                            ->color('danger')
+                            ->send();
+                    }
+                }),
+            Action::make('send_guia_chat_link')
+                ->label('Enviar GUIA-CHAT')
+                ->icon('heroicon-m-chat-bubble-left-right')
+                ->color('info')
+                ->extraAttributes([
+                    'class' => self::PRIMARY_BUTTON_CLASS,
+                ])
+                ->modalHeading('Enviar enlace de GUIA-CHAT por WhatsApp')
+                ->modalDescription('Comparta el asistente virtual GUIA-CHAT con una agencia o prospecto. El destinatario recibirá el enlace público del chat guiado.')
+                ->modalIcon('heroicon-m-chat-bubble-left-right')
+                ->modalIconColor('info')
+                ->modalSubmitActionLabel('Enviar por WhatsApp')
+                ->modalCancelActionLabel('Cancelar')
+                ->modalWidth(Width::TwoExtraLarge)
+                ->form([
+                    Section::make('Enlace GUIA-CHAT')
+                        ->icon(Heroicon::Link)
+                        ->description('URL pública del asistente virtual para registro guiado y soporte comercial.')
+                        ->schema([
+                            TextInput::make('guia_chat_url_preview')
+                                ->label('Enlace a enviar')
+                                ->disabled()
+                                ->dehydrated(false)
+                                ->default(fn (): string => GuiaChatPublicUrl::url())
+                                ->prefixIcon('heroicon-m-link')
+                                ->helperText('Este enlace abre el chat en /chat/publico.'),
+                        ]),
+                    Section::make('Destinatario')
+                        ->icon(Heroicon::Phone)
+                        ->description('Indique el número de WhatsApp del destinatario.')
+                        ->schema([
+                            TextInput::make('phone')
+                                ->label('WhatsApp')
+                                ->prefixIcon('heroicon-s-phone')
+                                ->tel()
+                                ->required()
+                                ->placeholder('04127018390 o +584121234567')
+                                ->helperText('Número con WhatsApp. Venezuela: 0412… sin espacios. Extranjero: código de país (+58…, +1…).'),
+                        ]),
+                ])
+                ->action(function (array $data): void {
+                    try {
+                        $phone = trim((string) ($data['phone'] ?? ''));
+
+                        if ($phone === '') {
+                            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_GUIA_CHAT_LINK_SEND_FAILED', self::GUIA_CHAT_LINK_AUDIT_ROUTE, [
+                                'reason' => 'missing_phone',
+                            ]);
+
+                            Notification::make()
+                                ->title('Falta el destinatario')
+                                ->body('Indique un número de WhatsApp para enviar el enlace de GUIA-CHAT.')
+                                ->icon('heroicon-m-exclamation-triangle')
+                                ->color('warning')
+                                ->send();
+
+                            return;
+                        }
+
+                        $link = GuiaChatPublicUrl::url();
+                        $sent = NotificationController::send_guia_chat_link_wp($link, $phone);
+
+                        if ($sent) {
+                            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_GUIA_CHAT_LINK_WHATSAPP_SENT', self::GUIA_CHAT_LINK_AUDIT_ROUTE, [
+                                'recipient_phone' => $phone,
+                                'guia_chat_url' => $link,
+                            ]);
+
+                            Notification::make()
+                                ->title('WhatsApp enviado')
+                                ->body('El enlace de GUIA-CHAT se envió por WhatsApp correctamente.')
+                                ->icon('heroicon-m-check-circle')
+                                ->color('success')
+                                ->send();
+
+                            return;
+                        }
+
+                        SecurityAudit::log('AUDIT_BUSINESS_AGENCY_GUIA_CHAT_LINK_WHATSAPP_FAILED', self::GUIA_CHAT_LINK_AUDIT_ROUTE, [
+                            'recipient_phone' => $phone,
+                            'guia_chat_url' => $link,
+                        ]);
+
+                        Notification::make()
+                            ->title('No se pudo enviar por WhatsApp')
+                            ->body('Verifique el número (formato y que tenga WhatsApp) e intente de nuevo.')
+                            ->icon('heroicon-m-x-circle')
+                            ->color('danger')
+                            ->send();
+                    } catch (\Throwable $th) {
+                        SecurityAudit::log('AUDIT_BUSINESS_AGENCY_GUIA_CHAT_LINK_SEND_FAILED', self::GUIA_CHAT_LINK_AUDIT_ROUTE, [
+                            'error' => $th->getMessage(),
+                            'recipient_phone' => $data['phone'] ?? null,
+                        ]);
+
+                        Notification::make()
+                            ->title('Error al enviar')
+                            ->body($th->getMessage())
+                            ->icon('heroicon-m-x-circle')
                             ->color('danger')
                             ->send();
                     }
@@ -352,61 +458,5 @@ class ListAgencies extends ListRecords
                 ->danger()
                 ->send();
         }
-    }
-
-    public function queueAgencyFichaPdfEmail(int $agencyId, string $email): void
-    {
-        $email = trim($email);
-        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            Notification::make()
-                ->title('Correo inválido')
-                ->body('Indique una dirección de correo válida.')
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        $agency = Agency::query()->find($agencyId);
-        if ($agency === null) {
-            Notification::make()
-                ->title('Agencia no encontrada')
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        if (! BusinessAgencyFichaPdfAccess::userCanAccess($agency)) {
-            SecurityAudit::log('AUDIT_BUSINESS_AGENCY_FICHA_ACCESS_DENIED', 'business.agencies.ficha-pdf.email.livewire', [
-                'agency_id' => $agencyId,
-                'reason' => 'forbidden',
-            ]);
-            Notification::make()
-                ->title('Sin permiso')
-                ->body('No puede enviar la ficha de esta agencia.')
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        SendBusinessAgencyFichaPdfMailJob::dispatch(
-            (int) $agency->getKey(),
-            $email,
-            (int) Auth::id(),
-        );
-
-        SecurityAudit::log('AUDIT_BUSINESS_AGENCY_FICHA_EMAIL_QUEUED', 'business.agencies.ficha-pdf.email.livewire', [
-            'agency_id' => $agency->getKey(),
-            'agency_name' => $agency->name_corporative,
-            'recipient_email' => $email,
-        ]);
-
-        Notification::make()
-            ->title('Correo encolado')
-            ->body('El envío con el PDF adjunto se procesará en segundo plano.')
-            ->success()
-            ->send();
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\TelemedicineHistoryPatients;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\TelemedicineHistoryPatients\Pages\CreateTelemedicineHistoryPatient;
 use App\Filament\Operations\Resources\TelemedicineHistoryPatients\Pages\EditTelemedicineHistoryPatient;
 use App\Filament\Operations\Resources\TelemedicineHistoryPatients\Pages\ListTelemedicineHistoryPatients;
@@ -22,6 +23,8 @@ use UnitEnum;
 
 class TelemedicineHistoryPatientResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = TelemedicineHistoryPatient::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-i-exam-qualification';

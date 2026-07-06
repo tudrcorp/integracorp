@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Http\Controllers\AffiliationController;
 use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Jobs\GenerateCorporateAffiliateTarjetasChunkJob;
+use App\Jobs\GenerateCorporateCertificateJob;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
 use App\Support\DomPdfBatchRenderOptions;
@@ -19,6 +20,8 @@ use RuntimeException;
 
 class AffiliationCorporateBusinessDocumentsService
 {
+    private const DOCUMENTS_QUEUE = 'documents';
+
     /**
      * @return array{
      *   queued: bool,
@@ -34,7 +37,6 @@ class AffiliationCorporateBusinessDocumentsService
 
         self::purgeExistingGeneratedDocuments($record);
         self::ensureDirectories();
-        self::generateCorporateCertificate($record);
 
         $affiliates = $record->corporateAffiliates;
         $affiliateCount = $affiliates->count();
@@ -55,8 +57,9 @@ class AffiliationCorporateBusinessDocumentsService
         }
 
         $taskId = (string) Str::uuid();
-        $chunks = self::toTarjetaPayloadChunk($record, $affiliates, 3);
+        $chunks = self::toTarjetaPayloadChunk($record, $affiliates, self::recommendedChunkSize($affiliatesCount));
         $jobs = [];
+        $jobs[] = new GenerateCorporateCertificateJob($affiliationCode);
 
         foreach ($chunks as $chunk) {
             $jobs[] = new GenerateCorporateAffiliateTarjetasChunkJob(
@@ -65,11 +68,14 @@ class AffiliationCorporateBusinessDocumentsService
             );
         }
 
+        $activeTaskCacheKey = self::activeTaskCacheKey($affiliationCode);
         $batch = Bus::batch($jobs)
             ->onConnection('sync')
             ->name('corporate-documents-'.$record->code)
             ->then(function (Batch $batch) use ($record, $taskId): void {
                 if ($batch->cancelled()) {
+                    Cache::forget($activeTaskCacheKey);
+
                     return;
                 }
 
@@ -78,7 +84,7 @@ class AffiliationCorporateBusinessDocumentsService
                 self::cacheStatus($taskId, [
                     'status' => 'completed',
                     'message' => 'Documentos generados correctamente.',
-                    'affiliation_code' => (string) $record->code,
+                    'affiliation_code' => $affiliationCode,
                     'batch_id' => $batch->id,
                     'started_at' => $existingPayload['started_at'] ?? time(),
                     'total_jobs' => $batch->totalJobs,
@@ -87,8 +93,9 @@ class AffiliationCorporateBusinessDocumentsService
                     'eta_seconds' => 0,
                     'documents' => self::documentsForAffiliation($record),
                 ]);
+                Cache::forget($activeTaskCacheKey);
             })
-            ->catch(function (Batch $batch, \Throwable $throwable) use ($taskId): void {
+            ->catch(function (Batch $batch, \Throwable $throwable) use ($taskId, $activeTaskCacheKey): void {
                 $payload = self::status($taskId);
                 self::cacheStatus($taskId, [
                     'status' => 'failed',
@@ -101,13 +108,14 @@ class AffiliationCorporateBusinessDocumentsService
                     'eta_seconds' => null,
                     'documents' => [],
                 ]);
+                Cache::forget($activeTaskCacheKey);
             })
             ->dispatch();
 
         self::cacheStatus($taskId, [
             'status' => 'processing',
-            'message' => 'Generando tarjetas por lotes. Esto puede tardar unos segundos.',
-            'affiliation_code' => (string) $record->code,
+            'message' => 'Generando certificado y tarjetas por lotes. Esto puede tardar unos segundos.',
+            'affiliation_code' => $affiliationCode,
             'batch_id' => $batch->id,
             'started_at' => time(),
             'total_jobs' => count($jobs),
@@ -116,6 +124,7 @@ class AffiliationCorporateBusinessDocumentsService
             'eta_seconds' => null,
             'documents' => [],
         ]);
+        Cache::put($activeTaskCacheKey, $taskId, now()->addMinutes(20));
 
         return [
             'queued' => true,
@@ -123,6 +132,23 @@ class AffiliationCorporateBusinessDocumentsService
             'progress_percentage' => 0,
             'eta_seconds' => null,
         ];
+    }
+
+    public static function recommendedChunkSize(int $affiliatesCount): int
+    {
+        if ($affiliatesCount <= 20) {
+            return 5;
+        }
+
+        if ($affiliatesCount <= 80) {
+            return 10;
+        }
+
+        if ($affiliatesCount <= 250) {
+            return 20;
+        }
+
+        return 30;
     }
 
     /**
@@ -376,7 +402,7 @@ class AffiliationCorporateBusinessDocumentsService
         }
     }
 
-    private static function generateCorporateCertificate(AffiliationCorporate $record): void
+    public static function generateCorporateCertificate(AffiliationCorporate $record): void
     {
         $effectiveDate = (string) ($record->effective_date ?? '');
 
@@ -542,5 +568,10 @@ class AffiliationCorporateBusinessDocumentsService
     private static function cacheKey(string $taskId): string
     {
         return 'business.corporate-documents.'.$taskId;
+    }
+
+    private static function activeTaskCacheKey(string $affiliationCode): string
+    {
+        return 'business.corporate-documents.active-task.'.$affiliationCode;
     }
 }

@@ -73,6 +73,7 @@ class Agency extends Model
         'created_by',
         'updated_by',
         'comments',
+        'audit_items',
 
         /* Docuemntos */
         'doc_digital_signature',
@@ -91,6 +92,16 @@ class Agency extends Model
         'address_complement',
 
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'audit_items' => 'array',
+        ];
+    }
 
     /**
      * Get the user associated with the Agency
@@ -183,8 +194,8 @@ class Agency extends Model
         return $this->belongsTo(AccountManager::class, 'ownerAccountManagers', 'user_id');
     }
 
-    public function observationCommercialStructures()
+    public function observationCommercialStructures(): HasMany
     {
-        return $this->hasMany(ObservationCommercialStructure::class);
+        return $this->hasMany(ObservationCommercialStructure::class)->orderByDesc('created_at');
     }
 }

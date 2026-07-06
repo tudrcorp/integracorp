@@ -19,3 +19,12 @@ it('usa pestañas en el formulario de agente', function (): void {
     expect($source)->toContain("Tabs::make('agentFormTabs')");
     expect($source)->toContain('Tab::make(');
 });
+
+it('define opciones para el select de sexo', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Agents/Schemas/AgentForm.php');
+
+    expect($source)
+        ->toContain("Select::make('sex')")
+        ->toContain("'MASCULINO' => 'MASCULINO'")
+        ->toContain("'FEMENINO' => 'FEMENINO'");
+});

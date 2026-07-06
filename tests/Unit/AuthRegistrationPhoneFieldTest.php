@@ -25,3 +25,20 @@ test('agent form create formats phone for storage', function () {
 
     expect($component->instance()->phoneForStorage())->toBe('+573001234567');
 });
+
+test('agent form create shows document and birth date fields', function () {
+    Volt::test('agentformcreate')
+        ->assertSee('Documento de Identidad')
+        ->assertSee('Fecha de Nacimiento');
+});
+
+test('agent form create requires document and birth date', function () {
+    Volt::test('agentformcreate')
+        ->set('name', 'John Doe')
+        ->set('email', 'john.doe.'.uniqid().'@example.com')
+        ->set('phone', '3001234567')
+        ->set('password', 'Password123')
+        ->set('password_confirmation', 'Password123')
+        ->call('register')
+        ->assertHasErrors(['ci' => 'required', 'birth_date' => 'required']);
+});

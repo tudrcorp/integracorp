@@ -2,6 +2,7 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages;
 
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasInformAmdModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasMedicamentosStepInfoModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
 use App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
@@ -31,6 +32,9 @@ use App\Models\TelemedicinePatientStudy;
 use App\Services\NotificationTelemedicinaService;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\ConsultationCreateWizardDefaults;
+use App\Support\Telemedicine\TelemedicineAmdFileRegistrar;
+use App\Support\Telemedicine\TelemedicineAmdInformRegistrar;
+use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -45,6 +49,7 @@ use Illuminate\Support\HtmlString;
 
 class CreateTelemedicineConsultationPatient extends CreateRecord
 {
+    use HasInformAmdModal;
     use HasMedicamentosStepInfoModal;
 
     protected static string $resource = TelemedicineConsultationPatientResource::class;
@@ -366,7 +371,6 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-
         if (isset($data['feedbackOne']) && $data['feedbackOne'] == true) {
             session()->put('feedbackOne', $data['feedbackOne']);
             $consult = TelemedicineConsultationPatient::where('telemedicine_case_id', $data['telemedicine_case_id'])->latest()->first();
@@ -410,6 +414,20 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         try {
 
             $record = $this->getRecord()->toArray();
+
+            if ((int) ($record['telemedicine_service_list_id'] ?? 0) === TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID) {
+                $consultation = TelemedicineConsultationPatient::query()->find($record['id']);
+
+                if ($consultation) {
+                    TelemedicineAmdInformRegistrar::attachPendingToConsultation(
+                        $consultation,
+                        session()->get(TelemedicineAmdInformRegistrar::SESSION_PENDING_INFORM_ID)
+                            ?? $this->pendingAmdInformId,
+                    );
+
+                    TelemedicineAmdFileRegistrar::attachPendingToConsultation($consultation);
+                }
+            }
 
             $doctor = TelemedicineDoctor::where('id', $record['telemedicine_doctor_id'])->first()->toArray();
 
@@ -785,7 +803,11 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                             'saturacion' => $this->data['saturacion'],
                         ];
 
-                        $pdfJobs[] = new GeneratePdfInformeMedicoLargo($dataInformeLargo, Auth::user(), 'informe-largo');
+                        $isAmdService = (int) ($record['telemedicine_service_list_id'] ?? 0) === TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID;
+
+                        if (! $isAmdService) {
+                            $pdfJobs[] = new GeneratePdfInformeMedicoLargo($dataInformeLargo, Auth::user(), 'informe-largo');
+                        }
                     }
 
                     /**

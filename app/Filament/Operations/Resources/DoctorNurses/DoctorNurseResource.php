@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\DoctorNurses;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\Concerns\ConfiguresOperationsSupplierGlobalSearch;
 use App\Filament\Operations\Resources\DoctorNurses\Pages\CreateDoctorNurse;
 use App\Filament\Operations\Resources\DoctorNurses\Pages\EditDoctorNurse;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\Auth;
 
 class DoctorNurseResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
     use ConfiguresOperationsSupplierGlobalSearch;
 
     protected static ?string $model = DoctorNurse::class;

@@ -31,67 +31,80 @@ class UpdateAnnualCollectionRemainingDays implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->runWithScheduledReport('Cobranza anual — días restantes', function (): void {
-            $startedAt = microtime(true);
-            $today = Carbon::today();
-            $processed = 0;
-            $updated = 0;
-            $unchanged = 0;
+        $this->runWithScheduledReport(
+            'Cobranza anual — días restantes',
+            function (): void {
+                $startedAt = microtime(true);
+                $today = Carbon::today();
+                $processed = 0;
+                $updated = 0;
+                $unchanged = 0;
 
-            AnnualCollection::query()
-                ->with(['sale:id,payment_frequency'])
-                ->select([
-                    'id',
-                    'sale_id',
-                    'include_date',
-                    'remaining_days',
-                    'month_1',
-                    'month_2',
-                    'month_3',
-                    'month_4',
-                    'month_5',
-                    'month_6',
-                    'month_7',
-                    'month_8',
-                    'month_9',
-                    'month_10',
-                    'month_11',
-                    'month_12',
-                ])
-                ->chunkById(500, function ($records) use ($today, &$processed, &$updated, &$unchanged): void {
-                    foreach ($records as $record) {
-                        $processed++;
-                        $remainingDays = $this->calculateRemainingDays($record, $today);
+                ScheduledTaskRunReport::addExecutionDetail('Alcance', 'Todos los registros de cobranza anual');
+                ScheduledTaskRunReport::addExecutionDetail('Fecha de cálculo', $today->format('d/m/Y'));
 
-                        if ((int) $record->remaining_days === $remainingDays) {
-                            $unchanged++;
+                AnnualCollection::query()
+                    ->with(['sale:id,payment_frequency'])
+                    ->select([
+                        'id',
+                        'sale_id',
+                        'include_date',
+                        'remaining_days',
+                        'month_1',
+                        'month_2',
+                        'month_3',
+                        'month_4',
+                        'month_5',
+                        'month_6',
+                        'month_7',
+                        'month_8',
+                        'month_9',
+                        'month_10',
+                        'month_11',
+                        'month_12',
+                    ])
+                    ->chunkById(500, function ($records) use ($today, &$processed, &$updated, &$unchanged): void {
+                        foreach ($records as $record) {
+                            $processed++;
+                            $remainingDays = $this->calculateRemainingDays($record, $today);
 
-                            continue;
+                            if ((int) $record->remaining_days === $remainingDays) {
+                                $unchanged++;
+
+                                continue;
+                            }
+
+                            $record->update([
+                                'remaining_days' => $remainingDays,
+                            ]);
+
+                            $updated++;
                         }
+                    });
 
-                        $record->update([
-                            'remaining_days' => $remainingDays,
-                        ]);
+                $elapsedMs = (int) ((microtime(true) - $startedAt) * 1000);
 
-                        $updated++;
-                    }
-                });
+                ScheduledTaskRunReport::addMetric('Registros procesados', $processed);
+                ScheduledTaskRunReport::addMetric('Registros actualizados', $updated);
+                ScheduledTaskRunReport::addMetric('Registros sin cambios', $unchanged);
+                ScheduledTaskRunReport::addMetric('Duración (ms)', $elapsedMs);
 
-            $elapsedMs = (int) ((microtime(true) - $startedAt) * 1000);
-
-            ScheduledTaskRunReport::addMetric('Registros procesados', $processed);
-            ScheduledTaskRunReport::addMetric('Registros actualizados', $updated);
-            ScheduledTaskRunReport::addMetric('Registros sin cambios', $unchanged);
-            ScheduledTaskRunReport::addMetric('Duración (ms)', $elapsedMs);
-
-            Log::info('UpdateAnnualCollectionRemainingDays: EJECUCION OK', [
-                'execution_date' => $today->toDateString(),
-                'processed_records' => $processed,
-                'updated_records' => $updated,
-                'unchanged_records' => $unchanged,
-                'elapsed_ms' => $elapsedMs,
-            ]);
-        });
+                Log::info('UpdateAnnualCollectionRemainingDays: EJECUCION OK', [
+                    'execution_date' => $today->toDateString(),
+                    'processed_records' => $processed,
+                    'updated_records' => $updated,
+                    'unchanged_records' => $unchanged,
+                    'elapsed_ms' => $elapsedMs,
+                ]);
+            },
+            'Recalcula el campo remaining_days de cada registro en cobranza anual según la frecuencia de pago y el próximo mes activo.',
+            [
+                '*Registros procesados* = total de filas evaluadas en annual_collections.',
+                '*Registros actualizados* = remaining_days cambió respecto al valor guardado.',
+                '*Registros sin cambios* = el valor calculado ya coincidía con el almacenado.',
+                'Esta tarea no envía notificaciones; solo actualiza contadores en base de datos.',
+            ],
+        );
     }
 
     private function calculateRemainingDays(AnnualCollection $record, Carbon $today): int

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\MassNotifications;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Marketing\Resources\MassNotifications\Pages\CreateMassNotification;
 use App\Filament\Marketing\Resources\MassNotifications\Pages\EditMassNotification;
 use App\Filament\Marketing\Resources\MassNotifications\Pages\ListMassNotifications;
@@ -11,17 +12,16 @@ use App\Filament\Marketing\Resources\MassNotifications\Schemas\MassNotificationF
 use App\Filament\Marketing\Resources\MassNotifications\Schemas\MassNotificationInfolist;
 use App\Filament\Marketing\Resources\MassNotifications\Tables\MassNotificationsTable;
 use App\Models\MassNotification;
-use App\Models\Permission;
-use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class MassNotificationResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = MassNotification::class;
 
     // protected static string|BackedEnum|null $navigationIcon = 'fontisto-navigate';
@@ -60,24 +60,5 @@ class MassNotificationResource extends Resource
             'view' => ViewMassNotification::route('/{record}'),
             'edit' => EditMassNotification::route('/{record}/edit'),
         ];
-    }
-
-    public static function canAccess(): bool
-    {
-        $module = 'MARKETING';
-        $permission = Permission::where('module', $module)->where('slug', 'notificaciones-masivas')->first();
-
-        // si es superadmin, retornar true
-        if (in_array('SUPERADMIN', Auth::user()->departament)) {
-            return true;
-        }
-
-        if (in_array($module, Auth::user()->departament)) {
-            if (UserPermission::where('user_id', Auth::user()->id)->where('permission_id', $permission->id)->exists()) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

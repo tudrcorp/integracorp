@@ -24,6 +24,7 @@ class TelemedicineCase extends Model
         'patient_city_id',
         'assigned_by',
         'status',
+        'belongs_to',
         'reason',
         'code',
         'ambulanceParking',
@@ -46,6 +47,12 @@ class TelemedicineCase extends Model
     public function consultations()
     {
         return $this->hasMany(TelemedicineConsultationPatient::class);
+    }
+
+    public function amdInforms()
+    {
+        return $this->hasMany(TelemedicineAmdInform::class, 'telemedicine_case_id')
+            ->orderByDesc('created_at');
     }
 
     public function country()

@@ -30,6 +30,29 @@ it('OperationCoordinationServicesTable define la acción modal de doctor TDG par
         ->and($contents)->toContain('FilamentIosButton::extraClassForFilamentColor');
 });
 
+it('OperationCoordinationServicesTable define la acción modal de reasignación de gestión a TDG en la columna managed_by', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("Action::make('reassignCoordinationManagedByToTdg')")
+        ->and($contents)->toContain("->modalHeading('Reasignar gestión del servicio a TDG')")
+        ->and($contents)->toContain('Heroicon::OutlinedArrowsRightLeft')
+        ->and($contents)->toContain("->modalSubmitActionLabel('Sí, reasignar a TDG')")
+        ->and($contents)->toContain("Textarea::make('reassignment_observation')")
+        ->and($contents)->toContain('TelemedicineCaseTdgReassignmentCoordination::OBSERVATION_PREFIX')
+        ->and($contents)->toContain('ObservationCase::query()->create')
+        ->and($contents)->toContain('coordinationIsManagedByTdg')
+        ->and($contents)->toContain("TextColumn::make('managed_by')")
+        ->and($contents)->toContain('->action($reassignManagedByToTdgAction)')
+        ->and($contents)->toContain('Clic para reasignar la gestión del servicio a TDG')
+        ->and($contents)->toContain('managedByReassignmentDescription')
+        ->and($contents)->toContain('Motivo de Reasignación:')
+        ->and($contents)->toContain('reassignmentReasonFromObservations')
+        ->and($contents)->toContain('OperationServiceOrder::query()')
+        ->and($contents)->toContain("->where('operation_coordination_service_id', \$record->id)");
+});
+
 it('OperationCoordinationServicesTable define acción de documentos de ingreso y egreso a clínica', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
     $contents = file_get_contents($path);
@@ -86,7 +109,7 @@ it('OperationCoordinationServicesTable enlaza a la página de gestión de ítems
         ->toContain('disableOptionWhen')
         ->toContain('manageServiceItemOptions')
         ->toContain('isManagementItemKeySelectable')
-        ->toContain('CoordinationServiceItemsManager::nonCoveredSelectedManagementItemKeys');
+        ->toContain('CoordinationServiceItemsManager::shouldShowManageQuoteStep');
 });
 
 it('isManagementItemSelectable bloquea items en gestion o finalizados', function (): void {
@@ -132,6 +155,32 @@ it('OperationCoordinationServicesTable muestra ítems clínicos en la vista prin
         ->toContain('fi-coordination-clinical-items-header')
         ->toContain('min-width: 22rem')
         ->toContain('max-width: 30rem');
+});
+
+it('la columna de items clínicos acota su ancho sin recortar el contenido', function (): void {
+    $theme = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
+
+    $compactStart = strpos($theme, '.fi-coordination-clinical-items-compact {');
+    $compactBlock = substr($theme, $compactStart, 160);
+
+    expect($compactBlock)
+        ->toContain('max-width: 30rem;')
+        ->not->toContain('overflow: hidden;');
+
+    $itemStart = strpos($theme, '.fi-coordination-clinical-item {');
+    $itemBlock = substr($theme, $itemStart, 320);
+
+    expect($itemBlock)
+        ->toContain('flex-wrap')
+        ->not->toContain('flex-nowrap');
+
+    $labelStart = strpos($theme, '.fi-coordination-clinical-item__label {');
+    $labelBlock = substr($theme, $labelStart, 220);
+
+    expect($labelBlock)
+        ->toContain('whitespace-normal')
+        ->toContain('break-words')
+        ->not->toContain('truncate');
 });
 
 it('clinicalItemPendingManageLinkHtml enlaza a gestionar servicio solo en items pendientes', function (): void {
@@ -295,7 +344,32 @@ it('OperationCoordinationServicesTable permite agrupar por código del caso', fu
         ->toContain('->orderQueryUsing(')
         ->toContain("'telemedicineCase', 'created_at'")
         ->toContain("'desc'")
+        ->toContain("->defaultGroup('telemedicineCase.code')")
         ->toContain('->collapsedGroupsByDefault()');
+});
+
+it('OperationCoordinationServicesTable oculta coordinaciones sin ítems por gestionar y conserva las que tienen ítems abiertos', function (): void {
+    $table = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php');
+    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ListOperationCoordinationServices.php');
+
+    expect($table)
+        ->toContain('public static function applyHideFullyFinalizedScope(Builder $query): Builder')
+        ->toContain("\$openStatuses = ['PENDIENTE', 'EN GESTION'];")
+        ->toContain("->whereDoesntHave('telemedicinePatientMedications')")
+        ->toContain("->whereDoesntHave('telemedicinePatientLabs')")
+        ->toContain("->whereDoesntHave('telemedicinePatientStudies')")
+        ->toContain("->whereDoesntHave('telemedicinePatientSpecialties')")
+        ->toContain("->orWhereHas('telemedicinePatientMedications'")
+        ->toContain("->orWhereHas('telemedicinePatientLabs'")
+        ->toContain("->orWhereHas('telemedicinePatientStudies'")
+        ->toContain("->orWhereHas('telemedicinePatientSpecialties'")
+        ->toContain("whereRaw('UPPER(TRIM(status)) IN (?, ?)', \$openStatuses)");
+
+    expect($page)
+        ->toContain('use App\\Filament\\Operations\\Resources\\OperationCoordinationServices\\Tables\\OperationCoordinationServicesTable;')
+        ->toContain("'todas' => Tab::make('Todas')")
+        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query)')
+        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope(OperationsSupplierScope::coordinationServiceQuery())->count()');
 });
 
 it('OperationCoordinationServicesTable muestra código de caso TM con badge y enlace a vista', function (): void {
@@ -307,4 +381,44 @@ it('OperationCoordinationServicesTable muestra código de caso TM con badge y en
         ->toContain('TelemedicineCaseResource::getUrl')
         ->toContain('healthicons-f-health-literacy')
         ->toContain("'telemedicineCase'");
+});
+
+it('OperationCoordinationServicesTable muestra linea y unidad de negocio del paciente', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("TextColumn::make('patient_business_line')")
+        ->toContain("TextColumn::make('patient_business_unit')")
+        ->toContain('patientBusinessLineLabel')
+        ->toContain('patientBusinessUnitLabel')
+        ->toContain('telemedicinePatient.businessLine')
+        ->toContain('telemedicinePatient.businessUnit')
+        ->not->toContain("TextColumn::make('businessLine.definition')");
+});
+
+it('deshabilita medicamentos y laboratorios cubiertos para TDG salvo que la coordinación sea gestionada por TDG', function (): void {
+    $noTdg = new \App\Models\OperationCoordinationService(['managed_by' => 'ATENMEDI']);
+    $tdg = new \App\Models\OperationCoordinationService(['managed_by' => 'TDG']);
+
+    expect(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', true))->toBeFalse()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Laboratorio', true))->toBeFalse()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Medicamento', true))->toBeTrue()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Laboratorio', true))->toBeTrue();
+});
+
+it('permite gestionar a TDG los items no cubiertos y los cubiertos de otras categorías sin reasignación', function (): void {
+    $noTdg = new \App\Models\OperationCoordinationService(['managed_by' => 'ATENMEDI']);
+
+    expect(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', false))->toBeTrue()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Laboratorio', null))->toBeTrue()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Estudio', true))->toBeTrue()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Especialista', true))->toBeTrue();
+});
+
+it('CoordinationServiceItemsManager aplica la regla TDG al construir items de medicamentos y laboratorios', function (): void {
+    $manager = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CoordinationServiceItemsManager.php');
+
+    expect(substr_count($manager, "coveredItemIsManageableByTdg(\$record, 'Medicamento', \$coverage)"))->toBe(1)
+        ->and(substr_count($manager, "coveredItemIsManageableByTdg(\$record, 'Laboratorio', \$coverage)"))->toBe(1);
 });

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\Suppliers;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\Concerns\ConfiguresOperationsSupplierGlobalSearch;
 use App\Filament\Operations\Resources\Suppliers\Pages\CreateSupplier;
 use App\Filament\Operations\Resources\Suppliers\Pages\EditSupplier;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Auth;
 
 class SupplierResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
     use ConfiguresOperationsSupplierGlobalSearch;
 
     protected static ?string $model = Supplier::class;

@@ -89,7 +89,7 @@ class AgentForm
                                     ->icon('heroicon-o-squares-2x2')
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
-                                        Grid::make(['default' => 1, 'lg' => 2])
+                                        Grid::make(['default' => 1, 'lg' => 4])
                                             ->extraAttributes([
                                                 'class' => self::INNER_CARD,
                                             ])
@@ -111,10 +111,10 @@ class AgentForm
                                                     ->options(fn (): array => DB::table('agents')->select('name', 'id', 'status', 'agent_type_id')->where('agent_type_id', 2)->where('status', 'ACTIVO')->pluck('name', 'id')->all())
                                                     ->searchable()
                                                     ->live()
-                                                    ->required(fn (Get $get): bool => (int) $get('agent_type_id') === 3)
-                                                    ->validationMessages([
-                                                        'required' => 'Debe seleccionar un agente responsable cuando el tipo sea sub agente.',
-                                                    ])
+                                                    // ->required(fn (Get $get): bool => (int) $get('agent_type_id') === 3)
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Debe seleccionar un agente responsable cuando el tipo sea sub agente.',
+                                                    // ])
                                                     ->hidden(fn (Get $get): bool => (int) $get('agent_type_id') === 2)
                                                     ->preload()
                                                     ->helperText('Solo agentes activos tipo agente principal.'),
@@ -123,12 +123,26 @@ class AgentForm
                                                     ->helperText('Si el agente pertenece a nuestra estructura, deje el campo vacío.')
                                                     ->options(function (): array {
                                                         return Agency::query()
+                                                            ->select('code', 'agency_type_id', 'name_corporative')
                                                             ->where('status', 'ACTIVO')
+                                                            ->orderBy('name_corporative')
                                                             ->get()
-                                                            ->mapWithKeys(function ($agency): array {
+                                                            ->mapWithKeys(function (Agency $agency): array {
                                                                 $type = AgencyType::query()->find($agency->agency_type_id)?->definition ?? '';
+                                                                $agencyName = trim((string) ($agency->name_corporative ?? ''));
+                                                                $code = trim((string) ($agency->code ?? ''));
 
-                                                                return [$agency->code => "{$type} - {$agency->code}"];
+                                                                if ($agencyName !== '' && $code !== '') {
+                                                                    $label = "{$agencyName} — {$code}";
+                                                                } elseif ($agencyName !== '') {
+                                                                    $label = $agencyName;
+                                                                } else {
+                                                                    $label = $type !== '' && $code !== ''
+                                                                        ? "{$type} — {$code}"
+                                                                        : $code;
+                                                                }
+
+                                                                return [$agency->code => $label];
                                                             })
                                                             ->all();
                                                     })
@@ -143,22 +157,21 @@ class AgentForm
                                                     ->helperText('Si no selecciona un rol, el sistema asignará AGENTE-DE-CORRETAJE por defecto.')
                                                     ->searchable()
                                                     ->default('AGENTE-DE-CORRETAJE')
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ])
+                                                    // ->required()
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo requerido',
+                                                    // ])
                                                     ->preload(),
                                                 Select::make('ownerAccountManagers')
                                                     ->hidden(fn (): bool => ! in_array('SUPERADMIN', Auth::user()?->departament ?? [], true))
                                                     ->label('Account manager (administrador de cuenta)')
                                                     ->options(fn (): array => User::query()->where('is_accountManagers', true)->orderBy('name')->pluck('name', 'id')->all())
                                                     ->searchable()
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ])
-                                                    ->preload()
-                                                    ->columnSpan(['default' => 1, 'lg' => 2]),
+                                                    // ->required()
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo requerido',
+                                                    // ])
+                                                    ->preload(),
                                             ]),
                                     ])
                                     ->collapsible(),
@@ -179,64 +192,63 @@ class AgentForm
                                                         $set('name', strtoupper((string) $state));
                                                     })
                                                     ->live(onBlur: true)
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ])
+                                                    // ->required()
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo requerido',
+                                                    // ])
                                                     ->maxLength(255),
                                                 TextInput::make('rif')
                                                     ->label('RIF (si posee)')
                                                     ->prefix('J-')
                                                     ->nullable()
-                                                    ->numeric()
-                                                    ->requiredWithout('ci')
-                                                    ->rule(function (?Agent $record): Closure {
-                                                        return function (string $attribute, mixed $value, Closure $fail) use ($record): void {
-                                                            if (! is_string($value) && ! is_int($value)) {
-                                                                return;
-                                                            }
+                                                    ->numeric(),
+                                                // ->requiredWithout('ci')
+                                                // ->rule(function (?Agent $record): Closure {
+                                                //     return function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                                //         if (! is_string($value) && ! is_int($value)) {
+                                                //             return;
+                                                //         }
 
-                                                            $normalizedRif = trim((string) $value);
+                                                //         $normalizedRif = trim((string) $value);
 
-                                                            if ($normalizedRif === '') {
-                                                                return;
-                                                            }
+                                                //         if ($normalizedRif === '') {
+                                                //             return;
+                                                //         }
 
-                                                            $agentQuery = Agent::query()->where('rif', $normalizedRif);
+                                                //         $agentQuery = Agent::query()->where('rif', $normalizedRif);
 
-                                                            if ($record !== null) {
-                                                                $agentQuery->whereKeyNot($record->id);
-                                                            }
+                                                //         if ($record !== null) {
+                                                //             $agentQuery->whereKeyNot($record->id);
+                                                //         }
 
-                                                            if ($agentQuery->exists() || Agency::query()->where('rif', $normalizedRif)->exists()) {
-                                                                $fail('El RIF ya se encuentra registrado en la tabla de agentes o agencias. Por favor intente con otro.');
-                                                            }
-                                                        };
-                                                    })
-                                                    ->validationMessages([
-                                                        'numeric' => 'El campo es numérico',
-                                                        'required_without' => 'Debe registrar RIF o cédula de identidad para continuar.',
-                                                    ]),
+                                                //         if ($agentQuery->exists() || Agency::query()->where('rif', $normalizedRif)->exists()) {
+                                                //             $fail('El RIF ya se encuentra registrado en la tabla de agentes o agencias. Por favor intente con otro.');
+                                                //         }
+                                                //     };
+                                                // })
+                                                // ->validationMessages([
+                                                //     'numeric' => 'El campo es numérico',
+                                                //     'required_without' => 'Debe registrar RIF o cédula de identidad para continuar.',
+                                                // ]),
                                                 TextInput::make('ci')
                                                     ->label('Cédula de identidad')
                                                     ->prefix('V/E/C')
                                                     ->nullable()
-                                                    ->requiredWithout('rif')
-                                                    ->unique(
-                                                        ignoreRecord: true,
-                                                        table: Agent::class,
-                                                        column: 'ci',
-                                                    )
-                                                    ->numeric()
-                                                    ->validationMessages([
-                                                        'required_without' => 'Debe registrar cédula de identidad o RIF para continuar.',
-                                                        'numeric' => 'El campo es numérico',
-                                                        'unique' => 'La cédula de identidad ya existe en la tabla de agentes. Por favor intente con otra',
-                                                    ]),
+                                                    // ->requiredWithout('rif')
+                                                    // ->unique(
+                                                    //     ignoreRecord: true,
+                                                    //     table: Agent::class,
+                                                    //     column: 'ci',
+                                                    // )
+                                                    ->numeric(),
+                                                // ->validationMessages([
+                                                //     'required_without' => 'Debe registrar cédula de identidad o RIF para continuar.',
+                                                //     'numeric' => 'El campo es numérico',
+                                                //     'unique' => 'La cédula de identidad ya existe en la tabla de agentes. Por favor intente con otra',
+                                                // ]),
                                                 Select::make('sex')
                                                     ->label('Sexo')
                                                     ->live()
-                                                    ->required()
                                                     ->options([
                                                         'MASCULINO' => 'MASCULINO',
                                                         'FEMENINO' => 'FEMENINO',
@@ -246,65 +258,8 @@ class AgentForm
                                                         'required' => 'Campo requerido',
                                                     ])
                                                     ->preload(),
-                                                DatePicker::make('birth_date')
-                                                    ->label('Fecha de nacimiento')
-                                                    ->required()
-                                                    ->displayFormat('d/m/Y')
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ]),
-                                                DatePicker::make('company_init_date')
-                                                    ->label('Fecha de ingreso')
-                                                    ->displayFormat('d/m/Y')
-                                                    ->default(now()->subYears(18)),
-                                                TextInput::make('email')
-                                                    ->label('Correo electrónico')
-                                                    ->email()
-                                                    ->rule(function (?Agent $record): Closure {
-                                                        return function (string $attribute, mixed $value, Closure $fail) use ($record): void {
-                                                            if (! is_string($value) || blank($value)) {
-                                                                return;
-                                                            }
-
-                                                            if (self::hasDuplicatedEmail($value, $record?->id)) {
-                                                                $fail('El correo electrónico ya se encuentra registrado en las tablas de agentes, agencias o usuarios. Por favor intente con otro.');
-                                                            }
-                                                        };
-                                                    })
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                        'email' => 'El campo es un email',
-                                                    ])
-                                                    ->maxLength(255)
-                                                    ->hiddenOn('edit'),
-                                                TextInput::make('address')
-                                                    ->label('Dirección')
-                                                    ->required()
-                                                    ->afterStateUpdated(function (Set $set, ?string $state): void {
-                                                        $set('address', strtoupper((string) $state));
-                                                    })
-                                                    ->live(onBlur: true)
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ])
-                                                    ->maxLength(255)
-                                                    ->columnSpan(['default' => 1, 'lg' => 2]),
-                                            ]),
-                                    ])
-                                    ->collapsible(),
-
-                                Section::make('Ubicación y contacto')
-                                    ->description('País, estado, ciudad, teléfono y redes.')
-                                    ->icon('heroicon-o-map-pin')
-                                    ->extraAttributes(['class' => self::SECTION_CARD])
-                                    ->schema([
-                                        Grid::make(['default' => 1, 'lg' => 2])
-                                            ->extraAttributes([
-                                                'class' => self::INNER_CARD,
-                                            ])
-                                            ->schema([
                                                 Select::make('country_code')
-                                                    ->required()
+                                                // ->required()
                                                     ->label('Código de país')
                                                     ->options([
                                                         '+1' => '🇺🇸 +1 (Estados Unidos)',
@@ -383,17 +338,17 @@ class AgentForm
                                                     ->searchable()
                                                     ->default('+58')
                                                     ->live(onBlur: true)
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ])
+                                                // ->validationMessages([
+                                                //     'required' => 'Campo requerido',
+                                                // ])
                                                     ->hiddenOn('edit'),
                                                 TextInput::make('phone')
                                                     ->tel()
                                                     ->label('Número de teléfono')
-                                                    ->required()
-                                                    ->validationMessages([
-                                                        'required' => 'Campo requerido',
-                                                    ])
+                                                    // ->required()
+                                                    // ->validationMessages([
+                                                    //     'required' => 'Campo requerido',
+                                                    // ])
                                                     ->live(onBlur: true)
                                                     ->afterStateUpdated(function ($state, callable $set, Get $get): void {
                                                         $countryCode = $get('country_code');
@@ -402,6 +357,52 @@ class AgentForm
                                                             $set('phone', $countryCode.$cleanNumber);
                                                         }
                                                     }),
+                                                DatePicker::make('birth_date')
+                                                    ->label('Fecha de nacimiento')
+                                                    // ->required()
+                                                    ->displayFormat('d/m/Y'),
+                                                // ->validationMessages([
+                                                //     'required' => 'Campo requerido',
+                                                // ]),
+                                                DatePicker::make('company_init_date')
+                                                    ->label('Fecha de ingreso')
+                                                    ->displayFormat('d/m/Y')
+                                                    ->default(now()->subYears(18)),
+                                                TextInput::make('email')
+                                                    ->label('Correo electrónico')
+                                                    ->email()
+                                                    ->rule(function (?Agent $record): Closure {
+                                                        return function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                                            if (! is_string($value) || blank($value)) {
+                                                                return;
+                                                            }
+
+                                                            if (self::hasDuplicatedEmail($value, $record?->id)) {
+                                                                $fail('El correo electrónico ya se encuentra registrado en las tablas de agentes, agencias o usuarios. Por favor intente con otro.');
+                                                            }
+                                                        };
+                                                    })
+                                                    ->validationMessages([
+                                                        'required' => 'Campo requerido',
+                                                        'email' => 'El campo es un email',
+                                                    ])
+                                                    ->maxLength(255)
+                                                    ->hiddenOn('edit'),
+
+                                            ]),
+                                    ])
+                                    ->collapsible(),
+
+                                Section::make('Ubicación y contacto')
+                                    ->description('País, estado, ciudad, teléfono y redes.')
+                                    ->icon('heroicon-o-map-pin')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::INNER_CARD,
+                                            ])
+                                            ->schema([
 
                                                 Fieldset::make('Dirección en Venezuela')
                                                     ->schema([
@@ -416,7 +417,6 @@ class AgentForm
                                                             })
                                                             ->options(Country::all()->pluck('name', 'id'))
                                                             ->searchable()
-                                                            ->disabled()
                                                             ->default(189)
                                                             // Venezuela
                                                             ->prefixIcon('heroicon-s-globe-europe-africa'),
@@ -773,38 +773,38 @@ class AgentForm
                                                     ->onColor('success'),
                                                 TextInput::make('commission_tdec')
                                                     ->label('Comisión TDEC US$')
-                                                    ->required()
+                                                    // ->required()
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
-                                                    ->numeric()
-                                                    ->validationMessages([
-                                                        'numeric' => 'Campo tipo numérico.',
-                                                    ]),
+                                                    ->numeric(),
+                                                // ->validationMessages([
+                                                //     'numeric' => 'Campo tipo numérico.',
+                                                // ]),
                                                 TextInput::make('commission_tdec_renewal')
                                                     ->label('Comisión renovación TDEC US$')
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
                                                     ->required()
-                                                    ->numeric()
-                                                    ->validationMessages([
-                                                        'numeric' => 'Campo tipo numérico.',
-                                                    ]),
+                                                    ->numeric(),
+                                                // ->validationMessages([
+                                                //     'numeric' => 'Campo tipo numérico.',
+                                                // ]),
                                                 TextInput::make('commission_tdev')
                                                     ->label('Comisión TDEV US$')
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
-                                                    ->numeric()
-                                                    ->validationMessages([
-                                                        'numeric' => 'Campo tipo numérico.',
-                                                    ]),
+                                                    ->numeric(),
+                                                // ->validationMessages([
+                                                //     'numeric' => 'Campo tipo numérico.',
+                                                // ]),
                                                 TextInput::make('commission_tdev_renewal')
                                                     ->label('Comisión renovación TDEV US$')
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
-                                                    ->numeric()
-                                                    ->validationMessages([
-                                                        'numeric' => 'Campo tipo numérico.',
-                                                    ]),
+                                                    ->numeric(),
+                                                // ->validationMessages([
+                                                //     'numeric' => 'Campo tipo numérico.',
+                                                // ]),
                                             ]),
                                     ])
                                     ->collapsible(),

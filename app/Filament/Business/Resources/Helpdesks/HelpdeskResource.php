@@ -9,6 +9,7 @@ use App\Filament\Business\Resources\Helpdesks\Pages\ViewHelpdesk;
 use App\Filament\Business\Resources\Helpdesks\Schemas\HelpdeskForm;
 use App\Filament\Business\Resources\Helpdesks\Schemas\HelpdeskInfolist;
 use App\Filament\Business\Resources\Helpdesks\Tables\HelpdesksTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Concerns\AuthorizesHelpdeskTicketCreation;
 use App\Filament\Concerns\RegistersHelpdeskUnreadNoteNavigation;
 use App\Models\HelpDesk;
@@ -22,6 +23,7 @@ use UnitEnum;
 
 class HelpdeskResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
     use AuthorizesHelpdeskTicketCreation;
     use RegistersHelpdeskUnreadNoteNavigation;
 

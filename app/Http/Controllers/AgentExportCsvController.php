@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Models\Agent;
@@ -14,6 +16,10 @@ class AgentExportCsvController extends Controller
 
     private const TOKEN_TTL_SECONDS = 120;
 
+    /**
+     * Exporta los agentes seleccionados a CSV.
+     * Requiere ?token=xxx (token generado por la acción de la tabla con los IDs en cache).
+     */
     public function __invoke(Request $request): StreamedResponse
     {
         $token = $request->query('token');
@@ -30,32 +36,32 @@ class AgentExportCsvController extends Controller
 
         $headers = [
             'ID',
-            'Pertenece a',
-            'Nombre completo',
-            'Cédula',
+            'PERTENECE A:',
+            'NOMBRE COMPLETO',
+            'CÉDULA',
             'RIF',
-            'Fecha de nacimiento',
-            'Dirección',
-            'Correo electrónico',
-            'Teléfono principal',
-            'Instagram',
-            'País',
-            'Región',
-            'Estado',
-            'Ciudad',
-            'Sexo',
-            'Estado civil',
-            'Nombre contacto',
-            'Correo contacto',
-            'Teléfono contacto',
-            'Estatus',
-            'Creado por',
-            'Fecha de creación',
-            'Fecha de actualización',
-            'Usuario TDEV',
+            'FECHA DE NACIMIENTO',
+            'DIRECCIÓN',
+            'CORREO ELECTRÓNICO',
+            'TELÉFONO PRINCIPAL',
+            'INSTAGRAM',
+            'PAÍS',
+            'REGIÓN',
+            'ESTADO',
+            'CIUDAD',
+            'SEXO',
+            'ESTADO CIVIL',
+            'NOMBRE CONTACTO',
+            'CORREO CONTACTO',
+            'TELÉFONO CONTACTO',
+            'ESTATUS',
+            'CREADO POR',
+            'FECHA DE CREACIÓN',
+            'FECHA DE ACTUALIZACIÓN',
+            'USUARIO TDEV',
         ];
 
-        $filename = 'Export-Agents.csv';
+        $filename = 'agentes_'.now()->format('Y-m-d_His').'.csv';
 
         return new StreamedResponse(function () use ($ids, $headers): void {
             $handle = CsvExportStream::openOutput();
@@ -116,6 +122,8 @@ class AgentExportCsvController extends Controller
     }
 
     /**
+     * Genera un token y guarda los IDs en cache. Útil para la acción de la tabla.
+     *
      * @param  array<int|string>  $ids
      */
     public static function storeIdsAndGetToken(array $ids): string

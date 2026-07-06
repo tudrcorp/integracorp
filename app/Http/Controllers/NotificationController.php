@@ -12,6 +12,9 @@ use App\Models\DataNotification;
 use App\Models\Guest;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\MassNotificationRecipientDelivery;
+use App\Support\RunReportMessageFormatter;
+use App\Support\ScheduledNotificationPhones;
+use App\Support\WhatsAppBrandImage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -517,6 +520,104 @@ class NotificationController extends Controller
         } catch (\Throwable $th) {
 
             Log::critical('NEGOCIOS-AGENTE: Excepción crítica en NotificationController@send_link_agency_register_wp', [
+                'message' => $th->getMessage(),
+                'file' => $th->getFile(),
+                'line' => $th->getLine(),
+                'trace' => $th->getTraceAsString(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Notificación del enlace público de GUIA-CHAT.
+     * Canal: WhatsApp
+     */
+    public static function send_guia_chat_link_wp(string $link, string $phone): bool
+    {
+        try {
+            $toPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone)
+                ?? preg_replace('/\D+/', '', $phone);
+
+            if ($toPhone === null || $toPhone === '') {
+                Log::warning('NEGOCIOS-AGENTE: teléfono inválido para WhatsApp (GUIA-CHAT)', [
+                    'raw_phone' => $phone,
+                ]);
+
+                return false;
+            }
+
+            $body = <<<TEXT
+            ¡Hola! 👋
+
+            ✨ *GUIA-CHAT* — tu asistente virtual de Integracorp ✨
+
+            Te compartimos el enlace para acceder al chat guiado, donde podrás registrar agentes, agencias y recibir ayuda paso a paso:
+
+            👉 {$link}
+
+            Ábrelo desde tu móvil y sigue las indicaciones en pantalla.
+
+            Equipo Integracorp-TDC
+            📱 WhatsApp: (+58) 424 227 1498
+            ✉️ Email: comercial@tudrencasa.com
+
+            ¡Estamos para ayudarte! 🚀
+            TEXT;
+
+            $params = [
+                'token' => config('parameters.TOKEN'),
+                'image' => config('parameters.PUBLIC_URL').'/images-whatsapp/integracorp.png',
+                'to' => $toPhone,
+                'caption' => $body,
+            ];
+
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+            curl_close($curl);
+
+            if ($err) {
+                Log::error('NEGOCIOS-AGENTE: Error de conexión cURL en WhatsApp API (GUIA-CHAT)', [
+                    'error' => $err,
+                    'phone' => $toPhone,
+                ]);
+
+                return false;
+            }
+
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return true;
+            }
+
+            Log::warning('NEGOCIOS-AGENTE: WhatsApp API (GUIA-CHAT) respondió con error', [
+                'status_code' => $httpCode,
+                'response' => $response,
+                'phone' => $toPhone,
+            ]);
+
+            return false;
+        } catch (\Throwable $th) {
+            Log::critical('NEGOCIOS-AGENTE: Excepción crítica en NotificationController@send_guia_chat_link_wp', [
                 'message' => $th->getMessage(),
                 'file' => $th->getFile(),
                 'line' => $th->getLine(),
@@ -1069,80 +1170,67 @@ class NotificationController extends Controller
     public static function createdIndividualQuote($code, $agent)
     {
         try {
+            $body = <<<TEXT
+            *INTEGRACORP · Cotización Individual*
 
-            $body = <<<HTML
+            Hola, equipo de análisis. 👋
 
-            Hola!👋
+            El agente *{$agent}* ha registrado una nueva cotización individual.
 
-            El Agente: *{$agent}* ha creado una cotización individual con el siguiente codigo: 
-            
-            *{$code}*
-            
-            Por favor, comuniquese con el agente para continuar con el proceso.
-         
-            Muchas gracias. 🙌
- 
-            HTML;
+            📋 *Código de cotización:* {$code}
 
-            $params = [
-                'token' => config('parameters.TOKEN'),
-                'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body,
-            ];
-            $curl = curl_init();
-            curl_setopt_array($curl, [
-                CURLOPT_URL => config('parameters.CURLOPT_URL'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => [
-                    'content-type: application/x-www-form-urlencoded',
-                ],
-            ]);
+            *Acción requerida:*
+            Como analista, debe realizar el *acompañamiento junto al agente* para materializar la *pre-afiliación del cliente* y avanzar con el proceso comercial.
 
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
+            Coordinen el seguimiento, contacten al agente y mantengan informado al equipo.
 
-            curl_close($curl);
+            Equipo Integracorp-TDC
+            TEXT;
 
-            if ($response) {
+            $phones = self::quoteAnalystRecipientPhones();
+            $successCount = 0;
+            $pdfSuccessCount = 0;
+            $failedPhones = [];
+            $failedPdfPhones = [];
 
-                Log::info($response);
-                $data = [
-                    'action' => 'createdIndividualQuote',
-                    'objeto' => 'NotificationController::createdIndividualQuote',
-                    'message' => $response,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success',
-                ];
-                UtilsController::notificacionToAdmin($data);
+            foreach ($phones as $phone) {
+                if (! self::sendWhatsAppBrandImageCaption($phone, $body)) {
+                    $failedPhones[] = $phone;
+
+                    continue;
+                }
+
+                $successCount++;
+
+                if (self::sendIndividualQuotePdfToAnalyst($phone, $code, $agent)) {
+                    $pdfSuccessCount++;
+
+                    continue;
+                }
+
+                $failedPdfPhones[] = $phone;
+            }
+
+            if ($successCount > 0) {
+                $adminMessage = "Seguimiento enviado a {$successCount} analista(s). PDF enviado a {$pdfSuccessCount}. Código: {$code}";
+
+                if ($failedPdfPhones !== []) {
+                    $adminMessage .= ' · PDF no enviado a: '.implode(', ', $failedPdfPhones);
+                }
 
                 return true;
             }
 
-            if ($err) {
-
-                Log::error($err);
-                $data = [
-                    'action' => 'assignedCase',
-                    'objeto' => 'NotificationController::assignedCase',
-                    'message' => $err,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error',
-                ];
-                UtilsController::notificacionToAdmin($data);
-
-                return false;
-            }
+            return false;
 
         } catch (\Throwable $th) {
-            Log::error($th->getMessage());
+            Log::error('COTIZACION-INDIVIDUAL: Error al notificar creación de cotización.', [
+                'message' => $th->getMessage(),
+                'code' => $code,
+                'agent' => $agent,
+            ]);
+
+            return false;
         }
     }
 
@@ -1279,7 +1367,6 @@ class NotificationController extends Controller
                     'created_at' => date('Y-m-d H:i:s'),
                     'icon' => 'success',
                 ];
-                UtilsController::notificacionToAdmin($data);
 
                 return true;
             }
@@ -1294,7 +1381,6 @@ class NotificationController extends Controller
                     'created_at' => date('Y-m-d H:i:s'),
                     'icon' => 'error',
                 ];
-                UtilsController::notificacionToAdmin($data);
 
                 return false;
             }
@@ -1307,80 +1393,82 @@ class NotificationController extends Controller
     public static function createdCorporateQuote($code, $agent)
     {
         try {
+            $body = <<<TEXT
+            *INTEGRACORP · Cotización Corporativa*
 
-            $body = <<<HTML
+            Hola, equipo de análisis. 👋
 
-            Hola!👋
+            El agente *{$agent}* ha registrado una nueva cotización corporativa.
 
-            El Agente: *{$agent}* ha creado una cotización corporativa con el siguiente codigo: 
-            
-            *{$code}*
-            
-            Por favor, comuniquese con el agente para continuar con el proceso.
-         
-            Muchas gracias. 🙌
- 
-            HTML;
+            📋 *Código de cotización:* {$code}
 
-            $params = [
-                'token' => config('parameters.TOKEN'),
-                'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body,
-            ];
-            $curl = curl_init();
-            curl_setopt_array($curl, [
-                CURLOPT_URL => config('parameters.CURLOPT_URL'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => [
-                    'content-type: application/x-www-form-urlencoded',
-                ],
-            ]);
+            *Acción requerida:*
+            Como analista, debe realizar el *acompañamiento junto al agente* para materializar la *pre-afiliación del cliente* y avanzar con el proceso comercial.
 
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
+            Coordinen el seguimiento, contacten al agente y mantengan informado al equipo.
 
-            curl_close($curl);
+            Equipo Integracorp-TDC
+            TEXT;
 
-            if ($response) {
+            $phones = self::quoteAnalystRecipientPhones();
+            $successCount = 0;
+            $pdfSuccessCount = 0;
+            $failedPhones = [];
+            $failedPdfPhones = [];
 
-                Log::info($response);
-                $data = [
+            foreach ($phones as $phone) {
+                if (! self::sendWhatsAppBrandImageCaption($phone, $body)) {
+                    $failedPhones[] = $phone;
+
+                    continue;
+                }
+
+                $successCount++;
+
+                if (self::sendCorporateQuotePdfToAnalyst($phone, $code, $agent)) {
+                    $pdfSuccessCount++;
+
+                    continue;
+                }
+
+                $failedPdfPhones[] = $phone;
+            }
+
+            if ($successCount > 0) {
+                $adminMessage = "Seguimiento enviado a {$successCount} analista(s). PDF enviado a {$pdfSuccessCount}. Código: {$code}";
+
+                if ($failedPdfPhones !== []) {
+                    $adminMessage .= ' · PDF no enviado a: '.implode(', ', $failedPdfPhones);
+                }
+
+                UtilsController::notificacionToAdmin([
                     'action' => 'createdCorporateQuote',
                     'objeto' => 'NotificationController::createdCorporateQuote',
-                    'message' => $response,
+                    'message' => $adminMessage,
                     'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success',
-                ];
-                UtilsController::notificacionToAdmin($data);
+                    'icon' => $failedPdfPhones === [] ? 'success' : 'warning',
+                ]);
 
                 return true;
             }
 
-            if ($err) {
+            UtilsController::notificacionToAdmin([
+                'action' => 'createdCorporateQuote',
+                'objeto' => 'NotificationController::createdCorporateQuote',
+                'message' => 'No se pudo enviar la notificación WhatsApp a: '.implode(', ', $failedPhones),
+                'created_at' => date('Y-m-d H:i:s'),
+                'icon' => 'error',
+            ]);
 
-                Log::error($err);
-                $data = [
-                    'action' => 'assignedCase',
-                    'objeto' => 'NotificationController::assignedCase',
-                    'message' => $err,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error',
-                ];
-                UtilsController::notificacionToAdmin($data);
-
-                return false;
-            }
-
+            return false;
         } catch (\Throwable $th) {
-            Log::error($th->getMessage());
+            Log::error('COTIZACION-CORPORATIVA: Error al notificar creación de cotización.', [
+                'message' => $th->getMessage(),
+                'code' => $code,
+                'agent' => $agent,
+            ]);
+
+            return false;
         }
     }
 
@@ -2021,12 +2109,20 @@ class NotificationController extends Controller
 
             HTML;
 
+            $body = RunReportMessageFormatter::truncateForWhatsAppCaption($body);
+
+            if ($type === 'url') {
+                $type = 'image';
+                $file = WhatsAppBrandImage::RELATIVE_PATH;
+            }
+
             if ($type == 'image') {
                 Log::info('es imagen');
+                $imagePath = filled($file) ? $file : WhatsAppBrandImage::RELATIVE_PATH;
                 $params = [
                     'token' => config('parameters.TOKEN'),
                     'to' => $phone,
-                    'image' => config('parameters.PUBLIC_URL').'/'.$file,
+                    'image' => config('parameters.PUBLIC_URL').'/'.$imagePath,
                     'caption' => $body,
                 ];
                 $curl = curl_init();
@@ -2462,41 +2558,410 @@ class NotificationController extends Controller
 
     public static function sendTelemedicineDocumentWhatsApp(string $phone, string $namePdf, string $caption, ?string $relativePath = null): bool
     {
-        try {
-            $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone);
-            $relativePath = ltrim((string) ($relativePath ?? 'telemedicina-doc/'.$namePdf), '/');
-            $filePath = public_path('storage/'.$relativePath);
-            $documentUrl = rtrim((string) config('parameters.PUBLIC_URL'), '/').'/'.$relativePath;
+        $relativePath = ltrim((string) ($relativePath ?? 'telemedicina-doc/'.$namePdf), '/');
 
-            if ($cleanPhone === null) {
-                Log::warning('TELEMEDICINA: Teléfono inválido para envío de documento por WhatsApp.', [
-                    'phone' => $phone,
-                    'file' => $namePdf,
+        return self::sendWhatsAppDocument($phone, $caption, $relativePath, $namePdf);
+    }
+
+    public static function sendWhatsAppChat(string $phone, string $name, string $content): bool
+    {
+        try {
+            $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone) ?? $phone;
+
+            $body = <<<HTML
+
+            Apreciado/a: *{$name}*
+
+            {$content}
+
+            HTML;
+
+            $params = [
+                'token' => config('parameters.TOKEN'),
+                'to' => $cleanPhone,
+                'body' => $body,
+            ];
+
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 60,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+            curl_close($curl);
+
+            if ($err) {
+                Log::error('WHATSAPP CHAT: Error de conexión cURL.', [
+                    'error' => $err,
+                    'to' => $cleanPhone,
                 ]);
 
                 return false;
             }
 
-            if (! file_exists($filePath)) {
-                Log::error('TELEMEDICINA: WhatsApp Doc Error: El archivo no existe en la ruta especificada.', [
-                    'path' => $filePath,
-                    'file' => $namePdf,
+            if (! self::whatsAppApiResponseSucceeded($response)) {
+                if ($httpCode >= 200 && $httpCode < 300) {
+                    Log::info('WHATSAPP CHAT: Mensaje enviado con éxito (HTTP 2xx).', [
+                        'phone' => $cleanPhone,
+                        'api_response' => $response,
+                    ]);
+
+                    return true;
+                }
+
+                Log::warning('WHATSAPP CHAT: API respondió con error.', [
+                    'response' => $response,
                     'phone' => $cleanPhone,
                 ]);
 
                 return false;
             }
 
+            return true;
+        } catch (\Throwable $th) {
+            Log::error('WHATSAPP CHAT: Fallo crítico.', [
+                'message' => $th->getMessage(),
+                'phone' => $phone,
+            ]);
+
+            return false;
+        }
+    }
+
+    public static function sendWhatsAppDocument(string $phone, string $caption, string $relativePath, string $filename): bool
+    {
+        try {
+            $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone);
+            $relativePath = ltrim($relativePath, '/');
+            $filePath = public_path('storage/'.$relativePath);
+            $documentUrl = rtrim((string) config('parameters.PUBLIC_URL'), '/').'/'.$relativePath;
+
+            if ($cleanPhone === null) {
+                Log::warning('WHATSAPP DOC: Teléfono inválido para envío de documento.', [
+                    'phone' => $phone,
+                    'file' => $filename,
+                ]);
+
+                return false;
+            }
+
+            if (! file_exists($filePath)) {
+                Log::error('WHATSAPP DOC: El archivo no existe en la ruta especificada.', [
+                    'path' => $filePath,
+                    'file' => $filename,
+                    'phone' => $cleanPhone,
+                ]);
+
+                return false;
+            }
+
+            if (filesize($filePath) < 100) {
+                Log::error('WHATSAPP DOC: El archivo PDF está vacío o corrupto.', [
+                    'path' => $filePath,
+                    'file' => $filename,
+                    'size' => filesize($filePath),
+                    'phone' => $cleanPhone,
+                ]);
+
+                return false;
+            }
+
+            $caption = RunReportMessageFormatter::truncateForWhatsAppCaption($caption);
+
             $params = [
                 'token' => config('parameters.TOKEN'),
                 'to' => $cleanPhone,
-                'filename' => $namePdf,
+                'filename' => $filename,
                 'document' => $documentUrl,
                 'caption' => $caption,
             ];
             $curl = curl_init();
             curl_setopt_array($curl, [
                 CURLOPT_URL => config('parameters.CURLOPT_URL_DOCUMENT'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 120,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+            curl_close($curl);
+
+            if ($err) {
+                Log::error('WHATSAPP DOC: Error de conexión cURL al enviar documento', [
+                    'error' => $err,
+                    'to' => $cleanPhone,
+                    'file' => $filename,
+                    'document_url' => $documentUrl,
+                ]);
+
+                return false;
+            }
+
+            if (! self::whatsAppApiResponseSucceeded($response)) {
+                if ($httpCode >= 200 && $httpCode < 300) {
+                    Log::info('WHATSAPP DOC: Documento enviado con éxito (HTTP 2xx).', [
+                        'phone' => $cleanPhone,
+                        'doc' => $filename,
+                        'document_url' => $documentUrl,
+                        'api_response' => $response,
+                    ]);
+
+                    return true;
+                }
+
+                Log::warning('WHATSAPP DOC: API respondió con error al enviar documento', [
+                    'http_code' => $httpCode,
+                    'response' => $response,
+                    'phone' => $cleanPhone,
+                    'file' => $filename,
+                    'document_url' => $documentUrl,
+                ]);
+
+                return false;
+            }
+
+            Log::info('WHATSAPP DOC: Documento enviado con éxito.', [
+                'phone' => $cleanPhone,
+                'doc' => $filename,
+                'document_url' => $documentUrl,
+                'api_response' => $response,
+            ]);
+
+            return true;
+        } catch (\Throwable $th) {
+            Log::error('WHATSAPP DOC: Fallo crítico al enviar documento', [
+                'message' => $th->getMessage(),
+                'phone' => $phone,
+                'file' => $filename,
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function quoteAnalystRecipientPhones(): array
+    {
+        $phones = ScheduledNotificationPhones::all();
+        $configPhone = trim((string) config('parameters.PHONE_COTIZACIONES_AFILIACIONES'));
+
+        if ($configPhone !== '') {
+            $phones[] = $configPhone;
+        }
+
+        return array_values(array_unique($phones));
+    }
+
+    private static function sendQuotePdfToAnalyst(string $phone, string $code, string $agent, string $quoteLabel): bool
+    {
+        if (! self::ensureQuotePdfExists($code)) {
+            return false;
+        }
+
+        $filename = $code.'.pdf';
+        $caption = <<<TEXT
+        📎 *Propuesta económica · {$quoteLabel}*
+
+        Código: *{$code}*
+        Agente: *{$agent}*
+
+        Documento de cotización generado por el sistema Integracorp.
+        TEXT;
+
+        return self::sendQuoteDocumentWhatsApp($phone, $filename, $caption);
+    }
+
+    private static function ensureQuotePdfExists(string $code, int $attempts = 10): bool
+    {
+        $path = public_path('storage/quotes/'.$code.'.pdf');
+
+        for ($attempt = 0; $attempt < $attempts; $attempt++) {
+            if (is_file($path)) {
+                return true;
+            }
+
+            usleep(300000);
+        }
+
+        Log::error('COTIZACION: PDF no disponible para envío WhatsApp.', [
+            'code' => $code,
+            'path' => $path,
+        ]);
+
+        return false;
+    }
+
+    private static function sendQuoteDocumentWhatsApp(string $phone, string $nameDoc, string $caption): bool
+    {
+        try {
+            $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone)
+                ?? preg_replace('/[^0-9]/', '', $phone);
+
+            if ($cleanPhone === null || $cleanPhone === '') {
+                Log::warning('WHATSAPP QUOTE DOC: teléfono inválido.', [
+                    'raw_phone' => $phone,
+                    'file' => $nameDoc,
+                ]);
+
+                return false;
+            }
+
+            $filePath = public_path('storage/quotes/'.$nameDoc);
+
+            if (! file_exists($filePath)) {
+                Log::error('WHATSAPP QUOTE DOC: El archivo no existe en la ruta especificada.', [
+                    'path' => $filePath,
+                    'file' => $nameDoc,
+                    'phone' => $cleanPhone,
+                ]);
+
+                return false;
+            }
+
+            $caption = RunReportMessageFormatter::truncateForWhatsAppCaption($caption);
+            $documentUrl = rtrim((string) config('parameters.PUBLIC_URL'), '/').'/quotes/'.$nameDoc;
+
+            $params = [
+                'token' => config('parameters.TOKEN'),
+                'to' => $cleanPhone,
+                'filename' => $nameDoc,
+                'document' => $documentUrl,
+                'caption' => $caption,
+            ];
+
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL_DOCUMENT'),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 120,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
+
+            $response = curl_exec($curl);
+            $err = curl_error($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+            curl_close($curl);
+
+            if ($err) {
+                Log::error('WHATSAPP QUOTE DOC: error de conexión cURL.', [
+                    'error' => $err,
+                    'to' => $cleanPhone,
+                    'file' => $nameDoc,
+                    'document_url' => $documentUrl,
+                ]);
+
+                return false;
+            }
+
+            if ($httpCode >= 200 && $httpCode < 300) {
+                Log::info('WHATSAPP QUOTE DOC: cotización enviada con éxito.', [
+                    'phone' => $cleanPhone,
+                    'doc' => $nameDoc,
+                    'document_url' => $documentUrl,
+                    'api_response' => $response,
+                ]);
+
+                return true;
+            }
+
+            if (self::whatsAppApiResponseSucceeded($response)) {
+                return true;
+            }
+
+            Log::warning('WHATSAPP QUOTE DOC: API respondió con error.', [
+                'http_code' => $httpCode,
+                'response' => $response,
+                'phone' => $cleanPhone,
+                'file' => $nameDoc,
+                'document_url' => $documentUrl,
+            ]);
+
+            return false;
+        } catch (\Throwable $th) {
+            Log::error('WHATSAPP QUOTE DOC: fallo crítico al enviar cotización.', [
+                'message' => $th->getMessage(),
+                'phone' => $phone,
+                'file' => $nameDoc,
+            ]);
+
+            return false;
+        }
+    }
+
+    private static function sendIndividualQuotePdfToAnalyst(string $phone, string $code, string $agent): bool
+    {
+        return self::sendQuotePdfToAnalyst($phone, $code, $agent, 'Cotización Individual');
+    }
+
+    private static function sendCorporateQuotePdfToAnalyst(string $phone, string $code, string $agent): bool
+    {
+        return self::sendQuotePdfToAnalyst($phone, $code, $agent, 'Cotización Corporativa');
+    }
+
+    public static function sendIntegracorpBrandWhatsAppCaption(string $phone, string $caption): bool
+    {
+        try {
+            $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone);
+
+            if ($cleanPhone === null || $cleanPhone === '') {
+                Log::warning('WHATSAPP BRAND: teléfono inválido para mensaje con imagen Integracorp.', [
+                    'raw_phone' => $phone,
+                ]);
+
+                return false;
+            }
+
+            $caption = RunReportMessageFormatter::truncateForWhatsAppCaption($caption);
+
+            $params = [
+                'token' => config('parameters.TOKEN'),
+                'image' => WhatsAppBrandImage::publicUrl(),
+                'to' => $cleanPhone,
+                'caption' => $caption,
+            ];
+
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
@@ -2518,45 +2983,53 @@ class NotificationController extends Controller
             curl_close($curl);
 
             if ($err) {
-                Log::error('TELEMEDICINA: Error de conexión cURL al enviar documento por WhatsApp', [
+                Log::error('WHATSAPP BRAND: error de conexión cURL.', [
                     'error' => $err,
-                    'to' => $cleanPhone,
-                    'file' => $namePdf,
-                    'document_url' => $documentUrl,
+                    'phone' => $cleanPhone,
                 ]);
 
                 return false;
             }
 
             if (! self::whatsAppApiResponseSucceeded($response)) {
-                Log::warning('TELEMEDICINA: WhatsApp API respondió con error al enviar documento', [
+                if ($httpCode >= 200 && $httpCode < 300) {
+                    Log::info('WHATSAPP BRAND: mensaje enviado con éxito (HTTP 2xx).', [
+                        'phone' => $cleanPhone,
+                        'image' => WhatsAppBrandImage::publicUrl(),
+                        'api_response' => $response,
+                    ]);
+
+                    return true;
+                }
+
+                Log::warning('WHATSAPP BRAND: API respondió con error.', [
                     'http_code' => $httpCode,
                     'response' => $response,
                     'phone' => $cleanPhone,
-                    'file' => $namePdf,
-                    'document_url' => $documentUrl,
                 ]);
 
                 return false;
             }
 
-            Log::info('TELEMEDICINA: Documento enviado por WhatsApp con éxito.', [
+            Log::info('WHATSAPP BRAND: mensaje con imagen Integracorp enviado.', [
                 'phone' => $cleanPhone,
-                'doc' => $namePdf,
-                'document_url' => $documentUrl,
-                'api_response' => $response,
+                'image' => WhatsAppBrandImage::publicUrl(),
             ]);
 
             return true;
         } catch (\Throwable $th) {
-            Log::error('TELEMEDICINA: Fallo crítico al enviar documento por WhatsApp', [
+            Log::error('WHATSAPP BRAND: fallo al enviar mensaje con imagen Integracorp.', [
                 'message' => $th->getMessage(),
                 'phone' => $phone,
-                'file' => $namePdf,
             ]);
 
             return false;
         }
+    }
+
+    private static function sendWhatsAppBrandImageCaption(string $phone, string $caption): bool
+    {
+        return self::sendIntegracorpBrandWhatsAppCaption($phone, $caption);
     }
 
     private static function whatsAppApiResponseSucceeded(mixed $response): bool

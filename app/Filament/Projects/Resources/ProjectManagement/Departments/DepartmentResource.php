@@ -2,6 +2,7 @@
 
 namespace App\Filament\Projects\Resources\ProjectManagement\Departments;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Projects\Resources\ProjectManagement\Departments\Pages\CreateDepartment;
 use App\Filament\Projects\Resources\ProjectManagement\Departments\Pages\EditDepartment;
 use App\Filament\Projects\Resources\ProjectManagement\Departments\Pages\ListDepartments;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class DepartmentResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Department::class;
 
     protected static ?string $navigationLabel = 'Departamentos';
@@ -25,6 +28,8 @@ class DepartmentResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-building-office-2';
 
     protected static string|UnitEnum|null $navigationGroup = 'GESTION DE PROYECTOS';
+
+    protected static ?int $navigationSort = 3;
 
     public static function form(Schema $schema): Schema
     {

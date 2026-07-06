@@ -8,6 +8,7 @@ use App\Enums\CorporateAgendaActivityType;
 use App\Enums\CorporateAgendaDepartment;
 use App\Enums\CorporateAgendaInvitationStatus;
 use App\Enums\CorporateAgendaSocialPlatform;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\CorporateAgendaActivity;
 use App\Models\CorporateAgendaActivityParticipant;
 use App\Models\CorporateAgendaSocialPublication;
@@ -35,6 +36,7 @@ use function Filament\Support\original_request;
 
 class AgendaCorporativa extends Page
 {
+    use AuthorizesDepartmentNavigation;
     use WithFileUploads;
 
     // protected static string|UnitEnum|null $navigationGroup = 'SOLICITUDES';

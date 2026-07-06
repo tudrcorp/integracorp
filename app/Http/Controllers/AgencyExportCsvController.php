@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Models\Agency;
@@ -14,6 +16,10 @@ class AgencyExportCsvController extends Controller
 
     private const TOKEN_TTL_SECONDS = 120;
 
+    /**
+     * Exporta las agencias seleccionadas a CSV.
+     * Requiere ?token=xxx (token generado por la acción de la tabla con los IDs en cache).
+     */
     public function __invoke(Request $request): StreamedResponse
     {
         $token = $request->query('token');
@@ -30,33 +36,33 @@ class AgencyExportCsvController extends Controller
 
         $headers = [
             'ID',
-            'Pertenece a',
-            'Código agencia',
-            'Tipo de agencia',
+            'PERTENECE A:',
+            'CÓDIGO AGENCIA',
+            'TIPO DE AGENCIA',
             'RIF',
-            'Nombre corporativo',
-            'Cédula responsable',
-            'Dirección',
-            'Correo electrónico',
-            'Teléfono principal',
-            'Instagram',
-            'País',
-            'Estado',
-            'Ciudad',
-            'Región',
-            'Nombre contacto',
-            'Correo contacto',
-            'Teléfono contacto',
-            'Estatus',
-            'Creado por',
-            'Fecha de creación',
-            'Fecha de actualización',
-            'Comentarios',
-            'Usuario TDEV',
-            'Nombre representante legal',
+            'NOMBRE CORPORATIVO',
+            'CÉDULA RESPONSABLE',
+            'DIRECCIÓN',
+            'CORREO ELECTRÓNICO',
+            'TELÉFONO PRINCIPAL',
+            'INSTAGRAM',
+            'PAÍS',
+            'ESTADO',
+            'CIUDAD',
+            'REGIÓN',
+            'NOMBRE CONTACTO',
+            'CORREO CONTACTO',
+            'TELÉFONO CONTACTO',
+            'ESTATUS',
+            'CREADO POR',
+            'FECHA DE CREACIÓN',
+            'FECHA DE ACTUALIZACIÓN',
+            'COMENTARIOS',
+            'USUARIO TDEV',
+            'NOMBRE REPRESENTANTE LEGAL',
         ];
 
-        $filename = 'Export-Agencies.csv';
+        $filename = 'agencias_'.now()->format('Y-m-d_His').'.csv';
 
         return new StreamedResponse(function () use ($ids, $headers): void {
             $handle = CsvExportStream::openOutput();
@@ -118,6 +124,8 @@ class AgencyExportCsvController extends Controller
     }
 
     /**
+     * Genera un token y guarda los IDs en cache. Útil para la acción de la tabla.
+     *
      * @param  array<int|string>  $ids
      */
     public static function storeIdsAndGetToken(array $ids): string

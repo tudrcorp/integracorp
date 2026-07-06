@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationServiceOrders;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\OperationServiceOrders\Pages\CreateOperationServiceOrder;
 use App\Filament\Operations\Resources\OperationServiceOrders\Pages\EditOperationServiceOrder;
 use App\Filament\Operations\Resources\OperationServiceOrders\Pages\ListOperationServiceOrders;
@@ -21,6 +22,8 @@ use UnitEnum;
 
 class OperationServiceOrderResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = OperationServiceOrder::class;
 
     protected static ?string $navigationLabel = 'Ordenes de Servicios';

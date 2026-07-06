@@ -2,6 +2,7 @@
 
 namespace App\Filament\Projects\Resources\ProjectManagement\Projects;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Projects\Resources\ProjectManagement\Projects\Pages\CreateProject;
 use App\Filament\Projects\Resources\ProjectManagement\Projects\Pages\EditProject;
 use App\Filament\Projects\Resources\ProjectManagement\Projects\Pages\ListProjects;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class ProjectResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Project::class;
 
     protected static ?string $navigationLabel = 'Proyectos';
@@ -25,6 +28,8 @@ class ProjectResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-group';
 
     protected static string|UnitEnum|null $navigationGroup = 'GESTION DE PROYECTOS';
+
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

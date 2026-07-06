@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\CorporateAllies;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\CorporateAllies\Pages\CreateCorporateAlly;
 use App\Filament\Operations\Resources\CorporateAllies\Pages\EditCorporateAlly;
 use App\Filament\Operations\Resources\CorporateAllies\Pages\ListCorporateAllies;
@@ -19,6 +20,8 @@ use UnitEnum;
 
 class CorporateAllyResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = CorporateAlly::class;
 
     protected static ?string $navigationLabel = 'Aliados corporativos';

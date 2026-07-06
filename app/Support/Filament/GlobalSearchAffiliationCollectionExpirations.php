@@ -18,8 +18,8 @@ final class GlobalSearchAffiliationCollectionExpirations
     public const STATUS_POR_PAGAR = 'POR PAGAR';
 
     /**
-     * Entre cobranzas POR PAGAR, elige la fila a mostrar como «próximo pago»:
-     * el vencimiento más próximo en el futuro (o hoy); si todos ya vencieron, el más antiguo
+     * Entre cobranzas POR PAGAR, elige la fila a mostrar como «próximo pago» según `next_payment_date`:
+     * la fecha más próxima en el futuro (o hoy); si todas ya vencieron, la más antigua
      * (primera cuota impaga en la cola). Las fechas persistidas se interpretan como `d/m/Y`.
      *
      * @param  EloquentCollection<int, BillingCollection>  $rows  Cobranzas ya filtradas por estatus POR PAGAR
@@ -32,30 +32,30 @@ final class GlobalSearchAffiliationCollectionExpirations
 
         $todayStart = $today->copy()->startOfDay();
 
-        /** @var list<array{row: BillingCollection, expiration: Carbon}> $valid */
+        /** @var list<array{row: BillingCollection, paymentDate: Carbon}> $valid */
         $valid = [];
         foreach ($rows as $row) {
-            $expiration = self::parseStoredDateToStartOfDay($row->expiration_date);
-            if ($expiration === null) {
+            $paymentDate = self::parseStoredDateToStartOfDay($row->next_payment_date);
+            if ($paymentDate === null) {
                 continue;
             }
 
             $valid[] = [
                 'row' => $row,
-                'expiration' => $expiration,
+                'paymentDate' => $paymentDate,
             ];
         }
 
         if ($valid === []) {
-            return $rows->first();
+            return null;
         }
 
         usort($valid, static function (array $a, array $b): int {
-            return $a['expiration']->timestamp <=> $b['expiration']->timestamp;
+            return $a['paymentDate']->timestamp <=> $b['paymentDate']->timestamp;
         });
 
         foreach ($valid as $item) {
-            if ($item['expiration']->greaterThanOrEqualTo($todayStart)) {
+            if ($item['paymentDate']->greaterThanOrEqualTo($todayStart)) {
                 return $item['row'];
             }
         }
@@ -110,11 +110,12 @@ final class GlobalSearchAffiliationCollectionExpirations
     }
 
     /**
-     * Días calendario de atraso desde `expiration_date` (persistido, `d/m/Y`) hasta `$today`, si el vencimiento es anterior a hoy.
+     * Días calendario de atraso desde la fecha de próximo pago (persistida, `d/m/Y`) hasta `$today`,
+     * si esa fecha es anterior a hoy.
      */
-    public static function calendarDaysOverdueSinceStoredExpiration(mixed $expirationDate, Carbon $today): ?int
+    public static function calendarDaysOverdueSinceStoredExpiration(mixed $paymentDate, Carbon $today): ?int
     {
-        $expiration = self::parseStoredDateToStartOfDay($expirationDate);
+        $expiration = self::parseStoredDateToStartOfDay($paymentDate);
         if ($expiration === null) {
             return null;
         }
@@ -156,7 +157,7 @@ final class GlobalSearchAffiliationCollectionExpirations
         $rows = BillingCollection::query()
             ->where('affiliation_code', $affiliationCode)
             ->where('status', self::STATUS_POR_PAGAR)
-            ->whereNotNull('expiration_date')
+            ->whereNotNull('next_payment_date')
             ->with([
                 'sale' => static function (Relation $relation): void {
                     $relation->select([
@@ -166,7 +167,7 @@ final class GlobalSearchAffiliationCollectionExpirations
                     ]);
                 },
             ])
-            ->get(['id', 'sale_id', 'expiration_date', 'payment_frequency']);
+            ->get(['id', 'sale_id', 'next_payment_date', 'payment_frequency']);
 
         if ($rows->isEmpty()) {
             return 'Sin cobranzas POR PAGAR';
@@ -175,7 +176,7 @@ final class GlobalSearchAffiliationCollectionExpirations
         /** @var IlluminateCollection<int, Carbon> $parsed */
         $parsed = collect();
         foreach ($rows as $row) {
-            $d = self::parseStoredDateToStartOfDay($row->expiration_date);
+            $d = self::parseStoredDateToStartOfDay($row->next_payment_date);
             if ($d !== null) {
                 $parsed->push($d);
             }
@@ -186,6 +187,10 @@ final class GlobalSearchAffiliationCollectionExpirations
         }
 
         $nextRow = self::pickNextCollectionRow(now(), $rows);
+
+        if ($nextRow === null) {
+            return '—';
+        }
 
         $sale = null;
         if ($nextRow?->relationLoaded('sale')) {
@@ -201,7 +206,7 @@ final class GlobalSearchAffiliationCollectionExpirations
         }
 
         $desdeLabel = self::rawColumnForDisplay($sale, 'date_activation');
-        $proximoLabel = self::rawColumnForDisplay($nextRow, 'expiration_date');
+        $proximoLabel = self::rawColumnForDisplay($nextRow, 'next_payment_date');
         $frequency = filled($sale?->payment_frequency)
             ? (string) $sale->payment_frequency
             : (filled($nextRow?->payment_frequency) ? (string) $nextRow->payment_frequency : null);
@@ -217,7 +222,7 @@ final class GlobalSearchAffiliationCollectionExpirations
         $html .= ':</span> ';
         if ($proximoLabel !== '—') {
             $html .= '<span class="inline-flex items-center rounded-md bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-950 ring-1 ring-amber-300/80 dark:bg-amber-500/15 dark:text-amber-100 dark:ring-amber-400/35">'.e($proximoLabel).'</span>';
-            $overdueDays = self::calendarDaysOverdueSinceStoredExpiration($nextRow?->expiration_date, now());
+            $overdueDays = self::calendarDaysOverdueSinceStoredExpiration($nextRow->next_payment_date, now());
             if ($overdueDays !== null && $overdueDays > 0) {
                 $html .= ' <span class="text-rose-600 dark:text-rose-400" title="Días transcurridos desde el vencimiento">('.e((string) $overdueDays).' días vencidos)</span>';
             }

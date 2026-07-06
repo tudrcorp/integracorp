@@ -9,6 +9,7 @@ use App\Filament\Business\Resources\Plans\Pages\ViewPlan;
 use App\Filament\Business\Resources\Plans\Schemas\PlanForm;
 use App\Filament\Business\Resources\Plans\Schemas\PlanInfolist;
 use App\Filament\Business\Resources\Plans\Tables\PlansTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\Plan;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class PlanResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Plan::class;
 
     protected static ?string $navigationLabel = 'Planes';
@@ -56,15 +59,5 @@ class PlanResource extends Resource
             'view' => ViewPlan::route('/{record}'),
             'edit' => EditPlan::route('/{record}/edit'),
         ];
-    }
-
-    public static function shouldRegisterNavigation(): bool
-    {
-        return static::canAccess();
-    }
-
-    public static function canAccess(): bool
-    {
-        return in_array('SUPERADMIN', auth()->user()->departament ?? [], true);
     }
 }

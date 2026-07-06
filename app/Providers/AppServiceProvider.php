@@ -41,7 +41,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        foreach (['backup', 'scheduled-exports', 'scheduled-notifications'] as $configName) {
+            $path = config_path("{$configName}.php");
+
+            if (! is_file($path)) {
+                continue;
+            }
+
+            $this->app->make('config')->set($configName, require $path);
+        }
     }
 
     /**

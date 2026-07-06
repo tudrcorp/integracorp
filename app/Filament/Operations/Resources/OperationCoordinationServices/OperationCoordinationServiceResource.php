@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationCoordinationServices;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\CreateOperationCoordinationService;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\EditOperationCoordinationService;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ListOperationCoordinationServices;
@@ -28,6 +29,8 @@ use UnitEnum;
 
 class OperationCoordinationServiceResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = OperationCoordinationService::class;
 
     protected static ?string $navigationLabel = 'Servicios Medicos';

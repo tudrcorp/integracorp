@@ -22,6 +22,8 @@
         "owenvoke/blade-entypo": "^2.3",
         "owenvoke/blade-fontawesome": "^2.9",
         "predis/predis": "^3.2",
+        "setasign/fpdf": "^1.9",
+        "setasign/fpdi": "^2.6",
         "simplesoftwareio/simple-qrcode": "^4.2",
         "solution-forest/filament-header-select": "^0.0.1",
         "swisnl/filament-backgrounds": "^2.0",

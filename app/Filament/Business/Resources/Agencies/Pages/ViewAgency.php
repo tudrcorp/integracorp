@@ -3,24 +3,51 @@
 namespace App\Filament\Business\Resources\Agencies\Pages;
 
 use App\Filament\Business\Resources\Agencies\AgencyResource;
+use App\Filament\Business\Resources\Agencies\Concerns\QueuesAgencyFichaPdfEmail;
+use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
+use App\Models\Agency;
+use App\Support\BusinessAgencyFichaPdfAccess;
+use App\Support\Filament\FilamentIosButton;
+use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 
 class ViewAgency extends ViewRecord
 {
+    use QueuesAgencyFichaPdfEmail;
+
     protected static string $resource = AgencyResource::class;
 
+    private const IOS_BUTTON_BASE = ' shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    private const IOS_GRAY_BUTTON_CLASS = 'ticket-btn-ios-gray'.self::IOS_BUTTON_BASE;
+
+    private const IOS_PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary'.self::IOS_BUTTON_BASE;
+
+    private const IOS_SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success'.self::IOS_BUTTON_BASE;
+
     /**
-     * Idéntico a Crear Ticket / Crear Nuevo Paciente: .ticket-btn-ios en theme.css (verde, sombras iOS, hover).
+     * Tipos de archivo aceptados para la carga de documentos de la agencia.
+     *
+     * @var array<int, string>
      */
-    private const TICKET_BUTTON_CLASS = 'ticket-btn-ios shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
-
-    private const PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
-
-    private const WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+    private const AGENCY_DOCUMENT_MIME_TYPES = [
+        'image/jpeg',
+        'image/png',
+        'application/pdf',
+        'text/plain',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ];
 
     public function getTitle(): string|Htmlable
     {
@@ -68,21 +95,394 @@ class ViewAgency extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make()
-                ->label('Editar')
-                ->icon('heroicon-o-pencil')
-                ->color(self::PRIMARY_BUTTON_CLASS)
-                ->extraAttributes([
-                    'class' => self::TICKET_BUTTON_CLASS,
-                ]),
             Action::make('back')
                 ->label('Volver')
                 ->icon('heroicon-o-arrow-left')
-                ->color('warning')
+                ->color('gray')
                 ->url(AgencyResource::getUrl())
                 ->extraAttributes([
-                    'class' => self::WARNING_BUTTON_CLASS,
+                    'class' => self::IOS_GRAY_BUTTON_CLASS,
                 ]),
+            EditAction::make()
+                ->label('Editar')
+                ->icon('heroicon-o-pencil')
+                ->color('primary')
+                ->extraAttributes([
+                    'class' => self::IOS_PRIMARY_BUTTON_CLASS,
+                ]),
+            Action::make('agencyFichaPreview')
+                ->label('Ficha PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('success')
+                ->extraAttributes([
+                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                ])
+                ->slideOver()
+                ->formWrapper(false)
+                ->modalWidth(Width::FiveExtraLarge)
+                ->extraModalWindowAttributes([
+                    'class' => 'fi-agency-command-center-window',
+                ])
+                ->modalHeading(fn (): string => 'Ficha de agencia · '.($this->getRecord()->name_corporative ?? ''))
+                ->modalDescription(fn (): string => 'Vista previa, descarga y envío por correo o WhatsApp.')
+                ->modalContent(fn (): \Illuminate\Contracts\View\View => $this->resolveAgencyFichaPanelView())
+                ->modalSubmitAction(false)
+                ->modalCancelAction(
+                    fn (Action $action): Action => $action
+                        ->label('Cerrar')
+                        ->extraAttributes([
+                            'class' => HelpdeskTicketModalActions::IOS_GRAY_BTN,
+                        ]),
+                )
+                ->action(fn (): null => null)
+                ->visible(fn (): bool => BusinessAgencyFichaPdfAccess::userCanAccess($this->getRecord())),
+            Action::make('addObservation')
+                ->label('Agregar observación')
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->color('info')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                ])
+                ->modalHeading('Registrar observación')
+                ->modalDescription('La observación quedará asociada a esta agencia y al analista que la registra.')
+                ->modalSubmitActionLabel('Guardar')
+                ->modalCancelActionLabel('Cancelar')
+                ->modalSubmitAction(
+                    fn (Action $action) => $action
+                        ->color('info')
+                        ->extraAttributes([
+                            'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                        ])
+                )
+                ->modalCancelAction(
+                    fn (Action $action) => $action
+                        ->color('gray')
+                        ->extraAttributes([
+                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                        ])
+                )
+                ->form([
+                    Textarea::make('observation')
+                        ->label('Texto de la observación')
+                        ->placeholder('Escriba la nota o seguimiento administrativo…')
+                        ->required()
+                        ->minLength(2)
+                        ->maxLength(5000)
+                        ->rows(5),
+                ])
+                ->action(function (array $data): void {
+                    $this->record->observationCommercialStructures()->create([
+                        'observation' => $data['observation'],
+                        'created_by' => Auth::user()?->name ?? 'Analista',
+                        'date' => now()->format('d/m/Y H:i'),
+                    ]);
+
+                    $this->record->unsetRelation('observationCommercialStructures');
+                    $this->record->load('observationCommercialStructures');
+
+                    Notification::make()
+                        ->success()
+                        ->title('Observación guardada')
+                        ->send();
+                }),
+            Action::make('audit')
+                ->label('Auditoría')
+                ->icon('heroicon-o-shield-check')
+                ->color('warning')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
+                ])
+                ->visible(fn (): bool => $this->pendingAuditItems() !== [])
+                ->modalHeading('Auditoría de la agencia de corretaje')
+                ->modalDescription('Seleccione uno o varios puntos auditados. Se registrará una observación automática en la bitácora a nombre de INTEGRACORP-AUDITORIA y los puntos auditados se retirarán de la lista.')
+                ->modalSubmitActionLabel('Registrar auditoría')
+                ->modalCancelActionLabel('Cancelar')
+                ->modalSubmitAction(
+                    fn (Action $action) => $action
+                        ->color('warning')
+                        ->extraAttributes([
+                            'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
+                        ])
+                )
+                ->modalCancelAction(
+                    fn (Action $action) => $action
+                        ->color('gray')
+                        ->extraAttributes([
+                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                        ])
+                )
+                ->form([
+                    CheckboxList::make('items')
+                        ->label('Puntos a auditar')
+                        ->options(fn (): array => $this->pendingAuditItemOptions())
+                        ->descriptions(fn (): array => $this->pendingAuditItemDescriptions())
+                        ->required()
+                        ->bulkToggleable()
+                        ->columns(1),
+                ])
+                ->action(function (array $data): void {
+                    $this->registerAudit($data['items'] ?? []);
+                }),
+            Action::make('uploadDocuments')
+                ->label('Cargar documentos')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->color('success')
+                ->extraAttributes([
+                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                ])
+                ->modalHeading('Cargar documentos de la agencia')
+                ->modalDescription('Adjunte el Documento de Identidad, el W8/W9 y los Documentos Varios que necesite. Tamaño máximo 2MB por archivo. Formatos: jpg, jpeg, png, pdf, txt, xls, xlsx.')
+                ->modalSubmitActionLabel('Guardar')
+                ->modalCancelActionLabel('Cancelar')
+                ->modalSubmitAction(
+                    fn (Action $action) => $action
+                        ->color('success')
+                        ->extraAttributes([
+                            'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                        ])
+                )
+                ->modalCancelAction(
+                    fn (Action $action) => $action
+                        ->color('gray')
+                        ->extraAttributes([
+                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                        ])
+                )
+                ->form([
+                    FileUpload::make('file_ci_rif')
+                        ->label('Documento de Identidad')
+                        ->uploadingMessage('Cargando documento...')
+                        ->directory('agencias/documentos')
+                        ->acceptedFileTypes(self::AGENCY_DOCUMENT_MIME_TYPES)
+                        ->maxSize(2048),
+                    FileUpload::make('file_w8_w9')
+                        ->label('W8/W9')
+                        ->uploadingMessage('Cargando documento...')
+                        ->directory('agencias/documentos')
+                        ->acceptedFileTypes(self::AGENCY_DOCUMENT_MIME_TYPES)
+                        ->maxSize(2048),
+                    FileUpload::make('documentos_varios')
+                        ->label('Documentos Varios')
+                        ->helperText('Puede adjuntar varios archivos a la vez.')
+                        ->multiple()
+                        ->reorderable()
+                        ->appendFiles()
+                        ->uploadingMessage('Cargando documentos...')
+                        ->directory('agencias/documentos')
+                        ->acceptedFileTypes(self::AGENCY_DOCUMENT_MIME_TYPES)
+                        ->maxSize(2048),
+                ])
+                ->action(function (array $data): void {
+                    $this->storeAgencyDocuments($data);
+                }),
         ];
+    }
+
+    /**
+     * Crea los registros de documentos asociados a la agencia a partir del formulario.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function storeAgencyDocuments(array $data): void
+    {
+        $titlesByField = [
+            'file_ci_rif' => 'DOCUMENTO DE IDENTIDAD CI/RIF',
+            'file_w8_w9' => 'W8/W9',
+            'documentos_varios' => 'DOCUMENTOS VARIOS',
+        ];
+
+        $created = 0;
+        $uploadedTitles = [];
+
+        foreach ($titlesByField as $field => $title) {
+            $value = $data[$field] ?? null;
+
+            if ($value === null || $value === '' || $value === []) {
+                continue;
+            }
+
+            foreach ((array) $value as $path) {
+                if (! is_string($path) || $path === '') {
+                    continue;
+                }
+
+                $this->record->documents()->create([
+                    'title' => $title,
+                    'document' => $path,
+                    'image' => 'folder2.png',
+                ]);
+
+                $created++;
+                $uploadedTitles[] = $title;
+            }
+        }
+
+        if ($created === 0) {
+            Notification::make()
+                ->warning()
+                ->title('No se cargaron documentos')
+                ->body('Adjunte al menos un archivo antes de guardar.')
+                ->send();
+
+            return;
+        }
+
+        $this->record->unsetRelation('documents');
+        $this->record->load('documents');
+
+        SecurityAudit::log('AUDIT_BUSINESS_AGENCY_DOCUMENTS_UPLOADED', 'business.agencies.documents.upload', [
+            'agency_id' => $this->record->getKey(),
+            'agency_name' => $this->record->name_corporative,
+            'documents_count' => $created,
+            'document_titles' => array_values(array_unique($uploadedTitles)),
+            'source' => 'view_agency_header',
+        ]);
+
+        Notification::make()
+            ->success()
+            ->title('Documentos cargados')
+            ->body($created.' documento(s) asociados a la agencia.')
+            ->send();
+    }
+
+    /**
+     * Catálogo de puntos auditables: clave => [label, detail].
+     *
+     * @return array<string, array{label: string, detail: string}>
+     */
+    public static function auditItemsCatalog(): array
+    {
+        return [
+            'main_info' => [
+                'label' => 'Información principal de la Agencia',
+                'detail' => 'Información principal de la agencia (razón social, dirección local o extranjera, correo electrónico válido, cédula de identidad o RIF válido, porcentaje de comisiones correctos e información bancaria).',
+            ],
+            'hierarchy' => [
+                'label' => 'Jerarquía Correcta',
+                'detail' => 'Jerarquía correcta de la estructura comercial.',
+            ],
+            'commissions' => [
+                'label' => 'Comisiones Correctas y Actualizadas',
+                'detail' => 'Comisiones correctas y actualizadas.',
+            ],
+            'bank_national' => [
+                'label' => 'Información Bancaria Nacional',
+                'detail' => 'Información bancaria nacional.',
+            ],
+            'bank_foreign' => [
+                'label' => 'Información Bancaria Extranjera',
+                'detail' => 'Información bancaria extranjera.',
+            ],
+            'documents' => [
+                'label' => 'Documentos de la Agencia',
+                'detail' => 'Documentos de la agencia.',
+            ],
+        ];
+    }
+
+    /**
+     * Claves ya auditadas para esta agencia.
+     *
+     * @return array<int, string>
+     */
+    private function auditedItemKeys(): array
+    {
+        return array_values(array_filter(
+            (array) ($this->record->audit_items ?? []),
+            fn (mixed $key): bool => is_string($key) && array_key_exists($key, self::auditItemsCatalog()),
+        ));
+    }
+
+    /**
+     * Ítems del catálogo que aún no han sido auditados.
+     *
+     * @return array<string, array{label: string, detail: string}>
+     */
+    private function pendingAuditItems(): array
+    {
+        return array_diff_key(self::auditItemsCatalog(), array_flip($this->auditedItemKeys()));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function pendingAuditItemOptions(): array
+    {
+        return array_map(fn (array $item): string => $item['label'], $this->pendingAuditItems());
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function pendingAuditItemDescriptions(): array
+    {
+        return array_map(fn (array $item): string => $item['detail'], $this->pendingAuditItems());
+    }
+
+    /**
+     * @param  array<int, string>  $selectedKeys
+     */
+    private function registerAudit(array $selectedKeys): void
+    {
+        $catalog = self::auditItemsCatalog();
+
+        $validKeys = array_values(array_filter(
+            $selectedKeys,
+            fn (mixed $key): bool => is_string($key) && array_key_exists($key, $catalog) && ! in_array($key, $this->auditedItemKeys(), true),
+        ));
+
+        if ($validKeys === []) {
+            return;
+        }
+
+        $analyst = Auth::user()?->name ?? 'Analista';
+        $auditedAt = now()->format('d/m/Y H:i');
+
+        $lines = array_map(
+            fn (string $key): string => '• '.$catalog[$key]['detail'],
+            $validKeys,
+        );
+
+        $description = 'Auditoría registrada por el analista '.$analyst.' el '.$auditedAt.'.'.PHP_EOL
+            .'Puntos auditados:'.PHP_EOL
+            .implode(PHP_EOL, $lines);
+
+        $this->record->observationCommercialStructures()->create([
+            'observation' => $description,
+            'created_by' => 'INTEGRACORP-AUDITORIA',
+            'date' => $auditedAt,
+        ]);
+
+        $this->record->audit_items = array_values(array_unique([
+            ...$this->auditedItemKeys(),
+            ...$validKeys,
+        ]));
+        $this->record->save();
+
+        $this->record->unsetRelation('observationCommercialStructures');
+        $this->record->load('observationCommercialStructures');
+
+        Notification::make()
+            ->success()
+            ->title('Auditoría registrada')
+            ->body('Se registró la observación de auditoría en la bitácora con los puntos seleccionados.')
+            ->send();
+    }
+
+    private function resolveAgencyFichaPanelView(): \Illuminate\Contracts\View\View
+    {
+        /** @var Agency $agency */
+        $agency = $this->getRecord();
+        $agency->loadMissing(['typeAgency']);
+
+        SecurityAudit::log('AUDIT_BUSINESS_AGENCY_FICHA_VIEWED', 'business.agencies.ficha-pdf.view-page', [
+            'agency_id' => $agency->getKey(),
+            'agency_name' => $agency->name_corporative,
+            'source' => 'view_agency_header',
+        ]);
+
+        return view('filament.business.agencies.agency-ficha-panel', [
+            'record' => $agency,
+        ]);
     }
 }

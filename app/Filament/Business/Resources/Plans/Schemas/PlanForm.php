@@ -161,11 +161,13 @@ class PlanForm
                         Grid::make(2)
                             ->schema([
                                 TextInput::make('code')
-                                    ->label('Código')
+                                    ->label('Código del plan')
+                                    ->prefixIcon('heroicon-m-clipboard-document-check')
                                     ->default(fn (): string => PlanCreationPersistence::generatePlanCode())
                                     ->disabled()
                                     ->dehydrated()
                                     ->required()
+                                    ->maxLength(255)
                                     ->columnSpan(1),
 
                                 TextInput::make('description')

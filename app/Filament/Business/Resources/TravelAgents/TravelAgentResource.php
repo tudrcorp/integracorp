@@ -7,6 +7,7 @@ use App\Filament\Business\Resources\TravelAgents\Pages\EditTravelAgent;
 use App\Filament\Business\Resources\TravelAgents\Pages\ListTravelAgents;
 use App\Filament\Business\Resources\TravelAgents\Schemas\TravelAgentForm;
 use App\Filament\Business\Resources\TravelAgents\Tables\TravelAgentsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\TravelAgent;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -16,6 +17,8 @@ use UnitEnum;
 
 class TravelAgentResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = TravelAgent::class;
 
     protected static ?string $navigationLabel = 'Agentes De Viaje';

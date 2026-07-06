@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\Helpdesks;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Concerns\AuthorizesHelpdeskTicketCreation;
 use App\Filament\Concerns\RegistersHelpdeskUnreadNoteNavigation;
 use App\Filament\Marketing\Resources\Helpdesks\Pages\CreateHelpdesk;
@@ -22,6 +23,7 @@ use UnitEnum;
 
 class HelpdeskResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
     use AuthorizesHelpdeskTicketCreation;
     use RegistersHelpdeskUnreadNoteNavigation;
 

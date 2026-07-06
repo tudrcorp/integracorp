@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class TravelAgency extends Model
 {
     //
-    protected $table = "travel_agencies";
+    protected $table = 'travel_agencies';
 
     protected $fillable = [
         'status',
@@ -38,15 +38,13 @@ class TravelAgency extends Model
         'created_by',
         'updated_by',
 
-        
         'logo',
         'nameSecundario',
         'emailSecundario',
         'phoneSecundario',
         'fechaNacimientoSecundario',
 
-
-        //datos bancarios moneda local
+        // datos bancarios moneda local
         'local_beneficiary_name',
         'local_beneficiary_rif',
         'local_beneficiary_account_number',
@@ -57,8 +55,7 @@ class TravelAgency extends Model
         'local_beneficiary_account_bank_mon_inter',
         'local_beneficiary_account_type_mon_inter',
 
-
-        //datos bancarios moneda extrangera
+        // datos bancarios moneda extrangera
         'extra_beneficiary_name',
         'extra_beneficiary_ci_rif',
         'extra_beneficiary_account_number',
@@ -71,12 +68,13 @@ class TravelAgency extends Model
         'extra_beneficiary_aba',
         'extra_beneficiary_address',
 
-
     ];
 
     public function travelAgents()
     {
-        return $this->hasMany(TravelAgent::class);
+        return $this->hasMany(TravelAgent::class)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
     }
 
     public function country()
@@ -96,6 +94,8 @@ class TravelAgency extends Model
 
     public function observationCommercialStructures()
     {
-        return $this->hasMany(ObservationCommercialStructure::class);
+        return $this->hasMany(ObservationCommercialStructure::class)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
     }
 }

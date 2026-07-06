@@ -20,6 +20,8 @@ class StatsOverviewTotalIndividualQuote extends StatsOverviewWidget
 
     protected ?string $description = 'Resumen por año y mes seleccionado.';
 
+    protected int|string|array $columnSpan = 'full';
+
     public function mount(): void
     {
         if ($this->statsFilters === []) {

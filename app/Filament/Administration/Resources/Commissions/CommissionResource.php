@@ -7,21 +7,23 @@ use App\Filament\Administration\Resources\Commissions\Pages\EditCommission;
 use App\Filament\Administration\Resources\Commissions\Pages\ListCommissions;
 use App\Filament\Administration\Resources\Commissions\Schemas\CommissionForm;
 use App\Filament\Administration\Resources\Commissions\Tables\CommissionsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\Commission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
 class CommissionResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Commission::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-chart-pie';
 
-    protected static string | UnitEnum | null $navigationGroup = 'ADMINISTRACIÓN';
+    protected static string|UnitEnum|null $navigationGroup = 'ADMINISTRACIÓN';
 
     protected static ?string $navigationLabel = 'Detallado de Comisiones';
 

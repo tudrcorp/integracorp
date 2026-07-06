@@ -10,6 +10,7 @@ use App\Filament\Business\Resources\ProspectAgents\RelationManagers\ProspectAgen
 use App\Filament\Business\Resources\ProspectAgents\Schemas\ProspectAgentForm;
 use App\Filament\Business\Resources\ProspectAgents\Schemas\ProspectAgentInfolist;
 use App\Filament\Business\Resources\ProspectAgents\Tables\ProspectAgentsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\ProspectAgent;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -19,6 +20,8 @@ use UnitEnum;
 
 class ProspectAgentResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = ProspectAgent::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-m-user-plus';

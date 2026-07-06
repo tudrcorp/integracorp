@@ -5,7 +5,6 @@ namespace App\Filament\Business\Resources\BusinessAppointments\Pages;
 use App\Filament\Business\Resources\BusinessAppointments\BusinessAppointmentsResource;
 use App\Models\BusinessAppointmentObservation;
 use Filament\Actions\Action;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
@@ -17,6 +16,12 @@ class ViewBusinessAppointments extends ViewRecord
 
     protected static ?string $pollingInterval = '5s';
 
+    private const IOS_BUTTON_BASE = ' shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    private const IOS_GRAY_BUTTON_CLASS = 'ticket-btn-ios-gray'.self::IOS_BUTTON_BASE;
+
+    private const IOS_SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success'.self::IOS_BUTTON_BASE;
+
     protected function getHeaderActions(): array
     {
         return [
@@ -24,15 +29,27 @@ class ViewBusinessAppointments extends ViewRecord
                 ->label('Volver')
                 ->icon('heroicon-o-arrow-left')
                 ->color('gray')
-                ->url(BusinessAppointmentsResource::getUrl()),
+                ->url(BusinessAppointmentsResource::getUrl())
+                ->extraAttributes([
+                    'class' => self::IOS_GRAY_BUTTON_CLASS,
+                ]),
             Action::make('notes')
                 ->label('Agregar Notas/Observaciones')
                 ->icon('heroicon-o-document-text')
                 ->color('success')
+                ->extraAttributes([
+                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                ])
                 ->modal()
                 ->modalHeading('Agregar Notas/Observaciones')
                 ->modalSubmitActionLabel('Guardar')
                 ->modalCancelActionLabel('Cancelar')
+                ->modalSubmitAction(fn (Action $action): Action => $action->extraAttributes([
+                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                ]))
+                ->modalCancelAction(fn (Action $action): Action => $action->extraAttributes([
+                    'class' => self::IOS_GRAY_BUTTON_CLASS,
+                ]))
                 ->form([
                     Fieldset::make('Formulario de Notas')
                         ->schema([
@@ -47,9 +64,9 @@ class ViewBusinessAppointments extends ViewRecord
                     try {
 
                         BusinessAppointmentObservation::create([
-                            'business_appointment_id'   => $record->id,
-                            'observation'               => $data['observations'],
-                            'created_by'                => auth()->user()->name,
+                            'business_appointment_id' => $record->id,
+                            'observation' => $data['observations'],
+                            'created_by' => auth()->user()->name,
                         ]);
 
                         Notification::make()
@@ -70,8 +87,7 @@ class ViewBusinessAppointments extends ViewRecord
         ];
     }
 
-
-    public function getTitle(): string | \Illuminate\Contracts\Support\Htmlable
+    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
     {
         $businessAppointment = $this->getRecord();
 
@@ -87,42 +103,42 @@ class ViewBusinessAppointments extends ViewRecord
         $status = strtolower($businessAppointment->status ?? 'pendiente');
 
         $statusConfig = match ($status) {
-            'atendida'   => ['color' => '#28cd41', 'label' => 'Atendida'],
-            'cancelada'  => ['color' => '#ff3b30', 'label' => 'Cancelada'],
+            'atendida' => ['color' => '#28cd41', 'label' => 'Atendida'],
+            'cancelada' => ['color' => '#ff3b30', 'label' => 'Cancelada'],
             'reagendada' => ['color' => '#ffcc00', 'label' => 'Reagendada'],
-            default      => ['color' => '#ffcc00', 'label' => 'Pendiente'], // 'pendiente' u otros
+            default => ['color' => '#ffcc00', 'label' => 'Pendiente'], // 'pendiente' u otros
         };
 
         return new \Illuminate\Support\HtmlString(
-            '<div style="display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; gap: 2px; padding: 12px 0;">' .
+            '<div style="display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; gap: 2px; padding: 12px 0;">'.
                 // Título Principal
-                '<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-gray-100 mb-2">' .
-                'Información Principal' .
-                '</span>' .
+                '<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-gray-100 mb-2">'.
+                'Información Principal'.
+                '</span>'.
 
                 // Nombre del Paciente/Cita
-                '<span class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-2">' .
-                'Cita: ' . $fullName .
-                '</span>' .
+                '<span class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-2">'.
+                'Cita: '.$fullName.
+                '</span>'.
 
                 // Estatus Dinámico Estilo iOS
-                '<div style="display: flex; align-items: center; margin-top: 8px;">' .
-                '<span style="' .
-                'background-color: ' . $statusConfig['color'] . '; ' .
-                'color: ' . ($statusConfig['color'] === '#ffcc00' ? '#000000' : '#ffffff') . '; ' . // Texto negro si es amarillo para legibilidad
-                'padding: 6px 16px; ' .
-                'border-radius: 50px; ' .
-                'font-size: 0.8rem; ' .
-                'font-weight: 700; ' .
-                'display: inline-flex; ' .
-                'align-items: center; ' .
-                'gap: 6px; ' .
-                'box-shadow: 0 4px 12px ' . $statusConfig['color'] . '59; ' . // 35% opacidad en el shadow
-                'border: 1px solid rgba(255, 255, 255, 0.2);' .
-                '">' .
-                '<span style="font-size: 10px;">●</span>' . $statusConfig['label'] .
-                '</span>' .
-                '</div>' .
+                '<div style="display: flex; align-items: center; margin-top: 8px;">'.
+                '<span style="'.
+                'background-color: '.$statusConfig['color'].'; '.
+                'color: '.($statusConfig['color'] === '#ffcc00' ? '#000000' : '#ffffff').'; '. // Texto negro si es amarillo para legibilidad
+                'padding: 6px 16px; '.
+                'border-radius: 50px; '.
+                'font-size: 0.8rem; '.
+                'font-weight: 700; '.
+                'display: inline-flex; '.
+                'align-items: center; '.
+                'gap: 6px; '.
+                'box-shadow: 0 4px 12px '.$statusConfig['color'].'59; '. // 35% opacidad en el shadow
+                'border: 1px solid rgba(255, 255, 255, 0.2);'.
+                '">'.
+                '<span style="font-size: 10px;">●</span>'.$statusConfig['label'].
+                '</span>'.
+                '</div>'.
                 '</div>'
         );
     }

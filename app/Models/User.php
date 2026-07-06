@@ -7,6 +7,7 @@ use App\Models\ProjectManagement\Concerns\HasProjectManagementAssignments;
 use App\Models\ProjectManagement\Concerns\HasProjectManagementExecutions;
 use App\Models\ProjectManagement\Concerns\InteractsWithProjectManagementDocuments;
 use App\Models\ProjectManagement\Concerns\InteractsWithProjectManagementNotes;
+use App\Support\Filament\UserNavigationAccess;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Filament\Panel\Concerns\HasAvatars;
@@ -58,6 +59,7 @@ class User extends Authenticatable implements FilamentUser
         'doctor_id',
         'supplier_id',
         'phone',
+        'identity_card',
 
     ];
 
@@ -204,6 +206,32 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsToMany(Permission::class, 'user_permissions')
             ->withPivot(['created_by', 'updated_by'])
             ->withTimestamps();
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return UserNavigationAccess::isSuperAdmin($this);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function normalizedDepartments(): array
+    {
+        return UserNavigationAccess::normalizedDepartments($this);
+    }
+
+    public function hasDepartamentModule(string $module): bool
+    {
+        return UserNavigationAccess::userHasModule($this, $module);
+    }
+
+    /**
+     * @param  list<string>  $permissionSlugs
+     */
+    public function canAccessNavigationItem(string $module, array $permissionSlugs): bool
+    {
+        return UserNavigationAccess::canAccessMenuItem($this, $module, $permissionSlugs);
     }
 
     /**

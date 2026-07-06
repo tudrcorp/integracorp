@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationTypeNegotiations;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\OperationTypeNegotiations\Pages\CreateOperationTypeNegotiation;
 use App\Filament\Operations\Resources\OperationTypeNegotiations\Pages\EditOperationTypeNegotiation;
 use App\Filament\Operations\Resources\OperationTypeNegotiations\Pages\ListOperationTypeNegotiations;
@@ -21,6 +22,8 @@ use UnitEnum;
 
 class OperationTypeNegotiationResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = OperationTypeNegotiation::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'CONFIGURACION';

@@ -7,6 +7,7 @@ use App\Filament\Administration\Resources\DownloadZones\Pages\EditDownloadZone;
 use App\Filament\Administration\Resources\DownloadZones\Pages\ListDownloadZones;
 use App\Filament\Administration\Resources\DownloadZones\Schemas\DownloadZoneForm;
 use App\Filament\Administration\Resources\DownloadZones\Tables\DownloadZonesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\DownloadZone;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -15,6 +16,8 @@ use UnitEnum;
 
 class DownloadZoneResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = DownloadZone::class;
 
     protected static ?string $navigationLabel = 'Documentos';

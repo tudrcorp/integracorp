@@ -9,6 +9,7 @@ use App\Filament\Administration\Resources\Sales\Pages\ViewSale;
 use App\Filament\Administration\Resources\Sales\Schemas\SaleForm;
 use App\Filament\Administration\Resources\Sales\Schemas\SaleInfolist;
 use App\Filament\Administration\Resources\Sales\Tables\SalesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\Sale;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class SaleResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Sale::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';

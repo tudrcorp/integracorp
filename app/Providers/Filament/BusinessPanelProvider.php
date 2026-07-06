@@ -4,13 +4,13 @@ namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Http\Middleware\DuplicatedSession;
+use App\Support\Filament\BusinessPanelNavigationGroups;
 use Filament\Actions\Action;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -41,39 +41,19 @@ class BusinessPanelProvider extends PanelProvider
             ->colors([
                 'primary' => '#4c566a',
             ])
-            ->navigationGroups([
-
-                NavigationGroup::make()
-                    ->label('ESTRUCTURA COMERCIAL')
-                    ->icon('heroicon-o-building-office-2'),
-                NavigationGroup::make()
-                    ->label('COTIZACIONES')
-                    ->icon('heroicon-o-currency-dollar'),
-                NavigationGroup::make()
-                    ->label('SOLICITUDES')
-                    ->icon('heroicon-o-square-3-stack-3d'),
-                NavigationGroup::make()
-                    ->label('AFILIACIONES')
-                    ->icon('heroicon-o-identification'),
-                NavigationGroup::make()
-                    ->label('CONFIGURACIÓN')
-                    ->icon('heroicon-o-cog-8-tooth')
-                    ->collapsed(),
-                NavigationGroup::make()
-                    ->label('ZONA DE DESCARGA')
-                    ->icon('heroicon-o-cloud-arrow-down'),
-
-            ])
+            ->navigationGroups(BusinessPanelNavigationGroups::definitions())
             ->sidebarCollapsibleOnDesktop()
             ->brandLogo(asset('image/logoNewTDG.png'))
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
-            ->databaseNotifications()
+            ->databaseNotifications(livewireComponent: null, isLazy: false)
+            ->databaseNotificationsPolling('10s')
             ->databaseTransactions()
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
             ->favicon(asset('image/ico_Android_IOS.png'))
             ->discoverResources(in: app_path('Filament/Business/Resources'), for: 'App\Filament\Business\Resources')
+            ->discoverClusters(in: app_path('Filament/Business/Clusters'), for: 'App\Filament\Business\Clusters')
             ->discoverPages(in: app_path('Filament/Business/Pages'), for: 'App\Filament\Business\Pages')
             ->pages([
                 Dashboard::class,
@@ -170,12 +150,20 @@ class BusinessPanelProvider extends PanelProvider
             ->defaultAvatarProvider(BoringAvatarsProvider::class)
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->renderHook(
+                PanelsRenderHook::SIDEBAR_NAV_END,
+                fn () => view('filament.business.partials.sidebar-navigation-accordion-script')
+            )
+            ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn () => view('filament.business.partials.affiliation-documents-panel-script')
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn () => view('filament.business.helpdesks.helpdesk-tour-script')
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.business.partials.database-notifications-alert')
             );
         // ->defaultThemeMode(ThemeMode::Light);
     }

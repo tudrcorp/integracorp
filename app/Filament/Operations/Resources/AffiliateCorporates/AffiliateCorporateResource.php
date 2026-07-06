@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\AffiliateCorporates;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\AffiliateCorporates\Pages\CreateAffiliateCorporate;
 use App\Filament\Operations\Resources\AffiliateCorporates\Pages\EditAffiliateCorporate;
 use App\Filament\Operations\Resources\AffiliateCorporates\Pages\ListAffiliateCorporates;
@@ -26,6 +27,8 @@ use UnitEnum;
 
 class AffiliateCorporateResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = AffiliateCorporate::class;
 
     protected static ?string $navigationLabel = 'Corporativos';

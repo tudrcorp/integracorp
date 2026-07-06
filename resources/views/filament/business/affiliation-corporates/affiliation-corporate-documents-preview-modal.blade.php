@@ -81,49 +81,46 @@
         <p x-show="loadingMessage" x-cloak class="text-xs text-gray-500 dark:text-gray-400" x-text="loadingMessage"></p>
 
         <div x-show="regenerated" x-cloak x-transition class="space-y-4">
-            <template x-for="(doc, index) in documents" :key="index">
-                <article
-                    class="overflow-hidden rounded-3xl border border-gray-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-gray-900/70"
-                >
-                    <div
-                        class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200/80 px-4 py-3 dark:border-white/10"
-                    >
-                        <div>
-                            <p class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                <span
-                                    x-text="doc.kind === 'certificate' ? 'Certificado' : 'Tarjeta'"
-                                ></span>
-                            </p>
-                            <p class="text-sm font-semibold text-gray-800 dark:text-gray-100" x-text="doc.label"></p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span
-                                class="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700 dark:bg-sky-500/20 dark:text-sky-300"
+            <article class="overflow-hidden rounded-3xl border border-gray-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-gray-900/70">
+                <div class="border-b border-gray-200/80 px-4 py-3 dark:border-white/10">
+                    <p class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">Documentos generados</p>
+                    <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                        Vista previa optimizada para lotes masivos
+                    </p>
+                </div>
+
+                <div class="space-y-3 bg-gray-50/80 p-3 dark:bg-gray-950/60">
+                    <div class="grid gap-2 md:grid-cols-2">
+                        <template x-for="(doc, index) in documents" :key="index">
+                            <button
+                                type="button"
+                                @click="setActiveDocument(index)"
+                                class="w-full rounded-2xl border px-3 py-2 text-left transition-colors"
+                                :class="activeDocumentIndex === index
+                                    ? 'border-primary-500 bg-primary-50/80 text-primary-900 dark:border-primary-400 dark:bg-primary-900/20 dark:text-primary-100'
+                                    : 'border-gray-200 bg-white/90 text-gray-700 hover:border-primary-300 dark:border-white/10 dark:bg-gray-900/70 dark:text-gray-200'"
                             >
-                                PDF
-                            </span>
-                            <span
-                                class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
-                            >
-                                Listo
-                            </span>
-                        </div>
+                                <p class="text-[0.68rem] uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                                    <span x-text="doc.kind === 'certificate' ? 'Certificado' : 'Tarjeta'"></span>
+                                </p>
+                                <p class="truncate text-sm font-semibold" x-text="doc.label"></p>
+                                <p class="truncate text-xs text-gray-500 dark:text-gray-400" x-text="doc.filename"></p>
+                            </button>
+                        </template>
                     </div>
 
-                    <div class="bg-gray-50/80 p-3 dark:bg-gray-950/60">
-                        <iframe
-                            x-bind:src="doc.previewUrl"
-                            x-bind:title="'Vista previa — ' + doc.label"
-                            class="h-[min(56vh,640px)] w-full rounded-2xl border-0 bg-white dark:bg-gray-900"
-                            loading="lazy"
-                        ></iframe>
-                    </div>
-
-                    <div class="border-t border-gray-200/80 px-4 py-2 dark:border-white/10">
-                        <p class="text-xs text-gray-500 dark:text-gray-400" x-text="doc.filename"></p>
-                    </div>
-                </article>
-            </template>
+                    <template x-if="activeDocument()">
+                        <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white dark:border-white/10 dark:bg-gray-900">
+                            <iframe
+                                x-bind:src="activeDocument().previewUrl"
+                                x-bind:title="'Vista previa — ' + activeDocument().label"
+                                class="h-[min(56vh,640px)] w-full border-0 bg-white dark:bg-gray-900"
+                                loading="lazy"
+                            ></iframe>
+                        </div>
+                    </template>
+                </div>
+            </article>
 
             <article
                 class="overflow-hidden rounded-3xl border border-gray-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-gray-900/70"

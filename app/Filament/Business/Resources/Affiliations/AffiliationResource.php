@@ -11,18 +11,19 @@ use App\Filament\Business\Resources\Affiliations\RelationManagers\PaidMembership
 use App\Filament\Business\Resources\Affiliations\Schemas\AffiliationForm;
 use App\Filament\Business\Resources\Affiliations\Schemas\AffiliationInfolist;
 use App\Filament\Business\Resources\Affiliations\Tables\AffiliationsTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\Affiliation;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 class AffiliationResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Affiliation::class;
 
     protected static ?string $navigationLabel = 'Individuales';
@@ -31,7 +32,7 @@ class AffiliationResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user';
 
-    protected static string | UnitEnum | null $navigationGroup = 'AFILIACIONES';
+    protected static string|UnitEnum|null $navigationGroup = 'AFILIACIONES';
 
     /**
      * Muestra un badge con la palabra NEW y el conteo de afiliados
@@ -74,7 +75,7 @@ class AffiliationResource extends Resource
     {
         return [
             AffiliatesRelationManager::class,
-            PaidMembershipsRelationManager::class
+            PaidMembershipsRelationManager::class,
         ];
     }
 

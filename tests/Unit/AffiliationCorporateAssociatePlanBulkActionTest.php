@@ -8,17 +8,19 @@ it('expone la acción masiva asociar y recalcular con formulario de afiliados y 
     expect($rm)->toContain("BulkAction::make('associate_and_recalculate')")
         ->and($rm)->toContain('CheckboxList::make(\'affiliate_ids\')')
         ->and($rm)->toContain('function (array $data, Collection $records)')
-        ->and($rm)->toContain('assignment_mode')
-        ->and($rm)->toContain('auto_by_age')
+        ->and($rm)->not->toContain('assignment_mode')
+        ->and($rm)->not->toContain('auto_by_age')
         ->and($rm)->toContain('idsForAffiliatesMatchingPlanRowAgeRange')
         ->and($rm)->toContain('AssociateAffiliatesWithCorporatePlanService::run')
         ->and($rm)->toContain('\'plan_id\' => $planRow->plan_id')
         ->and($rm)->toContain('\'fee\' => $planRow->fee')
         ->and($rm)->toContain('resolveAssociateModalPlanRow')
+        ->and($rm)->toContain('->options(function (Get $get): array {')
+        ->and($rm)->toContain('->whereIn(\'id\', $eligibleIds)')
         ->and($rm)->toContain('fi-ios-affiliation-associate-plan-modal');
 
     expect(file_get_contents($root.'/app/Services/AssociateAffiliatesWithCorporatePlanService.php'))
-        ->toContain('class AffiliationCorporateAssociatePlanBulkActionTest')
+        ->toContain('idsForAffiliatesMatchingPlanRowAgeRange')
         ->and(file_get_contents($root.'/app/Services/CorporateAffiliatePlanSyncService.php'))
         ->toContain('syncPlanRowTotalsFromAffiliates');
 

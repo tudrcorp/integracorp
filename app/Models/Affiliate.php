@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Affiliate extends Model
 {
@@ -10,6 +11,7 @@ class Affiliate extends Model
 
     protected $fillable = [
         'affiliation_id',
+        'affiliation_type',
         'full_name',
         'birth_date',
         'nro_identificacion',
@@ -43,6 +45,8 @@ class Affiliate extends Model
         'total_amount',
         'created_by',
         'payment_frequency',
+        'business_unit_id',
+        'business_line_id',
     ];
 
     public function affiliation()
@@ -78,5 +82,15 @@ class Affiliate extends Model
     public function ageRange()
     {
         return $this->belongsTo(AgeRange::class);
+    }
+
+    public function businessUnit(): BelongsTo
+    {
+        return $this->belongsTo(BusinessUnit::class);
+    }
+
+    public function businessLine(): BelongsTo
+    {
+        return $this->belongsTo(BusinessLine::class);
     }
 }

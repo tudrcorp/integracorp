@@ -1,20 +1,74 @@
 <?php
 
 use App\Jobs\AnulateAgentQuotes;
+use App\Jobs\BackupDatabase;
 use App\Jobs\DispatchScheduledMassNotifications;
 use App\Jobs\ExpireOperationServiceOrders;
+use App\Jobs\ExportCorporateAffiliations;
+use App\Jobs\ExportIndividualAffiliations;
+use App\Jobs\ExportScheduledEntity;
 use App\Jobs\PrepareAffiliationRenovations;
 use App\Jobs\SendCollaboratorAnniversaryNotification;
+use App\Jobs\SendDailyAuditSummary;
+use App\Jobs\SendIndividualQuoteDayFiveFollowUp;
+use App\Jobs\SendIndividualQuoteDayNineFollowUp;
+use App\Jobs\SendIndividualQuoteDaySevenFollowUp;
+use App\Jobs\SendIndividualQuoteDayThreeFollowUp;
+use App\Jobs\SendIndividualQuoteDayTwelveFollowUp;
 use App\Jobs\SendNotificationBirthday;
 use App\Jobs\UpdateAffiliateIlsRemainingDays;
 use App\Jobs\UpdateAnnualCollectionRemainingDays;
+use App\Support\IndividualQuotes\IndividualQuoteFollowUp;
 use Illuminate\Support\Facades\Schedule;
+
+$individualQuoteFollowUpIsActive = static fn (): bool => IndividualQuoteFollowUp::isSchedulingActive();
 
 /**
  * Tarea que se ejecuta para enviar las tarjetas de cumpleaños
  * Se ejecutara todos los dias a las 8:00am
  */
 Schedule::job(new SendNotificationBirthday, 'system')->dailyAt('8:00');
+
+/**
+ * Seguimiento WhatsApp de cotizaciones individuales PRE-APROBADA creadas hace 3 días.
+ * Agrupa por agente o agencia y notifica a los teléfonos internos de seguimiento.
+ * Activo a partir de config individual-quotes.follow_up_scheduling_start_date.
+ */
+Schedule::job(new SendIndividualQuoteDayThreeFollowUp, 'system')
+    ->dailyAt('8:00')
+    ->when($individualQuoteFollowUpIsActive);
+
+/**
+ * Seguimiento WhatsApp de cotizaciones individuales PRE-APROBADA creadas hace 5 días.
+ * Envía mensaje explicativo y video informativo.
+ */
+Schedule::job(new SendIndividualQuoteDayFiveFollowUp, 'system')
+    ->dailyAt('8:10')
+    ->when($individualQuoteFollowUpIsActive);
+
+/**
+ * Seguimiento WhatsApp de cotizaciones individuales PRE-APROBADA creadas hace 7 días.
+ * Envía mensaje e imágenes informativas (adquisición del plan y métodos de pago).
+ */
+Schedule::job(new SendIndividualQuoteDaySevenFollowUp, 'system')
+    ->dailyAt('8:20')
+    ->when($individualQuoteFollowUpIsActive);
+
+/**
+ * Seguimiento WhatsApp de cotizaciones individuales PRE-APROBADA creadas hace 9 días.
+ * Envía mensaje y flyer de beneficios (flayer.pdf).
+ */
+Schedule::job(new SendIndividualQuoteDayNineFollowUp, 'system')
+    ->dailyAt('8:30')
+    ->when($individualQuoteFollowUpIsActive);
+
+/**
+ * Seguimiento WhatsApp de cotizaciones individuales PRE-APROBADA creadas hace 12 días.
+ * Recordatorio de vencimiento próximo de la cotización.
+ */
+Schedule::job(new SendIndividualQuoteDayTwelveFollowUp, 'system')
+    ->dailyAt('8:40')
+    ->when($individualQuoteFollowUpIsActive);
 
 /**
  * Notificaciones de aniversario de colaboradores (día y mes de fechaIngreso = hoy).
@@ -52,9 +106,34 @@ Schedule::job(new AnulateAgentQuotes, 'system')->dailyAt('23:00');
 /**
  * Caduca órdenes de servicio no finalizadas dentro de los 10 días posteriores a su aprobación.
  */
-Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('6:30');
+Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('7:30');
 
 /**
  * Dispara notificaciones masivas cuya fecha programada ya venció.
  */
 Schedule::job(new DispatchScheduledMassNotifications, 'system')->everyMinute();
+
+/**
+ * Respaldo completo de la base de datos en .sql (estructura + datos).
+ * Envía resumen y archivo adjunto por WhatsApp al finalizar.
+ */
+Schedule::job(new BackupDatabase, 'system')->dailyAt('2:00');
+
+/**
+ * Exportaciones Excel diarias (cola system). Cada job se ejecuta cada 10 minutos desde las 6:00.
+ */
+Schedule::job(new ExportIndividualAffiliations, 'system')->dailyAt('6:00');
+Schedule::job(new ExportCorporateAffiliations, 'system')->dailyAt('6:10');
+Schedule::job(new ExportScheduledEntity('agents'), 'system')->dailyAt('6:20');
+Schedule::job(new ExportScheduledEntity('agencies'), 'system')->dailyAt('6:30');
+Schedule::job(new ExportScheduledEntity('natural_providers'), 'system')->dailyAt('6:40');
+Schedule::job(new ExportScheduledEntity('juridical_providers'), 'system')->dailyAt('6:50');
+Schedule::job(new ExportScheduledEntity('collaborators'), 'system')->dailyAt('7:00');
+Schedule::job(new ExportScheduledEntity('doctors'), 'system')->dailyAt('7:10');
+
+/**
+ * Reporte diario de auditorías completas (agencias, agentes, afiliaciones individuales y corporativas).
+ * Contabiliza solo los registros con TODOS sus puntos de auditoría verificados y envía el
+ * resumen por WhatsApp y correo. Se ejecuta todos los días a las 7:00am.
+ */
+Schedule::job(new SendDailyAuditSummary, 'system')->dailyAt('7:00');

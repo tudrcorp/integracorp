@@ -128,6 +128,7 @@ final class CoordinationServiceQuoteManager
                 ->map(fn (OperationQuoteGenerator $quote): array => [
                     'quote_id' => $quote->id,
                     'status' => $quote->status ?? OperationQuoteGenerator::STATUS_PENDING,
+                    'is_cash' => (bool) $quote->is_cash,
                     'has_service_order' => filled($quote->operation_service_order_id),
                     'status_locked' => self::quoteStatusUpdateIsLocked($quote),
                 ])
@@ -485,6 +486,8 @@ final class CoordinationServiceQuoteManager
         $quote->update([
             'quote_pdf_path' => OperationQuoteGeneratorPdfService::store($quote->fresh(), $record, $bcvRate),
         ]);
+
+        AccountsReceivableManager::syncFromQuote($quote->fresh() ?? $quote);
 
         $record->neto = $subtotal;
         $record->porcen_tdec = $porcentaje;
@@ -856,8 +859,9 @@ final class CoordinationServiceQuoteManager
         $ordersCreated = 0;
         $createdOrderId = 0;
         $privateCareItemsFinalized = 0;
+        $contadoQuoteIds = [];
 
-        DB::transaction(function () use ($record, $data, $entries, $shouldCreateOrder, $quotesPendingOrder, &$ordersCreated, &$createdOrderId, &$privateCareItemsFinalized): void {
+        DB::transaction(function () use ($record, $data, $entries, $shouldCreateOrder, $quotesPendingOrder, &$ordersCreated, &$createdOrderId, &$privateCareItemsFinalized, &$contadoQuoteIds): void {
             foreach ($entries as $entry) {
                 $quoteId = (int) ($entry['quote_id'] ?? 0);
                 $quote = OperationQuoteGenerator::query()->find($quoteId);
@@ -871,9 +875,17 @@ final class CoordinationServiceQuoteManager
                 }
 
                 $status = (string) ($entry['status'] ?? OperationQuoteGenerator::STATUS_PENDING);
+                $isCash = $status === OperationQuoteGenerator::STATUS_APPROVED
+                    && (bool) ($entry['is_cash'] ?? false);
+
                 $quote->status = $status;
+                $quote->is_cash = $isCash;
                 $quote->updated_by = Auth::user()?->name;
                 $quote->save();
+
+                if ($isCash) {
+                    $contadoQuoteIds[] = (int) $quote->id;
+                }
 
                 if ($status === OperationQuoteGenerator::STATUS_PRIVATE_CARE) {
                     $privateCareItemsFinalized += self::finalizeClinicalItemsForPrivateCareQuote($record, $quote);
@@ -905,6 +917,7 @@ final class CoordinationServiceQuoteManager
                         $quote->operation_service_order_id = $orderId;
                         $quote->updated_by = Auth::user()?->name;
                         $quote->save();
+                        AccountsReceivableManager::syncFromQuote($quote->fresh() ?? $quote);
                         $ordersCreated++;
                         $createdOrderId = $orderId;
                     }
@@ -922,6 +935,10 @@ final class CoordinationServiceQuoteManager
 
         if ($privateCareItemsFinalized > 0) {
             $body .= ' Se finalizaron '.$privateCareItemsFinalized.' ítem(s) clínico(s) por atención particular sin generar orden de servicio.';
+        }
+
+        foreach (array_unique($contadoQuoteIds) as $contadoQuoteId) {
+            ContadoQuotePaymentNotifier::dispatchForQuote((int) $contadoQuoteId);
         }
 
         Notification::make()
@@ -1055,6 +1072,9 @@ final class CoordinationServiceQuoteManager
             $record->service_order_number = $payload['order_number'];
             $record->updated_by = Auth::user()?->name;
             $record->save();
+
+            AccountsReceivableManager::syncFromServiceOrder($order);
+            AccountsReceivableManager::syncFromQuote($quote->fresh() ?? $quote);
 
             return (int) $order->id;
         }

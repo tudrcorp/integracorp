@@ -19,10 +19,10 @@ it('guarda los ids seleccionados en cache para exportacion de agentes', function
     expect($cachedIds)->toBe([7, 12, 20]);
 });
 
-it('usa el nombre de archivo Export-Agents para la descarga csv', function (): void {
+it('usa un nombre de archivo con prefijo agentes para la descarga csv', function (): void {
     $source = file_get_contents(base_path('app/Http/Controllers/AgentExportCsvController.php'));
 
-    expect($source)->toContain('Export-Agents.csv');
+    expect($source)->toContain("agentes_'.now()->format('Y-m-d_His').'.csv");
 });
 
 it('rechaza la descarga csv de agentes cuando el token no existe o expiro', function (): void {
@@ -36,8 +36,12 @@ it('rechaza la descarga csv de agentes cuando el token no existe o expiro', func
         ->toThrow(HttpException::class, 'Token de exportación no válido o expirado.');
 });
 
-it('tiene registrada la ruta nombrada de exportacion csv de agentes', function (): void {
+it('tiene registrada la ruta nombrada de exportacion csv de agentes en business', function (): void {
     expect(route('business.agents.export-csv', ['token' => 'x']))->toBeString();
+});
+
+it('registra la ruta de exportacion csv de agentes en administration', function (): void {
+    expect(route('administration.agents.export-csv', ['token' => 'x']))->toBeString();
 });
 
 it('expone exportacion csv en la tabla de agentes', function (): void {

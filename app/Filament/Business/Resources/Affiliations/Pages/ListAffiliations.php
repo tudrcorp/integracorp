@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Business\Resources\Affiliations\Pages;
 
 use App\Filament\Business\Resources\Affiliations\AffiliationResource;
@@ -26,11 +28,9 @@ class ListAffiliations extends ListRecords
             StatsOverview::class,
             StatsOverviewPlan::class,
 
-            // ...
             AffiliationChart::class,
             TotalAfiliacionesPorEstado::class,
 
-            // ...
             AffiliationPlanChart::class,
             AffiliationSupplierChart::class,
         ];

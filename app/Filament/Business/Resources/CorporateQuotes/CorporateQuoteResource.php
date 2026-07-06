@@ -2,25 +2,27 @@
 
 namespace App\Filament\Business\Resources\CorporateQuotes;
 
-use UnitEnum;
-use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use App\Models\CorporateQuote;
-use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
-use App\Filament\Business\Resources\CorporateQuotes\Pages\EditCorporateQuote;
-use App\Filament\Business\Resources\CorporateQuotes\Pages\ViewCorporateQuote;
-use App\Filament\Business\Resources\CorporateQuotes\Pages\ListCorporateQuotes;
 use App\Filament\Business\Resources\CorporateQuotes\Pages\CreateCorporateQuote;
-use App\Filament\Business\Resources\CorporateQuotes\Schemas\CorporateQuoteForm;
-use App\Filament\Business\Resources\CorporateQuotes\Tables\CorporateQuotesTable;
-use App\Filament\Business\Resources\CorporateQuotes\Schemas\CorporateQuoteInfolist;
+use App\Filament\Business\Resources\CorporateQuotes\Pages\EditCorporateQuote;
+use App\Filament\Business\Resources\CorporateQuotes\Pages\ListCorporateQuotes;
+use App\Filament\Business\Resources\CorporateQuotes\Pages\ViewCorporateQuote;
 use App\Filament\Business\Resources\CorporateQuotes\RelationManagers\CorporateQuoteDataRelationManager;
 use App\Filament\Business\Resources\CorporateQuotes\RelationManagers\DetailCoporateQuotesRelationManager;
+use App\Filament\Business\Resources\CorporateQuotes\Schemas\CorporateQuoteForm;
+use App\Filament\Business\Resources\CorporateQuotes\Schemas\CorporateQuoteInfolist;
+use App\Filament\Business\Resources\CorporateQuotes\Tables\CorporateQuotesTable;
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
+use App\Models\CorporateQuote;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Table;
+use UnitEnum;
 
 class CorporateQuoteResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = CorporateQuote::class;
 
     protected static ?string $navigationLabel = 'Corporativas';
@@ -29,7 +31,7 @@ class CorporateQuoteResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-swatch';
 
-    protected static string | UnitEnum | null $navigationGroup = 'COTIZACIONES';
+    protected static string|UnitEnum|null $navigationGroup = 'COTIZACIONES';
 
     public static function form(Schema $schema): Schema
     {
@@ -50,7 +52,7 @@ class CorporateQuoteResource extends Resource
     {
         return [
             DetailCoporateQuotesRelationManager::class,
-            CorporateQuoteDataRelationManager::class
+            CorporateQuoteDataRelationManager::class,
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Projects\Resources\ProjectManagement\Activities;
 
+use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Projects\Resources\ProjectManagement\Activities\Pages\CreateActivity;
 use App\Filament\Projects\Resources\ProjectManagement\Activities\Pages\EditActivity;
 use App\Filament\Projects\Resources\ProjectManagement\Activities\Pages\ListActivities;
@@ -19,6 +20,8 @@ use UnitEnum;
 
 class ActivityResource extends Resource
 {
+    use AuthorizesDepartmentNavigation;
+
     protected static ?string $model = Activity::class;
 
     protected static ?string $navigationLabel = 'Actividades';
@@ -26,6 +29,8 @@ class ActivityResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-list';
 
     protected static string|UnitEnum|null $navigationGroup = 'GESTION DE PROYECTOS';
+
+    protected static ?int $navigationSort = 5;
 
     public static function form(Schema $schema): Schema
     {
