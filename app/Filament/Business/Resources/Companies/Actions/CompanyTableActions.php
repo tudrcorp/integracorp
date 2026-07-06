@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\Companies\Actions;
 
 use App\Models\Company;
+use App\Support\Companies\CompanyPaymentUploadService;
+use App\Support\Companies\CompanyPaymentVoucherForm;
 use App\Support\Companies\CompanyPublicRegistrationLinkSender;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
@@ -14,9 +16,62 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Log;
 
 final class CompanyTableActions
 {
+    public static function uploadPaymentVoucherAction(): Action
+    {
+        return Action::make('uploadPaymentVoucher')
+            ->label('Comprobante de Pago')
+            ->color('info')
+            ->icon(Heroicon::CloudArrowUp)
+            ->modalWidth(Width::FourExtraLarge)
+            ->form(CompanyPaymentVoucherForm::schema())
+            ->action(function (Company $record, array $data): void {
+                try {
+                    $uploaded = CompanyPaymentUploadService::upload($record, $data, 'AGENTE');
+
+                    if ($uploaded) {
+                        Notification::make()
+                            ->title('NOTIFICACION')
+                            ->body('El comprobante de pago se ha registrado con exito')
+                            ->icon('heroicon-m-user-plus')
+                            ->iconColor('success')
+                            ->success()
+                            ->seconds(5)
+                            ->send();
+                    }
+
+                    SecurityAudit::log('AUDIT_BUSINESS_COMPANY_PAYMENT_VOUCHER_TABLE_ACTION', 'business.companies.table-upload-payment', [
+                        'company_id' => $record->getKey(),
+                        'uploaded' => (bool) $uploaded,
+                        'payment_method' => $data['payment_method'] ?? null,
+                    ]);
+                } catch (\Throwable $throwable) {
+                    Log::error('NEGOCIOS-EMPRESAS: Error al cargar comprobante de pago.', [
+                        'company_id' => $record->getKey(),
+                        'error' => $throwable->getMessage(),
+                    ]);
+
+                    SecurityAudit::log('AUDIT_BUSINESS_COMPANY_PAYMENT_VOUCHER_TABLE_ACTION_FAILED', 'business.companies.table-upload-payment', [
+                        'company_id' => $record->getKey(),
+                        'payment_method' => $data['payment_method'] ?? null,
+                        'error' => $throwable->getMessage(),
+                    ]);
+
+                    Notification::make()
+                        ->title('¡ERROR!')
+                        ->icon('heroicon-m-exclamation-triangle')
+                        ->body('Hubo un error al registrar el comprobante de pago. Por favor, intente de nuevo.')
+                        ->danger()
+                        ->send();
+
+                    throw $throwable;
+                }
+            });
+    }
+
     public static function sendPublicRegistrationLinkAction(): Action
     {
         return Action::make('sendPublicRegistrationLink')

@@ -79,6 +79,9 @@ class PlanGeneratorForm
                                                             ->required()
                                                             ->maxLength(255)
                                                             ->placeholder('Ej: Plan Ideal Corporativo')
+                                                            ->afterStateUpdatedJs(<<<'JS'
+                                                                $set('name', $state.toUpperCase());
+                                                            JS)
                                                             ->columnSpan(['default' => 1, 'lg' => 2]),
                                                         Select::make('status')
                                                             ->label('Estatus')
@@ -123,6 +126,9 @@ class PlanGeneratorForm
                                                             ->required()
                                                             ->maxLength(255)
                                                             ->placeholder('Ej: Distribuidora FT 0214, C.A.')
+                                                            ->afterStateUpdatedJs(<<<'JS'
+                                                                $set('client_data', $state.toUpperCase());
+                                                            JS)
                                                             ->columnSpan(['default' => 1, 'lg' => 2]),
                                                         DatePicker::make('issued_at')
                                                             ->label('Fecha de emisión')
@@ -135,7 +141,10 @@ class PlanGeneratorForm
                                                             ->label('Agente')
                                                             ->required()
                                                             ->maxLength(255)
-                                                            ->placeholder('Ej: Eiram Briceño'),
+                                                            ->placeholder('Ej: Eiram Briceño')
+                                                            ->afterStateUpdatedJs(<<<'JS'
+                                                                $set('agent_name', $state.toUpperCase());
+                                                            JS),
                                                         ToggleButtons::make('population_unit')
                                                             ->label('¿Qué representa el total?')
                                                             ->options(PlanGeneratorPopulationUnit::options())

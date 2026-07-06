@@ -19,11 +19,13 @@ use App\Models\State;
 use App\Support\AffiliationCorporateAffiliateBusinessContextSynchronizer;
 use App\Support\AffiliationCorporateAffiliateTypeSynchronizer;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -50,6 +52,9 @@ class AffiliationCorporateForm
 
     public static function configure(Schema $schema): Schema
     {
+        $dataRecords = session()->get('data_records') ?? [];
+        $quoteRecord = is_array($dataRecords[0] ?? null) ? $dataRecords[0] : [];
+
         return $schema
             ->components([
                 Tabs::make('affiliationCorporateFormTabs')
@@ -65,6 +70,27 @@ class AffiliationCorporateForm
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->hidden(fn ($operation) => Auth::user()->is_business_admin != 1 && $operation === 'edit')
                                     ->schema([
+                                        Fieldset::make('Plan generado asociado')
+                                            ->visible(fn (): bool => PlanGeneratorPreAffiliationSession::isActive())
+                                            ->schema([
+                                                TextInput::make('plan_generator_control_number')
+                                                    ->label('Nro. Control')
+                                                    ->default(fn (): string => (string) (PlanGeneratorPreAffiliationSession::get()['plan']['control_number'] ?? ''))
+                                                    ->disabled()
+                                                    ->dehydrated(false),
+                                                TextInput::make('plan_generator_name')
+                                                    ->label('Nombre del plan')
+                                                    ->default(fn (): string => (string) (PlanGeneratorPreAffiliationSession::get()['plan']['name'] ?? ''))
+                                                    ->disabled()
+                                                    ->dehydrated(false)
+                                                    ->columnSpan(['default' => 1, 'lg' => 2]),
+                                                Placeholder::make('plan_generator_rates_summary')
+                                                    ->label('Tarifas grupales')
+                                                    ->content(fn (): string => PlanGeneratorPreAffiliationSession::ratesSummary())
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columns(3)
+                                            ->columnSpanFull(),
                                         TextInput::make('code')
                                             ->label('Código de afiliación')
                                             ->prefixIcon('heroicon-m-clipboard-document-check')
@@ -83,6 +109,9 @@ class AffiliationCorporateForm
                                             ->required(),
                                         TextInput::make('name_corporate')
                                             ->label('Nombre de Empresa')
+                                            ->default(fn (): ?string => PlanGeneratorPreAffiliationSession::isActive()
+                                                ? (PlanGeneratorPreAffiliationSession::get()['plan']['client_data'] ?? null)
+                                                : null)
                                             ->live()
                                             ->prefixIcon('heroicon-m-clipboard-document-check')
                                             ->required()
@@ -105,13 +134,15 @@ class AffiliationCorporateForm
                                                 'required' => 'Campo Requerido',
                                             ])
                                             ->preload()
-                                            ->afterStateUpdated(function ($set, Get $get) {
+                                            ->afterStateUpdated(function ($set, Get $get) use ($dataRecords) {
 
-                                                $plans_records = session()->get('data_records');
+                                                $plans_records = $dataRecords;
                                                 $subtotal_anual = array_sum(array_column($plans_records, 'subtotal_anual'));
-                                                $corporate_quote_id = $plans_records[0]['corporate_quote_id'];
+                                                $corporate_quote_id = $plans_records[0]['corporate_quote_id'] ?? 0;
 
-                                                $total_persons = CorporateQuoteData::where('corporate_quote_id', $corporate_quote_id)->count();
+                                                $total_persons = PlanGeneratorPreAffiliationSession::isActive()
+                                                    ? (int) (PlanGeneratorPreAffiliationSession::get()['total_persons'] ?? 0)
+                                                    : CorporateQuoteData::where('corporate_quote_id', $corporate_quote_id)->count();
 
                                                 $poblacion = array_sum(array_column($plans_records, 'total_persons'));
 
@@ -244,7 +275,9 @@ class AffiliationCorporateForm
                                             ->disabled()
                                             ->dehydrated()
                                             ->live(),
-                                        Hidden::make('corporate_quote_id')->default(fn () => session()->get('data_records')[0]['corporate_quote_id']),
+                                        Hidden::make('corporate_quote_id')->default(fn () => PlanGeneratorPreAffiliationSession::isActive()
+                                            ? 0
+                                            : ($quoteRecord['corporate_quote_id'] ?? null)),
 
                                         Hidden::make('created_by')->default(Auth::user()->name),
                                         Hidden::make('status')->default('PRE-APROBADA'),

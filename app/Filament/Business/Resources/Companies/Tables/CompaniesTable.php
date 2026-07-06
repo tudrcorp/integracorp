@@ -103,6 +103,25 @@ class CompaniesTable
                         ->sortable()
                         ->placeholder('—')
                         ->toggleable(),
+                    TextColumn::make('plan_generator_column_label')
+                        ->label('Opción del plan')
+                        ->icon(Heroicon::OutlinedTableCells)
+                        ->placeholder('—')
+                        ->toggleable(),
+                    TextColumn::make('payment_frequency')
+                        ->label('Frecuencia de pago')
+                        ->badge()
+                        ->color('info')
+                        ->placeholder('—')
+                        ->toggleable(),
+                    TextColumn::make('total_amount')
+                        ->label('Total a pagar')
+                        ->icon(Heroicon::OutlinedCurrencyDollar)
+                        ->formatStateUsing(fn ($state): string => filled($state)
+                            ? 'US$ '.number_format((float) $state, 2, ',', '.')
+                            : '—')
+                        ->alignEnd()
+                        ->toggleable(),
                     TextColumn::make('population_total')
                         ->label('Población')
                         ->icon(Heroicon::OutlinedUsers)
@@ -206,6 +225,7 @@ class CompaniesTable
                         ->label('Ver negocio'),
                     EditAction::make()
                         ->label('Editar negocio'),
+                    CompanyTableActions::uploadPaymentVoucherAction(),
                     CompanyTableActions::sendPublicRegistrationLinkAction(),
                 ]),
             ])

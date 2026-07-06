@@ -46,22 +46,67 @@ it('crear plan generado redirige a la infolist del registro creado', function ()
         ->toContain("PlanGeneratorResource::getUrl('view', ['record' => \$this->getRecord()])");
 });
 
-it('aprobar cotizacion cambia estatus a APROBADA y redirige al registro de empresa', function (): void {
+it('aprobar cotizacion mantiene PRE-APROBADO y ofrece destinos de preafiliacion', function (): void {
     $view = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Pages/ViewPlanGenerator.php');
     $resource = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/PlanGeneratorResource.php');
+    $session = file_get_contents(dirname(__DIR__, 2).'/app/Support/PlanGenerators/PlanGeneratorPreAffiliationSession.php');
+    $tracker = file_get_contents(dirname(__DIR__, 2).'/app/Support/UserSessionAuditTracker.php');
+    $affiliationForm = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Schemas/AffiliationForm.php');
+    $corporateForm = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Schemas/AffiliationCorporateForm.php');
 
     expect($view)
         ->toContain('Action::make(\'approveQuote\')')
         ->toContain('Aprobar cotización')
-        ->toContain('->requiresConfirmation()')
-        ->toContain('public function approveQuote(): void')
-        ->toContain('\'status\' => \'APROBADA\'')
+        ->toContain('->modalSubmitAction(false)')
+        ->toContain('pre-affiliation-modal')
+        ->toContain('modalContent')
+        ->toContain('public function approveQuote(string $destination): void')
+        ->not->toContain('\'status\' => \'APROBADA\'')
+        ->toContain('AUDIT_BUSINESS_PLAN_GENERATOR_PRE_AFFILIATION_STARTED')
+        ->toContain('PlanGeneratorPreAffiliationSession::store($plan, $destination)')
+        ->toContain('AffiliationResource::getUrl(\'create\'')
+        ->toContain('AffiliationCorporateResource::getUrl(\'create\'')
         ->toContain('PlanGeneratorResource::getUrl(\'register-company\'')
+        ->toContain('permanece en estatus PRE-APROBADO')
         ->toContain('=== \'PRE-APROBADO\'');
 
     expect($resource)
         ->toContain('RegisterCompany')
         ->toContain('\'register-company\' => RegisterCompany::route(\'/{record}/register-company\')');
+
+    expect($session)
+        ->toContain('SESSION_KEY = \'plan_generator_pre_affiliation\'')
+        ->toContain('TYPE_INDIVIDUAL = \'individual\'')
+        ->toContain('TYPE_CORPORATE = \'corporate\'')
+        ->toContain("TYPE_NEW_BUSINESS = 'new_business'")
+        ->toContain('session()->put(\'data_records\', $payload[\'data_records\'])')
+        ->toContain('session()->put(\'persons\', $payload[\'total_persons\'])');
+
+    expect($tracker)
+        ->toContain('PlanGeneratorPreAffiliationSession::forget()');
+
+    $modal = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/plan-generators/pre-affiliation-modal.blade.php');
+
+    expect($modal)
+        ->toContain('pg-pre-affiliation-modal')
+        ->toContain('Pre-afiliar Individual')
+        ->toContain('Pre-afiliar Grupo Corporativo')
+        ->toContain('Pre-afiliar Nuevo Negocio')
+        ->toContain('approveQuote(\'individual\')')
+        ->toContain('approveQuote(\'corporate\')')
+        ->toContain('approveQuote(\'new_business\')')
+        ->toContain('permanecerá en estatus PRE-APROBADO')
+        ->toContain('Preparando pre-afiliación')
+        ->toContain('Redirigiendo…')
+        ->toContain('messageFor(option)');
+
+    expect($affiliationForm)
+        ->toContain('PlanGeneratorPreAffiliationSession::isActive()')
+        ->toContain('plan_generator_rates_summary');
+
+    expect($corporateForm)
+        ->toContain('PlanGeneratorPreAffiliationSession::isActive()')
+        ->toContain('plan_generator_rates_summary');
 });
 
 it('vista de registro de empresa expone formulario con campos requeridos', function (): void {
@@ -80,7 +125,9 @@ it('vista de registro de empresa expone formulario con campos requeridos', funct
         ->toContain('TextInput::make(\'rif\')')
         ->toContain('TextInput::make(\'email\')')
         ->toContain('TextInput::make(\'phone\')')
-        ->toContain('Textarea::make(\'address\')');
+        ->toContain('Textarea::make(\'address\')')
+        ->toContain('payment_frequency')
+        ->toContain('plan_generator_column_key');
 
     expect($migration)
         ->toContain('Schema::create(\'companies\'')
@@ -95,7 +142,9 @@ it('vista de registro de empresa expone formulario con campos requeridos', funct
         ->toContain('email')
         ->toContain('phone')
         ->toContain('address')
-        ->toContain('plan_generator_id');
+        ->toContain('plan_generator_id')
+        ->toContain('payment_frequency')
+        ->toContain('total_amount');
 });
 
 it('repeater de responsables expone los campos requeridos', function (): void {
@@ -227,6 +276,10 @@ it('formulario generador incluye matrices alineadas con columnas compartidas', f
         ->toContain('Propuesta comercial')
         ->toContain('control_number')
         ->toContain('client_data')
+        ->toContain("->afterStateUpdatedJs(<<<'JS'")
+        ->toContain("\$set('name', \$state.toUpperCase());")
+        ->toContain("\$set('client_data', \$state.toUpperCase());")
+        ->toContain("\$set('agent_name', \$state.toUpperCase());")
         ->toContain('issued_at')
         ->toContain('agent_name')
         ->toContain('population_unit')

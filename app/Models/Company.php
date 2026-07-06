@@ -13,6 +13,11 @@ class Company extends Model
 {
     protected $fillable = [
         'plan_generator_id',
+        'plan_generator_column_key',
+        'plan_generator_column_label',
+        'payment_frequency',
+        'fee_anual',
+        'total_amount',
         'name',
         'rif',
         'email',
@@ -44,5 +49,10 @@ class Company extends Model
     public function associates(): HasMany
     {
         return $this->hasMany(CompanyAssociate::class);
+    }
+
+    public function paidMemberships(): HasMany
+    {
+        return $this->hasMany(CompanyPaidMembership::class);
     }
 }

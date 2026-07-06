@@ -4,10 +4,12 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\Pages;
 
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Models\AffiliateCorporate;
+use App\Models\AffiliationCorporate;
 use App\Models\AfilliationCorporatePlan;
 use App\Models\Agency;
 use App\Models\CorporateQuoteData;
 use App\Models\DetailCorporateQuote;
+use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
@@ -46,6 +48,12 @@ class CreateAffiliationCorporate extends CreateRecord
         try {
 
             $record = $this->getRecord();
+
+            if (PlanGeneratorPreAffiliationSession::isActive()) {
+                $this->afterCreateFromPlanGenerator($record);
+
+                return;
+            }
 
             /**
              * Actualizacion de la cotizacion
@@ -124,5 +132,45 @@ class CreateAffiliationCorporate extends CreateRecord
                 ->danger()
                 ->send();
         }
+    }
+
+    private function afterCreateFromPlanGenerator(AffiliationCorporate $record): void
+    {
+        $payload = PlanGeneratorPreAffiliationSession::get();
+        $dataRecords = is_array($payload['data_records'] ?? null) ? $payload['data_records'] : [];
+
+        foreach ($dataRecords as $dataRecord) {
+            if (! is_array($dataRecord)) {
+                continue;
+            }
+
+            AfilliationCorporatePlan::create([
+                'affiliation_corporate_id' => $record->id,
+                'code_affiliation' => $record->code,
+                'plan_id' => $dataRecord['plan_id'] ?? 0,
+                'coverage_id' => $dataRecord['coverage_id'] ?? null,
+                'age_range_id' => $dataRecord['age_range_id'] ?? 0,
+                'total_persons' => $dataRecord['total_persons'] ?? 0,
+                'payment_frequency' => $record->payment_frequency,
+                'fee' => $dataRecord['fee'] ?? 0,
+                'subtotal_anual' => $dataRecord['subtotal_anual'] ?? 0,
+                'subtotal_quarterly' => $dataRecord['subtotal_quarterly'] ?? 0,
+                'subtotal_biannual' => $dataRecord['subtotal_biannual'] ?? 0,
+                'subtotal_monthly' => $dataRecord['subtotal_monthly'] ?? 0,
+                'status' => 'PRE-AFILIADO',
+                'created_by' => Auth::user()->name,
+            ]);
+        }
+
+        $record->poblation = (int) ($payload['total_persons'] ?? 0);
+        $record->save();
+
+        PlanGeneratorPreAffiliationSession::forget();
+
+        Notification::make()
+            ->title('Pre-afiliación corporativa creada')
+            ->body('Los planes del generador fueron vinculados. Agregue los afiliados corporativos manualmente.')
+            ->success()
+            ->send();
     }
 }

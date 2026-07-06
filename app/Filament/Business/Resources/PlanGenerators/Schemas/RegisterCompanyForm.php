@@ -7,13 +7,20 @@ namespace App\Filament\Business\Resources\PlanGenerators\Schemas;
 use App\Filament\Business\Resources\Companies\Schemas\CompanyResponsibleRepeater;
 use App\Models\PlanGenerator;
 use App\Support\Companies\CompanyResponsibleDays;
+use App\Support\PlanGenerators\PlanGeneratorCompanyRates;
+use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Livewire\Component;
@@ -42,12 +49,94 @@ class RegisterCompanyForm
                         Tab::make('Empresa')
                             ->icon(Heroicon::OutlinedBuildingOffice2)
                             ->schema([
+                                self::planRatesSection(),
                                 self::companySection(),
                             ]),
                         Tab::make('Responsables')
                             ->icon(Heroicon::OutlinedUserGroup)
                             ->schema([
                                 self::responsiblesSection(),
+                            ]),
+                    ]),
+            ]);
+    }
+
+    private static function planRatesSection(): Section
+    {
+        return Section::make('Plan, frecuencia y tarifas')
+            ->description('Seleccione la opción del plan generado y la forma de pago disponible en la cotización.')
+            ->icon(Heroicon::OutlinedCurrencyDollar)
+            ->extraAttributes([
+                'class' => self::IOS_SECTION_CLASS,
+            ])
+            ->schema([
+                Grid::make(1)
+                    ->extraAttributes([
+                        'class' => self::IOS_INNER_CLASS,
+                    ])
+                    ->schema([
+                        Fieldset::make('Cotización asociada')
+                            ->schema([
+                                TextInput::make('plan_generator_control_number')
+                                    ->label('Nro. Control')
+                                    ->default(fn (): string => (string) (PlanGeneratorPreAffiliationSession::get()['plan']['control_number'] ?? ''))
+                                    ->disabled()
+                                    ->dehydrated(false),
+                                TextInput::make('plan_generator_name')
+                                    ->label('Nombre del plan')
+                                    ->default(fn (): string => (string) (PlanGeneratorPreAffiliationSession::get()['plan']['name'] ?? ''))
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->columnSpan(['default' => 1, 'lg' => 2]),
+                                Placeholder::make('plan_generator_rates_summary')
+                                    ->label('Tarifas grupales')
+                                    ->content(fn (): string => PlanGeneratorPreAffiliationSession::ratesSummary())
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(3)
+                            ->columnSpanFull(),
+                        Grid::make()
+                            ->columns(['default' => 1, 'lg' => 2])
+                            ->schema([
+                                Select::make('plan_generator_column_key')
+                                    ->label('Opción del plan')
+                                    ->native(false)
+                                    ->options(fn (): array => PlanGeneratorCompanyRates::columnOptions(PlanGeneratorPreAffiliationSession::get()))
+                                    ->searchable()
+                                    ->required()
+                                    ->live()
+                                    ->prefixIcon(Heroicon::OutlinedTableCells)
+                                    ->visible(fn (): bool => PlanGeneratorCompanyRates::columnOptions(PlanGeneratorPreAffiliationSession::get()) !== [])
+                                    ->afterStateUpdated(function (Get $get, Set $set): void {
+                                        PlanGeneratorCompanyRates::syncAmounts($get, $set);
+                                    }),
+                                Select::make('payment_frequency')
+                                    ->label('Frecuencia de pago')
+                                    ->native(false)
+                                    ->options(fn (): array => PlanGeneratorCompanyRates::paymentFrequencyOptions(PlanGeneratorPreAffiliationSession::get()))
+                                    ->searchable()
+                                    ->required()
+                                    ->live()
+                                    ->prefixIcon(Heroicon::OutlinedCalendarDays)
+                                    ->afterStateUpdated(function (Get $get, Set $set): void {
+                                        PlanGeneratorCompanyRates::syncAmounts($get, $set);
+                                    }),
+                                TextInput::make('fee_anual')
+                                    ->label('Tarifa anual')
+                                    ->prefix('US$')
+                                    ->numeric()
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->columnSpan(['default' => 1, 'lg' => 1]),
+                                TextInput::make('total_amount')
+                                    ->label('Total a pagar')
+                                    ->helperText('Calculado según la opción del plan y la frecuencia seleccionada.')
+                                    ->prefix('US$')
+                                    ->numeric()
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->columnSpan(['default' => 1, 'lg' => 1]),
+                                Hidden::make('plan_generator_column_label')->dehydrated(),
                             ]),
                     ]),
             ]);

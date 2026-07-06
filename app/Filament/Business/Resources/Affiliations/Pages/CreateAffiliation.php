@@ -11,6 +11,7 @@ use App\Models\Agency;
 use App\Models\DetailIndividualQuote;
 use App\Models\IndividualQuote;
 use App\Models\User;
+use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -89,6 +90,7 @@ class CreateAffiliation extends CreateRecord
         try {
 
             $record = $this->getRecord();
+            $fromPlanGenerator = PlanGeneratorPreAffiliationSession::isActive();
 
             /**
              * ? Preguntamos si e l contratante es el mismo titular de la cotizacion
@@ -142,7 +144,7 @@ class CreateAffiliation extends CreateRecord
                 // dd($persons, count($affiliates));
 
                 /**Actualizo el calculo de la cotizacion */
-                if (count($affiliates) != $persons) {
+                if (! $fromPlanGenerator && count($affiliates) != $persons) {
                     // dd(count($affiliates));
                     $quote = DetailIndividualQuote::where('individual_quote_id', $record->individual_quote_id)->get();
                     foreach ($quote as $item) {
@@ -184,30 +186,27 @@ class CreateAffiliation extends CreateRecord
                     ]);
                 }
 
-                /**
-                 * Actualizamos el estatus de la cotizacion a EJECUTADA
-                 * para evitar que pueda volverse a pre-afiliarse
-                 *
-                 * Esta actualizacion se realiza en ambas tablas
-                 * ----------------------------------------------------------------------------------------------------
-                 */
-                $quote = IndividualQuote::select('status', 'id')->where('id', $record->individual_quote_id)->firstOrFail();
-                $quote->status = 'EJECUTADA';
-                $quote->save();
+                if (! $fromPlanGenerator) {
+                    $quote = IndividualQuote::select('status', 'id')->where('id', $record->individual_quote_id)->firstOrFail();
+                    $quote->status = 'EJECUTADA';
+                    $quote->save();
 
-                $quote->detailsQuote()->update(['status' => 'EJECUTADA']);
+                    $quote->detailsQuote()->update(['status' => 'EJECUTADA']);
+                }
 
-                /**
-                 * Actualizacion de la cotizacion
-                 * Se cambia el estatus de la cobertura de la cotizacion que selecciono el cliente
-                 * ----------------------------------------------------------------------------------------------------
-                 */
-                $quote_detail = DetailIndividualQuote::select('coverage_id', 'status', 'id')
-                    ->where('individual_quote_id', $record->individual_quote_id)
-                    ->where('coverage_id', $record->coverage_id)
-                    ->firstOrFail();
-                $quote_detail->status = 'APROBADA';
-                $quote_detail->save();
+                if (! $fromPlanGenerator) {
+                    /**
+                     * Actualizacion de la cotizacion
+                     * Se cambia el estatus de la cobertura de la cotizacion que selecciono el cliente
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    $quote_detail = DetailIndividualQuote::select('coverage_id', 'status', 'id')
+                        ->where('individual_quote_id', $record->individual_quote_id)
+                        ->where('coverage_id', $record->coverage_id)
+                        ->firstOrFail();
+                    $quote_detail->status = 'APROBADA';
+                    $quote_detail->save();
+                }
 
                 /**
                  * Se envia el certificado del afiliado
@@ -224,6 +223,10 @@ class CreateAffiliation extends CreateRecord
                  */
                 session()->forget('affiliates');
                 session()->forget('persons');
+
+                if ($fromPlanGenerator) {
+                    PlanGeneratorPreAffiliationSession::forget();
+                }
 
                 /**
                  * Actualizo el numero de afiliados (poblacion)
@@ -278,36 +281,42 @@ class CreateAffiliation extends CreateRecord
                     'relationship' => 'TITULAR',
                 ]);
 
-                /**
-                 * Actualizamos el estatus de la cotizacion a EJECUTADA
-                 * para evitar que pueda volverse a pre-afiliarse
-                 *
-                 * Esta actualizacion se realiza en ambas tablas
-                 * ----------------------------------------------------------------------------------------------------
-                 */
-                $quote = IndividualQuote::select('status', 'id')->where('id', $record->individual_quote_id)->firstOrFail();
-                $quote->status = 'EJECUTADA';
-                $quote->save();
+                if (! $fromPlanGenerator) {
+                    /**
+                     * Actualizamos el estatus de la cotizacion a EJECUTADA
+                     * para evitar que pueda volverse a pre-afiliarse
+                     *
+                     * Esta actualizacion se realiza en ambas tablas
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    $quote = IndividualQuote::select('status', 'id')->where('id', $record->individual_quote_id)->firstOrFail();
+                    $quote->status = 'EJECUTADA';
+                    $quote->save();
 
-                $quote->detailsQuote()->update(['status' => 'EJECUTADA']);
+                    $quote->detailsQuote()->update(['status' => 'EJECUTADA']);
 
-                /**
-                 * Actualizacion de la cotizacion
-                 * Se cambia el estatus de la cobertura de la cotizacion que selecciono el cliente
-                 * ----------------------------------------------------------------------------------------------------
-                 */
-                $quote_detail = DetailIndividualQuote::select('coverage_id', 'status', 'id')
-                    ->where('individual_quote_id', $record->individual_quote_id)
-                    ->where('coverage_id', $record->coverage_id)
-                    ->firstOrFail();
-                $quote_detail->status = 'APROBADA';
-                $quote_detail->save();
+                    /**
+                     * Actualizacion de la cotizacion
+                     * Se cambia el estatus de la cobertura de la cotizacion que selecciono el cliente
+                     * ----------------------------------------------------------------------------------------------------
+                     */
+                    $quote_detail = DetailIndividualQuote::select('coverage_id', 'status', 'id')
+                        ->where('individual_quote_id', $record->individual_quote_id)
+                        ->where('coverage_id', $record->coverage_id)
+                        ->firstOrFail();
+                    $quote_detail->status = 'APROBADA';
+                    $quote_detail->save();
+                }
 
                 /**
                  * Elimino las variable de sesion para evitar sobrecargar
                  * ----------------------------------------------------------------------------------------------------
                  */
                 session()->forget('persons');
+
+                if ($fromPlanGenerator) {
+                    PlanGeneratorPreAffiliationSession::forget();
+                }
 
                 /**
                  * Se envia el certificado del afiliado
