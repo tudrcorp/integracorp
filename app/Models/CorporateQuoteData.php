@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CorporateQuoteData extends Model
 {
     protected $table = 'corporate_quote_data';
-    
+
     protected $fillable = [
         'corporate_quote_id',
         'last_name',
@@ -29,8 +29,6 @@ class CorporateQuoteData extends Model
 
     public function corporateQuote(): BelongsTo
     {
-        return $this->belongsTo(CorporateQuote::class, 'id', 'corporate_quote_id');
+        return $this->belongsTo(CorporateQuote::class, 'corporate_quote_id', 'id');
     }
-
-    
 }

@@ -130,6 +130,24 @@ class CorporateQuoteRequestCreatorsChart extends ChartWidget
         $this->updateChartData();
     }
 
+    public function updateChartData(): void
+    {
+        $newDataChecksum = $this->generateDataChecksum();
+
+        if ($newDataChecksum !== $this->dataChecksum) {
+            $this->dataChecksum = $newDataChecksum;
+
+            $this->dispatch('updateChartData', data: $this->getCachedData());
+        }
+
+        if ($this->isFullYearPeriod()) {
+            $this->dispatch(
+                'updateCorporateQuoteRequestMonthlyBreakdownChartData',
+                data: $this->getMonthlyBreakdownChartData(),
+            );
+        }
+    }
+
     protected function getData(): array
     {
         if ($this->isFullYearPeriod()) {

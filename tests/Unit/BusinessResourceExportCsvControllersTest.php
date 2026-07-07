@@ -55,14 +55,20 @@ it('rechaza la descarga csv de citas cuando el token no existe o expiro', functi
         ->toThrow(HttpException::class, 'Token de exportación no válido o expirado.');
 });
 
-it('guarda los ids seleccionados en cache para exportacion de cotizaciones corporativas', function (): void {
-    $token = CorporateQuoteExportCsvController::storeIdsAndGetToken(['7', 12, '20']);
+it('guarda los filtros seleccionados en cache para exportacion de cotizaciones corporativas', function (): void {
+    $token = CorporateQuoteExportCsvController::storeFiltersAndGetToken([
+        'corporate_quote_ids' => ['7', 12, '20'],
+    ], 'business');
 
     expect($token)->toBeString()->not->toBeEmpty();
 
-    $cachedIds = Cache::pull('corporate_quote_export_csv_'.$token);
+    $cached = Cache::pull('corporate_quote_export_csv_'.$token);
 
-    expect($cachedIds)->toBe([7, 12, 20]);
+    expect($cached)->toBe([
+        'status' => null,
+        'corporate_quote_ids' => [7, 12, 20],
+        'panel' => 'business',
+    ]);
 });
 
 it('rechaza la descarga csv de cotizaciones corporativas cuando el token no existe o expiro', function (): void {
@@ -129,7 +135,6 @@ it('tiene registradas las rutas nombradas de exportacion csv del panel business'
 it('expone exportacion csv en las tablas del panel business', function (): void {
     $tableFiles = [
         'app/Filament/Business/Resources/BusinessAppointments/Tables/BusinessAppointmentsTable.php',
-        'app/Filament/Business/Resources/CorporateQuotes/Tables/CorporateQuotesTable.php',
         'app/Filament/Business/Resources/IndividualQuotes/Tables/IndividualQuotesTable.php',
     ];
 
@@ -140,6 +145,11 @@ it('expone exportacion csv en las tablas del panel business', function (): void 
             ->toContain("->label('Exportar CSV')")
             ->toContain('exportCsvController');
     }
+
+    expect(file_get_contents(base_path('app/Filament/Business/Resources/CorporateQuotes/Tables/CorporateQuotesTable.php')))
+        ->toContain('Exportar Cotizaciones')
+        ->not->toContain('Exportar Cotizados')
+        ->not->toContain("->label('Exportar CSV')");
 
     expect(file_get_contents(base_path('app/Filament/Business/Resources/BusinessAppointments/Tables/BusinessAppointmentsTable.php')))
         ->toContain("'business.business-appointments.export-csv'");

@@ -213,9 +213,9 @@ Route::get('business/export-corporate-quotes-csv', App\Http\Controllers\Corporat
     ->middleware(['web', 'auth'])
     ->name('business.corporate-quotes.export-csv');
 
-Route::get('business/export-corporate-quotes-population-csv', App\Http\Controllers\CorporateQuotePopulationExportCsvController::class)
+Route::get('business/export-corporate-quote-data-csv', App\Http\Controllers\CorporateQuoteDataExportCsvController::class)
     ->middleware(['web', 'auth'])
-    ->name('business.corporate-quotes.export-population-csv');
+    ->name('business.corporate-quote-data.export-csv');
 
 Route::get('business/export-affiliation-corporates-population-csv', App\Http\Controllers\AffiliationCorporatePopulationExportCsvController::class)
     ->middleware(['web', 'auth'])
