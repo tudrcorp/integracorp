@@ -4,7 +4,6 @@ namespace App\Filament\Business\Resources\CorporateQuotes\Tables;
 
 use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
 use App\Http\Controllers\CorporateQuoteExportCsvController;
-use App\Http\Controllers\CorporateQuotePopulationExportCsvController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
@@ -780,8 +779,8 @@ class CorporateQuotesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    BulkAction::make('exportCsvController')
-                        ->label('Exportar CSV')
+                    BulkAction::make('exportCorporateQuotesCsv')
+                        ->label('Exportar Cotizaciones')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
                         ->action(function (Collection $records) {
@@ -795,30 +794,11 @@ class CorporateQuotesTable
                                 return;
                             }
 
-                            $ids = $records->pluck('id')->all();
-                            $token = CorporateQuoteExportCsvController::storeIdsAndGetToken($ids);
+                            $token = CorporateQuoteExportCsvController::storeFiltersAndGetToken([
+                                'corporate_quote_ids' => $records->pluck('id')->all(),
+                            ], 'business');
 
                             return redirect()->route('business.corporate-quotes.export-csv', ['token' => $token]);
-                        }),
-                    BulkAction::make('exportPopulationCsv')
-                        ->label('Exportar CSV con población')
-                        ->icon('heroicon-o-users')
-                        ->color('info')
-                        ->action(function (Collection $records) {
-                            if ($records->isEmpty()) {
-                                Notification::make()
-                                    ->warning()
-                                    ->title('Selecciona al menos una cotización')
-                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
-                                    ->send();
-
-                                return;
-                            }
-
-                            $ids = $records->pluck('id')->all();
-                            $token = CorporateQuotePopulationExportCsvController::storeIdsAndGetToken($ids);
-
-                            return redirect()->route('business.corporate-quotes.export-population-csv', ['token' => $token]);
                         }),
                     DeleteBulkAction::make(),
                 ]),

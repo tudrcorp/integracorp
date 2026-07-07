@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Support\Exports\CorporateQuoteCsvExportService;
+use App\Support\Exports\CorporateQuoteDataCsvExportService;
 use App\Support\SecurityAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-final class CorporateQuoteExportCsvController extends Controller
+final class CorporateQuoteDataExportCsvController extends Controller
 {
-    private const CACHE_PREFIX = 'corporate_quote_export_csv_';
+    private const CACHE_PREFIX = 'corporate_quote_data_export_csv_';
 
     private const TOKEN_TTL_SECONDS = 120;
 
@@ -23,17 +22,17 @@ final class CorporateQuoteExportCsvController extends Controller
         [$filters, $panel, $auditEvent, $auditRoute] = self::resolveExportContext($request);
 
         SecurityAudit::log($auditEvent, $auditRoute, [
-            'status' => $filters['status'],
             'corporate_quote_ids_count' => count($filters['corporate_quote_ids'] ?? []),
+            'corporate_quote_data_ids_count' => count($filters['corporate_quote_data_ids'] ?? []),
             'exported_by_user_id' => Auth::id(),
             'panel' => $panel,
         ]);
 
-        return app(CorporateQuoteCsvExportService::class)->streamCsv($filters, $panel);
+        return app(CorporateQuoteDataCsvExportService::class)->streamCsv($filters, $panel);
     }
 
     /**
-     * @param  array{status?: string|null, corporate_quote_ids?: list<int|string>|null}  $filters
+     * @param  array{corporate_quote_ids?: list<int|string>|null, corporate_quote_data_ids?: list<int|string>|null}  $filters
      */
     public static function storeFiltersAndGetToken(array $filters, string $panel): string
     {
@@ -44,9 +43,14 @@ final class CorporateQuoteExportCsvController extends Controller
             fn (int $id): bool => $id > 0,
         ));
 
+        $corporateQuoteDataIds = array_values(array_filter(
+            array_map('intval', (array) ($filters['corporate_quote_data_ids'] ?? [])),
+            fn (int $id): bool => $id > 0,
+        ));
+
         Cache::put(self::CACHE_PREFIX.$token, [
-            'status' => filled($filters['status'] ?? null) ? (string) $filters['status'] : null,
             'corporate_quote_ids' => $corporateQuoteIds !== [] ? $corporateQuoteIds : null,
+            'corporate_quote_data_ids' => $corporateQuoteDataIds !== [] ? $corporateQuoteDataIds : null,
             'panel' => $panel,
         ], self::TOKEN_TTL_SECONDS);
 
@@ -54,7 +58,7 @@ final class CorporateQuoteExportCsvController extends Controller
     }
 
     /**
-     * @return array{0: array{status: ?string, corporate_quote_ids: ?list<int>}, 1: string, 2: string, 3: string}
+     * @return array{0: array{corporate_quote_ids: ?list<int>, corporate_quote_data_ids: ?list<int>}, 1: string, 2: string, 3: string}
      */
     private static function resolveExportContext(Request $request): array
     {
@@ -72,9 +76,11 @@ final class CorporateQuoteExportCsvController extends Controller
 
             return [
                 [
-                    'status' => $cached['status'] ?? null,
                     'corporate_quote_ids' => is_array($cached['corporate_quote_ids'] ?? null)
                         ? array_values(array_map('intval', $cached['corporate_quote_ids']))
+                        : null,
+                    'corporate_quote_data_ids' => is_array($cached['corporate_quote_data_ids'] ?? null)
+                        ? array_values(array_map('intval', $cached['corporate_quote_data_ids']))
                         : null,
                 ],
                 $panel,
@@ -83,16 +89,12 @@ final class CorporateQuoteExportCsvController extends Controller
             ];
         }
 
-        $validated = $request->validate([
-            'status' => ['nullable', 'string', Rule::in(array_keys(CorporateQuoteCsvExportService::statusOptions()))],
-        ]);
-
         [$panel, $auditEvent, $auditRoute] = self::routeConfig((string) $request->route()?->getName());
 
         return [
             [
-                'status' => $validated['status'] ?? null,
                 'corporate_quote_ids' => null,
+                'corporate_quote_data_ids' => null,
             ],
             $panel,
             $auditEvent,
@@ -106,10 +108,10 @@ final class CorporateQuoteExportCsvController extends Controller
     private static function routeConfig(string $routeName): array
     {
         return match ($routeName) {
-            'business.corporate-quotes.export-csv' => [
+            'business.corporate-quote-data.export-csv' => [
                 'business',
-                'AUDIT_BUSINESS_CORPORATE_QUOTES_CSV_EXPORT',
-                'business.corporate-quotes.export-csv',
+                'AUDIT_BUSINESS_CORPORATE_QUOTE_DATA_CSV_EXPORT',
+                'business.corporate-quote-data.export-csv',
             ],
             default => abort(404),
         };
@@ -122,8 +124,8 @@ final class CorporateQuoteExportCsvController extends Controller
     {
         return match ($panel) {
             'business' => [
-                'AUDIT_BUSINESS_CORPORATE_QUOTES_CSV_EXPORT',
-                'business.corporate-quotes.export-csv',
+                'AUDIT_BUSINESS_CORPORATE_QUOTE_DATA_CSV_EXPORT',
+                'business.corporate-quote-data.export-csv',
             ],
             default => abort(404),
         };

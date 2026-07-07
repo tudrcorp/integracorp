@@ -77,5 +77,18 @@ it('incluye las áreas principales trabajadas en el periodo', function (): void 
     expect($modules)->toContain('Cotizaciones')
         ->toContain('Soporte')
         ->toContain('Agenda')
-        ->toContain('Marketing');
+        ->toContain('Marketing')
+        ->toContain('Proyectos')
+        ->toContain('Guia-Chat');
+});
+
+it('incluye pantallas del modulo de proyectos y guia-chat', function (): void {
+    $paths = collect(CierreMesSlides::all())
+        ->filter(fn (array $slide): bool => ($slide['preview']['type'] ?? '') === 'system')
+        ->pluck('preview.path');
+
+    expect($paths)->toContain('/projects/project-management/projects')
+        ->toContain('/projects/kanban')
+        ->toContain('/chat/publico')
+        ->toContain('/business/guia-chat-feedbacks');
 });

@@ -23,9 +23,21 @@ it('agrupa solicitudes por created_by con filtros de ano y mes', function (): vo
         ->toContain("'0' => 'Todo el año'")
         ->toContain('isFullYearPeriod')
         ->toContain('getMonthlyBreakdownChartData')
+        ->toContain('updateCorporateQuoteRequestMonthlyBreakdownChartData')
         ->toContain('buildTopCreatorsYearChartData')
         ->toContain('indexAxis: \'y\'')
         ->toContain('->limit(15)');
+});
+
+it('el desglose mensual escucha un evento aislado para no mezclar datos de creadores', function (): void {
+    $widgetPath = dirname(__DIR__, 2).'/resources/views/filament/widgets/corporate-quote-request-creators-chart.blade.php';
+    $code = file_get_contents($widgetPath);
+
+    expect($code)->not->toBeFalse();
+
+    expect($code)
+        ->toContain('updateCorporateQuoteRequestMonthlyBreakdownChartData')
+        ->toContain('getChart()');
 });
 
 it('define el widget de canal agente/agencia para solicitudes dress taylor', function (): void {

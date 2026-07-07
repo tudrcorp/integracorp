@@ -116,6 +116,18 @@
                                     options: @js($this->getMonthlyBreakdownChartOptions()),
                                     type: 'bar',
                                 })"
+                        x-init="
+                            $wire.$on('updateCorporateQuoteRequestMonthlyBreakdownChartData', ({ data }) => {
+                                const chartInstance = getChart();
+
+                                if (! chartInstance) {
+                                    return;
+                                }
+
+                                chartInstance.data = data;
+                                chartInstance.update('none');
+                            })
+                        "
                         style="height: 280px; width: 100%; box-sizing: border-box;"
                         {{
                             (new ComponentAttributeBag)
