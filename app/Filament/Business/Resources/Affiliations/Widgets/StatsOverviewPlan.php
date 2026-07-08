@@ -33,21 +33,21 @@ class StatsOverviewPlan extends StatsOverviewWidget
          */
         $counts = [
             1 => [
-                'total' => $this->getPageTableQuery()->where('plan_id', 1)->count(),
+                'total' => $this->getPageTableQuery()->where('plan_id', 1)->where('status', 'ACTIVO')->count(),
                 'mes' => $this->getPageTableQuery()->where('plan_id', 1)
                     ->where('status', 'ACTIVO')
                     ->whereMonth('created_at', $now->month)
                     ->whereYear('created_at', $now->year)->count(),
             ],
             2 => [
-                'total' => $this->getPageTableQuery()->where('plan_id', 2)->count(),
+                'total' => $this->getPageTableQuery()->where('plan_id', 2)->where('status', 'ACTIVO')->count(),
                 'mes' => $this->getPageTableQuery()->where('plan_id', 2)
                     ->where('status', 'ACTIVO')
                     ->whereMonth('created_at', $now->month)
                     ->whereYear('created_at', $now->year)->count(),
             ],
             3 => [
-                'total' => $this->getPageTableQuery()->where('plan_id', 3)->count(),
+                'total' => $this->getPageTableQuery()->where('plan_id', 3)->where('status', 'ACTIVO')->count(),
                 'mes' => $this->getPageTableQuery()->where('plan_id', 3)
                     ->where('status', 'ACTIVO')
                     ->whereMonth('created_at', $now->month)
