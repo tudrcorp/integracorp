@@ -48,7 +48,7 @@ it('integra generador de cobranzas al aceptar renovacion', function (): void {
 
     expect($generator)
         ->toContain('upcomingPaymentDates')
-        ->toContain("'PAGADO'")
         ->toContain("'POR PAGAR'")
+        ->not->toContain("'PAGADO'")
         ->toContain('addMonthsNoOverflow');
 });
