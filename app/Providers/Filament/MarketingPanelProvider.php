@@ -4,12 +4,12 @@ namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Http\Middleware\DuplicatedSession;
+use App\Support\Filament\MarketingPanelNavigationGroups;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -40,6 +40,7 @@ class MarketingPanelProvider extends PanelProvider
             ->colors([
                 'primary' => '#17335e',
             ])
+            ->sidebarCollapsibleOnDesktop()
             ->brandLogo(asset('image/logoNewTDG.png'))
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
@@ -103,6 +104,10 @@ class MarketingPanelProvider extends PanelProvider
                 fn () => view('filament.panels.internal-quick-nav')
             )
             ->renderHook(
+                PanelsRenderHook::SIDEBAR_NAV_END,
+                fn () => view('filament.marketing.partials.sidebar-navigation-accordion-script')
+            )
+            ->renderHook(
                 PanelsRenderHook::CONTENT_START,
                 fn () => view('filament.hooks.business-helpdesk-tickets-ticker-wrapper', [
                     'fullWidth' => true,
@@ -121,30 +126,6 @@ class MarketingPanelProvider extends PanelProvider
             ])
             ->defaultAvatarProvider(BoringAvatarsProvider::class)
             ->viteTheme('resources/css/filament/admin/theme.css')
-            ->navigationGroups([
-                NavigationGroup::make()
-                    ->label('AFILIACIONES')
-                    ->icon('heroicon-o-user-group')
-                    ->collapsed(),
-                NavigationGroup::make()
-                    ->label('ESTRUCTURA DE CORRETAJES')
-                    ->icon('heroicon-o-building-office-2'),
-                NavigationGroup::make()
-                    ->label('ESTRUCTURA DE VIAJES')
-                    ->icon('heroicon-o-paper-airplane'),
-                NavigationGroup::make()
-                    ->label('ADMINISTRACION/RRHH')
-                    ->icon('heroicon-o-users'),
-                NavigationGroup::make()
-                    ->label('MARKETING')
-                    ->collapsed(),
-                NavigationGroup::make()
-                    ->label('VENTAS DIRECTAS')
-                    ->icon('heroicon-m-cursor-arrow-rays'),
-                NavigationGroup::make()
-                    ->label('ZONA DE DESCARGA')
-                    ->icon('heroicon-o-cloud-arrow-down'),
-
-            ]);
+            ->navigationGroups(MarketingPanelNavigationGroups::definitions());
     }
 }

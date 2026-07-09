@@ -8,6 +8,7 @@ use App\Filament\Operations\Widgets\StatsOverview;
 use App\Filament\Operations\Widgets\StatsOverviewPlan;
 use App\Filament\Operations\Widgets\TotalAfiliacionesPorEstado;
 use App\Http\Middleware\DuplicatedSession;
+use App\Support\Filament\OperationsPanelNavigationGroups;
 use Filament\Actions\Action;
 use Filament\Enums\GlobalSearchPosition;
 use Filament\Enums\ThemeMode;
@@ -15,7 +16,6 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -117,29 +117,14 @@ class OperationsPanelProvider extends PanelProvider
                     ->action(fn () => redirect(route('filament.business.pages.dashboard'))),
             ])
             ->defaultAvatarProvider(BoringAvatarsProvider::class)
-            ->navigationGroups([
-                NavigationGroup::make()
-                    ->label('AFILIADOS')
-                    ->icon('heroicon-o-identification'),
-                NavigationGroup::make()
-                    ->label('INVENTARIO DIAGNOMOVIL')
-                    ->icon('heroicon-o-building-office-2'),
-                NavigationGroup::make()
-                    ->label('TELEMEDICINA')
-                    ->icon('heroicon-o-building-office-2'),
-                NavigationGroup::make()
-                    ->label('COORDINACIÓN DE SERVICIOS')
-                    ->icon('heroicon-o-square-3-stack-3d'),
-                NavigationGroup::make()
-                    ->label('CONFIGURACION')
-                    ->icon('heroicon-o-cog-8-tooth'),
-                NavigationGroup::make()
-                    ->label('ZONA DE DESCARGA')
-                    ->icon('heroicon-o-cloud-arrow-down'),
-            ])
+            ->navigationGroups(OperationsPanelNavigationGroups::definitions())
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn () => view('filament.panels.internal-quick-nav')
+            )
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_NAV_END,
+                fn () => view('filament.operations.partials.sidebar-navigation-accordion-script')
             )
             ->renderHook(
                 PanelsRenderHook::CONTENT_START,
