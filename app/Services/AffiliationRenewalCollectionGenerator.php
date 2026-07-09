@@ -37,7 +37,7 @@ final class AffiliationRenewalCollectionGenerator
 
         $dates = [];
 
-        for ($installment = 1; $installment <= $installments; $installment++) {
+        for ($installment = 0; $installment < $installments; $installment++) {
             $dates[] = $effectiveDate->copy()->addMonthsNoOverflow($intervalMonths * $installment);
         }
 
@@ -64,9 +64,10 @@ final class AffiliationRenewalCollectionGenerator
         $lastInvoiceNumber = $this->resolveLastCollectionInvoiceNumber();
         $created = 0;
 
-        foreach ($paymentDates as $paymentDate) {
+        foreach ($paymentDates as $installmentIndex => $paymentDate) {
             $nextPaymentDate = $paymentDate->format('d/m/Y');
             $expirationDays = $paymentFrequency === 'MENSUAL' ? 30 : 5;
+            $isFirstInstallment = $installmentIndex === 0;
 
             $collection = new Collection;
             $collection->sale_id = $this->resolveSaleIdForAffiliation($affiliation);
@@ -94,7 +95,7 @@ final class AffiliationRenewalCollectionGenerator
             $collection->next_payment_date = $nextPaymentDate;
             $collection->filter_next_payment_date = $paymentDate->format('Y-m-d');
             $collection->expiration_date = $paymentDate->copy()->addDays($expirationDays)->format('d/m/Y');
-            $collection->status = 'POR PAGAR';
+            $collection->status = $isFirstInstallment ? 'PAGADO' : 'POR PAGAR';
             $collection->days = 0;
             $collection->created_by = $createdBy;
             $collection->save();

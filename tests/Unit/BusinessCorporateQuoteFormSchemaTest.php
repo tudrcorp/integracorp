@@ -34,6 +34,19 @@ it('requiere al menos una persona en la cotización', function (): void {
         ->toContain('->minValue(1)');
 });
 
+it('filtra planes activos por tipo basico o dress tylor', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/CorporateQuotes/Schemas/CorporateQuoteForm.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain("Checkbox::make('quote_type_basico')")
+        ->toContain("Checkbox::make('quote_type_dress_tylor')")
+        ->toContain('planOptionsForQuoteType')
+        ->toContain("->where('status', 'ACTIVO')")
+        ->toContain("normalizeQuotePlanType(\$get('type'))")
+        ->not->toContain("->hidden(fn (Get \$get) => \$get('type') == 'DRESS-TAILOR')");
+});
+
 it('usa repetidor dinámico de rangos de edad desacoplado de ids fijos', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/CorporateQuotes/Schemas/CorporateQuoteForm.php';
     $source = file_get_contents($path);

@@ -8,6 +8,7 @@ use App\Models\Agent;
 use App\Models\AgeRange;
 use App\Models\CorporateQuote;
 use App\Models\Plan;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
@@ -23,6 +24,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class CorporateQuoteForm
@@ -93,6 +95,58 @@ class CorporateQuoteForm
         $set('details_quote', self::emptyQuoteDetailRows($planId));
     }
 
+    private static function normalizeQuotePlanType(?string $type): string
+    {
+        return $type === 'DRESS-TAILOR' ? 'DRESS-TAILOR' : 'BASICO';
+    }
+
+    private static function syncQuoteTypeFromCategoryCheckbox(Set $set, string $selectedType): void
+    {
+        $normalizedType = self::normalizeQuotePlanType($selectedType);
+
+        $set('quote_type_basico', $normalizedType === 'BASICO');
+        $set('quote_type_dress_tylor', $normalizedType === 'DRESS-TAILOR');
+        $set('type', $normalizedType);
+        $set('plan', null);
+        $set('details_quote', []);
+        $set('details_quote_multiple', []);
+    }
+
+    /**
+     * @return Collection<int|string, string>
+     */
+    private static function planOptionsForQuoteType(?string $type): Collection
+    {
+        $plans = Plan::query()
+            ->where('type', self::normalizeQuotePlanType($type))
+            ->where('status', 'ACTIVO')
+            ->orderBy('description')
+            ->pluck('description', 'id');
+
+        return $plans->put('CM', 'COTIZACIÓN MULTIPLE');
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    private static function planDescriptionsForQuoteType(?string $type): array
+    {
+        $descriptions = Plan::query()
+            ->where('type', self::normalizeQuotePlanType($type))
+            ->where('status', 'ACTIVO')
+            ->withCount('ageRanges')
+            ->orderBy('description')
+            ->get()
+            ->mapWithKeys(fn (Plan $plan): array => [
+                $plan->id => $plan->age_ranges_count.' rango(s) de edad disponible(s).',
+            ])
+            ->all();
+
+        $descriptions['CM'] = 'Seleccione más de dos (2) planes.';
+
+        return $descriptions;
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -113,17 +167,31 @@ class CorporateQuoteForm
                                     ->schema([
                                         Grid::make(4)
                                             ->schema([
-                                                Radio::make('type')
-                                                    ->label('Seleccione el tipo de cotización')
+                                                Checkbox::make('quote_type_basico')
+                                                    ->label('Básico')
+                                                    ->dehydrated(false)
+                                                    ->default(true)
                                                     ->live()
-                                                    ->inline()
-                                                    ->options([
-                                                        'BASICO' => 'BÁSICA',
-                                                        // 'DRESS-TAILOR' => 'DRESS-TAYLOR / PLANES A LA MEDIDA',
-                                                    ])
-                                                    ->required()
-                                                    ->default('BASICO'),
-
+                                                    ->afterStateHydrated(function (Checkbox $component, mixed $state, Get $get): void {
+                                                        $component->state(self::normalizeQuotePlanType($get('type')) === 'BASICO');
+                                                    })
+                                                    ->afterStateUpdated(function (?bool $state, Set $set): void {
+                                                        self::syncQuoteTypeFromCategoryCheckbox($set, $state ? 'BASICO' : 'DRESS-TAILOR');
+                                                    }),
+                                                Checkbox::make('quote_type_dress_tylor')
+                                                    ->label('Dress Tylor')
+                                                    ->dehydrated(false)
+                                                    ->default(false)
+                                                    ->live()
+                                                    ->afterStateHydrated(function (Checkbox $component, mixed $state, Get $get): void {
+                                                        $component->state(self::normalizeQuotePlanType($get('type')) === 'DRESS-TAILOR');
+                                                    })
+                                                    ->afterStateUpdated(function (?bool $state, Set $set): void {
+                                                        self::syncQuoteTypeFromCategoryCheckbox($set, $state ? 'DRESS-TAILOR' : 'BASICO');
+                                                    }),
+                                                Hidden::make('type')
+                                                    ->default('BASICO')
+                                                    ->dehydrated(),
                                             ])->columnSpanFull(),
                                         Grid::make(4)
                                             ->schema([
@@ -225,7 +293,6 @@ class CorporateQuoteForm
                             ]),
                         Tab::make('PLANES A COTIZAR')
                             ->icon(Heroicon::OutlinedClipboardDocumentList)
-                            ->hidden(fn (Get $get) => $get('type') == 'DRESS-TAILOR')
                             ->schema([
                                 Section::make('plans')
                                     ->heading('¡Sección de planes a cotizar! 🎯')
@@ -239,37 +306,12 @@ class CorporateQuoteForm
                                             ->afterStateUpdated(function (Set $set, mixed $state): void {
                                                 self::syncQuoteDetailsForPlan($set, $state);
                                             })
-                                            ->options(function () {
-                                                $planesConBeneficios = Plan::query()
-                                                    ->where('type', 'BASICO')
-                                                    ->where('status', 'ACTIVO')
-                                                    ->get()
-                                                    ->pluck('description', 'id');
-
-                                                $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
-
-                                                return $planesConBeneficios;
-                                            })
-                                            ->descriptions(function (): array {
-                                                $descriptions = Plan::query()
-                                                    ->where('type', 'BASICO')
-                                                    ->where('status', 'ACTIVO')
-                                                    ->withCount('ageRanges')
-                                                    ->get()
-                                                    ->mapWithKeys(fn (Plan $plan): array => [
-                                                        $plan->id => $plan->age_ranges_count.' rango(s) de edad disponible(s).',
-                                                    ])
-                                                    ->all();
-
-                                                $descriptions['CM'] = 'Seleccione más de dos (2) planes.';
-
-                                                return $descriptions;
-                                            }),
+                                            ->options(fn (Get $get): array => self::planOptionsForQuoteType($get('type'))->all())
+                                            ->descriptions(fn (Get $get): array => self::planDescriptionsForQuoteType($get('type'))),
                                     ]),
                             ]),
                         Tab::make('RANGO DE EDAD')
                             ->icon(Heroicon::OutlinedUsers)
-                            ->hidden(fn (Get $get) => $get('type') == 'DRESS-TAILOR')
                             ->schema([
                                 Section::make('age_range')
                                     ->heading('¡Listo para el último paso! 🏁')
@@ -344,8 +386,13 @@ class CorporateQuoteForm
                                                 Select::make('plan_id')
                                                     ->label('Seleccione el plan:')
                                                     ->live()
-                                                    ->options(function (Get $get) {
-                                                        return Plan::where('status', 'ACTIVO')->get()->pluck('description', 'id');
+                                                    ->options(function (Get $get): array {
+                                                        return Plan::query()
+                                                            ->where('type', self::normalizeQuotePlanType($get('type')))
+                                                            ->where('status', 'ACTIVO')
+                                                            ->orderBy('description')
+                                                            ->pluck('description', 'id')
+                                                            ->all();
                                                     }),
                                                 Select::make('age_range_id')
                                                     ->label('Rango de edad')
