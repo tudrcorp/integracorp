@@ -1,5 +1,6 @@
 @props([
     'affiliation' => null,
+    'useIndividualAffiliateCardLayout' => false,
 ])
 
 @php
@@ -8,6 +9,7 @@
     $panelConfig = \Illuminate\Support\Js::from([
         'regenerateUrl' => $regenerateAsyncUrl,
         'sendEmailUrl' => $sendEmailUrl,
+        'useIndividualAffiliateCardLayout' => (bool) $useIndividualAffiliateCardLayout,
     ]);
 @endphp
 

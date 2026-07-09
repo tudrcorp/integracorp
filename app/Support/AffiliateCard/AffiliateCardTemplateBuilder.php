@@ -30,6 +30,12 @@ final class AffiliateCardTemplateBuilder
             $generated[] = $outputPath;
         }
 
+        foreach ((array) config('affiliate-card.standalone_template_keys', []) as $templateKey) {
+            $outputPath = self::templatePathForKey((string) $templateKey);
+            self::buildForTemplateKey((string) $templateKey, $outputPath);
+            $generated[] = $outputPath;
+        }
+
         if ($generated === []) {
             throw new RuntimeException('No se generó ninguna plantilla: faltan archivos QR en storage.');
         }
@@ -55,11 +61,22 @@ final class AffiliateCardTemplateBuilder
             'cobertura' => '',
             'desde' => '',
             'hasta' => '',
+            'card_layout' => $templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL
+                ? AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL
+                : null,
         ]);
 
         $data = self::withoutStampedFields($data);
 
-        $pdf = Pdf::loadView('documents.tarjeta-afiliado', ['data' => $data]);
+        if ($templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL) {
+            $data['plan_qr_absolute_path'] = null;
+        }
+
+        $view = $templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL
+            ? 'documents.tarjeta-afiliado-individual'
+            : 'documents.tarjeta-afiliado';
+
+        $pdf = Pdf::loadView($view, ['data' => $data]);
         DomPdfBatchRenderOptions::apply($pdf);
         $pdf->save($outputPath);
 
@@ -113,6 +130,7 @@ final class AffiliateCardTemplateBuilder
             'inicial' => 'INICIAL',
             'ideal' => 'IDEAL',
             'especial' => 'ESPECIAL',
+            'individual' => 'INCLUSIÓN',
             default => mb_strtoupper($templateKey),
         };
     }

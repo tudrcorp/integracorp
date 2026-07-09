@@ -14,6 +14,12 @@ use Illuminate\Support\Facades\Auth;
 
 class PlanCreationPersistence
 {
+    private const PACKAGE_QUOTE_AGE_RANGE = '1 a 50';
+
+    private const PACKAGE_QUOTE_AGE_INIT = 1;
+
+    private const PACKAGE_QUOTE_AGE_END = 50;
+
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
@@ -222,7 +228,7 @@ class PlanCreationPersistence
     /**
      * @param  array<string, mixed>  $coverageRow
      */
-    private static function syncCoverageAgeRates(Plan $plan, array $coverageRow): ?Coverage
+    private static function syncCoverageAgeRates(Plan $plan, array $coverageRow, bool $createFees = true): ?Coverage
     {
         $coverageId = $coverageRow['coverage_id'] ?? null;
 
@@ -282,40 +288,47 @@ class PlanCreationPersistence
                 $ageRange->save();
             }
 
-            $fee = Fee::query()->firstOrNew([
-                'age_range_id' => $ageRange->id,
-                'coverage_id' => $coverage->id,
-            ]);
+            if ($createFees) {
+                $fee = Fee::query()->firstOrNew([
+                    'age_range_id' => $ageRange->id,
+                    'coverage_id' => $coverage->id,
+                ]);
 
-            $fee->price = $rate;
-            $fee->range = $ageRange->range;
-            $fee->coverage = $coverage->price;
-            $fee->status = 'ACTIVO';
+                $fee->price = $rate;
+                $fee->range = $ageRange->range;
+                $fee->coverage = $coverage->price;
+                $fee->status = 'ACTIVO';
 
-            if (blank($fee->created_by)) {
-                $fee->created_by = Auth::user()?->name;
+                if (blank($fee->code)) {
+                    $fee->code = self::generateFeeCode();
+                }
+
+                if (blank($fee->created_by)) {
+                    $fee->created_by = Auth::user()?->name;
+                }
+
+                $fee->save();
             }
-
-            $fee->save();
         }
 
-        Fee::query()
-            ->where('coverage_id', $coverage->id)
-            ->when(
-                $desiredAgeRangeIds !== [],
-                static fn ($query) => $query->whereNotIn('age_range_id', $desiredAgeRangeIds),
-                static fn ($query) => $query,
-            )
-            ->delete();
+        if ($createFees) {
+            Fee::query()
+                ->where('coverage_id', $coverage->id)
+                ->when(
+                    $desiredAgeRangeIds !== [],
+                    static fn ($query) => $query->whereNotIn('age_range_id', $desiredAgeRangeIds),
+                    static fn ($query) => $query,
+                )
+                ->delete();
+        }
 
         return $coverage;
     }
 
     /**
      * @param  list<array<string, mixed>>  $coverageRows
-     * @return list<int>
      */
-    private static function syncPlanCoverages(Plan $plan, array $coverageRows): array
+    private static function syncPlanCoverages(Plan $plan, array $coverageRows, bool $createFees = true): array
     {
         $syncedCoverageIds = [];
 
@@ -324,7 +337,7 @@ class PlanCreationPersistence
                 continue;
             }
 
-            $coverage = self::syncCoverageAgeRates($plan, $coverageRow);
+            $coverage = self::syncCoverageAgeRates($plan, $coverageRow, $createFees);
 
             if ($coverage !== null) {
                 $syncedCoverageIds[] = (int) $coverage->id;
@@ -355,7 +368,113 @@ class PlanCreationPersistence
     private static function syncPackageMode(Plan $plan, array $formData): void
     {
         self::syncBenefitPlans($plan, $formData['package_benefit_ids'] ?? []);
-        self::syncPlanCoverages($plan, $formData['general_coverages'] ?? []);
+        self::syncPlanCoverages($plan, $formData['general_coverages'] ?? [], createFees: false);
+        self::syncPackageQuoteFees($plan, $formData['general_coverages'] ?? []);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $coverageRows
+     */
+    private static function syncPackageQuoteFees(Plan $plan, array $coverageRows): void
+    {
+        $rate = self::resolvePackageQuoteRate($coverageRows);
+
+        if ($rate === null) {
+            return;
+        }
+
+        $ageRange = self::ensurePackageAgeRange($plan);
+
+        $fee = Fee::query()
+            ->where('age_range_id', $ageRange->id)
+            ->whereNull('coverage_id')
+            ->first();
+
+        if ($fee === null) {
+            $fee = new Fee;
+            $fee->age_range_id = $ageRange->id;
+            $fee->coverage_id = null;
+            $fee->code = self::generateFeeCode();
+        }
+
+        $fee->price = $rate;
+        $fee->range = self::PACKAGE_QUOTE_AGE_RANGE;
+        $fee->coverage = null;
+        $fee->status = 'ACTIVO';
+
+        if (blank($fee->created_by)) {
+            $fee->created_by = Auth::user()?->name;
+        }
+
+        $fee->save();
+
+        $ageRange->fee = (string) $rate;
+        $ageRange->save();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $coverageRows
+     */
+    private static function resolvePackageQuoteRate(array $coverageRows): ?float
+    {
+        foreach ($coverageRows as $coverageRow) {
+            if (! is_array($coverageRow)) {
+                continue;
+            }
+
+            foreach ($coverageRow['age_rates'] ?? [] as $ageRateRow) {
+                if (! is_array($ageRateRow)) {
+                    continue;
+                }
+
+                $rate = $ageRateRow['rate'] ?? null;
+
+                if (is_numeric($rate)) {
+                    return (float) $rate;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static function ensurePackageAgeRange(Plan $plan): AgeRange
+    {
+        $ageRange = AgeRange::query()->firstOrNew([
+            'plan_id' => $plan->id,
+            'range' => self::PACKAGE_QUOTE_AGE_RANGE,
+        ]);
+
+        if (blank($ageRange->code)) {
+            $ageRange->code = self::generateAgeRangeCode();
+        }
+
+        $ageRange->age_init = self::PACKAGE_QUOTE_AGE_INIT;
+        $ageRange->age_end = self::PACKAGE_QUOTE_AGE_END;
+        $ageRange->coverage_id = null;
+        $ageRange->status = 'ACTIVO';
+
+        if (blank($ageRange->created_by)) {
+            $ageRange->created_by = Auth::user()?->name;
+        }
+
+        $ageRange->save();
+
+        return $ageRange;
+    }
+
+    private static function generateFeeCode(): string
+    {
+        $nextId = (int) (Fee::query()->max('id') ?? 0) + 1;
+
+        return 'TDEC-FA-000'.$nextId;
+    }
+
+    private static function generateAgeRangeCode(): string
+    {
+        $nextId = (int) (AgeRange::query()->max('id') ?? 0) + 1;
+
+        return 'TDEC-RE-000'.$nextId;
     }
 
     /**

@@ -46,9 +46,10 @@
         <div class="cover">
             <img
                 class="cover-template-image"
-                src="{{ public_path('storage/certificados/tarjeta-afiliado.png') }}"
+                src="{{ public_path('storage/certificados/tarjeta-afiliado-individual.png') }}"
                 alt=""
             >
+
             @if (! empty($data['plan_qr_absolute_path']))
                 <div class="cover-field" style="top: {{ $data['plan_qr_top_px'] }}px; right: {{ $data['plan_qr_right_px'] }}px;">
                     <img
@@ -58,29 +59,33 @@
                     >
                 </div>
             @endif
-            <div class="cover-field" style="top: 354px; left: 392px;">
+
+            <div class="cover-field" style="top: 370px; left: 267px;">
                 {{ $data['code'] }}
             </div>
-            <div class="cover-field" style="top: 422px; left: 252px;">
-                {{ $data['name_first_part'] }}<br>{{ $data['name_second_part'] }}
+            <div class="cover-field" style="top: 406px; left: 118px;">
+                {{ $data['name_first_part'] }}
             </div>
-            <div class="cover-field" style="top: 448px; left: 112px;">
+            <div class="cover-field" style="top: 420px; left: 118px;">
+                {{ $data['name_second_part'] }}
+            </div>
+            <div class="cover-field" style="top: 440px; left: 88px;">
                 {{ $data['ci'] }}
             </div>
-            <div class="cover-field" style="top: 468px; left: 122px;">
+            <div class="cover-field" style="top: 468px; left: 98px;">
                 {{ $data['plan_tarjeta_etiqueta'] }}
             </div>
-            <div class="cover-field" style="top: 454px; left: 452px;">
-                {{ $data['desde'] }}
-            </div>
-            <div class="cover-field" style="top: 488px; left: 248px;">
+            <div class="cover-field" style="top: 494px; left: 203px;">
                 {{ $data['frecuencia'] }}
             </div>
-            <div class="cover-field" style="top: 469px; left: 452px;">
-                {{ $data['hasta'] }}
-            </div>
-            <div class="cover-field" style="top: 492px; left: 172px;">
+            <div class="cover-field" style="top: 520px; left: 138px;">
                 {{ $data['cobertura_display'] }}
+            </div>
+            <div class="cover-field" style="top: 464px; left: 455px;">
+                {{ $data['desde'] }}
+            </div>
+            <div class="cover-field" style="top: 485px; left: 455px;">
+                {{ $data['hasta'] }}
             </div>
         </div>
     </body>

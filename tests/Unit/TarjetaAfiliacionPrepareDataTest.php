@@ -20,7 +20,9 @@ it('prepara datos de vista de tarjeta con etiqueta de plan y cobertura formatead
 
     expect($data['plan_tarjeta_etiqueta'])->toBe('IDEAL')
         ->and($data['plan_qr_filename'])->toBe('qr-plan-ideal.png')
-        ->and($data['plan_qr_size_px'])->toBe(86)
+        ->and($data['plan_qr_size_px'])->toBe(82)
+        ->and($data['plan_qr_top_px'])->toBe(378)
+        ->and($data['plan_qr_right_px'])->toBe(108)
         ->and($data['cobertura_display'])->toBe('100,50 US$')
         ->and($data['name_first_part'])->not->toBeEmpty();
 });
@@ -58,12 +60,40 @@ it('prepara cobertura textual y plan inclusion para tarjetas de nuevos negocios'
         ->and($data['frecuencia'])->toBe('CONTADO');
 });
 
+it('prepara qr para plantilla individual de afiliaciones', function () {
+    $data = TarjetaAfiliacionController::prepareDataForTarjetaPdfView([
+        'name' => 'Titular Demo',
+        'ci' => 'V-1',
+        'code' => 'TDEC-IND-1',
+        'plan_id' => 2,
+        'plan' => 'PLAN IDEAL',
+        'card_layout' => 'individual',
+    ]);
+
+    expect($data['plan_qr_size_px'])->toBe(80)
+        ->and($data['plan_qr_top_px'])->toBe(425)
+        ->and($data['plan_qr_right_px'])->toBe(135);
+});
+
 it('la plantilla pdf de tarjeta usa la imagen completa del carnet como fondo', function (): void {
     $blade = file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/tarjeta-afiliado.blade.php');
 
     expect($blade)
         ->toContain('storage/certificados/tarjeta-afiliado.png')
         ->toContain('cover-template-image')
+        ->not->toContain('fondo-certificado.png')
+        ->not->toContain('carnet-title')
+        ->not->toContain('carnet-recommendation-inner');
+});
+
+it('la plantilla individual usa imagen completa FEDEVIP v2', function (): void {
+    $blade = file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/tarjeta-afiliado-individual.blade.php');
+
+    expect($blade)
+        ->toContain('storage/certificados/tarjeta-afiliado-individual.png')
+        ->toContain('cover-template-image')
+        ->toContain('top: 464px; left: 455px')
+        ->toContain('top: 485px; left: 455px')
         ->not->toContain('fondo-certificado.png')
         ->not->toContain('carnet-title')
         ->not->toContain('carnet-recommendation-inner');

@@ -1092,6 +1092,7 @@ class AffiliationsTable
 
                             return View::make('filament.business.affiliations.affiliation-documents-preview-modal', [
                                 'affiliation' => $record,
+                                'useIndividualAffiliateCardLayout' => true,
                             ]);
                         })
                         ->modalSubmitAction(false)

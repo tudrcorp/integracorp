@@ -129,8 +129,12 @@ class AffiliationBusinessDocumentsService
         return null;
     }
 
-    public static function regenerateCertificateAndTarjetas(Affiliation $record, ?int $userId, bool $notifyCertificate = false): array
-    {
+    public static function regenerateCertificateAndTarjetas(
+        Affiliation $record,
+        ?int $userId,
+        bool $notifyCertificate = false,
+        bool $useIndividualAffiliateCardLayout = false,
+    ): array {
         $record->loadMissing(['affiliates', 'plan.benefitPlans', 'coverage', 'agent', 'agency']);
 
         self::purgeExistingGeneratedDocuments($record);
@@ -179,17 +183,18 @@ class AffiliationBusinessDocumentsService
         $frecuencia = $record->payment_frequency;
 
         foreach ($record->affiliates as $affiliate) {
-            $data = [
-                'name' => $affiliate->full_name,
-                'ci' => $affiliate->nro_identificacion,
-                'code' => $record->code,
-                'plan' => $planDesc,
-                'frecuencia' => $frecuencia,
-                'cobertura' => $cobertura,
-                'desde' => $desde,
-                'hasta' => $hasta,
-                'output_filename' => 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf',
-            ];
+            $data = self::tarjetaPayload(
+                record: $record,
+                name: (string) $affiliate->full_name,
+                ci: (string) $affiliate->nro_identificacion,
+                planDesc: $planDesc,
+                frecuencia: $frecuencia,
+                cobertura: $cobertura,
+                desde: $desde,
+                hasta: $hasta,
+                outputFilename: 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf',
+                useIndividualAffiliateCardLayout: $useIndividualAffiliateCardLayout,
+            );
 
             $ok = TarjetaAfiliacionController::generateTarjetaAfiliacion(
                 $data,
@@ -211,17 +216,18 @@ class AffiliationBusinessDocumentsService
         }
 
         if ($legacyTarjetaCount === 1) {
-            $dataLegacy = [
-                'name' => $record->full_name_ti,
-                'ci' => $record->nro_identificacion_ti,
-                'code' => $record->code,
-                'plan' => $planDesc,
-                'frecuencia' => $frecuencia,
-                'cobertura' => $cobertura,
-                'desde' => $desde,
-                'hasta' => $hasta,
-                'output_filename' => 'TAR-'.$record->code.'.pdf',
-            ];
+            $dataLegacy = self::tarjetaPayload(
+                record: $record,
+                name: (string) $record->full_name_ti,
+                ci: (string) $record->nro_identificacion_ti,
+                planDesc: $planDesc,
+                frecuencia: $frecuencia,
+                cobertura: $cobertura,
+                desde: $desde,
+                hasta: $hasta,
+                outputFilename: 'TAR-'.$record->code.'.pdf',
+                useIndividualAffiliateCardLayout: $useIndividualAffiliateCardLayout,
+            );
             $legacy = TarjetaAfiliacionController::generateTarjetaAfiliacion(
                 $dataLegacy,
                 silent: true,
@@ -252,6 +258,42 @@ class AffiliationBusinessDocumentsService
         }
 
         return ['documents' => $documents];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function tarjetaPayload(
+        Affiliation $record,
+        string $name,
+        string $ci,
+        string $planDesc,
+        mixed $frecuencia,
+        mixed $cobertura,
+        string $desde,
+        string $hasta,
+        string $outputFilename,
+        bool $useIndividualAffiliateCardLayout = false,
+    ): array {
+        $payload = [
+            'name' => $name,
+            'ci' => $ci,
+            'code' => $record->code,
+            'plan' => $planDesc,
+            'plan_id' => $record->plan_id !== null ? (int) $record->plan_id : null,
+            'frecuencia' => $frecuencia,
+            'cobertura' => $cobertura,
+            'desde' => $desde,
+            'hasta' => $hasta,
+            'output_filename' => $outputFilename,
+        ];
+
+        if ($useIndividualAffiliateCardLayout) {
+            $payload['card_layout'] = 'individual';
+            $payload['template_key'] = 'individual';
+        }
+
+        return $payload;
     }
 
     private static function purgeExistingGeneratedDocuments(Affiliation $record): void
