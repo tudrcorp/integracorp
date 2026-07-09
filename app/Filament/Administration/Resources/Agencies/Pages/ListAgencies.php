@@ -65,19 +65,41 @@ class ListAgencies extends ListRecords
                     'class' => self::TICKET_BUTTON_CLASS,
                 ])
                 ->modalHeading('Reportes de agencias')
-                ->modalDescription('Descarga informes listos para análisis. Elige el tipo de reporte y el formato que prefieras.')
+                ->modalDescription('Descarga informes en CSV listos para análisis. Elige el tipo de reporte que necesites.')
                 ->modalWidth(Width::SevenExtraLarge)
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Cerrar')
-                ->modalContent(fn (): ViewContract => View::make(
+                ->registerModalActions($this->agencyReportCsvModalActions())
+                ->modalContent(fn (Action $action): ViewContract => View::make(
                     'filament.administration.agencies.agency-reports-export-modal',
-                    ['reports' => $reports],
+                    [
+                        'reports' => $reports,
+                        'action' => $action,
+                    ],
                 )),
         ];
     }
 
     /**
-     * @return array<int, array{key: string, label: string, description: string, icon: string, csvUrl: string, xlsxUrl: string}>
+     * @return array<int, Action>
+     */
+    private function agencyReportCsvModalActions(): array
+    {
+        $actions = [];
+
+        foreach (AdministrationAgencyReportsExportService::reportLabels() as $key => $label) {
+            $actions[] = Action::make('download_agency_report_csv_'.$key)
+                ->label('Descargar CSV')
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->color('gray')
+                ->action(fn (): StreamedResponse => AdministrationAgencyReportsExportService::toCsv($key));
+        }
+
+        return $actions;
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, description: string, icon: string, csvAction: string}>
      */
     private function agencyReportModalItems(): array
     {
@@ -105,14 +127,7 @@ class ListAgencies extends ListRecords
                 'label' => $label,
                 'description' => $descriptions[$key] ?? '',
                 'icon' => $icons[$key] ?? 'default',
-                'csvUrl' => route('administration.agencies.reports.export', [
-                    'report' => $key,
-                    'format' => 'csv',
-                ]),
-                'xlsxUrl' => route('administration.agencies.reports.export', [
-                    'report' => $key,
-                    'format' => 'xlsx',
-                ]),
+                'csvAction' => 'download_agency_report_csv_'.$key,
             ];
         }
 
