@@ -4,12 +4,12 @@ namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Http\Middleware\DuplicatedSession;
+use App\Support\Filament\AdministrationPanelNavigationGroups;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -68,31 +68,7 @@ class AdministrationPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
-            ->navigationGroups([
-                NavigationGroup::make()
-                    ->label('ESTRUCTURA COMERCIAL')
-                    ->icon('heroicon-o-building-office-2'),
-                NavigationGroup::make()
-                    ->label('AFILIACIONES')
-                    ->icon('heroicon-o-identification'),
-                NavigationGroup::make()
-                    ->label('ADMINISTRACIÓN')
-                    ->icon('heroicon-o-calculator'),
-                NavigationGroup::make()
-                    ->label('COMPENSACION TDEV')
-                    ->icon('heroicon-o-banknotes'),
-                NavigationGroup::make()
-                    ->label('RRHH')
-                    ->icon('heroicon-o-user-group')
-                    ->collapsed(),
-                NavigationGroup::make()
-                    ->label('NOMINA')
-                    ->icon('heroicon-o-currency-dollar')
-                    ->collapsed(),
-                NavigationGroup::make()
-                    ->label('ZONA DE DESCARGA')
-                    ->icon('heroicon-o-cloud-arrow-down'),
-            ])
+            ->navigationGroups(AdministrationPanelNavigationGroups::definitions())
             ->databaseNotifications()
             ->databaseTransactions()
             ->breadcrumbs(false)
@@ -132,6 +108,10 @@ class AdministrationPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn () => view('filament.panels.internal-quick-nav')
+            )
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_NAV_END,
+                fn () => view('filament.administration.partials.sidebar-navigation-accordion-script')
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
