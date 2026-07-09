@@ -201,57 +201,51 @@ class AffiliationsTable
                         ->toggleable(),
                 ])
                     ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
-                ColumnGroup::make('Estructura comercial', [
-                    TextColumn::make('accountManager.name')
-                        ->label('Account Manager')
-                        ->icon(Heroicon::OutlinedShieldCheck)
-                        ->badge()
-                        ->sortable()
-                        ->color(fn (?string $state): string => ($state === '-----' || blank($state)) ? 'gray' : 'success')
-                        ->toggleable(),
-                    TextColumn::make('agency.name_corporative')
-                        ->label('Agencia')
-                        ->badge()
-                        ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : '—')
-                        ->color('azulOscuro')
-                        ->sortable()
-                        ->searchable()
-                        ->toggleable(),
-                    TextColumn::make('agent.name')
-                        ->label('Agente')
-                        ->badge()
-                        ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : '—')
-                        ->color('azulOscuro')
-                        ->sortable()
-                        ->icon(Heroicon::OutlinedUser)
-                        ->searchable()
-                        ->toggleable(),
-                ])
-                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
+                // LINEAS COMENTADAS PORQUE NO SE USAN EN LA TABLA DE AFILIACIONES INDIVIDUALES EN EL PANEL DE ADMINISTRACION
+                // ColumnGroup::make('Estructura comercial', [
+                //     TextColumn::make('accountManager.name')
+                //         ->label('Account Manager')
+                //         ->icon(Heroicon::OutlinedShieldCheck)
+                //         ->badge()
+                //         ->sortable()
+                //         ->color(fn (?string $state): string => ($state === '-----' || blank($state)) ? 'gray' : 'success')
+                //         ->toggleable(),
+                //     TextColumn::make('agency.name_corporative')
+                //         ->label('Agencia')
+                //         ->badge()
+                //         ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : '—')
+                //         ->color('azulOscuro')
+                //         ->sortable()
+                //         ->searchable()
+                //         ->toggleable(),
+                //     TextColumn::make('agent.name')
+                //         ->label('Agente')
+                //         ->badge()
+                //         ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : '—')
+                //         ->color('azulOscuro')
+                //         ->sortable()
+                //         ->icon(Heroicon::OutlinedUser)
+                //         ->searchable()
+                //         ->toggleable(),
+                // ])
+                //     ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
                 ColumnGroup::make('Plan y montos', [
                     TextColumn::make('plan.description')
-                        ->label('Plan')
+                        ->label('Plan / cobertura / frecuencia')
                         ->alignCenter()
                         ->badge()
                         ->color('success')
+                        ->formatStateUsing(fn (?string $state): string => filled($state) ? $state : '—')
+                        ->description(fn (Affiliation $record): string => self::planCoverageFrequencyDescription($record))
                         ->sortable()
-                        ->searchable(),
-                    TextColumn::make('coverage.price')
-                        ->label('Covertura')
-                        ->alignCenter()
-                        ->numeric()
-                        ->badge()
-                        ->color('success')
-                        ->suffix(' US$')
-                        ->sortable()
-                        ->searchable(),
-                    TextColumn::make('payment_frequency')
-                        ->label('Frecuencia de pago')
-                        ->alignCenter()
-                        ->badge()
-                        ->color('success')
-                        ->sortable()
-                        ->searchable(),
+                        ->searchable(query: function (Builder $query, string $search): Builder {
+                            return $query->where(function (Builder $query) use ($search): void {
+                                $query->where('payment_frequency', 'like', "%{$search}%")
+                                    ->orWhereHas('plan', fn (Builder $planQuery): Builder => $planQuery->where('description', 'like', "%{$search}%"))
+                                    ->orWhereHas('coverage', fn (Builder $coverageQuery): Builder => $coverageQuery->where('price', 'like', "%{$search}%"));
+                            });
+                        })
+                        ->wrap(),
                     TextColumn::make('family_members')
                         ->label('Poblacion')
                         ->alignCenter()
@@ -295,25 +289,6 @@ class AffiliationsTable
                             return 'danger';
                         })
                         ->searchable(),
-                    TextColumn::make('businessUnit.definition')
-                        ->label('Unidad de Negocio')
-                        ->badge()
-                        ->sortable()
-                        ->color('success')
-                        ->searchable(),
-                    TextColumn::make('businessLine.definition')
-                        ->label('Linea de Servicio')
-                        ->badge()
-                        ->sortable()
-                        ->color('success')
-                        ->searchable(),
-                    TextColumn::make('service_providers')
-                        ->label('Proveedor(es) de Servicio')
-                        ->badge()
-                        ->sortable()
-                        ->color('success')
-                        ->searchable()
-                        ->toggleable(isToggledHiddenByDefault: true),
                 ])
                     ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
                 ColumnGroup::make('Titular', [
@@ -352,19 +327,23 @@ class AffiliationsTable
                         ->label('Direccion')
                         ->icon('fontisto-map-marker-alt')
                         ->sortable()
-                        ->searchable(),
+                        ->searchable()
+                        ->toggleable(isToggledHiddenByDefault: true),
                     TextColumn::make('city.definition')
                         ->sortable()
                         ->label('Ciudad')
-                        ->searchable(),
+                        ->searchable()
+                        ->toggleable(isToggledHiddenByDefault: true),
                     TextColumn::make('state.definition')
                         ->sortable()
                         ->label('Estado')
-                        ->searchable(),
+                        ->searchable()
+                        ->toggleable(isToggledHiddenByDefault: true),
                     TextColumn::make('region_ti')
                         ->sortable()
                         ->label('Region')
-                        ->searchable(),
+                        ->searchable()
+                        ->toggleable(isToggledHiddenByDefault: true),
                     TextColumn::make('country.name')
                         ->sortable()
                         ->label('País')
@@ -2051,6 +2030,21 @@ class AffiliationsTable
         }
 
         return round((float) $a, 6) === round((float) $b, 6);
+    }
+
+    private static function planCoverageFrequencyDescription(Affiliation $record): string
+    {
+        $parts = [];
+
+        if (filled($record->coverage?->price)) {
+            $parts[] = number_format((float) $record->coverage->price, 2).' US$';
+        }
+
+        if (filled($record->payment_frequency)) {
+            $parts[] = (string) $record->payment_frequency;
+        }
+
+        return $parts !== [] ? implode(' · ', $parts) : '—';
     }
 
     private static function statusColor(?string $state): string

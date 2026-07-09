@@ -86,6 +86,7 @@ class AffiliationCorporatesTable
                     'city',
                     'state',
                     'country',
+                    'affiliationCorporatePlans.plan',
                 ]);
 
                 if (Auth::user()->is_accountManagers) {
@@ -136,26 +137,27 @@ class AffiliationCorporatesTable
                         ->wrap(),
                 ])
                     ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
-                ColumnGroup::make('Estructura comercial', [
-                    TextColumn::make('agency.name_corporative')
-                        ->label('Agencia')
-                        ->badge()
-                        ->color('azulOscuro')
-                        ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : '—')
-                        ->sortable()
-                        ->searchable()
-                        ->toggleable(),
-                    TextColumn::make('agent.name')
-                        ->label('Agente')
-                        ->badge()
-                        ->color('azulOscuro')
-                        ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : '—')
-                        ->sortable()
-                        ->icon(Heroicon::OutlinedUser)
-                        ->searchable()
-                        ->toggleable(),
-                ])
-                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
+                // COMENTADO POR QUE NO ES NECESARIO
+                // ColumnGroup::make('Estructura comercial', [
+                //     TextColumn::make('agency.name_corporative')
+                //         ->label('Agencia')
+                //         ->badge()
+                //         ->color('azulOscuro')
+                //         ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : '—')
+                //         ->sortable()
+                //         ->searchable()
+                //         ->toggleable(),
+                //     TextColumn::make('agent.name')
+                //         ->label('Agente')
+                //         ->badge()
+                //         ->color('azulOscuro')
+                //         ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : '—')
+                //         ->sortable()
+                //         ->icon(Heroicon::OutlinedUser)
+                //         ->searchable()
+                //         ->toggleable(),
+                // ])
+                //     ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
                 ColumnGroup::make('Plan y montos', [
                     TextColumn::make('payment_frequency')
                         ->label('Frecuencia de pago')
@@ -246,31 +248,6 @@ class AffiliationCorporatesTable
                         ->toggleable(isToggledHiddenByDefault: true),
                     TextColumn::make('country.name')
                         ->label('País')
-                        ->sortable()
-                        ->searchable()
-                        ->toggleable(isToggledHiddenByDefault: true),
-                ])
-                    ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
-                ColumnGroup::make('ILS', [
-                    TextColumn::make('vaucher_ils')
-                        ->label('Voucher ILS')
-                        ->badge()
-                        ->alignCenter()
-                        ->color('success')
-                        ->sortable()
-                        ->searchable(),
-                    TextColumn::make('date_payment_initial_ils')
-                        ->label('ago ILS Desde')
-                        ->badge()
-                        ->alignCenter()
-                        ->color('success')
-                        ->sortable()
-                        ->searchable(),
-                    TextColumn::make('date_payment_final_ils')
-                        ->label('Pago ILS Hasta')
-                        ->badge()
-                        ->alignCenter()
-                        ->color('success')
                         ->sortable()
                         ->searchable()
                         ->toggleable(isToggledHiddenByDefault: true),
@@ -2002,6 +1979,19 @@ class AffiliationCorporatesTable
     private static function shouldAutoCalculateBcvRate(Get $get): bool
     {
         return ! filter_var($get('tasa_bcv_manual'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function associatedPlanDescriptions(AffiliationCorporate $record): array
+    {
+        return $record->affiliationCorporatePlans
+            ->pluck('plan.description')
+            ->filter(fn (?string $description): bool => filled($description))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private static function statusColor(?string $state): string
