@@ -525,7 +525,7 @@ class PlanForm
                             ->addActionLabel('Agregar cobertura general')
                             ->collapsible()
                             ->cloneable()
-                            ->defaultItems(0)
+                            ->defaultItems(1)
                             ->itemLabel(
                                 fn (array $state): ?string => self::generalCoverageRepeaterItemLabel($state)
                             )
@@ -572,7 +572,6 @@ class PlanForm
                                             ]))
                                             ->live()
                                             ->preload()
-                                            ->required()
                                             ->searchable(),
                                     ]),
 

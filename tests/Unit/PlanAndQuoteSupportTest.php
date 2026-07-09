@@ -32,6 +32,16 @@ it('prepara atributos del plan removiendo campos del formulario', function (): v
     expect($prepared['type'])->toBe('BASICO');
 });
 
+it('persiste tarifa de paquete en fees con cobertura nula y rango 1 a 50', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Support/PlanCreationPersistence.php');
+
+    expect($source)
+        ->toContain('syncPackageQuoteFees')
+        ->toContain("PACKAGE_QUOTE_AGE_RANGE = '1 a 50'")
+        ->toContain('->whereNull(\'coverage_id\')')
+        ->toContain('createFees: false');
+});
+
 it('hidrata datos del formulario de edicion para planes en modo paquete', function (): void {
     $plan = \App\Models\Plan::query()
         ->whereHas('benefitPlans')

@@ -41,4 +41,13 @@ describe('AffiliationBusinessDocumentsService', function () {
 
         expect(AffiliationBusinessDocumentsService::shouldGenerateLegacyTitularTarjeta($affiliation))->toBeTrue();
     });
+
+    it('marca layout individual en payload de tarjeta cuando se solicita', function (): void {
+        $service = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationBusinessDocumentsService.php');
+
+        expect($service)
+            ->toContain('useIndividualAffiliateCardLayout')
+            ->toContain("\$payload['card_layout'] = 'individual'")
+            ->toContain("\$payload['template_key'] = 'individual'");
+    });
 });

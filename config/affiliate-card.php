@@ -33,4 +33,13 @@ return [
         'qr-plan-especial.png' => 'especial',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Plantillas base sin mapeo por QR (p. ej. carnet FEDEVIP v2 individual)
+    |--------------------------------------------------------------------------
+    */
+    'standalone_template_keys' => [
+        'individual',
+    ],
+
 ];

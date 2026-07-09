@@ -16,10 +16,13 @@ class AffiliationBusinessDocumentsController extends Controller
     {
         try {
             $userId = auth()->id();
+            $useIndividualAffiliateCardLayout = request()->boolean('use_individual_affiliate_card_layout');
+
             $result = AffiliationBusinessDocumentsService::regenerateCertificateAndTarjetas(
                 $affiliation,
                 $userId,
                 notifyCertificate: false,
+                useIndividualAffiliateCardLayout: $useIndividualAffiliateCardLayout,
             );
 
             SecurityAudit::log('AUDIT_AFFILIATION_DOCUMENTS_REGENERATED', 'business.affiliation-documents.regenerate-async', [

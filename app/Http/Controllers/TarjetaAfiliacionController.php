@@ -40,9 +40,16 @@ class TarjetaAfiliacionController extends Controller
         };
         $data['plan_qr_filename'] = TarjetaAfiliacionQrPlanCatalog::resolveQrFilename($planId, $planDescription);
         $data['plan_qr_absolute_path'] = self::resolveQrAbsolutePath($data['plan_qr_filename']);
-        $data['plan_qr_size_px'] = 86;
-        $data['plan_qr_top_px'] = 372;
-        $data['plan_qr_right_px'] = 109;
+
+        if (($data['card_layout'] ?? null) === 'individual' || ($data['template_key'] ?? null) === 'individual') {
+            $data['plan_qr_size_px'] = 80;
+            $data['plan_qr_top_px'] = 425;
+            $data['plan_qr_right_px'] = 135;
+        } else {
+            $data['plan_qr_size_px'] = 82;
+            $data['plan_qr_top_px'] = 378;
+            $data['plan_qr_right_px'] = 108;
+        }
 
         return $data;
     }
@@ -147,9 +154,12 @@ class TarjetaAfiliacionController extends Controller
                 mkdir($directory, 0755, true);
             }
 
+            $cardLayout = $data['card_layout'] ?? null;
             $dataForView = $data;
-            unset($dataForView['output_filename']);
-            $preparedData = self::prepareDataForTarjetaPdfView($dataForView);
+            unset($dataForView['output_filename'], $dataForView['card_layout']);
+            $preparedData = self::prepareDataForTarjetaPdfView(array_merge($dataForView, [
+                'card_layout' => $cardLayout,
+            ]));
 
             if (AffiliateCardStampedPdfGenerator::canGenerate($preparedData)) {
                 AffiliateCardStampedPdfGenerator::generate($preparedData, $fullPath);
@@ -166,7 +176,11 @@ class TarjetaAfiliacionController extends Controller
                 set_time_limit(60);
             }
 
-            $pdf = Pdf::loadView('documents.tarjeta-afiliado', ['data' => $preparedData]);
+            $view = $cardLayout === 'individual'
+                ? 'documents.tarjeta-afiliado-individual'
+                : 'documents.tarjeta-afiliado';
+
+            $pdf = Pdf::loadView($view, ['data' => $preparedData]);
             DomPdfBatchRenderOptions::apply($pdf);
             $pdf->save($fullPath);
 

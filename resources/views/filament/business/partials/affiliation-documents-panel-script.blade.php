@@ -16,6 +16,7 @@
             optionalEmail: '',
             regenerateUrl: config.regenerateUrl,
             sendEmailUrl: config.sendEmailUrl,
+            useIndividualAffiliateCardLayout: config.useIndividualAffiliateCardLayout === true,
             statusUrlTemplate: config.statusUrlTemplate || null,
             statusPollTimer: null,
             pollIntervalMs: 3000,
@@ -143,14 +144,24 @@
                 this.activeDocumentIndex = 0;
                 this.stopPolling();
                 try {
-                    const res = await fetch(this.regenerateUrl, {
+                    const regenerateHeaders = {
+                        'X-CSRF-TOKEN': this.csrf(),
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    };
+                    const regenerateOptions = {
                         method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': this.csrf(),
-                            Accept: 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                    });
+                        headers: regenerateHeaders,
+                    };
+
+                    if (this.useIndividualAffiliateCardLayout) {
+                        regenerateHeaders['Content-Type'] = 'application/json';
+                        regenerateOptions.body = JSON.stringify({
+                            use_individual_affiliate_card_layout: true,
+                        });
+                    }
+
+                    const res = await fetch(this.regenerateUrl, regenerateOptions);
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok || !data.ok) {
                         throw new Error(data.message || 'No se pudieron generar los documentos.');

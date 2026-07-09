@@ -41,6 +41,8 @@ final class AffiliateCardStampedPdfGenerator
         $templateId = $pdf->importPage(1);
         $pdf->useTemplate($templateId, 0, 0, AffiliateCardPageLayout::WIDTH_MM, AffiliateCardPageLayout::HEIGHT_MM);
 
+        self::writeQrImage($pdf, $data, $templateKey);
+
         $pdf->SetFont(
             AffiliateCardPageLayout::FONT_FAMILY,
             AffiliateCardPageLayout::FONT_STYLE,
@@ -48,15 +50,15 @@ final class AffiliateCardStampedPdfGenerator
         );
         $pdf->SetTextColor(0, 0, 0);
 
-        self::writeField($pdf, 'code', self::upper((string) ($prepared['code'] ?? '')));
-        self::writeField($pdf, 'name_first_part', self::upper((string) ($prepared['name_first_part'] ?? '')));
-        self::writeField($pdf, 'name_second_part', self::upper((string) ($prepared['name_second_part'] ?? '')));
-        self::writeField($pdf, 'ci', self::upper((string) ($prepared['ci'] ?? '')));
-        self::writeField($pdf, 'plan', self::upper((string) ($prepared['plan_tarjeta_etiqueta'] ?? '')));
-        self::writeField($pdf, 'desde', (string) ($prepared['desde'] ?? ''));
-        self::writeField($pdf, 'frecuencia', self::upper((string) ($prepared['frecuencia'] ?? '')));
-        self::writeField($pdf, 'hasta', (string) ($prepared['hasta'] ?? ''));
-        self::writeField($pdf, 'cobertura', self::upper((string) ($prepared['cobertura_display'] ?? '')));
+        self::writeField($pdf, $templateKey, 'code', self::upper((string) ($prepared['code'] ?? '')));
+        self::writeField($pdf, $templateKey, 'name_first_part', self::upper((string) ($prepared['name_first_part'] ?? '')));
+        self::writeField($pdf, $templateKey, 'name_second_part', self::upper((string) ($prepared['name_second_part'] ?? '')));
+        self::writeField($pdf, $templateKey, 'ci', self::upper((string) ($prepared['ci'] ?? '')));
+        self::writeField($pdf, $templateKey, 'plan', self::upper((string) ($prepared['plan_tarjeta_etiqueta'] ?? '')));
+        self::writeField($pdf, $templateKey, 'desde', (string) ($prepared['desde'] ?? ''));
+        self::writeField($pdf, $templateKey, 'frecuencia', self::upper((string) ($prepared['frecuencia'] ?? '')));
+        self::writeField($pdf, $templateKey, 'hasta', (string) ($prepared['hasta'] ?? ''));
+        self::writeField($pdf, $templateKey, 'cobertura', self::upper((string) ($prepared['cobertura_display'] ?? '')));
 
         $pdf->Output('F', $outputPath);
 
@@ -87,6 +89,10 @@ final class AffiliateCardStampedPdfGenerator
     {
         if (isset($data['template_key']) && is_string($data['template_key']) && $data['template_key'] !== '') {
             return $data['template_key'];
+        }
+
+        if (($data['card_layout'] ?? null) === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL) {
+            return AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL;
         }
 
         $qrFilename = $data['plan_qr_filename'] ?? null;
@@ -132,13 +138,39 @@ final class AffiliateCardStampedPdfGenerator
         ];
     }
 
-    private static function writeField(Fpdi $pdf, string $field, string $value): void
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private static function writeQrImage(Fpdi $pdf, array $data, string $templateKey): void
+    {
+        $qrPath = $data['plan_qr_absolute_path'] ?? null;
+
+        if (! is_string($qrPath) || $qrPath === '' || ! is_file($qrPath)) {
+            return;
+        }
+
+        $position = AffiliateCardPageLayout::qrPosition($templateKey);
+
+        if ($position === null) {
+            return;
+        }
+
+        $pdf->Image(
+            $qrPath,
+            $position['x_mm'],
+            $position['y_mm'],
+            $position['size_mm'],
+            $position['size_mm'],
+        );
+    }
+
+    private static function writeField(Fpdi $pdf, string $templateKey, string $field, string $value): void
     {
         if ($value === '') {
             return;
         }
 
-        $position = AffiliateCardPageLayout::fieldPosition($field);
+        $position = AffiliateCardPageLayout::fieldPosition($field, $templateKey);
 
         $pdf->SetXY($position['x'], $position['y']);
         $pdf->Cell(
