@@ -27,7 +27,34 @@ it('MassNotificationDispatchService busca campañas programadas pendientes', fun
         ->and($src)->toContain("whereNotNull('date_programed')")
         ->and($src)->toContain("where('is_sent', false)")
         ->and($src)->toContain('applyApprovedScope')
+        ->and($src)->toContain('isScheduledForFuture()')
+        ->and($src)->toContain('Esta notificación ya fue encolada para envío.')
         ->and(substr_count($src, 'class MassNotificationDispatchService'))->toBe(1);
+});
+
+it('DataNotificationsRelationManager incluye acceso a colaboradores', function (): void {
+    $src = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Marketing/Resources/MassNotifications/RelationManagers/DataNotificationsRelationManager.php');
+
+    expect($src)->toContain("Action::make('add_colaborators')")
+        ->and($src)->toContain('RrhhColaboradorResource::getUrl');
+});
+
+it('RrhhColaboradorsTable incluye bulk action associateInfo', function (): void {
+    $src = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Marketing/Resources/RrhhColaboradors/Tables/RrhhColaboradorsTable.php');
+
+    expect($src)->toContain("BulkAction::make('associateInfo')")
+        ->and($src)->toContain('emailCorporativo')
+        ->and($src)->toContain('telefonoCorporativo');
+});
+
+it('Envío masivo permanece visible aunque la notificación ya fue encolada', function (): void {
+    $tableSrc = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Marketing/Resources/MassNotifications/Tables/MassNotificationsTable.php');
+    $viewSrc = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Marketing/Resources/MassNotifications/Pages/ViewMassNotification.php');
+
+    expect($tableSrc)->not->toContain('$record->is_sent')
+        ->and($viewSrc)->not->toContain('$record->is_sent')
+        ->and($tableSrc)->toContain('isScheduledForFuture()')
+        ->and($viewSrc)->toContain('isScheduledForFuture()');
 });
 
 it('MassNotificationDispatchResult existe como clase separada del servicio', function (): void {

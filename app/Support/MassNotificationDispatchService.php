@@ -23,6 +23,23 @@ class MassNotificationDispatchService
             );
         }
 
+        if ($record->is_sent) {
+            return new MassNotificationDispatchResult(
+                success: false,
+                message: 'Esta notificación ya fue encolada para envío.',
+            );
+        }
+
+        if ($record->isScheduledForFuture()) {
+            return new MassNotificationDispatchResult(
+                success: true,
+                message: sprintf(
+                    'La notificación está programada para el %s. El envío se ejecutará automáticamente en esa fecha.',
+                    $record->date_programed->format('d/m/Y H:i'),
+                ),
+            );
+        }
+
         $recipients = DataNotification::query()
             ->where('mass_notification_id', $record->id)
             ->get();

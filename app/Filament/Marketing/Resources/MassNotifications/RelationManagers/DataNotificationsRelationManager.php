@@ -8,6 +8,7 @@ use App\Filament\Marketing\Resources\Affiliations\AffiliationResource;
 use App\Filament\Marketing\Resources\Agencies\AgencyResource;
 use App\Filament\Marketing\Resources\Agents\AgentResource;
 use App\Filament\Marketing\Resources\InfoFrees\InfoFreeResource;
+use App\Filament\Marketing\Resources\RrhhColaboradors\RrhhColaboradorResource;
 use App\Models\DataNotification;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -68,6 +69,11 @@ class DataNotificationsRelationManager extends RelationManager
                     ->visible(in_array('whatsapp', $channels, true)),
             ])
             ->headerActions([
+                Action::make('add_colaborators')
+                    ->label('Colaboradores')
+                    ->color('primary')
+                    ->icon('heroicon-o-plus')
+                    ->url(fn () => RrhhColaboradorResource::getUrl('index')),
                 Action::make('add_agency')
                     ->label('Agencias')
                     ->color('warning')

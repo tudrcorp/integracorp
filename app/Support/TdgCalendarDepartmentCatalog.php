@@ -28,6 +28,7 @@ final class TdgCalendarDepartmentCatalog
             TdgCalendarDepartment::Operaciones->value => self::entry(TdgCalendarDepartment::Operaciones, 'OPE', '#7c3aed', 'operaciones'),
             TdgCalendarDepartment::Marketing->value => self::entry(TdgCalendarDepartment::Marketing, 'MKT', '#db2777', 'marketing'),
             TdgCalendarDepartment::Proyecto->value => self::entry(TdgCalendarDepartment::Proyecto, 'PRY', '#4f46e5', 'proyecto'),
+            TdgCalendarDepartment::Administracion->value => self::entry(TdgCalendarDepartment::Administracion, 'ADM', '#2563eb', 'administracion'),
         ];
     }
 
