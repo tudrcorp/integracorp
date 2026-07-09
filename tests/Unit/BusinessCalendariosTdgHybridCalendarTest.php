@@ -39,18 +39,21 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain("case Comercial = 'comercial'")
         ->toContain("case Afiliaciones = 'afiliaciones'")
         ->toContain("case Marketing = 'marketing'")
-        ->toContain("case Proyecto = 'proyecto'");
+        ->toContain("case Proyecto = 'proyecto'")
+        ->toContain("case Administracion = 'administracion'");
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/TdgCalendarDepartmentCatalog.php'))
         ->toContain('TdgCalendarDepartmentCatalog')
         ->toContain('modifier')
         ->toContain('tdg-dept-chip--')
         ->toContain("'comercial'")
+        ->toContain("'administracion'")
         ->toContain("'color' =>");
 
     expect(file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css'))
         ->toContain('.dark .tdg-dept-chip--comercial.is-idle')
-        ->toContain('.dark .tdg-dept-chip--marketing.is-selected');
+        ->toContain('.dark .tdg-dept-chip--marketing.is-selected')
+        ->toContain('.dark .tdg-dept-chip--administracion.is-selected');
 
     expect(file_get_contents($pagePath))
         ->toContain('InteractsWithTdgHybridCalendar');

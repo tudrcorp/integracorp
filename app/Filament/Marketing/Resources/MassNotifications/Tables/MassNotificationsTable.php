@@ -151,11 +151,17 @@ class MassNotificationsTable
                         }),
 
                     Action::make('send_notification')
-                        ->label('Envío Masivo')
+                        ->label(fn ($record) => $record->isScheduledForFuture() ? 'Confirmar envío programado' : 'Envío Masivo')
                         ->icon('heroicon-s-megaphone')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->modalHeading('ENVIAR NOTIFICACIÓN')
+                        ->modalHeading(fn ($record) => $record->isScheduledForFuture()
+                            ? 'CONFIRMAR ENVÍO PROGRAMADO'
+                            : 'ENVIAR NOTIFICACIÓN')
+                        ->modalDescription(fn ($record) => $record->isScheduledForFuture()
+                            ? 'La notificación se enviará automáticamente el '.$record->date_programed->format('d/m/Y H:i').'. No se enviará ahora.'
+                            : '¿Confirmas el envío inmediato a todos los destinatarios asociados?')
+                        ->modalSubmitActionLabel(fn ($record) => $record->isScheduledForFuture() ? 'Confirmar programación' : 'Enviar ahora')
                         ->hidden(function ($record) {
                             return $record->status == 'POR-APROBAR';
                         })

@@ -12,6 +12,7 @@ enum TdgCalendarDepartment: string
     case Operaciones = 'operaciones';
     case Marketing = 'marketing';
     case Proyecto = 'proyecto';
+    case Administracion = 'administracion';
 
     public function label(): string
     {
@@ -22,6 +23,7 @@ enum TdgCalendarDepartment: string
             self::Operaciones => 'OPERACIONES',
             self::Marketing => 'MARKETING',
             self::Proyecto => 'PROYECTO',
+            self::Administracion => 'ADMINISTRACION',
         };
     }
 
