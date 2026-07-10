@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\MassNotifications\Schemas;
 
+use App\Models\MassNotification;
 use App\Models\MassNotificationFolder;
 use Carbon\Carbon;
 use Filament\Forms\Components\FileUpload;
@@ -82,7 +83,9 @@ class MassNotificationForm
                                     TextInput::make('date_programed')
                                         ->label('Fecha programada')
                                         ->type('datetime-local')
-                                        ->helperText('Selecciona la fecha y hora en la que deseas que se envíe la notificación. Esta será enviada por el sistema.')
+                                        ->helperText(fn (?MassNotification $record): string => $record?->is_sent
+                                            ? 'Si la notificación ya se envió, una fecha futura programará un nuevo envío al guardar (se pedirá confirmación).'
+                                            : 'Selecciona la fecha y hora en la que deseas que se envíe la notificación. Esta será enviada por el sistema.')
                                         ->formatStateUsing(fn ($state): ?string => filled($state)
                                             ? Carbon::parse($state)->format('Y-m-d\TH:i')
                                             : null)

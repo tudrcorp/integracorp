@@ -174,7 +174,7 @@
                 'coverageColumns' => $coverageColumns,
                 'tableRows' => $tableRows,
                 'totals' => $totals,
-                'headerBackground' => '#529471',
+                'headerBackground' => '#082f62',
                 'labelColspan' => 2,
                 'populationOnlyIfMultiple' => false,
             ])

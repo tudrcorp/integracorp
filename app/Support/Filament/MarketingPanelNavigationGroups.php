@@ -43,6 +43,7 @@ final class MarketingPanelNavigationGroups
                 ->collapsed(),
             NavigationGroup::make()
                 ->label('MARKETING')
+                ->icon('heroicon-o-megaphone')
                 ->collapsed(),
             NavigationGroup::make()
                 ->label('VENTAS DIRECTAS')

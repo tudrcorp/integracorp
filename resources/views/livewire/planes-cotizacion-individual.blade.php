@@ -208,30 +208,30 @@
             <table style="width: 100%; font-type: Helvetica, sans-serif;">
 
                 <tr>
-                    <td style="font-weight: bold; color: white; background-color: #305B93; font-size: 10px;">RANGO DE EDAD</td>
+                    <td style="font-weight: bold; color: white; background-color: #082f62; font-size: 10px;">RANGO DE EDAD</td>
                     <td style="font-weight: bold; font-size: 10px;">{{ $data['age_range'] }} años</td>
                 </tr>
                 <tr>
-                    <td style="font-weight: bold; color: white; background-color: #305B93; font-size: 10px;">POBLACIÓN</td>
+                    <td style="font-weight: bold; color: white; background-color: #082f62; font-size: 10px;">POBLACIÓN</td>
                     <td style="font-weight: bold; font-size: 10px;">{{ $data['total_persons'] }} persona(s)</td>
                 </tr>
                 <tr>
-                    <td style="font-weight: bold; color: white; background-color: #305B93; font-size: 10px;">TARIFA INDIVIDUAL</td>
+                    <td style="font-weight: bold; color: white; background-color: #082f62; font-size: 10px;">TARIFA INDIVIDUAL</td>
                     <td style="font-weight: bold; font-size: 10px;">{{ round($data['fee']) }} US$</td>
                 </tr>
             </table>
 
             <table style="width: 100%; font-type: Helvetica, sans-serif; margin-top: 15px">
                 <tr>
-                    <td style="font-weight: bold; color: white; background-color: #305B93; font-size: 10px; width: 411px">TOTAL ANUAL</td>
+                    <td style="font-weight: bold; color: white; background-color: #082f62; font-size: 10px; width: 411px">TOTAL ANUAL</td>
                     <td style="font-weight: bold; font-size: 10px;">{{ round($data['subtotal_anual']) }} US$</td>
                 </tr>
                 <tr>
-                    <td style="font-weight: bold; color: white; background-color: #305B93; font-size: 10px; width: 411px">TOTAL SEMESTRAL</td>
+                    <td style="font-weight: bold; color: white; background-color: #082f62; font-size: 10px; width: 411px">TOTAL SEMESTRAL</td>
                     <td style="font-weight: bold; font-size: 10px;">{{ round($data['subtotal_biannual']) }} US$</td>
                 </tr>
                 <tr>
-                    <td style="font-weight: bold; color: white; background-color: #305B93; font-size: 10px; width: 411px">TOTAL TRIMESTRAL</td>
+                    <td style="font-weight: bold; color: white; background-color: #082f62; font-size: 10px; width: 411px">TOTAL TRIMESTRAL</td>
                     <td style="font-weight: bold; font-size: 10px;">{{ round($data['subtotal_quarterly']) }} US$</td>
                 </tr>
             </table>
