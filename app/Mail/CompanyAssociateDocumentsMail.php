@@ -20,6 +20,7 @@ class CompanyAssociateDocumentsMail extends Mailable
 
     /**
      * @param  array<int, string>  $attachmentPaths
+     * @param  array<string, string>  $ccRecipients
      */
     public function __construct(
         public CompanyAssociate $associate,
@@ -27,13 +28,23 @@ class CompanyAssociateDocumentsMail extends Mailable
         public string $recipientName,
         public array $attachmentPaths,
         public string $subjectLine,
+        public array $ccRecipients = [],
     ) {}
 
     public function envelope(): Envelope
     {
+        $cc = [];
+
+        foreach ($this->ccRecipients as $email => $name) {
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $cc[] = new Address($email, $name);
+            }
+        }
+
         return new Envelope(
             from: new Address(config('mail.from.address'), config('mail.from.name')),
             to: [new Address($this->recipientEmail, $this->recipientName)],
+            cc: $cc,
             subject: $this->subjectLine,
         );
     }

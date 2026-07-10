@@ -57,7 +57,11 @@ class GenerateAndDeliverCompanyAssociateDocumentsAfterRegistrationJob implements
 
         $carnet = CompanyAssociateCarnetGenerator::generate($associate);
 
-        CompanyAssociateDocumentsDeliverer::deliver($associate->fresh(['company', 'responsible']), $carnet);
+        CompanyAssociateDocumentsDeliverer::deliver(
+            $associate->fresh(['company', 'responsible']),
+            $carnet,
+            sendWhatsAppImmediately: true,
+        );
 
         SecurityAudit::log('AUDIT_BUSINESS_COMPANY_ASSOCIATE_DOCUMENTS_GENERATED', 'company-associates.public-register.documents', [
             'associate_id' => $associate->getKey(),

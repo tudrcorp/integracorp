@@ -8,6 +8,7 @@ use App\Filament\Business\Resources\CompanyAssociates\Actions\CompanyAssociatesT
 use App\Models\CompanyAssociate;
 use App\Support\Companies\CompanyAssociatesGroupPalette;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ViewAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColumnGroup;
@@ -198,6 +199,11 @@ class CompanyAssociatesTable
                     CompanyAssociatesTableActions::generateCarnetAction(),
                     CompanyAssociatesTableActions::previewInclusionQrAction(),
                     CompanyAssociatesTableActions::openCarnetAction(),
+                ]),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    CompanyAssociatesTableActions::sendDocumentsBulkAction(),
                 ]),
             ]);
     }

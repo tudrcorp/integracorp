@@ -118,7 +118,7 @@ class NotifyAnalystsOfCompanyAssociateRegistrationJob implements ShouldQueue
             }
 
             try {
-                SendNotificacionWhatsApp::dispatch(null, $whatsappBody, $phone, null, [
+                SendNotificacionWhatsApp::dispatchSync(null, $whatsappBody, $phone, null, [
                     'panel' => 'business',
                     'source' => 'company-associates.public-register',
                     'associate_id' => $associate->getKey(),
