@@ -88,7 +88,7 @@
                             Cédula del responsable <span class="text-[color:var(--accent)]">*</span>
                         </label>
                         <input type="text" wire:model.live.debounce.400ms="responsibleIdentityCard"
-                            placeholder="Ej: V-12345678"
+                            placeholder="Ej: 12345678"
                             class="w-full rounded-2xl border border-[color:var(--field-border)] bg-white/50 px-4 py-3 text-[color:var(--text-primary)] outline-none transition focus:border-[color:var(--field-focus)] focus:ring-4 focus:ring-blue-500/10 dark:bg-white/5">
                         @error('responsibleIdentityCard')
                             <p class="mt-2 text-sm text-[color:var(--error-text)]">{{ $message }}</p>

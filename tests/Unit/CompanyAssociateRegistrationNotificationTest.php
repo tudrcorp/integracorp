@@ -61,7 +61,7 @@ it('el job de notificaciones usa correo whatsapp y recordatorio de voucher ils',
     $message = file_get_contents(dirname(__DIR__, 2).'/app/Support/Companies/CompanyAssociateRegistrationNotificationMessage.php');
 
     expect($job)
-        ->toContain('SendNotificacionWhatsApp::dispatch')
+        ->toContain('SendNotificacionWhatsApp::dispatchSync')
         ->toContain('CompanyAssociateRegisteredAnalystMail')
         ->toContain('CompanyAssociateNotificationSetting::instance');
 
@@ -133,6 +133,23 @@ it('el notificador despacha los jobs de alerta y documentos', function (): void 
     Bus::assertDispatched(GenerateAndDeliverCompanyAssociateDocumentsAfterRegistrationJob::class, function (GenerateAndDeliverCompanyAssociateDocumentsAfterRegistrationJob $job): bool {
         return $job->associateId === 99;
     });
+});
+
+it('el notificador ejecuta entrega inmediata despues de guardar el registro', function (): void {
+    $notifier = file_get_contents(dirname(__DIR__, 2).'/app/Support/Companies/CompanyAssociateRegistrationNotifier.php');
+    $registrationJob = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/GenerateAndDeliverCompanyAssociateDocumentsAfterRegistrationJob.php');
+    $deliverer = file_get_contents(dirname(__DIR__, 2).'/app/Support/Companies/CompanyAssociateDocumentsDeliverer.php');
+
+    expect($notifier)
+        ->toContain('afterResponse()')
+        ->toContain("onConnection('sync')");
+
+    expect($registrationJob)
+        ->toContain('sendWhatsAppImmediately: true');
+
+    expect($deliverer)
+        ->toContain('sendWhatsAppImmediately')
+        ->toContain("onConnection('sync')");
 });
 
 it('el modelo de configuracion expone listas normalizadas de destinatarios', function (): void {

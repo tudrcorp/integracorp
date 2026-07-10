@@ -46,6 +46,27 @@ final class CompanyAssociateDocumentsDeliveryMessage
         );
     }
 
+    public static function whatsappStorageDocumentUrl(string $storageRelativePath): string
+    {
+        $publicUrl = config('parameters.PUBLIC_URL');
+
+        if (filled($publicUrl)) {
+            return rtrim((string) $publicUrl, '/').'/'.ltrim($storageRelativePath, '/');
+        }
+
+        return asset('storage/'.ltrim($storageRelativePath, '/'));
+    }
+
+    public static function carnetWhatsAppDocumentUrl(string $filename): string
+    {
+        return self::whatsappStorageDocumentUrl('tarjeta-afiliacion/'.$filename);
+    }
+
+    public static function inclusionQrWhatsAppDocumentUrl(): string
+    {
+        return self::whatsappStorageDocumentUrl(CompanyAssociateInclusionQrCatalog::qrStoragePath());
+    }
+
     public static function emailLogoPath(): string
     {
         $primaryLogo = public_path('image/logoNewPdf.png');

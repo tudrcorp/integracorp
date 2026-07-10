@@ -15,7 +15,9 @@ it('encola generacion y envio asincrono de documentos al registrar asociado', fu
 
     expect($notifier)
         ->toContain('GenerateAndDeliverCompanyAssociateDocumentsAfterRegistrationJob::dispatch')
-        ->toContain('NotifyAnalystsOfCompanyAssociateRegistrationJob::dispatch');
+        ->toContain('NotifyAnalystsOfCompanyAssociateRegistrationJob::dispatch')
+        ->toContain('afterResponse()')
+        ->toContain("onConnection('sync')");
 });
 
 it('el job de registro genera qr, carnet y entrega documentos', function (): void {
@@ -30,10 +32,10 @@ it('el job de registro genera qr, carnet y entrega documentos', function (): voi
         ->toContain("config('affiliate-card.documents_queue'");
 
     expect($deliverer)
-        ->toContain('CompanyAssociateDocumentsMail')
         ->toContain('SendNotificacionWhatsAppDocument')
-        ->toContain('SendNotificacionWhatsApp')
-        ->toContain('CompanyAssociateNotificationSetting::instance');
+        ->toContain('CompanyAssociateDocumentsDeliveryMessage::carnetWhatsAppDocumentUrl')
+        ->toContain('CompanyAssociateDocumentsDeliveryMessage::inclusionQrWhatsAppDocumentUrl')
+        ->toContain('CompanyAssociateInclusionQrCatalog::QR_FILENAME');
 });
 
 it('ya no encola documentos al guardar voucher ils', function (): void {
@@ -89,6 +91,15 @@ it('arma mensajes de entrega con vigencia y nombre del asociado', function (): v
         ->and(CompanyAssociateDocumentsDeliveryMessage::whatsappIntro($associate))
         ->toContain('15/08/2026')
         ->toContain('María López');
+});
+
+it('usa urls publicas de storage para whatsapp de carnet y qr', function (): void {
+    config(['parameters.PUBLIC_URL' => 'https://integracorp.tudrgroup.com/storage']);
+
+    expect(CompanyAssociateDocumentsDeliveryMessage::carnetWhatsAppDocumentUrl('TAR-NB-1.pdf'))
+        ->toBe('https://integracorp.tudrgroup.com/storage/tarjeta-afiliacion/TAR-NB-1.pdf')
+        ->and(CompanyAssociateDocumentsDeliveryMessage::inclusionQrWhatsAppDocumentUrl())
+        ->toBe('https://integracorp.tudrgroup.com/storage/tarjeta-afiliacion/planes/qr-plan-inclusion.png');
 });
 
 it('expone clase de entrega de documentos para registro publico', function (): void {

@@ -11,7 +11,12 @@ final class CompanyAssociateRegistrationNotifier
 {
     public static function notify(int $associateId): void
     {
-        NotifyAnalystsOfCompanyAssociateRegistrationJob::dispatch($associateId);
-        GenerateAndDeliverCompanyAssociateDocumentsAfterRegistrationJob::dispatch($associateId);
+        NotifyAnalystsOfCompanyAssociateRegistrationJob::dispatch($associateId)
+            ->afterResponse()
+            ->onConnection('sync');
+
+        GenerateAndDeliverCompanyAssociateDocumentsAfterRegistrationJob::dispatch($associateId)
+            ->afterResponse()
+            ->onConnection('sync');
     }
 }

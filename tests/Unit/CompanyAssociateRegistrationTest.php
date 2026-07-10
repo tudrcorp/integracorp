@@ -245,7 +245,9 @@ it('tabla de asociados soporta vista agrupada y filtrada por responsable', funct
         ->toContain('CompanyAssociatesTableActions::uploadVoucherIlsAction')
         ->toContain('CompanyAssociatesTableActions::generateCarnetAction')
         ->toContain('CompanyAssociatesTableActions::previewInclusionQrAction')
-        ->toContain('CompanyAssociatesTableActions::openCarnetAction');
+        ->toContain('CompanyAssociatesTableActions::openCarnetAction')
+        ->toContain('CompanyAssociatesTableActions::sendDocumentsBulkAction')
+        ->toContain('BulkActionGroup::make');
 });
 
 it('soportes de voucher ils y carnet centralizan la logica de negocio', function (): void {
@@ -273,5 +275,6 @@ it('soportes de voucher ils y carnet centralizan la logica de negocio', function
         ->toContain('generateCarnet')
         ->toContain('previewInclusionQr')
         ->toContain('openCarnet')
+        ->toContain('sendDocuments')
         ->not->toContain('CompanyAssociateVoucherIlsDocumentsNotifier::queueGenerationAfterVoucherSave');
 });

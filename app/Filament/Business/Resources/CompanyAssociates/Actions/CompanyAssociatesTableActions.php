@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\CompanyAssociates\Actions;
 
+use App\Filament\Business\Resources\CompanyAssociates\Pages\ListCompanyAssociates;
 use App\Models\CompanyAssociate;
 use App\Support\Companies\CompanyAssociateCarnetGenerator;
 use App\Support\Companies\CompanyAssociateInclusionQrCatalog;
 use App\Support\Companies\CompanyAssociateVoucherIlsUpdater;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\View;
 use RuntimeException;
 
@@ -106,5 +109,39 @@ final class CompanyAssociatesTableActions
             ->url(fn (CompanyAssociate $record): ?string => CompanyAssociateCarnetGenerator::publicUrlFor($record))
             ->openUrlInNewTab()
             ->visible(fn (CompanyAssociate $record): bool => CompanyAssociateCarnetGenerator::absolutePathFor($record) !== null);
+    }
+
+    public static function sendDocumentsBulkAction(): BulkAction
+    {
+        return BulkAction::make('sendDocuments')
+            ->label('Enviar carnet y QR')
+            ->icon(Heroicon::OutlinedPaperAirplane)
+            ->color('primary')
+            ->requiresConfirmation()
+            ->modalIcon(Heroicon::OutlinedPaperAirplane)
+            ->modalHeading('Enviar carnet y QR')
+            ->modalDescription('Se generará la tarjeta del asociado y se enviará por correo y WhatsApp. El responsable recibirá copia cuando tenga datos de contacto registrados.')
+            ->modalSubmitActionLabel('Enviar documentos')
+            ->modalCancelActionLabel('Cancelar')
+            ->modalSubmitAction(function (Action $action): Action {
+                return $action
+                    ->action(null)
+                    ->extraAttributes(['data-associate-documents-submit' => '1'])
+                    ->alpineClickHandler("\$dispatch('company-associate-documents-send-start')");
+            })
+            ->before(function (ListCompanyAssociates $livewire): void {
+                $livewire->resetAssociateDocumentsBulkSendProgress();
+            })
+            ->modalContent(fn (Collection $records): ViewContract => View::make('filament.business.company-associates.send-documents-bulk-modal', [
+                'associates' => $records
+                    ->filter(fn ($record): bool => $record instanceof CompanyAssociate)
+                    ->map(fn (CompanyAssociate $record): array => [
+                        'id' => (int) $record->getKey(),
+                        'name' => (string) $record->full_name,
+                    ])
+                    ->values()
+                    ->all(),
+            ]))
+            ->action(fn (): null => null);
     }
 }

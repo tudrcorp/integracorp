@@ -21,8 +21,12 @@ final class CompanyAssociateDocumentsDeliverer
     /**
      * @param  array{filename: string, preview_url: string, absolute_path: string}  $carnet
      */
-    public static function deliver(CompanyAssociate $associate, array $carnet): void
-    {
+    public static function deliver(
+        CompanyAssociate $associate,
+        array $carnet,
+        bool $sendWhatsAppImmediately = false,
+        bool $includeAnalystRecipients = true,
+    ): void {
         $qrAbsolutePath = CompanyAssociateInclusionQrCatalog::qrExists()
             ? \Illuminate\Support\Facades\Storage::disk('public')->path(CompanyAssociateInclusionQrCatalog::qrStoragePath())
             : null;
@@ -36,11 +40,16 @@ final class CompanyAssociateDocumentsDeliverer
             throw new \RuntimeException('No hay documentos disponibles para enviar al asociado.');
         }
 
-        $emailRecipients = self::emailRecipients($associate);
-        $phoneRecipients = self::phoneRecipients($associate);
+        $emailRecipients = self::emailRecipients($associate, $includeAnalystRecipients);
+        $phoneRecipients = self::phoneRecipients($associate, $includeAnalystRecipients);
 
         $emailsSent = 0;
         $whatsappsQueued = 0;
+
+        $associateEmail = filled($associate->email)
+            ? strtolower(trim((string) $associate->email))
+            : null;
+        $responsibleCc = self::responsibleEmailCc($associate);
 
         foreach ($emailRecipients as $email => $recipientName) {
             if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -52,6 +61,10 @@ final class CompanyAssociateDocumentsDeliverer
                 continue;
             }
 
+            $ccRecipients = $associateEmail !== null && $email === $associateEmail
+                ? $responsibleCc
+                : [];
+
             try {
                 Mail::to($email)->send(new CompanyAssociateDocumentsMail(
                     associate: $associate,
@@ -59,6 +72,7 @@ final class CompanyAssociateDocumentsDeliverer
                     recipientName: $recipientName,
                     attachmentPaths: $attachmentPaths,
                     subjectLine: CompanyAssociateDocumentsDeliveryMessage::emailSubject($associate),
+                    ccRecipients: $ccRecipients,
                 ));
 
                 $emailsSent++;
@@ -77,8 +91,9 @@ final class CompanyAssociateDocumentsDeliverer
             }
         }
 
-        $carnetPublicUrl = asset('storage/tarjeta-afiliacion/'.$carnet['filename']);
-        $qrPublicUrl = CompanyAssociateInclusionQrCatalog::qrPublicUrl();
+        $carnetPublicUrl = CompanyAssociateDocumentsDeliveryMessage::carnetWhatsAppDocumentUrl($carnet['filename']);
+        $qrPublicUrl = CompanyAssociateDocumentsDeliveryMessage::inclusionQrWhatsAppDocumentUrl();
+        $qrFilename = CompanyAssociateInclusionQrCatalog::QR_FILENAME;
 
         foreach ($phoneRecipients as $rawPhone => $recipientName) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
@@ -119,17 +134,23 @@ final class CompanyAssociateDocumentsDeliverer
                 ];
 
                 if (CompanyAssociateInclusionQrCatalog::qrExists()) {
-                    $jobs[] = new SendNotificacionWhatsApp(
+                    $jobs[] = new SendNotificacionWhatsAppDocument(
                         null,
                         CompanyAssociateDocumentsDeliveryMessage::whatsappQrCaption($associate),
                         $phone,
-                        null,
-                        [...$context, 'asset' => 'inclusion-qr'],
                         $qrPublicUrl,
+                        $qrFilename,
+                        [...$context, 'asset' => 'inclusion-qr'],
                     );
                 }
 
-                Bus::chain($jobs)->dispatch();
+                $pendingChain = Bus::chain($jobs);
+
+                if ($sendWhatsAppImmediately) {
+                    $pendingChain->onConnection('sync');
+                }
+
+                $pendingChain->dispatch();
 
                 $whatsappsQueued++;
             } catch (Throwable $exception) {
@@ -161,7 +182,32 @@ final class CompanyAssociateDocumentsDeliverer
     /**
      * @return array<string, string>
      */
-    private static function emailRecipients(CompanyAssociate $associate): array
+    private static function responsibleEmailCc(CompanyAssociate $associate): array
+    {
+        $responsible = $associate->responsible;
+
+        if ($responsible === null || blank($responsible->email)) {
+            return [];
+        }
+
+        $responsibleEmail = strtolower(trim((string) $responsible->email));
+        $associateEmail = filled($associate->email)
+            ? strtolower(trim((string) $associate->email))
+            : null;
+
+        if ($responsibleEmail === '' || $responsibleEmail === $associateEmail) {
+            return [];
+        }
+
+        return [
+            $responsibleEmail => (string) ($responsible->full_name ?: 'Responsable'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function emailRecipients(CompanyAssociate $associate, bool $includeAnalystRecipients): array
     {
         $recipients = [];
 
@@ -169,11 +215,13 @@ final class CompanyAssociateDocumentsDeliverer
             $recipients[strtolower(trim((string) $associate->email))] = $associate->full_name;
         }
 
-        foreach (CompanyAssociateNotificationSetting::instance()->emails() as $email) {
-            $normalized = strtolower(trim($email));
+        if ($includeAnalystRecipients) {
+            foreach (CompanyAssociateNotificationSetting::instance()->emails() as $email) {
+                $normalized = strtolower(trim($email));
 
-            if ($normalized !== '') {
-                $recipients[$normalized] ??= 'Analista INTEGRACORP';
+                if ($normalized !== '') {
+                    $recipients[$normalized] ??= 'Analista INTEGRACORP';
+                }
             }
         }
 
@@ -183,7 +231,7 @@ final class CompanyAssociateDocumentsDeliverer
     /**
      * @return array<string, string>
      */
-    private static function phoneRecipients(CompanyAssociate $associate): array
+    private static function phoneRecipients(CompanyAssociate $associate, bool $includeAnalystRecipients): array
     {
         $recipients = [];
 
@@ -191,11 +239,20 @@ final class CompanyAssociateDocumentsDeliverer
             $recipients[trim((string) $associate->phone)] = $associate->full_name;
         }
 
-        foreach (CompanyAssociateNotificationSetting::instance()->phones() as $phone) {
-            $normalized = trim($phone);
+        $responsible = $associate->responsible;
 
-            if ($normalized !== '') {
-                $recipients[$normalized] ??= 'Analista INTEGRACORP';
+        if ($responsible !== null && filled($responsible->phone)) {
+            $responsiblePhone = trim((string) $responsible->phone);
+            $recipients[$responsiblePhone] = (string) ($responsible->full_name ?: 'Responsable');
+        }
+
+        if ($includeAnalystRecipients) {
+            foreach (CompanyAssociateNotificationSetting::instance()->phones() as $phone) {
+                $normalized = trim($phone);
+
+                if ($normalized !== '') {
+                    $recipients[$normalized] ??= 'Analista INTEGRACORP';
+                }
             }
         }
 
