@@ -35,36 +35,195 @@ final class AffiliateCardStampedPdfGenerator
 
         $prepared = self::prepareViewData($data);
 
-        $pdf = new Fpdi('P', 'mm', [AffiliateCardPageLayout::WIDTH_MM, AffiliateCardPageLayout::HEIGHT_MM]);
+        if ($templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION) {
+            self::stampIndividualAffiliationCard(
+                $data,
+                $prepared,
+                $templatePath,
+                $outputPath,
+                sheetSlot: 0,
+                singleAffiliate: true,
+            );
+
+            return;
+        }
+
+        $page = AffiliateCardPageLayout::pageDimensions($templateKey);
+
+        $pdf = new Fpdi($page['orientation'], 'mm', [$page['width_mm'], $page['height_mm']]);
         $pdf->AddPage();
         $pdf->setSourceFile($templatePath);
         $templateId = $pdf->importPage(1);
-        $pdf->useTemplate($templateId, 0, 0, AffiliateCardPageLayout::WIDTH_MM, AffiliateCardPageLayout::HEIGHT_MM);
+        $pdf->useTemplate($templateId, 0, 0, $page['width_mm'], $page['height_mm']);
 
-        self::writeQrImage($pdf, $data, $templateKey);
-
-        $pdf->SetFont(
-            AffiliateCardPageLayout::FONT_FAMILY,
-            AffiliateCardPageLayout::FONT_STYLE,
-            AffiliateCardPageLayout::FONT_SIZE_PT,
-        );
-        $pdf->SetTextColor(0, 0, 0);
-
-        self::writeField($pdf, $templateKey, 'code', self::upper((string) ($prepared['code'] ?? '')));
-        self::writeField($pdf, $templateKey, 'name_first_part', self::upper((string) ($prepared['name_first_part'] ?? '')));
-        self::writeField($pdf, $templateKey, 'name_second_part', self::upper((string) ($prepared['name_second_part'] ?? '')));
-        self::writeField($pdf, $templateKey, 'ci', self::upper((string) ($prepared['ci'] ?? '')));
-        self::writeField($pdf, $templateKey, 'plan', self::upper((string) ($prepared['plan_tarjeta_etiqueta'] ?? '')));
-        self::writeField($pdf, $templateKey, 'desde', (string) ($prepared['desde'] ?? ''));
-        self::writeField($pdf, $templateKey, 'frecuencia', self::upper((string) ($prepared['frecuencia'] ?? '')));
-        self::writeField($pdf, $templateKey, 'hasta', (string) ($prepared['hasta'] ?? ''));
-        self::writeField($pdf, $templateKey, 'cobertura', self::upper((string) ($prepared['cobertura_display'] ?? '')));
+        self::stampFields($pdf, $data, $prepared, $templateKey);
 
         $pdf->Output('F', $outputPath);
 
         if (! is_file($outputPath)) {
             throw new RuntimeException('El carnet estampado no se guardó en disco.');
         }
+    }
+
+    /**
+     * Genera un PDF con varios carnets (8 por hoja A4 vertical).
+     *
+     * @param  list<array<string, mixed>>  $cards
+     */
+    public static function generateIndividualAffiliationBatch(array $cards, string $outputPath): void
+    {
+        if ($cards === []) {
+            throw new RuntimeException('No hay carnets para generar.');
+        }
+
+        if (! (bool) config('affiliate-card.stamped_generation_enabled', true)) {
+            throw new RuntimeException('La generación por estampado está deshabilitada.');
+        }
+
+        $templateKey = AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION;
+        $templatePath = AffiliateCardTemplateBuilder::templatePathForKey($templateKey);
+
+        if (! is_file($templatePath)) {
+            throw new RuntimeException("No se encontró la plantilla PDF: {$templatePath}");
+        }
+
+        self::ensureDirectory(dirname($outputPath));
+
+        $sheet = AffiliateCardPageLayout::sheetDimensions();
+        $pdf = new Fpdi($sheet['orientation'], 'mm', [$sheet['width_mm'], $sheet['height_mm']]);
+        $pdf->setSourceFile($templatePath);
+        $templateId = $pdf->importPage(1);
+
+        foreach ($cards as $index => $cardData) {
+            $slotOnPage = $index % AffiliateCardPageLayout::CARDS_PER_SHEET;
+
+            if ($slotOnPage === 0) {
+                $pdf->AddPage();
+            }
+
+            $prepared = self::prepareViewData($cardData);
+            $origin = AffiliateCardPageLayout::sheetCardOrigin($slotOnPage, false);
+            $unit = AffiliateCardPageLayout::individualAffiliationUnitDimensions(false);
+
+            $pdf->useTemplate(
+                $templateId,
+                $origin['x_mm'],
+                $origin['y_mm'],
+                $unit['width_mm'],
+                $unit['height_mm'],
+            );
+
+            self::stampFields(
+                $pdf,
+                $cardData,
+                $prepared,
+                $templateKey,
+                $origin['x_mm'],
+                $origin['y_mm'],
+                singleAffiliate: false,
+            );
+        }
+
+        $pdf->Output('F', $outputPath);
+
+        if (! is_file($outputPath)) {
+            throw new RuntimeException('El lote de carnets no se guardó en disco.');
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $prepared
+     */
+    private static function stampIndividualAffiliationCard(
+        array $data,
+        array $prepared,
+        string $templatePath,
+        string $outputPath,
+        int $sheetSlot,
+        bool $singleAffiliate,
+    ): void {
+        $templateKey = AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION;
+        $origin = AffiliateCardPageLayout::sheetCardOrigin($sheetSlot, $singleAffiliate);
+        $unit = AffiliateCardPageLayout::individualAffiliationUnitDimensions($singleAffiliate);
+        $sheet = AffiliateCardPageLayout::sheetDimensions();
+
+        $pdf = new Fpdi($sheet['orientation'], 'mm', [$sheet['width_mm'], $sheet['height_mm']]);
+        $pdf->AddPage();
+        $pdf->setSourceFile($templatePath);
+        $templateId = $pdf->importPage(1);
+        $pdf->useTemplate(
+            $templateId,
+            $origin['x_mm'],
+            $origin['y_mm'],
+            $unit['width_mm'],
+            $unit['height_mm'],
+        );
+
+        self::stampFields(
+            $pdf,
+            $data,
+            $prepared,
+            $templateKey,
+            $origin['x_mm'],
+            $origin['y_mm'],
+            $singleAffiliate,
+        );
+
+        $pdf->Output('F', $outputPath);
+
+        if (! is_file($outputPath)) {
+            throw new RuntimeException('El carnet estampado no se guardó en disco.');
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $prepared
+     */
+    private static function stampFields(
+        Fpdi $pdf,
+        array $data,
+        array $prepared,
+        string $templateKey,
+        float $offsetXmm = 0.0,
+        float $offsetYmm = 0.0,
+        bool $singleAffiliate = false,
+    ): void {
+        $scale = $templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION
+            ? AffiliateCardPageLayout::individualAffiliationStampScale($singleAffiliate)
+            : 1.0;
+
+        self::writeQrImage($pdf, $data, $templateKey, $offsetXmm, $offsetYmm, $scale);
+
+        $pdf->SetFont(
+            AffiliateCardPageLayout::FONT_FAMILY,
+            AffiliateCardPageLayout::FONT_STYLE,
+            AffiliateCardPageLayout::fontSizePt($templateKey, $singleAffiliate),
+        );
+
+        if ($templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION) {
+            $pdf->SetTextColor(0, 51, 102);
+        } else {
+            $pdf->SetTextColor(0, 0, 0);
+        }
+
+        self::writeField($pdf, $templateKey, 'code', self::upper((string) ($prepared['code'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
+
+        if ($templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION) {
+            self::writeField($pdf, $templateKey, 'name_first_part', self::upper((string) ($prepared['name_first_part'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
+            self::writeField($pdf, $templateKey, 'name_second_part', self::upper((string) ($prepared['name_second_part'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
+        } else {
+            self::writeField($pdf, $templateKey, 'name_first_part', self::upper((string) ($prepared['name_first_part'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
+            self::writeField($pdf, $templateKey, 'name_second_part', self::upper((string) ($prepared['name_second_part'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
+        }
+
+        self::writeField($pdf, $templateKey, 'ci', self::upper((string) ($prepared['ci'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
+        self::writeField($pdf, $templateKey, 'plan', self::upper((string) ($prepared['plan_tarjeta_etiqueta'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
+        self::writeField($pdf, $templateKey, 'desde', (string) ($prepared['desde'] ?? ''), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
+        self::writeField($pdf, $templateKey, 'frecuencia', self::upper((string) ($prepared['frecuencia'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
+        self::writeField($pdf, $templateKey, 'hasta', (string) ($prepared['hasta'] ?? ''), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
+        self::writeField($pdf, $templateKey, 'cobertura', self::upper((string) ($prepared['cobertura_display'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
     }
 
     /**
@@ -83,12 +242,28 @@ final class AffiliateCardStampedPdfGenerator
     }
 
     /**
+     * @param  list<array<string, mixed>>  $cards
+     */
+    public static function canGenerateBatch(array $cards): bool
+    {
+        if ($cards === []) {
+            return false;
+        }
+
+        return self::canGenerate($cards[0]);
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     private static function resolveTemplateKey(array $data): ?string
     {
         if (isset($data['template_key']) && is_string($data['template_key']) && $data['template_key'] !== '') {
             return $data['template_key'];
+        }
+
+        if (($data['card_layout'] ?? null) === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION) {
+            return AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION;
         }
 
         if (($data['card_layout'] ?? null) === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL) {
@@ -110,7 +285,7 @@ final class AffiliateCardStampedPdfGenerator
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    private static function prepareViewData(array $data): array
+    public static function prepareViewData(array $data): array
     {
         $split = UtilsController::splitName(isset($data['name']) ? (string) $data['name'] : null);
 
@@ -126,6 +301,7 @@ final class AffiliateCardStampedPdfGenerator
 
         return [
             'code' => $data['code'] ?? '',
+            'name' => trim((string) ($data['name'] ?? '')),
             'name_first_part' => $split['first_part'],
             'name_second_part' => $split['second_part'],
             'ci' => $data['ci'] ?? '',
@@ -141,15 +317,21 @@ final class AffiliateCardStampedPdfGenerator
     /**
      * @param  array<string, mixed>  $data
      */
-    private static function writeQrImage(Fpdi $pdf, array $data, string $templateKey): void
-    {
+    private static function writeQrImage(
+        Fpdi $pdf,
+        array $data,
+        string $templateKey,
+        float $offsetXmm = 0.0,
+        float $offsetYmm = 0.0,
+        float $scale = 1.0,
+    ): void {
         $qrPath = $data['plan_qr_absolute_path'] ?? null;
 
         if (! is_string($qrPath) || $qrPath === '' || ! is_file($qrPath)) {
             return;
         }
 
-        $position = AffiliateCardPageLayout::qrPosition($templateKey);
+        $position = AffiliateCardPageLayout::qrPosition($templateKey, $offsetXmm, $offsetYmm, $scale);
 
         if ($position === null) {
             return;
@@ -164,19 +346,39 @@ final class AffiliateCardStampedPdfGenerator
         );
     }
 
-    private static function writeField(Fpdi $pdf, string $templateKey, string $field, string $value): void
-    {
+    private static function writeField(
+        Fpdi $pdf,
+        string $templateKey,
+        string $field,
+        string $value,
+        float $offsetXmm = 0.0,
+        float $offsetYmm = 0.0,
+        float $scale = 1.0,
+        bool $singleAffiliate = false,
+    ): void {
         if ($value === '') {
             return;
         }
 
-        $position = AffiliateCardPageLayout::fieldPosition($field, $templateKey);
+        $position = AffiliateCardPageLayout::fieldPosition($field, $templateKey, $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
+        $encoded = self::toPdfEncoding($value);
+
+        if ($templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION) {
+            $pdf->SetFont(
+                AffiliateCardPageLayout::FONT_FAMILY,
+                AffiliateCardPageLayout::FONT_STYLE,
+                AffiliateCardPageLayout::fontSizePtForField($templateKey, $field, $singleAffiliate),
+            );
+            $pdf->Text($position['x'], $position['y'], $encoded);
+
+            return;
+        }
 
         $pdf->SetXY($position['x'], $position['y']);
         $pdf->Cell(
             $position['width_mm'],
             4,
-            self::toPdfEncoding($value),
+            $encoded,
             0,
             0,
             $position['align'],

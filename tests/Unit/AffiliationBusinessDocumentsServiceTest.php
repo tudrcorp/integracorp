@@ -47,7 +47,9 @@ describe('AffiliationBusinessDocumentsService', function () {
 
         expect($service)
             ->toContain('useIndividualAffiliateCardLayout')
-            ->toContain("\$payload['card_layout'] = 'individual'")
-            ->toContain("\$payload['template_key'] = 'individual'");
+            ->toContain("\$payload['card_layout'] = 'individual-affiliation'")
+            ->toContain("\$payload['template_key'] = 'individual-affiliation'")
+            ->toContain('generateTarjetaAfiliacionBatch')
+            ->toContain('-carnets.pdf');
     });
 });

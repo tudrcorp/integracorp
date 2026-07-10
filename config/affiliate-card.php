@@ -40,6 +40,9 @@ return [
     */
     'standalone_template_keys' => [
         'individual',
+        'individual-affiliation',
     ],
+
+    'individual_affiliation_template_image' => public_path('storage/certificados/tarjeta-afiliado-individual-cropped.png'),
 
 ];

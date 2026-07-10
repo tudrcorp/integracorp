@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 class BuildAffiliateCardTemplatesCommand extends Command
 {
     protected $signature = 'affiliate-card:build-templates
-                            {--template= : Genera solo una plantilla (inclusion, inicial, ideal, especial, individual)}';
+                            {--template= : Genera solo una plantilla (inclusion, inicial, ideal, especial, individual, individual-affiliation)}';
 
     protected $description = 'Genera plantillas PDF base (DomPDF sin campos variables) para carnets por estampado';
 

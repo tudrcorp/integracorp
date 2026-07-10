@@ -45,6 +45,13 @@ class TarjetaAfiliacionController extends Controller
             $data['plan_qr_size_px'] = 80;
             $data['plan_qr_top_px'] = 425;
             $data['plan_qr_right_px'] = 135;
+        } elseif (
+            ($data['card_layout'] ?? null) === 'individual-affiliation'
+            || ($data['template_key'] ?? null) === 'individual-affiliation'
+        ) {
+            $data['plan_qr_size_px'] = 32;
+            $data['plan_qr_top_px'] = 48;
+            $data['plan_qr_right_px'] = 24;
         } else {
             $data['plan_qr_size_px'] = 82;
             $data['plan_qr_top_px'] = 378;
@@ -207,6 +214,63 @@ class TarjetaAfiliacionController extends Controller
             }
 
             return 'Error al generar la tarjeta de afiliación: '.$th->getMessage();
+        }
+    }
+
+    /**
+     * Genera un PDF con varios carnets individual-affiliation (8 por hoja A4).
+     *
+     * @param  list<array<string, mixed>>  $cards
+     * @return bool|string true si OK, string con mensaje de error si falla
+     */
+    public static function generateTarjetaAfiliacionBatch(
+        array $cards,
+        string $outputFilename,
+        bool $silent = false,
+        bool $ensureOutputDirectory = true,
+    ): bool|string {
+        try {
+            if ($cards === []) {
+                throw new \Exception('No hay carnets para generar.');
+            }
+
+            $directory = public_path('storage/tarjeta-afiliacion/');
+            $fullPath = $directory.$outputFilename;
+
+            if ($ensureOutputDirectory && ! is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+
+            $preparedCards = [];
+
+            foreach ($cards as $card) {
+                $cardLayout = $card['card_layout'] ?? null;
+                $dataForView = $card;
+                unset($dataForView['output_filename'], $dataForView['card_layout'], $dataForView['affiliate_count'], $dataForView['sheet_slot']);
+                $preparedCards[] = self::prepareDataForTarjetaPdfView(array_merge($dataForView, [
+                    'card_layout' => $cardLayout,
+                ]));
+            }
+
+            if (! AffiliateCardStampedPdfGenerator::canGenerateBatch($preparedCards)) {
+                throw new \Exception('No hay plantilla de estampado para el lote de carnets.');
+            }
+
+            AffiliateCardStampedPdfGenerator::generateIndividualAffiliationBatch($preparedCards, $fullPath);
+
+            if (! $silent) {
+                Log::info("Lote de tarjetas de afiliación generado por estampado: {$outputFilename}");
+            }
+
+            return true;
+        } catch (\Throwable $th) {
+            Log::error('Fallo al generar lote de tarjetas de afiliación', [
+                'error' => $th->getMessage(),
+                'file' => $th->getFile(),
+                'line' => $th->getLine(),
+            ]);
+
+            return 'Error al generar el lote de tarjetas: '.$th->getMessage();
         }
     }
 }

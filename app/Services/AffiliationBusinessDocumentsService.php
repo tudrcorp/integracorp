@@ -181,69 +181,121 @@ class AffiliationBusinessDocumentsService
         $planDesc = $record->plan?->description ?? '';
         $cobertura = $record->coverage?->price ?? '';
         $frecuencia = $record->payment_frequency;
+        $totalTarjetasForLayout = $affiliateCount + $legacyTarjetaCount;
 
-        foreach ($record->affiliates as $affiliate) {
-            $data = self::tarjetaPayload(
-                record: $record,
-                name: (string) $affiliate->full_name,
-                ci: (string) $affiliate->nro_identificacion,
-                planDesc: $planDesc,
-                frecuencia: $frecuencia,
-                cobertura: $cobertura,
-                desde: $desde,
-                hasta: $hasta,
-                outputFilename: 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf',
-                useIndividualAffiliateCardLayout: $useIndividualAffiliateCardLayout,
-            );
+        if ($useIndividualAffiliateCardLayout && $totalTarjetasForLayout > 1) {
+            $batchCards = [];
 
-            $ok = TarjetaAfiliacionController::generateTarjetaAfiliacion(
-                $data,
-                silent: true,
-                ensureOutputDirectory: false,
-                applyResourceLimits: false,
-            );
-            if ($ok !== true) {
-                throw new RuntimeException(is_string($ok) ? $ok : 'Error al generar tarjeta de afiliación.');
+            foreach ($record->affiliates as $affiliate) {
+                $batchCards[] = self::tarjetaPayload(
+                    record: $record,
+                    name: (string) $affiliate->full_name,
+                    ci: (string) $affiliate->nro_identificacion,
+                    planDesc: $planDesc,
+                    frecuencia: $frecuencia,
+                    cobertura: $cobertura,
+                    desde: $desde,
+                    hasta: $hasta,
+                    useIndividualAffiliateCardLayout: true,
+                );
             }
 
-            $filename = $data['output_filename'];
-            $documents[] = [
-                'label' => 'Tarjeta — '.$affiliate->full_name,
-                'kind' => 'tarjeta',
-                'filename' => $filename,
-                'preview_url' => asset('storage/tarjeta-afiliacion/'.$filename).'?t='.$version,
-            ];
-        }
+            if ($legacyTarjetaCount === 1) {
+                $batchCards[] = self::tarjetaPayload(
+                    record: $record,
+                    name: (string) $record->full_name_ti,
+                    ci: (string) $record->nro_identificacion_ti,
+                    planDesc: $planDesc,
+                    frecuencia: $frecuencia,
+                    cobertura: $cobertura,
+                    desde: $desde,
+                    hasta: $hasta,
+                    useIndividualAffiliateCardLayout: true,
+                );
+            }
 
-        if ($legacyTarjetaCount === 1) {
-            $dataLegacy = self::tarjetaPayload(
-                record: $record,
-                name: (string) $record->full_name_ti,
-                ci: (string) $record->nro_identificacion_ti,
-                planDesc: $planDesc,
-                frecuencia: $frecuencia,
-                cobertura: $cobertura,
-                desde: $desde,
-                hasta: $hasta,
-                outputFilename: 'TAR-'.$record->code.'.pdf',
-                useIndividualAffiliateCardLayout: $useIndividualAffiliateCardLayout,
-            );
-            $legacy = TarjetaAfiliacionController::generateTarjetaAfiliacion(
-                $dataLegacy,
+            $combinedFilename = 'TAR-'.$record->code.'-carnets.pdf';
+            $batchResult = TarjetaAfiliacionController::generateTarjetaAfiliacionBatch(
+                $batchCards,
+                $combinedFilename,
                 silent: true,
                 ensureOutputDirectory: false,
-                applyResourceLimits: false,
             );
-            if ($legacy !== true) {
-                throw new RuntimeException(is_string($legacy) ? $legacy : 'Error al generar tarjeta estándar.');
+
+            if ($batchResult !== true) {
+                throw new RuntimeException(is_string($batchResult) ? $batchResult : 'Error al generar tarjetas de afiliación.');
             }
 
             $documents[] = [
-                'label' => 'Tarjeta — titular',
+                'label' => 'Tarjetas de afiliación ('.$totalTarjetasForLayout.' afiliados)',
                 'kind' => 'tarjeta',
-                'filename' => $dataLegacy['output_filename'],
-                'preview_url' => asset('storage/tarjeta-afiliacion/'.$dataLegacy['output_filename']).'?t='.$version,
+                'filename' => $combinedFilename,
+                'preview_url' => asset('storage/tarjeta-afiliacion/'.$combinedFilename).'?t='.$version,
             ];
+        } else {
+            foreach ($record->affiliates as $affiliate) {
+                $data = self::tarjetaPayload(
+                    record: $record,
+                    name: (string) $affiliate->full_name,
+                    ci: (string) $affiliate->nro_identificacion,
+                    planDesc: $planDesc,
+                    frecuencia: $frecuencia,
+                    cobertura: $cobertura,
+                    desde: $desde,
+                    hasta: $hasta,
+                    outputFilename: 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf',
+                    useIndividualAffiliateCardLayout: $useIndividualAffiliateCardLayout,
+                );
+
+                $ok = TarjetaAfiliacionController::generateTarjetaAfiliacion(
+                    $data,
+                    silent: true,
+                    ensureOutputDirectory: false,
+                    applyResourceLimits: false,
+                );
+                if ($ok !== true) {
+                    throw new RuntimeException(is_string($ok) ? $ok : 'Error al generar tarjeta de afiliación.');
+                }
+
+                $filename = $data['output_filename'];
+                $documents[] = [
+                    'label' => 'Tarjeta — '.$affiliate->full_name,
+                    'kind' => 'tarjeta',
+                    'filename' => $filename,
+                    'preview_url' => asset('storage/tarjeta-afiliacion/'.$filename).'?t='.$version,
+                ];
+            }
+
+            if ($legacyTarjetaCount === 1) {
+                $dataLegacy = self::tarjetaPayload(
+                    record: $record,
+                    name: (string) $record->full_name_ti,
+                    ci: (string) $record->nro_identificacion_ti,
+                    planDesc: $planDesc,
+                    frecuencia: $frecuencia,
+                    cobertura: $cobertura,
+                    desde: $desde,
+                    hasta: $hasta,
+                    outputFilename: 'TAR-'.$record->code.'.pdf',
+                    useIndividualAffiliateCardLayout: $useIndividualAffiliateCardLayout,
+                );
+                $legacy = TarjetaAfiliacionController::generateTarjetaAfiliacion(
+                    $dataLegacy,
+                    silent: true,
+                    ensureOutputDirectory: false,
+                    applyResourceLimits: false,
+                );
+                if ($legacy !== true) {
+                    throw new RuntimeException(is_string($legacy) ? $legacy : 'Error al generar tarjeta estándar.');
+                }
+
+                $documents[] = [
+                    'label' => 'Tarjeta — titular',
+                    'kind' => 'tarjeta',
+                    'filename' => $dataLegacy['output_filename'],
+                    'preview_url' => asset('storage/tarjeta-afiliacion/'.$dataLegacy['output_filename']).'?t='.$version,
+                ];
+            }
         }
 
         $condicionadoPath = self::condicionadoAbsolutePathForAffiliation($record);
@@ -272,7 +324,7 @@ class AffiliationBusinessDocumentsService
         mixed $cobertura,
         string $desde,
         string $hasta,
-        string $outputFilename,
+        string $outputFilename = '',
         bool $useIndividualAffiliateCardLayout = false,
     ): array {
         $payload = [
@@ -285,12 +337,15 @@ class AffiliationBusinessDocumentsService
             'cobertura' => $cobertura,
             'desde' => $desde,
             'hasta' => $hasta,
-            'output_filename' => $outputFilename,
         ];
 
+        if ($outputFilename !== '') {
+            $payload['output_filename'] = $outputFilename;
+        }
+
         if ($useIndividualAffiliateCardLayout) {
-            $payload['card_layout'] = 'individual';
-            $payload['template_key'] = 'individual';
+            $payload['card_layout'] = 'individual-affiliation';
+            $payload['template_key'] = 'individual-affiliation';
         }
 
         return $payload;
@@ -340,12 +395,18 @@ class AffiliationBusinessDocumentsService
             public_path('storage/certificados-doc/CER-'.$record->code.'.pdf'),
         ];
 
-        foreach ($record->affiliates as $affiliate) {
-            $paths[] = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'-'.$affiliate->id.'.pdf');
-        }
+        $combinedCarnetsPath = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'-carnets.pdf');
 
-        if (self::shouldGenerateLegacyTitularTarjeta($record)) {
-            $paths[] = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'.pdf');
+        if (is_file($combinedCarnetsPath)) {
+            $paths[] = $combinedCarnetsPath;
+        } else {
+            foreach ($record->affiliates as $affiliate) {
+                $paths[] = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'-'.$affiliate->id.'.pdf');
+            }
+
+            if (self::shouldGenerateLegacyTitularTarjeta($record)) {
+                $paths[] = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'.pdf');
+            }
         }
 
         $condicionado = self::condicionadoAbsolutePathForAffiliation($record);

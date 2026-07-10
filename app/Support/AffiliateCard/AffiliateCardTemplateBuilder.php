@@ -61,20 +61,28 @@ final class AffiliateCardTemplateBuilder
             'cobertura' => '',
             'desde' => '',
             'hasta' => '',
-            'card_layout' => $templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL
-                ? AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL
+            'card_layout' => in_array($templateKey, [
+                AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL,
+                AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION,
+            ], true)
+                ? $templateKey
                 : null,
         ]);
 
         $data = self::withoutStampedFields($data);
 
-        if ($templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL) {
+        if (in_array($templateKey, [
+            AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL,
+            AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION,
+        ], true)) {
             $data['plan_qr_absolute_path'] = null;
         }
 
-        $view = $templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL
-            ? 'documents.tarjeta-afiliado-individual'
-            : 'documents.tarjeta-afiliado';
+        $view = match ($templateKey) {
+            AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL => 'documents.tarjeta-afiliado-individual',
+            AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION => 'documents.tarjeta-afiliado-individual-affiliation',
+            default => 'documents.tarjeta-afiliado',
+        };
 
         $pdf = Pdf::loadView($view, ['data' => $data]);
         DomPdfBatchRenderOptions::apply($pdf);
@@ -112,6 +120,7 @@ final class AffiliateCardTemplateBuilder
     {
         $data['name_first_part'] = '';
         $data['name_second_part'] = '';
+        $data['name'] = '';
         $data['ci'] = '';
         $data['code'] = '';
         $data['plan_tarjeta_etiqueta'] = '';
@@ -131,6 +140,7 @@ final class AffiliateCardTemplateBuilder
             'ideal' => 'IDEAL',
             'especial' => 'ESPECIAL',
             'individual' => 'INCLUSIÓN',
+            'individual-affiliation' => 'INCLUSIÓN',
             default => mb_strtoupper($templateKey),
         };
     }
