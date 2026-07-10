@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Support\AffiliateCard;
 
 use App\Services\AffiliationBusinessDocumentsService;
+use App\Support\QrCode\GdPngQrCodeGenerator;
 use Illuminate\Support\Facades\File;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 final class IndividualAffiliationPlanQrGenerator
 {
@@ -42,11 +42,12 @@ final class IndividualAffiliationPlanQrGenerator
     {
         File::ensureDirectoryExists(dirname($absolutePath));
 
-        $qrBinary = QrCode::format('png')
-            ->size(300)
-            ->errorCorrection('M')
-            ->margin(0)
-            ->generate($url);
+        $qrBinary = GdPngQrCodeGenerator::generate(
+            content: $url,
+            size: 300,
+            errorCorrection: 'M',
+            margin: 0,
+        );
 
         File::put($absolutePath, $qrBinary);
     }
