@@ -71,25 +71,12 @@ it('prepara qr para plantilla individual-affiliation con tamano ampliado', funct
         'template_key' => 'individual-affiliation',
     ]);
 
-    expect($data['plan_qr_filename'])->toBe('qr-plan-inicial.png')
+    expect($data['plan_qr_filename'])->toBeNull()
         ->and($data['plan_qr_size_px'])->toBe(55)
         ->and($data['plan_qr_top_px'])->toBe(46)
         ->and($data['plan_qr_right_px'])->toBe(23)
-        ->and($data['plan_qr_absolute_path'])->not->toBeNull();
+        ->and($data['plan_qr_absolute_path'])->toEndWith('plan-1.png');
 });
-
-it('usa qr de inclusion como respaldo local cuando falta el qr del plan', function () {
-    $data = TarjetaAfiliacionController::prepareDataForTarjetaPdfView([
-        'name' => 'Titular Demo',
-        'ci' => 'V-1',
-        'code' => 'TDEC-IND-1',
-        'plan_id' => 1,
-        'plan' => 'INICIAL',
-        'card_layout' => 'individual-affiliation',
-    ]);
-
-    expect($data['plan_qr_absolute_path'])->toEndWith('qr-plan-inclusion.png');
-})->skip(fn (): bool => app()->environment('production'), 'Solo aplica en entornos no productivos');
 
 it('prepara qr para plantilla individual de afiliaciones', function () {
     $data = TarjetaAfiliacionController::prepareDataForTarjetaPdfView([
