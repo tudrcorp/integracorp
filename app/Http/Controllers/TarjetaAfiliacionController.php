@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Plan;
 use App\Support\AffiliateCard\AffiliateCardStampedPdfGenerator;
+use App\Support\AffiliateCard\IndividualAffiliationPlanQrGenerator;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\TarjetaAfiliacionQrPlanCatalog;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -38,8 +39,20 @@ class TarjetaAfiliacionController extends Controller
             is_numeric($coberturaVal) => number_format((float) $coberturaVal, 2, ',', '.').' US$',
             default => (string) $coberturaVal,
         };
-        $data['plan_qr_filename'] = TarjetaAfiliacionQrPlanCatalog::resolveQrFilename($planId, $planDescription);
-        $data['plan_qr_absolute_path'] = self::resolveQrAbsolutePath($data['plan_qr_filename']);
+
+        $isIndividualAffiliation = ($data['card_layout'] ?? null) === 'individual-affiliation'
+            || ($data['template_key'] ?? null) === 'individual-affiliation';
+
+        if ($isIndividualAffiliation) {
+            $resolvedPlanId = $planId ?? TarjetaAfiliacionQrPlanCatalog::findPlanByDescription($planDescription)?->id;
+            $data['plan_qr_filename'] = null;
+            $data['plan_qr_absolute_path'] = IndividualAffiliationPlanQrGenerator::qrAbsolutePathForPlanId(
+                $resolvedPlanId !== null ? (int) $resolvedPlanId : null,
+            );
+        } else {
+            $data['plan_qr_filename'] = TarjetaAfiliacionQrPlanCatalog::resolveQrFilename($planId, $planDescription);
+            $data['plan_qr_absolute_path'] = self::resolveQrAbsolutePath($data['plan_qr_filename']);
+        }
 
         if (($data['card_layout'] ?? null) === 'individual' || ($data['template_key'] ?? null) === 'individual') {
             $data['plan_qr_size_px'] = 80;

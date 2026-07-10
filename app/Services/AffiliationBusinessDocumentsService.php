@@ -21,6 +21,17 @@ class AffiliationBusinessDocumentsService
         };
     }
 
+    public static function condicionadoPublicUrlForPlanId(?int $planId): ?string
+    {
+        $basename = self::condicionadoBasenameForPlanId($planId);
+
+        if ($basename === null) {
+            return null;
+        }
+
+        return asset('storage/condicionados/'.$basename);
+    }
+
     /**
      * Genera la tarjeta legacy `TAR-{code}.pdf` solo si no hay tarjeta equivalente entre afiliados
      * (p. ej. el titular ya tiene fila en `affiliates` con su CI).

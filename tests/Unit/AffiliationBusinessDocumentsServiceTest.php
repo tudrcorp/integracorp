@@ -6,6 +6,8 @@ use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Services\AffiliationBusinessDocumentsService;
 
+uses(Tests\TestCase::class);
+
 describe('AffiliationBusinessDocumentsService', function () {
     it('maps plan id to condicionado basename', function () {
         expect(AffiliationBusinessDocumentsService::condicionadoBasenameForPlanId(1))->toBe('CondicionesINICIAL.pdf');
@@ -13,6 +15,11 @@ describe('AffiliationBusinessDocumentsService', function () {
         expect(AffiliationBusinessDocumentsService::condicionadoBasenameForPlanId(3))->toBe('CondicionesESPECIAL.pdf');
         expect(AffiliationBusinessDocumentsService::condicionadoBasenameForPlanId(99))->toBeNull();
         expect(AffiliationBusinessDocumentsService::condicionadoBasenameForPlanId(null))->toBeNull();
+    });
+
+    it('maps plan id to condicionado public url', function () {
+        expect(AffiliationBusinessDocumentsService::condicionadoPublicUrlForPlanId(1))
+            ->toEndWith('/storage/condicionados/CondicionesINICIAL.pdf');
     });
 
     it('does not need legacy tarjeta when titular CI matches an affiliate', function () {
