@@ -49,9 +49,9 @@ class TarjetaAfiliacionController extends Controller
             ($data['card_layout'] ?? null) === 'individual-affiliation'
             || ($data['template_key'] ?? null) === 'individual-affiliation'
         ) {
-            $data['plan_qr_size_px'] = 32;
-            $data['plan_qr_top_px'] = 48;
-            $data['plan_qr_right_px'] = 24;
+            $data['plan_qr_size_px'] = 55;
+            $data['plan_qr_top_px'] = 46;
+            $data['plan_qr_right_px'] = 23;
         } else {
             $data['plan_qr_size_px'] = 82;
             $data['plan_qr_top_px'] = 378;
@@ -129,9 +129,33 @@ class TarjetaAfiliacionController extends Controller
             return null;
         }
 
-        $absolutePath = public_path('storage/tarjeta-afiliacion/planes/'.$fileName);
+        $path = self::findQrPlanFilePath($fileName);
 
-        return is_file($absolutePath) ? $absolutePath : null;
+        if ($path !== null) {
+            return $path;
+        }
+
+        if (app()->environment('local')) {
+            return self::findQrPlanFilePath('qr-plan-inclusion.png');
+        }
+
+        return null;
+    }
+
+    private static function findQrPlanFilePath(string $fileName): ?string
+    {
+        $relativePath = 'tarjeta-afiliacion/planes/'.$fileName;
+
+        foreach ([
+            public_path('storage/'.$relativePath),
+            storage_path('app/public/'.$relativePath),
+        ] as $absolutePath) {
+            if (is_file($absolutePath)) {
+                return $absolutePath;
+            }
+        }
+
+        return null;
     }
 
     /**

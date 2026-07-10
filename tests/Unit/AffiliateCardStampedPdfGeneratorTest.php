@@ -125,6 +125,14 @@ it('usa coordenadas recalibradas para campos individual-affiliation', function (
         ->and($layout::fieldPosition('desde', 'individual-affiliation', singleAffiliate: false)['x'])->toBe(55.83)
         ->and($layout::fieldPosition('desde', 'individual-affiliation', singleAffiliate: false)['y'])->toBe(22.49)
         ->and($layout::fieldPosition('hasta', 'individual-affiliation', singleAffiliate: false)['y'])->toBe(25.4);
+
+    $qrBatch = $layout::qrPosition('individual-affiliation');
+    $qrSingle = $layout::qrPosition('individual-affiliation', scale: $layout::individualAffiliationStampScale(true));
+
+    expect($qrBatch['size_mm'])->toBe(14.55)
+        ->and($qrBatch['x_mm'])->toBe(72.23)
+        ->and($qrBatch['y_mm'])->toBe(12.17)
+        ->and($qrSingle['size_mm'])->toEqualWithDelta(25.81, 0.01);
 });
 
 it('usa fuente reducida solo para codigo en carnet individual-affiliation unico', function (): void {
