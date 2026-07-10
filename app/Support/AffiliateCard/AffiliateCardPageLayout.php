@@ -116,9 +116,9 @@ final class AffiliateCardPageLayout
             'size_px' => 80,
         ],
         self::TEMPLATE_INDIVIDUAL_AFFILIATION => [
-            'top_px' => 48,
-            'right_px' => 24,
-            'size_px' => 32,
+            'top_px' => 46,
+            'right_px' => 23,
+            'size_px' => 55,
         ],
     ];
 
