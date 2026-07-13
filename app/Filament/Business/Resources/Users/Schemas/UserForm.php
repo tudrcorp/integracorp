@@ -260,6 +260,17 @@ class UserForm
                             Placeholder::make('modules_selection_summary')
                                 ->hiddenLabel()
                                 ->content(fn (Get $get): HtmlString => UserModulesFormUi::selectionSummaryHtml($get('departament'))),
+                            Placeholder::make('proveedor_amd_notice')
+                                ->hiddenLabel()
+                                ->visible(fn (?User $record): bool => (bool) ($record?->is_proveedor_amd))
+                                ->content(new HtmlString(
+                                    '<div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">'
+                                    .'<p class="font-semibold">Tipo de usuario: Proveedor AMD</p>'
+                                    .'<p class="mt-1 leading-relaxed opacity-90">'
+                                    .'Este usuario es de portal de proveedor. El acceso al módulo Operaciones se gestiona abajo; el tipo Proveedor AMD no es un módulo de la lista.'
+                                    .'</p>'
+                                    .'</div>'
+                                )),
                             CheckboxList::make('departament')
                                 ->label('Módulos asignados')
                                 ->options(fn (): array => UserModulesFormUi::moduleOptions())

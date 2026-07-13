@@ -10,18 +10,21 @@ it('identifica usuarios de proveedor con acceso al panel de operaciones', functi
         'status' => 'ACTIVO',
         'supplier_id' => 15,
         'departament' => ['OPERACIONES'],
+        'is_proveedor_amd' => false,
     ]);
 
     $amdUser = new User([
         'status' => 'ACTIVO',
         'supplier_id' => 20,
-        'departament' => ['PROVEEDOR AMD'],
+        'departament' => [],
+        'is_proveedor_amd' => true,
     ]);
 
     $invalidUser = new User([
         'status' => 'ACTIVO',
         'supplier_id' => 21,
         'departament' => ['NEGOCIOS'],
+        'is_proveedor_amd' => false,
     ]);
 
     expect(OperationsDashboardMetrics::userHasOperationsPortalAccess($supplierUser))->toBeTrue()

@@ -18,12 +18,13 @@ it('define el repeater de usuarios en la tabla users', function (): void {
         ->not->toContain("TextInput::make('password')")
         ->toContain('DEFAULT_PORTAL_USER_PASSWORD')
         ->toContain("Hidden::make('departament')")
+        ->toContain("Hidden::make('is_proveedor_amd')")
         ->not->toContain('supplier_integracorp_portal_users');
 });
 
-it('asigna departamentos fijos a usuarios portal de proveedor', function (): void {
+it('asigna módulo Operaciones y flag de proveedor AMD a usuarios portal', function (): void {
     expect(SupplierIntegracorpManagement::portalUserDepartaments())
-        ->toBe(['OPERACIONES', 'PROVEEDOR AMD']);
+        ->toBe(['OPERACIONES']);
 });
 
 it('normaliza datos de usuario al crear y al editar', function (): void {
@@ -37,7 +38,8 @@ it('normaliza datos de usuario al crear y al editar', function (): void {
             'name' => 'Ana',
             'email' => 'ana@test.com',
             'password' => '12345678',
-            'departament' => ['OPERACIONES', 'PROVEEDOR AMD'],
+            'departament' => ['OPERACIONES'],
+            'is_proveedor_amd' => true,
             'status' => 'ACTIVO',
         ])
         ->toHaveKey('created_by')
@@ -50,7 +52,11 @@ it('normaliza datos de usuario al crear y al editar', function (): void {
 
     expect($updated)
         ->not->toHaveKey('password')
-        ->not->toHaveKey('created_by');
+        ->not->toHaveKey('created_by')
+        ->toMatchArray([
+            'departament' => ['OPERACIONES'],
+            'is_proveedor_amd' => true,
+        ]);
 });
 
 it('elimina la tabla intermedia de usuarios portal', function (): void {

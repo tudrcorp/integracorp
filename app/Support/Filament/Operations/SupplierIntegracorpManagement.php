@@ -20,7 +20,7 @@ final class SupplierIntegracorpManagement
     private const REPEATER_CARD = 'rounded-2xl border border-slate-200/80 bg-white/90 p-2 shadow-sm dark:border-white/10 dark:bg-slate-900/40';
 
     /** @var list<string> */
-    public const PORTAL_USER_DEPARTAMENTS = ['OPERACIONES', 'PROVEEDOR AMD'];
+    public const PORTAL_USER_DEPARTAMENTS = ['OPERACIONES'];
 
     public const DEFAULT_PORTAL_USER_PASSWORD = '12345678';
 
@@ -82,6 +82,9 @@ final class SupplierIntegracorpManagement
                         Hidden::make('departament')
                             ->default(self::portalUserDepartaments())
                             ->dehydrated(true),
+                        Hidden::make('is_proveedor_amd')
+                            ->default(true)
+                            ->dehydrated(true),
                         Hidden::make('status')
                             ->default('ACTIVO')
                             ->dehydrated(true),
@@ -113,6 +116,7 @@ final class SupplierIntegracorpManagement
     public static function normalizeIntegracorpUserData(array $data, bool $creating): array
     {
         $data['departament'] = self::portalUserDepartaments();
+        $data['is_proveedor_amd'] = true;
         $data['status'] = 'ACTIVO';
         $data['updated_by'] = Auth::user()?->name;
 

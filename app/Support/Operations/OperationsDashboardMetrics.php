@@ -79,7 +79,7 @@ final class OperationsDashboardMetrics
         return User::query()
             ->where('status', 'ACTIVO')
             ->whereNotNull('supplier_id')
-            ->get(['supplier_id', 'departament'])
+            ->get(['supplier_id', 'departament', 'is_proveedor_amd'])
             ->filter(fn (User $user): bool => self::userHasOperationsPortalAccess($user))
             ->pluck('supplier_id')
             ->map(fn (mixed $supplierId): int => (int) $supplierId)
@@ -93,7 +93,7 @@ final class OperationsDashboardMetrics
 
         return in_array('OPERACIONES', $departaments, true)
             || in_array('TELEMEDICINA', $departaments, true)
-            || in_array('PROVEEDOR AMD', $departaments, true);
+            || $user->isProveedorAmd();
     }
 
     /**

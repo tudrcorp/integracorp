@@ -10,16 +10,12 @@ use App\Models\User;
 final class UserNavigationAccess
 {
     /**
-     * Ítems de menú incluidos por defecto para analistas del módulo NEGOCIOS.
+     * Ítems de menú incluidos por defecto por módulo (sin asignación granular).
+     * Vacío a propósito: Agenda Corporativa y Calendarios TDG se asignan desde Permisos.
      *
      * @var array<string, list<string>>
      */
-    private const ANALYST_DEFAULT_PERMISSION_SLUGS_BY_MODULE = [
-        'NEGOCIOS' => [
-            'agenda-corporativa',
-            'calendarios-tdg',
-        ],
-    ];
+    private const ANALYST_DEFAULT_PERMISSION_SLUGS_BY_MODULE = [];
 
     /**
      * @return list<string>
