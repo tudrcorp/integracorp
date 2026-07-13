@@ -67,24 +67,27 @@ it('persiste supplier_id en casos e historias clínicas', function (): void {
         ->toContain('telemedicine_history_patients');
 });
 
-it('identifica analistas TDG sin supplier_id ni departamento PROVEEDOR AMD', function (): void {
+it('identifica analistas TDG sin supplier_id ni flag Proveedor AMD', function (): void {
     Auth::setUser(new User([
         'supplier_id' => null,
         'departament' => ['OPERACIONES', 'TELEMEDICINA'],
+        'is_proveedor_amd' => false,
     ]));
 
     expect(OperationsSupplierScope::authenticatedUserIsTdgAnalyst())->toBeTrue();
 
     Auth::setUser(new User([
         'supplier_id' => 12,
-        'departament' => ['OPERACIONES', 'PROVEEDOR AMD'],
+        'departament' => ['OPERACIONES'],
+        'is_proveedor_amd' => true,
     ]));
 
     expect(OperationsSupplierScope::authenticatedUserIsTdgAnalyst())->toBeFalse();
 
     Auth::setUser(new User([
         'supplier_id' => null,
-        'departament' => ['OPERACIONES', 'PROVEEDOR AMD'],
+        'departament' => ['OPERACIONES'],
+        'is_proveedor_amd' => true,
     ]));
 
     expect(OperationsSupplierScope::authenticatedUserIsTdgAnalyst())->toBeFalse();

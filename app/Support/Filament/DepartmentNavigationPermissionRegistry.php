@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support\Filament;
 
+use App\Filament\Administration\Pages\AgendaCorporativa as AdministrationAgendaCorporativa;
+use App\Filament\Administration\Pages\CalendariosTdg as AdministrationCalendariosTdg;
 use App\Filament\Administration\Pages\CompensacionVaucher;
 use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource as AdministrationAffiliationCorporateResource;
 use App\Filament\Administration\Resources\AffiliationRenovationHistories\AffiliationRenovationHistoryResource as AdministrationAffiliationRenovationHistoryResource;
@@ -67,6 +69,8 @@ use App\Filament\Business\Resources\TravelAgents\TravelAgentResource;
 use App\Filament\Business\Resources\Users\UserResource;
 use App\Filament\Business\Resources\WhiteCompanies\WhiteCompanyResource;
 use App\Filament\Business\Resources\Zones\ZoneResource;
+use App\Filament\Marketing\Pages\AgendaCorporativa as MarketingAgendaCorporativa;
+use App\Filament\Marketing\Pages\CalendariosTdg as MarketingCalendariosTdg;
 use App\Filament\Marketing\Resources\AffiliationCorporates\AffiliationCorporateResource as MarketingAffiliationCorporateResource;
 use App\Filament\Marketing\Resources\Affiliations\AffiliationResource as MarketingAffiliationResource;
 use App\Filament\Marketing\Resources\Agencies\AgencyResource as MarketingAgencyResource;
@@ -84,6 +88,8 @@ use App\Filament\Marketing\Resources\MassNotifications\MassNotificationResource;
 use App\Filament\Marketing\Resources\RrhhColaboradors\RrhhColaboradorResource as MarketingRrhhColaboradorResource;
 use App\Filament\Marketing\Resources\TravelAgencies\TravelAgencyResource as MarketingTravelAgencyResource;
 use App\Filament\Marketing\Resources\Zones\ZoneResource as MarketingZoneResource;
+use App\Filament\Operations\Pages\AgendaCorporativa as OperationsAgendaCorporativa;
+use App\Filament\Operations\Pages\CalendariosTdg as OperationsCalendariosTdg;
 use App\Filament\Operations\Pages\DashboardOperaciones;
 use App\Filament\Operations\Resources\AccountsPayables\AccountsPayableResource;
 use App\Filament\Operations\Resources\AccountsReceivables\AccountsReceivableResource;
@@ -174,6 +180,8 @@ final class DepartmentNavigationPermissionRegistry
         AgeRangeResource::class => ['rango-edades'],
 
         // ADMINISTRACION
+        AdministrationAgendaCorporativa::class => ['agenda-corporativa'],
+        AdministrationCalendariosTdg::class => ['calendarios-tdg'],
         AdministrationAffiliationResource::class => ['afiliaciones-individuales'],
         AdministrationAffiliationCorporateResource::class => ['afiliaciones-corporativas'],
         AdministrationRenovationResource::class => ['renovaciones-individuales'],
@@ -198,6 +206,8 @@ final class DepartmentNavigationPermissionRegistry
         AdministrationHelpdeskResource::class => ['helpdesk'],
 
         // MARKETING
+        MarketingAgendaCorporativa::class => ['agenda-corporativa'],
+        MarketingCalendariosTdg::class => ['calendarios-tdg'],
         MarketingAffiliationResource::class => ['afiliaciones-individuales'],
         MarketingAffiliationCorporateResource::class => ['afiliaciones-corporativas'],
         MarketingAgencyResource::class => ['agencias-de-corretaje'],
@@ -217,6 +227,8 @@ final class DepartmentNavigationPermissionRegistry
         MarketingHelpdeskResource::class => ['helpdesks'],
 
         // OPERACIONES
+        OperationsAgendaCorporativa::class => ['agenda-corporativa'],
+        OperationsCalendariosTdg::class => ['calendarios-tdg'],
         AffiliateResource::class => ['afiliados-individuales'],
         AffiliateCorporateResource::class => ['afiliados-corporativos'],
         OperationInventoryResource::class => ['inventario-general'],

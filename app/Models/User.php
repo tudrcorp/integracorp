@@ -58,6 +58,7 @@ class User extends Authenticatable implements FilamentUser
         'created_by',
         'doctor_id',
         'supplier_id',
+        'is_proveedor_amd',
         'phone',
         'identity_card',
 
@@ -84,7 +85,13 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'departament' => 'array',
+            'is_proveedor_amd' => 'boolean',
         ];
+    }
+
+    public function isProveedorAmd(): bool
+    {
+        return (bool) $this->is_proveedor_amd;
     }
 
     public function getFilamentAvatarUrl(): ?string
@@ -178,7 +185,7 @@ class User extends Authenticatable implements FilamentUser
                 return ($this->status === 'ACTIVO' || $this->status == 'ACTIVO')
                     && (in_array('OPERACIONES', $departaments, true)
                         || in_array('TELEMEDICINA', $departaments, true)
-                        || in_array('PROVEEDOR AMD', $departaments, true));
+                        || $this->isProveedorAmd());
             }
 
             return str_ends_with($this->email, '@tudrencasa.com') &&

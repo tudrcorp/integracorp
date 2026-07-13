@@ -20,7 +20,7 @@ final class OperationsSupplierScope
     }
 
     /**
-     * Analistas TDG: usuarios internos sin proveedor asignado y sin rol de portal AMD.
+     * Analistas TDG: usuarios internos sin proveedor asignado y sin flag de portal AMD.
      */
     public static function authenticatedUserIsTdgAnalyst(): bool
     {
@@ -30,9 +30,7 @@ final class OperationsSupplierScope
             return false;
         }
 
-        $departaments = is_array($user->departament) ? $user->departament : [];
-
-        return ! in_array('PROVEEDOR AMD', $departaments, true);
+        return ! $user->isProveedorAmd();
     }
 
     /**

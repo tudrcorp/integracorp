@@ -19,6 +19,7 @@ final class UserPageHeader
         $profile = self::formatProfileLabel($user);
         $badgeStyle = self::badgeStyleForStatus($status);
         $heading = $context === 'edit' ? 'Editar usuario INTEGRACORP' : 'Usuario INTEGRACORP';
+        $proveedorAmdLabel = $user->isProveedorAmd() ? 'Proveedor AMD (portal)' : null;
 
         return new HtmlString(
             '<div style="display:flex;flex-direction:column;gap:8px;padding:10px 0;">'
@@ -36,6 +37,9 @@ final class UserPageHeader
             .'<div style="display:flex;flex-direction:column;gap:4px;">'
             .'<span class="text-sm text-gray-600 dark:text-gray-300">📧 '.e($email).'</span>'
             .'<span class="text-sm text-gray-600 dark:text-gray-300">🧩 '.e($modules).'</span>'
+            .($proveedorAmdLabel !== null
+                ? '<span class="text-sm font-medium text-amber-700 dark:text-amber-300">🏷️ '.e($proveedorAmdLabel).'</span>'
+                : '')
             .($profile !== null
                 ? '<span class="text-sm font-medium text-primary-600 dark:text-primary-400">👤 '.e($profile).'</span>'
                 : '')

@@ -63,11 +63,11 @@ it('deniega acceso al menu del modulo cuando no hay permisos granulares asignado
         ->and(UserNavigationAccess::canAccessMenuItem($user, 'ADMINISTRACION', ['afiliaciones-individuales']))->toBeFalse();
 });
 
-it('concede permisos por defecto de negocios aun sin permisos granulares en base de datos', function (): void {
+it('no concede agenda corporativa ni calendarios tdg sin permiso granular asignado', function (): void {
     $user = makeNavigationUser(['NEGOCIOS']);
 
-    expect(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['agenda-corporativa']))->toBeTrue()
-        ->and(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['calendarios-tdg']))->toBeTrue()
+    expect(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['agenda-corporativa']))->toBeFalse()
+        ->and(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['calendarios-tdg']))->toBeFalse()
         ->and(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['cotizador-individual']))->toBeFalse();
 });
 
@@ -120,19 +120,42 @@ it('aplica el trait de navegacion en recursos business clave', function (): void
         ->and($adminAffiliation)->toContain('AuthorizesDepartmentNavigation');
 });
 
-it('concede agenda corporativa y calendarios tdg por defecto a analistas de negocios', function (): void {
-    $user = makeNavigationUser(['NEGOCIOS'], [
+it('exige permiso granular para agenda corporativa y calendarios tdg', function (): void {
+    $userWithout = makeNavigationUser(['NEGOCIOS'], [
         'NEGOCIOS' => ['cotizador-individual'],
     ]);
 
-    expect(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['agenda-corporativa']))->toBeTrue()
-        ->and(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['calendarios-tdg']))->toBeTrue()
-        ->and(UserNavigationAccess::canAccessMenuItem($user, 'NEGOCIOS', ['afiliaciones-individuales']))->toBeFalse();
+    expect(UserNavigationAccess::canAccessMenuItem($userWithout, 'NEGOCIOS', ['agenda-corporativa']))->toBeFalse()
+        ->and(UserNavigationAccess::canAccessMenuItem($userWithout, 'NEGOCIOS', ['calendarios-tdg']))->toBeFalse()
+        ->and(UserNavigationAccess::canAccessMenuItem($userWithout, 'NEGOCIOS', ['cotizador-individual']))->toBeTrue();
+
+    $userWith = makeNavigationUser(['NEGOCIOS'], [
+        'NEGOCIOS' => ['agenda-corporativa', 'calendarios-tdg'],
+    ]);
+
+    expect(UserNavigationAccess::canAccessMenuItem($userWith, 'NEGOCIOS', ['agenda-corporativa']))->toBeTrue()
+        ->and(UserNavigationAccess::canAccessMenuItem($userWith, 'NEGOCIOS', ['calendarios-tdg']))->toBeTrue();
 });
 
-it('expone los permisos por defecto del modulo negocios', function (): void {
-    expect(UserNavigationAccess::defaultPermissionSlugsForModule('NEGOCIOS'))
-        ->toBe(['agenda-corporativa', 'calendarios-tdg']);
+it('no define permisos por defecto automaticos por modulo', function (): void {
+    expect(UserNavigationAccess::defaultPermissionSlugsForModule('NEGOCIOS'))->toBe([])
+        ->and(UserNavigationAccess::isAnalystDefaultMenuItem('NEGOCIOS', ['agenda-corporativa']))->toBeFalse()
+        ->and(UserNavigationAccess::isAnalystDefaultMenuItem('NEGOCIOS', ['calendarios-tdg']))->toBeFalse();
+});
+
+it('registra agenda y calendarios tdg en todos los paneles internos', function (): void {
+    expect(DepartmentNavigationPermissionRegistry::slugsFor(
+        \App\Filament\Business\Pages\AgendaCorporativa::class
+    ))->toBe(['agenda-corporativa'])
+        ->and(DepartmentNavigationPermissionRegistry::slugsFor(
+            \App\Filament\Administration\Pages\AgendaCorporativa::class
+        ))->toBe(['agenda-corporativa'])
+        ->and(DepartmentNavigationPermissionRegistry::slugsFor(
+            \App\Filament\Operations\Pages\CalendariosTdg::class
+        ))->toBe(['calendarios-tdg'])
+        ->and(DepartmentNavigationPermissionRegistry::slugsFor(
+            \App\Filament\Marketing\Pages\CalendariosTdg::class
+        ))->toBe(['calendarios-tdg']);
 });
 
 it('expone permisos asignables para operaciones marketing y proyectos', function (): void {
