@@ -71,12 +71,15 @@ class AffiliationForm
                                     ->prefixIcon('heroicon-m-clipboard-document-check')
                                     ->options(IndividualQuote::select('id', 'code_agency', 'status', 'full_name')->where('code_agency', Auth::user()->code_agency)->where('status', 'APROBADA')->pluck('full_name', 'id'))
                                     ->default(function () {
-                                        $id = request()->query('id');
+                                        $id = request()->query('id') ?? request()->query('individual_quote_id');
                                         if (isset($id)) {
                                             return $id;
                                         }
 
-                                        return null;
+                                        $dataRecords = session()->get('data_records') ?? [];
+                                        $quoteRecord = is_array($dataRecords[0] ?? null) ? $dataRecords[0] : [];
+
+                                        return $quoteRecord['individual_quote_id'] ?? null;
                                     })
                                     ->searchable()
                                     ->preload()
@@ -91,22 +94,28 @@ class AffiliationForm
 
                                 Select::make('plan_id')
                                     ->default(function () {
-                                        $plan_id = request()->query('plan_id');
-                                        if (isset($plan_id)) {
-                                            return $plan_id;
+                                        $planId = request()->query('plan_id');
+                                        if ($planId !== null && $planId !== '') {
+                                            return $planId;
                                         }
 
-                                        return null;
+                                        $dataRecords = session()->get('data_records') ?? [];
+                                        $quoteRecord = is_array($dataRecords[0] ?? null) ? $dataRecords[0] : [];
+
+                                        return $quoteRecord['plan_id'] ?? null;
                                     })
                                     ->label('Plan')
                                     ->live()
                                     ->disabled(function () {
-                                        $plan_id = request()->query('plan_id');
-                                        if (isset($plan_id) && $plan_id != null) {
+                                        $planId = request()->query('plan_id');
+                                        if ($planId !== null && $planId !== '') {
                                             return true;
                                         }
 
-                                        return false;
+                                        $dataRecords = session()->get('data_records') ?? [];
+                                        $quoteRecord = is_array($dataRecords[0] ?? null) ? $dataRecords[0] : [];
+
+                                        return filled($quoteRecord['plan_id'] ?? null);
                                     })
                                     ->dehydrated()
                                     ->searchable()
@@ -131,6 +140,17 @@ class AffiliationForm
                                     ->helperText('Punto(.) para separar miles.')
                                     ->label('Cobertura')
                                     ->live()
+                                    ->default(function () {
+                                        $coverageId = request()->query('coverage_id');
+                                        if ($coverageId !== null && $coverageId !== '') {
+                                            return $coverageId;
+                                        }
+
+                                        $dataRecords = session()->get('data_records') ?? [];
+                                        $quoteRecord = is_array($dataRecords[0] ?? null) ? $dataRecords[0] : [];
+
+                                        return $quoteRecord['coverage_id'] ?? null;
+                                    })
                                     ->options(function (Get $get) {
                                         $coverages = DetailIndividualQuote::join('coverages', 'detail_individual_quotes.coverage_id', '=', 'coverages.id')
                                             ->join('individual_quotes', 'detail_individual_quotes.individual_quote_id', '=', 'individual_quotes.id')
@@ -153,6 +173,18 @@ class AffiliationForm
                                     ->validationMessages([
                                         'required' => 'Campo Requerido',
                                     ])
+                                    ->disabled(function () {
+                                        $coverageId = request()->query('coverage_id');
+                                        if ($coverageId !== null && $coverageId !== '') {
+                                            return true;
+                                        }
+
+                                        $dataRecords = session()->get('data_records') ?? [];
+                                        $quoteRecord = is_array($dataRecords[0] ?? null) ? $dataRecords[0] : [];
+
+                                        return filled($quoteRecord['coverage_id'] ?? null);
+                                    })
+                                    ->dehydrated()
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->hidden(fn (Get $get) => $get('plan_id') == 1 || $get('plan_id') == null)
                                     ->preload(),
@@ -540,9 +572,17 @@ class AffiliationForm
                                         ])->columnSpanFull()->columns(2),
                                 ])
                                 ->columnSpanFull()
-                                ->defaultItems(function (Get $get, Set $set) {
-                                    // Se reste 1 por el titular, ejempo: La cotización es para 2 personas, el titular y 1 afiliado;
-                                    return session()->get('persons') - 1;
+                                ->defaultItems(function (Get $get, Set $set): int {
+                                    $persons = (int) (session()->get('persons') ?? 0);
+
+                                    if ($persons <= 0) {
+                                        $dataRecords = session()->get('data_records') ?? [];
+                                        $quoteRecord = is_array($dataRecords[0] ?? null) ? $dataRecords[0] : [];
+                                        $persons = (int) ($quoteRecord['total_persons'] ?? 1);
+                                    }
+
+                                    // Se resta 1 por el titular: cotización de 2 personas => 1 afiliado adicional.
+                                    return max(0, $persons - 1);
                                 })
                                 ->addActionLabel('Agregar afiliado'),
                         ]),
