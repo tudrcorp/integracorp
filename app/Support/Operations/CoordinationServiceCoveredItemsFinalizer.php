@@ -30,32 +30,75 @@ final class CoordinationServiceCoveredItemsFinalizer
 {
     public const MEDICATION_DELIVERY_RECEIPT_DOCUMENT_NAME = 'COMPROBANTE DE ENTREGA DE MEDICAMENTOS';
 
+    public const LAB_DELIVERY_RECEIPT_DOCUMENT_NAME = 'COMPROBANTE DE ENTREGA DE LABORATORIOS';
+
+    public const STUDY_DELIVERY_RECEIPT_DOCUMENT_NAME = 'COMPROBANTE DE ENTREGA DE ESTUDIOS';
+
+    public const SPECIALTY_DELIVERY_RECEIPT_DOCUMENT_NAME = 'COMPROBANTE DE ENTREGA DE ESPECIALISTAS';
+
     /**
      * Acción específica para medicamentos CUBIERTOS: subir el comprobante de entrega
      * y, al guardar, pasarlos a FINALIZADO.
      */
     public static function makeUploadCoveredMedicationDeliveryReceiptAction(): Action
     {
-        return Action::make('uploadCoveredMedicationDeliveryReceipt')
-            ->label('Comprobante entrega medicamentos')
+        return self::makeUploadCoveredItemDeliveryReceiptAction('medication');
+    }
+
+    /**
+     * Acción específica para laboratorios CUBIERTOS: subir el comprobante de entrega
+     * y, al guardar, pasarlos a FINALIZADO.
+     */
+    public static function makeUploadCoveredLabDeliveryReceiptAction(): Action
+    {
+        return self::makeUploadCoveredItemDeliveryReceiptAction('lab');
+    }
+
+    /**
+     * Acción específica para estudios CUBIERTOS: subir el comprobante de entrega
+     * y, al guardar, pasarlos a FINALIZADO.
+     */
+    public static function makeUploadCoveredStudyDeliveryReceiptAction(): Action
+    {
+        return self::makeUploadCoveredItemDeliveryReceiptAction('study');
+    }
+
+    /**
+     * Acción específica para especialistas CUBIERTOS: subir el comprobante de entrega
+     * y, al guardar, pasarlos a FINALIZADO.
+     */
+    public static function makeUploadCoveredSpecialtyDeliveryReceiptAction(): Action
+    {
+        return self::makeUploadCoveredItemDeliveryReceiptAction('specialty');
+    }
+
+    /**
+     * @param  'medication'|'lab'|'study'|'specialty'  $itemType
+     */
+    public static function makeUploadCoveredItemDeliveryReceiptAction(string $itemType): Action
+    {
+        $config = self::coveredItemDeliveryReceiptConfig($itemType);
+
+        return Action::make($config['action_name'])
+            ->label($config['label'])
             ->icon('heroicon-o-clipboard-document-check')
             ->color('success')
             ->button()
-            ->visible(fn (OperationCoordinationService $record): bool => self::hasCoveredMedicationsPendingFinalization($record))
-            ->modalHeading('Comprobante de entrega de medicamentos')
-            ->modalDescription('Cargue el comprobante de entrega. Al guardar, los medicamentos cubiertos seleccionados pasarán a FINALIZADO.')
+            ->visible(fn (OperationCoordinationService $record): bool => self::hasCoveredItemsOfTypePendingFinalization($record, $itemType))
+            ->modalHeading($config['modal_heading'])
+            ->modalDescription($config['modal_description'])
             ->modalWidth(Width::ThreeExtraLarge)
             ->modalSubmitActionLabel('Guardar')
             ->modalCancelActionLabel('Cancelar')
             ->form([
                 CheckboxList::make('service_item_keys')
-                    ->label('Medicamentos cubiertos')
-                    ->helperText('Seleccione los medicamentos cubiertos incluidos en este comprobante.')
+                    ->label($config['checkbox_label'])
+                    ->helperText($config['checkbox_helper'])
                     ->options(fn (?OperationCoordinationService $record): array => $record instanceof OperationCoordinationService
-                        ? self::coveredMedicationPendingFinalizationOptions($record)
+                        ? self::coveredItemPendingFinalizationOptions($record, $itemType)
                         : [])
                     ->default(fn (?OperationCoordinationService $record): array => $record instanceof OperationCoordinationService
-                        ? array_keys(self::coveredMedicationPendingFinalizationOptions($record))
+                        ? array_keys(self::coveredItemPendingFinalizationOptions($record, $itemType))
                         : [])
                     ->bulkToggleable()
                     ->columns(1)
@@ -67,8 +110,8 @@ final class CoordinationServiceCoveredItemsFinalizer
                     ->required()
                     ->maxSize(10240),
             ])
-            ->action(function (array $data, OperationCoordinationService $record): void {
-                self::handleCoveredMedicationDeliveryReceipt($record, $data);
+            ->action(function (array $data, OperationCoordinationService $record) use ($itemType): void {
+                self::handleCoveredItemDeliveryReceipt($record, $data, $itemType);
             });
     }
 
@@ -250,7 +293,12 @@ final class CoordinationServiceCoveredItemsFinalizer
 
     public static function hasCoveredMedicationsPendingFinalization(OperationCoordinationService $record): bool
     {
-        return self::coveredMedicationsPendingFinalization($record)->isNotEmpty();
+        return self::hasCoveredItemsOfTypePendingFinalization($record, 'medication');
+    }
+
+    public static function hasCoveredItemsOfTypePendingFinalization(OperationCoordinationService $record, string $itemType): bool
+    {
+        return self::coveredItemsOfTypePendingFinalization($record, $itemType)->isNotEmpty();
     }
 
     /**
@@ -258,8 +306,19 @@ final class CoordinationServiceCoveredItemsFinalizer
      */
     public static function coveredMedicationsPendingFinalization(OperationCoordinationService $record): Collection
     {
+        return self::coveredItemsOfTypePendingFinalization($record, 'medication');
+    }
+
+    /**
+     * @param  'medication'|'lab'|'study'|'specialty'  $itemType
+     * @return Collection<int, array{key: string, category: string, label: string, detail: string, coverage: bool|null, coverage_label: string, status: string, selectable: bool}>
+     */
+    public static function coveredItemsOfTypePendingFinalization(OperationCoordinationService $record, string $itemType): Collection
+    {
+        $prefix = $itemType.':';
+
         return self::coveredItemsPendingFinalization($record)
-            ->filter(static fn (array $item): bool => str_starts_with((string) ($item['key'] ?? ''), 'medication:'))
+            ->filter(static fn (array $item): bool => str_starts_with((string) ($item['key'] ?? ''), $prefix))
             ->values();
     }
 
@@ -268,7 +327,16 @@ final class CoordinationServiceCoveredItemsFinalizer
      */
     public static function coveredMedicationPendingFinalizationOptions(OperationCoordinationService $record): array
     {
-        return self::coveredMedicationsPendingFinalization($record)
+        return self::coveredItemPendingFinalizationOptions($record, 'medication');
+    }
+
+    /**
+     * @param  'medication'|'lab'|'study'|'specialty'  $itemType
+     * @return array<string, string>
+     */
+    public static function coveredItemPendingFinalizationOptions(OperationCoordinationService $record, string $itemType): array
+    {
+        return self::coveredItemsOfTypePendingFinalization($record, $itemType)
             ->mapWithKeys(fn (array $item): array => [
                 (string) $item['key'] => $item['label'].' · '.$item['status'],
             ])
@@ -280,21 +348,32 @@ final class CoordinationServiceCoveredItemsFinalizer
      */
     public static function handleCoveredMedicationDeliveryReceipt(OperationCoordinationService $record, array $data): void
     {
+        self::handleCoveredItemDeliveryReceipt($record, $data, 'medication');
+    }
+
+    /**
+     * @param  'medication'|'lab'|'study'|'specialty'  $itemType
+     * @param  array<string, mixed>  $data
+     */
+    public static function handleCoveredItemDeliveryReceipt(OperationCoordinationService $record, array $data, string $itemType): void
+    {
+        $config = self::coveredItemDeliveryReceiptConfig($itemType);
+
         $documentType = OperationDocumentList::query()
-            ->where('name', self::MEDICATION_DELIVERY_RECEIPT_DOCUMENT_NAME)
+            ->where('name', $config['document_name'])
             ->first();
 
         if ($documentType === null) {
             Notification::make()
                 ->danger()
                 ->title('Tipo de documento no configurado')
-                ->body('No existe el tipo "'.self::MEDICATION_DELIVERY_RECEIPT_DOCUMENT_NAME.'" en el catálogo de documentos.')
+                ->body('No existe el tipo "'.$config['document_name'].'" en el catálogo de documentos.')
                 ->send();
 
             return;
         }
 
-        $allowedKeys = array_keys(self::coveredMedicationPendingFinalizationOptions($record));
+        $allowedKeys = array_keys(self::coveredItemPendingFinalizationOptions($record, $itemType));
         $selectedKeys = collect($data['service_item_keys'] ?? [])
             ->map(static fn (mixed $key): string => trim((string) $key))
             ->filter(static fn (string $key): bool => in_array($key, $allowedKeys, true))
@@ -305,8 +384,8 @@ final class CoordinationServiceCoveredItemsFinalizer
         if ($selectedKeys === []) {
             Notification::make()
                 ->warning()
-                ->title('Sin medicamentos seleccionados')
-                ->body('Seleccione al menos un medicamento cubierto incluido en el comprobante.')
+                ->title($config['empty_selection_title'])
+                ->body($config['empty_selection_body'])
                 ->send();
 
             return;
@@ -318,13 +397,13 @@ final class CoordinationServiceCoveredItemsFinalizer
             Notification::make()
                 ->warning()
                 ->title('Sin archivo')
-                ->body('Debe cargar el comprobante de entrega de medicamentos.')
+                ->body($config['empty_file_body'])
                 ->send();
 
             return;
         }
 
-        $serviceLabelsByKey = self::coveredMedicationPendingFinalizationOptions($record);
+        $serviceLabelsByKey = self::coveredItemPendingFinalizationOptions($record, $itemType);
         $documents = self::mapFormDocuments([
             'documents' => [[
                 'document_file' => $documentFile,
@@ -357,7 +436,7 @@ final class CoordinationServiceCoveredItemsFinalizer
             Notification::make()
                 ->warning()
                 ->title('Comprobante guardado sin cambios de estatus')
-                ->body('Se cargó el comprobante, pero no había medicamentos cubiertos pendientes de finalizar.')
+                ->body($config['saved_without_finalize_body'])
                 ->send();
 
             return;
@@ -365,11 +444,101 @@ final class CoordinationServiceCoveredItemsFinalizer
 
         Notification::make()
             ->success()
-            ->title('Comprobante guardado y medicamentos finalizados')
+            ->title($config['success_title'])
             ->body($finalized > 1
-                ? 'Se cargó el comprobante y se finalizaron '.$finalized.' medicamentos cubiertos.'
-                : 'Se cargó el comprobante y se finalizó 1 medicamento cubierto.')
+                ? $config['success_body_plural']($finalized)
+                : $config['success_body_singular'])
             ->send();
+    }
+
+    /**
+     * @param  'medication'|'lab'|'study'|'specialty'  $itemType
+     * @return array{
+     *     action_name: string,
+     *     label: string,
+     *     modal_heading: string,
+     *     modal_description: string,
+     *     checkbox_label: string,
+     *     checkbox_helper: string,
+     *     document_name: string,
+     *     empty_selection_title: string,
+     *     empty_selection_body: string,
+     *     empty_file_body: string,
+     *     saved_without_finalize_body: string,
+     *     success_title: string,
+     *     success_body_singular: string,
+     *     success_body_plural: \Closure(int): string
+     * }
+     */
+    public static function coveredItemDeliveryReceiptConfig(string $itemType): array
+    {
+        return match ($itemType) {
+            'medication' => [
+                'action_name' => 'uploadCoveredMedicationDeliveryReceipt',
+                'label' => 'Comprobante entrega medicamentos',
+                'modal_heading' => 'Comprobante de entrega de medicamentos',
+                'modal_description' => 'Cargue el comprobante de entrega. Al guardar, los medicamentos cubiertos seleccionados pasarán a FINALIZADO.',
+                'checkbox_label' => 'Medicamentos cubiertos',
+                'checkbox_helper' => 'Seleccione los medicamentos cubiertos incluidos en este comprobante.',
+                'document_name' => self::MEDICATION_DELIVERY_RECEIPT_DOCUMENT_NAME,
+                'empty_selection_title' => 'Sin medicamentos seleccionados',
+                'empty_selection_body' => 'Seleccione al menos un medicamento cubierto incluido en el comprobante.',
+                'empty_file_body' => 'Debe cargar el comprobante de entrega de medicamentos.',
+                'saved_without_finalize_body' => 'Se cargó el comprobante, pero no había medicamentos cubiertos pendientes de finalizar.',
+                'success_title' => 'Comprobante guardado y medicamentos finalizados',
+                'success_body_singular' => 'Se cargó el comprobante y se finalizó 1 medicamento cubierto.',
+                'success_body_plural' => static fn (int $count): string => 'Se cargó el comprobante y se finalizaron '.$count.' medicamentos cubiertos.',
+            ],
+            'lab' => [
+                'action_name' => 'uploadCoveredLabDeliveryReceipt',
+                'label' => 'Comprobante entrega laboratorios',
+                'modal_heading' => 'Comprobante de entrega de laboratorios',
+                'modal_description' => 'Cargue el comprobante de entrega. Al guardar, los laboratorios cubiertos seleccionados pasarán a FINALIZADO.',
+                'checkbox_label' => 'Laboratorios cubiertos',
+                'checkbox_helper' => 'Seleccione los laboratorios cubiertos incluidos en este comprobante.',
+                'document_name' => self::LAB_DELIVERY_RECEIPT_DOCUMENT_NAME,
+                'empty_selection_title' => 'Sin laboratorios seleccionados',
+                'empty_selection_body' => 'Seleccione al menos un laboratorio cubierto incluido en el comprobante.',
+                'empty_file_body' => 'Debe cargar el comprobante de entrega de laboratorios.',
+                'saved_without_finalize_body' => 'Se cargó el comprobante, pero no había laboratorios cubiertos pendientes de finalizar.',
+                'success_title' => 'Comprobante guardado y laboratorios finalizados',
+                'success_body_singular' => 'Se cargó el comprobante y se finalizó 1 laboratorio cubierto.',
+                'success_body_plural' => static fn (int $count): string => 'Se cargó el comprobante y se finalizaron '.$count.' laboratorios cubiertos.',
+            ],
+            'study' => [
+                'action_name' => 'uploadCoveredStudyDeliveryReceipt',
+                'label' => 'Comprobante entrega estudios',
+                'modal_heading' => 'Comprobante de entrega de estudios',
+                'modal_description' => 'Cargue el comprobante de entrega. Al guardar, los estudios cubiertos seleccionados pasarán a FINALIZADO.',
+                'checkbox_label' => 'Estudios cubiertos',
+                'checkbox_helper' => 'Seleccione los estudios cubiertos incluidos en este comprobante.',
+                'document_name' => self::STUDY_DELIVERY_RECEIPT_DOCUMENT_NAME,
+                'empty_selection_title' => 'Sin estudios seleccionados',
+                'empty_selection_body' => 'Seleccione al menos un estudio cubierto incluido en el comprobante.',
+                'empty_file_body' => 'Debe cargar el comprobante de entrega de estudios.',
+                'saved_without_finalize_body' => 'Se cargó el comprobante, pero no había estudios cubiertos pendientes de finalizar.',
+                'success_title' => 'Comprobante guardado y estudios finalizados',
+                'success_body_singular' => 'Se cargó el comprobante y se finalizó 1 estudio cubierto.',
+                'success_body_plural' => static fn (int $count): string => 'Se cargó el comprobante y se finalizaron '.$count.' estudios cubiertos.',
+            ],
+            'specialty' => [
+                'action_name' => 'uploadCoveredSpecialtyDeliveryReceipt',
+                'label' => 'Comprobante entrega especialistas',
+                'modal_heading' => 'Comprobante de entrega de especialistas',
+                'modal_description' => 'Cargue el comprobante de entrega. Al guardar, los especialistas cubiertos seleccionados pasarán a FINALIZADO.',
+                'checkbox_label' => 'Especialistas cubiertos',
+                'checkbox_helper' => 'Seleccione los especialistas cubiertos incluidos en este comprobante.',
+                'document_name' => self::SPECIALTY_DELIVERY_RECEIPT_DOCUMENT_NAME,
+                'empty_selection_title' => 'Sin especialistas seleccionados',
+                'empty_selection_body' => 'Seleccione al menos un especialista cubierto incluido en el comprobante.',
+                'empty_file_body' => 'Debe cargar el comprobante de entrega de especialistas.',
+                'saved_without_finalize_body' => 'Se cargó el comprobante, pero no había especialistas cubiertos pendientes de finalizar.',
+                'success_title' => 'Comprobante guardado y especialistas finalizados',
+                'success_body_singular' => 'Se cargó el comprobante y se finalizó 1 especialista cubierto.',
+                'success_body_plural' => static fn (int $count): string => 'Se cargó el comprobante y se finalizaron '.$count.' especialistas cubiertos.',
+            ],
+            default => throw new \InvalidArgumentException('Tipo de ítem cubierto no soportado: '.$itemType),
+        };
     }
 
     /**

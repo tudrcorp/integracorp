@@ -187,6 +187,9 @@ class OperationCoordinationServiceInfolist
                                     ->headerActions([
                                         CoordinationServiceCoveredItemsFinalizer::makePlaceCoveredItemsInManagementAction(),
                                         CoordinationServiceCoveredItemsFinalizer::makeUploadCoveredMedicationDeliveryReceiptAction(),
+                                        CoordinationServiceCoveredItemsFinalizer::makeUploadCoveredLabDeliveryReceiptAction(),
+                                        CoordinationServiceCoveredItemsFinalizer::makeUploadCoveredStudyDeliveryReceiptAction(),
+                                        CoordinationServiceCoveredItemsFinalizer::makeUploadCoveredSpecialtyDeliveryReceiptAction(),
                                         // CoordinationServiceCoveredItemsFinalizer::makeUploadAndFinalizeAction(),
                                     ])
                                     ->schema([
