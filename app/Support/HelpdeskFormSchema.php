@@ -224,6 +224,7 @@ final class HelpdeskFormSchema
                                 ->default(fn (): ?string => Auth::user()?->name)
                                 ->disabled()
                                 ->dehydrated()
+                                ->dehydratedWhenHidden()
                                 ->prefixIcon('heroicon-m-identification')
                                 ->helperText('Se registra automáticamente con su usuario de sesión.')
                                 ->hiddenOn('create'),
