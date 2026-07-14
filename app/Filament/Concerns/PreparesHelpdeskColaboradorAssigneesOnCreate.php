@@ -27,6 +27,7 @@ trait PreparesHelpdeskColaboradorAssigneesOnCreate
     protected function prepareHelpdeskColaboradorAssigneesForCreate(array $data): array
     {
         $data['status'] ??= 'PENDIENTE POR INICIAR';
+        $data['created_by'] = Auth::user()?->name;
 
         $ids = $data['rrhhColaboradores'] ?? [];
         if (! is_array($ids)) {
