@@ -777,7 +777,7 @@ class TelemedicineConsultationPatientForm
                                         ->multiple(),
                                     Select::make('other_specialist')
                                         ->label('Otros Especialistas') // BVA
-                                        ->options(TelemedicineListSpecialist::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
+                                        ->options(TelemedicineListSpecialist::where('type_two', 'NO CUBIERTO')->get()->pluck('name', 'name'))
                                         ->multiple(),
                                 ])->columnSpanFull()->columns(2),
                         ]),

@@ -186,7 +186,8 @@ class OperationCoordinationServiceInfolist
                                     ->visible(fn (OperationCoordinationService $record): bool => self::hasAnyAssociatedItems($record))
                                     ->headerActions([
                                         CoordinationServiceCoveredItemsFinalizer::makePlaceCoveredItemsInManagementAction(),
-                                        CoordinationServiceCoveredItemsFinalizer::makeUploadAndFinalizeAction(),
+                                        CoordinationServiceCoveredItemsFinalizer::makeUploadCoveredMedicationDeliveryReceiptAction(),
+                                        // CoordinationServiceCoveredItemsFinalizer::makeUploadAndFinalizeAction(),
                                     ])
                                     ->schema([
                                         Fieldset::make('Medicamentos')

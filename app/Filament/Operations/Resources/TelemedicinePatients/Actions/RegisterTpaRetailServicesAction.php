@@ -17,6 +17,7 @@ use App\Models\TelemedicinePatientStudy;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
@@ -33,6 +34,25 @@ class RegisterTpaRetailServicesAction
 
     private const CASE_STATUS = 'TPA/RETAIL';
 
+    private const STANDALONE_SERVICES_FIELD = 'standalone_services';
+
+    /**
+     * Servicios de alto nivel (sin catálogo de ítems) seleccionables por el analista.
+     *
+     * @var list<string>
+     */
+    private const STANDALONE_SPECIFIC_SERVICES = [
+        'TELEMEDICINA',
+        'AMD (ASISTENCIA MEDICA DOMICILIARIA)',
+        'TRASLADO EN AMBULANCIA',
+        'CONSULTA ONLINE CON MEDICO ESPECIALISTA',
+        'URGEN CARE',
+        'APS',
+        'INGRESO A CLINICA',
+        'LECTURA DE RESULTADOS (LABORATORIO(S))',
+        'LECTURA DE RESULTADOS (IMAGENOLOGIA)',
+    ];
+
     public static function make(): Action
     {
         return Action::make('register_tpa_retail_services')
@@ -41,16 +61,17 @@ class RegisterTpaRetailServicesAction
             ->color('success')
             ->modalWidth(Width::FiveExtraLarge)
             ->modalHeading('Registro de servicios TPA/RETAIL')
-            ->modalDescription('Seleccione laboratorios, estudios y consultas con especialistas (cubiertos y no cubiertos). Cada tipo se enviará a Coordinación de Servicios para su gestión.')
+            ->modalDescription('Seleccione servicios adicionales, laboratorios, estudios y consultas con especialistas. Cada selección se enviará a Coordinación de Servicios para su gestión.')
             ->modalSubmitActionLabel('Registrar servicios')
             ->form(self::formSchema())
             ->action(function (TelemedicinePatient $record, array $data): void {
                 $selections = self::collectSelections($data);
+                $standaloneServices = self::normalizeStandaloneServices($data[self::STANDALONE_SERVICES_FIELD] ?? []);
 
-                if (self::selectionsAreEmpty($selections)) {
+                if (self::selectionsAreEmpty($selections) && $standaloneServices === []) {
                     Notification::make()
                         ->title('Sin ítems seleccionados')
-                        ->body('Seleccione al menos un laboratorio, estudio o consulta con especialista.')
+                        ->body('Seleccione al menos un servicio, laboratorio, estudio o consulta con especialista.')
                         ->warning()
                         ->send();
 
@@ -61,8 +82,13 @@ class RegisterTpaRetailServicesAction
                     $createdServices = [];
                     $case = null;
 
-                    DB::transaction(function () use ($record, $selections, &$createdServices, &$case): void {
+                    DB::transaction(function () use ($record, $selections, $standaloneServices, &$createdServices, &$case): void {
                         $case = self::createCase($record);
+
+                        foreach ($standaloneServices as $specificService) {
+                            $service = self::createCoordinationService($record, $case, $specificService);
+                            $createdServices[$specificService] = $service->id;
+                        }
 
                         foreach (self::categories() as $key => $config) {
                             $covered = $selections[$key][self::COVERED];
@@ -120,7 +146,19 @@ class RegisterTpaRetailServicesAction
      */
     private static function formSchema(): array
     {
-        $sections = [];
+        $sections = [
+            Section::make('Servicios')
+                ->icon('heroicon-o-clipboard-document-list')
+                ->description('Servicios adicionales que el analista puede registrar sin detalle de laboratorios, estudios o especialistas.')
+                ->schema([
+                    CheckboxList::make(self::STANDALONE_SERVICES_FIELD)
+                        ->label('Servicios disponibles')
+                        ->options(self::standaloneServiceOptions())
+                        ->bulkToggleable()
+                        ->columns(2)
+                        ->helperText('Cada servicio seleccionado genera una solicitud en Coordinación de Servicios.'),
+                ]),
+        ];
 
         foreach (self::categories() as $config) {
             $sections[] = Section::make($config['label'])
@@ -132,14 +170,22 @@ class RegisterTpaRetailServicesAction
                         ->multiple()
                         ->searchable()
                         ->preload()
-                        ->options(fn (): array => self::catalogOptions($config['catalog'], self::COVERED))
+                        ->options(fn (): array => self::catalogOptions(
+                            $config['catalog'],
+                            self::COVERED,
+                            $config['covered_type_column'] ?? 'type',
+                        ))
                         ->helperText('Ítems con cobertura. Habilitan la creación de la orden de servicio.'),
                     Select::make($config['non_covered_field'])
                         ->label('No cubiertos')
                         ->multiple()
                         ->searchable()
                         ->preload()
-                        ->options(fn (): array => self::catalogOptions($config['catalog'], self::NOT_COVERED))
+                        ->options(fn (): array => self::catalogOptions(
+                            $config['catalog'],
+                            self::NOT_COVERED,
+                            $config['non_covered_type_column'] ?? 'type',
+                        ))
                         ->helperText('Ítems sin cobertura. Requieren cotización en la gestión.'),
                 ]);
         }
@@ -148,7 +194,32 @@ class RegisterTpaRetailServicesAction
     }
 
     /**
-     * @return array<string, array{label: string, icon: string, catalog: class-string, model: class-string, column: string, specific_service: string, covered_field: string, non_covered_field: string}>
+     * @return array<string, string>
+     */
+    public static function standaloneServiceOptions(): array
+    {
+        return collect(self::STANDALONE_SPECIFIC_SERVICES)
+            ->mapWithKeys(static fn (string $service): array => [$service => $service])
+            ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function normalizeStandaloneServices(mixed $values): array
+    {
+        $allowed = self::STANDALONE_SPECIFIC_SERVICES;
+
+        return collect(is_array($values) ? $values : [])
+            ->map(static fn (mixed $value): string => trim((string) $value))
+            ->filter(static fn (string $value): bool => in_array($value, $allowed, true))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, array{label: string, icon: string, catalog: class-string, model: class-string, column: string, specific_service: string, covered_field: string, non_covered_field: string, covered_type_column?: string, non_covered_type_column?: string}>
      */
     private static function categories(): array
     {
@@ -182,6 +253,8 @@ class RegisterTpaRetailServicesAction
                 'specific_service' => 'ESPECIALISTA',
                 'covered_field' => 'specialists_covered',
                 'non_covered_field' => 'specialists_non_covered',
+                'covered_type_column' => 'type',
+                'non_covered_type_column' => 'type_two',
             ],
         ];
     }
@@ -190,10 +263,10 @@ class RegisterTpaRetailServicesAction
      * @param  class-string  $catalog
      * @return array<string, string>
      */
-    private static function catalogOptions(string $catalog, string $type): array
+    private static function catalogOptions(string $catalog, string $type, string $typeColumn = 'type'): array
     {
         return $catalog::query()
-            ->where('type', $type)
+            ->where($typeColumn, $type)
             ->orderBy('name')
             ->pluck('name', 'name')
             ->all();
