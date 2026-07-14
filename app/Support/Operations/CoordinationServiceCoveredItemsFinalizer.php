@@ -28,6 +28,50 @@ use Illuminate\Support\Facades\DB;
  */
 final class CoordinationServiceCoveredItemsFinalizer
 {
+    public const MEDICATION_DELIVERY_RECEIPT_DOCUMENT_NAME = 'COMPROBANTE DE ENTREGA DE MEDICAMENTOS';
+
+    /**
+     * Acción específica para medicamentos CUBIERTOS: subir el comprobante de entrega
+     * y, al guardar, pasarlos a FINALIZADO.
+     */
+    public static function makeUploadCoveredMedicationDeliveryReceiptAction(): Action
+    {
+        return Action::make('uploadCoveredMedicationDeliveryReceipt')
+            ->label('Comprobante entrega medicamentos')
+            ->icon('heroicon-o-clipboard-document-check')
+            ->color('success')
+            ->button()
+            ->visible(fn (OperationCoordinationService $record): bool => self::hasCoveredMedicationsPendingFinalization($record))
+            ->modalHeading('Comprobante de entrega de medicamentos')
+            ->modalDescription('Cargue el comprobante de entrega. Al guardar, los medicamentos cubiertos seleccionados pasarán a FINALIZADO.')
+            ->modalWidth(Width::ThreeExtraLarge)
+            ->modalSubmitActionLabel('Guardar')
+            ->modalCancelActionLabel('Cancelar')
+            ->form([
+                CheckboxList::make('service_item_keys')
+                    ->label('Medicamentos cubiertos')
+                    ->helperText('Seleccione los medicamentos cubiertos incluidos en este comprobante.')
+                    ->options(fn (?OperationCoordinationService $record): array => $record instanceof OperationCoordinationService
+                        ? self::coveredMedicationPendingFinalizationOptions($record)
+                        : [])
+                    ->default(fn (?OperationCoordinationService $record): array => $record instanceof OperationCoordinationService
+                        ? array_keys(self::coveredMedicationPendingFinalizationOptions($record))
+                        : [])
+                    ->bulkToggleable()
+                    ->columns(1)
+                    ->required(),
+                FileUpload::make('document_file')
+                    ->label('Comprobante de entrega')
+                    ->directory(fn (?OperationCoordinationService $record): string => 'operation-coordination-services/'.($record?->id ?? 'tmp').'/documents')
+                    ->preserveFilenames()
+                    ->required()
+                    ->maxSize(10240),
+            ])
+            ->action(function (array $data, OperationCoordinationService $record): void {
+                self::handleCoveredMedicationDeliveryReceipt($record, $data);
+            });
+    }
+
     public static function makeUploadAndFinalizeAction(): Action
     {
         return Action::make('uploadAndFinalizeCoveredServices')
@@ -204,6 +248,183 @@ final class CoordinationServiceCoveredItemsFinalizer
         return self::coveredItemsPendingFinalization($record)->isNotEmpty();
     }
 
+    public static function hasCoveredMedicationsPendingFinalization(OperationCoordinationService $record): bool
+    {
+        return self::coveredMedicationsPendingFinalization($record)->isNotEmpty();
+    }
+
+    /**
+     * @return Collection<int, array{key: string, category: string, label: string, detail: string, coverage: bool|null, coverage_label: string, status: string, selectable: bool}>
+     */
+    public static function coveredMedicationsPendingFinalization(OperationCoordinationService $record): Collection
+    {
+        return self::coveredItemsPendingFinalization($record)
+            ->filter(static fn (array $item): bool => str_starts_with((string) ($item['key'] ?? ''), 'medication:'))
+            ->values();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function coveredMedicationPendingFinalizationOptions(OperationCoordinationService $record): array
+    {
+        return self::coveredMedicationsPendingFinalization($record)
+            ->mapWithKeys(fn (array $item): array => [
+                (string) $item['key'] => $item['label'].' · '.$item['status'],
+            ])
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public static function handleCoveredMedicationDeliveryReceipt(OperationCoordinationService $record, array $data): void
+    {
+        $documentType = OperationDocumentList::query()
+            ->where('name', self::MEDICATION_DELIVERY_RECEIPT_DOCUMENT_NAME)
+            ->first();
+
+        if ($documentType === null) {
+            Notification::make()
+                ->danger()
+                ->title('Tipo de documento no configurado')
+                ->body('No existe el tipo "'.self::MEDICATION_DELIVERY_RECEIPT_DOCUMENT_NAME.'" en el catálogo de documentos.')
+                ->send();
+
+            return;
+        }
+
+        $allowedKeys = array_keys(self::coveredMedicationPendingFinalizationOptions($record));
+        $selectedKeys = collect($data['service_item_keys'] ?? [])
+            ->map(static fn (mixed $key): string => trim((string) $key))
+            ->filter(static fn (string $key): bool => in_array($key, $allowedKeys, true))
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($selectedKeys === []) {
+            Notification::make()
+                ->warning()
+                ->title('Sin medicamentos seleccionados')
+                ->body('Seleccione al menos un medicamento cubierto incluido en el comprobante.')
+                ->send();
+
+            return;
+        }
+
+        $documentFile = trim((string) ($data['document_file'] ?? ''));
+
+        if ($documentFile === '') {
+            Notification::make()
+                ->warning()
+                ->title('Sin archivo')
+                ->body('Debe cargar el comprobante de entrega de medicamentos.')
+                ->send();
+
+            return;
+        }
+
+        $serviceLabelsByKey = self::coveredMedicationPendingFinalizationOptions($record);
+        $documents = self::mapFormDocuments([
+            'documents' => [[
+                'document_file' => $documentFile,
+                'document_type_ids' => [(int) $documentType->id],
+                'service_item_keys' => $selectedKeys,
+            ]],
+        ], [(int) $documentType->id => (string) $documentType->name], $serviceLabelsByKey);
+
+        if ($documents === []) {
+            Notification::make()
+                ->warning()
+                ->title('Documento inválido')
+                ->body('No se pudo registrar el comprobante de entrega.')
+                ->send();
+
+            return;
+        }
+
+        $existingDocuments = is_array($record->uploaded_documents)
+            ? $record->uploaded_documents
+            : [];
+
+        $record->update([
+            'uploaded_documents' => array_values(array_merge($existingDocuments, $documents)),
+        ]);
+
+        $finalized = self::finalizeCoveredItemsByKeys($record, $selectedKeys);
+
+        if ($finalized === 0) {
+            Notification::make()
+                ->warning()
+                ->title('Comprobante guardado sin cambios de estatus')
+                ->body('Se cargó el comprobante, pero no había medicamentos cubiertos pendientes de finalizar.')
+                ->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->success()
+            ->title('Comprobante guardado y medicamentos finalizados')
+            ->body($finalized > 1
+                ? 'Se cargó el comprobante y se finalizaron '.$finalized.' medicamentos cubiertos.'
+                : 'Se cargó el comprobante y se finalizó 1 medicamento cubierto.')
+            ->send();
+    }
+
+    /**
+     * @param  list<string>  $keys
+     */
+    public static function finalizeCoveredItemsByKeys(OperationCoordinationService $record, array $keys): int
+    {
+        $allowedKeys = self::coveredItemsPendingFinalization($record)
+            ->map(static fn (array $item): string => (string) ($item['key'] ?? ''))
+            ->all();
+
+        $selectedKeys = collect($keys)
+            ->map(static fn (mixed $key): string => trim((string) $key))
+            ->filter(static fn (string $key): bool => in_array($key, $allowedKeys, true))
+            ->unique()
+            ->values();
+
+        if ($selectedKeys->isEmpty()) {
+            return 0;
+        }
+
+        $updated = 0;
+
+        DB::transaction(function () use ($selectedKeys, $record, &$updated): void {
+            foreach ($selectedKeys as $key) {
+                if (! str_contains($key, ':')) {
+                    continue;
+                }
+
+                [$type, $id] = explode(':', $key, 2);
+                $id = (int) $id;
+                $modelClass = self::clinicalItemModelClass($type);
+
+                if ($modelClass === null || $id <= 0) {
+                    continue;
+                }
+
+                $updated += (int) $modelClass::query()
+                    ->where('operation_coordination_service_id', $record->id)
+                    ->whereKey($id)
+                    ->where('status', '!=', 'FINALIZADO')
+                    ->update(['status' => 'FINALIZADO']);
+            }
+        });
+
+        if ($updated > 0) {
+            $record->updated_by = Auth::user()?->name;
+            $record->save();
+
+            OperationServiceOrderCoordinationSync::refreshCoordinationStatus($record->fresh() ?? $record);
+        }
+
+        return $updated;
+    }
+
     /**
      * @return Collection<int, array{key: string, category: string, label: string, detail: string, coverage: bool|null, coverage_label: string, status: string, selectable: bool}>
      */
@@ -353,63 +574,13 @@ final class CoordinationServiceCoveredItemsFinalizer
 
     public static function finalizeCoveredItems(OperationCoordinationService $record): int
     {
-        $coveredItems = self::coveredItemsPendingFinalization($record);
+        $keys = self::coveredItemsPendingFinalization($record)
+            ->map(static fn (array $item): string => (string) ($item['key'] ?? ''))
+            ->filter(static fn (string $key): bool => $key !== '')
+            ->values()
+            ->all();
 
-        if ($coveredItems->isEmpty()) {
-            return 0;
-        }
-
-        $updated = 0;
-
-        DB::transaction(function () use ($coveredItems, $record, &$updated): void {
-            foreach ($coveredItems as $item) {
-                $key = (string) ($item['key'] ?? '');
-
-                if (! str_contains($key, ':')) {
-                    continue;
-                }
-
-                [$type, $id] = explode(':', $key, 2);
-                $id = (int) $id;
-
-                if ($id <= 0) {
-                    continue;
-                }
-
-                $updated += (int) match ($type) {
-                    'medication' => TelemedicinePatientMedications::query()
-                        ->where('operation_coordination_service_id', $record->id)
-                        ->whereKey($id)
-                        ->where('status', '!=', 'FINALIZADO')
-                        ->update(['status' => 'FINALIZADO']),
-                    'lab' => TelemedicinePatientLab::query()
-                        ->where('operation_coordination_service_id', $record->id)
-                        ->whereKey($id)
-                        ->where('status', '!=', 'FINALIZADO')
-                        ->update(['status' => 'FINALIZADO']),
-                    'study' => TelemedicinePatientStudy::query()
-                        ->where('operation_coordination_service_id', $record->id)
-                        ->whereKey($id)
-                        ->where('status', '!=', 'FINALIZADO')
-                        ->update(['status' => 'FINALIZADO']),
-                    'specialty' => TelemedicinePatientSpecialty::query()
-                        ->where('operation_coordination_service_id', $record->id)
-                        ->whereKey($id)
-                        ->where('status', '!=', 'FINALIZADO')
-                        ->update(['status' => 'FINALIZADO']),
-                    default => 0,
-                };
-            }
-        });
-
-        if ($updated > 0) {
-            $record->updated_by = Auth::user()?->name;
-            $record->save();
-
-            OperationServiceOrderCoordinationSync::refreshCoordinationStatus($record->fresh() ?? $record);
-        }
-
-        return $updated;
+        return self::finalizeCoveredItemsByKeys($record, $keys);
     }
 
     /**

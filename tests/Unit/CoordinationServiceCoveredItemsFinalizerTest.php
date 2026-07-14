@@ -134,5 +134,6 @@ it('el infolist de coordinación enlaza la acción de finalizar cubiertos en la 
     expect($infolist)
         ->toContain('use App\Support\Operations\CoordinationServiceCoveredItemsFinalizer;')
         ->toContain('->headerActions([')
-        ->toContain('CoordinationServiceCoveredItemsFinalizer::makeUploadAndFinalizeAction()');
+        ->toContain('CoordinationServiceCoveredItemsFinalizer::makeUploadAndFinalizeAction()')
+        ->toContain('CoordinationServiceCoveredItemsFinalizer::makeUploadCoveredMedicationDeliveryReceiptAction()');
 });

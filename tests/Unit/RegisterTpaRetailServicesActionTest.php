@@ -31,6 +31,31 @@ it('ofrece selección de cubiertos y no cubiertos para labs, estudios y especial
         ->toContain("'specialists_non_covered'");
 });
 
+it('permite seleccionar servicios adicionales sin catálogo de ítems', function (): void {
+    $source = tpaRetailActionSource();
+    $options = RegisterTpaRetailServicesAction::standaloneServiceOptions();
+
+    expect($source)
+        ->toContain('STANDALONE_SERVICES_FIELD')
+        ->toContain('standalone_services')
+        ->toContain('CheckboxList::make(self::STANDALONE_SERVICES_FIELD)')
+        ->toContain('normalizeStandaloneServices')
+        ->toContain('TELEMEDICINA')
+        ->toContain('AMD (ASISTENCIA MEDICA DOMICILIARIA)')
+        ->toContain('TRASLADO EN AMBULANCIA')
+        ->toContain('CONSULTA ONLINE CON MEDICO ESPECIALISTA')
+        ->toContain('URGEN CARE')
+        ->toContain('APS')
+        ->toContain('INGRESO A CLINICA')
+        ->toContain('LECTURA DE RESULTADOS (LABORATORIO(S))')
+        ->toContain('LECTURA DE RESULTADOS (IMAGENOLOGIA)');
+
+    expect($options)
+        ->toHaveCount(9)
+        ->toHaveKey('TELEMEDICINA')
+        ->toHaveKey('INGRESO A CLINICA');
+});
+
 it('mapea cada categoría a su tipo de servicio de coordinación', function (): void {
     $source = tpaRetailActionSource();
 
@@ -66,7 +91,16 @@ it('marca la cobertura del ítem con CUBIERTO o NO CUBIERTO desde el catálogo',
     expect($source)
         ->toContain("private const COVERED = 'CUBIERTO';")
         ->toContain("private const NOT_COVERED = 'NO CUBIERTO';")
-        ->toContain("->where('type', \$type)");
+        ->toContain('->where($typeColumn, $type)');
+});
+
+it('filtra especialistas no cubiertos por type_two', function (): void {
+    $source = tpaRetailActionSource();
+
+    expect($source)
+        ->toContain("'non_covered_type_column' => 'type_two'")
+        ->toContain("'covered_type_column' => 'type'")
+        ->toContain("catalogOptions(\n                            \$config['catalog'],\n                            self::NOT_COVERED,\n                            \$config['non_covered_type_column'] ?? 'type',\n                        )");
 });
 
 it('se monta en la ficha del paciente de Operaciones', function (): void {

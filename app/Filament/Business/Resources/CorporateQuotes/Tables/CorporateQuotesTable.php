@@ -41,8 +41,10 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\HtmlString;
 
 class CorporateQuotesTable
 {
@@ -327,82 +329,101 @@ class CorporateQuotesTable
                         })
                         ->hidden(fn ($record): bool => $record->status == 'APROBADA-DATA-ENVIADA' || $record->status == 'APROBADA' || $record->observation_dress_tailor == null),
 
-                    // Action::make('aproved')
-                    //     ->label('Aprobar')
-                    //     ->icon('heroicon-m-shield-check')
-                    //     ->color('success')
-                    //     ->requiresConfirmation()
-                    //     ->modalHeading('APROBACIÓN DIRECTA PARA PRE-AFILIACIÓN')
-                    //     ->modalDescription(
-                    //         new HtmlString(
-                    //             Blade::render(
-                    //                 <<<BLADE
-                    //                     <div class="fi-section-header-description mt-10">
-                    //                         Por favor cargue la data de la población y a continuación haga click en Confirmar.
-                    //                         <br>
-                    //                         <br>
-                    //                         💡 Si desea agilizar la gestión puede descargar un archivo de ejemplo haciendo click en los
-                    //                         <strong class="text-gray-900">tres puntos verticales (⋮) de Estatus</strong>
-                    //                         y seleccionando la opción <strong class="text-gray-900">Formato Data de Población.</strong>
-                    //                         <br>
-                    //                     </div>
-                    //                 BLADE
-                    //             )
-                    //         )
-                    //     )
-                    //     ->modalIcon('heroicon-m-shield-check')
-                    //     ->modalWidth(Width::ExtraLarge)
-                    //     ->form([
-                    //         Fieldset::make()
-                    //             ->columnSpanFull()
-                    //             ->schema([
-                    //                 FileUpload::make('data_doc')
-                    //                     ->label('Población')
-                    //                     ->required()
-                    //                     ->visibility('public')
-                    //                     ->helperText('La carga permite archivos .xlsx, .xls, .csv, .txt, .doc, .docx, .pdf, .jpg, .jpeg, .png')
-                    //             ])->columns(1)
-                    //     ])
-                    //     ->action(function (array $data, $record): void {
+                    Action::make('aproved')
+                        ->label('Aprobar / Cargar Data')
+                        ->icon('heroicon-m-shield-check')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->modalHeading('APROBACIÓN DIRECTA PARA PRE-AFILIACIÓN')
+                        ->modalDescription(
+                            new HtmlString(
+                                Blade::render(
+                                    <<<'BLADE'
+                                        <div class="fi-section-header-description mt-10">
+                                            Por favor cargue la data de la población y a continuación haga click en Confirmar.
+                                            <br>
+                                            <br>
+                                            💡 Si desea agilizar la gestión puede descargar un archivo de ejemplo haciendo click en los
+                                            <strong class="text-gray-900">tres puntos verticales (⋮) de Estatus</strong>
+                                            y seleccionando la opción <strong class="text-gray-900">Formato Data de Población.</strong>
+                                            <br>
+                                        </div>
+                                    BLADE
+                                )
+                            )
+                        )
+                        ->modalIcon('heroicon-m-shield-check')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->form([
+                            Fieldset::make()
+                                ->columnSpanFull()
+                                ->schema([
+                                    FileUpload::make('data_doc')
+                                        ->label('Población')
+                                        ->required()
+                                        ->visibility('public')
+                                        ->helperText('La carga permite archivos .xlsx, .xls, .csv, .txt, .doc, .docx, .pdf, .jpg, .jpeg, .png'),
+                                ])->columns(1),
+                        ])
+                        ->action(function (array $data, $record): void {
+                            try {
+                                $record->update([
+                                    'status' => 'APROBADA-DATA-ENVIADA',
+                                    'data_doc' => $data['data_doc'],
+                                ]);
 
-                    //         $record->update([
-                    //             'status' => 'APROBADA-DATA-ENVIADA',
-                    //             'data_doc' => $data['data_doc'],
-                    //         ]);
+                                Notification::make()
+                                    ->title('Data cargada')
+                                    ->body('La data de población se registró correctamente.')
+                                    ->success()
+                                    ->send();
 
-                    //         Notification::make()
-                    //             ->title('lLa data fue cargada de forma exitosa.')
-                    //             ->success()
-                    //             ->send();
+                                $userName = Auth::user()?->name ?? 'Analista';
 
-                    //         $recipient = User::where('is_admin', 1)->get();
-                    //         foreach ($recipient as $user) {
-                    //             $recipient_for_user = User::find($user->id);
-                    //             Notification::make()
-                    //                 ->title('COTIZACION CORPORATIVA')
-                    //                 ->body('El agente ' . Auth::user()->name . ' cargo el modelo de data para la cotización Nro. ' . $record->code)
-                    //                 ->icon('heroicon-m-tag')
-                    //                 ->iconColor('success')
-                    //                 ->success()
-                    //                 ->actions([
-                    //                     Action::make('view')
-                    //                         ->label('Ver Cotización Corporativa')
-                    //                         ->button()
-                    //                         ->url(CorporateQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'admin')),
-                    //                 ])
-                    //                 ->sendToDatabase($recipient_for_user);
-                    //         }
+                                foreach (User::where('is_admin', 1)->get() as $user) {
+                                    Notification::make()
+                                        ->title('COTIZACION CORPORATIVA')
+                                        ->body('El analista '.$userName.' cargo el modelo de data para la cotización Nro. '.$record->code)
+                                        ->icon('heroicon-m-tag')
+                                        ->iconColor('success')
+                                        ->success()
+                                        ->actions([
+                                            Action::make('view')
+                                                ->label('Ver Cotización Corporativa')
+                                                ->button()
+                                                ->url(CorporateQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'business')),
+                                        ])
+                                        ->sendToDatabase($user);
+                                }
 
-                    //         //Notificacion por whatsapp
-                    //         NotificationController::sendUploadDataCorporate(Auth::user()->name, $record->code);
+                                NotificationController::sendUploadDataCorporate($userName, $record->code);
+                                SendNotificacionUploadDataCorporate::dispatch($record->data_doc, $userName, $record->code);
 
-                    //         /**
-                    //          * Notificacion via email
-                    //          * JOB
-                    //          */
-                    //         SendNotificacionUploadDataCorporate::dispatch($record->data_doc, Auth::user()->name, $record->code);
-                    //     })
-                    //     ->hidden(fn($record): bool => $record->status == 'APROBADA-DATA-ENVIADA' || $record->status == 'APROBADA' || $record->observation_dress_tailor != null),
+                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_APPROVED_DATA_UPLOADED', 'business.corporate-quotes.approve-upload-data', [
+                                    'panel' => 'business',
+                                    'corporate_quote_id' => $record->id,
+                                    'code' => $record->code,
+                                    'status' => $record->status,
+                                    'data_doc' => $record->data_doc,
+                                ]);
+                            } catch (\Throwable $th) {
+                                SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_APPROVED_DATA_UPLOAD_FAILED', 'business.corporate-quotes.approve-upload-data', [
+                                    'panel' => 'business',
+                                    'corporate_quote_id' => $record->id ?? null,
+                                    'code' => $record->code ?? null,
+                                    'reason' => $th->getMessage(),
+                                ]);
+
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+                        })
+                        ->hidden(fn ($record): bool => $record->status == 'APROBADA-DATA-ENVIADA' || $record->status == 'APROBADA' || $record->observation_dress_tailor != null),
 
                     /**DESCARGA DE COTIZACION */
                     Action::make('download')
