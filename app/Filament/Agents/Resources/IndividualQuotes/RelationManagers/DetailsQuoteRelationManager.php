@@ -1,27 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Agents\Resources\IndividualQuotes\RelationManagers;
 
 use App\Models\Agent;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
 use App\Models\IndividualQuote;
 use Filament\Actions\BulkAction;
-use Filament\Actions\CreateAction;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
+use Filament\Notifications\Notification;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Resources\RelationManagers\RelationManager;
-use App\Filament\Agents\Resources\IndividualQuotes\IndividualQuoteResource;
+use Filament\Tables\Table;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class DetailsQuoteRelationManager extends RelationManager
 {
     protected static string $relationship = 'detailsQuote';
-
-    // protected static ?string $relatedResource = IndividualQuoteResource::class;
 
     public function table(Table $table): Table
     {
@@ -50,25 +48,25 @@ class DetailsQuoteRelationManager extends RelationManager
                 TextColumn::make('subtotal_anual')
                     ->label('Total anual')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->description(fn ($record): string => $record->total_persons.' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('subtotal_biannual')
                     ->label('Total semestral')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->description(fn ($record): string => $record->total_persons.' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('subtotal_quarterly')
                     ->label('Total trimestral')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->description(fn ($record): string => $record->total_persons.' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$'),
                 TextColumn::make('subtotal_monthly')
                     ->label('Total Mensual')
                     ->alignCenter()
-                    ->description(fn($record): string => $record->total_persons . ' personas')
+                    ->description(fn ($record): string => $record->total_persons.' personas')
                     ->numeric(decimalPlaces: 0)
                     ->suffix(' UD$')
                     ->hidden(fn (): bool => Agent::where('id', Auth::user()->agent_id)->first()->activate_monthly_frequency == 0),
@@ -84,7 +82,6 @@ class DetailsQuoteRelationManager extends RelationManager
                     })
                     ->sortable(),
             ])
-            //agrupar por planes y por coberturas
             ->defaultGroup('ageRange.range')
             ->filters([
                 SelectFilter::make('coverage_id')
@@ -96,49 +93,68 @@ class DetailsQuoteRelationManager extends RelationManager
                 // CreateAction::make(),
             ])
             ->toolbarActions([
-                // BulkActionGroup::make([
-                // BulkAction::make('quote_multiple')
-                //     ->label('Preparar afiliación')
-                //     ->color('success')
-                //     ->icon('heroicon-c-receipt-percent')
-                //     ->requiresConfirmation()
-                //     ->deselectRecordsAfterCompletion()
-                //     ->action(function (Collection $records, RelationManager $livewire) {
-                //         // dd($records);
-                //         try {
+                BulkActionGroup::make([
+                    BulkAction::make('quote_multiple')
+                        ->label('Pre Afiliación')
+                        ->color('warning')
+                        ->icon('heroicon-o-pencil-square')
+                        ->requiresConfirmation()
+                        ->modalHeading('PREAFILIACIÓN')
+                        ->modalDescription('El sistema te redirigirá a la pantalla donde se encuentra el formulario de pre-afiliación.')
+                        ->modalIcon('heroicon-o-pencil-square')
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records, RelationManager $livewire) {
+                            try {
+                                if ($records->count() > 1) {
+                                    Notification::make()
+                                        ->title('Acción no permitida')
+                                        ->body('Solo se puede procesar una cotización a la vez para generar la afiliación.')
+                                        ->warning()
+                                        ->send();
 
-                //             //Guardo data records en una varaiable de sesion, si la variable de session exite y tiene informacion se actualiza
+                                    return;
+                                }
 
-                //             session()->get('data_records', []);
+                                $record = $records->first();
+                                if ($record === null) {
+                                    Notification::make()
+                                        ->title('Sin selección')
+                                        ->body('Debes seleccionar un detalle para continuar.')
+                                        ->warning()
+                                        ->send();
 
-                //             session()->put('data_records', $records->toArray());
+                                    return;
+                                }
 
-                //             $data_records = session()->get('data_records');
+                                session()->forget('data_records');
+                                session()->put('data_records', $records->toArray());
+                                session()->put('persons', max(1, (int) ($record->total_persons ?? 1)));
 
-                //             /**
-                //              * Actualizo el status a APROBADA
-                //              */
-                //             $record = $records->first();
-                            
-                //             $individual_quote = IndividualQuote::where('id', $livewire->ownerRecord->id)->first();
-                //             $individual_quote->status = 'APROBADA';
-                //             $individual_quote->save();
+                                $individualQuote = IndividualQuote::query()->find($livewire->ownerRecord->id);
+                                if ($individualQuote !== null) {
+                                    $individualQuote->status = 'APROBADA';
+                                    $individualQuote->save();
+                                }
 
-                //         if ($records->count() == 1) {
-                //                 return redirect()->route('filament.agents.resources.affiliations.create', ['plan_id' => $record->plan_id, 'individual_quote_id' => $livewire->ownerRecord->id]);
-                //             }
+                                return redirect()->route('filament.agents.resources.affiliations.create', [
+                                    'id' => $livewire->ownerRecord->id,
+                                    'plan_id' => $record->plan_id,
+                                    'coverage_id' => $record->coverage_id,
+                                ]);
+                            } catch (\Throwable $th) {
+                                Log::error('AGENTS: Falla al generar preafiliación desde detalle de cotización individual', [
+                                    'individual_quote_id' => $livewire->ownerRecord->id,
+                                    'error' => $th->getMessage(),
+                                ]);
 
-                //             if ($records->count() > 1) {
-                //                 return redirect()->route('filament.agents.resources.affiliations.create', ['plan_id' => null, 'individual_quote_id' => $livewire->ownerRecord->id]);
-                //             }
-                //         } catch (\Throwable $th) {
-                //             dd($th);
-                //             // $parte_entera = 0;
-                //         }
-                //     }),
-
-                // DeleteBulkAction::make(),
-                // ]),
+                                Notification::make()
+                                    ->title('No se pudo procesar la preafiliación')
+                                    ->body('Ocurrió un error inesperado. Intenta nuevamente o contacta a soporte.')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+                ]),
             ]);
     }
 }
