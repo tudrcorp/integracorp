@@ -22,9 +22,11 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -873,11 +875,52 @@ class SalesTable
 
                         return 3;
                     }),
+                Section::make('Facturar a nombre de')
+                    ->schema([
+                        Radio::make('invoice_in_name_of')
+                            ->label('Seleccione a nombre de quién se emite la factura')
+                            ->options([
+                                'titular' => 'A nombre del Titular',
+                                'tomador' => 'A nombre del Tomador',
+                                'custom' => 'Factura personalizada',
+                            ])
+                            ->default('titular')
+                            ->live()
+                            ->required()
+                            ->columnSpanFull(),
+                        TextInput::make('custom_full_name')
+                            ->label('Nombre / Razón social')
+                            ->required(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->visible(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->afterStateUpdated(function ($state, callable $set): void {
+                                $set('custom_full_name', is_string($state) ? strtoupper($state) : $state);
+                            }),
+                        TextInput::make('custom_ci_rif')
+                            ->label('CI / RIF')
+                            ->required(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->visible(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom'),
+                        TextInput::make('custom_address')
+                            ->label('Dirección')
+                            ->required(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->visible(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->columnSpanFull(),
+                        TextInput::make('custom_phone')
+                            ->label('Teléfono')
+                            ->required(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->visible(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom'),
+                        TextInput::make('custom_email')
+                            ->label('Correo')
+                            ->email()
+                            ->required(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->visible(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom'),
+                    ])
+                    ->columns(2),
             ])
             ->action(function (Sale $record, array $data) {
                 self::auditSaleAction('AUDIT_ADMIN_SALES_INVOICE_GENERATION_ATTEMPTED', 'administration.sales.generate-invoice', $record, [
                     'invoice_number' => $data['invoice_number'] ?? null,
                     'date' => $data['date'] ?? null,
+                    'invoice_in_name_of' => $data['invoice_in_name_of'] ?? null,
                 ]);
 
                 try {
@@ -899,47 +942,33 @@ class SalesTable
                         $calculo = $sale?->pay_amount_ves ?? 0;
                     }
 
-                    if ($record->type === 'AFILIACION INDIVIDUAL') {
-                        $data_factura = [
-                            'invoice_number' => $data['invoice_number'],
-                            'emission_date' => $data['date'],
-                            'payment_method' => $sale?->payment_method,
-                            'reference' => $record->reference_payment,
-                            'full_name_ti' => $sale?->affiliate_full_name,
-                            'ci_rif_ti' => $sale?->affiliate_ci_rif,
-                            'address_ti' => $afiliacion?->adress_ti,
-                            'phone_ti' => $afiliacion?->phone_ti,
-                            'email_ti' => $afiliacion?->email_ti,
-                            'total_amount' => $calculo,
-                            'plan' => $sale?->plan?->description,
-                            'coverage' => $sale?->coverage->price ?? null,
-                            'frequency' => $sale?->payment_frequency,
-                        ];
-                    }
-
                     if ($record->type === 'AFILIACION CORPORATIVA') {
                         $afiliacion = AffiliationCorporate::query()
                             ->where('code', $sale->affiliation_code)
                             ->with(['paid_membership_corporates', 'affiliationCorporatePlans'])
                             ->first();
-                        // dd($afiliacion);
-                        $data_factura = [
-                            'invoice_number' => $data['invoice_number'],
-                            'emission_date' => $data['date'],
-                            'payment_method' => $sale?->payment_method,
-                            'reference' => $record->reference_payment,
-                            'full_name_ti' => $afiliacion?->name_corporate,
-                            'ci_rif_ti' => $afiliacion?->rif,
-                            'address_ti' => $afiliacion?->adress,
-                            'phone_ti' => $afiliacion?->phone,
-                            'email_ti' => $afiliacion?->email,
-                            'total_amount' => $calculo,
-                            'plan' => $afiliacion?->affiliationCorporatePlans?->toArray() ?? [],
-                            'coverage' => $sale?->coverage->price ?? null,
-                            'frequency' => $sale?->payment_frequency,
-                        ];
-                        // dd($data_factura);
                     }
+
+                    $billingParty = self::resolveInvoiceBillingParty(
+                        (string) ($data['invoice_in_name_of'] ?? 'titular'),
+                        $sale ?? $record,
+                        $afiliacion,
+                        $data,
+                    );
+
+                    $data_factura = [
+                        'invoice_number' => $data['invoice_number'],
+                        'emission_date' => $data['date'],
+                        'payment_method' => $sale?->payment_method,
+                        'reference' => $record->reference_payment,
+                        ...$billingParty,
+                        'total_amount' => $calculo,
+                        'plan' => $record->type === 'AFILIACION CORPORATIVA'
+                            ? ($afiliacion?->affiliationCorporatePlans?->toArray() ?? [])
+                            : $sale?->plan?->description,
+                        'coverage' => $sale?->coverage->price ?? null,
+                        'frequency' => $sale?->payment_frequency,
+                    ];
 
                     ini_set('memory_limit', '2048M');
 
@@ -959,6 +988,7 @@ class SalesTable
                     self::auditSaleAction('AUDIT_ADMIN_SALES_INVOICE_GENERATED', 'administration.sales.generate-invoice', $record, [
                         'generated_invoice_number' => $data['invoice_number'],
                         'file_name' => $name_pdf,
+                        'invoice_in_name_of' => $data['invoice_in_name_of'] ?? null,
                     ]);
 
                     return response()->download(public_path('storage/facturas/'.$name_pdf));
@@ -982,6 +1012,70 @@ class SalesTable
                     return null;
                 }
             });
+    }
+
+    /**
+     * @return array{
+     *     full_name_ti: ?string,
+     *     ci_rif_ti: ?string,
+     *     address_ti: ?string,
+     *     phone_ti: ?string,
+     *     email_ti: ?string
+     * }
+     */
+    public static function resolveInvoiceBillingParty(
+        string $inNameOf,
+        Sale $sale,
+        Affiliation|AffiliationCorporate|null $affiliation,
+        array $data = [],
+    ): array {
+        if ($inNameOf === 'custom') {
+            return [
+                'full_name_ti' => $data['custom_full_name'] ?? null,
+                'ci_rif_ti' => $data['custom_ci_rif'] ?? null,
+                'address_ti' => $data['custom_address'] ?? null,
+                'phone_ti' => $data['custom_phone'] ?? null,
+                'email_ti' => $data['custom_email'] ?? null,
+            ];
+        }
+
+        if ($affiliation instanceof AffiliationCorporate) {
+            if ($inNameOf === 'tomador') {
+                return [
+                    'full_name_ti' => $affiliation->full_name_contact,
+                    'ci_rif_ti' => $affiliation->nro_identificacion_contact,
+                    'address_ti' => $affiliation->address,
+                    'phone_ti' => $affiliation->phone_contact,
+                    'email_ti' => $affiliation->email_contact,
+                ];
+            }
+
+            return [
+                'full_name_ti' => $affiliation->name_corporate,
+                'ci_rif_ti' => $affiliation->rif,
+                'address_ti' => $affiliation->address,
+                'phone_ti' => $affiliation->phone,
+                'email_ti' => $affiliation->email,
+            ];
+        }
+
+        if ($inNameOf === 'tomador') {
+            return [
+                'full_name_ti' => $affiliation?->full_name_payer,
+                'ci_rif_ti' => $affiliation?->nro_identificacion_payer,
+                'address_ti' => $affiliation?->adress_ti,
+                'phone_ti' => $affiliation?->phone_payer,
+                'email_ti' => $affiliation?->email_payer,
+            ];
+        }
+
+        return [
+            'full_name_ti' => $sale->affiliate_full_name ?? $affiliation?->full_name_ti,
+            'ci_rif_ti' => $sale->affiliate_ci_rif ?? $affiliation?->nro_identificacion_ti,
+            'address_ti' => $affiliation?->adress_ti,
+            'phone_ti' => $affiliation?->phone_ti,
+            'email_ti' => $affiliation?->email_ti,
+        ];
     }
 
     private static function deleteBulkSalesAction(): DeleteBulkAction
