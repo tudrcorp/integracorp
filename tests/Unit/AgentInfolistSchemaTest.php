@@ -110,6 +110,8 @@ it('incluye una pestaña de jerarquía comercial con diagrama visual', function 
         ->toContain('hierarchySliderAlpineData')
         ->toContain('initSlider')
         ->toContain('scrollToSlide')
+        ->toContain('scrollToHighlighted')
+        ->toContain('data-hierarchy-highlighted')
         ->toContain('data-hierarchy-slider')
         ->toContain('highlightAgentId')
         ->toContain('resolveInitialExpandState')

@@ -1,6 +1,8 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
+@import '../shared/hierarchy-flowchart.css';
 
 @source '../../../../app/Filament/General/**/*';
 @source '../../../../resources/views/filament/general/**/*';
+@source '../../../../resources/views/filament/shared/**/*';
 
 @import '../download-zone-tabs.css';

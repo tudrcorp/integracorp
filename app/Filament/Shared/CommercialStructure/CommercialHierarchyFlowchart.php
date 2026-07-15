@@ -111,14 +111,25 @@ class CommercialHierarchyFlowchart
     {
         $superiorAgent = self::resolveSuperiorAgentForHierarchy($agent);
         $agencyCode = trim((string) ($superiorAgent?->owner_code ?? $agent->owner_code ?? ''));
+        $highlightAgentId = (int) ($agent->id ?? 0);
+        $highlightAgentId = $highlightAgentId > 0 ? $highlightAgentId : null;
+
         $linkedAgency = $agencyCode !== '' ? self::resolveAgencyByOwnerCode($agencyCode) : null;
 
         if (! $linkedAgency instanceof Agency) {
+            if (strtoupper($agencyCode) === 'TDG-100') {
+                $tree = self::buildInteractiveHierarchyTreeForHeadquarters($highlightAgentId);
+
+                return self::renderDiagramShell(
+                    $tree,
+                    self::resolveInitialExpandState($tree, $highlightAgentId),
+                    $highlightAgentId,
+                );
+            }
+
             return self::renderDiagramShell([]);
         }
 
-        $highlightAgentId = (int) ($agent->id ?? 0);
-        $highlightAgentId = $highlightAgentId > 0 ? $highlightAgentId : null;
         $tree = self::buildInteractiveHierarchyTree($linkedAgency, $highlightAgentId);
 
         return self::renderDiagramShell(
@@ -159,6 +170,49 @@ class CommercialHierarchyFlowchart
             .'</div>';
 
         return new HtmlString($diagram);
+    }
+
+    /**
+     * Casa matriz (TDG-100) no siempre existe como registro de agencia; se arma un árbol sintético.
+     *
+     * @return array{
+     *     headquarters?: array<string, mixed>|null,
+     *     master?: array<string, mixed>|null,
+     *     master_direct_agents?: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>,
+     *     generals?: list<array{agency: array<string, mixed>, agents: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>}>
+     * }
+     */
+    private static function buildInteractiveHierarchyTreeForHeadquarters(?int $highlightAgentId = null): array
+    {
+        return [
+            'headquarters' => self::hierarchyNodePayload(
+                title: 'Casa matriz',
+                agency: null,
+                tone: 'blue',
+                isHighlighted: true,
+                name: 'TUDRENCASA',
+                subtitle: 'TDG-100',
+                status: 'ACTIVO',
+                structure: self::structureSummaryForAgencyCode('TDG-100'),
+            ),
+            'master' => null,
+            'master_direct_agents' => [],
+            'generals' => [
+                [
+                    'agency' => self::hierarchyNodePayload(
+                        title: 'Equipo directo',
+                        agency: null,
+                        tone: 'amber',
+                        isHighlighted: true,
+                        name: 'Agentes TUDRENCASA',
+                        subtitle: 'TDG-100',
+                        status: 'ACTIVO',
+                        structure: self::structureSummaryForAgencyCode('TDG-100'),
+                    ),
+                    'agents' => self::buildAgentTreeForAgencyCode('TDG-100', $highlightAgentId),
+                ],
+            ],
+        ];
     }
 
     /**
@@ -945,12 +999,18 @@ class CommercialHierarchyFlowchart
             .'canScrollPrev: false, '
             .'canScrollNext: false, '
             .'counterLabel: \'1 / '.$slideCount.'\', '
+            .'didScrollToHighlighted: false, '
             .'initSlider(el) { '
             .'if (! el) { return; } '
             .'this.refreshSlider(el); '
             .'if (this._sliderObserver) { this._sliderObserver.disconnect(); } '
             .'this._sliderObserver = new ResizeObserver(() => this.refreshSlider(el)); '
             .'this._sliderObserver.observe(el); '
+            .'this.scrollToHighlighted(el, false); '
+            .'}, '
+            .'getHighlightedSlideIndex(el) { '
+            .'const slides = Array.from(el.querySelectorAll(\'.tdg-hierarchy-slider__slide\')); '
+            .'return slides.findIndex((slide) => slide.getAttribute(\'data-hierarchy-highlighted\') === \'1\' || slide.querySelector(\'.tdg-hierarchy-flowchart__node--highlighted-person, .tdg-hierarchy-flowchart__node--highlighted\')); '
             .'}, '
             .'getCurrentSlideIndex(el) { '
             .'const slides = el.querySelectorAll(\'.tdg-hierarchy-slider__slide\'); '
@@ -972,14 +1032,25 @@ class CommercialHierarchyFlowchart
             .'this.canScrollNext = index < total - 1; '
             .'this.counterLabel = (index + 1) + \' / \' + total; '
             .'}, '
-            .'scrollToSlide(el, index) { '
+            .'scrollToSlide(el, index, smooth, center) { '
+            .'if (smooth === undefined) { smooth = true; } '
+            .'if (center === undefined) { center = true; } '
             .'const slides = el.querySelectorAll(\'.tdg-hierarchy-slider__slide\'); '
             .'const slide = slides[index]; '
             .'if (! slide || ! el) { return; } '
             .'const max = Math.max(0, el.scrollWidth - el.clientWidth); '
-            .'const left = Math.min(max, Math.max(0, slide.offsetLeft)); '
-            .'el.scrollTo({ left, behavior: \'smooth\' }); '
-            .'window.setTimeout(() => this.refreshSlider(el), 360); '
+            .'const centered = slide.offsetLeft - ((el.clientWidth - slide.clientWidth) / 2); '
+            .'const left = Math.min(max, Math.max(0, center ? centered : slide.offsetLeft)); '
+            .'el.scrollTo({ left, behavior: smooth ? \'smooth\' : \'auto\' }); '
+            .'window.setTimeout(() => this.refreshSlider(el), smooth ? 360 : 0); '
+            .'}, '
+            .'scrollToHighlighted(el, smooth) { '
+            .'if (smooth === undefined) { smooth = false; } '
+            .'if (! el) { return; } '
+            .'const index = this.getHighlightedSlideIndex(el); '
+            .'if (index < 0) { return; } '
+            .'this.scrollToSlide(el, index, smooth, true); '
+            .'this.didScrollToHighlighted = true; '
             .'}, '
             .'scrollPrev(el) { '
             .'if (! this.canScrollPrev || ! el) { return; } '
@@ -994,7 +1065,7 @@ class CommercialHierarchyFlowchart
 
     private static function hierarchySliderPanelRefreshInit(): string
     {
-        return ' x-init="$nextTick(() => { const refreshPanelSliders = () => { $el.querySelectorAll(\'[data-hierarchy-slider]\').forEach((slider) => { const viewport = slider.querySelector(\'.tdg-hierarchy-slider__viewport\'); const api = Alpine.$data(slider); if (api?.initSlider && viewport) { api.initSlider(viewport); } }); }; refreshPanelSliders(); window.setTimeout(refreshPanelSliders, 120); window.setTimeout(refreshPanelSliders, 360); })"';
+        return ' x-init="$nextTick(() => { const refreshPanelSliders = () => { $el.querySelectorAll(\'[data-hierarchy-slider]\').forEach((slider) => { const viewport = slider.querySelector(\'.tdg-hierarchy-slider__viewport\'); const api = Alpine.$data(slider); if (api?.initSlider && viewport) { api.initSlider(viewport); } if (api?.scrollToHighlighted && viewport) { api.scrollToHighlighted(viewport, false); } }); }; refreshPanelSliders(); window.setTimeout(refreshPanelSliders, 120); window.setTimeout(refreshPanelSliders, 360); })"';
     }
 
     /**
@@ -1009,14 +1080,14 @@ class CommercialHierarchyFlowchart
         }
 
         if ($count <= self::SLIDER_THRESHOLD) {
-            return '<div class="tdg-hierarchy-flowchart__nodes tdg-hierarchy-flowchart__nodes--inline">'
+            return '<div class="tdg-hierarchy-flowchart__nodes tdg-hierarchy-flowchart__nodes--inline" x-init="$nextTick(() => { $el.querySelector(\'.tdg-hierarchy-flowchart__node--highlighted-person, .tdg-hierarchy-flowchart__node--highlighted\')?.scrollIntoView({ inline: \'center\', block: \'nearest\', behavior: \'auto\' }); })">'
                 .implode('', $nodeHtmlBlocks)
                 .'</div>';
         }
 
         $sliderId = 'hierarchy-slider-'.(++self::$sliderSequence).'-'.substr(md5($collectionKey), 0, 8);
 
-        $html = '<div class="tdg-hierarchy-slider" data-hierarchy-slider x-data="'.self::hierarchySliderAlpineData($count).'" x-init="initSlider($refs.viewport)" id="'.$sliderId.'">'
+        $html = '<div class="tdg-hierarchy-slider" data-hierarchy-slider x-data="'.e(self::hierarchySliderAlpineData($count)).'" x-init="initSlider($refs.viewport)" id="'.$sliderId.'">'
             .'<div class="tdg-hierarchy-slider__controls">'
             .'<button type="button" class="tdg-hierarchy-slider__btn" @click="scrollPrev($refs.viewport)" :disabled="!canScrollPrev" aria-label="Anterior">'
             .self::hierarchyIconSvg('chevron-left')
@@ -1030,7 +1101,10 @@ class CommercialHierarchyFlowchart
             .'<div class="tdg-hierarchy-slider__track">';
 
         foreach ($nodeHtmlBlocks as $block) {
-            $html .= '<div class="tdg-hierarchy-slider__slide">'.$block.'</div>';
+            $isHighlightedSlide = str_contains($block, 'tdg-hierarchy-flowchart__node--highlighted');
+            $html .= '<div class="tdg-hierarchy-slider__slide"'
+                .($isHighlightedSlide ? ' data-hierarchy-highlighted="1"' : '')
+                .'>'.$block.'</div>';
         }
 
         return $html
@@ -1286,12 +1360,14 @@ class CommercialHierarchyFlowchart
         $isFocusPath = (bool) ($node['is_focus_path'] ?? false);
         $highlightClass = $isHighlighted ? ' tdg-hierarchy-flowchart__node--highlighted' : '';
         $focusPathClass = $isFocusPath ? ' tdg-hierarchy-flowchart__node--focus-path' : '';
-        $highlightPersonClass = $isHighlighted && $kind === 'agent'
+        $highlightPersonClass = $isHighlighted
             ? ' tdg-hierarchy-flowchart__node--highlighted-person'
             : '';
         $statusBadge = self::renderStatusBadge((string) ($node['status'] ?? 'Sin estado'));
-        $highlightBadge = $isHighlighted && $kind === 'agent'
-            ? '<span class="tdg-hierarchy-flowchart__node-highlight-badge">Este agente</span>'
+        $highlightBadge = $isHighlighted
+            ? '<span class="tdg-hierarchy-flowchart__node-highlight-badge">'
+                .($kind === 'agent' ? 'Este agente' : 'Esta agencia')
+                .'</span>'
             : '';
         $iconMarkup = $kind === 'agent'
             ? '<span class="tdg-hierarchy-flowchart__node-avatar">'.e(self::nodeInitials($name)).'</span>'

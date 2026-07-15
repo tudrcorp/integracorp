@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Agents\Resources\Agents\Schemas;
 
+use App\Filament\Shared\CommercialStructure\CommercialHierarchyFlowchart;
+use App\Models\Agent;
 use App\Support\FilamentDateDisplay;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -13,6 +15,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\HtmlString;
 
 class AgentInfolist
 {
@@ -173,6 +176,32 @@ class AgentInfolist
                                                             ->placeholder('—'),
                                                     ]),
                                             ]),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+
+                        Tab::make('Jerarquía')
+                            ->icon(Heroicon::OutlinedSquares2x2)
+                            ->schema([
+                                Section::make('Jerarquía comercial')
+                                    ->description('Master → General → Agente → Subagente. Despliega equipos de master, generales o subagentes en fila horizontal; desliza cuando hay más de cinco nodos.')
+                                    ->icon(Heroicon::OutlinedSquares2x2)
+                                    ->extraAttributes([
+                                        'class' => self::SECTION_CARD,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('hierarchy_diagram')
+                                                    ->label('Mapa de jerarquía')
+                                                    ->html()
+                                                    ->getStateUsing(fn (Agent $record): HtmlString => CommercialHierarchyFlowchart::renderForAgent($record))
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columnSpanFull(),
                                     ])
                                     ->columnSpanFull(),
                             ]),
