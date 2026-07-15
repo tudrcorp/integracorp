@@ -12,7 +12,7 @@ it('agrega un tab de ítems asociados en el infolist de coordinación', function
         ->toContain('telemedicinePatientStudiesSummary')
         ->toContain('telemedicinePatientSpecialtiesSummary')
         ->toContain('Indicación: ')
-        ->toContain('renderAssociatedItemsCards')
+        ->toContain('renderAssociatedItemCard')
         ->toContain('->html()');
 });
 
@@ -86,4 +86,13 @@ it('aplica estilos visuales tipo AgentForm master en el infolist de coordinació
         ->toContain("Tabs::make('operationCoordinationServiceInfolistTabs')")
         ->toContain("'class' => self::TABS_CONTAINER")
         ->toContain("'class' => self::SECTION_CARD");
+});
+
+it('permite cancelar la gestión de ítems con observación obligatoria en bitácora', function (): void {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Schemas/OperationCoordinationServiceInfolist.php');
+
+    expect($contents)
+        ->toContain('CoordinationServiceItemCancellation')
+        ->toContain('cancelAssociatedItemSuffixActions')
+        ->toContain('can_cancel');
 });

@@ -9,6 +9,7 @@ use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Support\Operations\CoordinationServiceCoveredItemsFinalizer;
 use App\Support\Operations\CoordinationServiceDocumentsAggregator;
+use App\Support\Operations\CoordinationServiceItemCancellation;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use Filament\Actions\Action;
@@ -23,7 +24,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 
@@ -196,37 +196,49 @@ class OperationCoordinationServiceInfolist
                                         Fieldset::make('Medicamentos')
                                             ->visible(fn (OperationCoordinationService $record): bool => self::hasMedications($record))
                                             ->schema([
-                                                TextEntry::make('telemedicinePatientMedicationsSummary')
+                                                RepeatableEntry::make('telemedicinePatientMedicationsSummary')
                                                     ->label('Medicamentos e indicaciones')
-                                                    ->state(fn (OperationCoordinationService $record): string => self::medicationsSummary($record))
-                                                    ->html()
+                                                    ->state(fn (OperationCoordinationService $record): array => self::medicationsItemsState($record))
+                                                    ->contained(false)
+                                                    ->schema([
+                                                        self::associatedItemCardEntry(),
+                                                    ])
                                                     ->columnSpanFull(),
                                             ]),
                                         Fieldset::make('Laboratorios')
                                             ->visible(fn (OperationCoordinationService $record): bool => self::hasLaboratories($record))
                                             ->schema([
-                                                TextEntry::make('telemedicinePatientLabsSummary')
+                                                RepeatableEntry::make('telemedicinePatientLabsSummary')
                                                     ->label('Laboratorios')
-                                                    ->state(fn (OperationCoordinationService $record): string => self::laboratoriesSummary($record))
-                                                    ->html()
+                                                    ->state(fn (OperationCoordinationService $record): array => self::laboratoriesItemsState($record))
+                                                    ->contained(false)
+                                                    ->schema([
+                                                        self::associatedItemCardEntry(),
+                                                    ])
                                                     ->columnSpanFull(),
                                             ]),
                                         Fieldset::make('Estudios')
                                             ->visible(fn (OperationCoordinationService $record): bool => self::hasStudies($record))
                                             ->schema([
-                                                TextEntry::make('telemedicinePatientStudiesSummary')
+                                                RepeatableEntry::make('telemedicinePatientStudiesSummary')
                                                     ->label('Estudios')
-                                                    ->state(fn (OperationCoordinationService $record): string => self::studiesSummary($record))
-                                                    ->html()
+                                                    ->state(fn (OperationCoordinationService $record): array => self::studiesItemsState($record))
+                                                    ->contained(false)
+                                                    ->schema([
+                                                        self::associatedItemCardEntry(),
+                                                    ])
                                                     ->columnSpanFull(),
                                             ]),
                                         Fieldset::make('Consulta con especialista')
                                             ->visible(fn (OperationCoordinationService $record): bool => self::hasSpecialties($record))
                                             ->schema([
-                                                TextEntry::make('telemedicinePatientSpecialtiesSummary')
+                                                RepeatableEntry::make('telemedicinePatientSpecialtiesSummary')
                                                     ->label('Especialistas')
-                                                    ->state(fn (OperationCoordinationService $record): string => self::specialtiesSummary($record))
-                                                    ->html()
+                                                    ->state(fn (OperationCoordinationService $record): array => self::specialtiesItemsState($record))
+                                                    ->contained(false)
+                                                    ->schema([
+                                                        self::associatedItemCardEntry(),
+                                                    ])
                                                     ->columnSpanFull(),
                                             ]),
                                     ])->columnSpanFull(),
@@ -625,117 +637,151 @@ class OperationCoordinationServiceInfolist
         return asset('storage/'.$filePath);
     }
 
-    private static function medicationsSummary(OperationCoordinationService $record): string
+    private static function medicationsItemsState(OperationCoordinationService $record): array
     {
         $orderLinks = CoordinationServiceItemsManager::serviceOrderLinksByClinicalItemKey($record);
 
-        $items = $record->telemedicinePatientMedications()
+        return $record->telemedicinePatientMedications()
             ->orderBy('id')
             ->with('operationInventory:id,is_covered')
-            ->get(['medicine', 'indications', 'status', 'is_covered', 'operation_inventory_id'])
+            ->get(['id', 'medicine', 'indications', 'status', 'is_covered', 'operation_inventory_id'])
             ->map(function (TelemedicinePatientMedications $item) use ($record, $orderLinks): array {
                 $label = (string) ($item->medicine ?? 'Medicamento sin nombre');
                 $rawStatus = (string) ($item->status ?? 'SIN ESTATUS');
+                $status = CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem(
+                    $record,
+                    'Medicamento',
+                    $label,
+                    $rawStatus,
+                    $orderLinks,
+                );
 
-                return [
-                    'title' => 'Medicamento: '.$label,
-                    'detail' => 'Indicación: '.($item->indications ?? 'Sin indicación'),
-                    'status' => CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem(
-                        $record,
-                        'Medicamento',
-                        $label,
-                        $rawStatus,
-                        $orderLinks,
-                    ),
-                    'coverage' => TelemedicineMedicationCoverage::isCovered($item),
-                ];
-            });
-
-        return self::renderAssociatedItemsCards($items);
+                return self::associatedItemState(
+                    id: (int) $item->id,
+                    itemType: 'medication',
+                    title: 'Medicamento: '.$label,
+                    detail: 'Indicación: '.($item->indications ?? 'Sin indicación'),
+                    status: $status,
+                    coverage: TelemedicineMedicationCoverage::isCovered($item),
+                );
+            })
+            ->values()
+            ->all();
     }
 
-    private static function laboratoriesSummary(OperationCoordinationService $record): string
+    private static function laboratoriesItemsState(OperationCoordinationService $record): array
     {
         $orderLinks = CoordinationServiceItemsManager::serviceOrderLinksByClinicalItemKey($record);
 
-        $items = $record->telemedicinePatientLabs()
+        return $record->telemedicinePatientLabs()
             ->orderBy('id')
-            ->get(['laboratory', 'type', 'status'])
+            ->get(['id', 'laboratory', 'type', 'status'])
             ->map(function (TelemedicinePatientLab $item) use ($record, $orderLinks): array {
                 $label = (string) ($item->laboratory ?? 'Laboratorio sin nombre');
                 $rawStatus = (string) ($item->status ?? 'SIN ESTATUS');
+                $status = CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem(
+                    $record,
+                    'Laboratorio',
+                    $label,
+                    $rawStatus,
+                    $orderLinks,
+                );
 
-                return [
-                    'title' => 'Laboratorio: '.$label,
-                    'detail' => 'Tipo: '.($item->type ?? '—'),
-                    'status' => CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem(
-                        $record,
-                        'Laboratorio',
-                        $label,
-                        $rawStatus,
-                        $orderLinks,
-                    ),
-                    'coverage' => self::catalogItemCoverageValue($item->type),
-                ];
-            });
-
-        return self::renderAssociatedItemsCards($items);
+                return self::associatedItemState(
+                    id: (int) $item->id,
+                    itemType: 'lab',
+                    title: 'Laboratorio: '.$label,
+                    detail: 'Tipo: '.($item->type ?? '—'),
+                    status: $status,
+                    coverage: self::catalogItemCoverageValue($item->type),
+                );
+            })
+            ->values()
+            ->all();
     }
 
-    private static function studiesSummary(OperationCoordinationService $record): string
+    private static function studiesItemsState(OperationCoordinationService $record): array
     {
         $orderLinks = CoordinationServiceItemsManager::serviceOrderLinksByClinicalItemKey($record);
 
-        $items = $record->telemedicinePatientStudies()
+        return $record->telemedicinePatientStudies()
             ->orderBy('id')
-            ->get(['study', 'type', 'status'])
+            ->get(['id', 'study', 'type', 'status'])
             ->map(function (TelemedicinePatientStudy $item) use ($record, $orderLinks): array {
                 $label = (string) ($item->study ?? 'Estudio sin nombre');
                 $rawStatus = (string) ($item->status ?? 'SIN ESTATUS');
+                $status = CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem(
+                    $record,
+                    'Estudio',
+                    $label,
+                    $rawStatus,
+                    $orderLinks,
+                );
 
-                return [
-                    'title' => 'Estudio: '.$label,
-                    'detail' => 'Tipo: '.($item->type ?? '—'),
-                    'status' => CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem(
-                        $record,
-                        'Estudio',
-                        $label,
-                        $rawStatus,
-                        $orderLinks,
-                    ),
-                    'coverage' => self::catalogItemCoverageValue($item->type),
-                ];
-            });
-
-        return self::renderAssociatedItemsCards($items);
+                return self::associatedItemState(
+                    id: (int) $item->id,
+                    itemType: 'study',
+                    title: 'Estudio: '.$label,
+                    detail: 'Tipo: '.($item->type ?? '—'),
+                    status: $status,
+                    coverage: self::catalogItemCoverageValue($item->type),
+                );
+            })
+            ->values()
+            ->all();
     }
 
-    private static function specialtiesSummary(OperationCoordinationService $record): string
+    private static function specialtiesItemsState(OperationCoordinationService $record): array
     {
         $orderLinks = CoordinationServiceItemsManager::serviceOrderLinksByClinicalItemKey($record);
 
-        $items = $record->telemedicinePatientSpecialties()
+        return $record->telemedicinePatientSpecialties()
             ->orderBy('id')
-            ->get(['specialty', 'type', 'status'])
+            ->get(['id', 'specialty', 'type', 'status'])
             ->map(function (TelemedicinePatientSpecialty $item) use ($record, $orderLinks): array {
                 $label = (string) ($item->specialty ?? 'Especialidad sin nombre');
                 $rawStatus = (string) ($item->status ?? 'SIN ESTATUS');
+                $status = CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem(
+                    $record,
+                    'Especialista',
+                    $label,
+                    $rawStatus,
+                    $orderLinks,
+                );
 
-                return [
-                    'title' => 'Especialidad: '.$label,
-                    'detail' => 'Tipo: '.($item->type ?? '—'),
-                    'status' => CoordinationServiceItemsManager::effectiveDisplayStatusForClinicalItem(
-                        $record,
-                        'Especialista',
-                        $label,
-                        $rawStatus,
-                        $orderLinks,
-                    ),
-                    'coverage' => self::catalogItemCoverageValue($item->type),
-                ];
-            });
+                return self::associatedItemState(
+                    id: (int) $item->id,
+                    itemType: 'specialty',
+                    title: 'Especialidad: '.$label,
+                    detail: 'Tipo: '.($item->type ?? '—'),
+                    status: $status,
+                    coverage: self::catalogItemCoverageValue($item->type),
+                );
+            })
+            ->values()
+            ->all();
+    }
 
-        return self::renderAssociatedItemsCards($items);
+    /**
+     * @return array{id: int, item_type: string, title: string, detail: string, status: string, coverage: bool|null, can_cancel: bool}
+     */
+    private static function associatedItemState(
+        int $id,
+        string $itemType,
+        string $title,
+        string $detail,
+        string $status,
+        ?bool $coverage,
+    ): array {
+        return [
+            'id' => $id,
+            'item_type' => $itemType,
+            'title' => $title,
+            'detail' => $detail,
+            'status' => $status,
+            'coverage' => $coverage,
+            'can_cancel' => CoordinationServiceItemCancellation::statusIsCancellable($status),
+        ];
     }
 
     private static function catalogItemCoverageValue(?string $type): ?bool
@@ -766,38 +812,92 @@ class OperationCoordinationServiceInfolist
     }
 
     /**
-     * @param  Collection<int, array{title: string, detail: string, status: string, coverage: bool|null}>  $items
+     * @return array<string, mixed>|null
      */
-    private static function renderAssociatedItemsCards(Collection $items): string
+    private static function associatedItemRowFromComponent(TextEntry $component): ?array
     {
-        $cards = $items
-            ->map(function (array $item): string {
-                $status = mb_strtoupper(trim($item['status']));
-                $statusBadgeClasses = match ($status) {
-                    'FINALIZADO' => 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-400/15 dark:text-emerald-200',
-                    'PENDIENTE' => 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:border-rose-400/40 dark:bg-rose-400/15 dark:text-rose-200',
-                    'EN GESTION' => 'border-orange-500/45 bg-orange-500/10 text-orange-700 dark:border-orange-400/45 dark:bg-orange-400/15 dark:text-orange-200',
-                    'CANCELADO', 'CANCELADA', 'CADUCADA' => 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:border-rose-400/40 dark:bg-rose-400/15 dark:text-rose-200',
-                    default => 'border-gray-400/40 bg-gray-500/10 text-gray-700 dark:border-gray-300/30 dark:bg-gray-400/15 dark:text-gray-200',
-                };
+        $containerState = $component->getContainer()->getConstantState();
 
-                $coverageLabel = self::coverageLabel($item['coverage'] ?? null);
-                $coverageBadgeClasses = self::coverageBadgeClasses($item['coverage'] ?? null);
+        if (is_array($containerState)) {
+            return $containerState;
+        }
 
-                return '<div class="rounded-xl border border-gray-200/80 bg-white px-4 py-3 shadow-xs dark:border-white/10 dark:bg-white/5">'
-                    .'<div class="flex flex-wrap items-center justify-between gap-2">'
-                    .'<p class="text-sm font-semibold text-gray-900 dark:text-white">'.e($item['title']).'</p>'
-                    .'<div class="flex flex-wrap items-center gap-2">'
-                    .'<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide '.$coverageBadgeClasses.'">'.e($coverageLabel).'</span>'
-                    .'<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide '.$statusBadgeClasses.'">'.e($item['status']).'</span>'
-                    .'</div>'
-                    .'</div>'
-                    .'<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">'.e($item['detail']).'</p>'
-                    .'</div>';
-            })
-            ->implode('');
+        if (is_object($containerState)) {
+            return (array) $containerState;
+        }
 
-        return '<div class="space-y-3">'.$cards.'</div>';
+        $legacyState = $component->getConstantState();
+
+        return is_array($legacyState) ? $legacyState : null;
+    }
+
+    private static function associatedItemCardEntry(): TextEntry
+    {
+        return TextEntry::make('card')
+            ->hiddenLabel()
+            ->html()
+            ->state(fn (TextEntry $component): string => self::renderAssociatedItemCardFromComponent($component))
+            ->extraAttributes([
+                // El borde/padding del card envuelve contenido + icono (suffixAction).
+                'class' => 'fi-coordination-associated-item-card flex w-full items-center gap-2 rounded-xl border border-gray-200/80 bg-white px-4 py-3 shadow-xs dark:border-white/10 dark:bg-white/5',
+            ])
+            ->suffixActions([
+                fn (TextEntry $component): array => self::cancelAssociatedItemSuffixActions($component),
+            ])
+            ->columnSpanFull();
+    }
+
+    private static function renderAssociatedItemCardFromComponent(TextEntry $component): string
+    {
+        $item = self::associatedItemRowFromComponent($component);
+
+        if ($item === null) {
+            return '';
+        }
+
+        return self::renderAssociatedItemCard($item);
+    }
+
+    /**
+     * @return array<int, Action>
+     */
+    private static function cancelAssociatedItemSuffixActions(TextEntry $component): array
+    {
+        $row = self::associatedItemRowFromComponent($component);
+        $action = $row !== null
+            ? CoordinationServiceItemCancellation::makeCancelAction($row)
+            : null;
+
+        return $action instanceof Action ? [$action] : [];
+    }
+
+    /**
+     * @param  array{title: string, detail: string, status: string, coverage: bool|null}  $item
+     */
+    private static function renderAssociatedItemCard(array $item): string
+    {
+        $status = mb_strtoupper(trim($item['status']));
+        $statusBadgeClasses = match ($status) {
+            'FINALIZADO' => 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-400/15 dark:text-emerald-200',
+            'PENDIENTE' => 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:border-rose-400/40 dark:bg-rose-400/15 dark:text-rose-200',
+            'EN GESTION' => 'border-orange-500/45 bg-orange-500/10 text-orange-700 dark:border-orange-400/45 dark:bg-orange-400/15 dark:text-orange-200',
+            'CANCELADO', 'CANCELADA', 'CADUCADA' => 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:border-rose-400/40 dark:bg-rose-400/15 dark:text-rose-200',
+            default => 'border-gray-400/40 bg-gray-500/10 text-gray-700 dark:border-gray-300/30 dark:bg-gray-400/15 dark:text-gray-200',
+        };
+
+        $coverageLabel = self::coverageLabel($item['coverage'] ?? null);
+        $coverageBadgeClasses = self::coverageBadgeClasses($item['coverage'] ?? null);
+
+        return '<div class="flex min-w-0 flex-1 items-center justify-between gap-3">'
+            .'<div class="min-w-0">'
+            .'<p class="text-sm font-semibold text-gray-900 dark:text-white">'.e($item['title']).'</p>'
+            .'<p class="mt-1 text-sm text-gray-600 dark:text-gray-300">'.e($item['detail']).'</p>'
+            .'</div>'
+            .'<div class="flex shrink-0 flex-wrap items-center gap-2">'
+            .'<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide '.$coverageBadgeClasses.'">'.e($coverageLabel).'</span>'
+            .'<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide '.$statusBadgeClasses.'">'.e($item['status']).'</span>'
+            .'</div>'
+            .'</div>';
     }
 
     private static function hasAnyAssociatedItems(OperationCoordinationService $record): bool
