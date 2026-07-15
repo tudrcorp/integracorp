@@ -1,7 +1,10 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
+@import '../shared/hierarchy-flowchart.css';
 
 @source '../../../../app/Filament/Agents/**/*';
 @source '../../../../resources/views/filament/agents/**/*';
+@source '../../../../resources/views/filament/agents/pages/**/*';
+@source '../../../../resources/views/filament/shared/**/*';
 
 
 /* .fi-simple-main {

@@ -2,44 +2,32 @@
 
 namespace App\Providers\Filament;
 
-use Filament\Panel;
-use App\Models\Agent;
-use App\Models\Option;
-use Livewire\Component;
-use Filament\PanelProvider;
-use Filament\Actions\Action;
-use Sabberworm\CSS\Settings;
-use App\Models\AgentNoteBlog;
-use Filament\Pages\Dashboard;
-use Filament\Support\Enums\Width;
-use Filament\Support\Colors\Color;
-use Filament\View\PanelsRenderHook;
-use Filament\Widgets\AccountWidget;
-use Filament\Forms\Components\Radio;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Toggle;
-use Illuminate\Support\Facades\Blade;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Navigation\NavigationGroup;
-use Filament\Notifications\Notification;
-use Filament\Widgets\FilamentInfoWidget;
-use Filament\Schemas\Components\Fieldset;
-use Filament\Http\Middleware\Authenticate;
-use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Filament\Http\Middleware\AuthenticateSession;
-use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Swis\Filament\Backgrounds\ImageProviders\MyImages;
+use App\Filament\Agents\Pages\ViewMyHierarchy;
 use App\Filament\Agents\Resources\Agents\AgentResource;
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Models\Agent;
+use Filament\Actions\Action;
+use Filament\Http\Middleware\Authenticate;
+use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
-use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Filament\Navigation\NavigationGroup;
+use Filament\Pages\Dashboard;
+use Filament\Panel;
+use Filament\PanelProvider;
+use Filament\Support\Enums\Width;
+use Filament\Widgets\AccountWidget;
+use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Livewire\Component;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 
 class AgentsPanelProvider extends PanelProvider
 {
@@ -67,6 +55,7 @@ class AgentsPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Agents/Pages'), for: 'App\Filament\Agents\Pages')
             ->pages([
                 Dashboard::class,
+                ViewMyHierarchy::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Agents/Widgets'), for: 'App\Filament\Agents\Widgets')
             ->widgets([
@@ -116,19 +105,22 @@ class AgentsPanelProvider extends PanelProvider
                 statusCode: 404,
             )
             ->userMenuItems([
-                'profile' => fn(Action $action) => $action->label('Perfil del Agente')
+                'profile' => fn (Action $action) => $action->label('Perfil del Agente')
                     ->icon('heroicon-s-user-circle')
                     ->color('primary')
                     ->url(function (Component $livewire) {
                         return AgentResource::getUrl('edit', ['record' => Auth::user()->agent_id], panel: 'agents');
                     }),
-                // ...
-                'logout' => fn(Action $action) => $action
+                Action::make('viewHierarchy')
+                    ->label('Ver Jerarquía')
+                    ->icon('heroicon-o-squares-2x2')
+                    ->color('info')
+                    ->url(fn (): string => url('/agents/ver-jerarquia'))
+                    ->visible(fn (): bool => filled(Auth::user()?->agent_id)),
+                'logout' => fn (Action $action) => $action
                     ->label('Cerrar Sesión')
                     ->color('danger')
                     ->url(route('external')),
-                // // ...
-                // // ...
             ])
             ->breadcrumbs(false)
             // ->sidebarCollapsibleOnDesktop()
