@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
-use App\Services\NotificationMasiveService;
 use App\Support\MassNotificationRecipientDelivery;
+use App\Support\MassNotificationWhatsAppSender;
+use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -15,7 +18,7 @@ use Throwable;
 
 class SendNotificationMasive implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 5;
 
@@ -35,10 +38,18 @@ class SendNotificationMasive implements ShouldQueue
 
     public function handle(): void
     {
-        $result = NotificationMasiveService::send($this->dataNotificationArray, $this->infoNotificationArray);
+        if ($this->batch()?->cancelled()) {
+            return;
+        }
 
-        if ($result !== true) {
-            throw new RuntimeException('No se pudo enviar la notificación por WhatsApp.');
+        $result = MassNotificationWhatsAppSender::send(
+            $this->dataNotificationArray,
+            $this->infoNotificationArray,
+            throttle: true,
+        );
+
+        if (! $result->success) {
+            throw new RuntimeException($result->errorMessage ?? 'No se pudo enviar la notificación por WhatsApp.');
         }
 
         MassNotificationRecipientDelivery::markWhatsappSent($this->dataNotificationId);
@@ -53,7 +64,7 @@ class SendNotificationMasive implements ShouldQueue
 
         Log::info('SendNotificationMasive: FAILED', [
             'data_notification_id' => $this->dataNotificationId,
-            'exception' => $exception,
+            'exception' => $exception?->getMessage(),
         ]);
     }
 }
