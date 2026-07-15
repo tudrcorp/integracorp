@@ -68,11 +68,15 @@ it('MassNotificationDispatchResult existe como clase separada del servicio', fun
 it('los jobs de envío masivo reciben el id del destinatario', function (): void {
     $emailJob = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/SendNotificationMasiveEmail.php');
     $whatsappJob = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/SendNotificationMasive.php');
+    $service = file_get_contents(dirname(__DIR__, 2).'/app/Support/MassNotificationDispatchService.php');
 
     expect($emailJob)->toContain('dataNotificationId')
         ->and($whatsappJob)->toContain('dataNotificationId')
         ->and($emailJob)->toContain('markEmailSent')
-        ->and($whatsappJob)->toContain('markWhatsappSent');
+        ->and($whatsappJob)->toContain('markWhatsappSent')
+        ->and($whatsappJob)->toContain('MassNotificationWhatsAppSender')
+        ->and($service)->toContain('Bus::batch')
+        ->and($service)->toContain('SweepMassNotificationWhatsAppFailures');
 });
 
 it('MassNotificationDeliveryStatus expone etiquetas en español', function (): void {

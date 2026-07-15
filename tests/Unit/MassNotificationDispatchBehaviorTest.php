@@ -9,6 +9,7 @@ use App\Models\MassNotification;
 use App\Support\MassNotificationDispatchService;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
@@ -140,7 +141,7 @@ it('no envía de inmediato cuando la fecha programada es futura', function (): v
 });
 
 it('envía de inmediato cuando no hay fecha programada', function (): void {
-    Queue::fake();
+    Bus::fake();
 
     $notification = createApprovedMassNotificationForDispatchTest([
         'date_programed' => null,
@@ -153,8 +154,9 @@ it('envía de inmediato cuando no hay fecha programada', function (): void {
         ->and($result->queuedJobs)->toBe(2)
         ->and($notification->fresh()->is_sent)->toBeTrue();
 
-    Queue::assertPushed(SendNotificationMasive::class, 1);
-    Queue::assertPushed(SendNotificationMasiveEmail::class, 1);
+    Bus::assertBatched(fn ($batch): bool => $batch->jobs->count() === 1
+        && $batch->jobs->first() instanceof SendNotificationMasive);
+    Bus::assertDispatched(SendNotificationMasiveEmail::class);
 });
 
 it('rechaza el envío cuando la notificación ya fue encolada', function (): void {

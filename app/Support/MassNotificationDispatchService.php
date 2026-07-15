@@ -6,10 +6,13 @@ namespace App\Support;
 
 use App\Jobs\SendNotificationMasive;
 use App\Jobs\SendNotificationMasiveEmail;
+use App\Jobs\SweepMassNotificationWhatsAppFailures;
 use App\Models\DataNotification;
 use App\Models\MassNotification;
+use Illuminate\Bus\Batch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Schema;
 
 class MassNotificationDispatchService
@@ -61,10 +64,17 @@ class MassNotificationDispatchService
 
         $infoNotificationArray = $record->toArray();
         $queuedJobs = 0;
+        $whatsappJobs = [];
 
         /** @var DataNotification $recipient */
         foreach ($recipients as $recipient) {
-            $queuedJobs += self::queueRecipientChannels($recipient, $channels, $infoNotificationArray, $record);
+            $queuedJobs += self::queueRecipientChannels(
+                $recipient,
+                $channels,
+                $infoNotificationArray,
+                $record,
+                $whatsappJobs,
+            );
         }
 
         if ($queuedJobs === 0) {
@@ -74,12 +84,26 @@ class MassNotificationDispatchService
             );
         }
 
+        if ($whatsappJobs !== []) {
+            $massNotificationId = $record->id;
+
+            Bus::batch($whatsappJobs)
+                ->name('mass-notification-whatsapp-'.$massNotificationId)
+                ->onQueue('system')
+                ->allowFailures()
+                ->finally(function (Batch $batch) use ($massNotificationId): void {
+                    SweepMassNotificationWhatsAppFailures::dispatch($massNotificationId)
+                        ->onQueue('system');
+                })
+                ->dispatch();
+        }
+
         $record->is_sent = true;
         $record->save();
 
         return new MassNotificationDispatchResult(
             success: true,
-            message: 'Envío encolado exitosamente. Integracorp te notificará cuando el proceso finalice.',
+            message: 'Envío encolado exitosamente. Al finalizar, se reintentarán automáticamente los WhatsApp pendientes o fallidos. Integracorp te notificará cuando el proceso finalice.',
             queuedJobs: $queuedJobs,
         );
     }
@@ -142,23 +166,25 @@ class MassNotificationDispatchService
 
     /**
      * @param  Collection<int, string>  $channels
+     * @param  list<SendNotificationMasive>  $whatsappJobs
      */
     private static function queueRecipientChannels(
         DataNotification $recipient,
         Collection $channels,
         array $infoNotificationArray,
         MassNotification $record,
+        array &$whatsappJobs,
     ): int {
         $queuedJobs = 0;
 
         if ($channels->contains('whatsapp')) {
             if (filled($recipient->phone)) {
                 MassNotificationRecipientDelivery::markWhatsappPending($recipient->id);
-                SendNotificationMasive::dispatch(
+                $whatsappJobs[] = new SendNotificationMasive(
                     $recipient->toArray(),
                     $infoNotificationArray,
                     $recipient->id,
-                )->onQueue('system');
+                );
                 $queuedJobs++;
             } else {
                 MassNotificationRecipientDelivery::markWhatsappSkipped($recipient->id, 'Teléfono vacío o no disponible');
