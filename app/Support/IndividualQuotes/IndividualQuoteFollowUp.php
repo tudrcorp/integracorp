@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Support\IndividualQuotes;
 
 use App\Models\Agency;
+use App\Models\Agent;
 use App\Models\IndividualQuote;
-use App\Support\ScheduledNotificationPhones;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -25,7 +25,7 @@ final class IndividualQuoteFollowUp
             ->toDateString();
 
         return IndividualQuote::query()
-            ->with(['agent:id,name', 'agency:code,name_corporative'])
+            ->with(['agent:id,name,phone', 'agency:code,name_corporative,phone'])
             ->where('status', self::ELIGIBLE_STATUS)
             ->whereDate('created_at', $targetDate)
             ->orderBy('code')
@@ -138,11 +138,68 @@ final class IndividualQuoteFollowUp
     }
 
     /**
+     * Teléfono WhatsApp del aliado que creó las cotizaciones del grupo:
+     * - con agent_id → agents.phone
+     * - sin agent_id → agencies.phone vía code_agency
+     *
+     * @param  Collection<int, IndividualQuote>  $quotes
      * @return list<string>
      */
-    public static function reportPhones(): array
+    public static function resolveRecipientPhones(Collection $quotes): array
     {
-        return ScheduledNotificationPhones::all();
+        /** @var IndividualQuote|null $first */
+        $first = $quotes->first();
+
+        if ($first === null) {
+            return [];
+        }
+
+        $phone = filled($first->agent_id)
+            ? self::resolveAgentPhone($first)
+            : self::resolveAgencyPhone($first);
+
+        if ($phone === null) {
+            return [];
+        }
+
+        return [$phone];
+    }
+
+    private static function resolveAgentPhone(IndividualQuote $quote): ?string
+    {
+        if ($quote->relationLoaded('agent')) {
+            return self::normalizePhone($quote->agent?->phone);
+        }
+
+        if (! filled($quote->agent_id)) {
+            return null;
+        }
+
+        return self::normalizePhone(
+            Agent::query()->whereKey($quote->agent_id)->value('phone')
+        );
+    }
+
+    private static function resolveAgencyPhone(IndividualQuote $quote): ?string
+    {
+        if ($quote->relationLoaded('agency')) {
+            return self::normalizePhone($quote->agency?->phone);
+        }
+
+        if (! filled($quote->code_agency)) {
+            return null;
+        }
+
+        return self::normalizePhone(
+            Agency::query()->where('code', $quote->code_agency)->value('phone')
+        );
+    }
+
+    private static function normalizePhone(mixed $phone): ?string
+    {
+        $normalized = trim((string) $phone);
+
+        return $normalized !== '' ? $normalized : null;
     }
 
     public static function schedulingStartDate(): Carbon

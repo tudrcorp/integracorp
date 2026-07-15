@@ -1,11 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
+use App\Enums\SystemNotificationKey;
 use App\Mail\AnulatedQuotesNotificationMail;
 use App\Models\IndividualQuote;
+use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Concerns\ReportsScheduledExecution;
 use App\Support\ScheduledTaskRunReport;
+use App\Support\SystemNotificationRecipients;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -20,10 +25,7 @@ class AnulateAgentQuotes implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, ReportsScheduledExecution, SerializesModels;
 
-    public function __construct()
-    {
-        //
-    }
+    public function __construct() {}
 
     public function handle(): void
     {
@@ -32,11 +34,12 @@ class AnulateAgentQuotes implements ShouldQueue
             function (): void {
                 $this->anulateAgentQuotes();
             },
-            'Anula cotizaciones individuales de agentes con más de 15 días sin aprobar ni ejecutar, elimina su PDF y notifica por email si hubo anulaciones.',
+            'Anula cotizaciones individuales de agentes con más de 15 días sin aprobar ni ejecutar, elimina su PDF y notifica por email/WhatsApp si hubo anulaciones.',
             [
                 '*Cotizaciones anuladas* = registros que pasaron a status ANULADA.',
                 '*PDFs no eliminados* = archivos que no pudieron borrarse del storage.',
                 'Cada falla de PDF corresponde a una cotización concreta (1:1).',
+                'Los destinatarios se gestionan en el Centro de notificaciones.',
             ],
         );
     }
@@ -69,21 +72,84 @@ class AnulateAgentQuotes implements ShouldQueue
         ScheduledTaskRunReport::addMetric('PDFs no eliminados', $pdfDeleteFailures);
 
         if ($anulatedCount > 0) {
+            $this->notifyRecipients($anulatedCount);
+        } else {
+            ScheduledTaskRunReport::addMetric('Email resumen enviado', 'No aplica');
+            ScheduledTaskRunReport::addMetric('WhatsApp resumen despachados', 'No aplica');
+        }
+    }
+
+    private function notifyRecipients(int $anulatedCount): void
+    {
+        $emails = SystemNotificationRecipients::emails(SystemNotificationKey::AgentQuoteAnulation);
+        $phones = SystemNotificationRecipients::phones(SystemNotificationKey::AgentQuoteAnulation);
+
+        if ($emails === [] && $phones === []) {
+            ScheduledTaskRunReport::addMetric('Email resumen enviado', 'Sin destinatarios');
+            ScheduledTaskRunReport::addMetric('WhatsApp resumen despachados', 'Sin destinatarios');
+            ScheduledTaskRunReport::recordFailure('Hubo anulaciones pero no hay destinatarios configurados en el Centro de notificaciones');
+
+            return;
+        }
+
+        $emailsSent = 0;
+        $whatsappsQueued = 0;
+
+        foreach ($emails as $email) {
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                ScheduledTaskRunReport::recordFailure('Correo inválido para resumen de anulación: '.$email);
+
+                continue;
+            }
+
             try {
-                Mail::to('cotizaciones@tudrencasa.com')->send(
-                    new AnulatedQuotesNotificationMail($anulatedCount)
-                );
-                ScheduledTaskRunReport::addMetric('Email resumen enviado', 'Sí');
+                Mail::to($email)->send(new AnulatedQuotesNotificationMail($anulatedCount, $email));
+                $emailsSent++;
             } catch (Throwable $exception) {
-                ScheduledTaskRunReport::recordFailure('Error al enviar email de resumen');
-                ScheduledTaskRunReport::addMetric('Email resumen enviado', 'No');
+                ScheduledTaskRunReport::recordFailure('Error al enviar email de resumen a '.$email);
                 Log::error('AnulateAgentQuotes: error enviando email de resumen', [
+                    'email' => $email,
                     'message' => $exception->getMessage(),
                 ]);
             }
-        } else {
-            ScheduledTaskRunReport::addMetric('Email resumen enviado', 'No aplica');
         }
+
+        $whatsappBody = <<<TEXT
+        *INTEGRACORP · Cotizaciones anuladas*
+
+        Reporte diario de cotizaciones individuales anuladas automáticamente
+        (más de 15 días sin aprobar ni ejecutar).
+
+        Número de cotizaciones anuladas: *{$anulatedCount}*
+        TEXT;
+
+        foreach ($phones as $rawPhone) {
+            $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
+
+            if ($phone === null) {
+                ScheduledTaskRunReport::recordFailure('Teléfono inválido para resumen de anulación: '.$rawPhone);
+
+                continue;
+            }
+
+            try {
+                SendNotificacionWhatsApp::dispatch(null, $whatsappBody, $phone, null, [
+                    'panel' => 'system',
+                    'source' => 'individual-quotes.agent-quote-anulation',
+                    'anulated_count' => $anulatedCount,
+                ]);
+                $whatsappsQueued++;
+            } catch (Throwable $exception) {
+                ScheduledTaskRunReport::recordFailure('Error al despachar WhatsApp de resumen a '.$phone);
+                Log::error('AnulateAgentQuotes: error despachando WhatsApp de resumen', [
+                    'phone' => $phone,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        ScheduledTaskRunReport::addMetric('Email resumen enviado', $emailsSent > 0 ? 'Sí ('.$emailsSent.')' : 'No');
+        ScheduledTaskRunReport::addMetric('WhatsApp resumen despachados', $whatsappsQueued);
     }
 
     private function deleteQuotePdf(string $code): bool
@@ -106,8 +172,8 @@ class AnulateAgentQuotes implements ShouldQueue
     public function failed(?Throwable $exception): void
     {
         Log::error('AnulateAgentQuotes: FAILED', [
-            'message' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
+            'message' => $exception?->getMessage(),
+            'trace' => $exception?->getTraceAsString(),
         ]);
     }
 }

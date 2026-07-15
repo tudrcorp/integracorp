@@ -11,28 +11,37 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class AnulatedQuotesNotificationMail extends Mailable
+class ScheduledTaskRunReportMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(
-        public int $anulatedCount,
-        public string $recipientEmail = 'cotizaciones@tudrencasa.com',
+        public string $recipientEmail,
+        public string $taskTitle,
+        public string $summaryBody,
+        public ?string $attachmentFilename = null,
+        public ?string $attachmentRelativePath = null,
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
             from: new Address(config('mail.from.address'), config('mail.from.name')),
-            to: [new Address($this->recipientEmail, 'Cotizaciones TuDrEnCasa')],
-            subject: 'Reporte diario: Cotizaciones individuales anuladas (agencias, agentes)',
+            to: [new Address($this->recipientEmail, 'Control INTEGRACORP')],
+            subject: 'Resumen programado: '.$this->taskTitle,
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'mails.anulated-quotes-notification',
+            view: 'mails.scheduled-task-run-report',
+            with: [
+                'taskTitle' => $this->taskTitle,
+                'summaryBody' => $this->summaryBody,
+                'attachmentFilename' => $this->attachmentFilename,
+                'attachmentRelativePath' => $this->attachmentRelativePath,
+            ],
         );
     }
 

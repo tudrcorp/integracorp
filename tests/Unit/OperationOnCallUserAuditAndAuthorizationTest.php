@@ -15,10 +15,10 @@ it('registra auditoría en modelo y logger dedicado', function (): void {
         ->and($model)->toContain("'deleted'");
 });
 
-it('el recurso Roles de Guardia exige permiso y SUPERADMIN', function (): void {
+it('el recurso Roles de Guardia queda inaccesible para cualquier usuario', function (): void {
     $root = dirname(__DIR__, 2);
     $resource = file_get_contents($root.'/app/Filament/Operations/Resources/OperationOnCallUsers/OperationOnCallUserResource.php');
-    expect($resource)->toContain('userMayAccessGuardDutyRoles')
-        ->and($resource)->toContain('roles-de-guardia')
+    expect($resource)->toContain('public static function canAccess(): bool')
+        ->and($resource)->toContain('return false')
         ->and($resource)->toContain('canDeleteAny');
 });

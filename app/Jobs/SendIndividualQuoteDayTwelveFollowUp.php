@@ -8,6 +8,7 @@ use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Concerns\ReportsScheduledExecution;
 use App\Support\IndividualQuotes\IndividualQuoteDayTwelveFollowUp;
 use App\Support\IndividualQuotes\IndividualQuoteFollowUp;
+use App\Support\IndividualQuotes\IndividualQuoteFollowUpInternalCopies;
 use App\Support\ScheduledTaskRunReport;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -34,7 +35,8 @@ class SendIndividualQuoteDayTwelveFollowUp implements ShouldQueue
             'Envía recordatorio por WhatsApp de cotizaciones individuales PRE-APROBADA creadas hace 12 días, informando vencimiento próximo.',
             [
                 '*Agrupación* = mismo agente o agencia y misma fecha de creación.',
-                'El mensaje se envía a los teléfonos internos configurados para seguimiento.',
+                'El mensaje se envía al teléfono del agente (si hay agent_id) o de la agencia (code_agency).',
+                'Se envía copia interna a los destinatarios configurados en el Centro de notificaciones.',
             ],
         );
     }
@@ -44,6 +46,8 @@ class SendIndividualQuoteDayTwelveFollowUp implements ShouldQueue
         $groups = IndividualQuoteDayTwelveFollowUp::groupedQuotesForDate();
         $quotesTotal = $groups->flatten(1)->count();
         $messagesDispatched = 0;
+        $internalEmailCopies = 0;
+        $internalWhatsAppCopies = 0;
 
         ScheduledTaskRunReport::addMetric('Cotizaciones elegibles', $quotesTotal);
         ScheduledTaskRunReport::addMetric('Grupos de aliado', $groups->count());
@@ -55,8 +59,18 @@ class SendIndividualQuoteDayTwelveFollowUp implements ShouldQueue
             }
 
             $body = IndividualQuoteDayTwelveFollowUp::whatsappBody($quotes);
+            $ally = IndividualQuoteDayTwelveFollowUp::resolveAllyName($quotes);
+            $rawPhones = IndividualQuoteFollowUp::resolveRecipientPhones($quotes);
 
-            foreach (IndividualQuoteFollowUp::reportPhones() as $rawPhone) {
+            if ($rawPhones === []) {
+                ScheduledTaskRunReport::recordFailure(
+                    'Sin teléfono de agente/agencia para el grupo '.IndividualQuoteFollowUp::groupKey($quotes->first()).' ('.$ally.')'
+                );
+
+                continue;
+            }
+
+            foreach ($rawPhones as $rawPhone) {
                 $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
 
                 if ($phone === null) {
@@ -69,7 +83,7 @@ class SendIndividualQuoteDayTwelveFollowUp implements ShouldQueue
                     SendNotificacionWhatsApp::dispatch(null, $body, $phone, null, [
                         'panel' => 'system',
                         'source' => 'individual-quotes.day-twelve-follow-up',
-                        'ally' => IndividualQuoteDayTwelveFollowUp::resolveAllyName($quotes),
+                        'ally' => $ally,
                         'quote_count' => $quotes->count(),
                     ]);
 
@@ -82,9 +96,21 @@ class SendIndividualQuoteDayTwelveFollowUp implements ShouldQueue
                     ]);
                 }
             }
+
+            $internalCopies = IndividualQuoteFollowUpInternalCopies::dispatch(
+                whatsappBody: $body,
+                allyName: $ally,
+                source: 'individual-quotes.day-twelve-follow-up',
+                followUpLabel: 'Seguimiento cotizaciones (12 días)',
+                quoteCount: $quotes->count(),
+            );
+            $internalEmailCopies += $internalCopies['emails'];
+            $internalWhatsAppCopies += $internalCopies['whatsapps'];
         }
 
         ScheduledTaskRunReport::addMetric('WhatsApp despachados', $messagesDispatched);
+        ScheduledTaskRunReport::addMetric('Copias email internas', $internalEmailCopies);
+        ScheduledTaskRunReport::addMetric('Copias WhatsApp internas', $internalWhatsAppCopies);
     }
 
     public function failed(?Throwable $exception): void

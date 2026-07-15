@@ -37,10 +37,11 @@ it('programa el seguimiento de cotizaciones individuales a las 8:40am', function
         ->toContain('->when($individualQuoteFollowUpIsActive)');
 });
 
-it('envia el seguimiento de 12 dias a los telefonos internos indicados', function (): void {
+it('envia el seguimiento de 12 dias al telefono del agente o de la agencia', function (): void {
     $jobSource = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/SendIndividualQuoteDayTwelveFollowUp.php');
 
     expect($jobSource)
-        ->toContain('IndividualQuoteFollowUp::reportPhones()')
+        ->toContain('IndividualQuoteFollowUp::resolveRecipientPhones($quotes)')
+        ->toContain('IndividualQuoteFollowUpInternalCopies::dispatch')
         ->toContain('IndividualQuoteDayTwelveFollowUp::whatsappBody');
 });

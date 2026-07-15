@@ -328,16 +328,12 @@
                         <div class="value">{{ $coord->patient ?? '—' }}</div>
                     </td>
                     <td>
-                        <div class="label">Titular</div>
-                        <div class="value">{{ $coord->holder ?? '—' }}</div>
+                        <div class="label">CI paciente</div>
+                        <div class="value-muted">{{ $coord->ci_patient ?? '—' }}</div>
                     </td>
                 </tr>
                 <tr>
-                    <td>
-                        <div class="label">CI paciente / titular</div>
-                        <div class="value-muted">{{ $coord->ci_patient ?? '—' }} / {{ $coord->ci_holder ?? '—' }}</div>
-                    </td>
-                    <td>
+                    <td colspan="2">
                         <div class="label">Teléfono / Ref.</div>
                         <div class="value-muted">{{ $coord->phone_holder ?? '—' }} · {{ $coord->reference_number ?? '—' }}</div>
                     </td>

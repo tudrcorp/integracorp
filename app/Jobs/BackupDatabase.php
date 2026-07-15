@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\SystemNotificationKey;
 use App\Support\Concerns\ReportsScheduledExecution;
 use App\Support\Database\DatabaseBackupService;
 use App\Support\ScheduledTaskRunReport;
@@ -64,13 +65,15 @@ class BackupDatabase implements ShouldQueue
                 $deleted = $backupService->purgeExpiredBackups();
                 ScheduledTaskRunReport::addMetric('Respaldos antiguos eliminados', $deleted);
             },
-            'Genera un respaldo completo de la base de datos en formato .sql (estructura y datos) y lo envía por WhatsApp al equipo configurado.',
+            'Genera un respaldo completo de la base de datos en formato .sql (estructura y datos) y lo notifica a los destinatarios del Centro de notificaciones.',
             [
                 'El archivo .sql incluye tablas, datos y, en MySQL/MariaDB, triggers, rutinas y eventos.',
-                'Si la ejecución es exitosa, el mensaje incluirá el archivo .sql adjunto.',
+                'Si la ejecución es exitosa, el mensaje de WhatsApp incluirá el archivo .sql adjunto (si no supera el límite).',
                 'Si hay fallas, el mensaje detallará el error sin adjuntar un respaldo incompleto.',
                 'Los respaldos antiguos se eliminan según la retención configurada (backup.retention_days).',
+                'Los destinatarios se gestionan en el Centro de notificaciones (Respaldo de base de datos).',
             ],
+            SystemNotificationKey::DatabaseBackup,
         );
     }
 

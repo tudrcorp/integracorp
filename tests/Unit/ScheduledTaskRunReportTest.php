@@ -98,10 +98,20 @@ it('los jobs programados usan el reporte de ejecución por whatsapp', function (
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/ScheduledTaskRunReport.php'))
         ->toContain('ScheduledNotificationPhones::all()')
+        ->toContain('SystemNotificationRecipients::phones')
         ->toContain('finishAndNotify')
         ->toContain('addExecutionDetail')
         ->toContain('setFailureFootnote')
         ->toContain('setDocumentAttachment');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Jobs/BackupDatabase.php'))
+        ->toContain('SystemNotificationKey::DatabaseBackup');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Jobs/ExportIndividualAffiliations.php'))
+        ->toContain('SystemNotificationKey::StructureBackup');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Jobs/ExportScheduledEntity.php'))
+        ->toContain('SystemNotificationKey::StructureBackup');
 });
 
 it('registra adjuntos de documento para tareas con respaldo', function (): void {

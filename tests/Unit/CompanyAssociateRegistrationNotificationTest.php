@@ -27,29 +27,37 @@ it('el registro publico encola notificaciones y documentos para analistas y afil
 
 it('expone pagina de configuracion de notificaciones en el panel business', function (): void {
     $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Pages/ManageCompanyAssociateNotifications.php');
-    $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Pages/Schemas/CompanyAssociateNotificationSettingsForm.php');
+    $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Pages/Schemas/SystemNotificationRecipientSettingsForm.php');
     $view = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/manage-company-associate-notifications.blade.php');
-    $migration = file_get_contents(dirname(__DIR__, 2).'/database/migrations/2026_07_01_102437_create_company_associate_notification_settings_table.php');
+    $migration = file_get_contents(dirname(__DIR__, 2).'/database/migrations/2026_07_15_083954_create_system_notification_recipient_settings_table.php');
 
     expect($page)
         ->toContain('CONFIGURACIÓN')
-        ->toContain('Notificaciones de asociados')
-        ->toContain('CompanyAssociateNotificationSettingsForm::configure')
-        ->toContain('configuredEmailCount');
+        ->toContain('Centro de notificaciones')
+        ->toContain('SystemNotificationRecipientSettingsForm::configure')
+        ->toContain('configuredEmailCount')
+        ->toContain('selectNotificationKey')
+        ->toContain('is_active');
 
     expect($form)
         ->toContain('notification_emails')
         ->toContain('notification_phones')
+        ->toContain("Toggle::make('is_active')")
         ->toContain('collapsible')
         ->toContain('itemLabel');
 
     expect($view)
         ->toContain('$this->content')
         ->toContain('can-settings-page')
-        ->toContain('voucher ILS')
-        ->toContain('can-stats');
+        ->toContain('can-stats')
+        ->toContain('can-tabs')
+        ->toContain('selectNotificationKey')
+        ->toContain('calloutTitle')
+        ->toContain('calloutBody')
+        ->not->toContain('use App\\Enums\\SystemNotificationKey');
 
     expect($migration)
+        ->toContain('notification_key')
         ->toContain('notification_emails')
         ->toContain('notification_phones');
 });
@@ -63,7 +71,8 @@ it('el job de notificaciones usa correo whatsapp y recordatorio de voucher ils',
     expect($job)
         ->toContain('SendNotificacionWhatsApp::dispatchSync')
         ->toContain('CompanyAssociateRegisteredAnalystMail')
-        ->toContain('CompanyAssociateNotificationSetting::instance');
+        ->toContain('SystemNotificationRecipients::emails')
+        ->toContain('SystemNotificationKey::CompanyAssociateRegistration');
 
     expect($mail)->toContain('company-associate-registered-analyst');
 

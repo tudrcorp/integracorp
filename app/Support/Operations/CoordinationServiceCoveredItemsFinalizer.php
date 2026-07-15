@@ -148,7 +148,7 @@ final class CoordinationServiceCoveredItemsFinalizer
     public static function makePlaceCoveredItemsInManagementAction(): Action
     {
         return Action::make('placeCoveredItemsInManagement')
-            ->label('Colocar cubiertos en gestión')
+            ->label('Activar gestión')
             ->icon('heroicon-o-play')
             ->color('info')
             ->button()
@@ -475,7 +475,7 @@ final class CoordinationServiceCoveredItemsFinalizer
         return match ($itemType) {
             'medication' => [
                 'action_name' => 'uploadCoveredMedicationDeliveryReceipt',
-                'label' => 'Comprobante entrega medicamentos',
+                'label' => 'Comprobante',
                 'modal_heading' => 'Comprobante de entrega de medicamentos',
                 'modal_description' => 'Cargue el comprobante de entrega. Al guardar, los medicamentos cubiertos seleccionados pasarán a FINALIZADO.',
                 'checkbox_label' => 'Medicamentos cubiertos',
@@ -491,7 +491,7 @@ final class CoordinationServiceCoveredItemsFinalizer
             ],
             'lab' => [
                 'action_name' => 'uploadCoveredLabDeliveryReceipt',
-                'label' => 'Comprobante entrega laboratorios',
+                'label' => 'Comprobante',
                 'modal_heading' => 'Comprobante de entrega de laboratorios',
                 'modal_description' => 'Cargue el comprobante de entrega. Al guardar, los laboratorios cubiertos seleccionados pasarán a FINALIZADO.',
                 'checkbox_label' => 'Laboratorios cubiertos',
@@ -507,7 +507,7 @@ final class CoordinationServiceCoveredItemsFinalizer
             ],
             'study' => [
                 'action_name' => 'uploadCoveredStudyDeliveryReceipt',
-                'label' => 'Comprobante entrega estudios',
+                'label' => 'Comprobante',
                 'modal_heading' => 'Comprobante de entrega de estudios',
                 'modal_description' => 'Cargue el comprobante de entrega. Al guardar, los estudios cubiertos seleccionados pasarán a FINALIZADO.',
                 'checkbox_label' => 'Estudios cubiertos',
@@ -523,7 +523,7 @@ final class CoordinationServiceCoveredItemsFinalizer
             ],
             'specialty' => [
                 'action_name' => 'uploadCoveredSpecialtyDeliveryReceipt',
-                'label' => 'Comprobante entrega especialistas',
+                'label' => 'Comprobante',
                 'modal_heading' => 'Comprobante de entrega de especialistas',
                 'modal_description' => 'Cargue el comprobante de entrega. Al guardar, los especialistas cubiertos seleccionados pasarán a FINALIZADO.',
                 'checkbox_label' => 'Especialistas cubiertos',

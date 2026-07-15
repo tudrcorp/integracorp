@@ -7,14 +7,13 @@ namespace App\Models;
 use App\Enums\SystemNotificationKey;
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * @deprecated Use SystemNotificationRecipientSetting / SystemNotificationRecipients.
- */
-class CompanyAssociateNotificationSetting extends Model
+class SystemNotificationRecipientSetting extends Model
 {
     protected $fillable = [
+        'notification_key',
         'notification_emails',
         'notification_phones',
+        'is_active',
         'updated_by',
     ];
 
@@ -24,24 +23,32 @@ class CompanyAssociateNotificationSetting extends Model
     protected function casts(): array
     {
         return [
+            'notification_key' => SystemNotificationKey::class,
             'notification_emails' => 'array',
             'notification_phones' => 'array',
+            'is_active' => 'boolean',
         ];
     }
 
-    public static function instance(): self
+    public static function for(SystemNotificationKey $key): self
     {
-        $modern = SystemNotificationRecipientSetting::for(SystemNotificationKey::CompanyAssociateRegistration);
+        return static::query()->firstOrCreate(
+            ['notification_key' => $key->value],
+            [
+                'notification_emails' => $key->defaultEmails(),
+                'notification_phones' => $key->defaultPhones(),
+                'is_active' => true,
+            ],
+        );
+    }
 
-        return new self([
-            'notification_emails' => $modern->emails(),
-            'notification_phones' => $modern->phones(),
-            'updated_by' => $modern->updated_by,
-        ]);
+    public function isActive(): bool
+    {
+        return (bool) $this->is_active;
     }
 
     /**
-     * @return array<int, string>
+     * @return list<string>
      */
     public function emails(): array
     {
@@ -49,7 +56,7 @@ class CompanyAssociateNotificationSetting extends Model
     }
 
     /**
-     * @return array<int, string>
+     * @return list<string>
      */
     public function phones(): array
     {
@@ -58,7 +65,7 @@ class CompanyAssociateNotificationSetting extends Model
 
     /**
      * @param  array<int, string>|null  $values
-     * @return array<int, string>
+     * @return list<string>
      */
     private function normalizeList(?array $values): array
     {

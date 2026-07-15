@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\SystemNotificationKey;
 use App\Mail\CompanyAssociateRegisteredAnalystMail;
 use App\Models\CompanyAssociate;
-use App\Models\CompanyAssociateNotificationSetting;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Companies\CompanyAssociateRegistrationNotificationMessage;
 use App\Support\SecurityAudit;
+use App\Support\SystemNotificationRecipients;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -51,9 +52,17 @@ class NotifyAnalystsOfCompanyAssociateRegistrationJob implements ShouldQueue
             return;
         }
 
-        $settings = CompanyAssociateNotificationSetting::instance();
-        $emails = $settings->emails();
-        $phones = $settings->phones();
+        if (! SystemNotificationRecipients::isActive(SystemNotificationKey::CompanyAssociateRegistration)) {
+            SecurityAudit::log('AUDIT_BUSINESS_COMPANY_ASSOCIATE_NOTIFICATION_SKIPPED', 'company-associates.public-register.notifications', [
+                'associate_id' => $associate->getKey(),
+                'reason' => 'notification_inactive',
+            ]);
+
+            return;
+        }
+
+        $emails = SystemNotificationRecipients::emails(SystemNotificationKey::CompanyAssociateRegistration);
+        $phones = SystemNotificationRecipients::phones(SystemNotificationKey::CompanyAssociateRegistration);
 
         if ($emails === [] && $phones === []) {
             SecurityAudit::log('AUDIT_BUSINESS_COMPANY_ASSOCIATE_NOTIFICATION_SKIPPED', 'company-associates.public-register.notifications', [

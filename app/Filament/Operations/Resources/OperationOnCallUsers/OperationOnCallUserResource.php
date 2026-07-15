@@ -30,6 +30,8 @@ class OperationOnCallUserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-shield-exclamation';
 
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function form(Schema $schema): Schema
     {
         return OperationOnCallUserForm::configure($schema);
@@ -62,28 +64,38 @@ class OperationOnCallUserResource extends Resource
         ];
     }
 
+    public static function canAccess(): bool
+    {
+        return false;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public static function canView(Model $record): bool
     {
-        return static::canAccess();
+        return false;
     }
 
     public static function canCreate(): bool
     {
-        return static::canAccess();
+        return false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return static::canAccess();
+        return false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return static::canAccess();
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return static::canAccess();
+        return false;
     }
 }
