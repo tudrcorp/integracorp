@@ -48,5 +48,6 @@ it('envia el seguimiento de 9 dias en cadena con mensaje y flyer pdf', function 
         ->toContain('SendNotificacionWhatsAppDocument')
         ->toContain('benefitsFlyerUrl()')
         ->toContain('flayer.pdf')
-        ->toContain('IndividualQuoteFollowUp::reportPhones()');
+        ->toContain('IndividualQuoteFollowUp::resolveRecipientPhones($quotes)')
+        ->toContain('IndividualQuoteFollowUpInternalCopies::dispatch');
 });

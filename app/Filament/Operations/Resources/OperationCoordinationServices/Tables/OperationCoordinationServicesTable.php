@@ -1236,16 +1236,6 @@ class OperationCoordinationServicesTable
                     ->color(fn (string $state): string => TelemedicinePriorityFilamentBadge::color($state))
                     ->icon(fn (string $state): string => TelemedicinePriorityFilamentBadge::icon($state))
                     ->searchable(),
-                TextColumn::make('holder')
-                    ->label('Titular')
-                    ->badge()
-                    ->color('gray')
-                    ->searchable(),
-                TextColumn::make('ci_holder')
-                    ->label('Cédula del Titular')
-                    ->badge()
-                    ->color('gray')
-                    ->searchable(),
                 TextColumn::make('patient')
                     ->label('Paciente')
                     ->badge()
@@ -1282,7 +1272,7 @@ class OperationCoordinationServicesTable
                     ->label('Dirección')
                     ->searchable(),
                 TextColumn::make('phone_holder')
-                    ->label('Teléfono del Titular')
+                    ->label('Teléfono')
                     ->searchable(),
                 TextColumn::make('symptoms_diagnosis')
                     ->label('Síntomas y Diagnóstico')

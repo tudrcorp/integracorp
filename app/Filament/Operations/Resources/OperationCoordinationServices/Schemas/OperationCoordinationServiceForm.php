@@ -17,9 +17,6 @@ class OperationCoordinationServiceForm
                 TextInput::make('business_unit_id'),
                 TextInput::make('reference_number'),
                 TextInput::make('status'),
-                TextInput::make('holder')
-                    ->required(),
-                TextInput::make('ci_holder'),
                 TextInput::make('patient'),
                 TextInput::make('ci_patient')
                     ->required(),

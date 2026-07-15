@@ -76,26 +76,14 @@ class OperationCoordinationServiceInfolist
                                             ])->columns(2),
                                     ])->columnSpanFull(),
                             ]),
-                        Tab::make('Titular y paciente')
+                        Tab::make('Paciente')
                             ->icon(Heroicon::UserGroup)
                             ->schema([
-                                Section::make('Titular y paciente')
-                                    ->description('Información del titular y del paciente')
+                                Section::make('Paciente')
+                                    ->description('Información del paciente')
                                     ->icon(Heroicon::UserGroup)
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
-                                        Fieldset::make('Titular')
-                                            ->schema([
-                                                TextEntry::make('holder')
-                                                    ->label('Titular')
-                                                    ->placeholder('-'),
-                                                TextEntry::make('ci_holder')
-                                                    ->label('C.I. titular')
-                                                    ->placeholder('-'),
-                                                TextEntry::make('phone_holder')
-                                                    ->label('Teléfono titular')
-                                                    ->placeholder('-'),
-                                            ])->columns(2),
                                         Fieldset::make('Paciente')
                                             ->schema([
                                                 TextEntry::make('patient')
@@ -103,6 +91,9 @@ class OperationCoordinationServiceInfolist
                                                     ->placeholder('-'),
                                                 TextEntry::make('ci_patient')
                                                     ->label('C.I. paciente')
+                                                    ->placeholder('-'),
+                                                TextEntry::make('phone_holder')
+                                                    ->label('Teléfono')
                                                     ->placeholder('-'),
                                                 TextEntry::make('birth_date_patient')
                                                     ->label('Fecha nacimiento')

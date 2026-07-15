@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\SystemNotificationKey;
 use App\Mail\AuditCompletionSummaryMail;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Audit\AuditCompletionReport;
 use App\Support\Concerns\ReportsScheduledExecution;
 use App\Support\ScheduledTaskRunReport;
+use App\Support\SystemNotificationRecipients;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -21,22 +23,6 @@ use Throwable;
 class SendDailyAuditSummary implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, ReportsScheduledExecution, SerializesModels;
-
-    /**
-     * Correo destinatario del reporte de auditorías.
-     */
-    private const REPORT_EMAIL = 'solrodriguez@tudrencasa.com';
-
-    /**
-     * Teléfonos que reciben el reporte por WhatsApp.
-     *
-     * @var array<int, string>
-     */
-    private const REPORT_PHONES = [
-        '04127018390',
-        '04143027250',
-        '04245718777',
-    ];
 
     public function __construct() {}
 
@@ -51,6 +37,7 @@ class SendDailyAuditSummary implements ShouldQueue
             [
                 '*Auditoría completa* = el registro tiene verificados todos los puntos de control de su catálogo.',
                 'Las auditorías parciales no se contabilizan en los totales.',
+                'Los destinatarios se gestionan en el Centro de notificaciones (Auditorías completas).',
             ],
         );
     }
@@ -65,19 +52,31 @@ class SendDailyAuditSummary implements ShouldQueue
         ScheduledTaskRunReport::addMetric('Afiliaciones corporativas auditadas', $counts['corporate_affiliations']['audited'].' / '.$counts['corporate_affiliations']['total']);
         ScheduledTaskRunReport::addMetric('Total auditado por completo', $counts['totals']['audited'].' / '.$counts['totals']['total']);
 
-        $this->dispatchWhatsApp($counts);
-        $this->sendEmail($counts);
+        $emails = SystemNotificationRecipients::emails(SystemNotificationKey::DailyAuditSummary);
+        $phones = SystemNotificationRecipients::phones(SystemNotificationKey::DailyAuditSummary);
+
+        if ($emails === [] && $phones === []) {
+            ScheduledTaskRunReport::addMetric('WhatsApp despachados', 0);
+            ScheduledTaskRunReport::addMetric('Email resumen enviado', 'Sin destinatarios');
+            ScheduledTaskRunReport::recordFailure('No hay destinatarios configurados en el Centro de notificaciones (Auditorías completas)');
+
+            return;
+        }
+
+        $this->dispatchWhatsApp($counts, $phones);
+        $this->sendEmails($counts, $emails);
     }
 
     /**
      * @param  array<string, mixed>  $counts
+     * @param  list<string>  $phones
      */
-    private function dispatchWhatsApp(array $counts): void
+    private function dispatchWhatsApp(array $counts, array $phones): void
     {
         $body = AuditCompletionReport::whatsappBody($counts);
         $dispatched = 0;
 
-        foreach (self::REPORT_PHONES as $rawPhone) {
+        foreach ($phones as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
 
             if ($phone === null) {
@@ -107,22 +106,35 @@ class SendDailyAuditSummary implements ShouldQueue
 
     /**
      * @param  array<string, mixed>  $counts
+     * @param  list<string>  $emails
      */
-    private function sendEmail(array $counts): void
+    private function sendEmails(array $counts, array $emails): void
     {
-        try {
-            Mail::to(self::REPORT_EMAIL)->send(
-                new AuditCompletionSummaryMail($counts, self::REPORT_EMAIL)
-            );
+        $emailsSent = 0;
 
-            ScheduledTaskRunReport::addMetric('Email resumen enviado', 'Sí');
-        } catch (Throwable $exception) {
-            ScheduledTaskRunReport::recordFailure('Error al enviar email de resumen');
-            ScheduledTaskRunReport::addMetric('Email resumen enviado', 'No');
-            Log::error('SendDailyAuditSummary: error enviando email de resumen', [
-                'message' => $exception->getMessage(),
-            ]);
+        foreach ($emails as $email) {
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                ScheduledTaskRunReport::recordFailure('Correo inválido para resumen de auditoría: '.$email);
+
+                continue;
+            }
+
+            try {
+                Mail::to($email)->send(new AuditCompletionSummaryMail($counts, $email));
+                $emailsSent++;
+            } catch (Throwable $exception) {
+                ScheduledTaskRunReport::recordFailure('Error al enviar email de resumen a '.$email);
+                Log::error('SendDailyAuditSummary: error enviando email de resumen', [
+                    'email' => $email,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
         }
+
+        ScheduledTaskRunReport::addMetric(
+            'Email resumen enviado',
+            $emailsSent > 0 ? 'Sí ('.$emailsSent.')' : ($emails === [] ? 'No aplica' : 'No'),
+        );
     }
 
     public function failed(?Throwable $exception): void

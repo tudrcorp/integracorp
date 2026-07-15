@@ -59,17 +59,24 @@ it('programa el job de auditoria diariamente a las 7:00am', function (): void {
 
     expect($source)
         ->toContain('SendDailyAuditSummary')
-        ->toContain("Schedule::job(new SendDailyAuditSummary, 'system')->dailyAt('7:00')");
+        ->toContain("Schedule::job(new SendDailyAuditSummary, 'system')")
+        ->toContain("->dailyAt('7:00')")
+        ->toContain('->when($dailyAuditSummaryIsActive)');
 });
 
-it('el job notifica al correo y telefonos indicados', function (): void {
+it('el job notifica a destinatarios del centro de notificaciones', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/SendDailyAuditSummary.php');
 
     expect($source)
-        ->toContain("'solrodriguez@tudrencasa.com'")
-        ->toContain("'04127018390'")
-        ->toContain("'04143027250'")
-        ->toContain("'04245718777'")
+        ->toContain('SystemNotificationKey::DailyAuditSummary')
+        ->toContain('SystemNotificationRecipients::emails')
+        ->toContain('SystemNotificationRecipients::phones')
         ->toContain('SendNotificacionWhatsApp::dispatch')
         ->toContain('AuditCompletionSummaryMail');
+
+    expect(\App\Enums\SystemNotificationKey::DailyAuditSummary->defaultEmails())
+        ->toBe(['solrodriguez@tudrencasa.com']);
+
+    expect(\App\Enums\SystemNotificationKey::DailyAuditSummary->defaultPhones())
+        ->toBe(['04127018390', '04143027250', '04245718777']);
 });

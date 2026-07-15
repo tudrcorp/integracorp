@@ -351,7 +351,6 @@ class RegisterTpaRetailServicesAction
             'business_unit_id' => $record->business_unit_id,
             'reference_number' => $case->code ?? self::buildReferenceNumber($record),
             'status' => 'PENDIENTE',
-            'holder' => $userName,
             'patient' => $record->full_name,
             'ci_patient' => $record->nro_identificacion ?? '...',
             'birth_date_patient' => $record->birth_date,

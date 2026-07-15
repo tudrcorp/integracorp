@@ -51,5 +51,6 @@ it('envia el seguimiento de 7 dias en cadena con mensaje e imagenes', function (
         ->toContain('Bus::chain')
         ->toContain('planGuideImageUrl()')
         ->toContain('paymentMethodsImageUrl()')
-        ->toContain('IndividualQuoteFollowUp::reportPhones()');
+        ->toContain('IndividualQuoteFollowUp::resolveRecipientPhones($quotes)')
+        ->toContain('IndividualQuoteFollowUpInternalCopies::dispatch');
 });

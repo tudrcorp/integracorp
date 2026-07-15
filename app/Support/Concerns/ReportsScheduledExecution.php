@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Concerns;
 
+use App\Enums\SystemNotificationKey;
 use App\Support\ScheduledTaskRunReport;
 use Throwable;
 
@@ -18,8 +19,9 @@ trait ReportsScheduledExecution
         callable $callback,
         ?string $taskDescription = null,
         array $readingNotes = [],
+        ?SystemNotificationKey $notificationKey = null,
     ): void {
-        ScheduledTaskRunReport::begin($taskTitle, $taskDescription, $readingNotes);
+        ScheduledTaskRunReport::begin($taskTitle, $taskDescription, $readingNotes, $notificationKey);
 
         try {
             $callback();

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Support\Companies;
 
+use App\Enums\SystemNotificationKey;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Jobs\SendNotificacionWhatsAppDocument;
 use App\Mail\CompanyAssociateDocumentsMail;
 use App\Models\CompanyAssociate;
-use App\Models\CompanyAssociateNotificationSetting;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\SecurityAudit;
+use App\Support\SystemNotificationRecipients;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -215,8 +216,11 @@ final class CompanyAssociateDocumentsDeliverer
             $recipients[strtolower(trim((string) $associate->email))] = $associate->full_name;
         }
 
-        if ($includeAnalystRecipients) {
-            foreach (CompanyAssociateNotificationSetting::instance()->emails() as $email) {
+        if (
+            $includeAnalystRecipients
+            && SystemNotificationRecipients::isActive(SystemNotificationKey::CompanyAssociateRegistration)
+        ) {
+            foreach (SystemNotificationRecipients::emails(SystemNotificationKey::CompanyAssociateRegistration) as $email) {
                 $normalized = strtolower(trim($email));
 
                 if ($normalized !== '') {
@@ -246,8 +250,11 @@ final class CompanyAssociateDocumentsDeliverer
             $recipients[$responsiblePhone] = (string) ($responsible->full_name ?: 'Responsable');
         }
 
-        if ($includeAnalystRecipients) {
-            foreach (CompanyAssociateNotificationSetting::instance()->phones() as $phone) {
+        if (
+            $includeAnalystRecipients
+            && SystemNotificationRecipients::isActive(SystemNotificationKey::CompanyAssociateRegistration)
+        ) {
+            foreach (SystemNotificationRecipients::phones(SystemNotificationKey::CompanyAssociateRegistration) as $phone) {
                 $normalized = trim($phone);
 
                 if ($normalized !== '') {

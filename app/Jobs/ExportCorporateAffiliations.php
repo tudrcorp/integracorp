@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\SystemNotificationKey;
 use App\Support\Concerns\ReportsScheduledExecution;
 use App\Support\Exports\CorporateAffiliationsExportService;
 use App\Support\ScheduledTaskRunReport;
@@ -64,13 +65,15 @@ class ExportCorporateAffiliations implements ShouldQueue
                 $deleted = $exportService->purgeExpiredExports();
                 ScheduledTaskRunReport::addMetric('Exportaciones antiguas eliminadas', $deleted);
             },
-            'Genera un Excel .xlsx con afiliaciones corporativas, sus planes de contrato y afiliados relacionados, y lo envía por WhatsApp.',
+            'Genera un Excel .xlsx con afiliaciones corporativas, sus planes de contrato y afiliados relacionados, y lo notifica a los destinatarios de Respaldo de Estructura.',
             [
                 'Cada fila combina datos de afiliación corporativa, línea de plan (afilliation_corporate_plans) y afiliado (affiliate_corporates).',
                 'Si hay afiliados, se incluye el plan de contrato que coincide con el plan_id del afiliado.',
                 'Planes sin afiliados asociados se exportan en filas adicionales.',
                 'Si la ejecución es exitosa, recibirás imagen Integracorp + resumen detallado + archivo .xlsx adjunto (en producción).',
+                'Los destinatarios se gestionan en el Centro de notificaciones (Respaldo de Estructura).',
             ],
+            SystemNotificationKey::StructureBackup,
         );
     }
 

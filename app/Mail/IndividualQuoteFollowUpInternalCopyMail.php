@@ -11,28 +11,38 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class AnulatedQuotesNotificationMail extends Mailable
+class IndividualQuoteFollowUpInternalCopyMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(
-        public int $anulatedCount,
-        public string $recipientEmail = 'cotizaciones@tudrencasa.com',
+        public string $recipientEmail,
+        public string $subjectLine,
+        public string $allyName,
+        public string $followUpLabel,
+        public string $messageBody,
+        public int $quoteCount,
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
             from: new Address(config('mail.from.address'), config('mail.from.name')),
-            to: [new Address($this->recipientEmail, 'Cotizaciones TuDrEnCasa')],
-            subject: 'Reporte diario: Cotizaciones individuales anuladas (agencias, agentes)',
+            to: [new Address($this->recipientEmail, 'Control INTEGRACORP')],
+            subject: $this->subjectLine,
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'mails.anulated-quotes-notification',
+            view: 'mails.individual-quote-follow-up-internal-copy',
+            with: [
+                'allyName' => $this->allyName,
+                'followUpLabel' => $this->followUpLabel,
+                'messageBody' => $this->messageBody,
+                'quoteCount' => $this->quoteCount,
+            ],
         );
     }
 

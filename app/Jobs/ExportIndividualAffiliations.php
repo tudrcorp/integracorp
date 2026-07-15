@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\SystemNotificationKey;
 use App\Support\Concerns\ReportsScheduledExecution;
 use App\Support\Exports\IndividualAffiliationsExportService;
 use App\Support\ScheduledTaskRunReport;
@@ -63,13 +64,15 @@ class ExportIndividualAffiliations implements ShouldQueue
                 $deleted = $exportService->purgeExpiredExports();
                 ScheduledTaskRunReport::addMetric('Exportaciones antiguas eliminadas', $deleted);
             },
-            'Genera un Excel .xlsx con todas las afiliaciones individuales y sus afiliados relacionados, y lo envía por WhatsApp.',
+            'Genera un Excel .xlsx con todas las afiliaciones individuales y sus afiliados relacionados, y lo notifica a los destinatarios de Respaldo de Estructura.',
             [
                 'Cada fila representa un afiliado ligado a su afiliación (datos de ambas tablas en la misma fila).',
                 'Si una afiliación no tiene afiliados en la tabla affiliates, se exporta una fila solo con datos de la afiliación.',
                 'Si la ejecución es exitosa, recibirás la imagen Integracorp + resumen y luego el .xlsx adjunto.',
                 'Si hay fallas, el mensaje detallará el error sin adjuntar un archivo incompleto.',
+                'Los destinatarios se gestionan en el Centro de notificaciones (Respaldo de Estructura).',
             ],
+            SystemNotificationKey::StructureBackup,
         );
     }
 
