@@ -29,6 +29,16 @@ it('muestra solo bloques con ítems asociados en el tab de ítems', function ():
         ->toContain('self::hasMedications($record)');
 });
 
+it('separa el servicio TPA/RETAIL standalone de consultas con especialista en el infolist', function (): void {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Schemas/OperationCoordinationServiceInfolist.php');
+
+    expect($contents)
+        ->toContain("Fieldset::make('Servicio TPA/RETAIL')")
+        ->toContain('isTpaRetailStandaloneCoordination')
+        ->toContain("'Servicio: '")
+        ->toContain('telemedicinePatientStandaloneServiceSummary');
+});
+
 it('mantiene las secciones del infolist siempre abiertas', function (): void {
     $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Schemas/OperationCoordinationServiceInfolist.php');
 

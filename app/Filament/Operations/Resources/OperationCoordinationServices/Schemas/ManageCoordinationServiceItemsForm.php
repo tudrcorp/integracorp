@@ -10,6 +10,7 @@ use App\Models\OperationInventoryUbication;
 use App\Models\Supplier;
 use App\Models\TelemedicinePriority;
 use App\Support\Operations\CoordinationServiceItemsManager;
+use App\Support\Operations\ManageQuoteSupplierCreator;
 use App\Support\Operations\OperationServiceOrderCoveredPricingFormFields;
 use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
@@ -327,25 +328,27 @@ final class ManageCoordinationServiceItemsForm
                                     Grid::make(1)
                                         ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::shouldShowManageQuoteSupplierSelect($livewire->getRecord(), $get))
                                         ->schema([
-                                            Select::make('manage_quote_supplier_id')
-                                                ->label('Proveedor')
-                                                ->options(fn (): array => Supplier::query()
-                                                    ->orderBy('name')
-                                                    ->pluck('name', 'id')
-                                                    ->all())
-                                                ->searchable()
-                                                ->preload()
-                                                ->required(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::shouldShowManageQuoteSupplierSelect($livewire->getRecord(), $get))
-                                                ->live()
-                                                ->native(false)
-                                                ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
-                                                ->afterStateUpdated(function (mixed $state, Set $set): void {
-                                                    $set(
-                                                        'manage_quote_supplier_address',
-                                                        CoordinationServiceItemsManager::resolveManageQuoteSupplierAddress($state)
-                                                    );
-                                                })
-                                                ->helperText('Seleccione el proveedor que cotiza los ítems no cubiertos.'),
+                                            ManageQuoteSupplierCreator::configureSelect(
+                                                Select::make('manage_quote_supplier_id')
+                                                    ->label('Proveedor')
+                                                    ->options(fn (): array => Supplier::query()
+                                                        ->orderBy('name')
+                                                        ->pluck('name', 'id')
+                                                        ->all())
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->required(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::shouldShowManageQuoteSupplierSelect($livewire->getRecord(), $get))
+                                                    ->live()
+                                                    ->native(false)
+                                                    ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
+                                                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                                                        $set(
+                                                            'manage_quote_supplier_address',
+                                                            CoordinationServiceItemsManager::resolveManageQuoteSupplierAddress($state)
+                                                        );
+                                                    })
+                                                    ->helperText('Seleccione el proveedor que cotiza los ítems no cubiertos. Si no aparece en la lista, créelo con la acción del campo.'),
+                                            ),
                                             TextInput::make('manage_quote_supplier_address')
                                                 ->label('Dirección del proveedor')
                                                 ->readOnly()

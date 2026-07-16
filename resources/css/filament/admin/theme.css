@@ -5963,34 +5963,14 @@
   }
 
   /*
-   * Listado de pacientes (Operaciones): proveedor y paciente.
+   * Listado de pacientes (Operaciones): nombre, cédula/teléfono y proveedor.
    */
-  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-cell {
-    @apply min-w-[11rem] py-2;
-  }
-
-  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-cell .fi-ta-text {
-    @apply gap-1;
-  }
-
-  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-link .fi-badge {
-    @apply font-mono text-xs font-bold tabular-nums tracking-tight;
-  }
-
-  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-cell .fi-ta-text-item-description {
-    @apply mt-1 max-w-[14rem] text-xs leading-snug font-medium text-gray-600 dark:text-gray-300;
-  }
-
-  .fi-resource-telemedicine-patients .fi-telemedicine-patient-supplier-link {
-    @apply cursor-pointer decoration-dotted underline-offset-2 hover:opacity-90;
-  }
-
   .fi-resource-telemedicine-patients .fi-telemedicine-patient-name-cell .fi-ta-text-item-label {
     @apply text-sm leading-snug;
   }
 
-  .fi-resource-telemedicine-patients .fi-telemedicine-patient-name-cell .fi-ta-text-item-description {
-    @apply mt-0.5 text-xs font-medium text-gray-500 dark:text-gray-400;
+  .fi-resource-telemedicine-patients .fi-telemedicine-patient-name-cell .fi-ta-text-description {
+    @apply mt-0.5 whitespace-pre-line text-xs font-medium leading-snug text-gray-500 dark:text-gray-400;
   }
 
   /*

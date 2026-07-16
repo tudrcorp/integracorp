@@ -2,7 +2,6 @@
 
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Tables;
 
-use App\Filament\Operations\Resources\Suppliers\SupplierResource;
 use App\Filament\Operations\Resources\TelemedicinePatients\Actions\AssignDoctorAction;
 use App\Models\TelemedicinePatient;
 use App\Support\Filament\Operations\OperationsSupplierScope;
@@ -55,59 +54,6 @@ class TelemedicinePatientsTable
                 return $query;
             })
             ->columns([
-                // TextColumn::make('managed_by')
-                //     ->label('Gestionado por')
-                //     ->icon('heroicon-o-user')
-                //     ->formatStateUsing(fn (?string $state): string => $state ? mb_strtoupper($state) : '—')
-                //     ->badge()
-                //     ->color(fn (?string $state): string => match (mb_strtoupper((string) $state)) {
-                //         'ATENMEDI' => 'success',
-                //         'TDG' => 'info',
-                //         default => 'gray',
-                //     })
-                //     ->searchable()
-                //     ->weight('medium')
-                //     ->description(fn (TelemedicinePatient $record): string => $record->managed_by ?? ''),
-                TextColumn::make('supplier_id')
-                    ->label('Proveedor')
-                    ->icon('heroicon-o-building-storefront')
-                    ->iconColor('gray')
-                    ->badge()
-                    ->getStateUsing(fn (TelemedicinePatient $record): string => filled($record->supplier_id)
-                        ? '#'.(int) $record->supplier_id
-                        : 'TUDRGROUP')
-                    ->color(fn (TelemedicinePatient $record): string => filled($record->supplier_id) ? 'primary' : 'info')
-                    ->description(fn (TelemedicinePatient $record): ?string => self::supplierSummaryDescription($record))
-                    ->tooltip(fn (TelemedicinePatient $record): ?string => filled($record->supplier_id)
-                        ? 'Abrir ficha del proveedor #'.$record->supplier_id
-                        : 'Paciente asociado por TUDRGROUP')
-                    ->weight(FontWeight::SemiBold)
-                    ->sortable()
-                    ->searchable(query: function (Builder $query, string $search): Builder {
-                        return $query->where(function (Builder $innerQuery) use ($search): void {
-                            $innerQuery
-                                ->where('supplier_id', 'like', "%{$search}%")
-                                ->orWhereHas(
-                                    'supplier',
-                                    fn (Builder $supplierQuery): Builder => $supplierQuery->where('name', 'like', "%{$search}%"),
-                                );
-                        });
-                    })
-                    ->copyable(fn (TelemedicinePatient $record): bool => filled($record->supplier_id))
-                    ->copyableState(fn (TelemedicinePatient $record): ?string => filled($record->supplier_id) ? (string) (int) $record->supplier_id : null)
-                    ->copyMessage('ID de proveedor copiado')
-                    ->url(fn (TelemedicinePatient $record): ?string => filled($record->supplier_id)
-                        ? SupplierResource::getUrl('view', ['record' => $record->supplier_id])
-                        : null)
-                    ->openUrlInNewTab()
-                    ->extraCellAttributes([
-                        'class' => 'fi-telemedicine-patient-supplier-cell align-top',
-                    ])
-                    ->extraAttributes([
-                        'class' => 'fi-telemedicine-patient-supplier-link',
-                    ])
-                    ->toggleable()
-                    ->visible(fn (): bool => OperationsSupplierScope::currentSupplierId() === null),
                 TextColumn::make('full_name')
                     ->label('Paciente')
                     ->icon('heroicon-o-user')
@@ -331,24 +277,21 @@ class TelemedicinePatientsTable
             ->striped();
     }
 
-    private static function supplierSummaryDescription(TelemedicinePatient $record): ?string
+    private static function patientIdentificationDescription(TelemedicinePatient $record): ?string
     {
-        $supplierName = trim((string) ($record->supplier?->name ?? ''));
+        $lines = array_values(array_filter([
+            self::patientContactSummaryLine($record),
+            self::patientSupplierSummaryLine($record),
+        ]));
 
-        if ($supplierName === '') {
-            return 'TUDRGROUP';
+        if ($lines === []) {
+            return null;
         }
 
-        $managedBy = trim((string) ($record->managed_by ?? ''));
-
-        if ($managedBy !== '') {
-            return $supplierName.' ('.mb_strtoupper($managedBy).')';
-        }
-
-        return $supplierName;
+        return implode("\n", $lines);
     }
 
-    private static function patientIdentificationDescription(TelemedicinePatient $record): ?string
+    private static function patientContactSummaryLine(TelemedicinePatient $record): ?string
     {
         $parts = array_values(array_filter([
             filled($record->nro_identificacion) ? 'C.I. '.$record->nro_identificacion : null,
@@ -360,6 +303,31 @@ class TelemedicinePatientsTable
         }
 
         return implode(' · ', $parts);
+    }
+
+    private static function patientSupplierSummaryLine(TelemedicinePatient $record): ?string
+    {
+        if (OperationsSupplierScope::currentSupplierId() !== null) {
+            return null;
+        }
+
+        if (! filled($record->supplier_id)) {
+            return 'Proveedor: TUDRGROUP';
+        }
+
+        $supplierName = trim((string) ($record->supplier?->name ?? ''));
+        $managedBy = trim((string) ($record->managed_by ?? ''));
+        $line = 'Proveedor: #'.(int) $record->supplier_id;
+
+        if ($supplierName !== '') {
+            $line .= ' · '.$supplierName;
+        }
+
+        if ($managedBy !== '') {
+            $line .= ' ('.mb_strtoupper($managedBy).')';
+        }
+
+        return $line;
     }
 
     /**

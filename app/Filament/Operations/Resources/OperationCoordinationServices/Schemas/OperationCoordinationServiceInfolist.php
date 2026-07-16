@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Schemas;
 
+use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRetailServicesAction;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicinePatientLab;
 use App\Models\TelemedicinePatientMedications;
@@ -221,10 +222,24 @@ class OperationCoordinationServiceInfolist
                                                     ->columnSpanFull(),
                                             ]),
                                         Fieldset::make('Consulta con especialista')
-                                            ->visible(fn (OperationCoordinationService $record): bool => self::hasSpecialties($record))
+                                            ->visible(fn (OperationCoordinationService $record): bool => self::hasSpecialties($record)
+                                                && ! RegisterTpaRetailServicesAction::isTpaRetailStandaloneCoordination($record))
                                             ->schema([
                                                 RepeatableEntry::make('telemedicinePatientSpecialtiesSummary')
                                                     ->label('Especialistas')
+                                                    ->state(fn (OperationCoordinationService $record): array => self::specialtiesItemsState($record))
+                                                    ->contained(false)
+                                                    ->schema([
+                                                        self::associatedItemCardEntry(),
+                                                    ])
+                                                    ->columnSpanFull(),
+                                            ]),
+                                        Fieldset::make('Servicio TPA/RETAIL')
+                                            ->visible(fn (OperationCoordinationService $record): bool => RegisterTpaRetailServicesAction::isTpaRetailStandaloneCoordination($record)
+                                                && self::hasSpecialties($record))
+                                            ->schema([
+                                                RepeatableEntry::make('telemedicinePatientStandaloneServiceSummary')
+                                                    ->label('Servicio')
                                                     ->state(fn (OperationCoordinationService $record): array => self::specialtiesItemsState($record))
                                                     ->contained(false)
                                                     ->schema([
@@ -740,10 +755,13 @@ class OperationCoordinationServiceInfolist
                     $orderLinks,
                 );
 
+                $isTpaStandalone = RegisterTpaRetailServicesAction::isTpaRetailStandaloneCoordination($record)
+                    && trim($label) === trim((string) $record->specific_service);
+
                 return self::associatedItemState(
                     id: (int) $item->id,
                     itemType: 'specialty',
-                    title: 'Especialidad: '.$label,
+                    title: ($isTpaStandalone ? 'Servicio: ' : 'Especialidad: ').$label,
                     detail: 'Tipo: '.($item->type ?? '—'),
                     status: $status,
                     coverage: self::catalogItemCoverageValue($item->type),
