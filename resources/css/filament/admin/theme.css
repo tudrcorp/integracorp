@@ -8022,4 +8022,210 @@
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* WelcomeUserLiquidGlassWidget — Liquid Glass macOS (compact / minimal)          */
+/* -------------------------------------------------------------------------- */
+@keyframes fi-welcome-orb-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(-4%, 5%, 0) scale(1.04);
+  }
+}
+
+@layer components {
+  .fi-welcome-liquid-glass-shell {
+    width: 100%;
+    max-width: 28rem;
+  }
+
+  .fi-welcome-liquid-glass {
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "SF Pro Display",
+      "Segoe UI",
+      system-ui,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    border-radius: 1.15rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid color-mix(in oklch, white 58%, transparent);
+    background:
+      linear-gradient(
+        155deg,
+        color-mix(in oklch, white 62%, transparent) 0%,
+        color-mix(in oklch, white 24%, transparent) 50%,
+        color-mix(in oklch, #2d89ca 10%, transparent) 100%
+      );
+    backdrop-filter: blur(28px) saturate(185%);
+    -webkit-backdrop-filter: blur(28px) saturate(185%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 78%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 3%, transparent),
+      0 0 0 1px color-mix(in oklch, white 22%, transparent),
+      0 6px 22px color-mix(in oklch, #2d89ca 10%, transparent),
+      0 2px 10px color-mix(in oklch, black 6%, transparent);
+    transition:
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+
+  .fi-welcome-liquid-glass:hover {
+    border-color: color-mix(in oklch, white 72%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 86%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 2%, transparent),
+      0 0 0 1px color-mix(in oklch, white 32%, transparent),
+      0 8px 28px color-mix(in oklch, #2d89ca 14%, transparent),
+      0 3px 12px color-mix(in oklch, black 7%, transparent);
+  }
+
+  .fi-welcome-liquid-glass__specular {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      118deg,
+      color-mix(in oklch, white 42%, transparent) 0%,
+      transparent 48%,
+      transparent 100%
+    );
+    opacity: 0.75;
+    z-index: 0;
+  }
+
+  .fi-welcome-liquid-glass__orb {
+    pointer-events: none;
+    position: absolute;
+    top: -45%;
+    right: -12%;
+    width: 8rem;
+    height: 8rem;
+    border-radius: 9999px;
+    filter: blur(32px);
+    opacity: 0.4;
+    z-index: 0;
+    background: radial-gradient(circle, color-mix(in oklch, #2d89ca 48%, transparent), transparent 70%);
+    animation: fi-welcome-orb-drift 10s ease-in-out infinite;
+  }
+
+  .fi-welcome-liquid-glass__avatar img,
+  .fi-welcome-liquid-glass__avatar-fallback {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 35%, transparent),
+      0 0 0 1.5px color-mix(in oklch, white 50%, transparent),
+      0 4px 12px color-mix(in oklch, #2d89ca 16%, transparent);
+  }
+
+  .fi-welcome-liquid-glass__avatar-fallback {
+    background: linear-gradient(145deg, #3aa0e0 0%, #2d89ca 60%, #1d6fa8 100%);
+  }
+
+  .fi-welcome-liquid-glass__status {
+    border: 1.5px solid color-mix(in oklch, white 88%, transparent);
+    background: #34c759;
+  }
+
+  .fi-welcome-liquid-glass__greeting {
+    color: color-mix(in oklch, #1d6fa8 80%, #0f172a);
+  }
+
+  .fi-welcome-liquid-glass__dot {
+    background: color-mix(in oklch, #64748b 45%, transparent);
+  }
+
+  .fi-welcome-liquid-glass__date {
+    color: color-mix(in oklch, #64748b 85%, #0f172a);
+  }
+
+  .fi-welcome-liquid-glass__name {
+    color: #0f172a;
+    letter-spacing: -0.02em;
+  }
+
+  .fi-welcome-liquid-glass__badge {
+    border: 1px solid color-mix(in oklch, #2d89ca 22%, white);
+    background: color-mix(in oklch, white 42%, transparent);
+    color: color-mix(in oklch, #1d6fa8 88%, #0f172a);
+    backdrop-filter: blur(10px) saturate(150%);
+    -webkit-backdrop-filter: blur(10px) saturate(150%);
+    box-shadow: inset 0 1px 0 color-mix(in oklch, white 55%, transparent);
+  }
+
+  .dark .fi-welcome-liquid-glass {
+    border-color: color-mix(in oklch, white 14%, transparent);
+    background:
+      linear-gradient(
+        160deg,
+        color-mix(in oklch, #32323a 52%, transparent) 0%,
+        color-mix(in oklch, #1c1c22 38%, transparent) 55%,
+        color-mix(in oklch, #2d89ca 12%, transparent) 100%
+      );
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 9%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 30%, transparent),
+      0 0 0 1px color-mix(in oklch, white 6%, transparent),
+      0 8px 28px color-mix(in oklch, black 45%, transparent),
+      0 2px 10px color-mix(in oklch, #2d89ca 12%, transparent);
+    backdrop-filter: blur(30px) saturate(160%);
+    -webkit-backdrop-filter: blur(30px) saturate(160%);
+  }
+
+  .dark .fi-welcome-liquid-glass:hover {
+    border-color: color-mix(in oklch, white 20%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 12%, transparent),
+      0 0 0 1px color-mix(in oklch, white 10%, transparent),
+      0 10px 32px color-mix(in oklch, black 50%, transparent),
+      0 4px 14px color-mix(in oklch, #2d89ca 16%, transparent);
+  }
+
+  .dark .fi-welcome-liquid-glass__specular {
+    background: linear-gradient(
+      118deg,
+      color-mix(in oklch, white 12%, transparent) 0%,
+      transparent 45%,
+      transparent 100%
+    );
+  }
+
+  .dark .fi-welcome-liquid-glass__orb {
+    opacity: 0.32;
+  }
+
+  .dark .fi-welcome-liquid-glass__status {
+    border-color: color-mix(in oklch, #1c1c22 85%, white);
+  }
+
+  .dark .fi-welcome-liquid-glass__greeting {
+    color: color-mix(in oklch, #7dd3fc 80%, white);
+  }
+
+  .dark .fi-welcome-liquid-glass__dot {
+    background: color-mix(in oklch, white 24%, transparent);
+  }
+
+  .dark .fi-welcome-liquid-glass__date {
+    color: color-mix(in oklch, white 48%, transparent);
+  }
+
+  .dark .fi-welcome-liquid-glass__name {
+    color: color-mix(in oklch, white 94%, transparent);
+  }
+
+  .dark .fi-welcome-liquid-glass__badge {
+    border-color: color-mix(in oklch, #2d89ca 28%, transparent);
+    background: color-mix(in oklch, white 8%, transparent);
+    color: color-mix(in oklch, #bae6fd 88%, white);
+    box-shadow: inset 0 1px 0 color-mix(in oklch, white 10%, transparent);
+  }
+}
+
 

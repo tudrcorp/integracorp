@@ -7,6 +7,7 @@ use App\Filament\Operations\Widgets\AffiliationChart;
 use App\Filament\Operations\Widgets\StatsOverview;
 use App\Filament\Operations\Widgets\StatsOverviewPlan;
 use App\Filament\Operations\Widgets\TotalAfiliacionesPorEstado;
+use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Http\Middleware\DuplicatedSession;
 use App\Support\Filament\OperationsPanelNavigationGroups;
 use Filament\Actions\Action;
@@ -21,8 +22,6 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Enums\Width;
 use Filament\View\PanelsRenderHook;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -67,12 +66,11 @@ class OperationsPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Operations/Widgets'), for: 'App\Filament\Operations\Widgets')
             ->widgets([
-                // AccountWidget::class,
+                WelcomeUserLiquidGlassWidget::class,
                 StatsOverview::class,
                 StatsOverviewPlan::class,
                 TotalAfiliacionesPorEstado::class,
                 AffiliationChart::class,
-                // FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
