@@ -12,6 +12,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Colors\Color;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Js;
 
 class ListOperationCoordinationServices extends ListRecords
 {
@@ -19,11 +20,72 @@ class ListOperationCoordinationServices extends ListRecords
 
     protected static ?string $title = 'Cuadro de Control de Servicios Medicos';
 
+    public function mount(): void
+    {
+        parent::mount();
+
+        $this->expandRequestedTableGroup();
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             // CreateAction::make(),
         ];
+    }
+
+    private function expandRequestedTableGroup(): void
+    {
+        $groupTitle = trim((string) request()->query('expand_group', ''));
+
+        if ($groupTitle === '') {
+            return;
+        }
+
+        $groupLiteral = Js::from($groupTitle);
+
+        $this->js(<<<JS
+            (() => {
+                const group = {$groupLiteral};
+                const tryExpand = () => {
+                    const roots = document.querySelectorAll('.fi-ta');
+
+                    for (const root of roots) {
+                        const data = window.Alpine?.\$data(root);
+
+                        if (! data || typeof data.toggleCollapseGroup !== 'function') {
+                            continue;
+                        }
+
+                        if (typeof data.isGroupCollapsed === 'function' && data.isGroupCollapsed(group)) {
+                            data.toggleCollapseGroup(group);
+                        }
+
+                        const headers = root.querySelectorAll('.fi-ta-group-header');
+
+                        for (const header of headers) {
+                            const text = (header.textContent || '').replace(/\\s+/g, ' ').trim();
+
+                            if (text.includes(group) || text.includes(group.split(' · ')[0] || '')) {
+                                header.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                break;
+                            }
+                        }
+
+                        return true;
+                    }
+
+                    return false;
+                };
+
+                requestAnimationFrame(() => {
+                    if (! tryExpand()) {
+                        setTimeout(tryExpand, 250);
+                        setTimeout(tryExpand, 750);
+                    }
+                });
+            })();
+        JS);
     }
 
     /**

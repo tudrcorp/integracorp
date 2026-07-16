@@ -19,16 +19,30 @@ it('expone una acción Filament con nombre propio', function (): void {
         ->and($action->getName())->toBe('register_tpa_retail_services');
 });
 
-it('ofrece selección de cubiertos y no cubiertos para labs, estudios y especialistas', function (): void {
+it('ofrece tres listas unificadas sin separar cubiertos y no cubiertos', function (): void {
     $source = tpaRetailActionSource();
 
     expect($source)
-        ->toContain("'labs_covered'")
-        ->toContain("'labs_non_covered'")
-        ->toContain("'studies_covered'")
-        ->toContain("'studies_non_covered'")
-        ->toContain("'specialists_covered'")
-        ->toContain("'specialists_non_covered'");
+        ->toContain("'field' => 'labs'")
+        ->toContain("'field' => 'studies'")
+        ->toContain("'field' => 'specialists'")
+        ->not->toContain("'labs_covered'")
+        ->not->toContain("'labs_non_covered'")
+        ->not->toContain("'studies_covered'")
+        ->not->toContain("'studies_non_covered'")
+        ->not->toContain("'specialists_covered'")
+        ->not->toContain("'specialists_non_covered'")
+        ->not->toContain("'covered_type_column'")
+        ->not->toContain("'non_covered_type_column'");
+});
+
+it('lista el catálogo completo sin filtrar por cobertura', function (): void {
+    $source = tpaRetailActionSource();
+
+    expect($source)
+        ->toContain('catalogOptions($config[\'catalog\'])')
+        ->toContain('private static function catalogOptions(string $catalog): array')
+        ->not->toContain('->where($typeColumn, $type)');
 });
 
 it('permite seleccionar servicios adicionales sin catálogo de ítems', function (): void {
@@ -38,7 +52,8 @@ it('permite seleccionar servicios adicionales sin catálogo de ítems', function
     expect($source)
         ->toContain('STANDALONE_SERVICES_FIELD')
         ->toContain('standalone_services')
-        ->toContain('CheckboxList::make(self::STANDALONE_SERVICES_FIELD)')
+        ->toContain('Select::make(self::STANDALONE_SERVICES_FIELD)')
+        ->toContain('->multiple()')
         ->toContain('normalizeStandaloneServices')
         ->toContain('TELEMEDICINA')
         ->toContain('AMD (ASISTENCIA MEDICA DOMICILIARIA)')
@@ -85,22 +100,45 @@ it('crea un caso de telemedicina para engranar las relaciones', function (): voi
         ->toContain("'telemedicine_case_id' => \$case->id");
 });
 
-it('marca la cobertura del ítem con CUBIERTO o NO CUBIERTO desde el catálogo', function (): void {
+it('redirige al cuadro de servicios médicos con el grupo del caso desplegado', function (): void {
+    $source = tpaRetailActionSource();
+    $listPage = file_get_contents(
+        dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ListOperationCoordinationServices.php'
+    );
+
+    expect($source)
+        ->toContain('medicalServicesIndexUrl')
+        ->toContain("tab' => 'pendiente'")
+        ->toContain('expand_group')
+        ->toContain('$livewire->redirect(self::medicalServicesIndexUrl($case))');
+
+    expect($listPage)
+        ->toContain('expandRequestedTableGroup')
+        ->toContain('toggleCollapseGroup')
+        ->toContain("request()->query('expand_group'");
+});
+
+it('resuelve la cobertura del ítem desde el catálogo al registrar', function (): void {
     $source = tpaRetailActionSource();
 
     expect($source)
         ->toContain("private const COVERED = 'CUBIERTO';")
         ->toContain("private const NOT_COVERED = 'NO CUBIERTO';")
-        ->toContain('->where($typeColumn, $type)');
+        ->toContain('TelemedicineCoverageCatalog::laboratoryIsCovered')
+        ->toContain('TelemedicineCoverageCatalog::studyIsCovered')
+        ->toContain('TelemedicineCoverageCatalog::specialistIsCovered')
+        ->toContain('$coverageResolver($name) ? self::COVERED : self::NOT_COVERED');
 });
 
-it('filtra especialistas no cubiertos por type_two', function (): void {
+it('siembra un ítem gestionable no cubierto para cotizar servicios standalone', function (): void {
     $source = tpaRetailActionSource();
 
     expect($source)
-        ->toContain("'non_covered_type_column' => 'type_two'")
-        ->toContain("'covered_type_column' => 'type'")
-        ->toContain("catalogOptions(\n                            \$config['catalog'],\n                            self::NOT_COVERED,\n                            \$config['non_covered_type_column'] ?? 'type',\n                        )");
+        ->toContain('seedStandaloneManagementItem')
+        ->toContain('ensureStandaloneManagementItem')
+        ->toContain('isTpaRetailStandaloneCoordination')
+        ->toContain('TelemedicinePatientSpecialty::query()->create')
+        ->toContain("type' => self::NOT_COVERED");
 });
 
 it('se monta en la ficha del paciente de Operaciones', function (): void {

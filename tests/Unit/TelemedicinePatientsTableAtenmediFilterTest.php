@@ -11,10 +11,14 @@ it('filtra por managed_by ATENMEDI cuando el usuario pertenece a ese departament
         ->toContain("->where('managed_by', 'ATENMEDI')")
         ->toContain('OperationsSupplierScope::applyToQuery($query)')
         ->toContain("'supplier'")
-        ->toContain("TextColumn::make('supplier_id')")
-        ->toContain("->label('Proveedor')")
-        ->toContain('supplierSummaryDescription')
-        ->toContain('fi-telemedicine-patient-supplier-cell')
+        ->toContain("TextColumn::make('full_name')")
+        ->toContain('patientIdentificationDescription')
+        ->toContain('patientSupplierSummaryLine')
+        ->toContain('Proveedor: TUDRGROUP')
+        ->toContain('Proveedor: #')
+        ->not->toContain("TextColumn::make('supplier_id')")
+        ->not->toContain("->label('Proveedor')")
+        ->not->toContain('fi-telemedicine-patient-supplier-cell')
         ->not->toContain("TextColumn::make('supplier.name')")
         ->not->toContain('border-l-[3px]');
 });

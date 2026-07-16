@@ -345,7 +345,10 @@ it('OperationCoordinationServicesTable permite agrupar por código del caso', fu
         ->toContain("'telemedicineCase', 'created_at'")
         ->toContain("'desc'")
         ->toContain("->defaultGroup('telemedicineCase.code')")
-        ->toContain('->collapsedGroupsByDefault()');
+        ->toContain('->collapsedGroupsByDefault()')
+        ->toContain('isTpaRetailService')
+        ->toContain("return 'TPA/RETAIL';")
+        ->toContain('Médico: ');
 });
 
 it('OperationCoordinationServicesTable oculta coordinaciones sin ítems por gestionar y conserva las que tienen ítems abiertos', function (): void {

@@ -7,6 +7,7 @@ namespace App\Support\Operations;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceItems;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable;
 use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrderResource;
+use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRetailServicesAction;
 use App\Http\Controllers\OperationServiceOrderController;
 use App\Models\OperationCoordinationService;
 use App\Models\OperationQuoteGenerator;
@@ -66,6 +67,7 @@ final class CoordinationServiceItemsManager
     public static function manageServiceActionIsDisabled(OperationCoordinationService $record): bool
     {
         TelemedicineCaseTdgReassignmentCoordination::ensureAmdManagementItem($record);
+        RegisterTpaRetailServicesAction::ensureStandaloneManagementItem($record);
 
         return ! self::hasManageServiceSelectableItems($record);
     }
@@ -134,6 +136,7 @@ final class CoordinationServiceItemsManager
     public static function associatedServiceItemsForManagement(OperationCoordinationService $record): Collection
     {
         TelemedicineCaseTdgReassignmentCoordination::ensureAmdManagementItem($record);
+        RegisterTpaRetailServicesAction::ensureStandaloneManagementItem($record);
 
         $items = collect();
 
@@ -194,12 +197,15 @@ final class CoordinationServiceItemsManager
         $record->telemedicinePatientSpecialties()
             ->orderBy('id')
             ->get(['id', 'specialty', 'type', 'status'])
-            ->each(function (TelemedicinePatientSpecialty $item) use ($items): void {
+            ->each(function (TelemedicinePatientSpecialty $item) use ($items, $record): void {
                 $coverage = self::coverageValue('ESPECIALISTA', $item);
+                $isTpaStandaloneServiceItem = RegisterTpaRetailServicesAction::isTpaRetailStandaloneCoordination($record)
+                    && trim((string) ($item->specialty ?? '')) === trim((string) $record->specific_service);
+
                 $items->push([
                     'key' => 'specialty:'.$item->id,
-                    'category' => 'Especialista',
-                    'label' => (string) ($item->specialty ?? 'Especialidad sin nombre'),
+                    'category' => $isTpaStandaloneServiceItem ? 'Servicio' : 'Especialista',
+                    'label' => (string) ($item->specialty ?? ($isTpaStandaloneServiceItem ? 'Servicio sin nombre' : 'Especialidad sin nombre')),
                     'detail' => (string) ($item->type ?? '—'),
                     'coverage' => $coverage,
                     'coverage_label' => self::coverageLabel($coverage),
@@ -548,6 +554,7 @@ final class CoordinationServiceItemsManager
             'Laboratorio' => 'fi-manage-service-badge fi-manage-service-badge--laboratorio',
             'Estudio' => 'fi-manage-service-badge fi-manage-service-badge--estudio',
             'Especialista' => 'fi-manage-service-badge fi-manage-service-badge--especialista',
+            'Servicio' => 'fi-manage-service-badge fi-manage-service-badge--especialista',
             default => 'fi-manage-service-badge fi-manage-service-badge--default',
         };
     }
@@ -1257,6 +1264,24 @@ final class CoordinationServiceItemsManager
     }
 
     /**
+     * Para servicios TPA/RETAIL standalone, la cotización/orden usa el servicio específico
+     * (TELEMEDICINA, APS, etc.) en lugar del tipo genérico ESPECIALISTA.
+     */
+    public static function resolveManagementTypeForCoordination(
+        OperationCoordinationService $record,
+        ?string $resolvedType,
+    ): ?string {
+        if (
+            $resolvedType === 'ESPECIALISTA'
+            && RegisterTpaRetailServicesAction::isTpaRetailStandaloneCoordination($record)
+        ) {
+            return trim((string) $record->specific_service);
+        }
+
+        return $resolvedType;
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function nonCoveredSelectedManagementItemKeys(OperationCoordinationService $record, mixed $selectedKeys): array
@@ -1438,7 +1463,10 @@ final class CoordinationServiceItemsManager
 
     public static function manageQuoteStepResolvedType(OperationCoordinationService $record, Get $get): ?string
     {
-        return self::resolveServiceOrderTypeFromManagementKeys(self::manageQuoteStepItemKeys($record, $get));
+        return self::resolveManagementTypeForCoordination(
+            $record,
+            self::resolveServiceOrderTypeFromManagementKeys(self::manageQuoteStepItemKeys($record, $get)),
+        );
     }
 
     public static function shouldShowManageQuoteSupplierSelect(OperationCoordinationService $record, Get $get): bool
@@ -1470,8 +1498,14 @@ final class CoordinationServiceItemsManager
 
         $coveredKeys = self::coveredSelectedManagementItemKeys($record, $selectedKeys);
         $nonCoveredKeys = self::nonCoveredSelectedManagementItemKeys($record, $selectedKeys);
-        $serviceOrderType = self::resolveServiceOrderTypeFromManagementKeys($coveredKeys);
-        $quoteType = self::resolveServiceOrderTypeFromManagementKeys($nonCoveredKeys);
+        $serviceOrderType = self::resolveManagementTypeForCoordination(
+            $record,
+            self::resolveServiceOrderTypeFromManagementKeys($coveredKeys),
+        );
+        $quoteType = self::resolveManagementTypeForCoordination(
+            $record,
+            self::resolveServiceOrderTypeFromManagementKeys($nonCoveredKeys),
+        );
         $registerUnregistered = (bool) ($data['register_unregistered_provider'] ?? false);
         $coveredQuoteViaUnregistered = $registerUnregistered
             && mb_strtolower(trim((string) ($data['unregistered_provider_type'] ?? ''))) === 'juridico';

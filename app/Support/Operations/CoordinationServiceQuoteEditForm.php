@@ -35,24 +35,27 @@ final class CoordinationServiceQuoteEditForm
                 ->schema([
                     Grid::make(1)
                         ->schema([
-                            Select::make('edit_quote_supplier_id')
-                                ->label('Proveedor')
-                                ->options(fn (): array => Supplier::query()
-                                    ->orderBy('name')
-                                    ->pluck('name', 'id')
-                                    ->all())
-                                ->searchable()
-                                ->preload()
-                                ->required()
-                                ->live()
-                                ->native(false)
-                                ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
-                                ->afterStateUpdated(function (mixed $state, Set $set): void {
-                                    $set(
-                                        'edit_quote_supplier_address',
-                                        CoordinationServiceItemsManager::resolveManageQuoteSupplierAddress($state)
-                                    );
-                                }),
+                            ManageQuoteSupplierCreator::configureSelect(
+                                Select::make('edit_quote_supplier_id')
+                                    ->label('Proveedor')
+                                    ->options(fn (): array => Supplier::query()
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id')
+                                        ->all())
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->live()
+                                    ->native(false)
+                                    ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
+                                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                                        $set(
+                                            'edit_quote_supplier_address',
+                                            CoordinationServiceItemsManager::resolveManageQuoteSupplierAddress($state)
+                                        );
+                                    })
+                                    ->helperText('Seleccione el proveedor. Si no aparece en la lista, créelo con la acción del campo.'),
+                            ),
                             TextInput::make('edit_quote_supplier_address')
                                 ->label('Dirección del proveedor')
                                 ->readOnly()

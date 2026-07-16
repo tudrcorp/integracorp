@@ -5,6 +5,7 @@ namespace App\Filament\Operations\Resources\OperationCoordinationServices\Tables
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceItems;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceQuotes;
 use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
+use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRetailServicesAction;
 use App\Http\Controllers\ApiBcvController;
 use App\Http\Controllers\OperationServiceOrderController;
 use App\Models\ObservationCase;
@@ -1434,6 +1435,10 @@ class OperationCoordinationServicesTable
                         return $patientName !== '' ? $code.' · '.$patientName : $code;
                     })
                     ->getDescriptionFromRecordUsing(function (OperationCoordinationService $record): ?string {
+                        if (self::isTpaRetailService($record)) {
+                            return 'TPA/RETAIL';
+                        }
+
                         $doctorName = trim((string) ($record->telemedicineDoctor?->full_name ?? ''));
 
                         return $doctorName !== '' ? 'Médico: '.$doctorName : null;
@@ -1753,21 +1758,22 @@ class OperationCoordinationServicesTable
             return new EloquentCollection;
         }
 
-        return match ($type) {
-            'MEDICAMENTOS' => TelemedicinePatientMedications::query()
+        return match (true) {
+            $type === 'MEDICAMENTOS' => TelemedicinePatientMedications::query()
                 ->where('operation_coordination_service_id', $record->id)
                 ->whereKey($ids)
                 ->with('operationInventory:id,is_covered')
                 ->get(),
-            'IMAGENOLOGIA' => TelemedicinePatientStudy::query()
+            $type === 'IMAGENOLOGIA' => TelemedicinePatientStudy::query()
                 ->where('operation_coordination_service_id', $record->id)
                 ->whereKey($ids)
                 ->get(),
-            'LABORATORIOS' => TelemedicinePatientLab::query()
+            $type === 'LABORATORIOS' => TelemedicinePatientLab::query()
                 ->where('operation_coordination_service_id', $record->id)
                 ->whereKey($ids)
                 ->get(),
-            'ESPECIALISTA' => TelemedicinePatientSpecialty::query()
+            $type === 'ESPECIALISTA',
+            RegisterTpaRetailServicesAction::isStandaloneSpecificService($type) => TelemedicinePatientSpecialty::query()
                 ->where('operation_coordination_service_id', $record->id)
                 ->whereKey($ids)
                 ->get(),
@@ -2019,5 +2025,14 @@ class OperationCoordinationServicesTable
     private static function whereItemStatusIsOpen(Builder $query, array $openStatuses): Builder
     {
         return $query->whereRaw('UPPER(TRIM(status)) IN (?, ?)', $openStatuses);
+    }
+
+    private static function isTpaRetailService(OperationCoordinationService $record): bool
+    {
+        if (mb_strtoupper(trim((string) ($record->servicie ?? ''))) === 'TPA/RETAIL') {
+            return true;
+        }
+
+        return mb_strtoupper(trim((string) ($record->telemedicineCase?->status ?? ''))) === 'TPA/RETAIL';
     }
 }

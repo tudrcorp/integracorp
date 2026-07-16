@@ -15,6 +15,21 @@ it('ViewOperationCoordinationService incluye acción de carga de documentos', fu
         ->toContain('CoordinationServiceCoveredItemsFinalizer::buildUploadedDocumentsFromForm');
 });
 
+it('ViewOperationCoordinationService expone header action para crear cotización TPA/RETAIL', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ViewOperationCoordinationService.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("Action::make('create_tpa_retail_service_quote')")
+        ->toContain('Crear cotización')
+        ->toContain('canCreateTpaRetailServiceQuote')
+        ->toContain('RegisterTpaRetailServicesAction::isTpaRetailStandaloneCoordination')
+        ->toContain('ManageCoordinationServiceItems::getUrl')
+        ->toContain("Action::make('manage_service_quote')")
+        ->toContain('Gestionar Cotización')
+        ->toContain('ManageCoordinationServiceQuotes::getUrl');
+});
+
 it('ViewOperationCoordinationService solo muestra la carga de documentos cuando el servicio está EN GESTION', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ViewOperationCoordinationService.php';
     $contents = file_get_contents($path);

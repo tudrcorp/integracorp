@@ -22,7 +22,25 @@ it('el formulario de gestión de ítems define paso de cotización para ítems n
         ->toContain('manage_quote_observations')
         ->toContain('Observaciones de la cotización')
         ->toContain('resolveManageQuoteSupplierAddress')
-        ->toContain('manageServiceNonCoveredItemsNotice');
+        ->toContain('manageServiceNonCoveredItemsNotice')
+        ->toContain('ManageQuoteSupplierCreator::configureSelect');
+});
+
+it('permite crear un proveedor nuevo desde parámetros de cotización y seleccionarlo', function (): void {
+    $creator = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/ManageQuoteSupplierCreator.php');
+    $editForm = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CoordinationServiceQuoteEditForm.php');
+
+    expect($creator)
+        ->toContain('createOptionForm')
+        ->toContain('createOptionUsing')
+        ->toContain('createOptionAction')
+        ->toContain('Crear proveedor')
+        ->toContain('Crear y seleccionar')
+        ->toContain('Supplier::query()->create')
+        ->toContain('return (int) $supplier->getKey()');
+
+    expect($editForm)
+        ->toContain('ManageQuoteSupplierCreator::configureSelect');
 });
 
 it('CoordinationServiceItemsManager valida cotización antes de gestionar ítems no cubiertos', function (): void {
