@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Http\Middleware\DuplicatedSession;
 use App\Support\Filament\MarketingPanelNavigationGroups;
 use Filament\Actions\Action;
@@ -15,8 +16,6 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Enums\Width;
 use Filament\View\PanelsRenderHook;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -52,8 +51,7 @@ class MarketingPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Marketing/Widgets'), for: 'App\Filament\Marketing\Widgets')
             ->widgets([
-                AccountWidget::class,
-                // FilamentInfoWidget::class,
+                WelcomeUserLiquidGlassWidget::class,
             ])
             ->databaseNotifications()
             ->databaseTransactions()

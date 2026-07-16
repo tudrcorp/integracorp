@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Support\Filament\ProjectManagement\RecentProjectsNavigation;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
@@ -16,7 +17,6 @@ use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
 use Filament\View\PanelsRenderHook;
-use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -66,7 +66,7 @@ class ProjectsPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Projects/Widgets'), for: 'App\Filament\Projects\Widgets')
             ->widgets([
-                AccountWidget::class,
+                WelcomeUserLiquidGlassWidget::class,
                 FilamentInfoWidget::class,
             ])
             ->middleware([
