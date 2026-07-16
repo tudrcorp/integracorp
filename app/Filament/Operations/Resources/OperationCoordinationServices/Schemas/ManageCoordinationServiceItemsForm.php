@@ -10,6 +10,7 @@ use App\Models\OperationInventoryUbication;
 use App\Models\Supplier;
 use App\Models\TelemedicinePriority;
 use App\Support\Operations\CoordinationServiceItemsManager;
+use App\Support\Operations\OperationServiceOrderCoveredPricingFormFields;
 use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
 use Filament\Forms\Components\CheckboxList;
@@ -253,6 +254,7 @@ final class ManageCoordinationServiceItemsForm
                                             CoordinationServiceItemsManager::rebuildManageQuoteLineItems($livewire->getRecord(), $get, $set);
                                         }
                                     ),
+                                    ...OperationServiceOrderCoveredPricingFormFields::components(),
                                 ])
                                 ->columnSpanFull(),
                         ])

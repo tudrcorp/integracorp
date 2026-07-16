@@ -1362,6 +1362,9 @@ final class CoordinationServiceItemsManager
             'operation_inventory_ubication_id' => null,
             'service_order_description' => null,
             'service_order_observations' => null,
+            'service_order_bcv_rate' => OperationCoordinationServicesTable::referenciaTasaBcvDesdeApi(),
+            'service_order_price_usd' => null,
+            'service_order_price_ves' => null,
             'manage_quote_bcv_rate' => OperationCoordinationServicesTable::referenciaTasaBcvDesdeApi(),
             'manage_quote_supplier_id' => null,
             'manage_quote_supplier_address' => null,
@@ -1579,6 +1582,20 @@ final class CoordinationServiceItemsManager
                 Notification::make()
                     ->title('Cotización')
                     ->body('No fue posible obtener una tasa BCV válida. Intente nuevamente.')
+                    ->warning()
+                    ->send();
+
+                return false;
+            }
+        }
+
+        if ($shouldCreateServiceOrder && ! $shouldCreateCoveredQuote) {
+            $pricingError = OperationServiceOrderCoveredPricingFormFields::validationMessage($data);
+
+            if ($pricingError !== null) {
+                Notification::make()
+                    ->title('Precio del servicio')
+                    ->body($pricingError)
                     ->warning()
                     ->send();
 

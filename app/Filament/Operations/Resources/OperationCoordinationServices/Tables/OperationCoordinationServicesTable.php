@@ -28,6 +28,7 @@ use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\AccountsReceivableManager;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\CoordinationServiceQuoteManager;
+use App\Support\Operations\OperationServiceOrderCoveredPricingFormFields;
 use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderProviderSelection;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
@@ -828,6 +829,7 @@ class OperationCoordinationServicesTable
                                                     ->columnSpanFull(),
                                             ]),
                                         ...OperationServiceOrderProviderFormFields::components(),
+                                        ...OperationServiceOrderCoveredPricingFormFields::components(),
                                     ])
                                     ->columnSpanFull(),
                             ])
@@ -1795,7 +1797,7 @@ class OperationCoordinationServicesTable
 
         $providers = OperationServiceOrderProviderSelection::resolveProviders($data);
 
-        return [
+        $payload = [
             'order_number' => $data['order_number'] ?? null,
             'telemedicine_priority_id' => $data['telemedicine_priority_id'] ?? $record->telemedicine_priority_id,
             'doctor_nurse_id' => $providers['doctor_nurse_id'],
@@ -1809,6 +1811,14 @@ class OperationCoordinationServicesTable
             'created_by' => Auth::user()?->name,
             'updated_by' => Auth::user()?->name,
         ];
+
+        $pricing = OperationServiceOrderCoveredPricingFormFields::pricingPayloadFromData($data);
+
+        if ($pricing !== null) {
+            $payload = [...$payload, ...$pricing];
+        }
+
+        return $payload;
     }
 
     private static function createServiceOrderFromWizard(OperationCoordinationService $record, array $data, array $quotePayload): void

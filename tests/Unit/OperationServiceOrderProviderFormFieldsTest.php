@@ -14,7 +14,8 @@ it('define proveedor natural jurídico y externo en una fila de tres columnas', 
         ->toContain('register_unregistered_provider');
 
     expect(file_get_contents($tablePath))
-        ->toContain('OperationServiceOrderProviderFormFields::selectionComponents()')
+        ->toContain('OperationServiceOrderProviderFormFields::components()')
+        ->toContain('OperationServiceOrderCoveredPricingFormFields::components()')
         ->toContain("Step::make('Proveedor no convenido')")
         ->toContain('OperationServiceOrderProviderSelection::validationMessage')
         ->toContain('buildServiceOrderPayload');
