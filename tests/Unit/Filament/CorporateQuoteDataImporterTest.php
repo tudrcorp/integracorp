@@ -12,9 +12,20 @@ it('parsea fechas de nacimiento en formatos comunes de excel', function (string 
 
     expect($date->format('Y-m-d'))->toBe($expected);
 })->with([
-    'slash' => ['21/01/1990', '1990-01-21'],
+    'slash padded' => ['21/01/1990', '1990-01-21'],
+    'slash unpadded' => ['1/1/1990', '1990-01-01'],
+    'slash mixed day' => ['21/1/1990', '1990-01-21'],
+    'slash mixed month' => ['01/1/1990', '1990-01-01'],
+    'slash mixed both' => ['1/01/1990', '1990-01-01'],
     'dash' => ['21-01-1990', '1990-01-21'],
+    'dash unpadded' => ['1-1-1990', '1990-01-01'],
+    'dots' => ['21.01.1990', '1990-01-21'],
     'iso' => ['1990-01-21', '1990-01-21'],
+    'us month day' => ['01/21/1990', '1990-01-21'],
+    'with time' => ['21/01/1990 00:00:00', '1990-01-21'],
+    'with time unpadded hour' => ['21/01/1990 0:00:00', '1990-01-21'],
+    'two digit year' => ['21/1/90', '1990-01-21'],
+    'excel serial' => ['32894', '1990-01-21'],
 ]);
 
 it('lanza error claro cuando la fecha de nacimiento no es interpretable', function (): void {
