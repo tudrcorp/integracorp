@@ -108,6 +108,7 @@ class CorporateQuoteDataImporter extends Importer
         } catch (RowImportFailedException $exception) {
             $logger->logRowFailure($this->import, $this->originalData, $exception->getMessage(), [
                 'corporate_quote_id' => $this->options['corporate_quote_id'] ?? null,
+                'birth_date_raw' => $this->data['birth_date'] ?? null,
             ]);
 
             throw $exception;
@@ -116,6 +117,7 @@ class CorporateQuoteDataImporter extends Importer
 
             $logger->logRowFailure($this->import, $this->originalData, $message, [
                 'corporate_quote_id' => $this->options['corporate_quote_id'] ?? null,
+                'birth_date_raw' => $this->data['birth_date'] ?? null,
                 'exception' => $exception::class,
             ]);
 
