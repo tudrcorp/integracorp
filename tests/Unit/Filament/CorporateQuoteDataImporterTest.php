@@ -41,3 +41,20 @@ it('usa el parser de fechas y el logger en el importer de poblacion', function (
         ->toContain('RowImportFailedException')
         ->toContain('storage/logs/imports.log');
 });
+
+it('permite reintentos largos para importaciones masivas en cola', function (): void {
+    $source = file_get_contents(base_path('app/Filament/Imports/CorporateQuoteDataImporter.php'));
+
+    expect($source)
+        ->toContain('addHours(6)')
+        ->toContain('expireAfter(7200)')
+        ->not->toContain('addMinutes(10)');
+});
+
+it('configura delimitador punto y coma para el csv de poblacion corporativa', function (): void {
+    $source = file_get_contents(base_path('app/Filament/Business/Resources/CorporateQuotes/RelationManagers/CorporateQuoteDataRelationManager.php'));
+
+    expect($source)
+        ->toContain("->csvDelimiter(';')")
+        ->toContain('->chunkSize(100)');
+});
