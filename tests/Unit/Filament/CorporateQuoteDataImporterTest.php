@@ -47,8 +47,9 @@ it('permite reintentos largos para importaciones masivas en cola', function (): 
 
     expect($source)
         ->toContain('addHours(6)')
-        ->toContain('expireAfter(7200)')
-        ->not->toContain('addMinutes(10)');
+        ->toContain('return [];')
+        ->not->toContain('addMinutes(10)')
+        ->not->toContain('WithoutOverlapping');
 });
 
 it('configura delimitador punto y coma para el csv de poblacion corporativa', function (): void {
