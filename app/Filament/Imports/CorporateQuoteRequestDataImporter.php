@@ -2,12 +2,13 @@
 
 namespace App\Filament\Imports;
 
-use Carbon\CarbonInterface;
-use Illuminate\Support\Number;
-use Filament\Actions\Imports\Importer;
 use App\Models\CorporateQuoteRequestData;
+use Carbon\CarbonInterface;
 use Filament\Actions\Imports\ImportColumn;
+use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Support\Number;
 
 class CorporateQuoteRequestDataImporter extends Importer
 {
@@ -84,37 +85,49 @@ class CorporateQuoteRequestDataImporter extends Importer
         // ]);
         return CorporateQuoteRequestData::create([
             // Update existing records, matching them by `$this->data['column_name']`
-            'last_name'             => $this->data['last_name'],
-            'first_name'            => $this->data['first_name'],
-            'nro_identificacion'    => $this->data['nro_identificacion'],
-            'birth_date'            => $this->data['birth_date'],
-            'age'                   => $this->data['age'],
-            'sex'                   => $this->data['sex'],
-            'phone'                 => $this->data['phone'],
-            'email'                 => $this->data['email'],
-            'condition_medical'     => $this->data['condition_medical'],
-            'initial_date'          => $this->data['initial_date'],
-            'position_company'      => $this->data['position_company'],
-            'address'               => $this->data['address'],
-            'full_name_emergency'   => $this->data['full_name_emergency'],
-            'phone_emergency'       => $this->data['phone_emergency'],
+            'last_name' => $this->data['last_name'],
+            'first_name' => $this->data['first_name'],
+            'nro_identificacion' => $this->data['nro_identificacion'],
+            'birth_date' => $this->data['birth_date'],
+            'age' => $this->data['age'],
+            'sex' => $this->data['sex'],
+            'phone' => $this->data['phone'],
+            'email' => $this->data['email'],
+            'condition_medical' => $this->data['condition_medical'],
+            'initial_date' => $this->data['initial_date'],
+            'position_company' => $this->data['position_company'],
+            'address' => $this->data['address'],
+            'full_name_emergency' => $this->data['full_name_emergency'],
+            'phone_emergency' => $this->data['phone_emergency'],
             'corporate_quote_request_id' => $this->options['corporate_quote_request_id'],
         ]);
     }
 
     public static function getCompletedNotificationBody(Import $import): string
     {
-        $body = 'Your corporate quote request data import has completed and ' . Number::format($import->successful_rows) . ' ' . str('row')->plural($import->successful_rows) . ' imported.';
+        $body = 'Your corporate quote request data import has completed and '.Number::format($import->successful_rows).' '.str('row')->plural($import->successful_rows).' imported.';
 
         if ($failedRowsCount = $import->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to import.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to import.';
         }
 
         return $body;
     }
 
+    /**
+     * @return array<int, object>
+     */
+    public function getJobMiddleware(): array
+    {
+        return [
+            (new WithoutOverlapping("import{$this->import->getKey()}"))
+                ->releaseAfter(60)
+                ->expireAfter(7200),
+        ];
+    }
+
     public function getJobRetryUntil(): ?CarbonInterface
     {
-        return now()->addMinute(1);
+        return now()->addHours(6);
     }
 }

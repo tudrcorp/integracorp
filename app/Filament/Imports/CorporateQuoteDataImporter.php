@@ -10,6 +10,7 @@ use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Number;
 use Throwable;
 
@@ -136,8 +137,22 @@ class CorporateQuoteDataImporter extends Importer
         return $body;
     }
 
+    /**
+     * @return array<int, object>
+     */
+    public function getJobMiddleware(): array
+    {
+        return [
+            (new WithoutOverlapping("import{$this->import->getKey()}"))
+                ->releaseAfter(60)
+                ->expireAfter(7200),
+        ];
+    }
+
     public function getJobRetryUntil(): ?CarbonInterface
     {
-        return now()->addMinutes(10);
+        // Los chunks corren en serie (WithoutOverlapping). Con archivos grandes
+        // un límite corto deja filas en remaining_rows sin procesar.
+        return now()->addHours(6);
     }
 }
