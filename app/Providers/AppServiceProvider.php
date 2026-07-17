@@ -23,9 +23,13 @@ use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierAcc
 use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierNewProviderCreationChart;
 use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierObservationsChart;
 use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierProviderSystemUpdateChart;
+use App\Listeners\LogFilamentImportActivity;
 use App\Models\ObservationCommercialStructure;
 use App\Observers\ObservationCommercialStructureObserver;
 use App\Support\UserSessionAuditTracker;
+use Filament\Actions\Imports\Events\ImportChunkProcessed;
+use Filament\Actions\Imports\Events\ImportCompleted;
+use Filament\Actions\Imports\Events\ImportStarted;
 use Filament\Support\Colors\Color;
 use Filament\Support\Facades\FilamentColor;
 use Filament\Support\Facades\FilamentTimezone;
@@ -34,6 +38,7 @@ use Filament\View\PanelsRenderHook;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
@@ -63,6 +68,11 @@ class AppServiceProvider extends ServiceProvider
     {
         Event::listen(Login::class, [UserSessionAuditTracker::class, 'onLogin']);
         Event::listen(Logout::class, [UserSessionAuditTracker::class, 'onLogout']);
+
+        Event::listen(ImportStarted::class, [LogFilamentImportActivity::class, 'handleStarted']);
+        Event::listen(ImportChunkProcessed::class, [LogFilamentImportActivity::class, 'handleChunkProcessed']);
+        Event::listen(ImportCompleted::class, [LogFilamentImportActivity::class, 'handleCompleted']);
+        Event::listen(JobFailed::class, [LogFilamentImportActivity::class, 'handleJobFailed']);
 
         // Registro explícito para evitar fallos de auto-descubrimiento en Livewire (widgets fuera de rutas discoverWidgets).
         Livewire::component('app.filament.business.resources.agents.widgets.control-actividad-interaccion', ControlActividadInteraccion::class);

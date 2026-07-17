@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\TdevReports\Pages;
 
 use Filament\Actions\CreateAction;
-use Filament\Actions\ImportAction;
+use App\Filament\Actions\ImportAction;
 use Filament\Resources\Pages\ListRecords;
 use App\Filament\Imports\TdevReportImporter;
 use App\Filament\Resources\TdevReports\TdevReportResource;
