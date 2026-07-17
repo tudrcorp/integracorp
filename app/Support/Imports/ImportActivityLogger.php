@@ -103,7 +103,7 @@ class ImportActivityLogger
 
         if ($unprocessedRows > 0) {
             $context['likely_cause'] = ($unprocessedRows % 100 === 0)
-                ? 'Chunks enteros no ejecutados: suele ser retryUntil corto, WithoutOverlapping o queue:work detenido/timeout.'
+                ? 'Chunks enteros no ejecutados: MaxAttemptsExceeded/WithoutOverlapping, REDIS_QUEUE_RETRY_AFTER bajo, o worker detenido.'
                 : 'Jobs de cola incompletos o interrumpidos (revisar failed_jobs y queue:work).';
 
             $this->error('Importación incompleta: quedaron filas sin procesar (posible timeout/fallo de job en cola)', $context);

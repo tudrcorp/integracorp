@@ -10,7 +10,6 @@ use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
-use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Number;
 use Throwable;
 
@@ -142,17 +141,14 @@ class CorporateQuoteDataImporter extends Importer
      */
     public function getJobMiddleware(): array
     {
-        return [
-            (new WithoutOverlapping("import{$this->import->getKey()}"))
-                ->releaseAfter(60)
-                ->expireAfter(7200),
-        ];
+        // Permite procesar chunks en paralelo con Redis/varios workers.
+        // El middleware anti-solapamiento de Filament reencola jobs, consume
+        // intentos y termina en MaxAttemptsExceededException.
+        return [];
     }
 
     public function getJobRetryUntil(): ?CarbonInterface
     {
-        // Los chunks corren en serie (WithoutOverlapping). Con archivos grandes
-        // un límite corto deja filas en remaining_rows sin procesar.
         return now()->addHours(6);
     }
 }

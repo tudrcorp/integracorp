@@ -9,6 +9,7 @@ use Filament\Support\Enums\Width;
 use App\Models\CorporateQuoteData;
 use Filament\Actions\CreateAction;
 use App\Filament\Actions\ImportAction;
+use App\Filament\Imports\Jobs\ImportCsv;
 use Illuminate\Support\Facades\Log;
 use App\Models\AffiliationCorporate;
 use Illuminate\Validation\Rules\File;
@@ -138,6 +139,7 @@ class CorporateQuoteDataRelationManager extends RelationManager
                         ->color('success')
                         ->modalHeading('Importar Población')
                         ->csvDelimiter(';')
+                        ->job(ImportCsv::class)
                         ->chunkSize(100)
                         ->options(function (RelationManager $livewire) {
                             return [

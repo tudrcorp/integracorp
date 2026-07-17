@@ -16,6 +16,7 @@ use App\Models\CorporateQuote;
 use Filament\Actions\BulkAction;
 use Filament\Actions\CreateAction;
 use App\Filament\Actions\ImportAction;
+use App\Filament\Imports\Jobs\ImportCsv;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -171,6 +172,7 @@ class DetailsDataRelationManager extends RelationManager
                     ->color('warning')
                     ->icon('heroicon-s-cloud-arrow-up')
                     ->csvDelimiter(';')
+                    ->job(ImportCsv::class)
                     ->chunkSize(100)
                     ->options(function (RelationManager $livewire) {
                         return [

@@ -15,6 +15,7 @@ use App\Models\CorporateQuoteData;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use App\Filament\Actions\ImportAction;
+use App\Filament\Imports\Jobs\ImportCsv;
 use Illuminate\Support\Facades\Log;
 use App\Models\DetailCorporateQuote;
 use Filament\Actions\AssociateAction;
@@ -157,6 +158,7 @@ class CorporateQuoteDataRelationManager extends RelationManager
                     ->color('success')
                     ->modalHeading('Importar Población')
                     ->csvDelimiter(';')
+                    ->job(ImportCsv::class)
                     ->chunkSize(100)
                     ->options(function (RelationManager $livewire) {
                         return [

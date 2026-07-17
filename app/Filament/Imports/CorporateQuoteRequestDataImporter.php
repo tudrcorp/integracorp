@@ -7,7 +7,6 @@ use Carbon\CarbonInterface;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
-use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Number;
 
 class CorporateQuoteRequestDataImporter extends Importer
@@ -119,11 +118,7 @@ class CorporateQuoteRequestDataImporter extends Importer
      */
     public function getJobMiddleware(): array
     {
-        return [
-            (new WithoutOverlapping("import{$this->import->getKey()}"))
-                ->releaseAfter(60)
-                ->expireAfter(7200),
-        ];
+        return [];
     }
 
     public function getJobRetryUntil(): ?CarbonInterface
