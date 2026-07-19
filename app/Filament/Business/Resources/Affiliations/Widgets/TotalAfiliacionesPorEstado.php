@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\Affiliations\Widgets;
 
 use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
+use App\Models\City;
 use App\Models\State;
 use Filament\Notifications\Notification;
 use Filament\Support\RawJs;
@@ -119,9 +120,13 @@ class TotalAfiliacionesPorEstado extends ChartWidget
                 ->groupBy('city_id_ti')
                 ->get();
 
+            $cityNames = City::query()
+                ->whereIn('id', $stats->pluck('city_id_ti')->filter()->all())
+                ->pluck('definition', 'id');
+
             $palette = $this->getBarColors();
             foreach ($stats as $index => $stat) {
-                $cityName = DB::table('cities')->where('id', $stat->city_id_ti)->value('definition') ?? "Ciudad #{$stat->city_id_ti}";
+                $cityName = $cityNames->get($stat->city_id_ti) ?? "Ciudad #{$stat->city_id_ti}";
                 $labels[] = $cityName;
                 $values[] = $stat->total;
 

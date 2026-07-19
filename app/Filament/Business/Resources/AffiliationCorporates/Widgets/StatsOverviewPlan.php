@@ -8,12 +8,13 @@ use App\Models\AfilliationCorporatePlan;
 use Carbon\Carbon;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 
 class StatsOverviewPlan extends StatsOverviewWidget
 {
     use InteractsWithPageTable;
+
+    private const CARD_TRANSITION = 'transition-[transform,box-shadow,border-color] duration-300';
 
     protected ?string $heading = 'ANÁLISIS DE AFILIACIONES POR PLAN';
 
@@ -29,41 +30,38 @@ class StatsOverviewPlan extends StatsOverviewWidget
         $now = Carbon::now();
         $mesActualNombre = $now->translatedFormat('F');
 
-        /**
-         * Conteos Totales (Históricos/Filtrados)
-         */
-        $planStatsTotal = AfilliationCorporatePlan::select('plan_id', DB::raw('count(*) as total'))
+        $rows = AfilliationCorporatePlan::query()
             ->where('status', 'ACTIVA')
+            ->whereIn('plan_id', [1, 2, 3])
+            ->select('plan_id')
+            ->selectRaw('COUNT(*) as total_count')
+            ->selectRaw('SUM(CASE WHEN MONTH(created_at) = ? AND YEAR(created_at) = ? THEN 1 ELSE 0 END) as month_count', [
+                $now->month,
+                $now->year,
+            ])
             ->groupBy('plan_id')
-            ->pluck('total', 'plan_id');
+            ->get()
+            ->keyBy('plan_id');
 
-        /**
-         * Conteos del Mes en Curso
-         */
-        $planStatsMes = AfilliationCorporatePlan::select('plan_id', DB::raw('count(*) as total'))
-            ->where('status', 'ACTIVA')
-            ->whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
-            ->groupBy('plan_id')
-            ->pluck('total', 'plan_id');
+        $planStatsTotal = [];
+        $planStatsMes = [];
+        foreach ([1, 2, 3] as $planId) {
+            $planStatsTotal[$planId] = (int) ($rows->get($planId)->total_count ?? 0);
+            $planStatsMes[$planId] = (int) ($rows->get($planId)->month_count ?? 0);
+        }
 
-        /**
-         * Estilos iOS Premium
-         */
         $iosStyles = '
-            group cursor-pointer transition-all duration-500 ease-in-out 
+            group cursor-pointer '.self::CARD_TRANSITION.' ease-in-out
             rounded-xl border-b-4 antialiased
             hover:border-[#10b981] dark:hover:border-[#34c759]
-            hover:shadow-[inset_0_-50px_40px_-20px_rgba(16,185,129,0.15)] 
-            dark:hover:shadow-[inset_0_-50px_40px_-20px_rgba(52,199,89,0.25)] 
-            hover:scale-[1.01] 
-            [&_*]:transition-all [&_*]:duration-500 
-            group-hover:[&_.fi-wi-stats-overview-stat-value]:scale-110 
+            hover:shadow-[inset_0_-50px_40px_-20px_rgba(16,185,129,0.15)]
+            dark:hover:shadow-[inset_0_-50px_40px_-20px_rgba(52,199,89,0.25)]
+            hover:scale-[1.01]
+            group-hover:[&_.fi-wi-stats-overview-stat-value]:scale-110
             group-hover:[&_.fi-wi-stats-overview-stat-value]:text-[#059669]
             dark:group-hover:[&_.fi-wi-stats-overview-stat-value]:text-[#34c759]
         ';
 
-        // Helper para construir la lógica de Alpine.js por cada Stat
         $getAlpineData = function ($total, $mes, $descDefault) use ($mesActualNombre) {
             return [
                 'x-data' => "{ label: '{$total} Afiliados', desc: '{$descDefault}' }",

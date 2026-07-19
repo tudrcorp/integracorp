@@ -69,6 +69,20 @@ class AffiliationsTable
 
                 return Affiliation::query();
             })
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'individual_quote',
+                'accountManager',
+                'agency',
+                'agent',
+                'plan',
+                'coverage',
+                'businessUnit',
+                'businessLine',
+                'city',
+                'state',
+                'country',
+            ]))
+            ->deferLoading()
             ->defaultSort('created_at', 'desc')
             ->heading('Afiliaciones individuales')
             ->description('Listado completo: plan, titular, tomador, montos y estatus. Las filas con emisión hoy se resaltan en verde.')

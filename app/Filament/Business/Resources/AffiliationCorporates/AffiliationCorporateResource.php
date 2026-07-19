@@ -20,6 +20,7 @@ use Carbon\Carbon;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Cache;
 use UnitEnum;
 
 class AffiliationCorporateResource extends Resource
@@ -42,9 +43,14 @@ class AffiliationCorporateResource extends Resource
      */
     public static function getNavigationBadge(): ?string
     {
-        $todayCount = static::getModel()::where('status', 'ACTIVA')
-            ->whereDate('created_at', Carbon::today())
-            ->count();
+        $todayCount = Cache::remember(
+            'business.affiliation_corporate_navigation_badge.'.Carbon::today()->toDateString(),
+            now()->addSeconds(60),
+            fn (): int => (int) static::getModel()::query()
+                ->where('status', 'ACTIVA')
+                ->whereDate('created_at', Carbon::today())
+                ->count(),
+        );
 
         return $todayCount > 0 ? "NUEVO {$todayCount}" : null;
     }
