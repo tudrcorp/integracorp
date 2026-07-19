@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\Affiliations\Pages;
 
 use App\Filament\Business\Resources\Affiliations\AffiliationResource;
+use App\Filament\Business\Resources\Affiliations\Concerns\OptimizesAffiliationInfolistPerformance;
 use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -12,35 +13,18 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class ViewAffiliation extends ViewRecord
 {
+    use OptimizesAffiliationInfolistPerformance;
+
     protected static string $resource = AffiliationResource::class;
 
     public function getRelationManagers(): array
     {
         return [];
-    }
-
-    protected function resolveRecord(int|string $key): Model
-    {
-        $record = parent::resolveRecord($key);
-
-        $record->load([
-            'affiliationDocuments',
-            'affiliates.businessLine:id,definition',
-            'affiliates.businessUnit:id,definition',
-            'affiliationObservations.createdBy:id,name,email',
-            'renovationHistories.plan',
-            'renovationHistories.previousPlan',
-            'renovationHistories.coverage',
-            'renovationHistories.affiliate',
-        ]);
-
-        return $record;
     }
 
     protected function getHeaderActions(): array

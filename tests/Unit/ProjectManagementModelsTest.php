@@ -18,7 +18,9 @@ it('define modelos y relaciones polimórficas del sistema de proyectos', functio
         ->toContain('class Project extends Model')
         ->toContain('public function subprojects(): HasMany')
         ->toContain('public function assignments(): HasMany')
-        ->toContain('public function activities(): HasMany');
+        ->toContain('public function activities(): HasMany')
+        ->toContain('public function epics(): HasMany')
+        ->toContain('public function sprints(): HasMany');
 
     expect(file_get_contents($subprojectPath))
         ->toContain('class Subproject extends Model')
@@ -34,7 +36,9 @@ it('define modelos y relaciones polimórficas del sistema de proyectos', functio
         ->toContain('class Activity extends Model')
         ->toContain('public function executor(): MorphTo')
         ->toContain('public function project(): BelongsTo')
-        ->toContain('public function subproject(): BelongsTo');
+        ->toContain('public function subproject(): BelongsTo')
+        ->toContain('public function epic(): BelongsTo')
+        ->toContain('public function sprint(): BelongsTo');
 
     expect(file_get_contents($notesPath))
         ->toContain('class NotesLog extends Model')

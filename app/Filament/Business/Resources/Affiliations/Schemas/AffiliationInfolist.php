@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Affiliations\Schemas;
 
+use App\Filament\Business\Resources\Affiliations\Support\AffiliationInfolistTab;
 use App\Filament\Shared\Affiliations\AffiliationRenovationHistoryInfolist;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
@@ -111,12 +112,13 @@ class AffiliationInfolist
             ->components([
                 Tabs::make('affiliationInfolistTabs')
                     ->columnSpanFull()
-                    ->persistTab()
+                    ->livewireProperty('affiliationInfolistTab')
+                    ->id('affiliation-infolist-tabs')
                     ->extraAttributes([
                         'class' => self::TABS_CONTAINER,
                     ])
                     ->tabs([
-                        Tab::make('Resumen')
+                        AffiliationInfolistTab::RESUMEN => Tab::make('Resumen')
                             ->icon(Heroicon::OutlinedClipboardDocumentList)
                             ->schema([
                                 Section::make('Resumen')
@@ -181,7 +183,7 @@ class AffiliationInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Titular del plan')
+                        AffiliationInfolistTab::TITULAR => Tab::make('Titular del plan')
                             ->icon(Heroicon::OutlinedUser)
                             ->schema([
                                 Section::make('Titular del plan')
@@ -220,7 +222,7 @@ class AffiliationInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Documento del titular')
+                        AffiliationInfolistTab::DOCUMENTO => Tab::make('Documento del titular')
                             ->icon(Heroicon::OutlinedDocumentArrowDown)
                             ->schema([
                                 Section::make('Documento del titular')
@@ -262,7 +264,7 @@ class AffiliationInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Pagador')
+                        AffiliationInfolistTab::PAGADOR => Tab::make('Pagador')
                             ->icon(Heroicon::OutlinedBanknotes)
                             ->schema([
                                 Section::make('Responsable de pago (pagador)')
@@ -301,7 +303,7 @@ class AffiliationInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Plan y pagos')
+                        AffiliationInfolistTab::PLAN => Tab::make('Plan y pagos')
                             ->icon(Heroicon::OutlinedRectangleStack)
                             ->schema([
                                 Section::make('Plan y frecuencia de pago')
@@ -347,7 +349,7 @@ class AffiliationInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Afiliados asociados')
+                        AffiliationInfolistTab::AFILIADOS => Tab::make('Afiliados asociados')
                             ->icon(Heroicon::OutlinedUsers)
                             ->schema([
                                 Section::make('Afiliados asociados')
@@ -465,7 +467,7 @@ class AffiliationInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Aliado nivel 1')
+                        AffiliationInfolistTab::ALIADO_1 => Tab::make('Aliado nivel 1')
                             ->icon(Heroicon::OutlinedBuildingStorefront)
                             ->schema([
                                 Section::make('Aliado de servicio nivel 1')
@@ -511,7 +513,7 @@ class AffiliationInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Aliado nivel 2')
+                        AffiliationInfolistTab::ALIADO_2 => Tab::make('Aliado nivel 2')
                             ->icon(Heroicon::OutlinedBuildingStorefront)
                             ->schema([
                                 Section::make('Aliado de servicio nivel 2')
@@ -565,7 +567,7 @@ class AffiliationInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Declaración médica')
+                        AffiliationInfolistTab::DECLARACION => Tab::make('Declaración médica')
                             ->icon(Heroicon::OutlinedHeart)
                             ->schema([
                                 Section::make('Declaración médica')
@@ -586,8 +588,8 @@ class AffiliationInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        AffiliationRenovationHistoryInfolist::tab(self::IOS_SECTION_CLASS),
-                        Tab::make('Expediente digital')
+                        AffiliationInfolistTab::RENOVACIONES => AffiliationRenovationHistoryInfolist::tab(self::IOS_SECTION_CLASS),
+                        AffiliationInfolistTab::EXPEDIENTE => Tab::make('Expediente digital')
                             ->icon(Heroicon::OutlinedFolderOpen)
                             ->schema([
                                 Section::make('Expediente digital')
@@ -711,7 +713,7 @@ class AffiliationInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Observaciones')
+                        AffiliationInfolistTab::OBSERVACIONES => Tab::make('Observaciones')
                             ->icon(Heroicon::OutlinedChatBubbleLeftRight)
                             ->schema([
                                 Section::make('Observaciones')

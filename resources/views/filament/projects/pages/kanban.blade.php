@@ -10,6 +10,17 @@
                 <div class="space-y-2">
                     <p class="text-xs font-semibold uppercase tracking-[0.22em] text-gray-500 dark:text-slate-400">Tasks</p>
                     <h2 class="text-3xl font-semibold text-gray-950 dark:text-white">Kanban</h2>
+                    @php
+                        $sprintSummary = $this->sprintPointsSummary;
+                    @endphp
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 font-semibold text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-200">
+                            {{ $sprintSummary['label'] }}
+                        </span>
+                        <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                            {{ $sprintSummary['committed'] }} pts · {{ $sprintSummary['completed'] }} done · {{ $sprintSummary['remaining'] }} rest.
+                        </span>
+                    </div>
                     <div class="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide">
                         <button
                             type="button"
@@ -104,6 +115,17 @@
                             @empty
                                 <option value="" disabled>No hay proyectos creados</option>
                             @endforelse
+                        </select>
+                    </x-projects.kanban-filter-field>
+
+                    <x-projects.kanban-filter-field label="Sprint" col-span="xl:col-span-2" :select="true">
+                        <select wire:model.live="sprintFilter" class="{{ $kanbanSelectClass }}">
+                            <option value="active">Sprint activo</option>
+                            <option value="backlog">Product Backlog</option>
+                            <option value="all">Todos</option>
+                            @foreach ($this->sprintOptions as $sprintId => $sprintLabel)
+                                <option value="{{ $sprintId }}">{{ $sprintLabel }}</option>
+                            @endforeach
                         </select>
                     </x-projects.kanban-filter-field>
 

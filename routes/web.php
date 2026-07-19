@@ -28,6 +28,7 @@ use App\Http\Controllers\Operations\SupplierDocumentAuditController;
 use App\Http\Controllers\OperationServiceOrderPdfController;
 use App\Http\Controllers\PdfController;
 use App\Http\Controllers\PublicChatController;
+use App\Http\Controllers\ScrumPresentationController;
 use App\Http\Controllers\SupplierFichaPdfController;
 use App\Http\Controllers\SupplierReportPdfController;
 use App\Http\Controllers\TarjetaAfiliacionController;
@@ -2023,6 +2024,8 @@ Route::get('/ldi/{transaction_id}', [UtilsController::class, 'show'])
  * @return void
  */
 Route::get('/cierre-mes', CierreMesController::class);
+
+Route::get('/scrum-desarrollo-apps', ScrumPresentationController::class);
 
 Route::get('/carta-bienvenida-agencia', function () {
     // Doc en PDF

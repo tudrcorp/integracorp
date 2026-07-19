@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\Projects\Pages;
 
+use App\Enums\ProjectManagement\SprintStatus;
 use App\Filament\Projects\Resources\ProjectManagement\Activities\ActivityResource;
 use App\Filament\Projects\Resources\ProjectManagement\Activities\Tables\ActivitiesTable;
 use App\Models\ProjectManagement\Activity;
 use App\Models\ProjectManagement\Project;
+use App\Models\ProjectManagement\Sprint;
 use App\Support\Filament\ProjectManagement\ProjectManagementActivityAssignmentDisplay;
 use App\Support\Filament\ProjectManagement\ProjectManagementKanbanActivitiesQuery;
 use App\Support\Filament\ProjectManagement\ProjectManagementKanbanActivityModalActions;
@@ -35,7 +37,7 @@ class Kanban extends Page implements HasTable
 
     protected static ?string $navigationLabel = 'Kanban';
 
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 7;
 
     protected static ?string $title = 'Kanban de actividades';
 
@@ -46,6 +48,8 @@ class Kanban extends Page implements HasTable
     public string $projectFilter = 'all';
 
     public string $statusFilter = 'all';
+
+    public string $sprintFilter = 'active';
 
     public string $sortBy = 'priority_desc';
 
@@ -115,8 +119,55 @@ class Kanban extends Page implements HasTable
         return trim($this->search) !== ''
             || $this->projectFilter !== 'all'
             || $this->statusFilter !== 'all'
+            || $this->sprintFilter !== 'active'
             || $this->archivedFilter !== 'active'
             || $this->sortBy !== 'priority_desc';
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getSprintOptionsProperty(): array
+    {
+        return Sprint::query()
+            ->with('project:id,name')
+            ->when(
+                $this->projectFilter !== 'all',
+                fn ($query) => $query->where('project_id', (int) $this->projectFilter),
+            )
+            ->orderByDesc('starts_at')
+            ->limit(40)
+            ->get(['id', 'name', 'project_id', 'status'])
+            ->mapWithKeys(function (Sprint $sprint): array {
+                $statusLabel = $sprint->status instanceof SprintStatus
+                    ? $sprint->status->label()
+                    : (string) $sprint->status;
+
+                return [
+                    (string) $sprint->getKey() => trim($sprint->name.' · '.$statusLabel),
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * @return array{committed: int, remaining: int, completed: int, label: string|null}
+     */
+    public function getSprintPointsSummaryProperty(): array
+    {
+        $activities = $this->filteredActivities;
+
+        return [
+            'committed' => (int) $activities->sum('story_points'),
+            'completed' => (int) $activities->where('status', 'done')->sum('story_points'),
+            'remaining' => (int) $activities->where('status', '!=', 'done')->sum('story_points'),
+            'label' => match ($this->sprintFilter) {
+                'active' => 'Sprint activo',
+                'backlog' => 'Product Backlog',
+                'all' => 'Todos los sprints',
+                default => $this->sprintOptions[$this->sprintFilter] ?? 'Sprint',
+            },
+        ];
     }
 
     /**
@@ -167,6 +218,7 @@ class Kanban extends Page implements HasTable
             $this->archivedFilter,
             $this->projectFilter,
             $this->statusFilter,
+            $this->sprintFilter,
         );
 
         return ProjectManagementKanbanActivitiesQuery::applySort($query, $this->sortBy);
@@ -178,6 +230,11 @@ class Kanban extends Page implements HasTable
     }
 
     public function updatedProjectFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSprintFilter(): void
     {
         $this->resetPage();
     }

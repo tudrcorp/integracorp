@@ -46,6 +46,7 @@ it('expone el tab de observaciones en el infolist corporativo', function (): voi
 
 it('agrega la accion iOS para registrar observaciones corporativas en la cabecera', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Pages/ViewAffiliationCorporate.php');
+    $concern = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Concerns/OptimizesAffiliationCorporateInfolistPerformance.php');
 
     expect($source)
         ->toContain("Action::make('addObservation')")
@@ -54,4 +55,7 @@ it('agrega la accion iOS para registrar observaciones corporativas en la cabecer
         ->toContain('affiliationCorporateObservations()->create(')
         ->toContain('Auth::id()')
         ->toContain('affiliationCorporateObservations.createdBy:id,name,email');
+
+    expect($concern)
+        ->toContain("'affiliationCorporateObservations.createdBy:id,name,email'");
 });
