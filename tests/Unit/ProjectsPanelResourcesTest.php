@@ -9,6 +9,8 @@ it('registra resources del panel projects para gestion de proyectos', function (
         dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Projects/ProjectResource.php',
         dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Subprojects/SubprojectResource.php',
         dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Activities/ActivityResource.php',
+        dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Epics/EpicResource.php',
+        dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Sprints/SprintResource.php',
     ];
 
     foreach ($resourcePaths as $path) {
@@ -31,15 +33,23 @@ it('registra resources del panel projects para gestion de proyectos', function (
 it('ordena el menu de gestion de proyectos segun la jerarquia definida', function (): void {
     $navigationOrder = [
         dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Projects/ProjectResource.php' => 1,
-        dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Subprojects/SubprojectResource.php' => 2,
-        dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Departments/DepartmentResource.php' => 3,
-        dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Groups/GroupResource.php' => 4,
-        dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Activities/ActivityResource.php' => 5,
-        dirname(__DIR__, 2).'/app/Filament/Projects/Pages/Kanban.php' => 6,
+        dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Epics/EpicResource.php' => 2,
+        dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Subprojects/SubprojectResource.php' => 3,
+        dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Sprints/SprintResource.php' => 4,
+        dirname(__DIR__, 2).'/app/Filament/Projects/Pages/Backlog.php' => 5,
+        dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Activities/ActivityResource.php' => 6,
+        dirname(__DIR__, 2).'/app/Filament/Projects/Pages/Kanban.php' => 7,
+        dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Departments/DepartmentResource.php' => 8,
+        dirname(__DIR__, 2).'/app/Filament/Projects/Resources/ProjectManagement/Groups/GroupResource.php' => 9,
+        dirname(__DIR__, 2).'/app/Filament/Projects/Pages/Help.php' => 1,
     ];
 
     foreach ($navigationOrder as $path => $sort) {
         expect(file_get_contents($path))
             ->toContain('protected static ?int $navigationSort = '.$sort.';');
     }
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Projects/Pages/Help.php'))
+        ->toContain("protected static ?string \$navigationLabel = 'Ayuda';")
+        ->toContain("protected static string|UnitEnum|null \$navigationGroup = 'AYUDA';");
 });

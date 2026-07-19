@@ -35,7 +35,7 @@ class ActivitiesTable
                 fn (Activity $record): string => ActivityResource::getUrl('view', ['record' => $record], panel: 'projects'),
             )
             ->modifyQueryUsing(
-                fn (Builder $query): Builder => $query->with(['project', 'subproject', 'executor']),
+                fn (Builder $query): Builder => $query->with(['project', 'subproject', 'epic', 'sprint', 'executor']),
             )
             ->columns([
                 ViewColumn::make('activity_identity')
@@ -84,6 +84,30 @@ class ActivitiesTable
                     })
                     ->sortable()
                     ->alignCenter(),
+                TextColumn::make('story_points')
+                    ->label('Pts')
+                    ->badge()
+                    ->color('warning')
+                    ->alignCenter()
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('sprint.name')
+                    ->label('Sprint')
+                    ->badge()
+                    ->color('success')
+                    ->placeholder('Backlog')
+                    ->toggleable(),
+                TextColumn::make('epic.name')
+                    ->label('Épica')
+                    ->badge()
+                    ->color('primary')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('backlog_order')
+                    ->label('Orden')
+                    ->alignCenter()
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 ViewColumn::make('due_timeline')
                     ->label('Plazo')
                     ->view('filament.projects.tables.columns.activity-due')

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Projects\Resources\ProjectManagement\Projects\Schemas;
 
+use App\Support\Filament\ProjectManagement\ProjectManagementCollaboratorSelect;
 use App\Support\Filament\ProjectManagement\ProjectManagementFilamentSchemas;
 use App\Support\Filament\ProjectManagement\ProjectManagementProjectAppearance;
 use Filament\Forms\Components\ColorPicker;
@@ -94,6 +95,34 @@ class ProjectForm
                             DatePicker::make('end_date')
                                 ->label('Fecha de fin')
                                 ->native(false),
+                        ], ['default' => 1, 'lg' => 2]),
+                    ]),
+                ]),
+            Tab::make('Scrum')
+                ->icon(Heroicon::OutlinedUserGroup)
+                ->schema([
+                    ProjectManagementFilamentSchemas::section(
+                        'Roles Scrum',
+                        'Product Owner y Scrum Master del proyecto (colaboradores RRHH).',
+                        'heroicon-o-user-group',
+                    )->schema([
+                        ProjectManagementFilamentSchemas::innerGrid([
+                            Select::make('product_owner_id')
+                                ->label('Product Owner')
+                                ->prefixIcon('heroicon-m-user')
+                                ->options(fn (): array => ProjectManagementCollaboratorSelect::options())
+                                ->getSearchResultsUsing(fn (string $search): array => ProjectManagementCollaboratorSelect::searchOptions($search))
+                                ->searchable()
+                                ->preload()
+                                ->nullable(),
+                            Select::make('scrum_master_id')
+                                ->label('Scrum Master')
+                                ->prefixIcon('heroicon-m-academic-cap')
+                                ->options(fn (): array => ProjectManagementCollaboratorSelect::options())
+                                ->getSearchResultsUsing(fn (string $search): array => ProjectManagementCollaboratorSelect::searchOptions($search))
+                                ->searchable()
+                                ->preload()
+                                ->nullable(),
                         ], ['default' => 1, 'lg' => 2]),
                     ]),
                 ]),

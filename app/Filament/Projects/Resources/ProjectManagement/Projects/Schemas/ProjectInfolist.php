@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\Projects\Resources\ProjectManagement\Projects\Schemas;
 
+use App\Filament\Projects\Resources\ProjectManagement\Sprints\SprintResource;
 use App\Models\ProjectManagement\Project;
 use App\Support\Filament\ProjectManagement\ProjectManagementFilamentSchemas;
 use App\Support\Filament\ProjectManagement\ProjectManagementProjectAppearance;
 use App\Support\Filament\ProjectManagement\ProjectManagementProjectInfolistDisplay;
+use App\Support\ProjectManagement\VelocityCalculator;
 use Filament\Infolists\Components\ColorEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -91,6 +93,45 @@ class ProjectInfolist
                                 );
                             })
                             ->columnSpanFull(),
+                    ]),
+                ]),
+            Tab::make('Scrum')
+                ->icon(Heroicon::OutlinedUserGroup)
+                ->schema([
+                    ProjectManagementFilamentSchemas::section(
+                        'Roles y métricas',
+                        'Product Owner, Scrum Master, sprint activo y velocity.',
+                        'heroicon-o-user-group',
+                    )->schema([
+                        ProjectManagementFilamentSchemas::innerGrid([
+                            TextEntry::make('scrumRoles.productOwner.fullName')
+                                ->label('Product Owner')
+                                ->placeholder('—')
+                                ->badge()
+                                ->color('primary'),
+                            TextEntry::make('scrumRoles.scrumMaster.fullName')
+                                ->label('Scrum Master')
+                                ->placeholder('—')
+                                ->badge()
+                                ->color('info'),
+                            TextEntry::make('active_sprint')
+                                ->label('Sprint activo')
+                                ->state(fn (Project $record): string => $record->activeSprint?->name ?? 'Ninguno')
+                                ->url(fn (Project $record): ?string => $record->activeSprint
+                                    ? SprintResource::getUrl('view', ['record' => $record->activeSprint], panel: 'projects')
+                                    : null)
+                                ->badge()
+                                ->color('success'),
+                            TextEntry::make('velocity')
+                                ->label('Velocity (últimos sprints)')
+                                ->state(function (Project $record): string {
+                                    $velocity = (new VelocityCalculator)->forProject($record);
+
+                                    return $velocity['average'].' pts promedio';
+                                })
+                                ->badge()
+                                ->color('warning'),
+                        ], ['default' => 1, 'lg' => 2]),
                     ]),
                 ]),
             Tab::make('Diagrama de Proyecto')

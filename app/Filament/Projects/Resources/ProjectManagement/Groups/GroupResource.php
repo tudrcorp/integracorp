@@ -29,7 +29,7 @@ class GroupResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'GESTION DE PROYECTOS';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 9;
 
     public static function form(Schema $schema): Schema
     {

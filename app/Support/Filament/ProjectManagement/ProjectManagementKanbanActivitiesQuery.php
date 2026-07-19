@@ -21,7 +21,7 @@ final class ProjectManagementKanbanActivitiesQuery
     public static function base(): Builder
     {
         return Activity::query()
-            ->with(['project:id,name,icon,color', 'subproject:id,name', 'executor']);
+            ->with(['project:id,name,icon,color', 'subproject:id,name', 'epic:id,name', 'sprint:id,name,status', 'executor']);
     }
 
     public static function applyFilters(
@@ -30,6 +30,7 @@ final class ProjectManagementKanbanActivitiesQuery
         string $archivedFilter,
         string $projectFilter,
         string $statusFilter,
+        string $sprintFilter = 'active',
     ): Builder {
         return $query
             ->when(
@@ -61,6 +62,26 @@ final class ProjectManagementKanbanActivitiesQuery
             ->when(
                 $statusFilter !== 'all',
                 fn (Builder $builder): Builder => $builder->where('status', $statusFilter),
+            )
+            ->when(
+                $sprintFilter === 'backlog',
+                fn (Builder $builder): Builder => $builder->whereNull('sprint_id'),
+            )
+            ->when(
+                $sprintFilter === 'active',
+                function (Builder $builder) use ($projectFilter): Builder {
+                    return $builder->whereHas('sprint', function (Builder $sprintQuery) use ($projectFilter): void {
+                        $sprintQuery->where('status', 'active');
+
+                        if ($projectFilter !== 'all') {
+                            $sprintQuery->where('project_id', (int) $projectFilter);
+                        }
+                    });
+                },
+            )
+            ->when(
+                $sprintFilter !== 'all' && $sprintFilter !== 'active' && $sprintFilter !== 'backlog',
+                fn (Builder $builder): Builder => $builder->where('sprint_id', (int) $sprintFilter),
             );
     }
 

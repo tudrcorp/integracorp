@@ -6,6 +6,7 @@ namespace App\Filament\Administration\Resources\AffiliationCorporates\Pages;
 
 use App\Filament\Administration\Resources\AffiliationCorporates\Actions\AffiliationCorporateFichaPdfActions;
 use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use App\Filament\Business\Resources\AffiliationCorporates\Concerns\OptimizesAffiliationCorporateInfolistPerformance;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
@@ -13,11 +14,12 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 class ViewAffiliationCorporate extends ViewRecord
 {
+    use OptimizesAffiliationCorporateInfolistPerformance;
+
     protected static string $resource = AffiliationCorporateResource::class;
 
     private const IOS_BUTTON_BASE = 'shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
@@ -33,30 +35,6 @@ class ViewAffiliationCorporate extends ViewRecord
     public function getRelationManagers(): array
     {
         return [];
-    }
-
-    protected function resolveRecord(int|string $key): Model
-    {
-        $record = parent::resolveRecord($key);
-
-        $record->load([
-            'agent',
-            'agency',
-            'country',
-            'state',
-            'city',
-            'region',
-            'corporate_quote',
-            'accountManager',
-            'businessUnit',
-            'businessLine',
-            'affiliationCorporatePlans.plan',
-            'affiliationCorporatePlans.coverage',
-            'affiliationCorporatePlans.ageRange',
-            'affiliationCorporateDocuments',
-        ]);
-
-        return $record;
     }
 
     protected function getHeaderActions(): array

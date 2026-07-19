@@ -48,6 +48,9 @@ class ProjectsPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('PROYECTOS RECIENTES')
                     ->icon('heroicon-o-star'),
+                NavigationGroup::make()
+                    ->label('AYUDA')
+                    ->icon('heroicon-o-question-mark-circle'),
             ])
             ->navigationItems(RecentProjectsNavigation::items())
             ->sidebarCollapsibleOnDesktop()

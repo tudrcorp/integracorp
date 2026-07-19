@@ -6,6 +6,7 @@ namespace App\Filament\Administration\Resources\Affiliations\Pages;
 
 use App\Filament\Administration\Resources\Affiliations\Actions\AffiliationFichaPdfActions;
 use App\Filament\Administration\Resources\Affiliations\AffiliationResource;
+use App\Filament\Business\Resources\Affiliations\Concerns\OptimizesAffiliationInfolistPerformance;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
@@ -13,11 +14,12 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 class ViewAffiliation extends ViewRecord
 {
+    use OptimizesAffiliationInfolistPerformance;
+
     protected static string $resource = AffiliationResource::class;
 
     private const IOS_BUTTON_BASE = 'shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
@@ -33,21 +35,6 @@ class ViewAffiliation extends ViewRecord
     public function getRelationManagers(): array
     {
         return [];
-    }
-
-    protected function resolveRecord(int|string $key): Model
-    {
-        $record = parent::resolveRecord($key);
-
-        $record->load([
-            'affiliationDocuments',
-            'renovationHistories.plan',
-            'renovationHistories.previousPlan',
-            'renovationHistories.coverage',
-            'renovationHistories.affiliate',
-        ]);
-
-        return $record;
     }
 
     protected function getHeaderActions(): array

@@ -25,9 +25,14 @@ final class AffiliationRenovationHistoryInfolist
     {
         return Tab::make('Historial de renovaciones')
             ->icon(Heroicon::OutlinedArrowPath)
-            ->badge(fn ($record): ?string => $record->renovationHistories?->count() > 0
-                ? (string) $record->renovationHistories->count()
-                : null)
+            ->badge(function ($record): ?string {
+                $count = (int) ($record->renovation_histories_count
+                    ?? ($record->relationLoaded('renovationHistories')
+                        ? $record->renovationHistories->count()
+                        : 0));
+
+                return $count > 0 ? (string) $count : null;
+            })
             ->schema([
                 Section::make('Renovaciones aceptadas')
                     ->description('Cada registro confirma que el cliente aceptó la renovación. Los montos son el snapshot aplicado al expediente.')

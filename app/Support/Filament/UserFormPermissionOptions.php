@@ -81,11 +81,15 @@ class UserFormPermissionOptions
         'corporateallyresource' => ['aliados-corporativos'],
         'dashboardoperaciones' => ['dashboard-operaciones'],
         'projectresource' => ['proyectos'],
+        'epicresource' => ['epicas'],
         'subprojectresource' => ['subproyectos'],
+        'sprintresource' => ['sprints'],
+        'backlog' => ['backlog'],
         'groupresource' => ['equipos'],
         'departmentresource' => ['departamentos-pm'],
         'activityresource' => ['actividades'],
         'kanban' => ['kanban'],
+        'help' => ['ayuda-proyectos'],
     ];
 
     /**

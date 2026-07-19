@@ -115,11 +115,15 @@ use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource
 use App\Filament\Operations\Resources\TelemedicineDoctors\TelemedicineDoctorResource;
 use App\Filament\Operations\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
+use App\Filament\Projects\Pages\Backlog;
+use App\Filament\Projects\Pages\Help;
 use App\Filament\Projects\Pages\Kanban;
 use App\Filament\Projects\Resources\ProjectManagement\Activities\ActivityResource;
 use App\Filament\Projects\Resources\ProjectManagement\Departments\DepartmentResource as ProjectDepartmentResource;
+use App\Filament\Projects\Resources\ProjectManagement\Epics\EpicResource;
 use App\Filament\Projects\Resources\ProjectManagement\Groups\GroupResource;
 use App\Filament\Projects\Resources\ProjectManagement\Projects\ProjectResource;
+use App\Filament\Projects\Resources\ProjectManagement\Sprints\SprintResource;
 use App\Filament\Projects\Resources\ProjectManagement\Subprojects\SubprojectResource;
 
 final class DepartmentNavigationPermissionRegistry
@@ -257,11 +261,15 @@ final class DepartmentNavigationPermissionRegistry
 
         // PROYECTOS
         ProjectResource::class => ['proyectos'],
+        EpicResource::class => ['epicas'],
         SubprojectResource::class => ['subproyectos'],
+        SprintResource::class => ['sprints'],
+        Backlog::class => ['backlog'],
         GroupResource::class => ['equipos'],
         ProjectDepartmentResource::class => ['departamentos-pm'],
         ActivityResource::class => ['actividades'],
         Kanban::class => ['kanban'],
+        Help::class => ['ayuda-proyectos'],
     ];
 
     /**
