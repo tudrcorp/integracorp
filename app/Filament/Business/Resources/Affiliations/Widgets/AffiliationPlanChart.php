@@ -37,12 +37,6 @@ class AffiliationPlanChart extends ChartWidget
 
     protected function getData(): array
     {
-        $affiliations = $this->getPageTableQuery()
-            ->reorder()
-            ->select('plan_id', DB::raw('count(*) as total'))
-            ->groupBy('plan_id')
-            ->get();
-
         $salesData = $this->getPageTableQuery()
             ->reorder()
             ->select('plan_id', DB::raw('count(*) as total'))

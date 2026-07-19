@@ -63,6 +63,15 @@ class AffiliationCorporatesTable
 
                 return AffiliationCorporate::query();
             })
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'agency',
+                'agent',
+                'accountManager',
+                'city',
+                'state',
+                'country',
+            ]))
+            ->deferLoading()
             ->defaultSort('created_at', 'desc')
             ->heading('Afiliaciones corporativas')
             ->description('Contratante, agencia, montos, ILS y estatus. El código resalta en verde estilo iOS cuando la afiliación está ACTIVA y el alta es hoy.')

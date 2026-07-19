@@ -4,8 +4,6 @@ namespace App\Filament\Business\Resources\Affiliations\Widgets;
 
 use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
-use App\Models\Affiliation;
-use App\Models\ServiceProvider;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
@@ -14,6 +12,12 @@ use Filament\Widgets\ChartWidget;
 class AffiliationSupplierChart extends ChartWidget
 {
     use InteractsWithPageTable;
+
+    private const SUPPLIER_LABELS = [
+        'ATENMEDI' => '#9ce1ff',
+        'ILS' => '#25b4e7',
+        'TDEC' => '#2d89ca',
+    ];
 
     protected function getTablePage(): string
     {
@@ -38,33 +42,22 @@ class AffiliationSupplierChart extends ChartWidget
 
     protected function getData(): array
     {
-        // Rango del mes actual
-        $startOfMonth = now()->startOfMonth();
-        $endOfMonth = now()->endOfMonth();
+        $stats = $this->getPageTableQuery()
+            ->reorder()
+            ->selectRaw("
+                SUM(CASE WHEN service_providers LIKE '%ATENMEDI%' THEN 1 ELSE 0 END) as atenmedi_count,
+                SUM(CASE WHEN service_providers LIKE '%ILS%' THEN 1 ELSE 0 END) as ils_count,
+                SUM(CASE WHEN service_providers LIKE '%TDEC%' THEN 1 ELSE 0 END) as tdec_count
+            ")
+            ->first();
 
-        // Proveedores
-        $suppliers = ServiceProvider::all('name')->toArray();
+        $counts = [
+            'ATENMEDI' => (int) ($stats->atenmedi_count ?? 0),
+            'ILS' => (int) ($stats->ils_count ?? 0),
+            'TDEC' => (int) ($stats->tdec_count ?? 0),
+        ];
 
-        $supplierIds = [];
-        for ($i = 0; $i < count($suppliers); $i++) {
-
-            // $count= Affiliation::where('service_providers', 'like', '%' . $suppliers[$i]['name'] . '%')
-            //     ->whereBetween('created_at', ['2026-01-01 00:00:00', '2026-01-31 23:59:59'])
-            //     ->count();
-
-            /**
-             * @var mixed
-             *
-             * @version 2.0.0
-             */
-            $count = $this->getPageTableQuery()
-                ->where('service_providers', 'like', '%'.$suppliers[$i]['name'].'%')
-                ->count();
-
-            array_push($supplierIds, ['name' => $suppliers[$i]['name'], 'count' => $count]);
-        }
-
-        $totalCountSuppliers = array_sum(array_column($supplierIds, 'count'));
+        $totalCountSuppliers = array_sum($counts);
 
         // Evitar división por cero
         if ($totalCountSuppliers === 0) {
@@ -74,20 +67,6 @@ class AffiliationSupplierChart extends ChartWidget
             ];
         }
 
-        // Mapeo de IDs a nombres de planes
-        $suppliers = [
-            1 => ['label' => 'ATENMEDI', 'color' => '#9ce1ff'], // Esmeralda
-            2 => ['label' => 'ILS', 'color' => '#25b4e7'],   // Ámbar
-            3 => ['label' => 'TDEC', 'color' => '#2d89ca'], // Rojo
-        ];
-
-        $counts = [
-            'ATENMEDI' => $supplierIds[0]['count'],
-            'ILS' => $supplierIds[1]['count'],
-            'TDEC' => $supplierIds[2]['count'],
-        ];
-
-        // Cálculo de porcentajes
         $data = [
             round(($counts['ATENMEDI'] * 100) / $totalCountSuppliers),
             round(($counts['ILS'] * 100) / $totalCountSuppliers),
@@ -95,19 +74,14 @@ class AffiliationSupplierChart extends ChartWidget
         ];
 
         return [
-            'labels' => [$suppliers[1]['label'], $suppliers[2]['label'], $suppliers[3]['label']],
+            'labels' => array_keys(self::SUPPLIER_LABELS),
             'datasets' => [
                 [
                     'label' => 'Porcentaje',
                     'data' => $data,
-                    'backgroundColor' => [
-                        $suppliers[1]['color'],
-                        $suppliers[2]['color'],
-                        $suppliers[3]['color'],
-                    ],
-                    'label' => 'Dataset 1',
+                    'backgroundColor' => array_values(self::SUPPLIER_LABELS),
                     // Efectos de interacción mejorados
-                    'hoverOffset' => 30, // El segmento sobresale significativamente al pasar el mouse
+                    'hoverOffset' => 30,
                     'borderColor' => '#ffffff',
                     'borderWidth' => 3,
                     'hoverBorderColor' => '#ffffff',
@@ -117,7 +91,6 @@ class AffiliationSupplierChart extends ChartWidget
         ];
     }
 
-    // v2
     protected function getOptions(): RawJs
     {
         return RawJs::make(<<<'JS'
@@ -146,7 +119,6 @@ class AffiliationSupplierChart extends ChartWidget
                             }
                         }
                     },
-                    // Configuración para mostrar texto DENTRO de las porciones
                     datalabels: {
                         display: true,
                         color: '#ffffff',
@@ -161,12 +133,10 @@ class AffiliationSupplierChart extends ChartWidget
                         formatter: (value) => {
                             return value > 0 ? value + '%' : '';
                         },
-                        // Sombra para mejorar legibilidad sobre colores claros
                         textShadowColor: 'rgba(0, 0, 0, 0.5)',
                         textShadowBlur: 4
                     }
                 },
-                // Optimización de espacio
                 layout: {
                     padding: 20
                 }
