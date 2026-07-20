@@ -38,20 +38,22 @@ it('enlace de cotizacion corporativa usa panel business', function (): void {
     expect($source)->toContain("panel: 'business'");
 });
 
-it('infolist individual usa contenedor de tabs como agentes', function (): void {
+it('infolist individual usa contenedor de tabs con render Livewire del tab activo', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Schemas/AffiliationInfolist.php');
 
     expect($source)
         ->toContain('TABS_CONTAINER')
         ->toContain("'class' => self::TABS_CONTAINER")
-        ->toContain('->persistTab()');
+        ->toContain("->livewireProperty('affiliationInfolistTab')")
+        ->not->toContain('->persistTab()');
 });
 
-it('infolist corporativa usa contenedor de tabs como agentes', function (): void {
+it('infolist corporativa usa contenedor de tabs con render Livewire del tab activo', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Schemas/AffiliationCorporateInfolist.php');
 
     expect($source)
         ->toContain('TABS_CONTAINER')
         ->toContain("'class' => self::TABS_CONTAINER")
-        ->toContain('->persistTab()');
+        ->toContain("->livewireProperty('affiliationCorporateInfolistTab')")
+        ->not->toContain('->persistTab()');
 });

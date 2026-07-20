@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\SystemNotificationKey;
 use App\Http\Controllers\NotificationController;
+use App\Mail\ScheduledTaskRunReportMail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 final class ScheduledTaskRunReport
@@ -41,6 +44,8 @@ final class ScheduledTaskRunReport
     /** @var array{relative_path: string, filename: string}|null */
     private static ?array $documentAttachment = null;
 
+    private static ?SystemNotificationKey $notificationKey = null;
+
     /**
      * @param  list<string>  $readingNotes
      */
@@ -48,6 +53,7 @@ final class ScheduledTaskRunReport
         string $taskTitle,
         ?string $taskDescription = null,
         array $readingNotes = [],
+        ?SystemNotificationKey $notificationKey = null,
     ): void {
         self::$active = true;
         self::$taskTitle = $taskTitle;
@@ -60,6 +66,7 @@ final class ScheduledTaskRunReport
         self::$criticalMessage = null;
         self::$failureFootnote = null;
         self::$documentAttachment = null;
+        self::$notificationKey = $notificationKey;
     }
 
     public static function isActive(): bool
@@ -148,13 +155,82 @@ final class ScheduledTaskRunReport
         try {
             $fullMessage = self::buildSummaryMessage();
             $imageCaption = self::buildWhatsAppImageCaption();
+            $phones = self::recipientPhones();
+            $emails = self::recipientEmails();
 
-            foreach (ScheduledNotificationPhones::all() as $phone) {
+            if ($phones === [] && $emails === []) {
+                Log::warning('ScheduledTaskRunReport: sin destinatarios para el resumen.', [
+                    'task' => self::$taskTitle,
+                    'notification_key' => self::$notificationKey?->value,
+                ]);
+
+                return;
+            }
+
+            foreach ($phones as $phone) {
                 self::notifySummaryToPhone($phone, $fullMessage, $imageCaption);
             }
+
+            foreach ($emails as $email) {
+                self::notifySummaryToEmail($email, $fullMessage);
+            }
         } catch (Throwable $exception) {
-            Log::error('ScheduledTaskRunReport: no se pudo enviar resumen por WhatsApp.', [
+            Log::error('ScheduledTaskRunReport: no se pudo enviar resumen.', [
                 'task' => self::$taskTitle,
+                'message' => $exception->getMessage(),
+            ]);
+        } finally {
+            self::$notificationKey = null;
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function recipientPhones(): array
+    {
+        if (self::$notificationKey !== null) {
+            return SystemNotificationRecipients::phones(self::$notificationKey);
+        }
+
+        return ScheduledNotificationPhones::all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function recipientEmails(): array
+    {
+        if (self::$notificationKey === null) {
+            return [];
+        }
+
+        return SystemNotificationRecipients::emails(self::$notificationKey);
+    }
+
+    private static function notifySummaryToEmail(string $email, string $fullMessage): void
+    {
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Log::warning('ScheduledTaskRunReport: correo inválido para resumen.', [
+                'task' => self::$taskTitle,
+                'email' => $email,
+            ]);
+
+            return;
+        }
+
+        try {
+            Mail::to($email)->send(new ScheduledTaskRunReportMail(
+                recipientEmail: $email,
+                taskTitle: self::$taskTitle,
+                summaryBody: $fullMessage,
+                attachmentFilename: self::$documentAttachment['filename'] ?? null,
+                attachmentRelativePath: self::$documentAttachment['relative_path'] ?? null,
+            ));
+        } catch (Throwable $exception) {
+            Log::error('ScheduledTaskRunReport: no se pudo enviar resumen por email.', [
+                'task' => self::$taskTitle,
+                'email' => $email,
                 'message' => $exception->getMessage(),
             ]);
         }

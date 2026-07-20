@@ -241,8 +241,8 @@ class TelemedicineCasesTable
                                     $mainServiceName = $latestConsultation?->telemedicineServiceList?->name ?? 'NO ESPECIFICADO';
                                     $derivedServiceName = $latestConsultation?->telemedicineServiceListDrift?->name ?? 'NO ESPECIFICADO';
                                     $patient = $record->telemedicinePatient;
-                                    $holderName = (string) ($patient?->full_name ?? $record->patient_name ?? 'NO ESPECIFICADO');
-                                    $holderIdentification = (string) ($patient?->nro_identificacion ?? 'NO ESPECIFICADO');
+                                    $patientName = (string) ($patient?->full_name ?? $record->patient_name ?? 'NO ESPECIFICADO');
+                                    $patientIdentification = (string) ($patient?->nro_identificacion ?? 'NO ESPECIFICADO');
                                     $patientRelationship = 'TITULAR';
                                     $contractor = $patient?->afilliation_id === null ? 'CORPORATIVO' : 'INDIVIDUAL';
 
@@ -255,10 +255,8 @@ class TelemedicineCasesTable
                                         'date_service' => now(),
                                         'reference_number' => $latestConsultation?->code_reference ?? $record->code,
                                         'status' => 'PENDIENTE',
-                                        'holder' => $holderName,
-                                        'ci_holder' => $holderIdentification,
-                                        'patient' => (string) ($record->patient_name ?? $holderName),
-                                        'ci_patient' => $holderIdentification,
+                                        'patient' => (string) ($record->patient_name ?? $patientName),
+                                        'ci_patient' => $patientIdentification,
                                         'relationship_patient' => $patientRelationship,
                                         'contractor' => $contractor,
                                         'symptoms_diagnosis' => (string) ($latestConsultation?->diagnostic_impression ?? $record->reason ?? 'NO ESPECIFICADO'),

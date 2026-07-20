@@ -13,6 +13,8 @@ class StatsOverview extends StatsOverviewWidget
 {
     use InteractsWithPageTable;
 
+    private const CARD_TRANSITION = 'transition-[transform,box-shadow,border-color] duration-300';
+
     protected function getTablePage(): string
     {
         return ListAffiliations::class;
@@ -23,24 +25,20 @@ class StatsOverview extends StatsOverviewWidget
         $now = Carbon::now();
         $mesActualNombre = $now->translatedFormat('F');
 
-        // --- CÁLCULOS PARA AFILIADOS INDIVIDUALES ---
-        $totalAfiliados = $this->getPageTableQuery()->where('status', 'ACTIVA')->count();
-        $totalAfiliadosMes = $this->getPageTableQuery()
+        $stats = $this->getPageTableQuery()
+            ->reorder()
             ->where('status', 'ACTIVA')
-            ->whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
-            ->count();
+            ->selectRaw('COUNT(*) as total_count')
+            ->selectRaw('SUM(CASE WHEN MONTH(created_at) = ? AND YEAR(created_at) = ? THEN 1 ELSE 0 END) as month_count', [
+                $now->month,
+                $now->year,
+            ])
+            ->first();
 
-        // --- CÁLCULOS PARA TOTAL NETO ---
-        $totalNeto = $this->getPageTableQuery()->where('status', 'ACTIVA')->sum('total_amount');
-        $totalNetoMes = $this->getPageTableQuery()
-            ->where('status', 'ACTIVA')
-            ->whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
-            ->sum('total_amount');
+        $totalAfiliados = (int) ($stats->total_count ?? 0);
+        $totalAfiliadosMes = (int) ($stats->month_count ?? 0);
 
-        $cardAfiliados = 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-info-200/60 dark:border-info-700/50 bg-gradient-to-br from-info-50/90 via-white to-info-50/50 dark:from-info-950/40 dark:via-gray-900/80 dark:to-info-900/20 hover:shadow-lg hover:shadow-info-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-info-400/50 hover:border-info-300 dark:hover:border-info-500';
-        $cardNeto = 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-primary-200/60 dark:border-primary-700/50 bg-gradient-to-br from-primary-50/90 via-white to-primary-50/50 dark:from-primary-950/40 dark:via-gray-900/80 dark:to-primary-900/20 hover:shadow-lg hover:shadow-primary-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-primary-400/50 hover:border-primary-300 dark:hover:border-primary-500';
+        $cardAfiliados = 'cursor-default overflow-hidden '.self::CARD_TRANSITION.' rounded-2xl border border-info-200/60 dark:border-info-700/50 bg-gradient-to-br from-info-50/90 via-white to-info-50/50 dark:from-info-950/40 dark:via-gray-900/80 dark:to-info-900/20 hover:shadow-lg hover:shadow-info-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-info-400/50 hover:border-info-300 dark:hover:border-info-500';
 
         return [
             Stat::make('Total Afiliados Individuales', $totalAfiliados.' Afiliados')
@@ -57,30 +55,6 @@ class StatsOverview extends StatsOverviewWidget
                 ])
                 ->value(new HtmlString("<span x-text='label'>{$totalAfiliados} Afiliados</span>"))
                 ->description(new HtmlString("<span x-text='desc'>Con Planes Individuales</span>")),
-
-            /*    Stat::make('Total Neto', 'US$ '.number_format($totalNeto, 2, ',', '.'))
-                ->icon('heroicon-m-currency-dollar')
-                ->description('Total Neto Cuantificable')
-                ->descriptionIcon('heroicon-m-arrow-trending-down')
-                ->color('planIdeal')
-                ->extraAttributes([
-                    'class' => $cardNeto,
-                    'style' => 'min-height: 130px;',
-                    'x-data' => "{
-                        valor: 'US$ ".number_format($totalNeto, 2, ',', '.')."',
-                        desc: 'Total Neto Cuantificable'
-                    }",
-                    '@mouseenter' => "
-                        valor = 'US$ ".number_format($totalNetoMes, 2, ',', '.')."';
-                        desc = 'Recaudado en ".$mesActualNombre."';
-                    ",
-                    '@mouseleave' => "
-                        valor = 'US$ ".number_format($totalNeto, 2, ',', '.')."';
-                        desc = 'Total Neto Cuantificable';
-                    ",
-                ])
-                ->value(new HtmlString("<span x-text='valor'>US$ ".number_format($totalNeto, 2, ',', '.').'</span>'))
-                ->description(new HtmlString("<span x-text='desc'>Total Neto Cuantificable</span>")),   */
         ];
     }
 }

@@ -8,7 +8,8 @@ use Filament\Actions\Action;
 use Filament\Support\Enums\Width;
 use App\Models\CorporateQuoteData;
 use Filament\Actions\CreateAction;
-use Filament\Actions\ImportAction;
+use App\Filament\Actions\ImportAction;
+use App\Filament\Imports\Jobs\ImportCsv;
 use Illuminate\Support\Facades\Log;
 use App\Models\AffiliationCorporate;
 use Illuminate\Validation\Rules\File;
@@ -137,14 +138,16 @@ class CorporateQuoteDataRelationManager extends RelationManager
                         ->icon('fluentui-database-arrow-up-20')
                         ->color('success')
                         ->modalHeading('Importar Población')
-                        // ->modalDescription('Permite recalcular el rango etario, para verificar posibles errores en la data recibida por parte del agente.')
+                        ->csvDelimiter(';')
+                        ->job(ImportCsv::class)
+                        ->chunkSize(100)
                         ->options(function (RelationManager $livewire) {
                             return [
                                 'corporate_quote_id' => $livewire->ownerRecord->id,
                             ];
                         })
                         ->fileRules([
-                            File::types(['csv', 'txt'])->max(1024),
+                            File::types(['csv', 'txt'])->max(5120),
                         ]),
                     Action::make('download_file')
                         ->label('Descargar archivo')

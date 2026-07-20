@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\Companies\Schemas;
 
 use App\Models\Company;
+use App\Models\CompanyObservation;
 use App\Support\Companies\CompanyAssociateRegistrar;
 use App\Support\Companies\CompanyResponsibleDays;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -87,11 +90,63 @@ class CompanyInfolist
                             ->schema([
                                 self::publicRegistrationSection(),
                             ]),
+                        Tab::make('Notas y Observaciones')
+                            ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                            ->schema([
+                                self::observationsSection(),
+                            ]),
                         Tab::make('Auditoría')
                             ->icon(Heroicon::OutlinedClock)
                             ->schema([
                                 self::auditSection(),
                             ]),
+                    ]),
+            ]);
+    }
+
+    private static function observationsSection(): Section
+    {
+        return Section::make('Notas y Observaciones')
+            ->description(fn (Company $record): string => 'Bitácora de notas registradas por los analistas. Total: '.(int) ($record->companyObservations?->count() ?? 0).'. Use «Agregar Notas/Observaciones» en la cabecera para añadir una nueva.')
+            ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+            ->extraAttributes([
+                'class' => self::IOS_SECTION_CLASS,
+            ])
+            ->schema([
+                Grid::make(1)
+                    ->extraAttributes([
+                        'class' => self::IOS_INNER_CLASS,
+                    ])
+                    ->schema([
+                        RepeatableEntry::make('companyObservations')
+                            ->label('')
+                            ->placeholder('No hay notas u observaciones registradas para esta empresa.')
+                            ->table([
+                                TableColumn::make('Fecha')->width('20%'),
+                                TableColumn::make('Observación')->width('55%'),
+                                TableColumn::make('Registrado por')->width('25%'),
+                            ])
+                            ->schema([
+                                TextEntry::make('created_at')
+                                    ->label('Fecha')
+                                    ->icon(Heroicon::OutlinedCalendarDays)
+                                    ->dateTime('d/m/Y H:i')
+                                    ->helperText(fn (CompanyObservation $record): ?string => $record->created_at?->diffForHumans())
+                                    ->placeholder('—'),
+                                TextEntry::make('description')
+                                    ->label('Observación')
+                                    ->icon(Heroicon::OutlinedChatBubbleLeftEllipsis)
+                                    ->wrap()
+                                    ->placeholder('—'),
+                                TextEntry::make('created_by')
+                                    ->label('Registrado por')
+                                    ->icon(Heroicon::OutlinedUser)
+                                    ->weight('medium')
+                                    ->getStateUsing(fn (CompanyObservation $record): string => $record->createdBy?->name ?? (string) ($record->created_by ?? '—'))
+                                    ->helperText(fn (CompanyObservation $record): ?string => $record->createdBy?->email)
+                                    ->placeholder('—'),
+                            ])
+                            ->columnSpanFull(),
                     ]),
             ]);
     }

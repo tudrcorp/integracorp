@@ -20,7 +20,6 @@ use App\Models\OperationCoordinationService;
 use App\Models\Permission;
 use App\Models\UserPermission;
 use BackedEnum;
-use Carbon\Carbon;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
@@ -38,16 +37,6 @@ class OperationCoordinationServiceResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-square-3-stack-3d';
 
     protected static string|UnitEnum|null $navigationGroup = 'COORDINACIÓN DE SERVICIOS';
-
-    public static function getNavigationBadge(): ?string
-    {
-        return OperationCoordinationService::whereDate('created_at', Carbon::today())->count();
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return OperationCoordinationService::whereDate('created_at', Carbon::today())->count() > 0 ? 'success' : 'gray';
-    }
 
     public static function form(Schema $schema): Schema
     {

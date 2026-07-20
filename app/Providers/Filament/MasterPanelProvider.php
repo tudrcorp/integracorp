@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Master\Pages\ViewMyHierarchy;
 use App\Filament\Master\Resources\Agencies\AgencyResource;
 use App\Models\Agency;
 use Filament\Actions\Action;
@@ -53,6 +54,7 @@ class MasterPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Master/Pages'), for: 'App\Filament\Master\Pages')
             ->pages([
                 Dashboard::class,
+                ViewMyHierarchy::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Master/Widgets'), for: 'App\Filament\Master\Widgets')
             ->widgets([
@@ -106,7 +108,12 @@ class MasterPanelProvider extends PanelProvider
                 'profile' => fn (Action $action) => $action->label('Perfil Master')
                     ->icon('heroicon-o-user-circle')
                     ->url(AgencyResource::getUrl('edit', ['record' => DB::table('agencies')->select('id')->where('code', Auth::user()->code_agency)->first('id')->id], panel: 'master')),
-                // ...
+                Action::make('viewHierarchy')
+                    ->label('Ver Jerarquía')
+                    ->icon('heroicon-o-squares-2x2')
+                    ->color('info')
+                    ->url(fn (): string => url('/master/ver-jerarquia'))
+                    ->visible(fn (): bool => filled(Auth::user()?->code_agency)),
                 'logout' => fn (Action $action) => $action
                     ->label('Cerrar Sesión')
                     ->color('danger')

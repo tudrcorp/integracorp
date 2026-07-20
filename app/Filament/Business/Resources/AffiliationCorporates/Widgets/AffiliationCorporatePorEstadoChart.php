@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\Widgets;
 
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
+use App\Models\City;
 use App\Models\State;
 use Filament\Notifications\Notification;
 use Filament\Support\RawJs;
@@ -103,8 +104,12 @@ class AffiliationCorporatePorEstadoChart extends ChartWidget
                 ->groupBy('city_id')
                 ->get();
 
+            $cityNames = City::query()
+                ->whereIn('id', $stats->pluck('city_id')->filter()->all())
+                ->pluck('definition', 'id');
+
             foreach ($stats as $stat) {
-                $cityName = DB::table('cities')->where('id', $stat->city_id)->value('definition') ?? "Ciudad #{$stat->city_id}";
+                $cityName = $cityNames->get($stat->city_id) ?? "Ciudad #{$stat->city_id}";
                 $labels[] = $cityName;
                 $values[] = $stat->total;
                 $backgroundColors[] = sprintf('#%06X', mt_rand(0x444444, 0xAAAAAA));

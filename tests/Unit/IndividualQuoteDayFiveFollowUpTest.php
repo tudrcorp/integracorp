@@ -69,5 +69,6 @@ it('envia el seguimiento de 5 dias en cadena con mensaje y video', function (): 
         ->toContain('Bus::chain')
         ->toContain('SendNotificacionWhatsAppVideo')
         ->toContain('followUpVideoUrl()')
-        ->toContain('IndividualQuoteFollowUp::reportPhones()');
+        ->toContain('IndividualQuoteFollowUp::resolveRecipientPhones($quotes)')
+        ->toContain('IndividualQuoteFollowUpInternalCopies::dispatch');
 });

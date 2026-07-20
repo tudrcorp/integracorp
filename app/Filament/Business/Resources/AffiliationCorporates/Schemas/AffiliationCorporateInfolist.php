@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\Schemas;
 
+use App\Filament\Business\Resources\AffiliationCorporates\Support\AffiliationCorporateInfolistTab;
 use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
-use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
 use App\Models\AffiliationCorporateDocument;
 use App\Models\AffiliationCorporateObservation;
@@ -35,8 +35,6 @@ class AffiliationCorporateInfolist
 
     private const IOS_INSET_GROUP_CLASS = 'rounded-xl border border-slate-200/60 bg-slate-50/50 p-3 dark:border-white/10 dark:bg-white/[0.04] sm:p-4';
 
-    private const IOS_REPEATABLE_TABLE_SCROLL_CLASS = 'min-w-0 max-w-full overflow-x-auto overscroll-x-contain [&_table]:w-full [&_table]:min-w-[68rem] [&_table]:table-fixed [&_td]:align-top [&_td]:break-words [&_th]:whitespace-nowrap [&_th]:text-xs [&_th]:leading-tight';
-
     private static function statusColor(?string $state): string
     {
         return match ($state) {
@@ -57,17 +55,13 @@ class AffiliationCorporateInfolist
         };
     }
 
-    private static function affiliateBusinessContextColor(mixed $affiliateValue, mixed $ownerValue): string
+    private static function loadedRelationCount(AffiliationCorporate $record, string $relation): int
     {
-        if (blank($affiliateValue)) {
-            return 'gray';
+        if ($record->relationLoaded($relation)) {
+            return $record->getRelation($relation)->count();
         }
 
-        if (blank($ownerValue)) {
-            return 'info';
-        }
-
-        return (int) $affiliateValue === (int) $ownerValue ? 'success' : 'warning';
+        return (int) $record->{$relation}()->count();
     }
 
     /**
@@ -141,12 +135,13 @@ class AffiliationCorporateInfolist
             ->components([
                 Tabs::make('affiliationCorporateInfolistTabs')
                     ->columnSpanFull()
-                    ->persistTab()
+                    ->livewireProperty('affiliationCorporateInfolistTab')
+                    ->id('affiliation-corporate-infolist-tabs')
                     ->extraAttributes([
                         'class' => self::TABS_CONTAINER,
                     ])
                     ->tabs([
-                        Tab::make('Afiliación corporativa')
+                        AffiliationCorporateInfolistTab::AFILIACION => Tab::make('Afiliación corporativa')
                             ->icon(Heroicon::OutlinedBuildingOffice2)
                             ->schema([
                                 Section::make('Afiliación corporativa')
@@ -255,7 +250,7 @@ class AffiliationCorporateInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Ubicación fiscal')
+                        AffiliationCorporateInfolistTab::UBICACION => Tab::make('Ubicación fiscal')
                             ->icon(Heroicon::OutlinedMapPin)
                             ->schema([
                                 Section::make('Ubicación y datos fiscales')
@@ -310,7 +305,7 @@ class AffiliationCorporateInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Documento del contratante')
+                        AffiliationCorporateInfolistTab::DOCUMENTO => Tab::make('Documento del contratante')
                             ->icon(Heroicon::OutlinedDocumentArrowDown)
                             ->schema([
                                 Section::make('Documento del contratante')
@@ -352,7 +347,7 @@ class AffiliationCorporateInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Contacto')
+                        AffiliationCorporateInfolistTab::CONTACTO => Tab::make('Contacto')
                             ->icon(Heroicon::OutlinedUserCircle)
                             ->schema([
                                 Section::make('Solicitante / contacto')
@@ -404,7 +399,7 @@ class AffiliationCorporateInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Negocio')
+                        AffiliationCorporateInfolistTab::NEGOCIO => Tab::make('Negocio')
                             ->icon(Heroicon::OutlinedBriefcase)
                             ->schema([
                                 Section::make('Negocio y alcance')
@@ -455,81 +450,11 @@ class AffiliationCorporateInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Afiliados asociados')
-                            ->icon(Heroicon::OutlinedUsers)
-                            ->schema([
-                                Section::make('Afiliados asociados')
-                                    ->description('Resumen principal de afiliados vinculados. La unidad y línea en verde coinciden con la afiliación; en ámbar están pendientes de sincronizar.')
-                                    ->icon(Heroicon::OutlinedUsers)
-                                    ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
-                                    ])
-                                    ->schema([
-                                        Grid::make(1)
-                                            ->extraAttributes([
-                                                'class' => self::IOS_INNER_CLASS.' min-w-0 overflow-hidden',
-                                            ])
-                                            ->schema([
-                                                RepeatableEntry::make('corporateAffiliates')
-                                                    ->label('')
-                                                    ->placeholder('No hay afiliados asociados a esta afiliación corporativa.')
-                                                    ->extraAttributes([
-                                                        'class' => self::IOS_REPEATABLE_TABLE_SCROLL_CLASS,
-                                                    ])
-                                                    ->table([
-                                                        TableColumn::make('Nombre')->width('20%'),
-                                                        TableColumn::make('Identificación')->width('8%'),
-                                                        TableColumn::make('Correo')->width('10%'),
-                                                        TableColumn::make('Estatus')->width('5%'),
-                                                        TableColumn::make('Código ILS')->width('7%')->wrapHeader(),
-                                                        TableColumn::make('Desde')->width('6%'),
-                                                        TableColumn::make('Hasta')->width('6%'),
-                                                    ])
-                                                    ->schema([
-                                                        TextEntry::make('first_name')
-                                                            ->label('Nombre')
-                                                            ->icon(Heroicon::OutlinedUser)
-                                                            ->lineClamp(2)
-                                                            ->formatStateUsing(fn (mixed $state, $record): string => trim(((string) ($state ?? '')).' '.((string) ($record->last_name ?? ''))) ?: '—'),
-                                                        TextEntry::make('nro_identificacion')
-                                                            ->label('Identificación')
-                                                            ->copyable()
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('email')
-                                                            ->label('Correo')
-                                                            ->copyable()
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('status')
-                                                            ->label('Estatus')
-                                                            ->badge()
-                                                            ->color(fn (?string $state): string => self::affiliateStatusColor($state))
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('vaucherIls')
-                                                            ->label('Código ILS')
-                                                            ->icon(Heroicon::OutlinedTicket)
-                                                            ->badge()
-                                                            ->color('info')
-                                                            ->copyable()
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('dateInit')
-                                                            ->label('Vigencia desde')
-                                                            ->icon(Heroicon::OutlinedCalendarDays)
-                                                            ->formatStateUsing(fn (mixed $state): string => self::formatLegacyDateColumn($state) ?? '—'),
-                                                        TextEntry::make('dateEnd')
-                                                            ->label('Vigencia hasta')
-                                                            ->icon(Heroicon::OutlinedCalendarDays)
-                                                            ->formatStateUsing(fn (mixed $state): string => self::formatLegacyDateColumn($state) ?? '—'),
-                                                    ])
-                                                    ->columnSpanFull(),
-                                            ]),
-                                    ])
-                                    ->columnSpanFull(),
-                            ]),
-                        Tab::make('Planes asociados')
+                        AffiliationCorporateInfolistTab::PLANES => Tab::make('Planes asociados')
                             ->icon(Heroicon::OutlinedRectangleStack)
                             ->schema([
                                 Section::make('Planes asociados')
-                                    ->description(fn (AffiliationCorporate $record): string => 'Detalle de planes vinculados a la afiliación corporativa. Total: '.(int) ($record->affiliationCorporatePlans?->count() ?? 0))
+                                    ->description(fn (AffiliationCorporate $record): string => 'Detalle de planes vinculados a la afiliación corporativa. Total: '.self::loadedRelationCount($record, 'affiliationCorporatePlans'))
                                     ->icon(Heroicon::OutlinedRectangleStack)
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
@@ -610,7 +535,7 @@ class AffiliationCorporateInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Pagos')
+                        AffiliationCorporateInfolistTab::PAGOS => Tab::make('Pagos')
                             ->icon(Heroicon::OutlinedBanknotes)
                             ->schema([
                                 Section::make('Pagos')
@@ -647,7 +572,7 @@ class AffiliationCorporateInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Expediente digital')
+                        AffiliationCorporateInfolistTab::EXPEDIENTE => Tab::make('Expediente digital')
                             ->icon(Heroicon::OutlinedFolderOpen)
                             ->schema([
                                 Section::make('Expediente digital')
@@ -771,11 +696,11 @@ class AffiliationCorporateInfolist
                                     ])
                                     ->columnSpanFull(),
                             ]),
-                        Tab::make('Observaciones')
+                        AffiliationCorporateInfolistTab::OBSERVACIONES => Tab::make('Observaciones')
                             ->icon(Heroicon::OutlinedChatBubbleLeftRight)
                             ->schema([
                                 Section::make('Observaciones')
-                                    ->description(fn (AffiliationCorporate $record): string => 'Bitácora de notas registradas por los analistas. Total: '.(int) ($record->affiliationCorporateObservations?->count() ?? 0).'. Use «Agregar observación» en la cabecera para añadir una nueva.')
+                                    ->description(fn (AffiliationCorporate $record): string => 'Bitácora de notas registradas por los analistas. Total: '.self::loadedRelationCount($record, 'affiliationCorporateObservations').'. Use «Agregar observación» en la cabecera para añadir una nueva.')
                                     ->icon(Heroicon::OutlinedChatBubbleLeftRight)
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,

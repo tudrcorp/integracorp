@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\OperationCoordinationService;
-use App\Models\OperationOnCallUser;
 use App\Models\TelemedicineServiceList;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use Filament\Notifications\Notification;
@@ -21,8 +20,6 @@ class OperationCoordinationServiceController extends Controller
 
             try {
 
-                $colaborador = OperationOnCallUser::where('date_OnCall', now()->format('d/m/Y'))->first();
-
                 $service = TelemedicineServiceList::find($record['telemedicine_service_list_id']);
 
                 $operationCoordinationService = OperationCoordinationService::create([
@@ -37,9 +34,7 @@ class OperationCoordinationServiceController extends Controller
                     'business_unit_id' => $patient['business_unit_id'],
                     'reference_number' => $record['code_reference'],
                     'status' => 'PENDIENTE',
-                    'holder' => $colaborador->name,
                     'telemedicine_priority_id' => $record['telemedicine_priority_id'],
-                    'ci_holder' => $colaborador->rrhh_colaborador->cedula,
                     'patient' => $record['full_name'],
                     'ci_patient' => $patient['nro_identificacion'],
                     'birth_date_patient' => $patient['birth_date'],

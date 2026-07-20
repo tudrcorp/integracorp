@@ -61,6 +61,7 @@ class CompanyResource extends Resource
         return parent::getEloquentQuery()
             ->with([
                 'planGenerator',
+                'companyObservations.createdBy:id,name,email',
                 'responsibles' => fn ($query) => $query
                     ->withCount('associates')
                     ->with([

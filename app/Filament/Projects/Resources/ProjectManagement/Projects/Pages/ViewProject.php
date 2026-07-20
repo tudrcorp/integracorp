@@ -17,6 +17,9 @@ class ViewProject extends ViewRecord
         $record = parent::resolveRecord($key);
 
         return $record->load([
+            'scrumRoles.productOwner:id,fullName',
+            'scrumRoles.scrumMaster:id,fullName',
+            'activeSprint:id,project_id,name,status',
             'subprojects' => fn ($query) => $query
                 ->withCount([
                     'activities',

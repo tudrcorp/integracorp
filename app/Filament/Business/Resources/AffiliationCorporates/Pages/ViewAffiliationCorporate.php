@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\AffiliationCorporates\Pages;
 
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use App\Filament\Business\Resources\AffiliationCorporates\Concerns\OptimizesAffiliationCorporateInfolistPerformance;
 use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -12,44 +13,18 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class ViewAffiliationCorporate extends ViewRecord
 {
+    use OptimizesAffiliationCorporateInfolistPerformance;
+
     protected static string $resource = AffiliationCorporateResource::class;
 
     public function getRelationManagers(): array
     {
         return [];
-    }
-
-    protected function resolveRecord(int|string $key): Model
-    {
-        $record = parent::resolveRecord($key);
-
-        $record->load([
-            'agent',
-            'agency',
-            'country',
-            'state',
-            'city',
-            'region',
-            'corporate_quote',
-            'accountManager',
-            'businessUnit',
-            'businessLine',
-            'corporateAffiliates.businessLine:id,definition',
-            'corporateAffiliates.businessUnit:id,definition',
-            'affiliationCorporateObservations.createdBy:id,name,email',
-            'affiliationCorporatePlans.plan',
-            'affiliationCorporatePlans.coverage',
-            'affiliationCorporatePlans.ageRange',
-            'affiliationCorporateDocuments',
-        ]);
-
-        return $record;
     }
 
     protected function getHeaderActions(): array

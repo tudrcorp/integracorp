@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Actions;
 
+use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
 use App\Http\Controllers\UtilsController;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicineCase;
@@ -16,8 +17,8 @@ use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\SecurityAudit;
+use App\Support\Telemedicine\TelemedicineCoverageCatalog;
 use Filament\Actions\Action;
-use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
@@ -25,6 +26,7 @@ use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Livewire\Component;
 
 class RegisterTpaRetailServicesAction
 {
@@ -64,7 +66,7 @@ class RegisterTpaRetailServicesAction
             ->modalDescription('Seleccione servicios adicionales, laboratorios, estudios y consultas con especialistas. Cada selección se enviará a Coordinación de Servicios para su gestión.')
             ->modalSubmitActionLabel('Registrar servicios')
             ->form(self::formSchema())
-            ->action(function (TelemedicinePatient $record, array $data): void {
+            ->action(function (TelemedicinePatient $record, array $data, Component $livewire): void {
                 $selections = self::collectSelections($data);
                 $standaloneServices = self::normalizeStandaloneServices($data[self::STANDALONE_SERVICES_FIELD] ?? []);
 
@@ -87,21 +89,20 @@ class RegisterTpaRetailServicesAction
 
                         foreach ($standaloneServices as $specificService) {
                             $service = self::createCoordinationService($record, $case, $specificService);
+                            self::seedStandaloneManagementItem($record, $case, $service, $specificService);
                             $createdServices[$specificService] = $service->id;
                         }
 
                         foreach (self::categories() as $key => $config) {
-                            $covered = $selections[$key][self::COVERED];
-                            $nonCovered = $selections[$key][self::NOT_COVERED];
+                            $names = $selections[$key];
 
-                            if ($covered === [] && $nonCovered === []) {
+                            if ($names === []) {
                                 continue;
                             }
 
                             $service = self::createCoordinationService($record, $case, $config['specific_service']);
 
-                            self::createItems($record, $case, $service, $config, $covered, self::COVERED);
-                            self::createItems($record, $case, $service, $config, $nonCovered, self::NOT_COVERED);
+                            self::createItems($record, $case, $service, $config, $names);
 
                             $createdServices[$config['specific_service']] = $service->id;
                         }
@@ -120,6 +121,8 @@ class RegisterTpaRetailServicesAction
                         ->body('Los servicios TPA/RETAIL fueron enviados a Coordinación de Servicios para su gestión.')
                         ->success()
                         ->send();
+
+                    $livewire->redirect(self::medicalServicesIndexUrl($case));
                 } catch (\Throwable $exception) {
                     Log::error('Error al registrar servicios TPA/RETAIL: '.$exception->getMessage(), [
                         'telemedicine_patient_id' => $record->id,
@@ -141,6 +144,40 @@ class RegisterTpaRetailServicesAction
             });
     }
 
+    public static function medicalServicesIndexUrl(?TelemedicineCase $case = null): string
+    {
+        $url = OperationCoordinationServiceResource::getUrl('index', [
+            'tab' => 'pendiente',
+        ]);
+
+        if (! $case instanceof TelemedicineCase) {
+            return $url;
+        }
+
+        $groupTitle = self::caseGroupTitle($case);
+
+        if ($groupTitle === '') {
+            return $url;
+        }
+
+        return $url.(str_contains($url, '?') ? '&' : '?').http_build_query([
+            'expand_group' => $groupTitle,
+        ]);
+    }
+
+    public static function caseGroupTitle(TelemedicineCase $case): string
+    {
+        $code = mb_strtoupper(trim((string) ($case->code ?? '')));
+
+        if ($code === '') {
+            return '';
+        }
+
+        $patientName = trim((string) ($case->patient_name ?? ''));
+
+        return $patientName !== '' ? $code.' · '.$patientName : $code;
+    }
+
     /**
      * @return array<int, Section>
      */
@@ -151,11 +188,12 @@ class RegisterTpaRetailServicesAction
                 ->icon('heroicon-o-clipboard-document-list')
                 ->description('Servicios adicionales que el analista puede registrar sin detalle de laboratorios, estudios o especialistas.')
                 ->schema([
-                    CheckboxList::make(self::STANDALONE_SERVICES_FIELD)
+                    Select::make(self::STANDALONE_SERVICES_FIELD)
                         ->label('Servicios disponibles')
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
                         ->options(self::standaloneServiceOptions())
-                        ->bulkToggleable()
-                        ->columns(2)
                         ->helperText('Cada servicio seleccionado genera una solicitud en Coordinación de Servicios.'),
                 ]),
         ];
@@ -163,34 +201,26 @@ class RegisterTpaRetailServicesAction
         foreach (self::categories() as $config) {
             $sections[] = Section::make($config['label'])
                 ->icon($config['icon'])
-                ->columns(2)
                 ->schema([
-                    Select::make($config['covered_field'])
-                        ->label('Cubiertos')
+                    Select::make($config['field'])
+                        ->label($config['label'])
                         ->multiple()
                         ->searchable()
                         ->preload()
-                        ->options(fn (): array => self::catalogOptions(
-                            $config['catalog'],
-                            self::COVERED,
-                            $config['covered_type_column'] ?? 'type',
-                        ))
-                        ->helperText('Ítems con cobertura. Habilitan la creación de la orden de servicio.'),
-                    Select::make($config['non_covered_field'])
-                        ->label('No cubiertos')
-                        ->multiple()
-                        ->searchable()
-                        ->preload()
-                        ->options(fn (): array => self::catalogOptions(
-                            $config['catalog'],
-                            self::NOT_COVERED,
-                            $config['non_covered_type_column'] ?? 'type',
-                        ))
-                        ->helperText('Ítems sin cobertura. Requieren cotización en la gestión.'),
+                        ->options(fn (): array => self::catalogOptions($config['catalog']))
+                        ->helperText('Se listan todos los ítems del catálogo. La cobertura se resuelve automáticamente al registrar.'),
                 ]);
         }
 
         return $sections;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function standaloneSpecificServices(): array
+    {
+        return self::STANDALONE_SPECIFIC_SERVICES;
     }
 
     /**
@@ -201,6 +231,69 @@ class RegisterTpaRetailServicesAction
         return collect(self::STANDALONE_SPECIFIC_SERVICES)
             ->mapWithKeys(static fn (string $service): array => [$service => $service])
             ->all();
+    }
+
+    public static function isStandaloneSpecificService(?string $specificService): bool
+    {
+        $specificService = trim((string) $specificService);
+
+        return $specificService !== ''
+            && in_array($specificService, self::STANDALONE_SPECIFIC_SERVICES, true);
+    }
+
+    public static function isTpaRetailStandaloneCoordination(OperationCoordinationService $record): bool
+    {
+        return mb_strtoupper(trim((string) $record->servicie)) === 'TPA/RETAIL'
+            && self::isStandaloneSpecificService($record->specific_service);
+    }
+
+    /**
+     * Garantiza un ítem gestionable (no cubierto) para cotizar el servicio standalone.
+     */
+    public static function ensureStandaloneManagementItem(OperationCoordinationService $record): void
+    {
+        if (! self::isTpaRetailStandaloneCoordination($record)) {
+            return;
+        }
+
+        $specificService = trim((string) $record->specific_service);
+
+        $exists = $record->telemedicinePatientSpecialties()
+            ->where('specialty', $specificService)
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        TelemedicinePatientSpecialty::query()->create([
+            'telemedicine_patient_id' => $record->telemedicine_patient_id,
+            'telemedicine_case_id' => $record->telemedicine_case_id,
+            'telemedicine_doctor_id' => $record->telemedicine_doctor_id,
+            'telemedicine_consultation_patient_id' => $record->telemedicine_consultation_patient_id,
+            'type' => self::NOT_COVERED,
+            'specialty' => $specificService,
+            'assigned_by' => Auth::id(),
+            'status' => 'PENDIENTE',
+            'operation_coordination_service_id' => $record->id,
+        ]);
+    }
+
+    private static function seedStandaloneManagementItem(
+        TelemedicinePatient $record,
+        TelemedicineCase $case,
+        OperationCoordinationService $service,
+        string $specificService,
+    ): void {
+        TelemedicinePatientSpecialty::query()->create([
+            'telemedicine_patient_id' => $record->id,
+            'telemedicine_case_id' => $case->id,
+            'type' => self::NOT_COVERED,
+            'specialty' => $specificService,
+            'assigned_by' => Auth::id(),
+            'status' => 'PENDIENTE',
+            'operation_coordination_service_id' => $service->id,
+        ]);
     }
 
     /**
@@ -219,7 +312,7 @@ class RegisterTpaRetailServicesAction
     }
 
     /**
-     * @return array<string, array{label: string, icon: string, catalog: class-string, model: class-string, column: string, specific_service: string, covered_field: string, non_covered_field: string, covered_type_column?: string, non_covered_type_column?: string}>
+     * @return array<string, array{label: string, icon: string, catalog: class-string, model: class-string, column: string, specific_service: string, field: string, coverage_resolver: callable(string): bool}>
      */
     private static function categories(): array
     {
@@ -231,8 +324,8 @@ class RegisterTpaRetailServicesAction
                 'model' => TelemedicinePatientLab::class,
                 'column' => 'laboratory',
                 'specific_service' => 'LABORATORIOS',
-                'covered_field' => 'labs_covered',
-                'non_covered_field' => 'labs_non_covered',
+                'field' => 'labs',
+                'coverage_resolver' => static fn (string $name): bool => TelemedicineCoverageCatalog::laboratoryIsCovered($name),
             ],
             'studies' => [
                 'label' => 'Estudios',
@@ -241,8 +334,8 @@ class RegisterTpaRetailServicesAction
                 'model' => TelemedicinePatientStudy::class,
                 'column' => 'study',
                 'specific_service' => 'IMAGENOLOGIA',
-                'covered_field' => 'studies_covered',
-                'non_covered_field' => 'studies_non_covered',
+                'field' => 'studies',
+                'coverage_resolver' => static fn (string $name): bool => TelemedicineCoverageCatalog::studyIsCovered($name),
             ],
             'specialists' => [
                 'label' => 'Consultas con especialistas',
@@ -251,10 +344,8 @@ class RegisterTpaRetailServicesAction
                 'model' => TelemedicinePatientSpecialty::class,
                 'column' => 'specialty',
                 'specific_service' => 'ESPECIALISTA',
-                'covered_field' => 'specialists_covered',
-                'non_covered_field' => 'specialists_non_covered',
-                'covered_type_column' => 'type',
-                'non_covered_type_column' => 'type_two',
+                'field' => 'specialists',
+                'coverage_resolver' => static fn (string $name): bool => TelemedicineCoverageCatalog::specialistIsCovered($name),
             ],
         ];
     }
@@ -263,10 +354,9 @@ class RegisterTpaRetailServicesAction
      * @param  class-string  $catalog
      * @return array<string, string>
      */
-    private static function catalogOptions(string $catalog, string $type, string $typeColumn = 'type'): array
+    private static function catalogOptions(string $catalog): array
     {
         return $catalog::query()
-            ->where($typeColumn, $type)
             ->orderBy('name')
             ->pluck('name', 'name')
             ->all();
@@ -274,17 +364,14 @@ class RegisterTpaRetailServicesAction
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array<string, array<string, array<int, string>>>
+     * @return array<string, array<int, string>>
      */
     private static function collectSelections(array $data): array
     {
         $selections = [];
 
         foreach (self::categories() as $key => $config) {
-            $selections[$key] = [
-                self::COVERED => self::normalizeSelection($data[$config['covered_field']] ?? []),
-                self::NOT_COVERED => self::normalizeSelection($data[$config['non_covered_field']] ?? []),
-            ];
+            $selections[$key] = self::normalizeSelection($data[$config['field']] ?? []);
         }
 
         return $selections;
@@ -304,12 +391,12 @@ class RegisterTpaRetailServicesAction
     }
 
     /**
-     * @param  array<string, array<string, array<int, string>>>  $selections
+     * @param  array<string, array<int, string>>  $selections
      */
     private static function selectionsAreEmpty(array $selections): bool
     {
-        foreach ($selections as $category) {
-            if ($category[self::COVERED] !== [] || $category[self::NOT_COVERED] !== []) {
+        foreach ($selections as $names) {
+            if ($names !== []) {
                 return false;
             }
         }
@@ -351,7 +438,6 @@ class RegisterTpaRetailServicesAction
             'business_unit_id' => $record->business_unit_id,
             'reference_number' => $case->code ?? self::buildReferenceNumber($record),
             'status' => 'PENDIENTE',
-            'holder' => $userName,
             'patient' => $record->full_name,
             'ci_patient' => $record->nro_identificacion ?? '...',
             'birth_date_patient' => $record->birth_date,
@@ -391,7 +477,7 @@ class RegisterTpaRetailServicesAction
     }
 
     /**
-     * @param  array{model: class-string, column: string}  $config
+     * @param  array{model: class-string, column: string, coverage_resolver: callable(string): bool}  $config
      * @param  array<int, string>  $names
      */
     private static function createItems(
@@ -400,16 +486,16 @@ class RegisterTpaRetailServicesAction
         OperationCoordinationService $service,
         array $config,
         array $names,
-        string $type,
     ): void {
         $modelClass = $config['model'];
+        $coverageResolver = $config['coverage_resolver'];
 
         foreach ($names as $name) {
             $modelClass::create([
                 'telemedicine_patient_id' => $record->id,
                 'telemedicine_case_id' => $case->id,
                 $config['column'] => $name,
-                'type' => $type,
+                'type' => $coverageResolver($name) ? self::COVERED : self::NOT_COVERED,
                 'assigned_by' => Auth::id(),
                 'status' => 'PENDIENTE',
                 'operation_coordination_service_id' => $service->id,

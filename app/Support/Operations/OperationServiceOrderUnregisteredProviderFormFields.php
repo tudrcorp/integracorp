@@ -71,6 +71,8 @@ final class OperationServiceOrderUnregisteredProviderFormFields
                         ->columnSpanFull(),
                 ])
                 ->columnSpanFull(),
+
+            ...OperationServiceOrderCoveredPricingFormFields::components(),
         ];
     }
 

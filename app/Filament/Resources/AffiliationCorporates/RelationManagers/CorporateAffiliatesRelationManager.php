@@ -6,7 +6,7 @@ use BackedEnum;
 use Filament\Tables\Table;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\ImportAction;
+use App\Filament\Actions\ImportAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Actions\BulkActionGroup;
 use Illuminate\Validation\Rules\File;

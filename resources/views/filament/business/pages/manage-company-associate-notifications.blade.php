@@ -1,10 +1,13 @@
 <x-filament-panels::page>
     @php
+        $activeKey = $this->getActiveNotificationKeyEnum();
         $settings = $this->settingsRecord;
         $emailCount = $this->configuredEmailCount;
         $phoneCount = $this->configuredPhoneCount;
         $hasRecipients = $this->hasRecipients;
+        $isTaskActive = (bool) ($this->data['is_active'] ?? $settings->isActive());
         $lastUpdated = $settings->updated_at?->timezone(config('app.timezone'))->format('d/m/Y H:i');
+        $managedKeys = \App\Enums\SystemNotificationKey::managed();
     @endphp
 
     @push('styles')
@@ -237,10 +240,93 @@
                 color: var(--can-muted);
                 text-align: center;
             }
+
+            .can-settings-page .can-tabs {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                margin-bottom: 1rem;
+            }
+
+            .can-settings-page .can-tab {
+                border: 1px solid var(--can-line);
+                background: var(--can-panel);
+                color: var(--can-muted);
+                border-radius: 999px;
+                padding: 0.55rem 0.95rem;
+                font-size: 0.86rem;
+                font-weight: 650;
+                transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+            }
+
+            .can-settings-page .can-tab:hover {
+                color: var(--can-text);
+                border-color: rgb(14 165 233 / 35%);
+            }
+
+            .can-settings-page .can-tab.is-active {
+                background: var(--can-accent-soft);
+                border-color: rgb(14 165 233 / 45%);
+                color: var(--can-accent);
+            }
+
+            .can-settings-page .can-tab-status {
+                display: inline-block;
+                width: 0.45rem;
+                height: 0.45rem;
+                border-radius: 999px;
+                margin-right: 0.35rem;
+                vertical-align: middle;
+                background: #16a34a;
+            }
+
+            .can-settings-page .can-tab-status.is-off {
+                background: #dc2626;
+            }
+
+            .can-settings-page .can-status-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                padding: 0.25rem 0.65rem;
+                border-radius: 999px;
+                font-size: 0.75rem;
+                font-weight: 700;
+                letter-spacing: 0.02em;
+                text-transform: uppercase;
+            }
+
+            .can-settings-page .can-status-pill.is-on {
+                background: rgb(22 163 74 / 12%);
+                color: #15803d;
+            }
+
+            .can-settings-page .can-status-pill.is-off {
+                background: rgb(220 38 38 / 12%);
+                color: #b91c1c;
+            }
         </style>
     @endpush
 
-    <div class="can-settings-page space-y-0">
+    <div class="can-settings-page space-y-0" wire:key="notification-center-{{ $activeKey->value }}">
+        <div class="can-tabs" role="tablist" aria-label="Tipos de notificación">
+            @foreach ($managedKeys as $key)
+                @php
+                    $keyIsActive = \App\Support\SystemNotificationRecipients::isActive($key);
+                @endphp
+                <button
+                    type="button"
+                    role="tab"
+                    class="can-tab {{ $activeKey === $key ? 'is-active' : '' }}"
+                    wire:click="selectNotificationKey('{{ $key->value }}')"
+                    aria-selected="{{ $activeKey === $key ? 'true' : 'false' }}"
+                >
+                    <span class="can-tab-status {{ $keyIsActive ? '' : 'is-off' }}" aria-hidden="true"></span>
+                    {{ $key->label() }}
+                </button>
+            @endforeach
+        </div>
+
         <section class="can-hero">
             <div class="can-hero-top">
                 <div class="can-hero-copy">
@@ -248,16 +334,18 @@
                         <x-filament::icon icon="heroicon-o-bell-alert" class="h-6 w-6" />
                     </div>
                     <div>
-                        <h2>Alertas de nuevos asociados</h2>
-                        <p>
-                            Cada registro público dispara de forma asíncrona un correo y un WhatsApp con el detalle del asociado,
-                            la empresa, el responsable y un recordatorio para iniciar la gestión del voucher ILS.
-                        </p>
+                        <div class="mb-2 flex flex-wrap items-center gap-2">
+                            <h2 class="!mb-0">{{ $activeKey->heroTitle() }}</h2>
+                            <span class="can-status-pill {{ $isTaskActive ? 'is-on' : 'is-off' }}" wire:key="task-status-{{ $activeKey->value }}-{{ $isTaskActive ? 'on' : 'off' }}">
+                                {{ $isTaskActive ? 'Activa' : 'Inactiva' }}
+                            </span>
+                        </div>
+                        <p>{{ $activeKey->heroBody() }}</p>
+                        <p class="mt-2 text-sm" style="color: var(--can-muted);">{{ $activeKey->activationHelp() }}</p>
                         <div class="can-flow">
-                            <span class="can-flow-step">1. Registro público</span>
-                            <span class="can-flow-step">2. Cola asíncrona</span>
-                            <span class="can-flow-step">3. Email + WhatsApp</span>
-                            <span class="can-flow-step">4. Gestión voucher ILS</span>
+                            @foreach ($activeKey->flowSteps() as $step)
+                                <span class="can-flow-step">{{ $step }}</span>
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -265,13 +353,22 @@
 
             <div class="can-stats">
                 <div class="can-stat">
+                    <span class="can-stat-label">Estado</span>
+                    <span class="can-stat-value text-base sm:text-lg" wire:key="status-stat-{{ $activeKey->value }}-{{ $isTaskActive ? 'on' : 'off' }}">
+                        {{ $isTaskActive ? 'Activa' : 'Inactiva' }}
+                    </span>
+                    <span class="can-stat-meta">
+                        {{ $activeKey->pausesScheduledTask() ? 'Controla la tarea programada' : 'Controla el envío de alertas' }}
+                    </span>
+                </div>
+                <div class="can-stat">
                     <span class="can-stat-label">Correos activos</span>
-                    <span class="can-stat-value" wire:key="email-count-{{ $emailCount }}">{{ $emailCount }}</span>
+                    <span class="can-stat-value" wire:key="email-count-{{ $activeKey->value }}-{{ $emailCount }}">{{ $emailCount }}</span>
                     <span class="can-stat-meta">Destinatarios por email</span>
                 </div>
                 <div class="can-stat">
                     <span class="can-stat-label">WhatsApp activos</span>
-                    <span class="can-stat-value" wire:key="phone-count-{{ $phoneCount }}">{{ $phoneCount }}</span>
+                    <span class="can-stat-value" wire:key="phone-count-{{ $activeKey->value }}-{{ $phoneCount }}">{{ $phoneCount }}</span>
                     <span class="can-stat-meta">Teléfonos configurados</span>
                 </div>
                 <div class="can-stat">
@@ -286,20 +383,19 @@
 
         <section class="can-callout">
             <div class="can-hero-icon" style="width:2.4rem;height:2.4rem;border-radius:0.8rem;" aria-hidden="true">
-                <x-filament::icon icon="heroicon-o-ticket" class="h-5 w-5" />
+                <x-filament::icon :icon="$activeKey->calloutIcon()" class="h-5 w-5" />
             </div>
             <div>
                 <p>
-                    <strong>Acción requerida para el analista:</strong>
-                    al recibir la alerta debe ingresar a INTEGRACORP → Nuevos Negocios → Asociados y cargar el
-                    <strong>voucher ILS</strong> para activar el plan del asociado registrado.
+                    <strong>{{ $activeKey->calloutTitle() }}</strong>
+                    {{ $activeKey->calloutBody() }}
                 </p>
             </div>
         </section>
 
         @unless ($hasRecipients)
             <div class="can-empty-hint">
-                Aún no hay destinatarios configurados. Agregue al menos un correo o un teléfono para activar las notificaciones.
+                {{ $activeKey->emptyRecipientsHint() }}
             </div>
         @endunless
 

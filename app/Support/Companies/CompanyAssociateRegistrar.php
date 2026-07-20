@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Companies;
 
 use App\Models\Company;
+use App\Models\CompanyAssociate;
 use App\Models\CompanyResponsible;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -17,6 +18,27 @@ final class CompanyAssociateRegistrar
     public static function normalizeIdentityCard(?string $value): string
     {
         return Str::upper(trim(str_replace([' ', '.', '-'], '', (string) $value)));
+    }
+
+    /**
+     * Indica si ya existe un registro con la misma cédula en la fecha indicada (día calendario).
+     */
+    public static function hasIdentityCardRegisteredOnDate(string $identityCard, ?CarbonInterface $date = null): bool
+    {
+        $normalized = self::normalizeIdentityCard($identityCard);
+
+        if ($normalized === '') {
+            return false;
+        }
+
+        $day = Carbon::instance($date ?? now())->toDateString();
+
+        return CompanyAssociate::query()
+            ->whereDate('registered_at', $day)
+            ->get(['identity_card'])
+            ->contains(
+                fn (CompanyAssociate $associate): bool => self::normalizeIdentityCard($associate->identity_card) === $normalized
+            );
     }
 
     public static function calculateAge(?string $birthDate): ?int

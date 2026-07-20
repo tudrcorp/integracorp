@@ -22,8 +22,6 @@ class OperationCoordinationService extends Model
         'reference_number',
         'status',
         'telemedicine_priority_id',
-        'holder',
-        'ci_holder',
         'patient',
         'ci_patient',
         'birth_date_patient',

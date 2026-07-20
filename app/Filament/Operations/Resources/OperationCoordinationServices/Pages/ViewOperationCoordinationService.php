@@ -3,9 +3,11 @@
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Pages;
 
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
+use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRetailServicesAction;
 use App\Models\OperationDocumentList;
 use App\Support\Operations\CoordinationServiceCoveredItemsFinalizer;
 use App\Support\Operations\CoordinationServiceItemsManager;
+use App\Support\Operations\CoordinationServiceQuoteManager;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
@@ -13,6 +15,8 @@ use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
 
 class ViewOperationCoordinationService extends ViewRecord
 {
@@ -29,6 +33,10 @@ class ViewOperationCoordinationService extends ViewRecord
 
     private const INFO_BUTTON_CLASS = 'aviso-btn-ios-info '.self::BUTTON_TAIL;
 
+    private const PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary '.self::BUTTON_TAIL;
+
+    private const WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning '.self::BUTTON_TAIL;
+
     public function getRelationManagers(): array
     {
         return [];
@@ -37,6 +45,28 @@ class ViewOperationCoordinationService extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('create_tpa_retail_service_quote')
+                ->label('Crear cotización')
+                ->icon(Heroicon::OutlinedDocumentCurrencyDollar)
+                ->color('success')
+                ->button()
+                ->visible(fn (): bool => $this->canCreateTpaRetailServiceQuote())
+                ->extraAttributes([
+                    'class' => self::PRIMARY_BUTTON_CLASS,
+                ])
+                ->url(fn (): string => ManageCoordinationServiceItems::getUrl(['record' => $this->getRecord()])),
+
+            Action::make('manage_service_quote')
+                ->label('Gestionar Cotización')
+                ->icon(Heroicon::OutlinedDocumentCurrencyDollar)
+                ->color('warning')
+                ->button()
+                ->visible(fn (): bool => CoordinationServiceQuoteManager::coordinationQuotes($this->getRecord())->isNotEmpty())
+                ->extraAttributes([
+                    'class' => self::WARNING_BUTTON_CLASS,
+                ])
+                ->url(fn (): string => ManageCoordinationServiceQuotes::getUrl(['record' => $this->getRecord()])),
+
             Action::make('upload_coordination_documents')
                 ->label('Cargar documentos')
                 ->icon('heroicon-o-paper-clip')
@@ -130,6 +160,23 @@ class ViewOperationCoordinationService extends ViewRecord
                 ])
                 ->url(OperationCoordinationServiceResource::getUrl()),
         ];
+    }
+
+    private function canCreateTpaRetailServiceQuote(): bool
+    {
+        if (in_array('ATENMEDI', Auth::user()?->departament ?? [], true)) {
+            return false;
+        }
+
+        $record = $this->getRecord();
+
+        if (! RegisterTpaRetailServicesAction::isTpaRetailStandaloneCoordination($record)) {
+            return false;
+        }
+
+        RegisterTpaRetailServicesAction::ensureStandaloneManagementItem($record);
+
+        return CoordinationServiceItemsManager::hasManageServiceSelectableItems($record);
     }
 
     private function coordinationIsEnGestion(): bool

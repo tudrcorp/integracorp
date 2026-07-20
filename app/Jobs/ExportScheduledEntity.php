@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\SystemNotificationKey;
 use App\Support\Concerns\ReportsScheduledExecution;
 use App\Support\Exports\AbstractScheduledEntityExportService;
 use App\Support\ScheduledTaskRunReport;
@@ -99,7 +100,11 @@ class ExportScheduledEntity implements ShouldQueue
                 ScheduledTaskRunReport::addMetric('Exportaciones antiguas eliminadas', $deleted);
             },
             $description,
-            $readingNotes,
+            [
+                ...$readingNotes,
+                'Los destinatarios se gestionan en el Centro de notificaciones (Respaldo de Estructura).',
+            ],
+            SystemNotificationKey::StructureBackup,
         );
     }
 

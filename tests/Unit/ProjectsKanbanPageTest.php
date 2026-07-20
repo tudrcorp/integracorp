@@ -27,12 +27,14 @@ it('registra la pagina kanban en el panel projects', function (): void {
         ->toContain('moveActivity')
         ->toContain('ProjectManagementKanbanActivityModalActions')
         ->toContain('getTimelinePayloadProperty')
-        ->toContain("public string \$viewMode = 'board'");
+        ->toContain("public string \$viewMode = 'board'")
+        ->toContain("public string \$sprintFilter = 'active'");
 
     expect($viewContent)
         ->toContain('wire:model.live.debounce.300ms="search"')
         ->toContain('wire:model.live="statusFilter"')
         ->toContain('wire:model.live="projectFilter"')
+        ->toContain('wire:model.live="sprintFilter"')
         ->toContain('wire:model.live="sortBy"')
         ->toContain('kanban-filter-select')
         ->toContain('Todos los proyectos')
@@ -57,7 +59,7 @@ it('registra la pagina kanban en el panel projects', function (): void {
         ->toContain("wire:click=\"setViewMode('timeline')\"")
         ->toContain('x-projects.kanban-timeline')
         ->toContain("wire:click=\"setViewMode('files')\"")
-        ->toContain('x-projects.kanban-files');
+        ->toContain('components.projects.kanban-files');
 
     $affiliationPath = dirname(__DIR__, 2).'/resources/views/components/projects/kanban-project-affiliation.blade.php';
     expect(file_get_contents($affiliationPath))

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
@@ -14,14 +16,15 @@ class AnulatedQuotesNotificationMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public int $anulatedCount
+        public int $anulatedCount,
+        public string $recipientEmail = 'cotizaciones@tudrencasa.com',
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
             from: new Address(config('mail.from.address'), config('mail.from.name')),
-            to: [new Address('cotizaciones@tudrencasa.com', 'Cotizaciones TuDrEnCasa')],
+            to: [new Address($this->recipientEmail, 'Cotizaciones TuDrEnCasa')],
             subject: 'Reporte diario: Cotizaciones individuales anuladas (agencias, agentes)',
         );
     }
@@ -33,6 +36,9 @@ class AnulatedQuotesNotificationMail extends Mailable
         );
     }
 
+    /**
+     * @return array<int, mixed>
+     */
     public function attachments(): array
     {
         return [];

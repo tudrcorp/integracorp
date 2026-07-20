@@ -237,6 +237,7 @@ it('recurso de nuevos negocios se publica en el grupo AFILIACIONES', function ()
         ->toContain('Tab::make(\'Empresa\')')
         ->toContain('Tab::make(\'Cotización\')')
         ->toContain('Tab::make(\'Responsables\')')
+        ->toContain("Tab::make('Notas y Observaciones')")
         ->toContain('responsibles-associates-panel')
         ->toContain('Responsables y asociados')
         ->toContain('population_total')
@@ -244,7 +245,8 @@ it('recurso de nuevos negocios se publica en el grupo AFILIACIONES', function ()
 
     expect($viewPage)
         ->toContain('ViewRecord')
-        ->toContain('EditAction::make()');
+        ->toContain('EditAction::make()')
+        ->toContain("Action::make('addObservation')");
 
     expect($form)
         ->toContain('Tab::make(\'Responsables\')')

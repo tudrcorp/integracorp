@@ -2,12 +2,16 @@
 
 namespace App\Filament\Imports;
 
-use Carbon\Carbon;
-use Illuminate\Support\Number;
 use App\Models\CorporateQuoteData;
-use Filament\Actions\Imports\Importer;
+use App\Support\Imports\CorporateQuoteBirthDateParser;
+use App\Support\Imports\ImportActivityLogger;
+use Carbon\CarbonInterface;
+use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\ImportColumn;
+use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
+use Illuminate\Support\Number;
+use Throwable;
 
 class CorporateQuoteDataImporter extends Importer
 {
@@ -27,12 +31,11 @@ class CorporateQuoteDataImporter extends Importer
             ImportColumn::make('nro_identificacion')
                 ->label('C.I.')
                 ->requiredMapping()
-                ->numeric()
                 ->example('12345678'),
             ImportColumn::make('birth_date')
                 ->label('Fecha de Nacimiento')
                 ->requiredMapping()
-                ->example('21-01-2025'),
+                ->example('21/01/2025'),
             ImportColumn::make('age')
                 ->label('Edad')
                 ->requiredMapping()
@@ -57,7 +60,7 @@ class CorporateQuoteDataImporter extends Importer
             ImportColumn::make('initial_date')
                 ->label('Fecha de Ingreso')
                 ->requiredMapping()
-                ->example('01-01-2025'),
+                ->example('01/01/2025'),
             ImportColumn::make('position_company')
                 ->label('Cargo')
                 ->requiredMapping()
@@ -79,35 +82,73 @@ class CorporateQuoteDataImporter extends Importer
 
     public function resolveRecord(): CorporateQuoteData
     {
- 
-        return CorporateQuoteData::create([
-            // Update existing records, matching them by `$this->data['column_name']`
-            'last_name'                     => $this->data['last_name'],
-            'first_name'                    => $this->data['first_name'],
-            'nro_identificacion'            => $this->data['nro_identificacion'],
-            'birth_date'                    => $this->data['birth_date'],
-            'age'                           => Carbon::createFromFormat('d/m/Y', $this->data['birth_date'])->age,
-            'sex'                           => $this->data['sex'],
-            'phone'                         => $this->data['phone'],
-            'email'                         => $this->data['email'],
-            'condition_medical'             => $this->data['condition_medical'],
-            'initial_date'                  => $this->data['initial_date'],
-            'position_company'              => $this->data['position_company'],
-            'address'                       => $this->data['address'],
-            'full_name_emergency'           => $this->data['full_name_emergency'],
-            'phone_emergency'               => $this->data['phone_emergency'],
-            'corporate_quote_id'            => $this->options['corporate_quote_id'],
-        ]);
+        $logger = app(ImportActivityLogger::class);
+        $birthDateParser = app(CorporateQuoteBirthDateParser::class);
+
+        try {
+            $birthDate = $birthDateParser->parse($this->data['birth_date'] ?? null);
+
+            return CorporateQuoteData::create([
+                'last_name' => $this->data['last_name'],
+                'first_name' => $this->data['first_name'],
+                'nro_identificacion' => $this->data['nro_identificacion'],
+                'birth_date' => $birthDate->format('Y-m-d'),
+                'age' => $birthDate->age,
+                'sex' => $this->data['sex'],
+                'phone' => $this->data['phone'],
+                'email' => $this->data['email'],
+                'condition_medical' => $this->data['condition_medical'],
+                'initial_date' => $this->data['initial_date'],
+                'position_company' => $this->data['position_company'],
+                'address' => $this->data['address'],
+                'full_name_emergency' => $this->data['full_name_emergency'],
+                'phone_emergency' => $this->data['phone_emergency'],
+                'corporate_quote_id' => $this->options['corporate_quote_id'],
+            ]);
+        } catch (RowImportFailedException $exception) {
+            $logger->logRowFailure($this->import, $this->originalData, $exception->getMessage(), [
+                'corporate_quote_id' => $this->options['corporate_quote_id'] ?? null,
+                'birth_date_raw' => $this->data['birth_date'] ?? null,
+            ]);
+
+            throw $exception;
+        } catch (Throwable $exception) {
+            $message = 'Error al crear la fila de población: '.$exception->getMessage();
+
+            $logger->logRowFailure($this->import, $this->originalData, $message, [
+                'corporate_quote_id' => $this->options['corporate_quote_id'] ?? null,
+                'birth_date_raw' => $this->data['birth_date'] ?? null,
+                'exception' => $exception::class,
+            ]);
+
+            throw new RowImportFailedException($message);
+        }
     }
 
     public static function getCompletedNotificationBody(Import $import): string
     {
-        $body = 'Your corporate quote data import has completed and ' . Number::format($import->successful_rows) . ' ' . str('row')->plural($import->successful_rows) . ' imported.';
+        $body = 'La importación de población finalizó: '.Number::format($import->successful_rows).' '.str('fila')->plural($import->successful_rows).' importada(s).';
 
         if ($failedRowsCount = $import->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to import.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('fila')->plural($failedRowsCount).' fallaron o no se procesaron. Revise storage/logs/imports.log y descargue el CSV de fallos.';
         }
 
         return $body;
+    }
+
+    /**
+     * @return array<int, object>
+     */
+    public function getJobMiddleware(): array
+    {
+        // Permite procesar chunks en paralelo con Redis/varios workers.
+        // El middleware anti-solapamiento de Filament reencola jobs, consume
+        // intentos y termina en MaxAttemptsExceededException.
+        return [];
+    }
+
+    public function getJobRetryUntil(): ?CarbonInterface
+    {
+        return now()->addHours(6);
     }
 }

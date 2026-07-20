@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\SystemNotificationKey;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @deprecated Use SystemNotificationRecipientSetting / SystemNotificationRecipients.
+ */
 class CompanyAssociateNotificationSetting extends Model
 {
     protected $fillable = [
@@ -27,13 +31,13 @@ class CompanyAssociateNotificationSetting extends Model
 
     public static function instance(): self
     {
-        return static::query()->firstOrCreate(
-            ['id' => 1],
-            [
-                'notification_emails' => [],
-                'notification_phones' => [],
-            ],
-        );
+        $modern = SystemNotificationRecipientSetting::for(SystemNotificationKey::CompanyAssociateRegistration);
+
+        return new self([
+            'notification_emails' => $modern->emails(),
+            'notification_phones' => $modern->phones(),
+            'updated_by' => $modern->updated_by,
+        ]);
     }
 
     /**

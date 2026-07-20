@@ -5,6 +5,7 @@ namespace App\Filament\Operations\Resources\OperationCoordinationServices\Tables
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceItems;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceQuotes;
 use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
+use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRetailServicesAction;
 use App\Http\Controllers\ApiBcvController;
 use App\Http\Controllers\OperationServiceOrderController;
 use App\Models\ObservationCase;
@@ -28,6 +29,7 @@ use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\AccountsReceivableManager;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\CoordinationServiceQuoteManager;
+use App\Support\Operations\OperationServiceOrderCoveredPricingFormFields;
 use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderProviderSelection;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
@@ -828,6 +830,7 @@ class OperationCoordinationServicesTable
                                                     ->columnSpanFull(),
                                             ]),
                                         ...OperationServiceOrderProviderFormFields::components(),
+                                        ...OperationServiceOrderCoveredPricingFormFields::components(),
                                     ])
                                     ->columnSpanFull(),
                             ])
@@ -1236,16 +1239,6 @@ class OperationCoordinationServicesTable
                     ->color(fn (string $state): string => TelemedicinePriorityFilamentBadge::color($state))
                     ->icon(fn (string $state): string => TelemedicinePriorityFilamentBadge::icon($state))
                     ->searchable(),
-                TextColumn::make('holder')
-                    ->label('Titular')
-                    ->badge()
-                    ->color('gray')
-                    ->searchable(),
-                TextColumn::make('ci_holder')
-                    ->label('Cédula del Titular')
-                    ->badge()
-                    ->color('gray')
-                    ->searchable(),
                 TextColumn::make('patient')
                     ->label('Paciente')
                     ->badge()
@@ -1282,7 +1275,7 @@ class OperationCoordinationServicesTable
                     ->label('Dirección')
                     ->searchable(),
                 TextColumn::make('phone_holder')
-                    ->label('Teléfono del Titular')
+                    ->label('Teléfono')
                     ->searchable(),
                 TextColumn::make('symptoms_diagnosis')
                     ->label('Síntomas y Diagnóstico')
@@ -1442,6 +1435,10 @@ class OperationCoordinationServicesTable
                         return $patientName !== '' ? $code.' · '.$patientName : $code;
                     })
                     ->getDescriptionFromRecordUsing(function (OperationCoordinationService $record): ?string {
+                        if (self::isTpaRetailService($record)) {
+                            return 'TPA/RETAIL';
+                        }
+
                         $doctorName = trim((string) ($record->telemedicineDoctor?->full_name ?? ''));
 
                         return $doctorName !== '' ? 'Médico: '.$doctorName : null;
@@ -1761,21 +1758,22 @@ class OperationCoordinationServicesTable
             return new EloquentCollection;
         }
 
-        return match ($type) {
-            'MEDICAMENTOS' => TelemedicinePatientMedications::query()
+        return match (true) {
+            $type === 'MEDICAMENTOS' => TelemedicinePatientMedications::query()
                 ->where('operation_coordination_service_id', $record->id)
                 ->whereKey($ids)
                 ->with('operationInventory:id,is_covered')
                 ->get(),
-            'IMAGENOLOGIA' => TelemedicinePatientStudy::query()
+            $type === 'IMAGENOLOGIA' => TelemedicinePatientStudy::query()
                 ->where('operation_coordination_service_id', $record->id)
                 ->whereKey($ids)
                 ->get(),
-            'LABORATORIOS' => TelemedicinePatientLab::query()
+            $type === 'LABORATORIOS' => TelemedicinePatientLab::query()
                 ->where('operation_coordination_service_id', $record->id)
                 ->whereKey($ids)
                 ->get(),
-            'ESPECIALISTA' => TelemedicinePatientSpecialty::query()
+            $type === 'ESPECIALISTA',
+            RegisterTpaRetailServicesAction::isStandaloneSpecificService($type) => TelemedicinePatientSpecialty::query()
                 ->where('operation_coordination_service_id', $record->id)
                 ->whereKey($ids)
                 ->get(),
@@ -1805,7 +1803,7 @@ class OperationCoordinationServicesTable
 
         $providers = OperationServiceOrderProviderSelection::resolveProviders($data);
 
-        return [
+        $payload = [
             'order_number' => $data['order_number'] ?? null,
             'telemedicine_priority_id' => $data['telemedicine_priority_id'] ?? $record->telemedicine_priority_id,
             'doctor_nurse_id' => $providers['doctor_nurse_id'],
@@ -1819,6 +1817,14 @@ class OperationCoordinationServicesTable
             'created_by' => Auth::user()?->name,
             'updated_by' => Auth::user()?->name,
         ];
+
+        $pricing = OperationServiceOrderCoveredPricingFormFields::pricingPayloadFromData($data);
+
+        if ($pricing !== null) {
+            $payload = [...$payload, ...$pricing];
+        }
+
+        return $payload;
     }
 
     private static function createServiceOrderFromWizard(OperationCoordinationService $record, array $data, array $quotePayload): void
@@ -2019,5 +2025,14 @@ class OperationCoordinationServicesTable
     private static function whereItemStatusIsOpen(Builder $query, array $openStatuses): Builder
     {
         return $query->whereRaw('UPPER(TRIM(status)) IN (?, ?)', $openStatuses);
+    }
+
+    private static function isTpaRetailService(OperationCoordinationService $record): bool
+    {
+        if (mb_strtoupper(trim((string) ($record->servicie ?? ''))) === 'TPA/RETAIL') {
+            return true;
+        }
+
+        return mb_strtoupper(trim((string) ($record->telemedicineCase?->status ?? ''))) === 'TPA/RETAIL';
     }
 }

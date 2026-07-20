@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Projects\Resources\ProjectManagement\Activities\Schemas;
 
 use App\Models\ProjectManagement\Department;
+use App\Models\ProjectManagement\Epic;
 use App\Models\ProjectManagement\Group;
+use App\Models\ProjectManagement\Sprint;
 use App\Support\Filament\ProjectManagement\ProjectManagementActivityAppearance;
 use App\Support\Filament\ProjectManagement\ProjectManagementCollaboratorSelect;
 use App\Support\Filament\ProjectManagement\ProjectManagementFilamentSchemas;
@@ -102,6 +104,7 @@ class ActivityForm
                                 ->relationship('project', 'name')
                                 ->searchable()
                                 ->preload()
+                                ->live()
                                 ->required(),
                             Select::make('subproject_id')
                                 ->label('Subproyecto')
@@ -109,6 +112,67 @@ class ActivityForm
                                 ->relationship('subproject', 'name')
                                 ->searchable()
                                 ->preload(),
+                        ], ['default' => 1, 'lg' => 2]),
+                    ]),
+                    ProjectManagementFilamentSchemas::section(
+                        'Scrum',
+                        'Épica, sprint, estimación y criterios de aceptación.',
+                        'heroicon-o-rocket-launch',
+                    )->schema([
+                        ProjectManagementFilamentSchemas::innerGrid([
+                            Select::make('epic_id')
+                                ->label('Épica')
+                                ->prefixIcon('heroicon-m-bookmark-square')
+                                ->options(function (Get $get): array {
+                                    $projectId = $get('project_id');
+
+                                    if (! filled($projectId)) {
+                                        return [];
+                                    }
+
+                                    return Epic::query()
+                                        ->where('project_id', $projectId)
+                                        ->orderBy('order')
+                                        ->pluck('name', 'id')
+                                        ->all();
+                                })
+                                ->searchable()
+                                ->preload(),
+                            Select::make('sprint_id')
+                                ->label('Sprint')
+                                ->prefixIcon('heroicon-m-rocket-launch')
+                                ->helperText('Vacío = Product Backlog.')
+                                ->options(function (Get $get): array {
+                                    $projectId = $get('project_id');
+
+                                    if (! filled($projectId)) {
+                                        return [];
+                                    }
+
+                                    return Sprint::query()
+                                        ->where('project_id', $projectId)
+                                        ->orderByDesc('starts_at')
+                                        ->pluck('name', 'id')
+                                        ->all();
+                                })
+                                ->searchable()
+                                ->preload(),
+                            TextInput::make('story_points')
+                                ->label('Story points')
+                                ->prefixIcon('heroicon-m-hashtag')
+                                ->numeric()
+                                ->minValue(0)
+                                ->maxValue(100),
+                            TextInput::make('backlog_order')
+                                ->label('Orden backlog')
+                                ->prefixIcon('heroicon-m-bars-3')
+                                ->numeric()
+                                ->minValue(0)
+                                ->helperText('También puedes reordenar desde Backlog.'),
+                            Textarea::make('acceptance_criteria')
+                                ->label('Criterios de aceptación')
+                                ->rows(4)
+                                ->columnSpanFull(),
                         ], ['default' => 1, 'lg' => 2]),
                     ]),
                     ProjectManagementFilamentSchemas::section(

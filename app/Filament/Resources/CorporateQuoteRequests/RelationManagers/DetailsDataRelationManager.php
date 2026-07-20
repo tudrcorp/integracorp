@@ -15,7 +15,8 @@ use Filament\Actions\Action;
 use App\Models\CorporateQuote;
 use Filament\Actions\BulkAction;
 use Filament\Actions\CreateAction;
-use Filament\Actions\ImportAction;
+use App\Filament\Actions\ImportAction;
+use App\Filament\Imports\Jobs\ImportCsv;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -170,13 +171,16 @@ class DetailsDataRelationManager extends RelationManager
                     ->label('Importar CSV(Población)')
                     ->color('warning')
                     ->icon('heroicon-s-cloud-arrow-up')
+                    ->csvDelimiter(';')
+                    ->job(ImportCsv::class)
+                    ->chunkSize(100)
                     ->options(function (RelationManager $livewire) {
                         return [
                             'corporate_quote_request_id' => $livewire->ownerRecord->id,
                         ];
                     })
                     ->fileRules([
-                        File::types(['csv', 'txt'])->max(1024),
+                        File::types(['csv', 'txt'])->max(5120),
                     ]),
 
             ])

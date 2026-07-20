@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Pages;
 
-use App\Filament\Business\Pages\Schemas\CompanyAssociateNotificationSettingsForm;
-use App\Models\CompanyAssociateNotificationSetting;
+use App\Enums\SystemNotificationKey;
+use App\Filament\Business\Pages\Schemas\SystemNotificationRecipientSettingsForm;
+use App\Models\SystemNotificationRecipientSetting;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\SecurityAudit;
+use App\Support\SystemNotificationRecipients;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -25,9 +27,9 @@ use UnitEnum;
 
 class ManageCompanyAssociateNotifications extends Page
 {
-    protected static ?string $navigationLabel = 'Notificaciones de asociados';
+    protected static ?string $navigationLabel = 'Centro de notificaciones';
 
-    protected static ?string $title = 'Notificaciones de asociados';
+    protected static ?string $title = 'Centro de notificaciones';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBellAlert;
 
@@ -36,6 +38,8 @@ class ManageCompanyAssociateNotifications extends Page
     protected static ?int $navigationSort = 16;
 
     protected string $view = 'filament.business.pages.manage-company-associate-notifications';
+
+    public string $activeNotificationKey = 'company_associate_registration';
 
     /**
      * @var array<string, mixed>|null
@@ -50,14 +54,19 @@ class ManageCompanyAssociateNotifications extends Page
     public function getSubheading(): string|Htmlable|null
     {
         return new HtmlString(
-            '<span class="text-sm text-slate-500 dark:text-slate-400">Configure quién recibe las alertas cuando un asociado se registra desde el enlace público.</span>'
+            '<span class="text-sm text-slate-500 dark:text-slate-400">Gestione por tipo de alerta los destinatarios y active o pause cada tarea programada desde aquí.</span>'
         );
     }
 
-    #[Computed]
-    public function settingsRecord(): CompanyAssociateNotificationSetting
+    public function getActiveNotificationKeyEnum(): SystemNotificationKey
     {
-        return CompanyAssociateNotificationSetting::instance();
+        return SystemNotificationKey::from($this->activeNotificationKey);
+    }
+
+    #[Computed]
+    public function settingsRecord(): SystemNotificationRecipientSetting
+    {
+        return SystemNotificationRecipients::setting($this->getActiveNotificationKeyEnum());
     }
 
     #[Computed]
@@ -78,11 +87,25 @@ class ManageCompanyAssociateNotifications extends Page
         return $this->configuredEmailCount > 0 || $this->configuredPhoneCount > 0;
     }
 
+    public function selectNotificationKey(string $key): void
+    {
+        $notificationKey = SystemNotificationKey::tryFrom($key);
+
+        if ($notificationKey === null) {
+            return;
+        }
+
+        $this->activeNotificationKey = $notificationKey->value;
+        unset($this->settingsRecord);
+        $this->fillForm();
+    }
+
     protected function fillForm(): void
     {
         $settings = $this->settingsRecord;
 
         $this->form->fill([
+            'is_active' => $settings->isActive(),
             'notification_emails' => collect($settings->emails())
                 ->map(fn (string $email): array => ['email' => $email])
                 ->values()
@@ -96,7 +119,7 @@ class ManageCompanyAssociateNotifications extends Page
 
     public function form(Schema $schema): Schema
     {
-        return CompanyAssociateNotificationSettingsForm::configure($schema);
+        return SystemNotificationRecipientSettingsForm::configure($schema);
     }
 
     public function defaultForm(Schema $schema): Schema
@@ -117,7 +140,7 @@ class ManageCompanyAssociateNotifications extends Page
     public function getFormContentComponent(): Form
     {
         return Form::make([EmbeddedSchema::make('form')])
-            ->id('manage-company-associate-notifications-form')
+            ->id('manage-system-notification-recipients-form')
             ->livewireSubmitHandler('save')
             ->footer([
                 $this->getFormActionsContentComponent(),
@@ -141,7 +164,7 @@ class ManageCompanyAssociateNotifications extends Page
     {
         return [
             Action::make('save')
-                ->label('Guardar destinatarios')
+                ->label('Guardar configuración')
                 ->icon('heroicon-o-check')
                 ->submit('save')
                 ->color('success')
@@ -154,6 +177,8 @@ class ManageCompanyAssociateNotifications extends Page
     public function save(): void
     {
         $data = $this->form->getState();
+        $notificationKey = $this->getActiveNotificationKeyEnum();
+        $isActive = (bool) ($data['is_active'] ?? true);
 
         $emails = collect($data['notification_emails'] ?? [])
             ->pluck('email')
@@ -171,14 +196,17 @@ class ManageCompanyAssociateNotifications extends Page
             ->values()
             ->all();
 
-        $settings = CompanyAssociateNotificationSetting::instance();
+        $settings = SystemNotificationRecipientSetting::for($notificationKey);
         $settings->update([
+            'is_active' => $isActive,
             'notification_emails' => $emails,
             'notification_phones' => $phones,
             'updated_by' => Auth::user()?->name,
         ]);
 
-        SecurityAudit::log('AUDIT_BUSINESS_COMPANY_ASSOCIATE_NOTIFICATION_SETTINGS_UPDATED', 'business.company-associate-notifications.settings', [
+        SecurityAudit::log('AUDIT_BUSINESS_SYSTEM_NOTIFICATION_RECIPIENTS_UPDATED', 'business.system-notifications.settings', [
+            'notification_key' => $notificationKey->value,
+            'is_active' => $isActive,
             'emails_count' => count($emails),
             'phones_count' => count($phones),
             'updated_by' => Auth::user()?->name,
@@ -188,12 +216,11 @@ class ManageCompanyAssociateNotifications extends Page
 
         $this->fillForm();
 
+        $statusLabel = $isActive ? 'activa' : 'inactiva';
+
         Notification::make()
-            ->title('Destinatarios guardados')
-            ->body(match (true) {
-                $emails === [] && $phones === [] => 'No hay destinatarios activos. Las notificaciones quedarán en pausa hasta que agregue contactos.',
-                default => 'Se notificará por correo y WhatsApp a los contactos configurados cuando se registre un asociado.',
-            })
+            ->title('Configuración guardada')
+            ->body("La tarea quedó {$statusLabel}. ".$notificationKey->savedRecipientsMessage($emails, $phones))
             ->success()
             ->send();
     }

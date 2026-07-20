@@ -73,6 +73,28 @@ class ActivityInfolist
                                     'high' => 'danger',
                                     default => 'gray',
                                 }),
+                            TextEntry::make('story_points')
+                                ->label('Story points')
+                                ->badge()
+                                ->color('warning')
+                                ->placeholder('—'),
+                            TextEntry::make('epic.name')
+                                ->label('Épica')
+                                ->badge()
+                                ->color('primary')
+                                ->placeholder('—'),
+                            TextEntry::make('sprint.name')
+                                ->label('Sprint')
+                                ->badge()
+                                ->color('success')
+                                ->placeholder('Product Backlog'),
+                            TextEntry::make('backlog_order')
+                                ->label('Orden backlog')
+                                ->placeholder('—'),
+                            TextEntry::make('acceptance_criteria')
+                                ->label('Criterios de aceptación')
+                                ->placeholder('—')
+                                ->columnSpanFull(),
                             TextEntry::make('color')
                                 ->label('Color de actividad')
                                 ->state(fn (Activity $record): string => ProjectManagementActivityTable::resolveColor($record))
