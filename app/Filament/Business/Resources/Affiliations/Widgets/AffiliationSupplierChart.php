@@ -29,7 +29,7 @@ class AffiliationSupplierChart extends ChartWidget
 
     protected ?string $maxHeight = '300px';
 
-    protected ?string $heading = 'DISTRIBUCIÓN DE AFILIACIONES POR AFILIADOR';
+    protected ?string $heading = 'DISTRIBUCIÓN DE AFILIACIONES POR ALIADO';
 
     protected ?string $description = 'Análisis porcentual y cuantitativo de afiliaciones por proveedor en el mes actual.';
 

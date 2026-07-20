@@ -2,12 +2,12 @@
 
 namespace App\Jobs;
 
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
-
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\LogController;
+use App\Http\Controllers\NotificationController;
+use App\Support\BirthdayNotificationRecipientDelivery;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
@@ -36,7 +36,8 @@ class WhatsAppBirthdayNotification implements ShouldQueue
         public string $content,
         public string $file,
         public string $type,
-        public bool $isControlCopy = false
+        public bool $isControlCopy = false,
+        public ?int $deliveryId = null,
     ) {}
 
     /**
@@ -54,17 +55,17 @@ class WhatsAppBirthdayNotification implements ShouldQueue
             );
 
             // Log de éxito solo si no es la copia de control para no saturar
-            if (!$this->isControlCopy && class_exists(LogController::class)) {
+            if (! $this->isControlCopy && class_exists(LogController::class)) {
                 LogController::logSuccessWp($this->phone);
             }
 
-            Log::info("Job Success: Envío de cumpleaños finalizado", [
+            Log::info('Job Success: Envío de cumpleaños finalizado', [
                 'para' => $this->phone,
-                'tipo' => $this->isControlCopy ? 'Copia Control' : 'Cliente'
+                'tipo' => $this->isControlCopy ? 'Copia Control' : 'Cliente',
             ]);
-            
+
         } catch (Throwable $e) {
-            Log::error("Error en BirthdayNotificationJob para {$this->phone}: " . $e->getMessage());
+            Log::error("Error en BirthdayNotificationJob para {$this->phone}: ".$e->getMessage());
 
             // Permitimos que el worker reintente según la propiedad $tries
             throw $e;
@@ -77,7 +78,14 @@ class WhatsAppBirthdayNotification implements ShouldQueue
     public function failed(Throwable $exception): void
     {
         Log::critical("Fallo permanente en Job de Cumpleaños: {$this->phone}", [
-            'error' => $exception->getMessage()
+            'error' => $exception->getMessage(),
         ]);
+
+        if ($this->deliveryId !== null && ! $this->isControlCopy) {
+            BirthdayNotificationRecipientDelivery::markWhatsappFailed(
+                $this->deliveryId,
+                $exception->getMessage(),
+            );
+        }
     }
 }

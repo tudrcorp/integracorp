@@ -8,6 +8,7 @@ use App\Models\DoctorNurse;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingInfolist;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -66,42 +67,27 @@ class DoctorNurseInfolist
         ];
     }
 
-    /**
-     * @return list<array{key: string, label: string}>
-     */
-    private static function homeCareEquipmentItems(): array
-    {
-        $items = [];
-
-        foreach (self::homeCareEquipmentGroups() as $groupItems) {
-            foreach ($groupItems as $item) {
-                $items[] = $item;
-            }
-        }
-
-        return $items;
-    }
-
     private static function homeCareEquipmentDescriptionField(string $key): string
     {
         return (string) preg_replace('/^equip_/', 'equip_desc_', $key);
     }
 
-    private static function homeCareEquipmentDescription(DoctorNurse $record, string $field): string
+    private static function homeCareEquipmentDescription(DoctorNurse $record, string $field): ?string
     {
-        $text = (string) ($record->{$field} ?? '');
+        $text = trim((string) ($record->{$field} ?? ''));
 
-        return $text !== '' ? 'Descripción: '.$text : 'Sin descripción registrada.';
+        return $text !== '' ? 'Descripción: '.$text : null;
     }
 
     /**
+     * @param  list<array{key: string, label: string}>  $items
      * @return array<int, IconEntry>
      */
-    private static function homeCareEquipmentEntries(): array
+    private static function homeCareEquipmentEntries(array $items): array
     {
         $entries = [];
 
-        foreach (self::homeCareEquipmentItems() as $item) {
+        foreach ($items as $item) {
             $fieldKey = $item['key'];
             $descriptionField = self::homeCareEquipmentDescriptionField($fieldKey);
 
@@ -112,10 +98,34 @@ class DoctorNurseInfolist
                 ->trueColor('success')
                 ->falseColor('gray')
                 ->label($item['label'])
-                ->helperText(fn (DoctorNurse $record): string => self::homeCareEquipmentDescription($record, $descriptionField));
+                ->default(false)
+                ->getStateUsing(fn (?DoctorNurse $record): bool => (bool) ($record?->{$fieldKey} ?? false))
+                ->helperText(fn (?DoctorNurse $record): ?string => $record
+                    ? self::homeCareEquipmentDescription($record, $descriptionField)
+                    : null);
         }
 
         return $entries;
+    }
+
+    /**
+     * @return array<int, Fieldset>
+     */
+    private static function homeCareEquipmentFieldsets(): array
+    {
+        $fieldsets = [];
+
+        foreach (self::homeCareEquipmentGroups() as $groupLabel => $items) {
+            $fieldsets[] = Fieldset::make($groupLabel)
+                ->columnSpanFull()
+                ->extraAttributes([
+                    'class' => self::IOS_INNER_CLASS,
+                ])
+                ->columns(['default' => 2, 'sm' => 3, 'lg' => 4, 'xl' => 6])
+                ->schema(self::homeCareEquipmentEntries($items));
+        }
+
+        return $fieldsets;
     }
 
     public static function configure(Schema $schema): Schema
@@ -335,18 +345,12 @@ class DoctorNurseInfolist
                             ->icon('heroicon-o-cpu-chip')
                             ->schema([
                                 Section::make('Certificación de infraestructura domiciliaria')
-                                    ->description('Equipamiento declarado (sí / no y descripción).')
+                                    ->description('Equipamiento declarado por categoría (sí / no y descripción cuando exista).')
                                     ->icon(Heroicon::OutlinedCpuChip)
                                     ->extraAttributes([
                                         'class' => self::SECTION_CARD,
                                     ])
-                                    ->schema([
-                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3, 'xl' => 4])
-                                            ->extraAttributes([
-                                                'class' => self::IOS_INNER_CLASS,
-                                            ])
-                                            ->schema(self::homeCareEquipmentEntries()),
-                                    ])
+                                    ->schema(self::homeCareEquipmentFieldsets())
                                     ->columnSpanFull(),
                             ]),
                     ]),

@@ -41,3 +41,37 @@ it('incluye tab de datos bancarios alineado al formulario de agentes', function 
         ->toContain('local_beneficiary_phone_pm')
         ->toContain('extra_beneficiary_account_bank');
 });
+
+it('clasifica la certificacion de infraestructura en los seis grupos del catalogo', function (): void {
+    $formPath = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/Suppliers/Schemas/SupplierForm.php';
+    $catalogPath = dirname(__DIR__, 2).'/app/Support/Operations/SupplierInfrastructureCatalog.php';
+    $migrationPath = dirname(__DIR__, 2).'/database/migrations/2026_07_17_181746_add_classified_infrastructure_fields_to_suppliers_table.php';
+    $modelPath = dirname(__DIR__, 2).'/app/Models/Supplier.php';
+
+    expect(file_get_contents($formPath))
+        ->toContain('infrastructureFieldsets()')
+        ->toContain("Section::make('Certificación de infraestructura')")
+        ->toContain('SupplierInfrastructureCatalog::groups()')
+        ->toContain("->columns(['default' => 2, 'sm' => 3, 'lg' => 4, 'xl' => 6])");
+
+    expect(file_get_contents($catalogPath))
+        ->toContain('Especialidades Básicas y Hospitalización')
+        ->toContain('Especialidades Médicas y Quirúrgicas')
+        ->toContain('Unidades Médicas Clínicas Especializadas')
+        ->toContain('Servicios de Apoyo y Diagnóstico')
+        ->toContain('Otras facilidades')
+        ->toContain('OTRAS Unidades Médicas Especializadas Tipo AA')
+        ->toContain('cirugia_general')
+        ->toContain('unidad_uci')
+        ->toContain('banco_sangre')
+        ->toContain('imagenologia_avanzada');
+
+    expect(file_get_contents($migrationPath))
+        ->toContain('SupplierInfrastructureCatalog::newBooleanColumns()')
+        ->toContain('SupplierInfrastructureCatalog::newDescriptionColumns()');
+
+    expect(file_get_contents($modelPath))
+        ->toContain('cirugia_general')
+        ->toContain('unidad_uci')
+        ->toContain('quimioterapia');
+});

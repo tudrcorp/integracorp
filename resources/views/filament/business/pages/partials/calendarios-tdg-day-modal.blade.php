@@ -1,11 +1,12 @@
 <div
-    x-data="{ open: $wire.entangle('isDayModalOpen'), workspace: 'offices' }"
+    x-data="{ open: $wire.entangle('isDayModalOpen'), workspace: @js($modalWorkspace ?: 'offices') }"
     @tdg-modal-workspace-changed.window="workspace = $event.detail.workspace"
     x-show="open"
     x-cloak
     x-transition.opacity
     class="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6"
 >
+@if ($isDayModalOpen)
     <div class="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]" wire:click="closeDayModal"></div>
 
     <section class="relative z-[81] flex w-full max-w-6xl max-h-[92vh] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-900">
@@ -356,4 +357,5 @@
             </div>
         </footer>
     </section>
+@endif
 </div>

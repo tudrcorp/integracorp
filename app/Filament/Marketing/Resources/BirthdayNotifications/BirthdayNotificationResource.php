@@ -7,6 +7,7 @@ use App\Filament\Marketing\Resources\BirthdayNotifications\Pages\CreateBirthdayN
 use App\Filament\Marketing\Resources\BirthdayNotifications\Pages\EditBirthdayNotification;
 use App\Filament\Marketing\Resources\BirthdayNotifications\Pages\ListBirthdayNotifications;
 use App\Filament\Marketing\Resources\BirthdayNotifications\Pages\ViewBirthdayNotification;
+use App\Filament\Marketing\Resources\BirthdayNotifications\RelationManagers\BirthdayNotificationDeliveriesRelationManager;
 use App\Filament\Marketing\Resources\BirthdayNotifications\Schemas\BirthdayNotificationForm;
 use App\Filament\Marketing\Resources\BirthdayNotifications\Schemas\BirthdayNotificationInfolist;
 use App\Filament\Marketing\Resources\BirthdayNotifications\Tables\BirthdayNotificationsTable;
@@ -48,7 +49,7 @@ class BirthdayNotificationResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            BirthdayNotificationDeliveriesRelationManager::class,
         ];
     }
 

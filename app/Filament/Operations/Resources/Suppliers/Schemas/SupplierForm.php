@@ -13,6 +13,7 @@ use App\Models\SupplierTipoClinica;
 use App\Models\SupplierTipoServicio;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingForm;
 use App\Support\Filament\Operations\SupplierIntegracorpManagementForm;
+use App\Support\Operations\SupplierInfrastructureCatalog;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -68,31 +69,62 @@ class SupplierForm
 
     /**
      * @param  list<array{key: string, desc: string, label: string}>  $items
+     * @return array<int, Grid>
      */
-    private static function infrastructureGrid(array $items): Grid
+    private static function infrastructureEntries(array $items): array
     {
         $components = [];
+
         foreach ($items as $item) {
             $toggleKey = $item['key'];
             $descKey = $item['desc'];
-            $components[] = Toggle::make($toggleKey)
-                ->label($item['label'])
-                ->live()
-                ->inline(false)
-                ->onIcon('heroicon-s-check')
-                ->onColor('success');
-            $components[] = TextInput::make($descKey)
-                ->label('Detalle opcional')
-                ->placeholder('Observaciones del equipo o servicio')
-                ->disabled(fn (Get $get): bool => ! $get($toggleKey))
-                ->maxLength(500);
+
+            $components[] = Grid::make(1)
+                ->schema([
+                    Toggle::make($toggleKey)
+                        ->label($item['label'])
+                        ->live()
+                        ->inline(false)
+                        ->default(false)
+                        ->onIcon('heroicon-s-check')
+                        ->offIcon('heroicon-s-x-mark')
+                        ->onColor('success')
+                        ->offColor('gray')
+                        ->afterStateUpdated(function (?bool $state, callable $set) use ($descKey): void {
+                            if (! $state) {
+                                $set($descKey, null);
+                            }
+                        }),
+                    TextInput::make($descKey)
+                        ->label('Detalle opcional')
+                        ->placeholder('Observaciones o alcance')
+                        ->hidden(fn (Get $get): bool => ! $get($toggleKey))
+                        ->dehydrated()
+                        ->maxLength(500),
+                ]);
         }
 
-        return Grid::make(2)
-            ->extraAttributes([
-                'class' => self::INNER_CARD,
-            ])
-            ->schema($components);
+        return $components;
+    }
+
+    /**
+     * @return array<int, Fieldset>
+     */
+    private static function infrastructureFieldsets(): array
+    {
+        $fieldsets = [];
+
+        foreach (SupplierInfrastructureCatalog::groups() as $groupLabel => $items) {
+            $fieldsets[] = Fieldset::make($groupLabel)
+                ->columnSpanFull()
+                ->extraAttributes([
+                    'class' => self::INNER_CARD,
+                ])
+                ->columns(['default' => 2, 'sm' => 3, 'lg' => 4, 'xl' => 6])
+                ->schema(self::infrastructureEntries($items));
+        }
+
+        return $fieldsets;
     }
 
     public static function configure(Schema $schema): Schema
@@ -360,68 +392,13 @@ class SupplierForm
                         Tab::make('Equipamiento')
                             ->icon('heroicon-o-wrench-screwdriver')
                             ->schema([
-                                Section::make('Infraestructura y equipos')
-                                    ->description('Active solo lo que aplica; el detalle es opcional.')
+                                Section::make('Certificación de infraestructura')
+                                    ->description('Infraestructura declarada por categoría (sí / no y descripción cuando exista).')
                                     ->icon('heroicon-o-cube')
                                     ->extraAttributes(['class' => self::SECTION_CARD])
-                                    ->schema([
-                                        Fieldset::make('Diagnóstico e imagen')
-                                            ->extraAttributes([
-                                                'class' => self::INNER_CARD,
-                                            ])
-                                            ->schema([
-                                                self::infrastructureGrid([
-                                                    ['key' => 'densitometria_osea', 'desc' => 'descripcion_densitometria_osea', 'label' => 'Densitómetro'],
-                                                    ['key' => 'dialisis', 'desc' => 'descripcion_dialisis', 'label' => 'Equipo de diálisis'],
-                                                    ['key' => 'electrocardiograma_centro', 'desc' => 'descripcion_electrocardiograma_centro', 'label' => 'Electrocardiógrafo'],
-                                                    ['key' => 'equipos_especiales_oftalmologia', 'desc' => 'descripcion_equipos_especiales_oftalmologia', 'label' => 'Equipos especiales de oftalmología'],
-                                                    ['key' => 'mamografia', 'desc' => 'descripcion_mamografia', 'label' => 'Mamógrafo'],
-                                                    ['key' => 'resonancia', 'desc' => 'descripcion_resonancia', 'label' => 'Resonancia'],
-                                                    ['key' => 'tomografo', 'desc' => 'descripcion_tomografo', 'label' => 'Tomógrafo'],
-                                                    ['key' => 'radioterapia_intraoperatoria', 'desc' => 'descripcion_radioterapia_intraoperatoria', 'label' => 'Radioterapia intraoperatoria'],
-                                                ]),
-                                            ]),
-                                        Fieldset::make('Hospitalización y cirugía')
-                                            ->extraAttributes([
-                                                'class' => self::INNER_CARD,
-                                            ])
-                                            ->schema([
-                                                self::infrastructureGrid([
-                                                    ['key' => 'urgen_care', 'desc' => 'descripcion_urgen_care', 'label' => 'Urgencias'],
-                                                    ['key' => 'consulta_aps', 'desc' => 'descripcion_consulta_aps', 'label' => 'Consultas APS'],
-                                                    ['key' => 'amd', 'desc' => 'descripcion_amd', 'label' => 'Asistencia médica domiciliaria'],
-                                                    ['key' => 'laboratorio_centro', 'desc' => 'descripcion_laboratorio_centro', 'label' => 'Laboratorio en centro'],
-                                                    ['key' => 'laboratorio_domicilio', 'desc' => 'descripcion_laboratorio_domicilio', 'label' => 'Laboratorio en domicilio'],
-                                                    ['key' => 'rx_centro', 'desc' => 'descripcion_rx_centro', 'label' => 'Rayos X en centro'],
-                                                    ['key' => 'rx_domicilio', 'desc' => 'descripcion_rx_domicilio', 'label' => 'Rayos X en domicilio'],
-                                                    ['key' => 'eco_abdominal_centro', 'desc' => 'descripcion_eco_abdominal_centro', 'label' => 'Ecografía abdominal en centro'],
-                                                    ['key' => 'eco_abdominal_domicilio', 'desc' => 'descripcion_eco_abdominal_domicilio', 'label' => 'Ecografía abdominal en domicilio'],
-                                                    ['key' => 'electrocardiograma_domicilio', 'desc' => 'descripcion_electrocardiograma_domicilio', 'label' => 'Electrocardiograma en domicilio'],
-                                                    ['key' => 'oncologia', 'desc' => 'descripcion_oncologia', 'label' => 'Oncología'],
-                                                    ['key' => 'uci_uten', 'desc' => 'descripcion_uci_uten', 'label' => 'UCI UTE'],
-                                                    ['key' => 'neonatal', 'desc' => 'descripcion_neonatal', 'label' => 'Neonatal'],
-                                                    ['key' => 'ambulancias', 'desc' => 'descripcion_ambulancias', 'label' => 'Ambulancias'],
-                                                    ['key' => 'odontologia', 'desc' => 'descripcion_odontologia', 'label' => 'Odontología'],
-                                                    ['key' => 'oftalmologia', 'desc' => 'descripcion_oftalmologia', 'label' => 'Oftalmología'],
-                                                    ['key' => 'quirofanos', 'desc' => 'descripcion_quirofanos', 'label' => 'Quirófanos'],
-                                                    ['key' => 'uci_pediatrica', 'desc' => 'descripcion_uci_pediatrica', 'label' => 'UCI pediátrica'],
-                                                    ['key' => 'uci_adulto', 'desc' => 'descripcion_uci_adulto', 'label' => 'UCI adulto'],
-                                                    ['key' => 'robotica', 'desc' => 'descripcion_robotica', 'label' => 'Cirugía robótica'],
-                                                    ['key' => 'otras_unidades_especiales', 'desc' => 'descripcion_otras_unidades_especiales', 'label' => 'Otras unidades especiales'],
-                                                ]),
-                                            ]),
-                                        Fieldset::make('Accesibilidad y comodidades')
-                                            ->extraAttributes([
-                                                'class' => self::INNER_CARD,
-                                            ])
-                                            ->schema([
-                                                self::infrastructureGrid([
-                                                    ['key' => 'estacionamiento_propio', 'desc' => 'descripcion_estacionamiento_propio', 'label' => 'Estacionamiento propio'],
-                                                    ['key' => 'ascensor', 'desc' => 'descripcion_ascensor', 'label' => 'Ascensor operativo'],
-                                                ]),
-                                            ]),
-                                    ])
-                                    ->collapsible(),
+                                    ->schema(self::infrastructureFieldsets())
+                                    ->collapsible()
+                                    ->columnSpanFull(),
                             ]),
 
                         Tab::make('Contactos')

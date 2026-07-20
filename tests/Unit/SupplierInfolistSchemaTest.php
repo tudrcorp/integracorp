@@ -31,3 +31,14 @@ it('usa tabs y estilos alineados con infolist de agentes y agencias', function (
         ->toContain('local_beneficiary_name')
         ->toContain('extra_beneficiary_swift');
 });
+
+it('agrupa la certificacion de infraestructura por categorias en el infolist', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/Suppliers/Schemas/SupplierInfolist.php');
+
+    expect($source)
+        ->toContain("Tab::make('Infraestructura')")
+        ->toContain("Section::make('Certificación de infraestructura')")
+        ->toContain('infrastructureFieldsets()')
+        ->toContain('SupplierInfrastructureCatalog::groups()')
+        ->toContain("->columns(['default' => 2, 'sm' => 3, 'lg' => 4, 'xl' => 6])");
+});

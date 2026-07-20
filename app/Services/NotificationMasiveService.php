@@ -238,6 +238,9 @@ class NotificationMasiveService
 
             // dd($tables);
             for ($i = 0; $i < count($rowsNotifications); $i++) {
+                BirthdayNotificationRunReport::setCurrentNotification(
+                    isset($rowsNotifications[$i]['id']) ? (int) $rowsNotifications[$i]['id'] : null
+                );
 
                 // For para recorrer los canales de envio
                 for ($j = 0; $j < count($rowsNotifications[$i]['channels']); $j++) {

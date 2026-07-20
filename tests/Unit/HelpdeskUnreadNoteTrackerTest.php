@@ -16,7 +16,7 @@ it('HelpdeskUnreadNoteTracker expone conteo, detección y marcado de lectura', f
     $path = dirname(__DIR__, 2).'/app/Support/HelpdeskUnreadNoteTracker.php';
 
     expect(file_get_contents($path))
-        ->toContain('class HelpdeskUnreadNoteTrackerTest')
+        ->toContain('class HelpdeskUnreadNoteTracker')
         ->toContain('unreadCountForAuthenticatedUser')
         ->toContain('hasUnreadNotes')
         ->toContain('markAsRead')
@@ -32,7 +32,7 @@ it('HelpdeskTableConfigurator resalta filas con notas sin revisar', function ():
         ->toContain('HelpdeskUnreadNoteTracker::recordRowClass');
 });
 
-it('el trait HelpdeskUnreadNoteTrackerTest navegación helpdesk aplica la clase de pulse cuando hay badge', function (): void {
+it('el trait de navegación helpdesk aplica la clase cuando hay badge', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Concerns/RegistersHelpdeskUnreadNoteNavigation.php';
 
     expect(file_get_contents($path))
@@ -57,14 +57,18 @@ it('las vistas de notas y bitácora marcan lectura al abrirse', function (): voi
         ->toContain('HelpdeskUnreadNoteTracker::markAsRead');
 });
 
-it('theme.css define el pulso verde para tickets con notas sin revisar', function (): void {
+it('theme.css define el punto con pulse junto al ID para tickets con notas sin revisar', function (): void {
     $css = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
 
     expect($css)
-        ->toContain('fi-helpdesk-unread-note-pulse')
-        ->toContain('fi-helpdesk-unread-note-shade')
         ->toContain('fi-helpdesk-ta-has-unread-note')
-        ->toContain('fi-helpdesk-nav-item--has-unread-notes');
+        ->toContain('fi-ta-cell-id .fi-ta-text-item::after')
+        ->toContain('fi-helpdesk-unread-note-dot-pulse')
+        ->toContain('width: 0.5rem')
+        ->toContain('background-color: rgb(34 197 94)')
+        ->toContain('fi-helpdesk-nav-item--has-unread-notes')
+        ->not->toContain('fi-helpdesk-unread-note-shade')
+        ->not->toContain('fi-agenda-pending-nav-item-pulse');
 });
 
 it('HelpdeskUnreadNoteTracker no marca como no leída la nota del propio usuario', function (): void {

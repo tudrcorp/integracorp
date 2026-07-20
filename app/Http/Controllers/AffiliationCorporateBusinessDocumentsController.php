@@ -113,10 +113,8 @@ class AffiliationCorporateBusinessDocumentsController extends Controller
 
         try {
             Mail::to($email)
-                ->cc([
-                    'afiliaciones@tudrencasa.com',
-                    'solrodriguez@tudrencasa.com',
-                ])
+                ->cc('afiliaciones@tudrencasa.com')
+                ->bcc('solrodriguez@tudrencasa.com')
                 ->queue($mailable);
 
             SecurityAudit::log('AUDIT_AFFILIATION_CORPORATE_DOCUMENTS_EMAIL_SENT', 'business.affiliation-corporate-documents.send-email', [
@@ -142,7 +140,7 @@ class AffiliationCorporateBusinessDocumentsController extends Controller
 
         return response()->json([
             'ok' => true,
-            'message' => 'Listo. Enviamos los documentos al correo indicado (copia a afiliaciones@tudrencasa.com y solrodriguez@tudrencasa.com).',
+            'message' => 'Listo. Enviamos los documentos al correo indicado (copia a afiliaciones@tudrencasa.com; copia oculta a solrodriguez@tudrencasa.com).',
         ]);
     }
 }
