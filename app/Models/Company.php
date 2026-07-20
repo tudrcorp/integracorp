@@ -55,4 +55,9 @@ class Company extends Model
     {
         return $this->hasMany(CompanyPaidMembership::class);
     }
+
+    public function companyObservations(): HasMany
+    {
+        return $this->hasMany(CompanyObservation::class)->orderByDesc('created_at');
+    }
 }

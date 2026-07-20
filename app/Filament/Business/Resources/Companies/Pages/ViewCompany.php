@@ -11,8 +11,12 @@ use App\Support\Companies\CompanyAssociateRegistrar;
 use App\Support\Companies\CompanyResponsibleDays;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 
 class ViewCompany extends ViewRecord
@@ -28,6 +32,8 @@ class ViewCompany extends ViewRecord
     private const IOS_SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success'.self::IOS_BUTTON_BASE;
 
     private const IOS_WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning'.self::IOS_BUTTON_BASE;
+
+    private const IOS_INFO_BUTTON_CLASS = 'aviso-btn-ios-info'.self::IOS_BUTTON_BASE;
 
     protected function getHeaderActions(): array
     {
@@ -49,6 +55,57 @@ class ViewCompany extends ViewRecord
                 ->extraAttributes([
                     'class' => self::IOS_SUCCESS_BUTTON_CLASS,
                 ]),
+            Action::make('addObservation')
+                ->label('Agregar Notas/Observaciones')
+                ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                ->color('info')
+                ->extraAttributes([
+                    'class' => self::IOS_INFO_BUTTON_CLASS,
+                ])
+                ->modalHeading('Registrar nota u observación')
+                ->modalDescription('La nota quedará asociada a esta empresa y al analista que la registra.')
+                ->modalSubmitActionLabel('Guardar')
+                ->modalCancelActionLabel('Cancelar')
+                ->modalSubmitAction(
+                    fn (Action $action) => $action
+                        ->color('info')
+                        ->extraAttributes([
+                            'class' => self::IOS_INFO_BUTTON_CLASS,
+                        ])
+                )
+                ->modalCancelAction(
+                    fn (Action $action) => $action
+                        ->color('gray')
+                        ->extraAttributes([
+                            'class' => self::IOS_GRAY_BUTTON_CLASS,
+                        ])
+                )
+                ->form([
+                    Textarea::make('description')
+                        ->label('Texto de la nota u observación')
+                        ->placeholder('Escriba la nota o seguimiento administrativo…')
+                        ->required()
+                        ->minLength(2)
+                        ->maxLength(5000)
+                        ->rows(5),
+                ])
+                ->action(function (array $data): void {
+                    /** @var Company $company */
+                    $company = $this->getRecord();
+
+                    $company->companyObservations()->create([
+                        'description' => $data['description'],
+                        'created_by' => (string) Auth::id(),
+                    ]);
+
+                    $company->unsetRelation('companyObservations');
+                    $company->load('companyObservations.createdBy:id,name,email');
+
+                    Notification::make()
+                        ->success()
+                        ->title('Nota u observación guardada')
+                        ->send();
+                }),
             Action::make('back')
                 ->label('Volver')
                 ->icon('heroicon-o-arrow-left')
