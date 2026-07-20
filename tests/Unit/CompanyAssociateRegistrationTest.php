@@ -9,6 +9,16 @@ it('normaliza cedulas para busqueda de responsables', function (): void {
         ->toBe('V12345678');
 });
 
+it('detecta registro de cedula solo en el mismo dia', function (): void {
+    expect(method_exists(CompanyAssociateRegistrar::class, 'hasIdentityCardRegisteredOnDate'))->toBeTrue();
+
+    $registrar = file_get_contents(dirname(__DIR__, 2).'/app/Support/Companies/CompanyAssociateRegistrar.php');
+
+    expect($registrar)
+        ->toContain('hasIdentityCardRegisteredOnDate')
+        ->toContain("whereDate('registered_at', \$day)");
+});
+
 it('calcula edad desde fecha de nacimiento', function (): void {
     expect(CompanyAssociateRegistrar::calculateAge('1990-01-15'))->toBeInt();
 });
@@ -54,7 +64,10 @@ it('formulario publico de asociados expone componente livewire y ruta', function
         ->toContain('responsibleRemainingDays')
         ->toContain('registered_at')
         ->toContain('WithFileUploads')
-        ->toContain('Rule::unique(\'company_associates\', \'email\')')
+        ->toContain("'email' => ['nullable', 'email', 'max:255']")
+        ->not->toContain('Rule::unique(\'company_associates\', \'email\')')
+        ->toContain('hasIdentityCardRegisteredOnDate')
+        ->toContain('Este afiliado ya fue registrado hoy con este documento de identidad.')
         ->toContain('normalizeInternationalPhone')
         ->toContain('regex:/^\+[1-9]\d{6,14}$/')
         ->toContain('flightDate')
@@ -68,7 +81,6 @@ it('formulario publico de asociados expone componente livewire y ruta', function
         ->toContain('updatedStateId')
         ->toContain('function states()')
         ->toContain('function cities()')
-        ->toContain('Ya existe un afiliado registrado con este documento de identidad.')
         ->toContain('contactPhone\' => [\'required\'')
         ->toContain('contactEmail\' => [\'required\'');
 
