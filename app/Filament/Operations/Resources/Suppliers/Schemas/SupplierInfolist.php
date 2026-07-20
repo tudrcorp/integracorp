@@ -11,10 +11,12 @@ use App\Models\OperationServiceOrder;
 use App\Models\Supplier;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingInfolist;
 use App\Support\Filament\Operations\SupplierIntegracorpManagementTab;
+use App\Support\Operations\SupplierInfrastructureCatalog;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -49,11 +51,60 @@ class SupplierInfolist
         };
     }
 
-    private static function infraDescription(Supplier $record, string $field): string
+    private static function infraDescription(Supplier $record, string $field): ?string
     {
-        $text = (string) ($record->{$field} ?? '');
+        $text = trim((string) ($record->{$field} ?? ''));
 
-        return $text !== '' ? 'Descripción: '.$text : 'Sin descripción registrada.';
+        return $text !== '' ? 'Descripción: '.$text : null;
+    }
+
+    /**
+     * @param  list<array{key: string, desc: string, label: string}>  $items
+     * @return array<int, IconEntry>
+     */
+    private static function infrastructureEntries(array $items): array
+    {
+        $entries = [];
+
+        foreach ($items as $item) {
+            $fieldKey = $item['key'];
+            $descriptionField = $item['desc'];
+
+            $entries[] = IconEntry::make($fieldKey)
+                ->boolean()
+                ->trueIcon(Heroicon::OutlinedCheckCircle)
+                ->falseIcon(Heroicon::OutlinedXCircle)
+                ->trueColor('success')
+                ->falseColor('gray')
+                ->label($item['label'])
+                ->default(false)
+                ->getStateUsing(fn (?Supplier $record): bool => (bool) ($record?->{$fieldKey} ?? false))
+                ->helperText(fn (?Supplier $record): ?string => $record
+                    ? self::infraDescription($record, $descriptionField)
+                    : null);
+        }
+
+        return $entries;
+    }
+
+    /**
+     * @return array<int, Fieldset>
+     */
+    private static function infrastructureFieldsets(): array
+    {
+        $fieldsets = [];
+
+        foreach (SupplierInfrastructureCatalog::groups() as $groupLabel => $items) {
+            $fieldsets[] = Fieldset::make($groupLabel)
+                ->columnSpanFull()
+                ->extraAttributes([
+                    'class' => self::IOS_INNER_CLASS,
+                ])
+                ->columns(['default' => 2, 'sm' => 3, 'lg' => 4, 'xl' => 6])
+                ->schema(self::infrastructureEntries($items));
+        }
+
+        return $fieldsets;
     }
 
     private static function operationServiceOrderStatusColor(?string $state): string
@@ -379,267 +430,12 @@ class SupplierInfolist
                             ->icon('heroicon-o-cpu-chip')
                             ->schema([
                                 Section::make('Certificación de infraestructura')
-                                    ->description('Equipamiento e instalaciones declaradas (sí / no y descripción).')
+                                    ->description('Infraestructura declarada por categoría (sí / no y descripción cuando exista).')
                                     ->icon(Heroicon::OutlinedCpuChip)
                                     ->extraAttributes([
                                         'class' => self::SECTION_CARD,
                                     ])
-                                    ->schema([
-                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3, 'xl' => 4])
-                                            ->extraAttributes([
-                                                'class' => self::IOS_INNER_CLASS,
-                                            ])
-                                            ->schema([
-                                                IconEntry::make('urgen_care')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Urgencias')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_urgen_care')),
-                                                IconEntry::make('consulta_aps')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Consultas APS')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_consulta_aps')),
-                                                IconEntry::make('amd')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Asistencia médica domiciliaria')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_amd')),
-                                                IconEntry::make('laboratorio_centro')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Laboratorio en centro')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_laboratorio_centro')),
-                                                IconEntry::make('laboratorio_domicilio')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Laboratorio en domicilio')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_laboratorio_domicilio')),
-                                                IconEntry::make('rx_centro')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Rayos X en centro')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_rx_centro')),
-                                                IconEntry::make('rx_domicilio')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Rayos X en domicilio')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_rx_domicilio')),
-                                                IconEntry::make('eco_abdominal_centro')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Ecografía abdominal en centro')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_eco_abdominal_centro')),
-                                                IconEntry::make('eco_abdominal_domicilio')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Ecografía abdominal en domicilio')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_eco_abdominal_domicilio')),
-                                                IconEntry::make('electrocardiograma_domicilio')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Electrocardiógrafo en domicilio')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_electrocardiograma_domicilio')),
-                                                IconEntry::make('densitometria_osea')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Densitómetro')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_densitometria_osea')),
-                                                IconEntry::make('dialisis')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Equipo de diálisis')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_dialisis')),
-                                                IconEntry::make('electrocardiograma_centro')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Electrocardiógrafo')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_electrocardiograma_centro')),
-                                                IconEntry::make('equipos_especiales_oftalmologia')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Equipos especiales de oftalmología')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_equipos_especiales_oftalmologia')),
-                                                IconEntry::make('mamografia')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Mamógrafo')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_mamografia')),
-                                                IconEntry::make('quirofanos')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Quirófanos')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_quirofanos')),
-                                                IconEntry::make('radioterapia_intraoperatoria')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Radioterapia intraoperatoria')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_radioterapia_intraoperatoria')),
-                                                IconEntry::make('resonancia')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Resonador')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_resonancia')),
-                                                IconEntry::make('tomografo')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Tomógrafo')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_tomografo')),
-                                                IconEntry::make('oncologia')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Oncología')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_oncologia')),
-                                                IconEntry::make('uci_uten')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('UCI UTE')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_uci_uten')),
-                                                IconEntry::make('neonatal')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Neonatal')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_neonatal')),
-                                                IconEntry::make('ambulancias')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Ambulancias')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_ambulancias')),
-                                                IconEntry::make('odontologia')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Odontología')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_odontologia')),
-                                                IconEntry::make('oftalmologia')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Oftalmología')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_oftalmologia')),
-                                                IconEntry::make('uci_pediatrica')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('UCI pediátrica')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_uci_pediatrica')),
-                                                IconEntry::make('uci_adulto')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('UCI adulto')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_uci_adulto')),
-                                                IconEntry::make('estacionamiento_propio')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Estacionamiento propio')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_estacionamiento_propio')),
-                                                IconEntry::make('ascensor')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Ascensor operativo')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_ascensor')),
-                                                IconEntry::make('robotica')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Equipo de cirugía robótica')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_robotica')),
-                                                IconEntry::make('otras_unidades_especiales')
-                                                    ->boolean()
-                                                    ->trueIcon(Heroicon::OutlinedCheckCircle)
-                                                    ->falseIcon(Heroicon::OutlinedXCircle)
-                                                    ->trueColor('success')
-                                                    ->falseColor('gray')
-                                                    ->label('Otras unidades especiales')
-                                                    ->helperText(fn (Supplier $record): string => self::infraDescription($record, 'descripcion_otras_unidades_especiales')),
-                                            ]),
-                                    ])
+                                    ->schema(self::infrastructureFieldsets())
                                     ->columnSpanFull(),
                             ]),
                         SupplierIntegracorpManagementTab::make(),

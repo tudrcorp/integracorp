@@ -1857,66 +1857,24 @@
     @apply text-gray-600 dark:text-gray-400;
   }
 
-  @keyframes fi-helpdesk-unread-note-pulse {
-    0%,
-    100% {
-      box-shadow:
-        inset 0 0 0 2px rgb(34 197 94 / 0.95),
-        0 0 0 0 rgb(34 197 94 / 0.65),
-        0 0 16px 0 rgb(34 197 94 / 0.3);
-    }
-
-    50% {
-      box-shadow:
-        inset 0 0 0 3px rgb(34 197 94 / 1),
-        0 0 0 16px rgb(34 197 94 / 0),
-        0 0 32px 6px rgb(34 197 94 / 0.55);
-    }
-  }
-
-  @keyframes fi-helpdesk-unread-note-shade {
-    0%,
-    100% {
-      background-color: rgb(220 252 231 / 0.96);
-    }
-
-    50% {
-      background-color: rgb(167 243 208 / 1);
-    }
-  }
-
-  @keyframes fi-helpdesk-unread-note-shade-dark {
-    0%,
-    100% {
-      background-color: rgb(6 78 59 / 0.5);
-    }
-
-    50% {
-      background-color: rgb(6 95 70 / 0.78);
-    }
-  }
-
   .fi-ta-row.fi-helpdesk-ta-has-unread-note,
   .fi-ta-record.fi-helpdesk-ta-has-unread-note {
     position: relative;
     z-index: 1;
     border-left-width: 4px !important;
     border-left-color: rgb(34 197 94) !important;
-    animation: fi-helpdesk-unread-note-pulse 1.35s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
 
   .fi-ta-row.fi-helpdesk-ta-has-unread-note > .fi-ta-cell,
   .fi-ta-record.fi-helpdesk-ta-has-unread-note > .fi-ta-cell,
   .fi-ta-record.fi-helpdesk-ta-has-unread-note {
     background-color: rgb(220 252 231 / 0.96) !important;
-    animation: fi-helpdesk-unread-note-shade 1.35s ease-in-out infinite;
   }
 
   .dark .fi-ta-row.fi-helpdesk-ta-has-unread-note > .fi-ta-cell,
   .dark .fi-ta-record.fi-helpdesk-ta-has-unread-note > .fi-ta-cell,
   .dark .fi-ta-record.fi-helpdesk-ta-has-unread-note {
     background-color: rgb(6 78 59 / 0.5) !important;
-    animation-name: fi-helpdesk-unread-note-shade-dark;
   }
 
   .fi-ta-row.fi-helpdesk-ta-has-unread-note[class*='fi-helpdesk-ta-priority--'],
@@ -1932,6 +1890,44 @@
   .fi-ta-row.fi-helpdesk-ta-has-unread-note .fi-ta-text-description,
   .fi-ta-record.fi-helpdesk-ta-has-unread-note .fi-ta-text-description {
     @apply text-emerald-800/80 dark:text-emerald-200/80;
+  }
+
+  /* Punto verde junto al ID con pulse (solo el punto, no la fila) */
+  @keyframes fi-helpdesk-unread-note-dot-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgb(34 197 94 / 0.55);
+      transform: scale(1);
+    }
+
+    50% {
+      box-shadow: 0 0 0 6px rgb(34 197 94 / 0);
+      transform: scale(1.08);
+    }
+  }
+
+  .fi-ta-row.fi-helpdesk-ta-has-unread-note .fi-ta-cell-id .fi-ta-text-item,
+  .fi-ta-record.fi-helpdesk-ta-has-unread-note .fi-ta-cell-id .fi-ta-text-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .fi-ta-row.fi-helpdesk-ta-has-unread-note .fi-ta-cell-id .fi-ta-text-item::after,
+  .fi-ta-record.fi-helpdesk-ta-has-unread-note .fi-ta-cell-id .fi-ta-text-item::after {
+    content: '';
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background-color: rgb(34 197 94);
+    animation: fi-helpdesk-unread-note-dot-pulse 1.6s ease-in-out infinite;
+  }
+
+  .dark .fi-ta-row.fi-helpdesk-ta-has-unread-note .fi-ta-cell-id .fi-ta-text-item::after,
+  .dark .fi-ta-record.fi-helpdesk-ta-has-unread-note .fi-ta-cell-id .fi-ta-text-item::after {
+    background-color: rgb(74 222 128);
   }
 
   /* Helpdesk: pestaña tipo de ticket */
@@ -7955,31 +7951,7 @@
   }
 }
 
-@keyframes fi-agenda-pending-nav-item-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.45);
-  }
-
-  50% {
-    box-shadow: 0 0 0 10px rgba(52, 199, 89, 0);
-  }
-}
-
 @layer components {
-  .fi-agenda-corporativa-nav-item--has-pending-badge .fi-sidebar-item-btn {
-    position: relative;
-  }
-
-  .fi-agenda-corporativa-nav-item--has-pending-badge .fi-sidebar-item-btn::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    pointer-events: none;
-    animation: fi-agenda-pending-nav-item-pulse 2.4s ease-in-out infinite;
-  }
-
   .fi-agenda-corporativa-nav-item--has-pending-badge .fi-sidebar-item-badge-ctn .fi-badge {
     background-color: #34c759 !important;
     color: #ffffff !important;
@@ -7992,19 +7964,6 @@
   .fi-agenda-corporativa-nav-item--has-pending-badge .fi-sidebar-item-badge-ctn .fi-badge .fi-badge-label,
   .fi-agenda-corporativa-nav-item--has-pending-badge .fi-sidebar-item-badge-ctn .fi-badge .fi-badge-label-ctn {
     color: #ffffff !important;
-  }
-
-  .fi-helpdesk-nav-item--has-unread-notes .fi-sidebar-item-btn {
-    position: relative;
-  }
-
-  .fi-helpdesk-nav-item--has-unread-notes .fi-sidebar-item-btn::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    pointer-events: none;
-    animation: fi-agenda-pending-nav-item-pulse 2.4s ease-in-out infinite;
   }
 
   .fi-helpdesk-nav-item--has-unread-notes .fi-sidebar-item-badge-ctn .fi-badge {

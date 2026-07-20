@@ -16,6 +16,8 @@
         <img
             src="{{ $colaborador['avatar_url'] }}"
             alt="{{ $colaborador['name'] ?? 'Colaborador' }}"
+            loading="lazy"
+            decoding="async"
             class="{{ $sizeClass }} shrink-0 rounded-full border border-slate-200/80 object-cover dark:border-white/15"
         >
     @else

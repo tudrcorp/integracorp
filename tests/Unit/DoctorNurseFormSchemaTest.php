@@ -22,6 +22,11 @@ it('incluye datos bancarios del beneficiario como en proveedores y agentes', fun
         ->toContain("Tab::make('Datos principales')")
         ->toContain("Tab::make('Ubicación y operación')")
         ->toContain("Tab::make('Contacto y condiciones')")
+        ->toContain("Tab::make('Equipamiento')")
+        ->toContain('homeCareEquipmentFieldsets()')
+        ->toContain("Section::make('Certificación de infraestructura domiciliaria')")
+        ->toContain("->columns(['default' => 2, 'sm' => 3, 'lg' => 4, 'xl' => 6])")
+        ->toContain('Instrumental de diagnóstico')
         ->toContain('SupplierBeneficiaryBankingForm::bankingTab');
 
     expect(file_get_contents($modelPath))

@@ -98,6 +98,9 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain('getDepartmentReplicationCalendarDaysProperty')
         ->toContain('dispatch(\'tdg-modal-workspace-changed\'')
         ->toContain('skipRender()')
+        ->toContain('closeDayModal')
+        ->toContain('applyDayPayloadToForms')
+        ->toContain('resolveSelectedDayPayloadForHydration')
         ->toContain('isDaytimeOperationsShift')
         ->toContain('Un colaborador no puede asistir a más de una oficina')
         ->toContain('assignGuardCollaborator')
@@ -117,7 +120,15 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain('avatars_tooltip')
         ->toContain('usesDepartmentFullLabelsInCalendar')
         ->toContain("? 'full' : 'short'")
-        ->toContain('task_primary');
+        ->toContain('task_primary')
+        ->toContain('forgetTdgMonthDayPayloadCache')
+        ->toContain('buildTdgMonthDayPayloadArrays')
+        ->toContain('whereBetween')
+        ->toContain('tdgPublicStorageUrl')
+        ->toContain('Cache::remember')
+        ->toContain('DB::transaction')
+        ->toContain('->insert(')
+        ->not->toContain("Storage::disk('public')->exists");
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/TdgCalendarDepartmentCatalog.php'))
         ->toContain('display_label');
@@ -150,6 +161,7 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
 
     expect(file_get_contents($modalPath))
         ->toContain('@tdg-modal-workspace-changed.window')
+        ->toContain('@if ($isDayModalOpen)')
         ->toContain("@click=\"workspace = '{{ \$workspaceKey }}'\"")
         ->toContain("x-show=\"workspace === 'offices'\"")
         ->toContain("x-show=\"workspace === 'guards'\"")

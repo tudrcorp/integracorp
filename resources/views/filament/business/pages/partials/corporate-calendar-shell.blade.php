@@ -339,6 +339,8 @@
                                 <article
                                     @if ($this->calendarDayInteractionsEnabled() && $day['is_current_month'] && ! $day['is_past_date'])
                                         wire:click="openDayModal('{{ $day['date'] }}')"
+                                        wire:loading.class="pointer-events-none opacity-60"
+                                        wire:target="openDayModal"
                                     @endif
                                     class="group flex min-h-[130px] flex-col rounded-2xl border p-3 transition-all duration-200 ease-out
                                     {{ $day['is_current_month']

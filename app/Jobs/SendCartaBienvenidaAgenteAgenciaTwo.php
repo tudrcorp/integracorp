@@ -22,6 +22,7 @@ class SendCartaBienvenidaAgenteAgenciaTwo implements ShouldQueue
     public $name;
 
     public $email;
+
     public $password;
 
     /**
@@ -60,7 +61,7 @@ class SendCartaBienvenidaAgenteAgenciaTwo implements ShouldQueue
             unset($pdf);
 
             Mail::to($email)
-                ->cc('solrodriguez@tudrencasa.com')
+                ->bcc('solrodriguez@tudrencasa.com')
                 ->send(new MailCartaBienvenidaAgenteAgenciaTwo($code, $name, $name_pdf, $email, $password));
 
             Log::info('MASTER-AGENCIES: Carta de bienvenida enviada con éxito.', [

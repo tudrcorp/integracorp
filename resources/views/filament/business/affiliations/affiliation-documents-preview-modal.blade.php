@@ -124,7 +124,7 @@
                             type="email"
                             x-model="optionalEmail"
                             class="w-full rounded-2xl border border-gray-200/90 bg-white/95 px-4 py-2.5 text-sm text-gray-950 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)] outline-none ring-1 ring-gray-950/5 placeholder:text-gray-400 focus:border-primary-400 focus:ring-2 focus:ring-primary-500/30 dark:border-white/10 dark:bg-gray-900/80 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-primary-500"
-                            placeholder="Vacío = correo del agente (CC afiliaciones@tudrencasa.com, solrodriguez@tudrencasa.com)"
+                            placeholder="Vacío = correo del agente (CC afiliaciones@tudrencasa.com; BCC solrodriguez@tudrencasa.com)"
                             autocomplete="email"
                         />
                     </div>

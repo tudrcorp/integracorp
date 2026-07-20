@@ -340,25 +340,29 @@ class CorporateQuotesTable
 
                                     if ($record->plan == 1) {
                                         Mail::to($data['email'])
-                                            ->cc('solrodriguez@tudrencasa.com')
+                                            ->cc('cotizacionestdg.ve@gmail.com')
+                                            ->bcc('solrodriguez@tudrencasa.com')
                                             ->send(new SendMailPropuestaPlanInicial($record['full_name'], $doc));
                                     }
 
                                     if ($record->plan == 2) {
                                         Mail::to($data['email'])
-                                            ->cc('solrodriguez@tudrencasa.com')
+                                            ->cc('cotizacionestdg.ve@gmail.com')
+                                            ->bcc('solrodriguez@tudrencasa.com')
                                             ->send(new SendMailPropuestaPlanIdeal($record['full_name'], $doc));
                                     }
 
                                     if ($record->plan == 3) {
                                         Mail::to($data['email'])
-                                            ->cc('solrodriguez@tudrencasa.com')
+                                            ->cc('cotizacionestdg.ve@gmail.com')
+                                            ->bcc('solrodriguez@tudrencasa.com')
                                             ->send(new SendMailPropuestaPlanEspecial($record['full_name'], $doc));
                                     }
 
                                     if ($record->plan == 'CM') {
                                         Mail::to($data['email'])
-                                            ->cc('solrodriguez@tudrencasa.com')
+                                            ->cc('cotizacionestdg.ve@gmail.com')
+                                            ->bcc('solrodriguez@tudrencasa.com')
                                             ->send(new SendMailPropuestaMultiPlan($record['full_name'], $doc));
                                     }
                                 }

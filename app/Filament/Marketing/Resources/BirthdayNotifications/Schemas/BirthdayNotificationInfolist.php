@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\BirthdayNotifications\Schemas;
 
+use App\Models\BirthdayNotification;
 use App\Support\BirthdayNotificationAudience;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -55,6 +56,56 @@ class BirthdayNotificationInfolist
                                     ->label('Estatus:')
                                     ->color('success')
                                     ->badge(),
+                                Fieldset::make('Métricas de envío (correo)')
+                                    ->schema([
+                                        TextEntry::make('email_metrics_sent')
+                                            ->label('Enviados')
+                                            ->state(fn (BirthdayNotification $record): int => $record->deliveryStats()['email']['sent'])
+                                            ->badge()
+                                            ->color('success'),
+                                        TextEntry::make('email_metrics_failed')
+                                            ->label('Fallidos')
+                                            ->state(fn (BirthdayNotification $record): int => $record->deliveryStats()['email']['failed'])
+                                            ->badge()
+                                            ->color('danger'),
+                                        TextEntry::make('email_metrics_pending')
+                                            ->label('Pendientes')
+                                            ->state(fn (BirthdayNotification $record): int => $record->deliveryStats()['email']['pending'])
+                                            ->badge()
+                                            ->color('warning'),
+                                        TextEntry::make('email_metrics_skipped')
+                                            ->label('Omitidos')
+                                            ->state(fn (BirthdayNotification $record): int => $record->deliveryStats()['email']['skipped'])
+                                            ->badge()
+                                            ->color('gray'),
+                                    ])
+                                    ->columns(4)
+                                    ->visible(fn (BirthdayNotification $record): bool => in_array('email', (array) $record->channels, true)),
+                                Fieldset::make('Métricas de envío (WhatsApp)')
+                                    ->schema([
+                                        TextEntry::make('whatsapp_metrics_sent')
+                                            ->label('Enviados')
+                                            ->state(fn (BirthdayNotification $record): int => $record->deliveryStats()['whatsapp']['sent'])
+                                            ->badge()
+                                            ->color('success'),
+                                        TextEntry::make('whatsapp_metrics_failed')
+                                            ->label('Fallidos')
+                                            ->state(fn (BirthdayNotification $record): int => $record->deliveryStats()['whatsapp']['failed'])
+                                            ->badge()
+                                            ->color('danger'),
+                                        TextEntry::make('whatsapp_metrics_pending')
+                                            ->label('Pendientes')
+                                            ->state(fn (BirthdayNotification $record): int => $record->deliveryStats()['whatsapp']['pending'])
+                                            ->badge()
+                                            ->color('warning'),
+                                        TextEntry::make('whatsapp_metrics_skipped')
+                                            ->label('Omitidos')
+                                            ->state(fn (BirthdayNotification $record): int => $record->deliveryStats()['whatsapp']['skipped'])
+                                            ->badge()
+                                            ->color('gray'),
+                                    ])
+                                    ->columns(4)
+                                    ->visible(fn (BirthdayNotification $record): bool => in_array('whatsapp', (array) $record->channels, true)),
                                 Fieldset::make('Cuerpo')
                                     ->schema([
                                         TextEntry::make('content')

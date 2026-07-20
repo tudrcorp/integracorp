@@ -12,6 +12,7 @@ use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\StatsOverview
 use App\Filament\Business\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart;
 use App\Filament\Business\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\ProspectAgentTasksByUserChart;
+use App\Filament\Marketing\Resources\BirthdayNotifications\RelationManagers\BirthdayNotificationDeliveriesRelationManager;
 use App\Filament\Marketing\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart as MarketingHelpdeskStatusWeeklyChart;
 use App\Filament\Marketing\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk as MarketingStatsOverviewHelpdesk;
 use App\Filament\Operations\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart as OperationsHelpdeskStatusWeeklyChart;
@@ -88,6 +89,7 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('app.filament.administration.resources.helpdesks.widgets.stats-overview-helpdesk', AdministrationStatsOverviewHelpdesk::class);
         Livewire::component('app.filament.marketing.resources.helpdesks.widgets.helpdesk-status-weekly-chart', MarketingHelpdeskStatusWeeklyChart::class);
         Livewire::component('app.filament.marketing.resources.helpdesks.widgets.stats-overview-helpdesk', MarketingStatsOverviewHelpdesk::class);
+        Livewire::component('app.filament.marketing.resources.birthday-notifications.relation-managers.birthday-notification-deliveries-relation-manager', BirthdayNotificationDeliveriesRelationManager::class);
         Livewire::component('app.filament.operations.resources.helpdesks.widgets.helpdesk-status-weekly-chart', OperationsHelpdeskStatusWeeklyChart::class);
         Livewire::component('app.filament.operations.resources.helpdesks.widgets.stats-overview-helpdesk', OperationsStatsOverviewHelpdesk::class);
         Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.colaborador-activities-speedometer-widget', ColaboradorActivitiesSpeedometerWidget::class);

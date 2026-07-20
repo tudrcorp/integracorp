@@ -6,15 +6,12 @@ use App\Filament\Resources\CorporateQuotes\CorporateQuoteResource;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
-use App\Jobs\ResendEmailPropuestaEconomica;
 use App\Jobs\SendNotificacionUploadDataCorporate;
 use App\Mail\MailLinkIndividualQuote;
 use App\Mail\SendMailPropuestaMultiPlan;
 use App\Mail\SendMailPropuestaPlanEspecial;
 use App\Mail\SendMailPropuestaPlanIdeal;
 use App\Mail\SendMailPropuestaPlanInicial;
-use App\Models\Agency;
-use App\Models\Agent;
 use App\Models\CorporateQuote;
 use App\Models\User;
 use Carbon\Carbon;
@@ -22,8 +19,6 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -112,20 +107,20 @@ class CorporateQuotesTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
@@ -153,8 +148,8 @@ class CorporateQuotesTable
                                         ->label('Población')
                                         ->required()
                                         ->visibility('public')
-                                        ->helperText('La carga permite archivos .xlsx, .xls, .csv, .txt, .doc, .docx, .pdf, .jpg, .jpeg, .png')
-                                ])->columns(1)
+                                        ->helperText('La carga permite archivos .xlsx, .xls, .csv, .txt, .doc, .docx, .pdf, .jpg, .jpeg, .png'),
+                                ])->columns(1),
                         ])
                         ->action(function (array $data, $record): void {
 
@@ -173,7 +168,7 @@ class CorporateQuotesTable
                                 $recipient_for_user = User::find($user->id);
                                 Notification::make()
                                     ->title('COTIZACION CORPORATIVA')
-                                    ->body('El agente ' . Auth::user()->name . ' cargo el modelo de data para la cotización Nro. ' . $record->code)
+                                    ->body('El agente '.Auth::user()->name.' cargo el modelo de data para la cotización Nro. '.$record->code)
                                     ->icon('heroicon-m-tag')
                                     ->iconColor('success')
                                     ->success()
@@ -186,7 +181,7 @@ class CorporateQuotesTable
                                     ->sendToDatabase($recipient_for_user);
                             }
 
-                            //Notificacion por whatsapp
+                            // Notificacion por whatsapp
                             NotificationController::sendUploadDataCorporate(Auth::user()->name, $record->code);
 
                             /**
@@ -195,7 +190,7 @@ class CorporateQuotesTable
                              */
                             SendNotificacionUploadDataCorporate::dispatch($record->data_doc, Auth::user()->name, $record->code);
                         })
-                        ->hidden(fn($record): bool => $record->status == 'APROBADA-DATA-ENVIADA' || $record->status == 'APROBADA' || $record->observation_dress_tailor == null),
+                        ->hidden(fn ($record): bool => $record->status == 'APROBADA-DATA-ENVIADA' || $record->status == 'APROBADA' || $record->observation_dress_tailor == null),
 
                     Action::make('aproved')
                         ->label('Aprobar')
@@ -206,7 +201,7 @@ class CorporateQuotesTable
                         ->modalDescription(
                             new HtmlString(
                                 Blade::render(
-                                    <<<BLADE
+                                    <<<'BLADE'
                                         <div class="fi-section-header-description mt-10">
                                             Por favor cargue la data de la población y a continuación haga click en Confirmar. 
                                             <br>
@@ -230,8 +225,8 @@ class CorporateQuotesTable
                                         ->label('Población')
                                         ->required()
                                         ->visibility('public')
-                                        ->helperText('La carga permite archivos .xlsx, .xls, .csv, .txt, .doc, .docx, .pdf, .jpg, .jpeg, .png')
-                                ])->columns(1)
+                                        ->helperText('La carga permite archivos .xlsx, .xls, .csv, .txt, .doc, .docx, .pdf, .jpg, .jpeg, .png'),
+                                ])->columns(1),
                         ])
                         ->action(function (array $data, $record): void {
 
@@ -250,7 +245,7 @@ class CorporateQuotesTable
                                 $recipient_for_user = User::find($user->id);
                                 Notification::make()
                                     ->title('COTIZACION CORPORATIVA')
-                                    ->body('El agente ' . Auth::user()->name . ' cargo el modelo de data para la cotización Nro. ' . $record->code)
+                                    ->body('El agente '.Auth::user()->name.' cargo el modelo de data para la cotización Nro. '.$record->code)
                                     ->icon('heroicon-m-tag')
                                     ->iconColor('success')
                                     ->success()
@@ -263,7 +258,7 @@ class CorporateQuotesTable
                                     ->sendToDatabase($recipient_for_user);
                             }
 
-                            //Notificacion por whatsapp
+                            // Notificacion por whatsapp
                             NotificationController::sendUploadDataCorporate(Auth::user()->name, $record->code);
 
                             /**
@@ -272,110 +267,114 @@ class CorporateQuotesTable
                              */
                             SendNotificacionUploadDataCorporate::dispatch($record->data_doc, Auth::user()->name, $record->code);
                         })
-                        ->hidden(fn($record): bool => $record->status == 'APROBADA-DATA-ENVIADA' || $record->status == 'APROBADA' || $record->observation_dress_tailor != null),
+                        ->hidden(fn ($record): bool => $record->status == 'APROBADA-DATA-ENVIADA' || $record->status == 'APROBADA' || $record->observation_dress_tailor != null),
 
-                /**FORWARD */
-                Action::make('forward')
-                    ->label('Reenviar')
-                    ->icon('fluentui-document-arrow-right-20')
-                    ->color('primary')
-                    ->requiresConfirmation()
-                    ->modalIcon('fluentui-document-arrow-right-20')
-                    ->modalHeading('Reenvío de Cotización')
-                    ->modalDescription('La propuesta será enviada por email y/o teléfono!')
-                    ->modalWidth(Width::ExtraLarge)
-                    ->form([
-                        Section::make()
-                            ->schema([
-                                TextInput::make('email')
-                                    ->label('Correo Electrónico')
-                                    ->email()
-                                    ->maxLength(255)
-                                    ->autocomplete('email')
-                                    ->prefixIcon('heroicon-m-envelope')
-                                    ->helperText('Use una dirección de correo institucional o personal válida.'),
-                                TextInput::make('phone')
-                                    ->prefixIcon('heroicon-s-phone')
-                                    ->tel()
-                                    ->helperText('El numero de telefono debe estar asociado a WhatSapp. El formato de ser 04127018390, 04146786543, 04246754321, sin espacios en blanco. Para los numeros extrangeros deben colocar el codigo de area, Ejemplo: +1987654567, +36909876578')
-                                    ->label('Número de teléfono')
-                            ])
-                    ])
-                    ->action(function (CorporateQuote $record, array $data) {
+                    /**FORWARD */
+                    Action::make('forward')
+                        ->label('Reenviar')
+                        ->icon('fluentui-document-arrow-right-20')
+                        ->color('primary')
+                        ->requiresConfirmation()
+                        ->modalIcon('fluentui-document-arrow-right-20')
+                        ->modalHeading('Reenvío de Cotización')
+                        ->modalDescription('La propuesta será enviada por email y/o teléfono!')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->form([
+                            Section::make()
+                                ->schema([
+                                    TextInput::make('email')
+                                        ->label('Correo Electrónico')
+                                        ->email()
+                                        ->maxLength(255)
+                                        ->autocomplete('email')
+                                        ->prefixIcon('heroicon-m-envelope')
+                                        ->helperText('Use una dirección de correo institucional o personal válida.'),
+                                    TextInput::make('phone')
+                                        ->prefixIcon('heroicon-s-phone')
+                                        ->tel()
+                                        ->helperText('El numero de telefono debe estar asociado a WhatSapp. El formato de ser 04127018390, 04146786543, 04246754321, sin espacios en blanco. Para los numeros extrangeros deben colocar el codigo de area, Ejemplo: +1987654567, +36909876578')
+                                        ->label('Número de teléfono'),
+                                ]),
+                        ])
+                        ->action(function (CorporateQuote $record, array $data) {
 
-                        try {
+                            try {
 
-                            // dd($record);
+                                // dd($record);
 
-                            $email = null;
-                            $phone = null;
+                                $email = null;
+                                $phone = null;
 
-                            if (isset($data['email'])) {
+                                if (isset($data['email'])) {
 
-                                $email = $data['email'];
-                                $doc = $record->code . '.pdf';
+                                    $email = $data['email'];
+                                    $doc = $record->code.'.pdf';
 
-                                if ($record->plan == 1) {
-                                    Mail::to($data['email'])
-                                        ->cc('solrodriguez@tudrencasa.com')
-                                        ->send(new SendMailPropuestaPlanInicial($record['full_name'], $doc));
+                                    if ($record->plan == 1) {
+                                        Mail::to($data['email'])
+                                            ->cc('cotizacionestdg.ve@gmail.com')
+                                            ->bcc('solrodriguez@tudrencasa.com')
+                                            ->send(new SendMailPropuestaPlanInicial($record['full_name'], $doc));
+                                    }
+
+                                    if ($record->plan == 2) {
+                                        Mail::to($data['email'])
+                                            ->cc('cotizacionestdg.ve@gmail.com')
+                                            ->bcc('solrodriguez@tudrencasa.com')
+                                            ->send(new SendMailPropuestaPlanIdeal($record['full_name'], $doc));
+                                    }
+
+                                    if ($record->plan == 3) {
+                                        Mail::to($data['email'])
+                                            ->cc('cotizacionestdg.ve@gmail.com')
+                                            ->bcc('solrodriguez@tudrencasa.com')
+                                            ->send(new SendMailPropuestaPlanEspecial($record['full_name'], $doc));
+                                    }
+
+                                    if ($record->plan == 'CM') {
+                                        Mail::to($data['email'])
+                                            ->cc('cotizacionestdg.ve@gmail.com')
+                                            ->bcc('solrodriguez@tudrencasa.com')
+                                            ->send(new SendMailPropuestaMultiPlan($record['full_name'], $doc));
+                                    }
                                 }
 
-                                if ($record->plan == 2) {
-                                    Mail::to($data['email'])
-                                        ->cc('solrodriguez@tudrencasa.com')
-                                        ->send(new SendMailPropuestaPlanIdeal($record['full_name'], $doc));
+                                if (isset($data['phone'])) {
+
+                                    $phone = $data['phone'];
+                                    $nameDoc = $record->code.'.pdf';
+
+                                    $res = NotificationController::sendQuote($phone, $nameDoc);
+
+                                    if (! $res) {
+                                        Notification::make()
+                                            ->title('ERROR')
+                                            ->body('La cotización no pudo ser enviada por whatsapp. Por favor, contacte con el administrador del Sistema.')
+                                            ->icon('heroicon-s-x-circle')
+                                            ->iconColor('danger')
+                                            ->danger()
+                                            ->send();
+                                    }
                                 }
 
-                                if ($record->plan == 3) {
-                                    Mail::to($data['email'])
-                                        ->cc('solrodriguez@tudrencasa.com')
-                                        ->send(new SendMailPropuestaPlanEspecial($record['full_name'], $doc));
-                                }
+                                Notification::make()
+                                    ->title('ENVÍO EXITOSO')
+                                    ->body('La cotización fue reenviada exitosamente.')
+                                    ->icon('heroicon-s-check-circle')
+                                    ->iconColor('verde')
+                                    ->success()
+                                    ->send();
+                            } catch (\Throwable $th) {
 
-                                if ($record->plan == 'CM') {
-                                    Mail::to($data['email'])
-                                        ->cc('solrodriguez@tudrencasa.com')
-                                        ->send(new SendMailPropuestaMultiPlan($record['full_name'], $doc));
-                                }
+                                Notification::make()
+                                    ->title('ERROR')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
                             }
-
-                            if (isset($data['phone'])) {
-
-                                $phone = $data['phone'];
-                                $nameDoc = $record->code . '.pdf';
-
-                                $res = NotificationController::sendQuote($phone, $nameDoc);
-
-                                if (!$res) {
-                                    Notification::make()
-                                        ->title('ERROR')
-                                        ->body('La cotización no pudo ser enviada por whatsapp. Por favor, contacte con el administrador del Sistema.')
-                                        ->icon('heroicon-s-x-circle')
-                                        ->iconColor('danger')
-                                        ->danger()
-                                        ->send();
-                                }
-                            }
-
-                            Notification::make()
-                                ->title('ENVÍO EXITOSO')
-                                ->body('La cotización fue reenviada exitosamente.')
-                                ->icon('heroicon-s-check-circle')
-                                ->iconColor('verde')
-                                ->success()
-                                ->send();
-                        } catch (\Throwable $th) {
-
-                            Notification::make()
-                                ->title('ERROR')
-                                ->body($th->getMessage())
-                                ->icon('heroicon-s-x-circle')
-                                ->iconColor('danger')
-                                ->danger()
-                                ->send();
-                        }
-                    }),
+                        }),
 
                     /**DESCARGA DE COTIZACION */
                     Action::make('download')
@@ -391,7 +390,7 @@ class CorporateQuotesTable
 
                             try {
 
-                                if (!file_exists(public_path('storage/quotes/' . $record->code . '.pdf'))) {
+                                if (! file_exists(public_path('storage/quotes/'.$record->code.'.pdf'))) {
 
                                     Notification::make()
                                         ->title('NOTIFICACIÓN')
@@ -407,7 +406,8 @@ class CorporateQuotesTable
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/quotes/' . $record->code . '.pdf');
+                                $path = public_path('storage/quotes/'.$record->code.'.pdf');
+
                                 return response()->download($path);
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
@@ -420,7 +420,7 @@ class CorporateQuotesTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn($record): bool => $record->observation_dress_tailor != null),
+                        ->hidden(fn ($record): bool => $record->observation_dress_tailor != null),
 
                     /**FORWARD */
                     Action::make('link')
@@ -443,13 +443,13 @@ class CorporateQuotesTable
                                     Grid::make(2)->schema([
                                         Select::make('country_code')
                                             ->label('Código de país')
-                                            ->options(fn() => UtilsController::getCountries())
+                                            ->options(fn () => UtilsController::getCountries())
                                             ->searchable()
                                             ->default('+58')
                                             ->required()
                                             ->live(onBlur: true)
                                             ->validationMessages([
-                                                'required'  => 'Campo Requerido',
+                                                'required' => 'Campo Requerido',
                                             ]),
                                         TextInput::make('phone')
                                             ->prefixIcon('heroicon-s-phone')
@@ -457,18 +457,18 @@ class CorporateQuotesTable
                                             ->label('Número de teléfono')
                                             ->required()
                                             ->validationMessages([
-                                                'required'  => 'Campo Requerido',
+                                                'required' => 'Campo Requerido',
                                             ])
                                             ->live(onBlur: true)
                                             ->afterStateUpdated(function ($state, callable $set, Get $get) {
                                                 $countryCode = $get('country_code');
                                                 if ($countryCode) {
                                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone', $countryCode . $cleanNumber);
+                                                    $set('phone', $countryCode.$cleanNumber);
                                                 }
                                             }),
-                                    ])
-                                ])
+                                    ]),
+                                ]),
                         ])
                         ->action(function (CorporateQuote $record, array $data) {
 
@@ -476,7 +476,7 @@ class CorporateQuotesTable
 
                                 $email = null;
                                 $phone = null;
-                                $link = env('APP_URL') . '/in/' . Crypt::encryptString($record->id) . '/w';
+                                $link = env('APP_URL').'/in/'.Crypt::encryptString($record->id).'/w';
 
                                 if (isset($data['email'])) {
 
@@ -529,7 +529,7 @@ class CorporateQuotesTable
                                     ->send();
                             }
                         })
-                        ->hidden(fn($record): bool => $record->observation_dress_tailor != null),
+                        ->hidden(fn ($record): bool => $record->observation_dress_tailor != null),
 
                     /**OBSERVACIONES */
                     Action::make('observations')
@@ -544,7 +544,7 @@ class CorporateQuotesTable
                         ->form([
                             Textarea::make('description')
                                 ->label('Observaciones')
-                                ->rows(5)
+                                ->rows(5),
                         ])
                         ->action(function (CorporateQuote $record, array $data) {
 
@@ -577,15 +577,16 @@ class CorporateQuotesTable
                         ->color('info')
                         ->action(function (CorporateQuote $record, array $data) {
                             $path = public_path('storage/files/poblacion_ejemplo.xlsx');
+
                             return response()->download($path);
                         })
-                        ->hidden(fn($record): bool => $record->observation_dress_tailor != null),
+                        ->hidden(fn ($record): bool => $record->observation_dress_tailor != null),
                 ])
                     ->icon('heroicon-c-ellipsis-vertical')
                     ->color('azulOscuro')
                     ->hidden(function (CorporateQuote $record) {
                         return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
-                    })
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

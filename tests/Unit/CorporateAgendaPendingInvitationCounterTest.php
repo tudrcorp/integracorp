@@ -10,7 +10,7 @@ it('expone contadores de invitaciones pendientes para agenda corporativa', funct
     $shellPath = dirname(__DIR__, 2).'/resources/views/filament/business/pages/partials/corporate-calendar-shell.blade.php';
 
     expect(file_get_contents($counterPath))
-        ->toContain('class CorporateAgendaPendingInvitationCounterTest')
+        ->toContain('class CorporateAgendaPendingInvitationCounter')
         ->toContain('pendingInvitationCountForAuthenticatedUser')
         ->toContain('pendingInvitationCountsByDateForAuthenticatedUser')
         ->toContain('CorporateAgendaInvitationStatus::Pending')
@@ -31,9 +31,8 @@ it('expone contadores de invitaciones pendientes para agenda corporativa', funct
 
     expect(file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css'))
         ->toContain('fi-agenda-corporativa-nav-item--has-pending-badge')
-        ->toContain('fi-agenda-pending-nav-item-pulse')
-        ->toContain('.fi-sidebar-item-btn::after')
-        ->toContain('#34c759');
+        ->toContain('#34c759')
+        ->not->toContain('fi-agenda-pending-nav-item-pulse');
 });
 
 it('retorna cero invitaciones pendientes sin usuario autenticado', function (): void {

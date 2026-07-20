@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\MassNotificationDeliveryStatus;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
 use App\Jobs\WhatsAppBirthdayNotification;
@@ -53,6 +54,8 @@ final class BirthdayNotificationRunReport
 
     private static ?string $currentGroup = null;
 
+    private static ?int $currentNotificationId = null;
+
     /** @var array<string, array{whatsapp: int, email: int, failures: array<string, int>, records_in_source: int, validation_passes: int, validations_total: int, channels_seen: array<string, bool>}> */
     private static array $stats = [];
 
@@ -74,6 +77,7 @@ final class BirthdayNotificationRunReport
         }
 
         self::$currentGroup = null;
+        self::$currentNotificationId = null;
         self::$criticalFailure = false;
         self::$criticalMessage = null;
     }
@@ -106,6 +110,16 @@ final class BirthdayNotificationRunReport
         self::$currentGroup = $group;
     }
 
+    public static function setCurrentNotification(?int $birthdayNotificationId): void
+    {
+        self::$currentNotificationId = $birthdayNotificationId;
+    }
+
+    public static function currentNotificationId(): ?int
+    {
+        return self::$currentNotificationId;
+    }
+
     public static function isActive(): bool
     {
         return self::$active;
@@ -136,11 +150,32 @@ final class BirthdayNotificationRunReport
         string $file,
         string $type,
     ): \Illuminate\Foundation\Bus\PendingDispatch {
-        if (self::$active && self::$currentGroup !== null && ! self::isControlPhone($phone)) {
+        $isControlCopy = self::isControlPhone($phone);
+        $deliveryId = null;
+
+        if (self::$active && self::$currentGroup !== null && ! $isControlCopy) {
             self::incrementSent(self::$currentGroup, 'whatsapp');
         }
 
-        return WhatsAppBirthdayNotification::dispatch($name, $phone, $content, $file, $type);
+        if (! $isControlCopy && self::$currentNotificationId !== null) {
+            $delivery = BirthdayNotificationRecipientDelivery::recordWhatsappOutcome(
+                self::$currentNotificationId,
+                $name,
+                $phone,
+                MassNotificationDeliveryStatus::Sent,
+            );
+            $deliveryId = $delivery->id;
+        }
+
+        return WhatsAppBirthdayNotification::dispatch(
+            $name,
+            $phone,
+            $content,
+            $file,
+            $type,
+            $isControlCopy,
+            $deliveryId,
+        );
     }
 
     /**
@@ -154,12 +189,32 @@ final class BirthdayNotificationRunReport
         $group = self::$currentGroup ?? 'general';
 
         if (blank($email)) {
+            if (self::$currentNotificationId !== null) {
+                BirthdayNotificationRecipientDelivery::recordEmailOutcome(
+                    self::$currentNotificationId,
+                    $name,
+                    $email,
+                    MassNotificationDeliveryStatus::Skipped,
+                    'Email es nulo o vacio',
+                );
+            }
+
             UtilsController::notificationFailed('email', $name, $email, null, 'Email es nulo o vacio', $group);
 
             return;
         }
 
         if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            if (self::$currentNotificationId !== null) {
+                BirthdayNotificationRecipientDelivery::recordEmailOutcome(
+                    self::$currentNotificationId,
+                    $name,
+                    $email,
+                    MassNotificationDeliveryStatus::Skipped,
+                    'Email mal escrito o inválido',
+                );
+            }
+
             UtilsController::notificationFailed('email', $name, $email, null, 'Email mal escrito o inválido', $group);
 
             return;
@@ -171,7 +226,26 @@ final class BirthdayNotificationRunReport
             if (self::$active && self::$currentGroup !== null) {
                 self::incrementSent(self::$currentGroup, 'email');
             }
+
+            if (self::$currentNotificationId !== null) {
+                BirthdayNotificationRecipientDelivery::recordEmailOutcome(
+                    self::$currentNotificationId,
+                    $name,
+                    $email,
+                    MassNotificationDeliveryStatus::Sent,
+                );
+            }
         } catch (Throwable $exception) {
+            if (self::$currentNotificationId !== null) {
+                BirthdayNotificationRecipientDelivery::recordEmailOutcome(
+                    self::$currentNotificationId,
+                    $name,
+                    $email,
+                    MassNotificationDeliveryStatus::Failed,
+                    'Error al enviar email: '.$exception->getMessage(),
+                );
+            }
+
             UtilsController::notificationFailed(
                 'email',
                 $name,
@@ -212,6 +286,7 @@ final class BirthdayNotificationRunReport
         }
 
         self::$active = false;
+        self::$currentNotificationId = null;
 
         try {
             $fullMessage = self::buildSummaryMessage();

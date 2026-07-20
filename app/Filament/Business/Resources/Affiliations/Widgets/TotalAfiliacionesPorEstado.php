@@ -22,7 +22,7 @@ class TotalAfiliacionesPorEstado extends ChartWidget
 
     protected ?string $heading = 'RESUMEN DE AFILIACIONES INDIVIDUALES POR UBICACIÓN';
 
-    protected ?string $description = 'Visualización de Afiliaciones Corporativas con desglose por estados y ciudades. Haz clic en una barra para ver el detalle de cuantos afiliados exiten por ciudad.';
+    protected ?string $description = 'Visualización de Afiliaciones Individuales con desglose por estados y ciudades. Haz clic en una barra para ver el detalle de cuantos afiliados exiten por ciudad.';
 
     protected ?string $maxHeight = '300px';
 
@@ -57,16 +57,23 @@ class TotalAfiliacionesPorEstado extends ChartWidget
 
     /**
      * Paleta fija de colores para las barras (mismo orden = mismo color).
+     * Alineada con CorporateQuoteRequestChannelChart.
+     *
+     * @return array<int, string>
      */
     protected function getBarColors(): array
     {
         return [
-            '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
-            '#06B6D4', '#EC4899', '#84CC16', '#F97316', '#6366F1',
-            '#14B8A6', '#A855F7', '#EAB308', '#DC2626', '#2563EB',
-            '#059669', '#D97706', '#BE185D', '#7C3AED', '#0D9488',
-            '#65A30D', '#EA580C', '#4F46E5', '#0891B2', '#DB2777',
-            '#0EA5E9', '#22C55E', '#E11D48', '#9333EA', '#F43F5E', '#64748B',
+            '#38bdf8',
+            '#0ea5e9',
+            '#0284c7',
+            '#0369a1',
+            '#075985',
+            '#0c4a6e',
+            '#7dd3fc',
+            '#06b6d4',
+            '#0891b2',
+            '#0e7490',
         ];
     }
 

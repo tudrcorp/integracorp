@@ -10,8 +10,8 @@ it('registra auditoría para envío de documentos de afiliación individual por 
         ->toContain('AUDIT_AFFILIATION_DOCUMENTS_EMAIL_SENT')
         ->and($contents)->toContain('AUDIT_AFFILIATION_DOCUMENTS_EMAIL_FAILED')
         ->and($contents)->toContain('business.affiliation-documents.send-email')
-        ->and($contents)->toContain('afiliaciones@tudrencasa.com')
-        ->and($contents)->toContain('solrodriguez@tudrencasa.com');
+        ->and($contents)->toContain("->cc('afiliaciones@tudrencasa.com')")
+        ->and($contents)->toContain("->bcc('solrodriguez@tudrencasa.com')");
 });
 
 it('registra auditoría para envío de documentos de afiliación corporativa por correo', function (): void {
@@ -22,6 +22,6 @@ it('registra auditoría para envío de documentos de afiliación corporativa por
         ->toContain('AUDIT_AFFILIATION_CORPORATE_DOCUMENTS_EMAIL_SENT')
         ->and($contents)->toContain('AUDIT_AFFILIATION_CORPORATE_DOCUMENTS_EMAIL_FAILED')
         ->and($contents)->toContain('business.affiliation-corporate-documents.send-email')
-        ->and($contents)->toContain('afiliaciones@tudrencasa.com')
-        ->and($contents)->toContain('solrodriguez@tudrencasa.com');
+        ->and($contents)->toContain("->cc('afiliaciones@tudrencasa.com')")
+        ->and($contents)->toContain("->bcc('solrodriguez@tudrencasa.com')");
 });

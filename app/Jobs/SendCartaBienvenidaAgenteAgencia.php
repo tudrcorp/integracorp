@@ -63,7 +63,7 @@ class SendCartaBienvenidaAgenteAgencia implements ShouldQueue
         unset($pdf);
 
         Mail::to($email)
-            ->cc('solrodriguez@tudrencasa.com')
+            ->bcc('solrodriguez@tudrencasa.com')
             ->send(new MailCartaBienvenidaAgenteAgencia($id, $name, $name_pdf, $email, $password));
 
         Log::info('NEGOCIOS-AGENTES: Job CartaBienvenida completado con éxito.', [

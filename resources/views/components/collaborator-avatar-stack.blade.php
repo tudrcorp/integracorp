@@ -25,6 +25,8 @@
                         <img
                             src="{{ $avatar['avatar_url'] }}"
                             alt="{{ $avatar['name'] ?? 'Colaborador' }}"
+                            loading="lazy"
+                            decoding="async"
                             class="tdg-calendar-avatar-stack__item size-6 rounded-full border-2 border-white object-cover dark:border-slate-900"
                         >
                     @else

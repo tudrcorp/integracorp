@@ -236,12 +236,35 @@
 
         .infra-cert-col {
             display: table-cell;
-            width: 33.33%;
+            width: 50%;
             vertical-align: top;
         }
 
         .infra-cert-col .table {
             width: 100%;
+        }
+
+        .infra-group {
+            margin-bottom: 10px;
+        }
+
+        .infra-group-title {
+            font-size: 9px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .infra-equip-desc {
+            margin-top: 3px;
+            font-size: 8px;
+            color: #475569;
+            font-style: italic;
+            line-height: 1.35;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
     </style>
 </head>
@@ -532,49 +555,23 @@
 
         @php
             $infraSi = static fn (mixed $v): bool => filter_var($v, FILTER_VALIDATE_BOOLEAN);
-            $oncologiaDispone = $infraSi($supplier->oncologia ?? $supplier->encologogia ?? false);
-            $infraestructuraCertificada = collect([
-                ['nombre' => 'Urgencias', 'dispone' => $infraSi($supplier->urgen_care ?? false)],
-                ['nombre' => 'Consultas APS', 'dispone' => $infraSi($supplier->consulta_aps ?? false)],
-                ['nombre' => 'Asistencia médica domiciliaria', 'dispone' => $infraSi($supplier->amd ?? false)],
-                ['nombre' => 'Laboratorio en centro', 'dispone' => $infraSi($supplier->laboratorio_centro ?? false)],
-                ['nombre' => 'Laboratorio en domicilio', 'dispone' => $infraSi($supplier->laboratorio_domicilio ?? false)],
-                ['nombre' => 'Rayos X en centro', 'dispone' => $infraSi($supplier->rx_centro ?? false)],
-                ['nombre' => 'Rayos X en domicilio', 'dispone' => $infraSi($supplier->rx_domicilio ?? false)],
-                ['nombre' => 'Ecografía abdominal en centro', 'dispone' => $infraSi($supplier->eco_abdominal_centro ?? false)],
-                ['nombre' => 'Ecografía abdominal en domicilio', 'dispone' => $infraSi($supplier->eco_abdominal_domicilio ?? false)],
-                ['nombre' => 'Electrocardiógrafo en domicilio', 'dispone' => $infraSi($supplier->electrocardiograma_domicilio ?? false)],
-                ['nombre' => 'Densitómetro', 'dispone' => $infraSi($supplier->densitometria_osea ?? false)],
-                ['nombre' => 'Equipo de diálisis', 'dispone' => $infraSi($supplier->dialisis ?? false)],
-                ['nombre' => 'Electrocardiógrafo en centro', 'dispone' => $infraSi($supplier->electrocardiograma_centro ?? false)],
-                ['nombre' => 'Equipos especiales de oftalmología', 'dispone' => $infraSi($supplier->equipos_especiales_oftalmologia ?? false)],
-                ['nombre' => 'Mamógrafo', 'dispone' => $infraSi($supplier->mamografia ?? false)],
-                ['nombre' => 'Quirófanos', 'dispone' => $infraSi($supplier->quirofanos ?? false)],
-                ['nombre' => 'Radioterapia intraoperatoria', 'dispone' => $infraSi($supplier->radioterapia_intraoperatoria ?? false)],
-                ['nombre' => 'Resonador', 'dispone' => $infraSi($supplier->resonancia ?? false)],
-                ['nombre' => 'Tomógrafo', 'dispone' => $infraSi($supplier->tomografo ?? false)],
-                ['nombre' => 'Oncología', 'dispone' => $oncologiaDispone],
-                ['nombre' => 'UCI UTE', 'dispone' => $infraSi($supplier->uci_uten ?? false)],
-                ['nombre' => 'Cuidados neonatales', 'dispone' => $infraSi($supplier->neonatal ?? false)],
-                ['nombre' => 'Ambulancias', 'dispone' => $infraSi($supplier->ambulancias ?? false)],
-                ['nombre' => 'Odontología', 'dispone' => $infraSi($supplier->odontologia ?? false)],
-                ['nombre' => 'Oftalmología', 'dispone' => $infraSi($supplier->oftalmologia ?? false)],
-                ['nombre' => 'UCI pediátrica', 'dispone' => $infraSi($supplier->uci_pediatrica ?? false)],
-                ['nombre' => 'UCI adulto', 'dispone' => $infraSi($supplier->uci_adulto ?? false)],
-                ['nombre' => 'Estacionamiento propio', 'dispone' => $infraSi($supplier->estacionamiento_propio ?? false)],
-                ['nombre' => 'Ascensor operativo', 'dispone' => $infraSi($supplier->ascensor ?? false)],
-                ['nombre' => 'Equipo de cirugía robótica', 'dispone' => $infraSi($supplier->robotica ?? false)],
-                ['nombre' => 'Otras unidades especializadas', 'dispone' => $infraSi($supplier->otras_unidades_especiales ?? false)],
-            ])->filter(fn (array $fila): bool => $fila['dispone'])->values();
+            $gruposInfraestructura = collect(\App\Support\Operations\SupplierInfrastructureCatalog::groups())
+                ->map(function (array $items) use ($supplier, $infraSi): \Illuminate\Support\Collection {
+                    return collect($items)
+                        ->filter(fn (array $item): bool => $infraSi($supplier->{$item['key']} ?? false))
+                        ->map(function (array $item) use ($supplier): array {
+                            $descripcion = trim((string) ($supplier->{$item['desc']} ?? ''));
 
-            $totalInfra = $infraestructuraCertificada->count();
-            $tamanoColumnaInfra = (int) max(1, ceil($totalInfra / 3));
-            $columnasInfraestructura = collect(range(0, 2))->map(
-                fn (int $indice): \Illuminate\Support\Collection => $infraestructuraCertificada->slice(
-                    $indice * $tamanoColumnaInfra,
-                    $tamanoColumnaInfra,
-                ),
-            );
+                            return [
+                                'nombre' => $item['label'],
+                                'descripcion' => $descripcion !== '' ? $descripcion : null,
+                            ];
+                        })
+                        ->values();
+                })
+                ->filter(fn (\Illuminate\Support\Collection $items): bool => $items->isNotEmpty());
+
+            $infraestructuraCertificada = $gruposInfraestructura->flatten(1);
         @endphp
 
         @if ($infraestructuraCertificada->isEmpty())
@@ -586,30 +583,50 @@
                 </tbody>
             </table>
         @else
-            <div class="infra-cert-columns">
-                @foreach ($columnasInfraestructura as $columnaInfraestructura)
-                    <div class="infra-cert-col">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Infraestructura</th>
-                                    <th>¿Dispone?</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($columnaInfraestructura as $fila)
-                                    <tr>
-                                        <td>{{ $fila['nombre'] }}</td>
-                                        <td class="infra-check-cell">
-                                            @include('documents.partials.infra-cert-check-badge-pdf')
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+            @foreach ($gruposInfraestructura as $grupoTitulo => $itemsGrupo)
+                <div class="infra-group">
+                    <p class="infra-group-title">{{ $grupoTitulo }}</p>
+                    @php
+                        $totalGrupo = $itemsGrupo->count();
+                        $tamanoColumna = (int) max(1, ceil($totalGrupo / 2));
+                        $columnasGrupo = collect(range(0, 1))->map(
+                            fn (int $indice): \Illuminate\Support\Collection => $itemsGrupo->slice(
+                                $indice * $tamanoColumna,
+                                $tamanoColumna,
+                            ),
+                        )->filter(fn (\Illuminate\Support\Collection $columna): bool => $columna->isNotEmpty());
+                    @endphp
+                    <div class="infra-cert-columns">
+                        @foreach ($columnasGrupo as $columnaInfraestructura)
+                            <div class="infra-cert-col">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Infraestructura</th>
+                                            <th style="width: 18%;">¿Dispone?</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($columnaInfraestructura as $fila)
+                                            <tr>
+                                                <td>
+                                                    {{ $fila['nombre'] }}
+                                                    @if (filled($fila['descripcion'] ?? null))
+                                                        <div class="infra-equip-desc">{{ $fila['descripcion'] }}</div>
+                                                    @endif
+                                                </td>
+                                                <td class="infra-check-cell">
+                                                    @include('documents.partials.infra-cert-check-badge-pdf')
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endforeach
                     </div>
-                @endforeach
-            </div>
+                </div>
+            @endforeach
         @endif
     </div>
 

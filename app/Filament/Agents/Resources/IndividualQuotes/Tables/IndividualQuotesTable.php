@@ -2,47 +2,35 @@
 
 namespace App\Filament\Agents\Resources\IndividualQuotes\Tables;
 
-use Carbon\Carbon;
-use App\Models\Bitacora;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
-use App\Models\IndividualQuote;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use Filament\Actions\ExportAction;
-use Illuminate\Support\HtmlString;
-use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\MailLinkIndividualQuote;
-use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Crypt;
-use Filament\Actions\DeleteBulkAction;
 use App\Http\Controllers\LogController;
-use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\TextColumn;
+use App\Http\Controllers\NotificationController;
+use App\Mail\MailLinkIndividualQuote;
 use App\Mail\SendMailPropuestaMultiPlan;
+use App\Mail\SendMailPropuestaPlanEspecial;
 use App\Mail\SendMailPropuestaPlanIdeal;
+use App\Mail\SendMailPropuestaPlanInicial;
+use App\Models\Bitacora;
+use App\Models\IndividualQuote;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
-use App\Http\Controllers\UtilsController;
-use Filament\Forms\Components\DatePicker;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use App\Mail\SendMailPropuestaPlanInicial;
-use App\Http\Controllers\MessageController;
-use App\Jobs\ResendEmailPropuestaEconomica;
-use App\Mail\SendMailPropuestaPlanEspecial;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Components\Utilities\Get;
-use App\Http\Controllers\NotificationController;
-use Filament\Actions\Exports\Enums\ExportFormat;
-use App\Filament\Exports\IndividualQuoteExporter;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\HtmlString;
 
 class IndividualQuotesTable
 {
@@ -85,11 +73,11 @@ class IndividualQuotesTable
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'PRE-APROBADA'  => 'verdeOpaco',
-                            'APROBADA'      => 'success',
-                            'ANULADA'       => 'warning',
-                            'DECLINADA'     => 'danger',
-                            default         => 'azul',
+                            'PRE-APROBADA' => 'verdeOpaco',
+                            'APROBADA' => 'success',
+                            'ANULADA' => 'warning',
+                            'DECLINADA' => 'danger',
+                            default => 'azul',
                         };
                     })
                     ->searchable(),
@@ -108,20 +96,20 @@ class IndividualQuotesTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
@@ -144,7 +132,7 @@ class IndividualQuotesTable
 
                             try {
 
-                                if (!file_exists(public_path('storage/quotes/' . $record->code . '.pdf'))) {
+                                if (! file_exists(public_path('storage/quotes/'.$record->code.'.pdf'))) {
 
                                     Notification::make()
                                         ->title('NOTIFICACIÓN')
@@ -160,7 +148,8 @@ class IndividualQuotesTable
                                  * Descargar el documento asociado a la cotizacion
                                  * ruta: storage/
                                  */
-                                $path = public_path('storage/quotes/' . $record->code . '.pdf');
+                                $path = public_path('storage/quotes/'.$record->code.'.pdf');
+
                                 return response()->download($path);
 
                                 /**
@@ -203,8 +192,8 @@ class IndividualQuotesTable
                                         ->prefixIcon('heroicon-s-phone')
                                         ->tel()
                                         ->helperText('El numero de telefono debe estar asociado a WhatSapp. El formato de ser 04127018390, 04146786543, 04246754321, sin espacios en blanco. Para los numeros extrangeros deben colocar el codigo de area, Ejemplo: +1987654567, +36909876578')
-                                        ->label('Número de teléfono')
-                                ])
+                                        ->label('Número de teléfono'),
+                                ]),
                         ])
                         ->action(function (IndividualQuote $record, array $data) {
 
@@ -218,41 +207,45 @@ class IndividualQuotesTable
                                 if (isset($data['email'])) {
 
                                     $email = $data['email'];
-                                    $doc = $record->code . '.pdf';
+                                    $doc = $record->code.'.pdf';
 
                                     if ($record->plan == 1) {
                                         Mail::to($data['email'])
-                                        ->cc('solrodriguez@tudrencasa.com')
-                                        ->send(new SendMailPropuestaPlanInicial($record['full_name'], $doc));
+                                            ->cc('cotizacionestdg.ve@gmail.com')
+                                            ->bcc('solrodriguez@tudrencasa.com')
+                                            ->send(new SendMailPropuestaPlanInicial($record['full_name'], $doc));
                                     }
 
                                     if ($record->plan == 2) {
                                         Mail::to($data['email'])
-                                        ->cc('solrodriguez@tudrencasa.com')
-                                        ->send(new SendMailPropuestaPlanIdeal($record['full_name'], $doc));
+                                            ->cc('cotizacionestdg.ve@gmail.com')
+                                            ->bcc('solrodriguez@tudrencasa.com')
+                                            ->send(new SendMailPropuestaPlanIdeal($record['full_name'], $doc));
                                     }
 
                                     if ($record->plan == 3) {
                                         Mail::to($data['email'])
-                                        ->cc('solrodriguez@tudrencasa.com')
-                                        ->send(new SendMailPropuestaPlanEspecial($record['full_name'], $doc));
+                                            ->cc('cotizacionestdg.ve@gmail.com')
+                                            ->bcc('solrodriguez@tudrencasa.com')
+                                            ->send(new SendMailPropuestaPlanEspecial($record['full_name'], $doc));
                                     }
 
                                     if ($record->plan == 'CM') {
                                         Mail::to($data['email'])
-                                        ->cc('solrodriguez@tudrencasa.com')
-                                        ->send(new SendMailPropuestaMultiPlan($record['full_name'], $doc));
+                                            ->cc('cotizacionestdg.ve@gmail.com')
+                                            ->bcc('solrodriguez@tudrencasa.com')
+                                            ->send(new SendMailPropuestaMultiPlan($record['full_name'], $doc));
                                     }
                                 }
 
                                 if (isset($data['phone'])) {
 
                                     $phone = $data['phone'];
-                                    $nameDoc = $record->code . '.pdf';
+                                    $nameDoc = $record->code.'.pdf';
 
                                     $res = NotificationController::sendQuote($phone, $nameDoc);
 
-                                    if (!$res) {
+                                    if (! $res) {
                                         Notification::make()
                                             ->title('ERROR')
                                             ->body('La cotización no pudo ser enviada por whatsapp. Por favor, contacte con el administrador del Sistema.')
@@ -272,7 +265,7 @@ class IndividualQuotesTable
                                     ->send();
 
                             } catch (\Throwable $th) {
-                                
+
                                 Notification::make()
                                     ->title('ERROR')
                                     ->body($th->getMessage())
@@ -289,6 +282,7 @@ class IndividualQuotesTable
                             if ($record->status == 'APROBADA') {
                                 return true;
                             }
+
                             return false;
                         })
                         ->label('Comprar Plan')
@@ -298,7 +292,7 @@ class IndividualQuotesTable
                         ->modalHeading('COMPRAR PLAN')
                         ->modalIcon('heroicon-s-shopping-cart')
                         ->modalWidth(Width::ExtraLarge)
-                        ->modalDescription(new HtmlString(Blade::render(<<<BLADE
+                        ->modalDescription(new HtmlString(Blade::render(<<<'BLADE'
                                     <div class="fi-section-header-description mt-5 mb-5">
                                         Felicitaciones!.
                                         <br>
@@ -320,7 +314,7 @@ class IndividualQuotesTable
 
                                 Notification::make()
                                     ->title('COTIZACION INDIVIDUAL APROBADA')
-                                    ->body('Nro.' . $record->code . ', puede proceder a realizar la pre-afiliación')
+                                    ->body('Nro.'.$record->code.', puede proceder a realizar la pre-afiliación')
                                     ->icon('heroicon-s-user-group')
                                     ->iconColor('success')
                                     ->persistent()
@@ -333,11 +327,10 @@ class IndividualQuotesTable
                                  * $record [Data de la cotizacion guardada en la base de dastos]
                                  */
 
-
                                 /**
                                  * LOG
                                  */
-                                LogController::log(Auth::user()->id, 'Aprobacion directa de la cotizacion Nro.' . $record->code, 'Modulo Cotizacion Individual', 'APROBADA');
+                                LogController::log(Auth::user()->id, 'Aprobacion directa de la cotizacion Nro.'.$record->code, 'Modulo Cotizacion Individual', 'APROBADA');
 
                                 /**
                                  * Redirecciono a la pagina para crear la afiliacion
@@ -364,10 +357,9 @@ class IndividualQuotesTable
                             if ($record->status == 'APROBADA' || $record->status == 'EJECUTADA') {
                                 return true;
                             }
+
                             return false;
                         }),
-
-                    
 
                     /**FORWARD */
                     Action::make('link')
@@ -393,8 +385,8 @@ class IndividualQuotesTable
                                         ->prefixIcon('heroicon-s-phone')
                                         ->tel()
                                         ->helperText('El numero de telefono debe estar asociado a WhatSapp. El formato de ser 04127018390, 04146786543, 04246754321, sin espacios en blanco. Para los numeros extrangeros deben colocar el codigo de area, Ejemplo: +1987654567, +36909876578')
-                                        ->label('Número de teléfono')
-                                ])
+                                        ->label('Número de teléfono'),
+                                ]),
                         ])
                         ->action(function (IndividualQuote $record, array $data) {
 
@@ -404,17 +396,17 @@ class IndividualQuotesTable
                                 $phone = null;
 
                                 if ($record->plan != 'CM') {
-                                    $link = config('parameters.INTEGRACORP_URL') . '/in/' . Crypt::encryptString($record->id) . '/w';
+                                    $link = config('parameters.INTEGRACORP_URL').'/in/'.Crypt::encryptString($record->id).'/w';
                                 } else {
-                                    $link = config('parameters.INTEGRACORP_URL') . '/multi/' . Crypt::encryptString($record->id) . '/w';
+                                    $link = config('parameters.INTEGRACORP_URL').'/multi/'.Crypt::encryptString($record->id).'/w';
                                 }
 
                                 if (isset($data['email'])) {
-                                    
+
                                     $email = $data['email'];
-                                    
+
                                     $email = Mail::to($email)->send(new MailLinkIndividualQuote($link));
-                                    
+
                                     if ($email) {
                                         Notification::make()
                                             ->title('ENVIADO EXITOSO')
@@ -441,16 +433,15 @@ class IndividualQuotesTable
                                     } else {
 
                                         Notification::make()
-                                            ->title('ERROR')    
+                                            ->title('ERROR')
                                             ->body('El link no pudo ser enviado por whatsapp. Por favor, contacte con el administrador del Sistema.')
                                             ->icon('heroicon-s-x-circle')
                                             ->iconColor('danger')
                                             ->danger()
                                             ->send();
                                     }
-                                    
+
                                 }
-                                
 
                             } catch (\Throwable $th) {
                                 dd($th);
@@ -464,8 +455,6 @@ class IndividualQuotesTable
                                     ->send();
                             }
                         }),
-
-                    
 
                     Action::make('add_observations')
                         ->label('Agregar Observaciones')
@@ -482,14 +471,14 @@ class IndividualQuotesTable
                                 ->schema([
                                     Textarea::make('description')
                                         ->label('Observaciones')
-                                        ->rows(4)
-                                ])
+                                        ->rows(4),
+                                ]),
                         ])
                         ->action(function (IndividualQuote $record, array $data) {
 
                             try {
 
-                                $bitacora = new Bitacora();
+                                $bitacora = new Bitacora;
                                 $bitacora->individual_quote()->associate($record);
                                 $bitacora->user()->associate(Auth::user());
                                 $bitacora->details = $data['description'];
@@ -501,7 +490,7 @@ class IndividualQuotesTable
                                     ->send();
 
                                 $notoficationWp = NotificationController::saddObervationToIndividualQuote($record->code, Auth::user()->name, $data['description']);
-                                    
+
                             } catch (\Throwable $th) {
                                 LogController::log(Auth::user()->id, 'EXCEPTION', 'agents.IndividualQuoteResource.action.enit', $th->getMessage());
                                 Notification::make()
@@ -514,11 +503,11 @@ class IndividualQuotesTable
                             }
                         }),
                 ])
-                ->icon('heroicon-c-ellipsis-vertical')
-                ->color('azulOscuro')
-                ->hidden(function (IndividualQuote $record) {
-                    return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
-                })
+                    ->icon('heroicon-c-ellipsis-vertical')
+                    ->color('azulOscuro')
+                    ->hidden(function (IndividualQuote $record) {
+                        return $record->status == 'ANULADA' || $record->status == 'DECLINADA';
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
