@@ -319,23 +319,13 @@ class CompanyAssociateRegistration extends Component
                 'string',
                 'max:20',
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    $normalized = CompanyAssociateRegistrar::normalizeIdentityCard((string) $value);
-
-                    if ($normalized === '') {
-                        return;
-                    }
-
-                    $exists = CompanyAssociate::query()
-                        ->get(['identity_card'])
-                        ->contains(fn (CompanyAssociate $associate): bool => CompanyAssociateRegistrar::normalizeIdentityCard($associate->identity_card) === $normalized);
-
-                    if ($exists) {
-                        $fail('Ya existe un afiliado registrado con este documento de identidad.');
+                    if (CompanyAssociateRegistrar::hasIdentityCardRegisteredOnDate((string) $value)) {
+                        $fail('Este afiliado ya fue registrado hoy con este documento de identidad. Puede volver a registrarse otro día.');
                     }
                 },
             ],
             'birthDate' => ['required', 'date', 'before:today'],
-            'email' => ['nullable', 'email', 'max:255', Rule::unique('company_associates', 'email')],
+            'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['required', 'string', 'max:20', 'regex:/^\+[1-9]\d{6,14}$/'],
             'flightDate' => ['required', 'date', 'after_or_equal:today'],
             'flightTime' => ['required', 'date_format:H:i'],
@@ -362,7 +352,6 @@ class CompanyAssociateRegistration extends Component
     {
         return [
             'resolvedResponsibleId.required' => 'No se encontró un responsable con esa cédula para esta empresa.',
-            'email.unique' => 'Ya existe un afiliado registrado con este correo electrónico.',
             'phone.required' => 'El teléfono es obligatorio.',
             'phone.regex' => 'Ingrese el teléfono con prefijo de país. Ej: +584127018390',
             'flightDate.required' => 'Debe seleccionar la fecha de vuelo.',
