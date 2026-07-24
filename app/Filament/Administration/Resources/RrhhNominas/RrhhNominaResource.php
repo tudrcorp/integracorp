@@ -2,10 +2,12 @@
 
 namespace App\Filament\Administration\Resources\RrhhNominas;
 
-use App\Filament\Administration\Resources\RrhhNominas\Pages\CreateRrhhNomina;
 use App\Filament\Administration\Resources\RrhhNominas\Pages\EditRrhhNomina;
 use App\Filament\Administration\Resources\RrhhNominas\Pages\ListRrhhNominas;
+use App\Filament\Administration\Resources\RrhhNominas\Pages\ViewRrhhNomina;
+use App\Filament\Administration\Resources\RrhhNominas\RelationManagers\DetallesRelationManager;
 use App\Filament\Administration\Resources\RrhhNominas\Schemas\RrhhNominaForm;
+use App\Filament\Administration\Resources\RrhhNominas\Schemas\RrhhNominaInfolist;
 use App\Filament\Administration\Resources\RrhhNominas\Tables\RrhhNominasTable;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\RrhhNomina;
@@ -25,11 +27,22 @@ class RrhhNominaResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
 
-    protected static ?string $navigationLabel = 'Cálculos de Nomina';
+    protected static ?string $navigationLabel = 'Cálculos de Nómina';
+
+    protected static ?string $modelLabel = 'Cálculo de nómina';
+
+    protected static ?string $pluralModelLabel = 'Cálculos de nómina';
+
+    protected static ?string $recordTitleAttribute = 'id';
 
     public static function form(Schema $schema): Schema
     {
         return RrhhNominaForm::configure($schema);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return RrhhNominaInfolist::configure($schema);
     }
 
     public static function table(Table $table): Table
@@ -40,7 +53,7 @@ class RrhhNominaResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            DetallesRelationManager::class,
         ];
     }
 
@@ -48,8 +61,13 @@ class RrhhNominaResource extends Resource
     {
         return [
             'index' => ListRrhhNominas::route('/'),
-            'create' => CreateRrhhNomina::route('/create'),
+            'view' => ViewRrhhNomina::route('/{record}'),
             'edit' => EditRrhhNomina::route('/{record}/edit'),
         ];
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
     }
 }
