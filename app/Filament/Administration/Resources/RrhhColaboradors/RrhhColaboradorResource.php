@@ -5,6 +5,8 @@ namespace App\Filament\Administration\Resources\RrhhColaboradors;
 use App\Filament\Administration\Resources\RrhhColaboradors\Pages\CreateRrhhColaborador;
 use App\Filament\Administration\Resources\RrhhColaboradors\Pages\EditRrhhColaborador;
 use App\Filament\Administration\Resources\RrhhColaboradors\Pages\ListRrhhColaboradors;
+use App\Filament\Administration\Resources\RrhhColaboradors\RelationManagers\AsignacionesRelationManager;
+use App\Filament\Administration\Resources\RrhhColaboradors\RelationManagers\DeduccionesRelationManager;
 use App\Filament\Administration\Resources\RrhhColaboradors\Schemas\RrhhColaboradorForm;
 use App\Filament\Administration\Resources\RrhhColaboradors\Tables\RrhhColaboradorsTable;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
@@ -42,7 +44,8 @@ class RrhhColaboradorResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            AsignacionesRelationManager::class,
+            DeduccionesRelationManager::class,
         ];
     }
 

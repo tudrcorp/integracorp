@@ -22,29 +22,37 @@ class RrhhPrestamosTable
             ->emptyStateHeading('No hay préstamos registrados')
             ->emptyStateDescription('Registra un préstamo para iniciar su control de cuotas.')
             ->emptyStateIcon('heroicon-o-credit-card')
+            ->modifyQueryUsing(fn ($query) => $query->with('colaborador'))
             ->columns([
-                TextColumn::make('colaborador_id')
-                    ->label('ID Colaborador')
-                    ->numeric()
+                TextColumn::make('colaborador.fullName')
+                    ->label('Colaborador')
+                    ->searchable()
                     ->sortable(),
                 TextColumn::make('descripcion')
                     ->label('Descripción')
-                    ->searchable(),
+                    ->searchable()
+                    ->limit(40),
                 TextColumn::make('monto')
-                    ->label('Monto')
-                    ->numeric()
+                    ->label('Préstamo US$')
+                    ->numeric(decimalPlaces: 2)
+                    ->sortable(),
+                TextColumn::make('interes')
+                    ->label('Desc. %')
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix('%')
                     ->sortable(),
                 TextColumn::make('nro_cuotas')
-                    ->label('Nro. Cuotas')
+                    ->label('Cuotas')
                     ->numeric()
+                    ->sortable(),
+                TextColumn::make('monto_cuota')
+                    ->label('Cuota US$')
+                    ->numeric(decimalPlaces: 2)
                     ->sortable(),
                 TextColumn::make('status')
                     ->label('Estado')
+                    ->badge()
                     ->searchable(),
-                TextColumn::make('created_by')
-                    ->label('Creado por')
-                    ->numeric()
-                    ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

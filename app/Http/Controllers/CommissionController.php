@@ -14,407 +14,229 @@ class CommissionController extends Controller
 {
     public static function calculateCommissionSubAgente($agent_id, $record)
     {
-
         try {
+            $subAgent = Agent::query()->findOrFail($agent_id);
+            $commissionTdecSubAgent = (float) $subAgent->commission_tdec;
 
-            $porcentaje_sub_agente = 0;
+            $agentSuperior = Agent::query()->findOrFail($subAgent->owner_agent);
+            $commissionTdecAgentSuperior = (float) $agentSuperior->commission_tdec;
 
-            // Concultamos la tabla de agente para traernos el porcentaje de comision
-            $commission_tdec_sub_agent = Agent::where('id', $agent_id)->first()->commission_tdec;
+            $agencySuperior = Agency::query()
+                ->where('code', $agentSuperior->owner_code)
+                ->firstOrFail();
 
-            // Validamos el monto pagado por el cliente para calcular la comision
-
-            // Pago solo en USD
-            if ($record->pay_amount_usd > 0 && $record->pay_amount_ves == 0) {
-
-                $money = 'usd';
-
-                // Calculamos la comision del sub-agente
-                $porcentaje_sub_agente_usd = $record->pay_amount_usd * $commission_tdec_sub_agent / 100;
-
-                // Calculamos la comision del agente superior (owner_agent)
-                $agent_superior = Agent::where('id', $agent_id)->first()->owner_agent;
-
-                // porcentaje dinamico del agente superior y el valor de su comision
-                $porcentaje_dinamico_agente_superior = Agent::where('id', $agent_superior)->first()->commission_tdec - $commission_tdec_sub_agent;
-
-                // valor de la comision del agente superior
-                $porcentaje_agente_superior_usd = $record->pay_amount_usd * ($porcentaje_dinamico_agente_superior / 100);
-
-                // Calculo del porcentaje de la Agencia a la que pertener el agente superior
-                $agency_superior = Agency::where('code', Agent::where('id', $agent_superior)->first()->owner_code)->first();
-
-                // Si es agencia general?
-                if ($agency_superior->agency_type_id == 3) {
-                    $porcentaje_dinamico_agencia_general = $agency_superior->commission_tdec - Agent::where('id', $agent_superior)->first()->commission_tdec;
-
-                    $porcentaje_agencia_general_usd = $record->pay_amount_usd * ($porcentaje_dinamico_agencia_general / 100);
-
-                    // calculamos la comision de la agencia master si es diferente a TDG-100
-                    if ($agency_superior->owner_code != 'TDG-100') {
-                        $porcentaje_dinamico_agencia_master = Agency::where('code', $agency_superior->owner_code)->first()->commission_tdec - $agency_superior->commission_tdec;
-                        $porcentaje_agencia_master_usd = $record->pay_amount_usd * ($porcentaje_dinamico_agencia_master / 100);
-                    }
-                }
-
-                // Si es agencia master?
-                if ($agency_superior->agency_type_id == 1 && $agency_superior->owner_code != 'TDG-100') {
-                    $porcentaje_dinamico_agencia_master = $agency_superior->commission_tdec - $commission_tdec_agent_superior;
-                    $porcentaje_agencia_master_usd = $record->pay_amount_usd * ($porcentaje_dinamico_agencia_master / 100);
-                }
-
+            $agencyMasterCommissionTdec = null;
+            if ((int) $agencySuperior->agency_type_id === 3 && $agencySuperior->owner_code !== 'TDG-100') {
+                $agencyMasterCommissionTdec = (float) Agency::query()
+                    ->where('code', $agencySuperior->owner_code)
+                    ->firstOrFail()
+                    ->commission_tdec;
             }
 
-            // Pago solo en BS
-            if ($record->pay_amount_usd == 0 && $record->pay_amount_ves > 0) {
-
-                $money = 'ves';
-
-                // Calculamos la comision del sub-agente
-                $porcentaje_sub_agente_ves = $record->pay_amount_ves * $commission_tdec_sub_agent / 100;
-
-                // Calculamos la comision del agente superior (owner_agent)
-                $agent_superior = Agent::where('id', $agent_id)->first()->owner_agent;
-
-                // Restamos el porcentaje de comision del sub-agente y el porcentaje de comision del agente superior
-                $commission_tdec_agent_superior = Agent::where('id', $agent_superior)->first()->commission_tdec;
-
-                // porcentaje dinamico del agente superior y el valor de su comision
-                $porcentaje_dinamico_agente_superior = $commission_tdec_agent_superior - $commission_tdec_sub_agent;
-                $porcentaje_agente_superior_ves = $record->pay_amount_ves * ($porcentaje_dinamico_agente_superior / 100);
-
-                // Calculo del porcentaje de la Agencia a la que pertener el agente superior
-                $agency_superior = Agency::where('code', Agent::where('id', $agent_superior)->first()->owner_code)->first();
-
-                // Si es agencia general?
-                if ($agency_superior->agency_type_id == 3) {
-                    $porcentaje_agencia_general_ves = $record->pay_amount_ves * ($agency_superior->commission_tdec - $commission_tdec_agent_superior) / 100;
-
-                    // calculamos la comision de la agencia master si es diferente a TDG-100
-                    if ($agency_superior->owner_code != 'TDG-100') {
-                        $porcentaje_agencia_master_ves = $record->pay_amount_ves * ($agency_superior->commission_tdec - $commission_tdec_agent_superior) / 100;
-                    }
-                }
-
-                // Si es agencia master?
-                if ($agency_superior->agency_type_id == 1 && $agency_superior->owner_code != 'TDG-100') {
-                    $porcentaje_agencia_master_ves = $record->pay_amount_ves * ($agency_superior->commission_tdec - $commission_tdec_agent_superior) / 100;
-                }
-
-            }
-
-            // Pago Multiple en USD y BS
-            // Cuando el pago es multiple la comision se calcula en bolivares
-            if ($record->pay_amount_usd > 0 && $record->pay_amount_ves > 0) {
-
-                $money = 'ves';
-
-                // conversion de dolares a bolivares del monto a apagar
-                $ves = $record->pay_amount_usd * $record->tasa_bcv;
-
-                $total = $ves + $record->pay_amount_ves;
-
-                // Calculamos la comision del sub-agente
-                $porcentaje_sub_agente_ves = $total * $commission_tdec_sub_agent / 100;
-
-                // Calculamos la comision del agente superior (owner_agent)
-                $agent_superior = Agent::where('id', $agent_id)->first()->owner_agent;
-
-                // Restamos el porcentaje de comision del sub-agente y el porcentaje de comision del agente superior
-                $commission_tdec_agent_superior = Agent::where('id', $agent_superior)->first()->commission_tdec;
-
-                // porcentaje dinamico del agente superior y el valor de su comision
-                $porcentaje_dinamico_agente_superior = $commission_tdec_agent_superior - $commission_tdec_sub_agent;
-                $porcentaje_agente_superior_ves = $total * ($porcentaje_dinamico_agente_superior / 100);
-
-                // Calculo del porcentaje de la Agencia a la que pertener el agente superior
-                $agency_superior = Agency::where('code', Agent::where('id', $agent_superior)->first()->owner_code)->first();
-
-                // Si es agencia general?
-                if ($agency_superior->agency_type_id == 3) {
-                    $porcentaje_agencia_general_ves = $total * ($agency_superior->commission_tdec - $commission_tdec_agent_superior) / 100;
-
-                    // calculamos la comision de la agencia master si es diferente a TDG-100
-                    if ($agency_superior->owner_code != 'TDG-100') {
-                        $porcentaje_agencia_master_ves = $total * ($agency_superior->commission_tdec - $commission_tdec_agent_superior) / 100;
-                    }
-                }
-
-                // Si es agencia master?
-                if ($agency_superior->agency_type_id == 1 && $agency_superior->owner_code != 'TDG-100') {
-                    $porcentaje_agencia_master_ves = $total * ($agency_superior->commission_tdec - $commission_tdec_agent_superior) / 100;
-                }
-            }
-
-            $res = [
-                'porcentaje_sub_agente_usd' => $porcentaje_sub_agente_usd ?? 0,
-                'porcentaje_sub_agente_ves' => $porcentaje_sub_agente_ves ?? 0,
-                'porcentaje_agente_superior_usd' => $porcentaje_agente_superior_usd ?? 0,
-                'porcentaje_agente_superior_ves' => $porcentaje_agente_superior_ves ?? 0,
-                'porcentaje_agencia_general_usd' => $porcentaje_agencia_general_usd ?? 0,
-                'porcentaje_agencia_general_ves' => $porcentaje_agencia_general_ves ?? 0,
-                'porcentaje_agencia_master_usd' => $porcentaje_agencia_master_usd ?? 0,
-                'porcentaje_agencia_master_ves' => $porcentaje_agencia_master_ves ?? 0,
-                'money' => $money,
-                'porcent_sub_agente' => $commission_tdec_sub_agent ?? 0,
-                'porcent_agente_superior' => $porcentaje_dinamico_agente_superior ?? 0,
-                'porcent_agencia_general' => $porcentaje_dinamico_agencia_general ?? 0,
-                'porcent_agencia_master' => $porcentaje_dinamico_agencia_master ?? 0,
-            ];
-
-            return $res;
+            return self::buildSubAgentCommissionsFromTotalAmount(
+                totalAmount: (float) $record->total_amount,
+                commissionTdecSubAgent: $commissionTdecSubAgent,
+                commissionTdecAgentSuperior: $commissionTdecAgentSuperior,
+                agencySuperiorCommissionTdec: (float) $agencySuperior->commission_tdec,
+                agencySuperiorTypeId: (int) $agencySuperior->agency_type_id,
+                agencySuperiorOwnerCode: (string) $agencySuperior->owner_code,
+                agencyMasterCommissionTdec: $agencyMasterCommissionTdec,
+            );
         } catch (\Throwable $th) {
             Log::error($th);
         }
     }
 
+    /**
+     * Calcula la jerarquía dinámica de comisiones de sub-agente aplicando
+     * cada porcentaje únicamente sobre total_amount.
+     *
+     * @return array{
+     *     porcentaje_sub_agente_usd: float,
+     *     porcentaje_sub_agente_ves: float,
+     *     porcentaje_agente_superior_usd: float,
+     *     porcentaje_agente_superior_ves: float,
+     *     porcentaje_agencia_general_usd: float,
+     *     porcentaje_agencia_general_ves: float,
+     *     porcentaje_agencia_master_usd: float,
+     *     porcentaje_agencia_master_ves: float,
+     *     money: string,
+     *     porcent_sub_agente: float,
+     *     porcent_agente_superior: float,
+     *     porcent_agencia_general: float,
+     *     porcent_agencia_master: float,
+     *     total_amount: float
+     * }
+     */
+    public static function buildSubAgentCommissionsFromTotalAmount(
+        float $totalAmount,
+        float $commissionTdecSubAgent,
+        float $commissionTdecAgentSuperior,
+        float $agencySuperiorCommissionTdec,
+        int $agencySuperiorTypeId,
+        string $agencySuperiorOwnerCode,
+        ?float $agencyMasterCommissionTdec = null,
+    ): array {
+        // Jerarquía dinámica: cada nivel cobra la diferencia vs el nivel inferior
+        $porcentSubAgente = $commissionTdecSubAgent;
+        $porcentAgenteSuperior = $commissionTdecAgentSuperior - $commissionTdecSubAgent;
+        $porcentAgenciaGeneral = 0.0;
+        $porcentAgenciaMaster = 0.0;
+
+        if ($agencySuperiorTypeId === 3) {
+            $porcentAgenciaGeneral = $agencySuperiorCommissionTdec - $commissionTdecAgentSuperior;
+
+            if ($agencySuperiorOwnerCode !== 'TDG-100' && $agencyMasterCommissionTdec !== null) {
+                $porcentAgenciaMaster = $agencyMasterCommissionTdec - $agencySuperiorCommissionTdec;
+            }
+        }
+
+        if ($agencySuperiorTypeId === 1 && $agencySuperiorOwnerCode !== 'TDG-100') {
+            $porcentAgenciaMaster = $agencySuperiorCommissionTdec - $commissionTdecAgentSuperior;
+        }
+
+        return [
+            'porcentaje_sub_agente_usd' => $totalAmount * $porcentSubAgente / 100,
+            'porcentaje_sub_agente_ves' => 0.0,
+            'porcentaje_agente_superior_usd' => $totalAmount * $porcentAgenteSuperior / 100,
+            'porcentaje_agente_superior_ves' => 0.0,
+            'porcentaje_agencia_general_usd' => $totalAmount * $porcentAgenciaGeneral / 100,
+            'porcentaje_agencia_general_ves' => 0.0,
+            'porcentaje_agencia_master_usd' => $totalAmount * $porcentAgenciaMaster / 100,
+            'porcentaje_agencia_master_ves' => 0.0,
+            'money' => 'usd',
+            'porcent_sub_agente' => $porcentSubAgente,
+            'porcent_agente_superior' => $porcentAgenteSuperior,
+            'porcent_agencia_general' => $porcentAgenciaGeneral,
+            'porcent_agencia_master' => $porcentAgenciaMaster,
+            'total_amount' => $totalAmount,
+        ];
+    }
+
     public static function calculateCommissionAgente($agent_id, $record)
     {
-
         try {
+            $commissionTdecAgent = (float) Agent::query()->findOrFail($agent_id)->commission_tdec;
 
-            $porcentaje_agente = 0;
-
-            // Concultamos la tabla de agente para traernos el porcentaje de comision
-            $commission_tdec_agent = Agent::where('id', $agent_id)->first()->commission_tdec;
-
-            // Validamos el monto pagado por el cliente para calcular la comision
-
-            // Pago solo en USD
-            if ($record->pay_amount_usd > 0 && $record->pay_amount_ves == 0) {
-
-                $money = 'usd';
-                $porcentaje_agente = $record->pay_amount_usd * $commission_tdec_agent / 100;
-
-            }
-
-            // Pago solo en BS
-            if ($record->pay_amount_usd == 0 && $record->pay_amount_ves > 0) {
-
-                $money = 'ves';
-
-                // conversion de dolares a bolivares del monto a apagar
-                $ves = $record->total_amount * $record->tasa_bcv;
-                $porcentaje_agente = $ves * $commission_tdec_agent / 100;
-            }
-
-            // Pago Multiple en USD y BS
-            // Cuando el pago es multiple la comision se calcula en bolivares
-            if ($record->pay_amount_usd > 0 && $record->pay_amount_ves > 0) {
-
-                $money = 'ves';
-
-                // conversion de dolares a bolivares del monto a apagar
-                $ves = $record->pay_amount_usd * $record->tasa_bcv;
-
-                $total = $ves + $record->pay_amount_ves;
-
-                // Calculamos la comision en bolivares
-                $porcentaje_agente = $total * $commission_tdec_agent / 100;
-            }
-
-            $res = [
-                'porcentaje_agente' => $porcentaje_agente,
-                'money' => $money,
-                'porcent_agent' => $commission_tdec_agent,
-            ];
-
-            return $res;
-
+            return self::buildAgentCommissionFromTotalAmount(
+                totalAmount: (float) $record->total_amount,
+                commissionTdecAgent: $commissionTdecAgent,
+            );
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
         }
+    }
+
+    /**
+     * @return array{porcentaje_agente: float, money: string, porcent_agent: float, total_amount: float}
+     */
+    public static function buildAgentCommissionFromTotalAmount(
+        float $totalAmount,
+        float $commissionTdecAgent,
+    ): array {
+        return [
+            'porcentaje_agente' => $totalAmount * $commissionTdecAgent / 100,
+            'money' => 'usd',
+            'porcent_agent' => $commissionTdecAgent,
+            'total_amount' => $totalAmount,
+        ];
     }
 
     public static function calculateCommissionGeneral($code, $record, $porcentaje_agente)
     {
         try {
+            $dataAgencyGeneral = Agency::query()->where('code', $code)->firstOrFail();
 
-            $porcentaje_agencia_general = 0;
-            $porcentaje_agencia_master = 0;
-
-            // Concultamos la tabla de agente para traernos el porcentaje de comision
-            $data_agency_general = Agency::where('code', $code)->first();
-
-            // CALCULAMOS LA COMISION PARA LA AGENCIA GENERAL
-            // Validamos el monto pagado por el cliente para calcular la comision
-            // Pago solo en USD
-            if ($record->pay_amount_usd > 0 && $record->pay_amount_ves == 0) {
-
-                $money = 'usd';
-
-                // porcentaje_dinamico = porcentaje_agente - porcentaje_agencia_general
-                $porcentaje_dinamico = $porcentaje_agente - $data_agency_general->commission_tdec;
-                Log::info('porcentaje general '.$porcentaje_dinamico);
-
-                $porcentaje_agencia_general = $record->pay_amount_usd * $porcentaje_dinamico / 100;
+            $agencyMasterCommissionTdec = null;
+            if ($dataAgencyGeneral->owner_code !== 'TDG-100') {
+                $agencyMasterCommissionTdec = (float) Agency::query()
+                    ->where('code', $dataAgencyGeneral->owner_code)
+                    ->firstOrFail()
+                    ->commission_tdec;
             }
 
-            // Pago solo en BS
-            if ($record->pay_amount_usd == 0 && $record->pay_amount_ves > 0) {
-
-                $money = 'ves';
-
-                // porcentaje_dinamico = porcentaje_agente - porcentaje_agencia_general
-                $porcentaje_dinamico = $porcentaje_agente - $data_agency_general->commission_tdec;
-                Log::info('porcentaje general'.$porcentaje_dinamico);
-
-                // conversion de dolares a bolivares del monto a apagar
-                $ves = $record->total_amount * $record->tasa_bcv;
-                $porcentaje_agencia_general = $ves * $porcentaje_dinamico / 100;
-            }
-
-            // Pago Multiple en USD y BS
-            // Cuando el pago es multiple la comision se calcula en bolivares
-            if ($record->pay_amount_usd > 0 && $record->pay_amount_ves > 0) {
-
-                $money = 'ves';
-
-                // porcentaje_dinamico = porcentaje_agente - porcentaje_agencia_general
-                $porcentaje_dinamico = $porcentaje_agente - $data_agency_general->commission_tdec;
-                Log::info('porcentaje general'.$porcentaje_dinamico);
-
-                // conversion de dolares a bolivares del monto a apagar
-                $ves = $record->pay_amount_usd * $record->tasa_bcv;
-                $total = $ves + $record->pay_amount_ves;
-
-                // Calculamos la comision en bolivares
-                $porcentaje_agencia_general = $total * $porcentaje_dinamico / 100;
-
-            }
-
-            // AHORA DETERMINAMOS SI LA AGENCIA GENERAL PERTENECE A UNA AGENCIA MASTER
-            if ($data_agency_general->owner_code != 'TDG-100') {
-
-                // ESTA AGENCIA PERTENECE A UNA AGENCIA MASTER
-                $data_agency_master = Agency::where('code', $data_agency_general->owner_code)->first();
-
-                if ($record->pay_amount_usd > 0 && $record->pay_amount_ves == 0) {
-
-                    $money = 'usd';
-
-                    $porcentaje_dinamico_agencia_master = $data_agency_general->commission_tdec - $data_agency_master->commission_tdec;
-                    Log::info('porcentaje master cuando tiene una agencia general'.$porcentaje_dinamico_agencia_master);
-
-                    $porcentaje_agencia_master = $record->pay_amount_usd * $porcentaje_dinamico_agencia_master / 100;
-                }
-
-                // Pago solo en BS
-                if ($record->pay_amount_usd == 0 && $record->pay_amount_ves > 0) {
-                    $money = 'ves';
-                    // conversion de dolares a bolivares del monto a apagar
-                    $porcentaje_dinamico_agencia_master = $data_agency_general->commission_tdec - $data_agency_master->commission_tdec;
-                    Log::info('porcentaje master cuando tiene una agencia general'.$porcentaje_dinamico_agencia_master);
-
-                    $ves = $record->total_amount * $record->tasa_bcv;
-
-                    $porcentaje_agencia_master = $ves * $porcentaje_dinamico_agencia_master / 100;
-                }
-
-                // Cuando el pago es multiple la comision se calcula en bolivares
-                if ($record->pay_amount_usd > 0 && $record->pay_amount_ves > 0) {
-
-                    $money = 'ves';
-
-                    // porcentaje_dinamico = porcentaje_agente - porcentaje_agencia_general
-                    $porcentaje_dinamico_agencia_master = $data_agency_general->commission_tdec - $data_agency_master->commission_tdec;
-                    Log::info('porcentaje master cuando tiene una agencia general'.$porcentaje_dinamico_agencia_master);
-
-                    // conversion de dolares a bolivares del monto a apagar
-                    $ves = $record->pay_amount_usd * $record->tasa_bcv;
-                    $total = $ves + $record->pay_amount_ves;
-
-                    // Calculamos la comision en bolivares
-                    $porcentaje_agencia_master = $total * $porcentaje_dinamico_agencia_master / 100;
-                }
-            }
-
-            $res = [
-                'porcentaje_agencia_general' => abs($porcentaje_agencia_general), // $porcentaje_agencia_general,
-                'porcentaje_agencia_master' => abs($porcentaje_agencia_master), // $porcentaje_agencia_master,
-                'money' => $money,
-                'porcent_gral' => abs($porcentaje_dinamico),
-                'porcent_master' => isset($porcentaje_dinamico_agencia_master) ? abs($porcentaje_dinamico_agencia_master) : 0,
-            ];
-
-            return $res;
-
+            return self::buildGeneralAgencyCommissionsFromTotalAmount(
+                totalAmount: (float) $record->total_amount,
+                agentCommissionPercent: (float) $porcentaje_agente,
+                agencyGeneralCommissionTdec: (float) $dataAgencyGeneral->commission_tdec,
+                agencyGeneralOwnerCode: (string) $dataAgencyGeneral->owner_code,
+                agencyMasterCommissionTdec: $agencyMasterCommissionTdec,
+            );
         } catch (\Throwable $th) {
-            dd($th);
             Log::error($th->getMessage());
-            // throw $th;
         }
+    }
+
+    /**
+     * @return array{
+     *     porcentaje_agencia_general: float,
+     *     porcentaje_agencia_master: float,
+     *     money: string,
+     *     porcent_gral: float,
+     *     porcent_master: float,
+     *     total_amount: float
+     * }
+     */
+    public static function buildGeneralAgencyCommissionsFromTotalAmount(
+        float $totalAmount,
+        float $agentCommissionPercent,
+        float $agencyGeneralCommissionTdec,
+        string $agencyGeneralOwnerCode,
+        ?float $agencyMasterCommissionTdec = null,
+    ): array {
+        // General cobra la diferencia vs el agente; master (si aplica) vs la general
+        $porcentGral = $agencyGeneralCommissionTdec - $agentCommissionPercent;
+        $porcentMaster = 0.0;
+
+        if ($agencyGeneralOwnerCode !== 'TDG-100' && $agencyMasterCommissionTdec !== null) {
+            $porcentMaster = $agencyMasterCommissionTdec - $agencyGeneralCommissionTdec;
+        }
+
+        return [
+            'porcentaje_agencia_general' => abs($totalAmount * $porcentGral / 100),
+            'porcentaje_agencia_master' => abs($totalAmount * $porcentMaster / 100),
+            'money' => 'usd',
+            'porcent_gral' => abs($porcentGral),
+            'porcent_master' => abs($porcentMaster),
+            'total_amount' => $totalAmount,
+        ];
     }
 
     public static function calculateCommissionMaster($code, $record, $porcentaje_agente)
     {
         try {
+            $commissionTdecAgencyMaster = (float) Agency::query()
+                ->where('code', $code)
+                ->firstOrFail()
+                ->commission_tdec;
 
-            $porcentaje_agencia_master = 0;
-
-            $commission_tdec_agency_master = Agency::where('code', $code)->first()->commission_tdec;
-
-            // Pago solo en USD
-            if ($record->pay_amount_usd > 0 && $record->pay_amount_ves == 0) {
-                // dd($record->pay_amount_usd);
-                $money = 'usd';
-
-                // Calculo del procentaje dinamico
-                $porcentaje_dinamico = $porcentaje_agente - $commission_tdec_agency_master;
-                Log::info('porcentaje master'.$porcentaje_dinamico);
-
-                $porcentaje_agencia_master = $record->pay_amount_usd * $porcentaje_dinamico / 100;
-
-            }
-
-            // Pago solo en BS
-            if ($record->pay_amount_usd == 0 && $record->pay_amount_ves > 0) {
-
-                $money = 'ves';
-
-                $porcentaje_dinamico = $porcentaje_agente - $commission_tdec_agency_master;
-                Log::info('porcentaje master'.$porcentaje_dinamico);
-
-                $ves = $record->total_amount * $record->tasa_bcv;
-                $porcentaje_agencia_master = $ves * $porcentaje_dinamico / 100;
-            }
-
-            // Pago Multiple en USD y BS
-            // Cuando el pago es multiple la comision se calcula en bolivares
-            if ($record->pay_amount_usd > 0 && $record->pay_amount_ves > 0) {
-
-                $money = 'ves';
-
-                // porcentaje_dinamico = porcentaje_agente - porcentaje_agencia_general
-                $porcentaje_dinamico = $porcentaje_agente - $commission_tdec_agency_master;
-                Log::info('porcentaje master'.$porcentaje_dinamico);
-
-                // conversion de dolares a bolivares del monto a apagar
-                $ves = $record->pay_amount_usd * $record->tasa_bcv;
-                $total = $ves + $record->pay_amount_ves;
-
-                // Calculamos la comision en bolivares
-                $porcentaje_agencia_master = $total * $porcentaje_dinamico / 100;
-            }
-
-            // Pago Multiple en USD y BS
-            // if ($record->pay_amount_usd > 0 && $record->reference_payment_ves > 0) {
-            //     $porcentaje_agente = ($record->pay_amount_usd + $record->reference_payment_ves) * $commission_tdec_agent / 100;
-            // }
-
-            $res = [
-                'porcentaje_agencia_master' => abs($porcentaje_agencia_master),
-                'money' => $money,
-                'porcent_master' => abs($porcentaje_dinamico),
-            ];
-
-            return $res;
-
+            return self::buildMasterAgencyCommissionFromTotalAmount(
+                totalAmount: (float) $record->total_amount,
+                agentCommissionPercent: (float) $porcentaje_agente,
+                agencyMasterCommissionTdec: $commissionTdecAgencyMaster,
+            );
         } catch (\Throwable $th) {
-            dd($th);
             Log::error($th->getMessage());
-            // throw $th;
         }
+    }
+
+    /**
+     * @return array{porcentaje_agencia_master: float, money: string, porcent_master: float, total_amount: float}
+     */
+    public static function buildMasterAgencyCommissionFromTotalAmount(
+        float $totalAmount,
+        float $agentCommissionPercent,
+        float $agencyMasterCommissionTdec,
+    ): array {
+        // Master cobra la diferencia vs el agente (o 0 si la venta es directa de la master)
+        $porcentMaster = $agencyMasterCommissionTdec - $agentCommissionPercent;
+
+        return [
+            'porcentaje_agencia_master' => abs($totalAmount * $porcentMaster / 100),
+            'money' => 'usd',
+            'porcent_master' => abs($porcentMaster),
+            'total_amount' => $totalAmount,
+        ];
     }
 
     public static function calculateCommission($dataArray)

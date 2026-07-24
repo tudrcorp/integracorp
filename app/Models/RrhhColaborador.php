@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 class RrhhColaborador extends Model
@@ -136,6 +138,64 @@ class RrhhColaborador extends Model
     public function cargo()
     {
         return $this->belongsTo(RrhhCargo::class, 'cargo_id');
+    }
+
+    /**
+     * Asignaciones aplicadas directamente a este colaborador (1 o más).
+     */
+    public function asignaciones(): HasMany
+    {
+        return $this->hasMany(RrhhAsignacion::class, 'colaborador_id');
+    }
+
+    /**
+     * Deducciones aplicadas directamente a este colaborador (1 o más).
+     */
+    public function deducciones(): HasMany
+    {
+        return $this->hasMany(RrhhDeduccion::class, 'colaborador_id');
+    }
+
+    /**
+     * Asignaciones efectivas: individuales + las del departamento del colaborador.
+     *
+     * @return Collection<int, RrhhAsignacion>
+     */
+    public function asignacionesAplicables(): Collection
+    {
+        $directas = $this->asignaciones()->get();
+
+        $porDepartamento = RrhhAsignacion::query()
+            ->where('aplicacion', 'departamento')
+            ->when(
+                filled($this->departmento_id),
+                fn ($query) => $query->where('departamento_id', $this->departmento_id),
+                fn ($query) => $query->whereRaw('1 = 0'),
+            )
+            ->get();
+
+        return $directas->concat($porDepartamento)->unique('id')->values();
+    }
+
+    /**
+     * Deducciones efectivas: individuales + las del departamento del colaborador.
+     *
+     * @return Collection<int, RrhhDeduccion>
+     */
+    public function deduccionesAplicables(): Collection
+    {
+        $directas = $this->deducciones()->get();
+
+        $porDepartamento = RrhhDeduccion::query()
+            ->where('aplicacion', 'departamento')
+            ->when(
+                filled($this->departmento_id),
+                fn ($query) => $query->where('departamento_id', $this->departmento_id),
+                fn ($query) => $query->whereRaw('1 = 0'),
+            )
+            ->get();
+
+        return $directas->concat($porDepartamento)->unique('id')->values();
     }
 
     public function created_by()

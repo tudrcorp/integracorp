@@ -20,8 +20,7 @@ it('aplica estilo iOS al formulario y acciones de colaboradores', function (): v
     expect($formContents)
         ->toContain('TABS_CONTAINER')
         ->toContain('SECTION_CARD')
-        ->toContain('IOS_SELECT_MATCH_INPUT_HEIGHT_CLASS')
-        ->toContain('[&_.fi-select-input-btn]:!min-h-11')
+        ->toContain('INNER_CARD')
         ->toContain("Tabs::make('rrhhColaboradorFormTabs')")
         ->toContain('->persistTab()')
         ->toContain("Tab::make('Perfil')")
@@ -34,18 +33,28 @@ it('aplica estilo iOS al formulario y acciones de colaboradores', function (): v
         ->toContain('Funciones del colaborador')
         ->toContain("FileUpload::make('documents')")
         ->toContain('->multiple()')
-        ->toContain("Section::make('Perfil')")
-        ->toContain("Section::make('Datos personales')")
-        ->toContain("Section::make('Datos laborales')")
-        ->toContain("Section::make('Contacto')")
-        ->toContain("Section::make('Datos bancarios')")
-        ->toContain("Section::make('Documentos')")
+        ->toContain("Fieldset::make('Perfil del colaborador')")
+        ->toContain("Fieldset::make('Identidad personal')")
+        ->toContain("Fieldset::make('Información laboral')")
+        ->toContain("Fieldset::make('Canales de contacto')")
+        ->toContain("Fieldset::make('Cuenta bancaria')")
+        ->toContain("Fieldset::make('Expediente documental')")
+        ->toContain("Fieldset::make('Funciones del puesto')")
+        ->toContain("Fieldset::make('Datos de identificación')")
         ->toContain("DatePicker::make('birth_date')")
         ->toContain('->maxDate(now())')
         ->toContain("'before_or_equal:today'")
         ->toContain("TextInput::make('age')")
         ->toContain('afterStateUpdated')
+        ->toContain('prefixIcon')
         ->toContain('public static function avatarUploadField');
+
+    $resourcePath = dirname(__DIR__, 2).'/app/Filament/Administration/Resources/RrhhColaboradors/RrhhColaboradorResource.php';
+    $resourceContents = file_get_contents($resourcePath);
+
+    expect($resourceContents)
+        ->toContain('AsignacionesRelationManager::class')
+        ->toContain('DeduccionesRelationManager::class');
 
     $themePath = dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css';
     $themeContents = file_get_contents($themePath);

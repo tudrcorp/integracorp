@@ -2,6 +2,7 @@
 
 namespace App\Filament\Administration\Resources\RrhhAsignacions\Tables;
 
+use App\Models\RrhhAsignacion;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -18,26 +19,66 @@ class RrhhAsignacionsTable
     {
         return $table
             ->heading('Asignaciones RRHH')
-            ->description('Gestión de asignaciones monetarias vinculadas a cargos de colaboradores.')
+            ->description('Gestión de asignaciones monetarias por departamento o colaborador.')
             ->emptyStateHeading('No hay asignaciones registradas')
-            ->emptyStateDescription('Crea una asignación para clasificar montos por cargo.')
+            ->emptyStateDescription('Crea una asignación para clasificar montos por departamento o colaborador.')
             ->emptyStateIcon('heroicon-o-plus-circle')
+            ->modifyQueryUsing(fn ($query) => $query->with(['departamento', 'colaborador', 'cargo']))
             ->columns([
                 TextColumn::make('name')
                     ->label('Nombre')
                     ->searchable(),
                 TextColumn::make('description')
                     ->label('Descripción')
-                    ->searchable(),
-                TextColumn::make('monto')
-                    ->label('Monto US$')
-                    ->color('success')
-                    ->searchable(),
-                TextColumn::make('cargo.description')
-                    ->label('Cargo')
+                    ->searchable()
+                    ->limit(40),
+                TextColumn::make('tipo_valor')
+                    ->label('Tipo')
                     ->badge()
-                    ->icon('heroicon-o-clipboard-document')
-                    ->searchable(),
+                    ->color(fn (?string $state): string => match ($state) {
+                        'porcentaje' => 'warning',
+                        'monto' => 'success',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'porcentaje' => 'Porcentaje',
+                        'monto' => 'Monto fijo',
+                        default => (string) ($state ?? '—'),
+                    }),
+                TextColumn::make('valor')
+                    ->label('Valor')
+                    ->state(fn (RrhhAsignacion $record): string => $record->valorLabel())
+                    ->color('success'),
+                TextColumn::make('aplicacion')
+                    ->label('Aplicación')
+                    ->badge()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'departamento' => 'info',
+                        'colaborador' => 'success',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'departamento' => 'Departamento',
+                        'colaborador' => 'Colaborador',
+                        default => (string) ($state ?? '—'),
+                    })
+                    ->icon(fn (?string $state): string => match ($state) {
+                        'departamento' => 'heroicon-o-building-office-2',
+                        'colaborador' => 'heroicon-o-user',
+                        default => 'heroicon-o-clipboard-document',
+                    }),
+                TextColumn::make('destino')
+                    ->label('Destino')
+                    ->state(fn (RrhhAsignacion $record): string => $record->destinoLabel())
+                    ->searchable(query: function ($query, string $search): void {
+                        $query->where(function ($query) use ($search): void {
+                            $query->whereHas('departamento', fn ($q) => $q->where('description', 'like', "%{$search}%"))
+                                ->orWhereHas('colaborador', fn ($q) => $q->where('fullName', 'like', "%{$search}%"))
+                                ->orWhereHas('cargo', fn ($q) => $q->where('description', 'like', "%{$search}%"));
+                        });
+                    })
+                    ->badge()
+                    ->icon('heroicon-o-clipboard-document'),
             ])
             ->filters([
                 //
