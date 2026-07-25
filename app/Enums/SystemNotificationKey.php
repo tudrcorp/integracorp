@@ -12,6 +12,8 @@ enum SystemNotificationKey: string
     case DatabaseBackup = 'database_backup';
     case StructureBackup = 'structure_backup';
     case DailyAuditSummary = 'daily_audit_summary';
+    case OperationInventoryLowStock = 'operation_inventory_low_stock';
+    case TelemedicineCaseReversal = 'telemedicine_case_reversal';
 
     public function label(): string
     {
@@ -22,6 +24,8 @@ enum SystemNotificationKey: string
             self::DatabaseBackup => 'Respaldo de base de datos',
             self::StructureBackup => 'Respaldo de Estructura',
             self::DailyAuditSummary => 'Auditorías completas',
+            self::OperationInventoryLowStock => 'Stock bajo de inventario',
+            self::TelemedicineCaseReversal => 'Reverso de casos de telemedicina',
         };
     }
 
@@ -34,6 +38,8 @@ enum SystemNotificationKey: string
             self::DatabaseBackup => 'Destinatarios del resumen y del archivo .sql al finalizar el respaldo diario de la base de datos.',
             self::StructureBackup => 'Destinatarios de las exportaciones Excel diarias de estructura (afiliaciones, agentes, agencias, proveedores, colaboradores y doctores).',
             self::DailyAuditSummary => 'Destinatarios del reporte diario de auditorías completas (agencias, agentes y afiliaciones).',
+            self::OperationInventoryLowStock => 'Destinatarios de la alerta diaria de productos de inventario Diagnomóvil con existencia total menor o igual al umbral configurado.',
+            self::TelemedicineCaseReversal => 'Destinatarios de la alerta cuando un médico reversa un caso desde el panel de telemedicina (correo y WhatsApp con la nota del reverso).',
         };
     }
 
@@ -46,6 +52,8 @@ enum SystemNotificationKey: string
             self::DatabaseBackup => 'Respaldo diario de base de datos',
             self::StructureBackup => 'Exportaciones diarias de estructura',
             self::DailyAuditSummary => 'Reporte diario de auditorías',
+            self::OperationInventoryLowStock => 'Alerta diaria de stock bajo',
+            self::TelemedicineCaseReversal => 'Alerta de reverso de caso',
         };
     }
 
@@ -58,6 +66,8 @@ enum SystemNotificationKey: string
             self::DatabaseBackup => 'Cada madrugada se genera un .sql completo (estructura + datos). Al finalizar, los contactos configurados reciben el resumen; por WhatsApp también el archivo adjunto si no supera el límite.',
             self::StructureBackup => 'Entre las 6:00 y las 7:10 se generan Excel de afiliaciones individuales/corporativas, agentes, agencias, proveedores, colaboradores y doctores. Cada job notifica resumen y adjunta el archivo por WhatsApp cuando aplica.',
             self::DailyAuditSummary => 'Cada día a las 7:00 se contabilizan agencias, agentes y afiliaciones con auditoría completa (todos los puntos verificados) y se envía el resumen por WhatsApp y correo a estos contactos.',
+            self::OperationInventoryLowStock => 'Cada vez que un producto activo quede con existencia total menor o igual al umbral se envía una alerta inmediata por correo y WhatsApp. Además, cada día a las 8:00 se reenvía el listado completo mientras sigan bajo el umbral (configurable en Parámetros de Inventario).',
+            self::TelemedicineCaseReversal => 'Cuando un médico reversa un caso, el sistema elimina el caso para permitir la reasignación y dispara de forma asíncrona un correo y un WhatsApp detallados, resaltando la nota/observación del médico.',
         };
     }
 
@@ -103,6 +113,18 @@ enum SystemNotificationKey: string
                 '3. Armar resumen',
                 '4. Email + WhatsApp',
             ],
+            self::OperationInventoryLowStock => [
+                '1. Baja de existencia',
+                '2. Cruce de umbral',
+                '3. Alerta inmediata async',
+                '4. Resumen diario 8:00',
+            ],
+            self::TelemedicineCaseReversal => [
+                '1. Médico reversa caso',
+                '2. Nota obligatoria',
+                '3. Eliminar caso',
+                '4. Email + WhatsApp async',
+            ],
         };
     }
 
@@ -115,6 +137,8 @@ enum SystemNotificationKey: string
             self::DatabaseBackup => 'Importante:',
             self::StructureBackup => 'Grupo de exportaciones:',
             self::DailyAuditSummary => 'Criterio del reporte:',
+            self::OperationInventoryLowStock => 'Criterio de la alerta:',
+            self::TelemedicineCaseReversal => 'Acción requerida:',
         };
     }
 
@@ -127,6 +151,8 @@ enum SystemNotificationKey: string
             self::DatabaseBackup => 'el respaldo siempre se genera en el servidor. Sin destinatarios, no habrá aviso. El .sql se adjunta por WhatsApp solo si no supera el límite configurado.',
             self::StructureBackup => 'incluye afiliaciones individuales y corporativas, agentes, agencias, proveedores naturales/jurídicos, colaboradores y doctores. Los Excel se generan igual sin destinatarios; solo se omite la notificación.',
             self::DailyAuditSummary => 'solo se contabilizan registros con TODOS los puntos de auditoría verificados. Las auditorías parciales no entran en los totales.',
+            self::OperationInventoryLowStock => 'solo se incluyen productos activos cuya existencia total (suma de todos los almacenes) sea menor o igual al umbral. Si no hay productos bajo umbral, no se envía notificación. El umbral se configura en Operaciones → Parámetros de Inventario.',
+            self::TelemedicineCaseReversal => 'al recibir la alerta debe reasignar el paciente desde Operaciones (TDG o proveedor). El caso ya fue eliminado; revise con atención la nota del médico.',
         };
     }
 
@@ -139,6 +165,8 @@ enum SystemNotificationKey: string
             self::DatabaseBackup => 'heroicon-o-circle-stack',
             self::StructureBackup => 'heroicon-o-table-cells',
             self::DailyAuditSummary => 'heroicon-o-clipboard-document-check',
+            self::OperationInventoryLowStock => 'heroicon-o-cube',
+            self::TelemedicineCaseReversal => 'heroicon-o-arrow-uturn-left',
         };
     }
 
@@ -158,6 +186,8 @@ enum SystemNotificationKey: string
             self::DailyAuditSummary => [
                 'solrodriguez@tudrencasa.com',
             ],
+            self::OperationInventoryLowStock => [],
+            self::TelemedicineCaseReversal => [],
         };
     }
 
@@ -186,6 +216,8 @@ enum SystemNotificationKey: string
                 '04143027250',
                 '04245718777',
             ],
+            self::OperationInventoryLowStock => [],
+            self::TelemedicineCaseReversal => [],
         };
     }
 
@@ -198,6 +230,8 @@ enum SystemNotificationKey: string
             self::DatabaseBackup => 'Sin destinatarios configurados. El respaldo se generará igual, pero no se enviará el resumen ni el archivo por WhatsApp/email.',
             self::StructureBackup => 'Sin destinatarios configurados. Las exportaciones Excel se generarán igual, pero no se enviará el resumen ni el archivo.',
             self::DailyAuditSummary => 'Sin destinatarios configurados. El conteo de auditorías se calculará igual, pero no se enviará el resumen.',
+            self::OperationInventoryLowStock => 'Sin destinatarios configurados. El cron revisará el stock, pero no se enviará la alerta diaria.',
+            self::TelemedicineCaseReversal => 'Sin destinatarios configurados. El médico podrá reversar el caso, pero no se enviará la alerta por correo ni WhatsApp.',
         };
     }
 
@@ -224,12 +258,21 @@ enum SystemNotificationKey: string
             self::DailyAuditSummary => $empty
                 ? 'Sin destinatarios. El reporte de auditorías se calculará, pero no se enviará.'
                 : 'El resumen diario de auditorías completas se enviará a los contactos configurados.',
+            self::OperationInventoryLowStock => $empty
+                ? 'Sin destinatarios. El cron revisará el stock, pero no se enviará la alerta.'
+                : 'La alerta diaria de stock bajo se enviará a los contactos configurados cuando haya productos bajo el umbral.',
+            self::TelemedicineCaseReversal => $empty
+                ? 'Sin destinatarios. El reverso del caso seguirá eliminándolo, pero no se enviará la alerta.'
+                : 'La alerta de reverso de caso se enviará por correo y WhatsApp a los contactos configurados.',
         };
     }
 
     public function pausesScheduledTask(): bool
     {
-        return $this !== self::CompanyAssociateRegistration;
+        return ! in_array($this, [
+            self::CompanyAssociateRegistration,
+            self::TelemedicineCaseReversal,
+        ], true);
     }
 
     public function activationHelp(): string
@@ -241,6 +284,8 @@ enum SystemNotificationKey: string
             self::DatabaseBackup => 'Si está inactiva, no se generará el respaldo .sql ni se enviará la notificación.',
             self::StructureBackup => 'Si está inactiva, no se ejecutarán las exportaciones Excel diarias de estructura.',
             self::DailyAuditSummary => 'Si está inactiva, no se calculará ni enviará el reporte diario de auditorías.',
+            self::OperationInventoryLowStock => 'Si está inactiva, no se ejecutará la revisión diaria ni se enviará la alerta de stock bajo.',
+            self::TelemedicineCaseReversal => 'Si está inactiva, el médico podrá reversar el caso, pero no se enviará la alerta por correo ni WhatsApp.',
         };
     }
 
@@ -256,6 +301,8 @@ enum SystemNotificationKey: string
             self::DatabaseBackup,
             self::StructureBackup,
             self::DailyAuditSummary,
+            self::OperationInventoryLowStock,
+            self::TelemedicineCaseReversal,
         ];
     }
 }

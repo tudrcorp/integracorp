@@ -16,6 +16,15 @@ it('el theme admin y el formulario de consulta telemedicina definen el wizard iO
         ->and($form)->toContain('fi-telemedicine-case-status-section');
 });
 
+it('el wizard de consulta no recorta los dropdowns de select con overflow hidden', function (): void {
+    $theme = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
+
+    expect($theme)
+        ->toContain('.fi-telemedicine-consultation-wizard .fi-section {')
+        ->toContain('@apply overflow-visible rounded-[1.25rem]')
+        ->not->toContain('.fi-telemedicine-consultation-wizard .fi-section {\n    @apply overflow-hidden');
+});
+
 it('el formulario de consulta no oculta la asignación de servicio ni la prioridad en la página de edición', function (): void {
     $root = dirname(__DIR__, 2);
     $form = file_get_contents(

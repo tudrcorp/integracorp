@@ -97,7 +97,9 @@ final class CompanyAssociateDocumentsDeliverer
         $qrFilename = CompanyAssociateInclusionQrCatalog::QR_FILENAME;
 
         foreach ($phoneRecipients as $rawPhone => $recipientName) {
-            $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
+            $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp(
+                is_scalar($rawPhone) ? (string) $rawPhone : null
+            );
 
             if ($phone === null) {
                 SecurityAudit::log('AUDIT_BUSINESS_COMPANY_ASSOCIATE_DOCUMENTS_WHATSAPP_INVALID', 'company-associates.public-register.documents', [

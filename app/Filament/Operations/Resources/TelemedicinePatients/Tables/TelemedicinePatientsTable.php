@@ -258,6 +258,7 @@ class TelemedicinePatientsTable
                         ->label('Eliminar Paciente')
                         ->color('danger')
                         ->icon('heroicon-o-trash')
+                        ->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst())
                         ->requiresConfirmation()
                         ->modalHeading('Eliminar Paciente')
                         ->modalDescription('¿Está seguro de eliminar el paciente? Esta acción elimina la asociación del paciente. Para revertir deberá asociar nuevamente al afiliado.')

@@ -1806,22 +1806,19 @@ class NotificationController extends Controller
 
     public static function assignedCase($phone, $doctor, $code, $reason, $name_patient, $address)
     {
-        // dd($phone, $doctor, $code, $reason);
         try {
+            $body = <<<TEXT
+            ¡Hola Dr. *{$doctor}*! 👋
 
-            $body = <<<HTML
+            Te informamos que el caso *#{$code}* acaba de ser asignado a tu equipo.
 
-            ¡Hola Dr. *{$doctor}*! 👋   
-
-            Te informamos que el caso *#{$code}* acaba de ser asignado a tu equipo.   
-
-            Paciente: 
+            Paciente:
             *{$name_patient}*
 
-            Dirección: 
+            Dirección:
             *{$address}*
 
-            *Motivo de la Consulta:* 
+            *Motivo de la Consulta:*
             *{$reason}*
 
             Para validar los detalles del caso puedes acceder al portal de Telemedicina con tu usuario y contraseña
@@ -1829,58 +1826,13 @@ class NotificationController extends Controller
             https://integracorp.tudrgroup.com/telemedicina
 
             ¡Gracias por tu colaboración! 🙌
-                
-            HTML;
+            TEXT;
 
-            $params = [
-                'token' => config('parameters.TOKEN'),
-                'to' => $phone,
-                'body' => $body,
-            ];
-            $curl = curl_init();
-            curl_setopt_array($curl, [
-                CURLOPT_URL => config('parameters.CURLOPT_URL'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => [
-                    'content-type: application/x-www-form-urlencoded',
-                ],
-            ]);
-
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
-
-            curl_close($curl);
-
-            if ($response) {
-
-                Log::info($response);
+            if (! self::sendWhatsAppBrandImageCaption($phone, $body)) {
                 $data = [
                     'action' => 'assignedCase',
                     'objeto' => 'NotificationController::assignedCase',
-                    'message' => $response,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success',
-                ];
-                UtilsController::notificacionToAdmin($data);
-
-                return true;
-            }
-
-            if ($err) {
-
-                Log::error($err);
-                $data = [
-                    'action' => 'assignedCase',
-                    'objeto' => 'NotificationController::assignedCase',
-                    'message' => $err,
+                    'message' => 'No se pudo enviar la notificación de asignación de caso con imagen Integracorp.',
                     'created_at' => date('Y-m-d H:i:s'),
                     'icon' => 'error',
                 ];
@@ -1889,8 +1841,20 @@ class NotificationController extends Controller
                 return false;
             }
 
+            $data = [
+                'action' => 'assignedCase',
+                'objeto' => 'NotificationController::assignedCase',
+                'message' => 'Notificación de asignación de caso enviada con imagen Integracorp.',
+                'created_at' => date('Y-m-d H:i:s'),
+                'icon' => 'success',
+            ];
+            UtilsController::notificacionToAdmin($data);
+
+            return true;
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
+
+            return false;
         }
     }
 
@@ -2470,68 +2434,30 @@ class NotificationController extends Controller
     public static function previewMessage($phone)
     {
         try {
+            $body = <<<'TEXT'
+¡Hola! 👋 Esperamos que tu consulta de Telemedicina haya sido de gran ayuda.
 
-            $body = <<<'HTML'
+Queremos informarte que en breve, recibirás los documentos generados por el médico durante la consulta.
 
-            ¡Hola! 👋 Esperamos que tu consulta de Telemedicina haya sido de gran ayuda.
+Por favor, revísalos con atención y guárdalos de forma segura. Si tienes alguna duda sobre las indicaciones, no dudes en consultarnos.
 
-            Queremos informarte que en breve, recibirás los documentos generados por el médico durante la consulta.
+Su Salud es nuestra prioridad...
+Muchas gracias. 🙌
+TEXT;
 
-            Por favor, revísalos con atención y guárdalos de forma segura. Si tienes alguna duda sobre las indicaciones, no dudes en consultarnos.
-         
-            Su Salud es nuestra prioridad...
-            Muchas gracias. 🙌
- 
-            HTML;
-
-            $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp((string) $phone);
-
-            if ($cleanPhone === null) {
-                Log::warning('TELEMEDICINA: Teléfono inválido para mensaje previo de documentos.', [
+            if (! self::sendWhatsAppBrandImageCaption((string) $phone, $body)) {
+                Log::warning('TELEMEDICINA: No se pudo enviar el mensaje previo de documentos con imagen Integracorp.', [
                     'phone' => $phone,
                 ]);
 
                 return false;
             }
 
-            $params = [
-                'token' => config('parameters.TOKEN'),
-                'to' => $cleanPhone,
-                'body' => $body,
-            ];
-            $curl = curl_init();
-            curl_setopt_array($curl, [
-                CURLOPT_URL => config('parameters.CURLOPT_URL'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => [
-                    'content-type: application/x-www-form-urlencoded',
-                ],
-            ]);
-
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
-
-            curl_close($curl);
-
-            if ($err) {
-                Log::error($err);
-
-                return false;
-            } else {
-                Log::info($response);
-
-                return true;
-            }
+            return true;
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
+
+            return false;
         }
     }
 

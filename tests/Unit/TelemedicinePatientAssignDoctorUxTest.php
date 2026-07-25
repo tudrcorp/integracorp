@@ -16,6 +16,18 @@ it('la tabla y la ficha del paciente usan la acción reutilizable AssignDoctorAc
         ->and($view)->toContain('AssignDoctorAction::make()');
 });
 
+it('el select de doctores es buscable y el analista TDG no se limita al proveedor del paciente', function (): void {
+    $contents = file_get_contents(
+        dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/Actions/AssignDoctorAction.php'
+    );
+
+    expect($contents)
+        ->toContain('->searchable()')
+        ->toContain('authenticatedUserIsTdgAnalyst()')
+        ->toContain('if (! $isTdgAnalyst)')
+        ->toContain("->with('supplier:id,name')");
+});
+
 it('la creación y asociación de pacientes redirige a la ficha del paciente', function (): void {
     $root = dirname(__DIR__, 2);
 

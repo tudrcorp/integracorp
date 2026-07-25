@@ -3,25 +3,24 @@
 namespace App\Filament\Telemedicina\Resources\TelemedicinePatients\Schemas;
 
 use App\Models\City;
-use App\Models\State;
-use App\Models\Region;
 use App\Models\Country;
-use Filament\Schemas\Schema;
-use Illuminate\Support\HtmlString;
+use App\Models\Region;
+use App\Models\State;
 use App\Models\TelemedicinePatient;
-use Filament\Forms\Components\Radio;
-use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Illuminate\Support\Facades\Blade;
-use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\DatePicker;
-use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\HtmlString;
 
 class TelemedicinePatientForm
 {
@@ -45,7 +44,8 @@ class TelemedicinePatientForm
                                                     } else {
                                                         $parte_entera = TelemedicinePatient::max('id');
                                                     }
-                                                    return 'TEL-PAC-000' . $parte_entera + 1;
+
+                                                    return 'TEL-PAC-000'.$parte_entera + 1;
                                                 })
                                                 ->disabled()
                                                 ->dehydrated()
@@ -68,12 +68,12 @@ class TelemedicinePatientForm
                                         ->required()
                                         ->live()
                                         ->afterStateUpdated(function (Set $set, $state) {
-                                            //calculo de edad
+                                            // calculo de edad
                                             $edad = \Carbon\Carbon::parse($state)->age;
                                             $set('age', $edad);
                                         })
                                         ->validationMessages([
-                                            'required'  => 'Campo Requerido',
+                                            'required' => 'Campo Requerido',
                                         ]),
                                     TextInput::make('age')
                                         ->prefixIcon('heroicon-m-identification')
@@ -93,30 +93,30 @@ class TelemedicinePatientForm
                                         ->prefixIcon('heroicon-s-globe-europe-africa')
                                         ->required()
                                         ->validationMessages([
-                                            'required'  => 'Campo Requerido',
+                                            'required' => 'Campo Requerido',
                                         ])
                                         ->preload(),
                                     Select::make('country_code')
                                         ->label('Código de país')
                                         ->options([
-                                            '+1'   => '🇺🇸 +1 (Estados Unidos)',
-                                            '+44'  => '🇬🇧 +44 (Reino Unido)',
-                                            '+49'  => '🇩🇪 +49 (Alemania)',
-                                            '+33'  => '🇫🇷 +33 (Francia)',
-                                            '+34'  => '🇪🇸 +34 (España)',
-                                            '+39'  => '🇮🇹 +39 (Italia)',
-                                            '+7'   => '🇷🇺 +7 (Rusia)',
-                                            '+55'  => '🇧🇷 +55 (Brasil)',
-                                            '+91'  => '🇮🇳 +91 (India)',
-                                            '+86'  => '🇨🇳 +86 (China)',
-                                            '+81'  => '🇯🇵 +81 (Japón)',
-                                            '+82'  => '🇰🇷 +82 (Corea del Sur)',
-                                            '+52'  => '🇲🇽 +52 (México)',
-                                            '+58'  => '🇻🇪 +58 (Venezuela)',
-                                            '+57'  => '🇨🇴 +57 (Colombia)',
-                                            '+54'  => '🇦🇷 +54 (Argentina)',
-                                            '+56'  => '🇨🇱 +56 (Chile)',
-                                            '+51'  => '🇵🇪 +51 (Perú)',
+                                            '+1' => '🇺🇸 +1 (Estados Unidos)',
+                                            '+44' => '🇬🇧 +44 (Reino Unido)',
+                                            '+49' => '🇩🇪 +49 (Alemania)',
+                                            '+33' => '🇫🇷 +33 (Francia)',
+                                            '+34' => '🇪🇸 +34 (España)',
+                                            '+39' => '🇮🇹 +39 (Italia)',
+                                            '+7' => '🇷🇺 +7 (Rusia)',
+                                            '+55' => '🇧🇷 +55 (Brasil)',
+                                            '+91' => '🇮🇳 +91 (India)',
+                                            '+86' => '🇨🇳 +86 (China)',
+                                            '+81' => '🇯🇵 +81 (Japón)',
+                                            '+82' => '🇰🇷 +82 (Corea del Sur)',
+                                            '+52' => '🇲🇽 +52 (México)',
+                                            '+58' => '🇻🇪 +58 (Venezuela)',
+                                            '+57' => '🇨🇴 +57 (Colombia)',
+                                            '+54' => '🇦🇷 +54 (Argentina)',
+                                            '+56' => '🇨🇱 +56 (Chile)',
+                                            '+51' => '🇵🇪 +51 (Perú)',
                                             '+502' => '🇬🇹 +502 (Guatemala)',
                                             '+503' => '🇸🇻 +503 (El Salvador)',
                                             '+504' => '🇭🇳 +504 (Honduras)',
@@ -127,34 +127,34 @@ class TelemedicinePatientForm
                                             '+592' => '🇬🇾 +592 (Guyana)',
                                             '+591' => '🇧🇴 +591 (Bolivia)',
                                             '+598' => '🇺🇾 +598 (Uruguay)',
-                                            '+20'  => '🇪🇬 +20 (Egipto)',
-                                            '+27'  => '🇿🇦 +27 (Sudáfrica)',
+                                            '+20' => '🇪🇬 +20 (Egipto)',
+                                            '+27' => '🇿🇦 +27 (Sudáfrica)',
                                             '+234' => '🇳🇬 +234 (Nigeria)',
                                             '+212' => '🇲🇦 +212 (Marruecos)',
                                             '+971' => '🇦🇪 +971 (Emiratos Árabes)',
-                                            '+92'  => '🇵🇰 +92 (Pakistán)',
+                                            '+92' => '🇵🇰 +92 (Pakistán)',
                                             '+880' => '🇧🇩 +880 (Bangladesh)',
-                                            '+62'  => '🇮🇩 +62 (Indonesia)',
-                                            '+63'  => '🇵🇭 +63 (Filipinas)',
-                                            '+66'  => '🇹🇭 +66 (Tailandia)',
-                                            '+60'  => '🇲🇾 +60 (Malasia)',
-                                            '+65'  => '🇸🇬 +65 (Singapur)',
-                                            '+61'  => '🇦🇺 +61 (Australia)',
-                                            '+64'  => '🇳🇿 +64 (Nueva Zelanda)',
-                                            '+90'  => '🇹🇷 +90 (Turquía)',
+                                            '+62' => '🇮🇩 +62 (Indonesia)',
+                                            '+63' => '🇵🇭 +63 (Filipinas)',
+                                            '+66' => '🇹🇭 +66 (Tailandia)',
+                                            '+60' => '🇲🇾 +60 (Malasia)',
+                                            '+65' => '🇸🇬 +65 (Singapur)',
+                                            '+61' => '🇦🇺 +61 (Australia)',
+                                            '+64' => '🇳🇿 +64 (Nueva Zelanda)',
+                                            '+90' => '🇹🇷 +90 (Turquía)',
                                             '+375' => '🇧🇾 +375 (Bielorrusia)',
                                             '+372' => '🇪🇪 +372 (Estonia)',
                                             '+371' => '🇱🇻 +371 (Letonia)',
                                             '+370' => '🇱🇹 +370 (Lituania)',
-                                            '+48'  => '🇵🇱 +48 (Polonia)',
-                                            '+40'  => '🇷🇴 +40 (Rumania)',
-                                            '+46'  => '🇸🇪 +46 (Suecia)',
-                                            '+47'  => '🇳🇴 +47 (Noruega)',
-                                            '+45'  => '🇩🇰 +45 (Dinamarca)',
-                                            '+41'  => '🇨🇭 +41 (Suiza)',
-                                            '+43'  => '🇦🇹 +43 (Austria)',
-                                            '+31'  => '🇳🇱 +31 (Países Bajos)',
-                                            '+32'  => '🇧🇪 +32 (Bélgica)',
+                                            '+48' => '🇵🇱 +48 (Polonia)',
+                                            '+40' => '🇷🇴 +40 (Rumania)',
+                                            '+46' => '🇸🇪 +46 (Suecia)',
+                                            '+47' => '🇳🇴 +47 (Noruega)',
+                                            '+45' => '🇩🇰 +45 (Dinamarca)',
+                                            '+41' => '🇨🇭 +41 (Suiza)',
+                                            '+43' => '🇦🇹 +43 (Austria)',
+                                            '+31' => '🇳🇱 +31 (Países Bajos)',
+                                            '+32' => '🇧🇪 +32 (Bélgica)',
                                             '+353' => '🇮🇪 +353 (Irlanda)',
                                             '+375' => '🇧🇾 +375 (Bielorrusia)',
                                             '+380' => '🇺🇦 +380 (Ucrania)',
@@ -162,7 +162,7 @@ class TelemedicinePatientForm
                                             '+995' => '🇬🇪 +995 (Georgia)',
                                             '+976' => '🇲🇳 +976 (Mongolia)',
                                             '+998' => '🇺🇿 +998 (Uzbekistán)',
-                                            '+84'  => '🇻🇳 +84 (Vietnam)',
+                                            '+84' => '🇻🇳 +84 (Vietnam)',
                                             '+856' => '🇱🇦 +856 (Laos)',
                                             '+374' => '🇦🇲 +374 (Armenia)',
                                             '+965' => '🇰🇼 +965 (Kuwait)',
@@ -177,7 +177,7 @@ class TelemedicinePatientForm
                                         ->default('+58')
                                         ->live(onBlur: true)
                                         ->validationMessages([
-                                            'required'  => 'Campo Requerido',
+                                            'required' => 'Campo Requerido',
                                         ])
                                         ->hiddenOn('edit'),
                                     TextInput::make('phone')
@@ -185,14 +185,14 @@ class TelemedicinePatientForm
                                         ->tel()
                                         ->label('Número de teléfono')
                                         ->validationMessages([
-                                            'required'  => 'Campo Requerido',
+                                            'required' => 'Campo Requerido',
                                         ])
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function ($state, callable $set, Get $get) {
                                             $countryCode = $get('country_code');
                                             if ($countryCode) {
                                                 $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                $set('phone', $countryCode . $cleanNumber);
+                                                $set('phone', $countryCode.$cleanNumber);
                                             }
                                         }),
                                     TextInput::make('email')
@@ -202,6 +202,16 @@ class TelemedicinePatientForm
                                         ->validationMessages([
                                             'required' => 'Campo requerido',
                                         ])
+                                        ->maxLength(255),
+                                    TextInput::make('phone_contact')
+                                        ->prefixIcon('heroicon-s-device-phone-mobile')
+                                        ->tel()
+                                        ->label('Teléfono de contacto')
+                                        ->maxLength(255),
+                                    TextInput::make('email_contact')
+                                        ->email()
+                                        ->label('Correo de contacto')
+                                        ->prefixIcon('heroicon-m-at-symbol')
                                         ->maxLength(255),
                                     TextInput::make('address')
                                         ->label('Dirección')
@@ -214,7 +224,7 @@ class TelemedicinePatientForm
                                         ->prefixIcon('heroicon-s-globe-europe-africa')
                                         ->required()
                                         ->validationMessages([
-                                            'required'  => 'Campo Requerido',
+                                            'required' => 'Campo Requerido',
                                         ])
                                         ->default(189)
                                         ->preload(),
@@ -233,7 +243,7 @@ class TelemedicinePatientForm
                                         ->prefixIcon('heroicon-s-globe-europe-africa')
                                         ->required()
                                         ->validationMessages([
-                                            'required'  => 'Campo Requerido',
+                                            'required' => 'Campo Requerido',
                                         ])
                                         ->preload(),
                                     TextInput::make('region')
@@ -251,7 +261,7 @@ class TelemedicinePatientForm
                                         ->prefixIcon('heroicon-s-globe-europe-africa')
                                         ->required()
                                         ->validationMessages([
-                                            'required'  => 'Campo Requerido',
+                                            'required' => 'Campo Requerido',
                                         ])
                                         ->preload(),
                                     Hidden::make('created_by')->default(Auth::user()->id),
@@ -286,21 +296,21 @@ class TelemedicinePatientForm
                                         ->label('Parentesco')
                                         ->options([
                                             'TUTOR LEGAL' => 'TUTOR LEGAL',
-                                            'MADRE'       => 'MADRE',
-                                            'PADRE'       => 'PADRE',
-                                            'ABUELO'      => 'ABUELO',
-                                            'ABUELA'      => 'ABUELA',
-                                            'OTRO'        => 'OTRO',
+                                            'MADRE' => 'MADRE',
+                                            'PADRE' => 'PADRE',
+                                            'ABUELO' => 'ABUELO',
+                                            'ABUELA' => 'ABUELA',
+                                            'OTRO' => 'OTRO',
                                         ])
                                         ->required()
                                         ->validationMessages([
-                                            'required'  => 'Campo Requerido',
+                                            'required' => 'Campo Requerido',
                                         ]),
-                                    
-                                ])->columns(2),     
+
+                                ])->columns(2),
                         ]),
                 ])
-                    ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    ->submitAction(new HtmlString(Blade::render(<<<'BLADE'
                     <x-filament::button
                         type="submit"
                         size="sm"
@@ -308,7 +318,7 @@ class TelemedicinePatientForm
                         Registrar Paciente
                     </x-filament::button>
                 BLADE)))
-                    ->columnSpanFull()
+                    ->columnSpanFull(),
             ]);
     }
 }

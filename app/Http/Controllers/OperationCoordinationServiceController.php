@@ -9,6 +9,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class OperationCoordinationServiceController extends Controller
 {
@@ -22,7 +23,7 @@ class OperationCoordinationServiceController extends Controller
 
                 $service = TelemedicineServiceList::find($record['telemedicine_service_list_id']);
 
-                $operationCoordinationService = OperationCoordinationService::create([
+                $payload = [
 
                     'telemedicine_consultation_patient_id' => $record['id'],
                     'telemedicine_patient_id' => $record['telemedicine_patient_id'],
@@ -73,7 +74,18 @@ class OperationCoordinationServiceController extends Controller
                     'managed_by' => OperationsSupplierScope::managedByFromDoctor($doctor),
                     'supplier_id' => OperationsSupplierScope::resolveFromDoctor($doctor),
 
-                ]);
+                ];
+
+                // Compatibilidad con BD que aún no corrieron la migración que elimina estos campos.
+                if (Schema::hasColumn('operation_coordination_services', 'holder')) {
+                    $payload['holder'] = (string) ($patient['full_name'] ?? $record['full_name'] ?? 'TITULAR');
+                }
+
+                if (Schema::hasColumn('operation_coordination_services', 'ci_holder')) {
+                    $payload['ci_holder'] = $patient['nro_identificacion'] ?? null;
+                }
+
+                $operationCoordinationService = OperationCoordinationService::create($payload);
 
                 // dd($operationCoordinationService['id']);
                 return $operationCoordinationService['id'];

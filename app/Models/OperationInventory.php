@@ -3,13 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OperationInventory extends Model
 {
-    //
     protected $table = 'operation_inventories';
 
     protected $fillable = [
+        'operation_inventory_product_id',
+        'operation_inventory_ubication_id',
         'name',
         'unit',
         'operation_inventory_type_id',
@@ -30,33 +33,50 @@ class OperationInventory extends Model
         'is_covered',
     ];
 
-    public function operationInventoryCategory()
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'existence' => 'integer',
+            'cost' => 'decimal:2',
+            'is_active' => 'boolean',
+            'is_covered' => 'boolean',
+        ];
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(OperationInventoryProduct::class, 'operation_inventory_product_id');
+    }
+
+    public function ubicationRelation(): BelongsTo
+    {
+        return $this->belongsTo(OperationInventoryUbication::class, 'operation_inventory_ubication_id');
+    }
+
+    public function operationInventoryCategory(): BelongsTo
     {
         return $this->belongsTo(OperationInventoryCategory::class);
     }
 
-    // Relacion 1 a N con OperationInventoryEntry
-    // Entradas
-    public function operationInventoryEntries()
+    public function operationInventoryEntries(): HasMany
     {
         return $this->hasMany(OperationInventoryEntry::class);
     }
 
-    // Relacion 1 a N con OperationInventoryOutflow
-    // Salidas
-    public function operationInventoryOutflows()
+    public function operationInventoryOutflows(): HasMany
     {
         return $this->hasMany(OperationInventoryOutflow::class);
     }
 
-    // Relación 1 a 1 con OperationInventoryType (un inventario tiene un tipo)
-    public function operationInventoryType(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function operationInventoryType(): BelongsTo
     {
         return $this->belongsTo(OperationInventoryType::class, 'operation_inventory_type_id', 'id');
     }
 
-    // Relacion 1 a N con OperationInventoryPrincipleActive
-    public function operationInventoryPrincipleActive()
+    public function operationInventoryPrincipleActive(): BelongsTo
     {
         return $this->belongsTo(OperationInventoryPrincipleActive::class);
     }

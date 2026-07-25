@@ -37,17 +37,20 @@ it('persiste supplier_id al crear paciente manualmente', function (): void {
         ->toContain("\$data['supplier_id'] = \$supplierId");
 });
 
-it('filtra doctores por supplier_id al asignar caso desde pacientes', function (): void {
-    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/Tables/TelemedicinePatientsTable.php');
+it('analista TDG ve todos los doctores al asignar caso y proveedores siguen filtrados por supplier', function (): void {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/Actions/AssignDoctorAction.php');
 
     expect($contents)
-        ->toContain('Select::make(\'doctor_id\')')
+        ->toContain("Select::make('doctor_id')")
+        ->toContain('OperationsSupplierScope::authenticatedUserIsTdgAnalyst()')
         ->toContain('OperationsSupplierScope::applyToQuery($doctorQuery)')
-        ->toContain('->where(\'supplier_id\', $record->supplier_id)');
+        ->toContain("->where('supplier_id', \$record->supplier_id)")
+        ->toContain('// Analistas TDG: todos los médicos registrados (TDG o cualquier proveedor).')
+        ->toContain('if (! $isTdgAnalyst)');
 });
 
 it('asigna managed_by del médico al crear el caso', function (): void {
-    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/Tables/TelemedicinePatientsTable.php');
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/Actions/AssignDoctorAction.php');
 
     expect($contents)
         ->toContain('TelemedicineDoctor::query()->findOrFail($data[\'doctor_id\'])')
@@ -55,7 +58,7 @@ it('asigna managed_by del médico al crear el caso', function (): void {
 });
 
 it('persiste supplier_id en casos e historias clínicas', function (): void {
-    expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/Tables/TelemedicinePatientsTable.php'))
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/Actions/AssignDoctorAction.php'))
         ->toContain("'supplier_id' => OperationsSupplierScope::resolveFromPatient(\$record)");
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicineHistoryPatients/Pages/CreateTelemedicineHistoryPatient.php'))
@@ -101,4 +104,30 @@ it('oculta columnas de afiliacion a usuarios que no son analistas TDG', function
         ->toContain("TextColumn::make('businessLine.definition')")
         ->toContain("TextColumn::make('type_affiliation')")
         ->toContain('OperationsSupplierScope::authenticatedUserIsTdgAnalyst()');
+});
+
+it('oculta campos del portal del paciente a usuarios que no son analistas TDG', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/Schemas/TelemedicinePatientForm.php';
+    $contents = file_get_contents($path);
+
+    $portalSectionStart = (int) strpos($contents, "Section::make('Portal del paciente')");
+    $portalSectionChunk = substr($contents, $portalSectionStart, 1600);
+
+    expect($portalSectionChunk)
+        ->toContain("TextInput::make('patient_portal_password')")
+        ->toContain("Toggle::make('patient_portal_authorized')")
+        ->toContain('->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst())');
+});
+
+it('la bulk action de eliminar paciente solo es visible para analistas TDG', function (): void {
+    $contents = file_get_contents(
+        dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/Tables/TelemedicinePatientsTable.php'
+    );
+
+    $deleteBulkStart = (int) strpos($contents, 'DeleteBulkAction::make()');
+    $deleteBulkChunk = substr($contents, $deleteBulkStart, 500);
+
+    expect($deleteBulkChunk)
+        ->toContain("->label('Eliminar Paciente')")
+        ->toContain('->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst())');
 });

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Telemedicina\Widgets;
 
+use App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\RegenerateTelemedicineCaseDocumentsAction;
+use App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\ReverseTelemedicineCaseAction;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
 use App\Models\ObservationCase;
 use App\Models\TelemedicineCase;
@@ -451,10 +453,16 @@ class TelemedicineCaseTableDash extends TableWidget
                     ->searchable()
                     ->extraCellAttributes(['class' => 'py-3']),
                 TextColumn::make('patient_phone')
-                    ->label('Teléfono')
+                    ->label('Teléfonos')
                     ->iconColor('primary')
                     ->icon('heroicon-s-phone')
-                    ->searchable()
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Principal: '.$state : 'Principal: —')
+                    ->description(function (TelemedicineCase $record): string {
+                        $contact = trim((string) ($record->patient_phone_2 ?? ''));
+
+                        return 'Contacto: '.($contact !== '' ? $contact : '—');
+                    })
+                    ->searchable(['patient_phone', 'patient_phone_2'])
                     ->extraCellAttributes(['class' => 'py-3']),
                 TextColumn::make('created_at')
                     ->label('Asignación')
@@ -504,72 +512,6 @@ class TelemedicineCaseTableDash extends TableWidget
                             }
 
                             return $this->openHistoriaClinicaFromCaseModal($record->id);
-                        }),
-
-                    Action::make('consultation')
-                        ->label('Consulta Inicial')
-                        ->icon('healthicons-f-call-centre')
-                        ->color('success')
-                        ->disabled(fn (TelemedicineCase $record): bool => self::consultaInicialDisabledForCase($record))
-                        ->action(function (TelemedicineCase $record): mixed {
-                            if (! $this->guardDashboardCaseInteraction($record)) {
-                                return null;
-                            }
-
-                            return $this->openConsultaInicialFromCaseModal($record->id);
-                        })
-                        ->hidden(fn (TelemedicineCase $record): bool => $record->status !== 'ASIGNADO'),
-
-                    Action::make('add_follow_up')
-                        ->label('Hacer Seguimiento')
-                        ->icon('healthicons-f-health-literacy')
-                        ->color('success')
-                        ->action(function (TelemedicineCase $record) {
-                            if (! $this->guardDashboardCaseInteraction($record)) {
-                                return null;
-                            }
-                            $case = TelemedicineCase::query()->where('code', $record->code)->first();
-                            $patient = TelemedicinePatient::query()->whereKey($record->telemedicine_patient_id)->first();
-                            $exitRecord = TelemedicineHistoryPatient::query()
-                                ->where('telemedicine_patient_id', $record->telemedicine_patient_id)
-                                ->exists();
-
-                            session()->forget('case');
-                            session()->forget('patient');
-                            session()->forget('exit_record');
-                            session()->forget('consultation');
-
-                            session(['case' => $case]);
-                            session(['patient' => $patient]);
-                            session(['exit_record' => $exitRecord]);
-
-                            return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
-                        })
-                        ->hidden(fn (TelemedicineCase $record): bool => $record->status !== 'EN SEGUIMIENTO'),
-
-                    Action::make('view_last')
-                        ->label('Ver ultimo Seguimiento')
-                        ->icon('heroicon-s-eye')
-                        ->color('')
-                        ->action(function (TelemedicineCase $record) {
-                            if (! $this->guardDashboardCaseInteraction($record)) {
-                                return null;
-                            }
-
-                            $last = TelemedicineConsultationPatient::query()
-                                ->where('telemedicine_case_id', $record->id)
-                                ->latest()
-                                ->first();
-
-                            return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.view', ['record' => $last->id]);
-                        })
-                        ->hidden(function (TelemedicineCase $record): bool {
-                            $last = TelemedicineConsultationPatient::query()
-                                ->where('telemedicine_case_id', $record->id)
-                                ->latest()
-                                ->first();
-
-                            return $last === null;
                         }),
 
                     Action::make('addObservation')
@@ -636,6 +578,18 @@ class TelemedicineCaseTableDash extends TableWidget
                                     ->send();
                             }
                         }),
+
+                    RegenerateTelemedicineCaseDocumentsAction::make(
+                        beforeAction: function (TelemedicineCase $record): bool {
+                            return $this->guardDashboardCaseInteraction($record);
+                        },
+                    ),
+
+                    ReverseTelemedicineCaseAction::make(
+                        beforeReverse: function (TelemedicineCase $record): bool {
+                            return $this->guardDashboardCaseInteraction($record);
+                        },
+                    ),
                 ]),
             ])
             ->toolbarActions([

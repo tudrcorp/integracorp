@@ -18,6 +18,7 @@ class OperationInventoryMovement extends Model
         'unit',
         'type',
         'created_by',
+        'status',
     ];
 
     // relaciones 1 a 1

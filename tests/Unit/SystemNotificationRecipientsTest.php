@@ -69,7 +69,9 @@ it('el centro de notificaciones gestiona asociados y follow-up por pestañas', f
         ->toContain("case AgentQuoteAnulation = 'agent_quote_anulation'")
         ->toContain("case DatabaseBackup = 'database_backup'")
         ->toContain("case StructureBackup = 'structure_backup'")
-        ->toContain("case DailyAuditSummary = 'daily_audit_summary'");
+        ->toContain("case DailyAuditSummary = 'daily_audit_summary'")
+        ->toContain("case OperationInventoryLowStock = 'operation_inventory_low_stock'")
+        ->toContain("case TelemedicineCaseReversal = 'telemedicine_case_reversal'");
 
     expect(SystemNotificationKey::AgentQuoteAnulation->defaultEmails())
         ->toBe(['cotizaciones@tudrencasa.com']);
@@ -84,4 +86,13 @@ it('el centro de notificaciones gestiona asociados y follow-up por pestañas', f
         ->toBe('Auditorías completas')
         ->and(SystemNotificationKey::DailyAuditSummary->defaultEmails())
         ->toBe(['solrodriguez@tudrencasa.com']);
+
+    expect(SystemNotificationKey::OperationInventoryLowStock->label())
+        ->toBe('Stock bajo de inventario')
+        ->and(SystemNotificationKey::managed())
+        ->toContain(SystemNotificationKey::OperationInventoryLowStock)
+        ->toContain(SystemNotificationKey::TelemedicineCaseReversal);
+
+    expect(SystemNotificationKey::TelemedicineCaseReversal->label())
+        ->toBe('Reverso de casos de telemedicina');
 });

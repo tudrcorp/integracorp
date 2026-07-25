@@ -6,8 +6,9 @@ use App\Mail\SendMailPropuestaPlanInicial;
 use App\Models\OperationDocumentList;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\User;
+use App\Support\Telemedicine\TelemedicineCaseDocumentReadyNotification;
+use App\Support\Telemedicine\TelemedicineConsultationUploadedDocuments;
 use App\Support\Telemedicine\TelemedicineInformeLargoPdfGenerator;
-use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -68,16 +69,7 @@ class GeneratePdfInformeMedicoLargo implements ShouldQueue
 
         $name_pdf = $this->data['ci_patient'].'-'.$this->data['code_reference'].'-'.$this->type_document.'.pdf';
 
-        Notification::make()
-            ->title('¡TAREA COMPLETADA!')
-            ->body('📎 '.$name_pdf.'ya se encuentra disponible para su descarga.')
-            ->success()
-            ->actions([
-                Action::make('download')
-                    ->label('Descargar archivo')
-                    ->url('/storage/telemedicina-doc/'.$name_pdf),
-            ])
-            ->sendToDatabase($this->user);
+        TelemedicineCaseDocumentReadyNotification::send($this->user, $this->data, $name_pdf);
     }
 
     private function generatePDF($data)
@@ -116,21 +108,13 @@ class GeneratePdfInformeMedicoLargo implements ShouldQueue
             $defaultDocumentTypeName = 'INFORME MEDICO CONSULTA INICIAL (LARGO)';
         }
 
-        $existingDocuments = is_array($consultation->uploaded_documents)
-            ? $consultation->uploaded_documents
-            : [];
-
-        $newDocument = [
+        TelemedicineConsultationUploadedDocuments::sync($consultation, [
             'document_name' => $namePdf,
             'file_path' => 'telemedicina-doc/'.$namePdf,
             'document_type_ids' => [$defaultDocumentTypeId],
             'document_types' => [$defaultDocumentTypeName],
             'uploaded_at' => now()->toDateTimeString(),
-        ];
-
-        $consultation->update([
-            'uploaded_documents' => array_values(array_merge($existingDocuments, [$newDocument])),
-        ]);
+        ], $defaultDocumentTypeId);
     }
 
     private function sendNotifications($data)

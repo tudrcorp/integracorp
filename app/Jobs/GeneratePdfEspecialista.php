@@ -7,8 +7,8 @@ use App\Models\OperationDocumentList;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\User;
 use App\Services\NotificationTelemedicinaService;
+use App\Support\Telemedicine\TelemedicineCaseDocumentReadyNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -69,16 +69,7 @@ class GeneratePdfEspecialista implements ShouldQueue
 
         $name_pdf = $this->data['ci_patiente'].'-'.$this->data['code_reference'].'-'.$this->type_document.'.pdf';
 
-        Notification::make()
-            ->title('¡TAREA COMPLETADA!')
-            ->body('📎 '.$name_pdf.'ya se encuentra disponible para su descarga.')
-            ->success()
-            ->actions([
-                Action::make('download')
-                    ->label('Descargar archivo')
-                    ->url('/storage/telemedicina-doc/'.$name_pdf),
-            ])
-            ->sendToDatabase($this->user);
+        TelemedicineCaseDocumentReadyNotification::send($this->user, $this->data, $name_pdf);
     }
 
     private function generatePDF($data)

@@ -30,12 +30,14 @@ use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Services\NotificationTelemedicinaService;
+use App\Services\TelemedicineMedicationInventoryDeductor;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\ConsultationCreateWizardDefaults;
 use App\Support\Telemedicine\TelemedicineAmdFileRegistrar;
 use App\Support\Telemedicine\TelemedicineAmdInformRegistrar;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
+use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -77,6 +79,13 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
             $this->redirect($this->getResource()::getUrl('index'));
 
             return;
+        }
+
+        // Refrescar el caso desde BD para asegurar el motivo asignado por el analista.
+        $freshCase = TelemedicineCase::query()->find($this->case->id);
+        if ($freshCase !== null) {
+            $this->case = $freshCase;
+            session(['case' => $freshCase]);
         }
 
         // 2. Llama al mount original de Filament cuando la sesión está lista.
@@ -446,7 +455,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
                     $feedbackOne = session()->get('feedbackOne');
 
-                    $medicationsArr = session()->get('medications') ?? [];
+                    $medicationsArr = TelemedicineMedicationsPdfRows::normalize(session()->get('medications') ?? []);
                     // dd($medicationsArr);
                     $labsArr = session()->get('labs') ?? [];
                     $otherLabsArr = session()->get('other_labs') ?? [];
@@ -467,6 +476,14 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     // if (! empty($medicationsArr) && $medicationsArr[0]['medicines'] != null || $medicationsArr[0]['operation_inventory_id'] != null) {
                     if (! empty($medicationsArr)) {
                         // dd($medicationsArr);
+                        $caseForInventory = TelemedicineCase::query()
+                            ->with('telemedicineDoctor')
+                            ->find($record['telemedicine_case_id']);
+                        $doctorModel = TelemedicineDoctor::query()->find($record['telemedicine_doctor_id']);
+                        $patientModel = TelemedicinePatient::query()->find($record['telemedicine_patient_id']);
+                        $consultationModel = TelemedicineConsultationPatient::query()->find($record['id']);
+                        $inventoryDeductor = app(TelemedicineMedicationInventoryDeductor::class);
+
                         for ($i = 0; $i < count($medicationsArr); $i++) {
                             $medications = new TelemedicinePatientMedications;
                             $medications->telemedicine_consultation_patient_id = $record['id'];
@@ -476,16 +493,28 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                             $inventoryId = filled($medicationsArr[$i]['operation_inventory_id'] ?? null)
                                 ? (int) $medicationsArr[$i]['operation_inventory_id']
                                 : null;
-                            $medications->medicine = $medicationsArr[$i]['medicines'] == null
-                                ? OperationInventory::where('id', $inventoryId)->first()->name
-                                : $medicationsArr[$i]['medicines'];
+                            $medications->medicine = filled($medicationsArr[$i]['medicines'] ?? null)
+                                ? (string) $medicationsArr[$i]['medicines']
+                                : (string) (OperationInventory::query()->whereKey($inventoryId)->value('name') ?? '');
                             $medications->indications = $medicationsArr[$i]['indications'];
                             $medications->duration = $medicationsArr[$i]['duration'];
+                            $medications->quantity = TelemedicineMedicationsPdfRows::quantityFromRow($medicationsArr[$i]);
                             $medications->telemedicine_priority_id = $record['telemedicine_priority_id'];
                             $medications->operation_inventory_id = $inventoryId;
                             $medications->is_covered = TelemedicineMedicationCoverage::coverageForPersist($inventoryId);
                             $medications->assigned_by = Auth::user()->id;
                             $medications->save();
+
+                            if ($consultationModel !== null && $inventoryId !== null) {
+                                $inventoryDeductor->deductIfApplicable(
+                                    $inventoryId,
+                                    $consultationModel,
+                                    $caseForInventory,
+                                    $doctorModel,
+                                    $patientModel,
+                                    TelemedicineMedicationsPdfRows::quantityForInventoryDeduction($medicationsArr[$i]),
+                                );
+                            }
                         }
 
                         /**

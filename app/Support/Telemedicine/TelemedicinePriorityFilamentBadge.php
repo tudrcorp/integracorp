@@ -9,7 +9,7 @@ final class TelemedicinePriorityFilamentBadge
     public static function color(string $state): string
     {
         return match ($state) {
-            'NO URGENTE', 'No Urgente' => 'no-urgente',
+            'NO URGENTE', 'No Urgente', 'No urgente' => 'no-urgente',
             'ESTANDAR', 'Estándar', 'ESTÁNDAR' => 'estandar',
             'URGENCIA', 'Urgencia' => 'urgencia',
             'EMERGENCIA', 'Emergencia' => 'emergencia',
@@ -24,7 +24,7 @@ final class TelemedicinePriorityFilamentBadge
     public static function icon(string $state): string
     {
         return match ($state) {
-            'NO URGENTE', 'No Urgente' => 'healthicons-f-health',
+            'NO URGENTE', 'No Urgente', 'No urgente' => 'healthicons-f-health',
             'ESTANDAR', 'Estándar', 'ESTÁNDAR' => 'healthicons-f-health',
             'URGENCIA', 'Urgencia' => 'healthicons-f-health',
             'EMERGENCIA', 'Emergencia' => 'heroicon-c-shield-exclamation',
@@ -41,7 +41,7 @@ final class TelemedicinePriorityFilamentBadge
         }
 
         return match ($priorityName) {
-            'NO URGENTE', 'No Urgente' => 'bg-[#005ca9]/10 dark:bg-[#005ca9]/25 border-l-4 border-[#005ca9]',
+            'NO URGENTE', 'No Urgente', 'No urgente' => 'bg-[#005ca9]/10 dark:bg-[#005ca9]/25 border-l-4 border-[#005ca9]',
             'ESTANDAR', 'Estándar', 'ESTÁNDAR' => 'bg-[#02976d]/10 dark:bg-[#02976d]/25 border-l-4 border-[#02976d]',
             'URGENCIA', 'Urgencia' => 'bg-[#eab527]/10 dark:bg-[#eab527]/25 border-l-4 border-[#eab527]',
             'EMERGENCIA', 'Emergencia' => 'bg-[#f17f29]/10 dark:bg-[#f17f29]/25 border-l-4 border-[#f17f29]',

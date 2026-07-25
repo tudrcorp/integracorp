@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Telemedicina\Resources\TelemedicinePatients\RelationManagers;
 
+use App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\ReverseTelemedicineCaseAction;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineHistoryPatient;
@@ -183,6 +184,7 @@ class TelemedicineCasesRelationManager extends RelationManager
                             return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
                         })
                         ->hidden(fn (TelemedicineCase $record): bool => $record->status !== 'EN SEGUIMIENTO'),
+                    ReverseTelemedicineCaseAction::make(),
                 ])
                     ->icon(Heroicon::OutlinedEllipsisHorizontalCircle)
                     ->tooltip('Acciones del caso')

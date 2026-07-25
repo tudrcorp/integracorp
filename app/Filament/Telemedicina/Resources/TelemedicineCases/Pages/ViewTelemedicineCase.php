@@ -2,14 +2,13 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineCases\Pages;
 
+use App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\ReverseTelemedicineCaseAction;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\TelemedicineCaseResource;
-use App\Models\TelemedicineCase;
-use App\Models\TelemedicineHistoryPatient;
-use App\Models\TelemedicinePatient;
+use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\TelemedicineCaseDocumentSendAction;
 use Filament\Actions\Action;
-use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Icons\Heroicon;
 
 class ViewTelemedicineCase extends ViewRecord
 {
@@ -20,37 +19,25 @@ class ViewTelemedicineCase extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            // EditAction::make(),
-            Action::make('add_follow_up')
-                ->label('Hacer Seguimiento')
-                ->icon('healthicons-f-health-literacy')
-                ->color('success')
-                ->action(function () {
-
-                    $ownerRecord = $this->record;
-
-                    $case = TelemedicineCase::where('code', $ownerRecord->code)->first();
-                    $patient = TelemedicinePatient::where('id', $ownerRecord->telemedicine_patient_id)->first();
-                    $exit_record = TelemedicineHistoryPatient::where('telemedicine_patient_id', $ownerRecord->telemedicine_patient_id)->exists();
-
-                    session()->forget('case');
-                    session()->forget('patient');
-                    session()->forget('exit_record');
-
-                    // Almacenamos en la variable de sesion del usuario la informacion del caso y del paciente
-                    session(['case' => $case]);
-                    session(['patient' => $patient]);
-                    session(['exit_record' => $exit_record]);
-
-                    return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
-                })
-                ->hidden(function () {
-                    return $this->record->status == 'ALTA MEDICA';
-                }),
+            Action::make('back_to_cases_dashboard')
+                ->label('Volver al dashboard de casos')
+                ->button()
+                ->icon(Heroicon::ArrowLeft)
+                ->color('estandar')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('estandar'),
+                ])
+                ->url(route('filament.telemedicina.pages.dashboard')),
+            ReverseTelemedicineCaseAction::make(
+                afterReverse: fn (): mixed => redirect()->to(route('filament.telemedicina.pages.dashboard')),
+            ),
             Action::make('returnToConsultation')
                 ->label('Volver a Consulta')
                 ->icon('heroicon-s-arrow-right')
                 ->color('warning')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
+                ])
                 ->action(function () {
                     if (session()->has('historyCasesToDetails')) {
                         // retunr back page

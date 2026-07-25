@@ -8,10 +8,10 @@ it('crea coordinación desde telemedicina sin exigir rol de guardia ni campos de
     expect($controller)
         ->not->toContain('OperationOnCallUser')
         ->not->toContain('date_OnCall')
-        ->not->toContain("'holder'")
-        ->not->toContain("'ci_holder'")
         ->toContain("'patient'")
-        ->toContain("'ci_patient'");
+        ->toContain("'ci_patient'")
+        ->toContain("Schema::hasColumn('operation_coordination_services', 'holder')")
+        ->toContain("Schema::hasColumn('operation_coordination_services', 'ci_holder')");
 });
 
 it('elimina holder y ci_holder del modelo, UI y migración de coordinación', function (): void {

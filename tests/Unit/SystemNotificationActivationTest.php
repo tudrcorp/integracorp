@@ -28,8 +28,10 @@ it('expone el interruptor de activacion en el centro de notificaciones', functio
         ->toContain('SystemNotificationRecipients::isActive(SystemNotificationKey::DatabaseBackup)')
         ->toContain('SystemNotificationRecipients::isActive(SystemNotificationKey::StructureBackup)')
         ->toContain('SystemNotificationRecipients::isActive(SystemNotificationKey::DailyAuditSummary)')
+        ->toContain('SystemNotificationRecipients::isActive(SystemNotificationKey::OperationInventoryLowStock)')
         ->toContain('->when($structureBackupIsActive)')
-        ->toContain('->when($dailyAuditSummaryIsActive)');
+        ->toContain('->when($dailyAuditSummaryIsActive)')
+        ->toContain('->when($operationInventoryLowStockIsActive)');
 
     expect($job)
         ->toContain('notification_inactive')

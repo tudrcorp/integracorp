@@ -27,14 +27,23 @@ final class TelemedicineCaseFilamentListQuery
     /**
      * Aplica filtros al listado del recurso «Casos de telemedicina» (misma línea visual que el widget del escritorio).
      *
-     * - Con {@see User::$doctor_id}: solo casos asignados a ese médico.
+     * - Médico TDG ({@see TelemedicineDoctor::$managed_by} = TDG): todos los casos de médicos TDG con estado distinto de ALTA MEDICA.
+     * - Con {@see User::$doctor_id} (resto): solo casos asignados a ese médico.
      * - Contexto ATENMEDI (departamento usuario o médico vinculado con {@see TelemedicineDoctor::$managed_by} = ATENMEDI): solo casos con {@see TelemedicineCase::$managed_by} = ATENMEDI.
-     * - Oculta casos en alta médica a nivel caso (todos los médicos, p. ej. TDG: siguen viendo el caso hasta que el caso pase a ALTA MEDICA).
+     * - Oculta casos en alta médica a nivel caso.
      * - Solo en contexto ATENMEDI: oculta casos con alguna consulta en ALTA MEDICA o con traslado en ambulancia en servicio principal o derivado.
      */
     public static function applyTelemedicinaResourceCasesConstraints(Builder $query): Builder
     {
         $user = Auth::user();
+
+        $query->where('status', '!=', 'ALTA MEDICA');
+
+        if ($user instanceof User && self::userIsInTdgTelemedicinaContext($user)) {
+            self::constrainToTdgDoctorsCases($query);
+
+            return $query;
+        }
 
         if ($user instanceof User && $user->doctor_id !== null) {
             $query->where('telemedicine_doctor_id', $user->doctor_id);
@@ -42,11 +51,6 @@ final class TelemedicineCaseFilamentListQuery
 
         if ($user !== null && self::userIsInAtenmediTelemedicinaContext($user)) {
             $query->where('managed_by', 'ATENMEDI');
-        }
-
-        $query->where('status', '!=', 'ALTA MEDICA');
-
-        if ($user !== null && self::userIsInAtenmediTelemedicinaContext($user)) {
             self::excludeCasesHavingConsultationWithAltaMedica($query);
             self::excludeCasesHavingConsultationWithTrasladoAmbulancia($query);
         }
@@ -57,7 +61,7 @@ final class TelemedicineCaseFilamentListQuery
     /**
      * Widget del escritorio (panel telemedicina).
      *
-     * - Médico TDG ({@see TelemedicineDoctor::$managed_by} = TDG): todos los casos con estado distinto de ALTA MEDICA.
+     * - Médico TDG ({@see TelemedicineDoctor::$managed_by} = TDG): todos los casos de médicos TDG con estado distinto de ALTA MEDICA.
      * - Contexto ATENMEDI: casos asignados al médico en sesión y {@see TelemedicineCase::$managed_by} = ATENMEDI; excluye traslado en ambulancia en última consulta.
      * - Resto: casos asignados al médico en sesión, sin alta médica a nivel caso.
      */
@@ -72,6 +76,8 @@ final class TelemedicineCaseFilamentListQuery
         $query->where('status', '!=', 'ALTA MEDICA');
 
         if (self::userIsInTdgTelemedicinaContext($user)) {
+            self::constrainToTdgDoctorsCases($query);
+
             return $query->with(['telemedicineDoctor', 'priority']);
         }
 
@@ -84,6 +90,20 @@ final class TelemedicineCaseFilamentListQuery
         self::excludeCasesWhereLatestConsultationDriftIsTrasladoAmbulanciaForAtenmediDoctor($query);
 
         return $query->with(['priority', 'telemedicineDoctor']);
+    }
+
+    /**
+     * Casos del pool TDG: gestión TDG o asignados a un médico con {@see TelemedicineDoctor::$managed_by} = TDG.
+     */
+    public static function constrainToTdgDoctorsCases(Builder $query): Builder
+    {
+        return $query->where(function (Builder $tdgCases): void {
+            $tdgCases
+                ->where('managed_by', 'TDG')
+                ->orWhereHas('telemedicineDoctor', function (Builder $doctor): void {
+                    $doctor->where('managed_by', 'TDG');
+                });
+        });
     }
 
     /**

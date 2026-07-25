@@ -21,6 +21,7 @@ it('arma el paso datos del paciente desde caso y paciente', function (): void {
         'patient_phone_2' => '04241234567',
         'patient_address' => 'Av. Principal',
         'directionAmbulance' => 'Zona industrial',
+        'reason' => 'DOLOR ABDOMINAL INTENSO',
     ]);
     $case->id = 10;
 
@@ -45,7 +46,23 @@ it('arma el paso datos del paciente desde caso y paciente', function (): void {
         ->and($state['phone_secondary'])->toBe('04241234567')
         ->and($state['address'])->toBe('Av. Principal')
         ->and($state['directionAmbulance'])->toBe('Zona industrial')
+        ->and($state['reason_consultation'])->toBe('DOLOR ABDOMINAL INTENSO')
         ->and($state['code_reference'])->toStartWith('REF-');
+});
+
+it('no agrega motivo de consulta si el caso no tiene reason del analista', function (): void {
+    $case = new TelemedicineCase([
+        'telemedicine_patient_id' => 2,
+        'telemedicine_doctor_id' => 3,
+        'code' => 'X',
+        'reason' => null,
+    ]);
+    $case->id = 1;
+    $patient = new TelemedicinePatient(['full_name' => 'A', 'nro_identificacion' => '1']);
+
+    $state = ConsultationCreateWizardDefaults::formStatePatientStepFromCaseAndPatient($case, $patient, 1, 0);
+
+    expect($state)->not->toHaveKey('reason_consultation');
 });
 
 it('usa estatus de seguimiento cuando ya hay consultas en el caso', function (): void {

@@ -22,6 +22,7 @@ it('asocia el médico al proveedor del usuario y managed_by como texto en mayús
         ->toContain("->relationship('supplier', 'name')")
         ->toContain('Auth::user()?->supplier_id')
         ->toContain('->disabled()')
+        ->toContain("->required(fn (Get \$get): bool => mb_strtoupper(trim((string) \$get('managed_by'))) !== 'TDG')")
         ->toContain("TextInput::make('managed_by')")
         ->toContain('$state.toUpperCase()')
         ->not->toContain("'ATENMEDI' => 'ATENMEDI'");

@@ -91,6 +91,7 @@ use App\Filament\Marketing\Resources\Zones\ZoneResource as MarketingZoneResource
 use App\Filament\Operations\Pages\AgendaCorporativa as OperationsAgendaCorporativa;
 use App\Filament\Operations\Pages\CalendariosTdg as OperationsCalendariosTdg;
 use App\Filament\Operations\Pages\DashboardOperaciones;
+use App\Filament\Operations\Pages\ManageOperationInventoryParameters;
 use App\Filament\Operations\Resources\AccountsPayables\AccountsPayableResource;
 use App\Filament\Operations\Resources\AccountsReceivables\AccountsReceivableResource;
 use App\Filament\Operations\Resources\AffiliateCorporates\AffiliateCorporateResource;
@@ -105,6 +106,9 @@ use App\Filament\Operations\Resources\OperationInventories\OperationInventoryRes
 use App\Filament\Operations\Resources\OperationInventoryEntries\OperationInventoryEntryResource;
 use App\Filament\Operations\Resources\OperationInventoryMovements\OperationInventoryMovementResource;
 use App\Filament\Operations\Resources\OperationInventoryOutflows\OperationInventoryOutflowResource;
+use App\Filament\Operations\Resources\OperationInventoryProductCategories\OperationInventoryProductCategoryResource;
+use App\Filament\Operations\Resources\OperationInventoryProducts\OperationInventoryProductResource;
+use App\Filament\Operations\Resources\OperationInventoryUbications\OperationInventoryUbicationResource;
 use App\Filament\Operations\Resources\OperationOnCallUsers\OperationOnCallUserResource;
 use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrderResource;
 use App\Filament\Operations\Resources\OperationStatusServices\OperationStatusServiceResource;
@@ -239,6 +243,10 @@ final class DepartmentNavigationPermissionRegistry
         OperationInventoryEntryResource::class => ['entradas-inventario'],
         OperationInventoryOutflowResource::class => ['salidas-inventario'],
         OperationInventoryMovementResource::class => ['movimientos-inventario'],
+        OperationInventoryUbicationResource::class => ['almacenes'],
+        OperationInventoryProductResource::class => ['productos'],
+        OperationInventoryProductCategoryResource::class => ['categorias'],
+        ManageOperationInventoryParameters::class => ['parametros-inventario'],
         TelemedicineDoctorResource::class => ['doctores'],
         TelemedicinePatientResource::class => ['pacientes'],
         TelemedicineCaseResource::class => ['gestion-casos'],

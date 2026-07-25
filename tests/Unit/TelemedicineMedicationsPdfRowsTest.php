@@ -1,0 +1,59 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Models\OperationInventory;
+use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
+
+uses(Tests\TestCase::class);
+
+it('conserva el nombre manual del medicamento', function (): void {
+    $rows = TelemedicineMedicationsPdfRows::normalize([
+        [
+            'medicines' => 'PARACETAMOL 500MG',
+            'indications' => '1 CADA 8 HORAS',
+            'duration' => '5',
+            'operation_inventory_id' => null,
+        ],
+    ]);
+
+    expect($rows[0]['medicines'])->toBe('PARACETAMOL 500MG')
+        ->and($rows[0]['indications'])->toBe('1 CADA 8 HORAS');
+});
+
+it('resuelve el nombre desde inventario cuando medicines esta vacio', function (): void {
+    $inventory = OperationInventory::query()
+        ->whereNotNull('name')
+        ->where('name', '!=', '')
+        ->first();
+
+    if ($inventory === null) {
+        $this->markTestSkipped('No hay registros en operation_inventories para validar.');
+    }
+
+    $rows = TelemedicineMedicationsPdfRows::normalize([
+        [
+            'medicines' => null,
+            'indications' => 'WADAASDAD',
+            'duration' => '3',
+            'operation_inventory_id' => $inventory->id,
+        ],
+    ]);
+
+    expect($rows[0]['medicines'])->toBe((string) $inventory->name)
+        ->and($rows[0]['indications'])->toBe('WADAASDAD');
+});
+
+it('el create, edit y job de medicamentos normalizan el arreglo para el pdf', function (): void {
+    $create = file_get_contents(
+        dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Pages/CreateTelemedicineConsultationPatient.php'
+    );
+    $edit = file_get_contents(
+        dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Pages/EditTelemedicineConsultationPatient.php'
+    );
+    $job = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/GeneratePdfMedicamentos.php');
+
+    expect($create)->toContain('TelemedicineMedicationsPdfRows::normalize');
+    expect($edit)->toContain('TelemedicineMedicationsPdfRows::normalize');
+    expect($job)->toContain('TelemedicineMedicationsPdfRows::normalize');
+});

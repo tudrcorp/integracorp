@@ -2,6 +2,8 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineCases\Tables;
 
+use App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\RegenerateTelemedicineCaseDocumentsAction;
+use App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\ReverseTelemedicineCaseAction;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
@@ -181,6 +183,8 @@ class TelemedicineCasesTable
                             return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
                         })
                         ->hidden(fn (TelemedicineCase $record): bool => $record->status !== 'EN SEGUIMIENTO'),
+                    RegenerateTelemedicineCaseDocumentsAction::make(),
+                    ReverseTelemedicineCaseAction::make(),
                 ])
                     ->icon(Heroicon::OutlinedEllipsisHorizontalCircle)
                     ->tooltip('Acciones del caso')

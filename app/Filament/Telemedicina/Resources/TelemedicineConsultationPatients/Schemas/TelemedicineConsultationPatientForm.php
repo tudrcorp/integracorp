@@ -12,6 +12,7 @@ use App\Models\TelemedicinePriority;
 use App\Models\TelemedicineServiceList;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
+use App\Support\Telemedicine\TelemedicineMedicationInventoryOptions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
@@ -266,8 +267,9 @@ class TelemedicineConsultationPatientForm
                                         ->schema([
                                             Textarea::make('reason_consultation')
                                                 ->label('Motivo de Consulta')
+                                                ->helperText('Precargado con el motivo indicado por el analista al asignar el caso. Puede ajustarlo si es necesario.')
                                                 ->autosize()
-                                                ->default($case->reason)
+                                                ->default(fn (): ?string => filled($case?->reason) ? (string) $case->reason : null)
                                                 ->afterStateUpdatedJs(<<<'JS'
                                     $set('reason_consultation', $state.toUpperCase());
                                 JS),
@@ -670,10 +672,11 @@ class TelemedicineConsultationPatientForm
                                 ->columnSpanFull(),
                             Repeater::make('medications')
                                 ->table([
-                                    TableColumn::make('Inventario TDC')->width('20%'),
-                                    TableColumn::make('Medicamento (Manual)')->width('20%'),
-                                    TableColumn::make('Indicaciones')->width('55%'),
-                                    TableColumn::make('Duración(en días)')->width('5%'),
+                                    TableColumn::make('Inventario TDC')->width('18%'),
+                                    TableColumn::make('Medicamento (Manual)')->width('18%'),
+                                    TableColumn::make('Indicaciones')->width('39%'),
+                                    TableColumn::make('Cantidad')->width('12%'),
+                                    TableColumn::make('Duración(en días)')->width('13%'),
                                 ])
                                 ->rules([
                                     function (): \Closure {
@@ -689,6 +692,10 @@ class TelemedicineConsultationPatientForm
                                                     if ($hasInventory && $hasManual) {
                                                         $fail(__('En la fila :n no puede usar inventario TDC y medicamento manual a la vez. Deje uno vacío.', ['n' => $rowNumber]));
                                                     }
+
+                                                    if ($hasInventory && (! filled($row['quantity'] ?? null) || (int) $row['quantity'] < 1)) {
+                                                        $fail(__('En la fila :n debe indicar la cantidad a entregar (mínimo 1) cuando selecciona inventario TDC.', ['n' => $rowNumber]));
+                                                    }
                                                 }
                                                 $rowNumber++;
                                             }
@@ -697,16 +704,57 @@ class TelemedicineConsultationPatientForm
                                 ])
                                 ->schema([
                                     Select::make('operation_inventory_id')
-                                        ->options(OperationInventory::all()->pluck('name', 'id'))
+                                        ->options(function () use ($case): array {
+                                            $caseModel = $case;
+                                            if ($caseModel !== null && ! $caseModel->relationLoaded('telemedicineDoctor')) {
+                                                $caseModel->loadMissing('telemedicineDoctor');
+                                            }
+
+                                            return TelemedicineMedicationInventoryOptions::optionsForCase(
+                                                $caseModel,
+                                                $caseModel?->telemedicineDoctor,
+                                            );
+                                        })
                                         ->searchable()
                                         ->live(onBlur: false)
+                                        // ->helperText(function () use ($case): ?string {
+                                        //     if ($case === null) {
+                                        //         return null;
+                                        //     }
+
+                                        //     $case->loadMissing('telemedicineDoctor');
+
+                                        //     if (TelemedicineMedicationInventoryOptions::shouldDeductInventory(
+                                        //         $case->telemedicineDoctor,
+                                        //         $case,
+                                        //     )) {
+                                        //         $warehouse = TelemedicineMedicationInventoryOptions::warehouseNameForBelongsTo($case->belongs_to);
+
+                                        //         return filled($warehouse)
+                                        //             ? "Inventario del almacén {$warehouse} (categoría Medicamento, existencia > 0)."
+                                        //             : null;
+                                        //     }
+
+                                        //     if (TelemedicineMedicationInventoryOptions::doctorBelongsToProvider($case->telemedicineDoctor)) {
+                                        //         return 'Catálogo de medicamentos (sin duplicados). No descuenta inventario.';
+                                        //     }
+
+                                        //     return null;
+                                        // })
                                         ->afterStateUpdated(function ($state, Set $set): void {
                                             if (filled($state)) {
                                                 $set('medicines', null);
+                                                $set('quantity', 1);
                                             }
                                         }),
                                     TextInput::make('medicines')
                                         ->placeholder('Nombre del medicamento')
+                                        ->live(onBlur: false)
+                                        ->afterStateUpdated(function ($state, Set $set): void {
+                                            if (filled($state)) {
+                                                $set('operation_inventory_id', null);
+                                            }
+                                        })
                                         ->afterStateUpdatedJs(<<<'JS'
                                         $set('medicines', $state.toUpperCase());
                                     JS),
@@ -715,6 +763,75 @@ class TelemedicineConsultationPatientForm
                                         ->afterStateUpdatedJs(<<<'JS'
                                         $set('indications', $state.toUpperCase());
                                     JS),
+                                    TextInput::make('quantity')
+                                        ->numeric()
+                                        ->integer()
+                                        ->minValue(1)
+                                        ->default(1)
+                                        ->live(onBlur: false)
+                                        ->required(fn (Get $get): bool => filled($get('operation_inventory_id')))
+                                        // ->helperText(function (Get $get) use ($case): ?string {
+                                        //     if (! filled($get('operation_inventory_id'))) {
+                                        //         return 'Opcional. Medicamento manual/no cubierto: no descuenta inventario.';
+                                        //     }
+
+                                        //     if ($case === null) {
+                                        //         return 'Cantidad a entregar al paciente (se descuenta de existencia).';
+                                        //     }
+
+                                        //     $case->loadMissing('telemedicineDoctor');
+
+                                        //     if (! TelemedicineMedicationInventoryOptions::shouldDeductInventory(
+                                        //         $case->telemedicineDoctor,
+                                        //         $case,
+                                        //     )) {
+                                        //         return 'Cantidad a entregar (catálogo proveedor; no descuenta inventario).';
+                                        //     }
+
+                                        //     $existence = (int) (OperationInventory::query()
+                                        //         ->whereKey($get('operation_inventory_id'))
+                                        //         ->value('existence') ?? 0);
+
+                                        //     return $existence > 0
+                                        //         ? "Disponible: {$existence}. Esta cantidad se restará de la existencia."
+                                        //         : 'Cantidad a entregar al paciente (se descuenta de existencia).';
+                                        // })
+                                        ->rule(function (Get $get) use ($case): \Closure {
+                                            return function (string $attribute, mixed $value, \Closure $fail) use ($get, $case): void {
+                                                if (! filled($get('operation_inventory_id'))) {
+                                                    return;
+                                                }
+
+                                                $qty = (int) $value;
+
+                                                if ($qty < 1) {
+                                                    $fail('Debe indicar la cantidad a entregar (mínimo 1).');
+
+                                                    return;
+                                                }
+
+                                                if ($case === null) {
+                                                    return;
+                                                }
+
+                                                $case->loadMissing('telemedicineDoctor');
+
+                                                if (! TelemedicineMedicationInventoryOptions::shouldDeductInventory(
+                                                    $case->telemedicineDoctor,
+                                                    $case,
+                                                )) {
+                                                    return;
+                                                }
+
+                                                $existence = (int) (OperationInventory::query()
+                                                    ->whereKey($get('operation_inventory_id'))
+                                                    ->value('existence') ?? 0);
+
+                                                if ($existence > 0 && $qty > $existence) {
+                                                    $fail("La cantidad no puede superar la existencia en inventario (máximo {$existence} unidades).");
+                                                }
+                                            };
+                                        }),
                                     TextInput::make('duration')
                                         // ->helperText('Ingrese la duración del medicamento en días')
                                         ->numeric()
