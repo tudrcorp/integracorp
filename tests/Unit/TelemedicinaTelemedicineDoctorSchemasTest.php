@@ -89,9 +89,16 @@ it('aplica estilo ios y acciones de perfil en la tabla de médicos telemedicina'
 
 it('permite scroll horizontal en tablas ios de telemedicina', function (): void {
     $contents = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
+    $contentCtnRule = strstr($contents, '.telemedicine-case-table-ios .fi-ta-content-ctn');
+    $contentCtnRule = strstr($contentCtnRule, '.telemedicine-case-table-ios table.fi-ta-table', true) ?: $contentCtnRule;
+    $tableRule = strstr($contents, '.telemedicine-case-table-ios table.fi-ta-table');
+    $tableRule = strstr($tableRule, '.telemedicine-case-table-ios .fi-ta-table thead', true) ?: $tableRule;
 
-    expect($contents)
-        ->toContain('.telemedicine-case-table-ios .fi-ta-content-ctn')
+    expect($contents)->toContain('.telemedicine-case-table-ios .fi-ta-content-ctn');
+
+    expect($contentCtnRule)
         ->toContain('overflow-x-auto')
-        ->toContain('telemedicine-doctor-profile-table');
+        ->not->toContain('overflow-hidden');
+
+    expect($tableRule)->toContain('min-w-max');
 });

@@ -21,7 +21,7 @@ final class ConsultationCreateWizardDefaults
         int $assignedByUserId,
         int $countCase,
     ): array {
-        return [
+        $state = [
             'telemedicine_case_id' => $case->id,
             'telemedicine_doctor_id' => $case->telemedicine_doctor_id,
             'telemedicine_patient_id' => $case->telemedicine_patient_id,
@@ -38,6 +38,13 @@ final class ConsultationCreateWizardDefaults
             'address' => $case->patient_address,
             'directionAmbulance' => $case->directionAmbulance,
         ];
+
+        // Motivo cargado por el analista al asignar el caso desde Operaciones.
+        if (filled($case->reason)) {
+            $state['reason_consultation'] = (string) $case->reason;
+        }
+
+        return $state;
     }
 
     /**

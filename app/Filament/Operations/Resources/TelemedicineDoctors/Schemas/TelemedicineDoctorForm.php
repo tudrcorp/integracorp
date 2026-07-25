@@ -186,7 +186,7 @@ class TelemedicineDoctorForm
                                                     ->default(fn (): ?int => Auth::user()?->supplier_id)
                                                     ->disabled()
                                                     ->dehydrated(true)
-                                                    ->required()
+                                                    ->required(fn (Get $get): bool => mb_strtoupper(trim((string) $get('managed_by'))) !== 'TDG')
                                                     ->searchable()
                                                     ->preload()
                                                     ->native(false)

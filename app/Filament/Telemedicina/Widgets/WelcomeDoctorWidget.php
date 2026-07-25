@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Auth;
 
 class WelcomeDoctorWidget extends Widget
 {
-    protected string $view = 'filament.telemedicina.widgets.welcome-doctor-widget';
+    protected static bool $isDiscovered = false;
+
+    protected string $view = 'filament.widgets.welcome-user-liquid-glass';
 
     protected int|string|array $columnSpan = 'full';
 

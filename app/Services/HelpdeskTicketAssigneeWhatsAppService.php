@@ -43,9 +43,14 @@ final class HelpdeskTicketAssigneeWhatsAppService
         TEXT;
     }
 
-    public static function normalizePhoneForWhatsApp(?string $phone): ?string
+    public static function normalizePhoneForWhatsApp(string|int|float|null $phone): ?string
     {
-        if (! is_string($phone) || trim($phone) === '') {
+        if ($phone === null) {
+            return null;
+        }
+
+        $phone = trim((string) $phone);
+        if ($phone === '') {
             return null;
         }
 

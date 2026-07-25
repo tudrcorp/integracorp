@@ -47,15 +47,24 @@ class AssignDoctorAction
                             ->label('Doctor')
                             ->required()
                             ->live()
-                            ->helperText('Entre paréntesis se muestra el grupo (managed_by) de cada médico.')
+                            ->searchable()
+                            ->helperText('Analistas TDG ven todos los médicos registrados (TDG y proveedores). Entre paréntesis: proveedor y grupo.')
                             ->options(function (?TelemedicinePatient $record): array {
                                 $departments = Auth::user()?->departament ?? [];
+                                $isTdgAnalyst = OperationsSupplierScope::authenticatedUserIsTdgAnalyst();
 
-                                $doctorQuery = TelemedicineDoctor::query()->orderBy('full_name');
-                                OperationsSupplierScope::applyToQuery($doctorQuery);
+                                $doctorQuery = TelemedicineDoctor::query()
+                                    ->with('supplier:id,name')
+                                    ->orderBy('full_name');
 
-                                if (OperationsSupplierScope::currentSupplierId() === null && filled($record?->supplier_id)) {
-                                    $doctorQuery->where('supplier_id', $record->supplier_id);
+                                // Analistas TDG: todos los médicos registrados (TDG o cualquier proveedor).
+                                // Usuarios de proveedor / no TDG: se mantienen los filtros por supplier.
+                                if (! $isTdgAnalyst) {
+                                    OperationsSupplierScope::applyToQuery($doctorQuery);
+
+                                    if (OperationsSupplierScope::currentSupplierId() === null && filled($record?->supplier_id)) {
+                                        $doctorQuery->where('supplier_id', $record->supplier_id);
+                                    }
                                 }
 
                                 if (in_array('ATENMEDI', $departments, true)) {
@@ -64,13 +73,17 @@ class AssignDoctorAction
 
                                 return $doctorQuery
                                     ->get()
-                                    ->mapWithKeys(fn (TelemedicineDoctor $doctor): array => [
-                                        $doctor->id => sprintf(
-                                            '%s (%s)',
-                                            $doctor->full_name,
-                                            filled($doctor->managed_by) ? $doctor->managed_by : 'Sin grupo'
-                                        ),
-                                    ])
+                                    ->mapWithKeys(function (TelemedicineDoctor $doctor): array {
+                                        $group = filled($doctor->managed_by) ? (string) $doctor->managed_by : 'Sin grupo';
+                                        $supplierName = trim((string) ($doctor->supplier?->name ?? ''));
+                                        $context = $supplierName !== ''
+                                            ? sprintf('%s (%s)', $supplierName, $group)
+                                            : $group;
+
+                                        return [
+                                            $doctor->id => sprintf('%s (%s)', $doctor->full_name, $context),
+                                        ];
+                                    })
                                     ->all();
                             }),
                         Select::make('belongs_to')

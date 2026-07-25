@@ -9,7 +9,7 @@ it('optimiza el payload del calendario tdg sin comprobar disco por avatar', func
     $source = file_get_contents($traitPath);
 
     expect($source)
-        ->toContain('trait InteractsWithTdgHybridCalendar')
+        ->toContain('trait TdgCalendarPerformanceOptimizationsTest')
         ->toContain('forgetTdgMonthDayPayloadCache')
         ->toContain('tdg_calendar_payload_version')
         ->toContain('buildTdgMonthDayPayloadArrays')
@@ -61,6 +61,6 @@ it('optimiza abrir y cerrar el modal de dia del calendario tdg', function (): vo
         ->toContain('wire:target="openDayModal"');
 });
 
-it('expone el trait de agenda hibrida tdg', function (): void {
+it('expone el trait TdgCalendarPerformanceOptimizationsTest agenda hibrida tdg', function (): void {
     expect(trait_exists(InteractsWithTdgHybridCalendar::class))->toBeTrue();
 });

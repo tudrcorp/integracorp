@@ -3458,11 +3458,13 @@
   }
 
   .telemedicine-case-table-ios .fi-ta-content-ctn {
-    @apply mx-3 mb-3 overflow-hidden rounded-2xl border border-black/[0.06] bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-white/[0.06] dark:bg-zinc-950/35 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:mx-4 sm:mb-4;
+    @apply mx-3 mb-3 overflow-x-auto overflow-y-hidden rounded-2xl border border-black/[0.06] bg-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-white/[0.06] dark:bg-zinc-950/35 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:mx-4 sm:mb-4;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
   }
 
   .telemedicine-case-table-ios table.fi-ta-table {
-    @apply w-full;
+    @apply w-full min-w-max;
   }
 
   .telemedicine-case-table-ios .fi-ta-table thead tr {
@@ -4342,7 +4344,8 @@
   }
 
   .fi-telemedicine-consultation-wizard .fi-section {
-    @apply overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-white/95 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_28px_rgb(0_0_0/0.06)] dark:border-white/[0.08] dark:bg-zinc-900/90 dark:shadow-[0_1px_2px_rgb(0_0_0/0.35),0_10px_32px_rgb(0_0_0/0.45)];
+    /* overflow visible: los selects/dropdowns del wizard no deben cortarse (ej. Prioridad de servicio) */
+    @apply overflow-visible rounded-[1.25rem] border border-black/[0.06] bg-white/95 shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_28px_rgb(0_0_0/0.06)] dark:border-white/[0.08] dark:bg-zinc-900/90 dark:shadow-[0_1px_2px_rgb(0_0_0/0.35),0_10px_32px_rgb(0_0_0/0.45)];
   }
 
   .fi-telemedicine-consultation-wizard .fi-section-header {
@@ -4357,12 +4360,19 @@
     @apply mt-0.5 text-[0.8125rem] leading-relaxed text-zinc-600 dark:text-zinc-400;
   }
 
+  .fi-telemedicine-consultation-wizard .fi-section-content-ctn,
+  .fi-telemedicine-consultation-wizard .fi-section-content,
+  .fi-telemedicine-consultation-wizard .fi-sc-wizard-step,
+  .fi-telemedicine-consultation-wizard .fi-sc-wizard-step-content {
+    overflow: visible;
+  }
+
   .fi-telemedicine-consultation-wizard .fi-section-content-ctn {
     @apply px-3 py-4 sm:px-5 sm:py-5;
   }
 
   .fi-telemedicine-consultation-wizard .fi-sc-fieldset {
-    @apply rounded-2xl border border-black/[0.05] bg-zinc-50/80 p-3 sm:p-4 dark:border-white/[0.07] dark:bg-zinc-800/40;
+    @apply overflow-visible rounded-2xl border border-black/[0.05] bg-zinc-50/80 p-3 sm:p-4 dark:border-white/[0.07] dark:bg-zinc-800/40;
   }
 
   .fi-telemedicine-consultation-wizard .fi-sc-fieldset > .fi-sc-fieldset-label-ctn {

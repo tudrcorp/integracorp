@@ -17,6 +17,7 @@ use App\Jobs\SendIndividualQuoteDaySevenFollowUp;
 use App\Jobs\SendIndividualQuoteDayThreeFollowUp;
 use App\Jobs\SendIndividualQuoteDayTwelveFollowUp;
 use App\Jobs\SendNotificationBirthday;
+use App\Jobs\SendOperationInventoryLowStockAlert;
 use App\Jobs\UpdateAffiliateIlsRemainingDays;
 use App\Jobs\UpdateAnnualCollectionRemainingDays;
 use App\Support\IndividualQuotes\IndividualQuoteFollowUp;
@@ -30,6 +31,7 @@ $agentQuoteAnulationIsActive = static fn (): bool => SystemNotificationRecipient
 $databaseBackupIsActive = static fn (): bool => SystemNotificationRecipients::isActive(SystemNotificationKey::DatabaseBackup);
 $structureBackupIsActive = static fn (): bool => SystemNotificationRecipients::isActive(SystemNotificationKey::StructureBackup);
 $dailyAuditSummaryIsActive = static fn (): bool => SystemNotificationRecipients::isActive(SystemNotificationKey::DailyAuditSummary);
+$operationInventoryLowStockIsActive = static fn (): bool => SystemNotificationRecipients::isActive(SystemNotificationKey::OperationInventoryLowStock);
 
 /**
  * Tarea que se ejecuta para enviar las tarjetas de cumpleaños
@@ -171,3 +173,14 @@ Schedule::job(new ExportScheduledEntity('doctors'), 'system')
 Schedule::job(new SendDailyAuditSummary, 'system')
     ->dailyAt('7:00')
     ->when($dailyAuditSummaryIsActive);
+
+/**
+ * Alerta diaria de stock bajo del inventario Diagnomóvil.
+ * Revisa productos activos con existencia total menor o igual al umbral
+ * (configurable en Parámetros de Inventario) y notifica por WhatsApp y correo
+ * a los destinatarios del Centro de notificaciones (operation_inventory_low_stock).
+ * Se ejecuta todos los días a las 8:00am mientras haya productos bajo umbral.
+ */
+Schedule::job(new SendOperationInventoryLowStockAlert, 'system')
+    ->dailyAt('8:00')
+    ->when($operationInventoryLowStockIsActive);

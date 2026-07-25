@@ -18,6 +18,7 @@ class TelemedicinePatientMedications extends Model
         'indications',
         'telemedicine_priority_id',
         'duration',
+        'quantity',
         'status',
         'operation_inventory_id',
         'is_covered',

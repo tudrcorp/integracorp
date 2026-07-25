@@ -12,6 +12,7 @@ it('resuelve color e icono para nombre Estándar y variantes en mayúsculas', fu
     'mayus sin tilde' => ['ESTANDAR', 'estandar'],
     'mayus con tilde' => ['ESTÁNDAR', 'estandar'],
     'no urgente mixto' => ['No Urgente', 'no-urgente'],
+    'no urgente minuscula' => ['No urgente', 'no-urgente'],
     'no urgente caps' => ['NO URGENTE', 'no-urgente'],
     'critico titulo' => ['Critico', 'critico'],
     'critico mayus' => ['CRITICO', 'critico'],

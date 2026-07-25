@@ -2,28 +2,16 @@
 
 namespace App\Livewire\FilamentView;
 
-use Livewire\Component;
-use App\Models\AllergyList;
-use Filament\Schemas\Schema;
-use App\Models\TelemedicinePatient;
-
-use Illuminate\Support\Facades\Log;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Grid;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\DatePicker;
-use Filament\Schemas\Components\Fieldset;
 use App\Models\TelemedicineHistoryPatient;
-use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
+use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Livewire\Component;
 
 class ViewTelemedicineHistoryPatient extends Component implements HasSchemas
 {
@@ -42,9 +30,9 @@ class ViewTelemedicineHistoryPatient extends Component implements HasSchemas
             ->record($this->record)
             ->components([
                 Section::make()
-                    ->collapsible()    
+                    ->collapsible()
                     ->heading('HISTORIA CLINICA')
-                    ->description(fn(TelemedicineHistoryPatient $record) => 'PACIENTE: ' . $record->telemedicinePatient->full_name . ' | ' . 'EDAD: ' . $record->telemedicinePatient->age . ' años | ' . 'SEXO: ' . $record->telemedicinePatient->sex)
+                    ->description(fn (TelemedicineHistoryPatient $record) => 'PACIENTE: '.$record->telemedicinePatient->full_name.' | '.'EDAD: '.$record->telemedicinePatient->age.' años | '.'SEXO: '.$record->telemedicinePatient->sex)
                     ->columnSpanFull()
                     ->icon(Heroicon::Bars3BottomLeft)
                     ->schema([
@@ -70,7 +58,7 @@ class ViewTelemedicineHistoryPatient extends Component implements HasSchemas
                                     ->badge()
                                     ->color('success'),
                                 TextEntry::make('imc')
-                                    //peso/estatura * 2
+                                    // peso/estatura * 2
                                     ->label('Indice de Masa Corporal (IMC)')
                                     ->helperText('')
                                     ->icon('healthicons-f-i-utensils')
@@ -149,7 +137,8 @@ class ViewTelemedicineHistoryPatient extends Component implements HasSchemas
                                                 if ($record->familyHistories->isEmpty()) {
                                                     return '';
                                                 }
-                                                return $record->familyHistories->first()->created_at->format('d-M-Y'). ': ';
+
+                                                return $record->familyHistories->first()->created_at->format('d-M-Y').': ';
                                             })
                                             ->icon('heroicon-o-calendar-days')
                                             ->badge()
@@ -221,10 +210,11 @@ class ViewTelemedicineHistoryPatient extends Component implements HasSchemas
                                         TextEntry::make('pathologicalHistories.observations')
                                             ->label('Detalles:')
                                             ->prefix(function (TelemedicineHistoryPatient $record) {
-                                                if($record->pathologicalHistories->isEmpty()){
+                                                if ($record->pathologicalHistories->isEmpty()) {
                                                     return '';
                                                 }
-                                                return $record->pathologicalHistories->first()->created_at->format('d-M-Y') . ': ';
+
+                                                return $record->pathologicalHistories->first()->created_at->format('d-M-Y').': ';
                                             })
                                             ->icon('heroicon-o-calendar-days')
                                             ->badge()
@@ -256,18 +246,19 @@ class ViewTelemedicineHistoryPatient extends Component implements HasSchemas
                                 Fieldset::make('Observaciones Adicionales de Antecedentes No Patológicos')
                                     ->schema([
                                         TextEntry::make('noPathologicalHistories.observations')
-                                        ->label('Detalles:')
-                                        ->prefix(function (TelemedicineHistoryPatient $record) {
-                                            if ($record->noPathologicalHistories->isEmpty()) {
-                                                return '';
-                                            }
-                                            return $record->noPathologicalHistories->first()->created_at->format('d-M-Y') . ': ';
-                                        })
-                                        ->icon('heroicon-o-calendar-days')
-                                        ->badge()
-                                        ->color('success')
-                                        ->listWithLineBreaks(),
-                                    ])  
+                                            ->label('Detalles:')
+                                            ->prefix(function (TelemedicineHistoryPatient $record) {
+                                                if ($record->noPathologicalHistories->isEmpty()) {
+                                                    return '';
+                                                }
+
+                                                return $record->noPathologicalHistories->first()->created_at->format('d-M-Y').': ';
+                                            })
+                                            ->icon('heroicon-o-calendar-days')
+                                            ->badge()
+                                            ->color('success')
+                                            ->listWithLineBreaks(),
+                                    ])
                                     ->columnSpanFull()->columns(1),
                             ])->columnSpanFull()->columns(4),
 
@@ -285,7 +276,8 @@ class ViewTelemedicineHistoryPatient extends Component implements HasSchemas
                                                 if ($record->surgicalHistories->isEmpty()) {
                                                     return '';
                                                 }
-                                                return $record->surgicalHistories->first()->created_at->format('d-M-Y') . ': ';
+
+                                                return $record->surgicalHistories->first()->created_at->format('d-M-Y').': ';
                                             })
                                             ->icon('heroicon-o-calendar-days')
                                             ->badge()
@@ -315,13 +307,13 @@ class ViewTelemedicineHistoryPatient extends Component implements HasSchemas
                                 Fieldset::make('Medicamentos o suplementos:')
                                     ->schema([
                                         TextEntry::make('medications_supplements')
-                                            ->label('Detalles:')
+                                            ->label('Detalles:'),
 
                                     ])->columnSpanFull()->columns(1),
                                 Fieldset::make('Observaciones Adicionales de Medicamentos y Suplementos')
                                     ->schema([
                                         TextEntry::make('observations_medication')
-                                            ->label('Detalles:')
+                                            ->label('Detalles:'),
 
                                     ])->columnSpanFull()->columns(1),
                             ])->columnSpanFull()->columns(4),
@@ -359,7 +351,8 @@ class ViewTelemedicineHistoryPatient extends Component implements HasSchemas
                                                 if ($record->gynecologicalHistories->isEmpty()) {
                                                     return '';
                                                 }
-                                                return $record->gynecologicalHistories->first()->created_at->format('d-M-Y') . ': ';
+
+                                                return $record->gynecologicalHistories->first()->created_at->format('d-M-Y').': ';
                                             })
                                             ->icon('heroicon-o-calendar-days')
                                             ->badge()
@@ -368,164 +361,11 @@ class ViewTelemedicineHistoryPatient extends Component implements HasSchemas
                                     ])->columnSpanFull()->columns(1),
                             ])->columnSpanFull()->columns(4),
 
-                    ])->columnSpanFull(),
-
-                Section::make()
-                    ->collapsible()
-                    ->heading('HISTORICO')
-                    ->description('Registro histórico de las actualización de antecedentes de la historia clínica del paciente')
-                    ->columnSpanFull()
-                    ->icon(Heroicon::Bars3BottomLeft)
-                    ->schema([
-                        Section::make()
-                            ->collapsed()
-                            ->heading('ANTECEDENTES PERSONALES Y FAMILIARES')
-                            ->columnSpanFull()
-                            ->icon(Heroicon::Bars3BottomLeft)
-                            ->schema([
-                                Fieldset::make('Observaciones Adicionales de Antecedentes Personales y Familiares')
-                                ->schema([
-                                    TextEntry::make('familyHistories.observations')
-                                        ->label('Detalles:')
-                                        ->prefix(function (TelemedicineHistoryPatient $record) {
-                                            if ($record->familyHistories->isEmpty()) {
-                                                return '';
-                                            }
-                                            return $record->familyHistories->first()->created_at->format('d-M-Y') . ': ';
-                                        })
-                                        ->icon('heroicon-o-calendar-days')
-                                        ->badge()
-                                        ->color('success')
-                                        ->listWithLineBreaks(),
-                                ])
-                                ->columnSpanFull()->columns(1),
-                            ])->columnSpanFull()->columns(5),
-                        Section::make()
-                            ->collapsed()
-                            ->heading('ANTECEDENTES PERSONALES Y PATOLÓGICOS')
-                            ->columnSpanFull()
-                            ->icon(Heroicon::Bars3BottomLeft)
-                            ->schema([
-                                Fieldset::make('Observaciones Adicionales de Antecedentes Personales y Patológicos')
-                                ->schema([
-                                    TextEntry::make('pathologicalHistories.observations')
-                                        ->label('Detalles:')
-                                        ->prefix(function (TelemedicineHistoryPatient $record) {
-                                            if ($record->pathologicalHistories->isEmpty()) {
-                                                return '';
-                                            }
-                                            return $record->pathologicalHistories->first()->created_at->format('d-M-Y') . ': ';
-                                        })
-                                        ->icon('heroicon-o-calendar-days')
-                                        ->badge()
-                                        ->color('success')
-                                        ->listWithLineBreaks(),
-                                ])
-                                ->columnSpanFull()->columns(1),
-                            ])->columnSpanFull()->columns(5),
-                        Section::make()
-                            ->collapsed()
-                            ->heading('ANTECEDENTES NO PATOLÓGICOS')
-                            ->columnSpanFull()
-                            ->icon(Heroicon::Bars3BottomLeft)
-                            ->schema([
-                                Fieldset::make('Observaciones Adicionales de Antecedentes No Patológicos')
-                                ->schema([
-                                    TextEntry::make('noPathologicalHistories.observations')
-                                        ->label('Detalles:')
-                                        ->prefix(function (TelemedicineHistoryPatient $record) {
-                                            if ($record->noPathologicalHistories->isEmpty()) {
-                                                return '';
-                                            }
-                                            return $record->noPathologicalHistories->first()->created_at->format('d-M-Y') . ': ';
-                                        })
-                                        ->icon('heroicon-o-calendar-days')
-                                        ->badge()
-                                        ->color('success')
-                                        ->listWithLineBreaks(),
-                                ])
-                                ->columnSpanFull()->columns(1),
-                            ])->columnSpanFull()->columns(4),
-
-                        Section::make()
-                            ->collapsed()
-                            ->heading('ANTECEDENTES QUIRÚRGICOS')
-                            ->columnSpanFull()
-                            ->icon(Heroicon::Bars3BottomLeft)
-                            ->schema([
-                                Fieldset::make('Antecedentes Quirúrgicos')
-                                ->schema([
-                                    TextEntry::make('surgicalHistories.observations')
-                                        ->label('Detalles:')
-                                        ->prefix(function (TelemedicineHistoryPatient $record) {
-                                            if ($record->surgicalHistories->isEmpty()) {
-                                                return '';
-                                            }
-                                            return $record->surgicalHistories->first()->created_at->format('d-M-Y') . ': ';
-                                        })
-                                        ->icon('heroicon-o-calendar-days')
-                                        ->badge()
-                                        ->color('success')
-                                        ->listWithLineBreaks(),
-                                ])->columnSpanFull()->columns(1),
-                            ])->columnSpanFull()->columns(4),
-
-                        Section::make()
-                            ->collapsed()
-                            ->heading('ALERGIAS')
-                            ->columnSpanFull()
-                            ->icon(Heroicon::Bars3BottomLeft)
-                            ->schema([
-                                TextEntry::make('allergies')
-                                ->label('Lista de Alergias:')
-                                ->badge()
-                                ->color('primary'),
-                            ])->columnSpanFull(),
-
-                        Section::make()
-                            ->collapsed()
-                            ->heading('MEDICAMENTOS Y SUPLEMENTOS USADOS')
-                            ->columnSpanFull()
-                            ->icon(Heroicon::Bars3BottomLeft)
-                            ->schema([
-                                Fieldset::make('Medicamentos o suplementos:')
-                                    ->schema([
-                                        TextEntry::make('medications_supplements')
-                                            ->label('Detalles:')
-                                    ])->columnSpanFull()->columns(1),
-                                Fieldset::make('Observaciones Adicionales de Medicamentos y Suplementos')
-                                    ->schema([
-                                        TextEntry::make('observations_medication')
-                                            ->label('Detalles:')
-                                    ])->columnSpanFull()->columns(1),
-                            ])->columnSpanFull()->columns(4),
-                        Section::make()
-                            ->collapsed()
-                            ->heading('ANTECEDENTES GINECÓLOGOS')
-                            ->columnSpanFull()
-                            ->icon(Heroicon::Bars3BottomLeft)
-                            ->schema([
-                                Fieldset::make('Observaciones Adicionales de Antecedentes Ginecológicos')
-                                    ->schema([
-                                        TextEntry::make('gynecologicalHistories.observations')
-                                            ->label('Detalles:')
-                                            ->prefix(function (TelemedicineHistoryPatient $record) {
-                                                if ($record->gynecologicalHistories->isEmpty()) {
-                                                    return '';
-                                                }
-                                                return $record->gynecologicalHistories->first()->created_at->format('d-M-Y') . ': ';
-                                            })
-                                            ->icon('heroicon-o-calendar-days')
-                                            ->badge()
-                                            ->color('success')
-                                            ->listWithLineBreaks(),
-                                    ])->columnSpanFull()->columns(1),
-                            ])->columnSpanFull()->columns(4),
                     ])->columnSpanFull(),
 
             ]);
     }
-    
+
     public function render()
     {
         return view('livewire.filament-view.view-telemedicine-history-patient');

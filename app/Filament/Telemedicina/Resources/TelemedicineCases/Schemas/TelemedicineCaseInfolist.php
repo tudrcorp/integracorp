@@ -7,7 +7,9 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas;
 use App\Models\ObservationCase;
 use App\Models\TelemedicineCase;
 use App\Support\Telemedicine\TelemedicineAmdBitacoraCatalog;
+use App\Support\Telemedicine\TelemedicineCaseDocumentReadyNotification;
 use App\Support\Telemedicine\TelemedicineCaseDocumentsCatalog;
+use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -52,6 +54,7 @@ class TelemedicineCaseInfolist
                 Tabs::make('telemedicineCaseInfolistTabs')
                     ->columnSpanFull()
                     ->persistTab()
+                    ->persistTabInQueryString(TelemedicineCaseDocumentReadyNotification::TAB_QUERY_PARAMETER)
                     ->extraAttributes([
                         'class' => self::TABS_CONTAINER,
                     ])
@@ -180,9 +183,9 @@ class TelemedicineCaseInfolist
                                                     ->placeholder('—'),
                                                 TextEntry::make('priority.name')
                                                     ->label('Prioridad')
-                                                    ->icon(Heroicon::OutlinedExclamationTriangle)
+                                                    ->icon(fn (?string $state): string => TelemedicinePriorityFilamentBadge::icon($state ?? ''))
                                                     ->badge()
-                                                    ->color('warning')
+                                                    ->color(fn (?string $state): string => TelemedicinePriorityFilamentBadge::color($state ?? ''))
                                                     ->placeholder('—'),
                                                 TextEntry::make('created_at')
                                                     ->label('Fecha de registro')

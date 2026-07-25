@@ -27,6 +27,7 @@ use App\Services\OperationServiceOrderQuotePdfService;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\AccountsReceivableManager;
+use App\Support\Operations\CoordinationServiceBulkReversal;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\CoordinationServiceQuoteManager;
 use App\Support\Operations\OperationServiceOrderCoveredPricingFormFields;
@@ -1485,6 +1486,7 @@ class OperationCoordinationServicesTable
             ], position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([
                 BulkActionGroup::make([
+                    CoordinationServiceBulkReversal::makeBulkAction(),
                     DeleteBulkAction::make(),
                 ]),
             ]);

@@ -21,7 +21,7 @@
                 <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                         <td align="center" style="padding: 20px 10px;">
-                            <img src="https://app.piedy.com/images/BANER-GUSTAVO-1.png" alt="Banner Tu Dr. en Casa" style="max-width: 100%; height: auto; border-radius: 8px;">
+                            <img src="https://integracorp.tudrgroup.com/storage/bannerHeader.png" alt="Integracorp" style="max-width: 100%; height: auto; border-radius: 8px;">
                         </td>
                     </tr>
                     <tr>

@@ -9,10 +9,12 @@ use App\Models\Country;
 use App\Models\Region;
 use App\Models\State;
 use App\Models\TelemedicinePatient;
+use App\Support\Filament\Operations\OperationsSupplierScope;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -233,6 +235,16 @@ class TelemedicinePatientForm
                                                         'required' => 'Campo requerido',
                                                     ])
                                                     ->maxLength(255),
+                                                TextInput::make('phone_contact')
+                                                    ->prefixIcon('heroicon-s-device-phone-mobile')
+                                                    ->tel()
+                                                    ->label('Teléfono de contacto')
+                                                    ->maxLength(255),
+                                                TextInput::make('email_contact')
+                                                    ->email()
+                                                    ->label('Correo de contacto')
+                                                    ->prefixIcon('heroicon-m-at-symbol')
+                                                    ->maxLength(255),
                                                 TextInput::make('address')
                                                     ->label('Dirección')
                                                     ->required(),
@@ -286,6 +298,28 @@ class TelemedicinePatientForm
                                                     ->preload(),
                                                 Hidden::make('created_by')->default(Auth::user()->id),
                                             ])->columns(4),
+                                    ])
+                                    ->columnSpanFull(),
+                                Section::make('Portal del paciente')
+                                    ->icon(Heroicon::OutlinedLockClosed)
+                                    ->description('Clave y autorización de acceso al portal del paciente. Visible solo para analistas TDG.')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst())
+                                    ->schema([
+                                        Fieldset::make('Acceso al portal')
+                                            ->schema([
+                                                TextInput::make('patient_portal_password')
+                                                    ->label('Clave del portal del paciente')
+                                                    ->password()
+                                                    ->revealable()
+                                                    ->default(TelemedicinePatient::DEFAULT_PATIENT_PORTAL_PASSWORD)
+                                                    ->required()
+                                                    ->maxLength(255),
+                                                Toggle::make('patient_portal_authorized')
+                                                    ->label('Autorizar uso del portal del paciente')
+                                                    ->default(true)
+                                                    ->inline(false),
+                                            ])->columns(2),
                                     ])
                                     ->columnSpanFull(),
                             ]),

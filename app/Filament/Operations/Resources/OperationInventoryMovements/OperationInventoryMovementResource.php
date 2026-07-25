@@ -11,13 +11,11 @@ use App\Filament\Operations\Resources\OperationInventoryMovements\Schemas\Operat
 use App\Filament\Operations\Resources\OperationInventoryMovements\Schemas\OperationInventoryMovementInfolist;
 use App\Filament\Operations\Resources\OperationInventoryMovements\Tables\OperationInventoryMovementsTable;
 use App\Models\OperationInventoryMovement;
-use App\Models\Permission;
-use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class OperationInventoryMovementResource extends Resource
@@ -32,6 +30,8 @@ class OperationInventoryMovementResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'INVENTARIO DIAGNOMOVIL';
 
+    protected static ?int $navigationSort = 5;
+
     public static function form(Schema $schema): Schema
     {
         return OperationInventoryMovementForm::configure($schema);
@@ -45,6 +45,21 @@ class OperationInventoryMovementResource extends Resource
     public static function table(Table $table): Table
     {
         return OperationInventoryMovementsTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'operationInventory.product',
+                'operationInventory.ubicationRelation',
+                'telemedicinePatient',
+                'telemedicineCase',
+                'telemedicineConsultation',
+                'telemedicineDoctor',
+                'businessUnit',
+                'businessLine',
+            ]);
     }
 
     public static function getRelations(): array

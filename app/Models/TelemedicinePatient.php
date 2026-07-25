@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TelemedicinePatient extends Model
 {
+    public const DEFAULT_PATIENT_PORTAL_PASSWORD = '12345678';
+
     protected $table = 'telemedicine_patients';
 
     protected $fillable = [
@@ -28,6 +30,8 @@ class TelemedicinePatient extends Model
         'state_id',
         'phone_contact',
         'email_contact',
+        'patient_portal_password',
+        'patient_portal_authorized',
         'code',
         'created_by',
         'age',
@@ -42,6 +46,16 @@ class TelemedicinePatient extends Model
         'managed_by',
         'supplier_id',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'patient_portal_authorized' => 'boolean',
+        ];
+    }
 
     public function businessLine()
     {

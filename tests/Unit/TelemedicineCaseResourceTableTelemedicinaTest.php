@@ -26,6 +26,31 @@ it('TelemedicineCaseFilamentListQuery aplica managed_by ATENMEDI con contexto m�
         ->and($contents)->toContain("->where('managed_by', 'ATENMEDI')");
 });
 
+it('TelemedicineCaseFilamentListQuery lista para TDG todos los casos de doctores TDG sin filtrar por doctor en sesión', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Support/Telemedicine/TelemedicineCaseFilamentListQuery.php';
+    $contents = file_get_contents($path);
+
+    $resourceMethodStart = (int) strpos($contents, 'function applyTelemedicinaResourceCasesConstraints');
+    $dashboardMethodStart = (int) strpos($contents, 'function applyDashboardWidgetCaseConstraints');
+    $resourceMethod = substr($contents, $resourceMethodStart, $dashboardMethodStart - $resourceMethodStart);
+
+    $tdgBranchPos = strpos($resourceMethod, 'userIsInTdgTelemedicinaContext($user)');
+    $ownDoctorFilterPos = strpos($resourceMethod, "where('telemedicine_doctor_id', \$user->doctor_id)");
+
+    expect($resourceMethod)
+        ->toContain('userIsInTdgTelemedicinaContext($user)')
+        ->toContain('constrainToTdgDoctorsCases($query)')
+        ->toContain("->where('status', '!=', 'ALTA MEDICA')");
+
+    expect($tdgBranchPos)->not->toBeFalse()
+        ->and($ownDoctorFilterPos)->not->toBeFalse()
+        ->and($tdgBranchPos)->toBeLessThan($ownDoctorFilterPos);
+
+    expect($contents)
+        ->toContain("->where('managed_by', 'TDG')")
+        ->toContain("\$doctor->where('managed_by', 'TDG')");
+});
+
 it('widget del escritorio filtra managed_by ATENMEDI con contexto médico ATENMEDI', function (): void {
     $widgetPath = dirname(__DIR__, 2).'/app/Filament/Telemedicina/Widgets/TelemedicineCaseTableDash.php';
     $queryPath = dirname(__DIR__, 2).'/app/Support/Telemedicine/TelemedicineCaseFilamentListQuery.php';
@@ -48,10 +73,22 @@ it('exclusiones por consulta alta y ambulancia solo aplican en contexto ATENMEDI
     $path = dirname(__DIR__, 2).'/app/Support/Telemedicine/TelemedicineCaseFilamentListQuery.php';
     $contents = file_get_contents($path);
 
-    expect($contents)->toContain(
-        'if ($user !== null && self::userIsInAtenmediTelemedicinaContext($user)) {
-            self::excludeCasesHavingConsultationWithAltaMedica($query);
-            self::excludeCasesHavingConsultationWithTrasladoAmbulancia($query);
-        }'
-    );
+    $resourceMethodStart = (int) strpos($contents, 'function applyTelemedicinaResourceCasesConstraints');
+    $dashboardMethodStart = (int) strpos($contents, 'function applyDashboardWidgetCaseConstraints');
+    $resourceMethod = substr($contents, $resourceMethodStart, $dashboardMethodStart - $resourceMethodStart);
+
+    expect($resourceMethod)
+        ->toContain('self::excludeCasesHavingConsultationWithAltaMedica($query)')
+        ->toContain('self::excludeCasesHavingConsultationWithTrasladoAmbulancia($query)')
+        ->toContain('self::userIsInAtenmediTelemedicinaContext($user)');
+
+    $atenmediPos = strpos($resourceMethod, 'userIsInAtenmediTelemedicinaContext($user)');
+    $excludeAltaPos = strpos($resourceMethod, 'excludeCasesHavingConsultationWithAltaMedica($query)');
+    $tdgReturnPos = strpos($resourceMethod, 'constrainToTdgDoctorsCases($query)');
+
+    expect($atenmediPos)->not->toBeFalse()
+        ->and($excludeAltaPos)->not->toBeFalse()
+        ->and($tdgReturnPos)->not->toBeFalse()
+        ->and($excludeAltaPos)->toBeGreaterThan($atenmediPos)
+        ->and($tdgReturnPos)->toBeLessThan($atenmediPos);
 });

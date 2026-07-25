@@ -17,10 +17,10 @@ final class FilamentIosButton
     public static function extraClassForFilamentColor(string $color): string
     {
         $base = match ($color) {
-            'primary' => 'aviso-btn-ios-primary',
+            'primary', 'no-urgente' => 'aviso-btn-ios-primary',
             'success' => 'aviso-btn-ios-success',
             'danger', 'critico' => 'aviso-btn-ios-danger',
-            'warning', 'urgencia' => 'aviso-btn-ios-warning',
+            'warning', 'urgencia', 'emergencia' => 'aviso-btn-ios-warning',
             'info' => 'aviso-btn-ios-info',
             'estandar', 'gray', 'secondary' => 'ticket-btn-ios-gray',
             default => 'aviso-btn-ios-primary',

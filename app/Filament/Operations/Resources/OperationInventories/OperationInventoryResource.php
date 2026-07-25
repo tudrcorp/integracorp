@@ -11,13 +11,11 @@ use App\Filament\Operations\Resources\OperationInventories\Schemas\OperationInve
 use App\Filament\Operations\Resources\OperationInventories\Schemas\OperationInventoryInfolist;
 use App\Filament\Operations\Resources\OperationInventories\Tables\OperationInventoriesTable;
 use App\Models\OperationInventory;
-use App\Models\Permission;
-use App\Models\UserPermission;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class OperationInventoryResource extends Resource
@@ -32,6 +30,8 @@ class OperationInventoryResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'INVENTARIO DIAGNOMOVIL';
 
+    protected static ?int $navigationSort = 4;
+
     public static function form(Schema $schema): Schema
     {
         return OperationInventoryForm::configure($schema);
@@ -45,6 +45,18 @@ class OperationInventoryResource extends Resource
     public static function table(Table $table): Table
     {
         return OperationInventoriesTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'product.category',
+                'ubicationRelation',
+                'operationInventoryType',
+                'operationInventoryPrincipleActive',
+                'operationInventoryCategory',
+            ]);
     }
 
     public static function getRelations(): array

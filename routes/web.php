@@ -137,6 +137,18 @@ Route::get('operations/export-doctor-nurses-csv', App\Http\Controllers\DoctorNur
     ->middleware(['web', 'auth'])
     ->name('operations.doctor-nurses.export-csv');
 
+Route::get('operations/export-inventory-products-csv', App\Http\Controllers\OperationInventoryProductExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.inventory-products.export-csv');
+
+Route::get('operations/export-inventory-entries-csv', App\Http\Controllers\OperationInventoryEntryExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.inventory-entries.export-csv');
+
+Route::get('operations/export-inventory-outflows-csv', App\Http\Controllers\OperationInventoryOutflowExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.inventory-outflows.export-csv');
+
 Route::get('operations/doctor-nurses/{doctorNurse}/ficha/preview', [DoctorNurseFichaPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
     ->name('operations.doctor-nurses.ficha.preview');
