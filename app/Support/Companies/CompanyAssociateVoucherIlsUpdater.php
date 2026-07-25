@@ -61,10 +61,15 @@ final class CompanyAssociateVoucherIlsUpdater
                     ]),
                     Grid::make(1)->schema([
                         FileUpload::make('document_ils')
-                            ->label('Imagen del voucher')
+                            ->label('Documento del voucher')
                             ->disk('public')
                             ->directory('company-associates/voucher-ils')
-                            ->image()
+                            ->acceptedFileTypes([
+                                'image/jpeg',
+                                'image/png',
+                                'application/pdf',
+                            ])
+                            ->helperText('Formatos: JPG, JPEG, PNG o PDF.')
                             ->downloadable()
                             ->openable()
                             ->required($documentRequired),
