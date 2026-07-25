@@ -270,7 +270,10 @@ it('soportes de voucher ils y carnet centralizan la logica de negocio', function
     expect($voucher)
         ->toContain('formDefaults')
         ->toContain('formComponents')
-        ->toContain('document_ils');
+        ->toContain('document_ils')
+        ->toContain("'image/jpeg'")
+        ->toContain("'image/png'")
+        ->toContain("'application/pdf'");
 
     expect($carnet)
         ->toContain('TAR-NB-')
