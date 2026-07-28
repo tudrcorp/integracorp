@@ -7,6 +7,7 @@ namespace App\Support\IndividualQuotes;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\IndividualQuote;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -25,12 +26,46 @@ final class IndividualQuoteFollowUp
             ->toDateString();
 
         return IndividualQuote::query()
-            ->with(['agent:id,name,phone', 'agency:code,name_corporative,phone'])
+            ->with(['agent:id,name,phone,email', 'agency:code,name_corporative,phone,email'])
             ->where('status', self::ELIGIBLE_STATUS)
             ->whereDate('created_at', $targetDate)
+            ->when(
+                self::isRestrictedToCollaborators(),
+                fn (Builder $query): Builder => self::constrainToCollaboratorEmails($query),
+            )
             ->orderBy('code')
             ->get()
             ->groupBy(fn (IndividualQuote $quote): string => self::groupKey($quote));
+    }
+
+    /**
+     * Filtro temporal de pruebas: solo cotizaciones cuyo email coincide
+     * con un correo de rrhh_colaboradors (corporativo, alternativo o personal).
+     */
+    public static function isRestrictedToCollaborators(): bool
+    {
+        return (bool) config('individual-quotes.follow_up_only_collaborators');
+    }
+
+    /**
+     * @param  Builder<IndividualQuote>  $query
+     * @return Builder<IndividualQuote>
+     */
+    public static function constrainToCollaboratorEmails(Builder $query): Builder
+    {
+        return $query
+            ->whereNotNull('email')
+            ->where('email', '!=', '')
+            ->whereExists(function ($subQuery): void {
+                $subQuery->selectRaw('1')
+                    ->from('rrhh_colaboradors')
+                    ->where(function ($emailQuery): void {
+                        $emailQuery
+                            ->whereRaw('LOWER(TRIM(rrhh_colaboradors.emailCorporativo)) = LOWER(TRIM(individual_quotes.email))')
+                            ->orWhereRaw('LOWER(TRIM(rrhh_colaboradors.emailAlternativo)) = LOWER(TRIM(individual_quotes.email))')
+                            ->orWhereRaw('LOWER(TRIM(rrhh_colaboradors.emailPersonal)) = LOWER(TRIM(individual_quotes.email))');
+                    });
+            });
     }
 
     public static function groupKey(IndividualQuote $quote): string
@@ -138,6 +173,27 @@ final class IndividualQuoteFollowUp
     }
 
     /**
+     * Ruta absoluta en disco para un asset público de seguimiento.
+     */
+    public static function localPublicAssetPath(string $relativePath): ?string
+    {
+        $relativePath = ltrim($relativePath, '/');
+
+        $candidates = [
+            storage_path('app/public/'.$relativePath),
+            public_path('storage/'.$relativePath),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Teléfono WhatsApp del aliado que creó las cotizaciones del grupo:
      * - con agent_id → agents.phone
      * - sin agent_id → agencies.phone vía code_agency
@@ -163,6 +219,34 @@ final class IndividualQuoteFollowUp
         }
 
         return [$phone];
+    }
+
+    /**
+     * Correo del aliado que creó las cotizaciones del grupo:
+     * - con agent_id → agents.email
+     * - sin agent_id → agencies.email vía code_agency
+     *
+     * @param  Collection<int, IndividualQuote>  $quotes
+     * @return list<string>
+     */
+    public static function resolveRecipientEmails(Collection $quotes): array
+    {
+        /** @var IndividualQuote|null $first */
+        $first = $quotes->first();
+
+        if ($first === null) {
+            return [];
+        }
+
+        $email = filled($first->agent_id)
+            ? self::resolveAgentEmail($first)
+            : self::resolveAgencyEmail($first);
+
+        if ($email === null) {
+            return [];
+        }
+
+        return [$email];
     }
 
     private static function resolveAgentPhone(IndividualQuote $quote): ?string
@@ -195,11 +279,52 @@ final class IndividualQuoteFollowUp
         );
     }
 
+    private static function resolveAgentEmail(IndividualQuote $quote): ?string
+    {
+        if ($quote->relationLoaded('agent')) {
+            return self::normalizeEmail($quote->agent?->email);
+        }
+
+        if (! filled($quote->agent_id)) {
+            return null;
+        }
+
+        return self::normalizeEmail(
+            Agent::query()->whereKey($quote->agent_id)->value('email')
+        );
+    }
+
+    private static function resolveAgencyEmail(IndividualQuote $quote): ?string
+    {
+        if ($quote->relationLoaded('agency')) {
+            return self::normalizeEmail($quote->agency?->email);
+        }
+
+        if (! filled($quote->code_agency)) {
+            return null;
+        }
+
+        return self::normalizeEmail(
+            Agency::query()->where('code', $quote->code_agency)->value('email')
+        );
+    }
+
     private static function normalizePhone(mixed $phone): ?string
     {
         $normalized = trim((string) $phone);
 
         return $normalized !== '' ? $normalized : null;
+    }
+
+    private static function normalizeEmail(mixed $email): ?string
+    {
+        $normalized = trim((string) $email);
+
+        if ($normalized === '' || ! filter_var($normalized, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        return $normalized;
     }
 
     public static function schedulingStartDate(): Carbon

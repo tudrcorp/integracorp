@@ -8,10 +8,12 @@ use App\Support\IndividualQuotes\IndividualQuoteDaySevenFollowUp;
 uses(Tests\TestCase::class);
 
 it('expone las urls publicas de las imagenes de seguimiento de 7 dias', function (): void {
+    config(['parameters.PUBLIC_URL' => 'https://example.test/storage']);
+
     expect(IndividualQuoteDaySevenFollowUp::planGuideImageUrl())
-        ->toContain('/storage/imagenes-seguimiento-cotizaciones/img1.png')
+        ->toBe('https://example.test/storage/imagenes-seguimiento-cotizaciones/img1.png')
         ->and(IndividualQuoteDaySevenFollowUp::paymentMethodsImageUrl())
-        ->toContain('/storage/imagenes-seguimiento-cotizaciones/img2.png');
+        ->toBe('https://example.test/storage/imagenes-seguimiento-cotizaciones/img2.png');
 });
 
 it('arma el mensaje de whatsapp de 7 dias con referencia a las dos imagenes', function (): void {
@@ -52,5 +54,11 @@ it('envia el seguimiento de 7 dias en cadena con mensaje e imagenes', function (
         ->toContain('planGuideImageUrl()')
         ->toContain('paymentMethodsImageUrl()')
         ->toContain('IndividualQuoteFollowUp::resolveRecipientPhones($quotes)')
+        ->toContain('IndividualQuoteFollowUp::resolveRecipientEmails($quotes)')
+        ->toContain('dispatchAllyEmailMessages')
+        ->toContain('IndividualQuoteFollowUpMail')
+        ->toContain('IMAGE_PLAN_GUIDE')
+        ->toContain('IMAGE_PAYMENT_METHODS')
+        ->toContain('attachmentRelativePaths')
         ->toContain('IndividualQuoteFollowUpInternalCopies::dispatch');
 });

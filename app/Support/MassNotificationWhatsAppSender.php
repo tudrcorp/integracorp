@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 final class MassNotificationWhatsAppSender
@@ -13,6 +15,94 @@ final class MassNotificationWhatsAppSender
      * @param  array<string, mixed>  $infoNotificationArray
      */
     public static function send(array $dataNotificationArray, array $infoNotificationArray, bool $throttle = true): MassNotificationWhatsAppSendResult
+    {
+        $phone = trim((string) ($dataNotificationArray['phone'] ?? ''));
+
+        if ($phone === '') {
+            return MassNotificationWhatsAppSendResult::fail('Teléfono vacío o no disponible');
+        }
+
+        // Normaliza el teléfono ya trimmeado para el resto del flujo.
+        $dataNotificationArray['phone'] = $phone;
+
+        if (! $throttle) {
+            return self::sendToApi($dataNotificationArray, $infoNotificationArray);
+        }
+
+        $lockKey = (string) config('mass-notifications.whatsapp_lock_key', 'mass-notification-whatsapp-send');
+        $lockSeconds = max(30, (int) config('mass-notifications.whatsapp_lock_seconds', 90));
+        $waitSeconds = max(0, (int) config('mass-notifications.whatsapp_lock_wait_seconds', 0));
+
+        $lock = Cache::lock($lockKey, $lockSeconds);
+
+        try {
+            return $lock->block($waitSeconds, function () use ($dataNotificationArray, $infoNotificationArray): MassNotificationWhatsAppSendResult {
+                self::paceBeforeSend();
+
+                $result = self::sendToApi($dataNotificationArray, $infoNotificationArray);
+
+                if ($result->success) {
+                    self::rememberLastSentAt();
+                }
+
+                return $result;
+            });
+        } catch (LockTimeoutException $exception) {
+            Log::info('MassNotificationWhatsAppSender: canal ocupado, reintentar', [
+                'phone' => $phone,
+                'message' => $exception->getMessage(),
+            ]);
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * Espera el intervalo configurado desde el último envío exitoso.
+     * Debe llamarse solo con el lock del canal adquirido.
+     */
+    public static function paceBeforeSend(): void
+    {
+        $throttleSeconds = max(0, (int) config('mass-notifications.whatsapp_throttle_seconds', 20));
+
+        if ($throttleSeconds === 0) {
+            return;
+        }
+
+        $lastSentAt = (int) Cache::get(self::lastSentCacheKey(), 0);
+
+        if ($lastSentAt <= 0) {
+            return;
+        }
+
+        $elapsed = time() - $lastSentAt;
+        $wait = $throttleSeconds - $elapsed;
+
+        if ($wait > 0) {
+            sleep($wait);
+        }
+    }
+
+    public static function rememberLastSentAt(): void
+    {
+        $throttleSeconds = max(1, (int) config('mass-notifications.whatsapp_throttle_seconds', 20));
+
+        Cache::put(self::lastSentCacheKey(), time(), $throttleSeconds * 10);
+    }
+
+    public static function lastSentCacheKey(): string
+    {
+        return (string) config(
+            'mass-notifications.whatsapp_last_sent_cache_key',
+            'mass-notification-whatsapp-last-sent-at',
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $dataNotificationArray
+     * @param  array<string, mixed>  $infoNotificationArray
+     */
+    private static function sendToApi(array $dataNotificationArray, array $infoNotificationArray): MassNotificationWhatsAppSendResult
     {
         $phone = trim((string) ($dataNotificationArray['phone'] ?? ''));
 
@@ -126,10 +216,6 @@ final class MassNotificationWhatsAppSender
         Log::info('MassNotificationWhatsAppSender: enviado', [
             'phone' => $phone,
         ]);
-
-        if ($throttle) {
-            sleep(20);
-        }
 
         return MassNotificationWhatsAppSendResult::ok($phone);
     }

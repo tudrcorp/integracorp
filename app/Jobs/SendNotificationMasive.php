@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Support\MassNotificationRecipientDelivery;
 use App\Support\MassNotificationWhatsAppSender;
 use Illuminate\Bus\Batchable;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -20,11 +21,19 @@ class SendNotificationMasive implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 5;
+    public int $tries = 25;
 
     public int $timeout = 960;
 
-    public int $backoff = 3;
+    /**
+     * @return list<int>
+     */
+    public function backoff(): array
+    {
+        $throttle = max(5, (int) config('mass-notifications.whatsapp_throttle_seconds', 20));
+
+        return [$throttle, $throttle, $throttle * 2];
+    }
 
     /**
      * @param  array<string, mixed>  $dataNotificationArray
@@ -42,11 +51,18 @@ class SendNotificationMasive implements ShouldQueue
             return;
         }
 
-        $result = MassNotificationWhatsAppSender::send(
-            $this->dataNotificationArray,
-            $this->infoNotificationArray,
-            throttle: true,
-        );
+        try {
+            $result = MassNotificationWhatsAppSender::send(
+                $this->dataNotificationArray,
+                $this->infoNotificationArray,
+                throttle: true,
+            );
+        } catch (LockTimeoutException) {
+            $releaseIn = max(5, (int) config('mass-notifications.whatsapp_throttle_seconds', 20));
+            $this->release($releaseIn);
+
+            return;
+        }
 
         if (! $result->success) {
             throw new RuntimeException($result->errorMessage ?? 'No se pudo enviar la notificación por WhatsApp.');

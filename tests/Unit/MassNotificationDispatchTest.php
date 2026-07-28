@@ -75,6 +75,8 @@ it('los jobs de envío masivo reciben el id del destinatario', function (): void
         ->and($emailJob)->toContain('markEmailSent')
         ->and($whatsappJob)->toContain('markWhatsappSent')
         ->and($whatsappJob)->toContain('MassNotificationWhatsAppSender')
+        ->and($whatsappJob)->toContain('LockTimeoutException')
+        ->and($whatsappJob)->toContain('$this->release(')
         ->and($service)->toContain('Bus::batch')
         ->and($service)->toContain('SweepMassNotificationWhatsAppFailures');
 });

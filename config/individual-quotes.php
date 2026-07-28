@@ -16,4 +16,18 @@ return [
 
     'follow_up_scheduling_start_date' => env('INDIVIDUAL_QUOTE_FOLLOW_UP_START_DATE', '2026-06-18'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Seguimiento solo para clientes colaboradores (temporal)
+    |--------------------------------------------------------------------------
+    |
+    | Mientras esté activo, el seguimiento WhatsApp solo incluye cotizaciones
+    | individuales cuyo email coincida con emailCorporativo, emailAlternativo
+    | o emailPersonal de rrhh_colaboradors. Desactivar (false) para volver
+    | al universo completo.
+    |
+    */
+
+    'follow_up_only_collaborators' => env('INDIVIDUAL_QUOTE_FOLLOW_UP_ONLY_COLLABORATORS', true),
+
 ];

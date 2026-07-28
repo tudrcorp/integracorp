@@ -51,9 +51,13 @@ class SupplierInfolist
         };
     }
 
-    private static function infraDescription(Supplier $record, string $field): ?string
+    private static function infraDescription(Supplier $record, string $booleanField, string $descriptionField): ?string
     {
-        $text = trim((string) ($record->{$field} ?? ''));
+        if (! filter_var($record->{$booleanField} ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            return null;
+        }
+
+        $text = trim((string) ($record->{$descriptionField} ?? ''));
 
         return $text !== '' ? 'Descripción: '.$text : null;
     }
@@ -80,7 +84,7 @@ class SupplierInfolist
                 ->default(false)
                 ->getStateUsing(fn (?Supplier $record): bool => (bool) ($record?->{$fieldKey} ?? false))
                 ->helperText(fn (?Supplier $record): ?string => $record
-                    ? self::infraDescription($record, $descriptionField)
+                    ? self::infraDescription($record, $fieldKey, $descriptionField)
                     : null);
         }
 

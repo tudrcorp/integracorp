@@ -44,21 +44,32 @@ it('usa tabs y estilos alineados con infolist de agentes y agencias', function (
         ->toContain('extra_beneficiary_zelle');
 });
 
-it('solo muestra helper de descripcion cuando el detalle tiene texto', function (): void {
+it('en infolist no muestra descripcion de equipamiento si no esta certificado o esta vacia', function (): void {
     $method = new ReflectionMethod(
         DoctorNurseInfolist::class,
         'homeCareEquipmentDescription',
     );
     $method->setAccessible(true);
 
-    $withDescription = new DoctorNurse;
-    $withDescription->equip_desc_diag_oximeter = 'Equipo calibrado.';
+    $conDescripcionHuerfana = new DoctorNurse([
+        'equip_diag_oximeter' => false,
+        'equip_desc_diag_oximeter' => 'Texto que no debe verse',
+    ]);
 
-    $withoutDescription = new DoctorNurse;
-    $withoutDescription->equip_desc_diag_oximeter = '';
+    $sinDescripcion = new DoctorNurse([
+        'equip_diag_oximeter' => true,
+        'equip_desc_diag_oximeter' => '   ',
+    ]);
 
-    expect($method->invoke(null, $withDescription, 'equip_desc_diag_oximeter'))
-        ->toBe('Descripción: Equipo calibrado.')
-        ->and($method->invoke(null, $withoutDescription, 'equip_desc_diag_oximeter'))
-        ->toBeNull();
+    $conDescripcion = new DoctorNurse([
+        'equip_diag_oximeter' => true,
+        'equip_desc_diag_oximeter' => 'Equipo calibrado.',
+    ]);
+
+    expect($method->invoke(null, $conDescripcionHuerfana, 'equip_diag_oximeter', 'equip_desc_diag_oximeter'))
+        ->toBeNull()
+        ->and($method->invoke(null, $sinDescripcion, 'equip_diag_oximeter', 'equip_desc_diag_oximeter'))
+        ->toBeNull()
+        ->and($method->invoke(null, $conDescripcion, 'equip_diag_oximeter', 'equip_desc_diag_oximeter'))
+        ->toBe('Descripción: Equipo calibrado.');
 });

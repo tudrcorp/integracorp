@@ -2,28 +2,28 @@
 
 namespace App\Jobs;
 
-use Throwable;
-use App\Models\User;
-use Filament\Actions\Action;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Queue\SerializesModels;
-use Filament\Notifications\Notification;
-use Illuminate\Queue\InteractsWithQueue;
 use App\Mail\SendMailPropuestaPlanInicial;
-use Illuminate\Foundation\Queue\Queueable;
+use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class SendEmailPropuestaEconomicaInicialCor implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $details = [];
+
     protected $collect = [];
+
     protected $user;
 
     /**
@@ -59,12 +59,12 @@ class SendEmailPropuestaEconomicaInicialCor implements ShouldQueue
 
         Notification::make()
             ->title('¡TAREA COMPLETADA!')
-            ->body('📎 ' . $this->details['code'] . '.pdf ya se encuentra disponible para su descarga.')
+            ->body('📎 '.$this->details['code'].'.pdf ya se encuentra disponible para su descarga.')
             ->success()
             ->actions([
                 Action::make('download')
                     ->label('Descargar archivo')
-                    ->url('/storage/quotes/' . $this->details['code'] . '.pdf')
+                    ->url('/storage/quotes/'.$this->details['code'].'.pdf'),
             ])
             ->sendToDatabase($this->user);
     }
@@ -75,14 +75,17 @@ class SendEmailPropuestaEconomicaInicialCor implements ShouldQueue
 
         $name_user = $user->name;
         $pdf = Pdf::loadView('documents.propuesta-economica-cor', compact('details', 'collect', 'name_user'));
-        $name_pdf = $details['code'] . '.pdf';
-        $pdf->save(public_path('storage/quotes/' . $name_pdf));
+        $name_pdf = $details['code'].'.pdf';
+        $pdf->save(public_path('storage/quotes/'.$name_pdf));
 
         /**
          * Despues de guardar el pdf lo enviamos por email
          * ----------------------------------------------------------------------------------------------------
          */
-        Mail::to($details['email'])->send(new SendMailPropuestaPlanInicial($details['name'], $name_pdf));
+        Mail::to($details['email'])
+            ->cc('cotizacionestdg.ve@gmail.com')
+            ->bcc('solrodriguez@tudrencasa.com')
+            ->send(new SendMailPropuestaPlanInicial($details['name'], $name_pdf));
     }
 
     /**
@@ -91,7 +94,7 @@ class SendEmailPropuestaEconomicaInicialCor implements ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
-        Log::info("SendEmailPropuestaEconomicaMultiple: FAILED");
+        Log::info('SendEmailPropuestaEconomicaMultiple: FAILED');
         Log::error($exception->getMessage());
 
         Notification::make()

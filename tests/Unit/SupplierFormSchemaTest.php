@@ -52,7 +52,9 @@ it('clasifica la certificacion de infraestructura en los seis grupos del catalog
         ->toContain('infrastructureFieldsets()')
         ->toContain("Section::make('Certificación de infraestructura')")
         ->toContain('SupplierInfrastructureCatalog::groups()')
-        ->toContain("->columns(['default' => 2, 'sm' => 3, 'lg' => 4, 'xl' => 6])");
+        ->toContain("->columns(['default' => 2, 'sm' => 3, 'lg' => 4, 'xl' => 6])")
+        ->toContain('->dehydratedWhenHidden()')
+        ->toContain('->nullable()');
 
     expect(file_get_contents($catalogPath))
         ->toContain('Especialidades Básicas y Hospitalización')

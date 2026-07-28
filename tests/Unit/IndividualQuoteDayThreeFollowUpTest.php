@@ -60,6 +60,54 @@ it('arma el mensaje de whatsapp con aliado, clientes, total y footer de seguimie
         ->toContain('Le apoya en el proceso de seguimiento de las cotizaciones generadas en la fecha indicada.');
 });
 
+it('arma el mensaje de whatsapp directo al cliente cotizado', function (): void {
+    $quote = new IndividualQuote([
+        'code' => 'COT-IND-000264',
+        'full_name' => 'María García',
+        'phone' => '04121234567',
+    ]);
+
+    $body = IndividualQuoteDayThreeFollowUp::clientWhatsappBody($quote);
+
+    expect($body)
+        ->toContain('¡Hola, *María García*!')
+        ->toContain('Tu Doctor en Casa 🩺🏡')
+        ->toContain('Vimos que cotizaste con nosotros')
+        ->toContain('¿Tienes alguna duda para concretar tu compra?')
+        ->toContain('¡Quedo atento para ayudarte!')
+        ->not->toContain('*El sistema automatizado*');
+});
+
+it('usa Cliente como nombre por defecto si la cotizacion no tiene full_name', function (): void {
+    $quote = new IndividualQuote([
+        'code' => 'COT-IND-000264',
+        'full_name' => null,
+    ]);
+
+    expect(IndividualQuoteDayThreeFollowUp::clientWhatsappBody($quote))
+        ->toContain('¡Hola, *Cliente*!');
+});
+
+it('resuelve el correo del agente o de la agencia para el seguimiento', function (): void {
+    $agentQuote = new IndividualQuote(['agent_id' => 1]);
+    $agentQuote->setRelation('agent', new App\Models\Agent([
+        'name' => 'Juan Pérez',
+        'email' => 'agente@example.com',
+    ]));
+
+    $agencyQuote = new IndividualQuote(['agent_id' => null, 'code_agency' => 'AG-001']);
+    $agencyQuote->setRelation('agency', new App\Models\Agency([
+        'code' => 'AG-001',
+        'name_corporative' => 'Agencia Demo',
+        'email' => 'agencia@example.com',
+    ]));
+
+    expect(App\Support\IndividualQuotes\IndividualQuoteFollowUp::resolveRecipientEmails(collect([$agentQuote])))
+        ->toBe(['agente@example.com'])
+        ->and(App\Support\IndividualQuotes\IndividualQuoteFollowUp::resolveRecipientEmails(collect([$agencyQuote])))
+        ->toBe(['agencia@example.com']);
+});
+
 it('agrupa cotizaciones por agente o por agencia', function (): void {
     $agentQuote = new IndividualQuote(['agent_id' => 10, 'code_agency' => 'AG-001']);
     $agencyQuote = new IndividualQuote(['agent_id' => null, 'code_agency' => 'AG-002']);
@@ -77,17 +125,27 @@ it('programa el seguimiento de cotizaciones individuales a las 8:00am', function
         ->toContain('->when($individualQuoteFollowUpIsActive)');
 });
 
-it('envia el seguimiento al telefono del agente o de la agencia', function (): void {
+it('envia el seguimiento al telefono y correo del agente o de la agencia y al cliente', function (): void {
     $jobSource = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/SendIndividualQuoteDayThreeFollowUp.php');
     $supportSource = file_get_contents(dirname(__DIR__, 2).'/app/Support/IndividualQuotes/IndividualQuoteFollowUp.php');
 
     expect($jobSource)
         ->toContain('IndividualQuoteFollowUp::resolveRecipientPhones($quotes)')
+        ->toContain('IndividualQuoteFollowUp::resolveRecipientEmails($quotes)')
         ->toContain('IndividualQuoteFollowUpInternalCopies::dispatch')
-        ->toContain('IndividualQuoteDayThreeFollowUp::whatsappBody');
+        ->toContain('IndividualQuoteDayThreeFollowUp::whatsappBody')
+        ->toContain('IndividualQuoteDayThreeFollowUp::clientWhatsappBody')
+        ->toContain('dispatchClientFollowUpMessages')
+        ->toContain('dispatchAllyEmailMessages')
+        ->toContain('dispatchClientEmail')
+        ->toContain('IndividualQuoteFollowUpMail')
+        ->toContain('individual-quotes.day-three-follow-up.client');
 
     expect($supportSource)
         ->toContain("->where('status', self::ELIGIBLE_STATUS)")
         ->toContain('resolveAgentPhone')
-        ->toContain('resolveAgencyPhone');
+        ->toContain('resolveAgencyPhone')
+        ->toContain('resolveAgentEmail')
+        ->toContain('resolveAgencyEmail')
+        ->toContain('resolveRecipientEmails');
 });
