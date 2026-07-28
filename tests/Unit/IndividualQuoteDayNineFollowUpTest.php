@@ -8,8 +8,10 @@ use App\Support\IndividualQuotes\IndividualQuoteDayNineFollowUp;
 uses(Tests\TestCase::class);
 
 it('expone la url publica del flyer de beneficios en storage', function (): void {
+    config(['parameters.PUBLIC_URL' => 'https://example.test/storage']);
+
     expect(IndividualQuoteDayNineFollowUp::benefitsFlyerUrl())
-        ->toContain('/storage/imagenes-seguimiento-cotizaciones/flayer.pdf');
+        ->toBe('https://example.test/storage/imagenes-seguimiento-cotizaciones/flayer.pdf');
 });
 
 it('arma el mensaje de whatsapp de 9 dias con referencia al flyer de beneficios', function (): void {
@@ -49,5 +51,10 @@ it('envia el seguimiento de 9 dias en cadena con mensaje y flyer pdf', function 
         ->toContain('benefitsFlyerUrl()')
         ->toContain('flayer.pdf')
         ->toContain('IndividualQuoteFollowUp::resolveRecipientPhones($quotes)')
+        ->toContain('IndividualQuoteFollowUp::resolveRecipientEmails($quotes)')
+        ->toContain('dispatchAllyEmailMessages')
+        ->toContain('IndividualQuoteFollowUpMail')
+        ->toContain('BENEFITS_FLYER')
+        ->toContain('attachmentRelativePaths')
         ->toContain('IndividualQuoteFollowUpInternalCopies::dispatch');
 });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\IndividualQuotes;
 
+use App\Models\IndividualQuote;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -58,6 +59,20 @@ final class IndividualQuoteDayTwelveFollowUp
         ¡Hola, *{$allyName}*! 😊 Te saludamos de Tu Doctor en Casa 🩺 🏡. Para ayudarte a mantener la excelente atención con tu cliente {$clientNames}, te recordamos que su cotización vence pronto. Si requiere una propuesta más flexible o a la medida para cerrar la venta, avísame y la adaptamos de inmediato.
 
         {$footer}
+        TEXT;
+    }
+
+    /**
+     * Mensaje de seguimiento directo al cliente cotizado (día 12).
+     */
+    public static function clientWhatsappBody(IndividualQuote $quote): string
+    {
+        $clientName = filled($quote->full_name)
+            ? (string) $quote->full_name
+            : 'Cliente';
+
+        return <<<TEXT
+        ¡Hola, *{$clientName}*! 😊 Te saludamos de Tu Doctor en Casa 🩺🏡 Tu cotización vence pronto, pero tu tranquilidad es lo primero. Si necesitas ajustar el presupuesto o ver un plan a tu medida, avísame y lo agendamos hoy mismo.
         TEXT;
     }
 }

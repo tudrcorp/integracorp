@@ -640,7 +640,10 @@ class CorporateQuotesTable
 
                                 if (isset($data['email'])) {
                                     $email = $data['email'];
-                                    Mail::to($email)->send(new MailLinkIndividualQuote($link));
+                                    Mail::to($email)
+                                        ->cc('cotizacionestdg.ve@gmail.com')
+                                        ->bcc('solrodriguez@tudrencasa.com')
+                                        ->send(new MailLinkIndividualQuote($link));
 
                                     SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_EMAIL_SENT', 'business.corporate-quotes.interactive-link', [
                                         'panel' => 'business',

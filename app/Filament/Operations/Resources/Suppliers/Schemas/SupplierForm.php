@@ -100,6 +100,8 @@ class SupplierForm
                         ->placeholder('Observaciones o alcance')
                         ->hidden(fn (Get $get): bool => ! $get($toggleKey))
                         ->dehydrated()
+                        ->dehydratedWhenHidden()
+                        ->nullable()
                         ->maxLength(500),
                 ]);
         }

@@ -49,8 +49,10 @@ it('arma el mensaje de whatsapp de 5 dias con referencia al video informativo', 
 });
 
 it('expone la url publica del video de seguimiento en storage', function (): void {
+    config(['parameters.PUBLIC_URL' => 'https://example.test/storage']);
+
     expect(IndividualQuoteDayFiveFollowUp::followUpVideoUrl())
-        ->toContain('/storage/imagenes-seguimiento-cotizaciones/video-mensaje-dos.mp4');
+        ->toBe('https://example.test/storage/imagenes-seguimiento-cotizaciones/video-mensaje-dos.mp4');
 });
 
 it('programa el seguimiento de cotizaciones individuales a las 8:10am', function (): void {
@@ -70,5 +72,10 @@ it('envia el seguimiento de 5 dias en cadena con mensaje y video', function (): 
         ->toContain('SendNotificacionWhatsAppVideo')
         ->toContain('followUpVideoUrl()')
         ->toContain('IndividualQuoteFollowUp::resolveRecipientPhones($quotes)')
+        ->toContain('IndividualQuoteFollowUp::resolveRecipientEmails($quotes)')
+        ->toContain('dispatchAllyEmailMessages')
+        ->toContain('IndividualQuoteFollowUpMail')
+        ->toContain('FOLLOW_UP_VIDEO')
+        ->toContain('attachmentRelativePaths')
         ->toContain('IndividualQuoteFollowUpInternalCopies::dispatch');
 });

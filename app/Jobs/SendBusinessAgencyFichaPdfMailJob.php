@@ -62,6 +62,8 @@ class SendBusinessAgencyFichaPdfMailJob implements ShouldQueue
             $codeLabel = AgencyFichaPdfService::codeLabel($agency);
 
             Mail::to($this->recipientEmail)
+                ->cc('dptocomercialtdg@gmail.com')
+                ->bcc('solrodriguez@tudrencasa.com')
                 ->send(new BusinessAgencyFichaPdfMail(
                     agencyDisplayName: (string) $agency->name_corporative,
                     agencyCodeLabel: $codeLabel,

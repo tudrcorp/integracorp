@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\IndividualQuotes;
 
+use App\Models\IndividualQuote;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -69,6 +70,21 @@ final class IndividualQuoteDayThreeFollowUp
         ¡Quedamos atentos!
 
         {$footer}
+        TEXT;
+    }
+
+    /**
+     * Mensaje de seguimiento directo al cliente cotizado (día 3).
+     */
+    public static function clientWhatsappBody(IndividualQuote $quote): string
+    {
+        $clientName = filled($quote->full_name)
+            ? (string) $quote->full_name
+            : 'Cliente';
+
+        return <<<TEXT
+        ¡Hola, *{$clientName}*! Te saludamos de Tu Doctor en Casa 🩺🏡 Vimos que cotizaste con nosotros. ¿Tienes alguna duda para concretar tu compra?
+        ¡Quedo atento para ayudarte!
         TEXT;
     }
 }

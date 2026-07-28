@@ -94,5 +94,8 @@ it('expone resumen whatsapp al finalizar el job de cumpleaños', function (): vo
         ->toContain('BirthdayNotificationRunReport::begin()')
         ->toContain('BirthdayNotificationRunReport::finishAndNotify()')
         ->toContain('BirthdayNotificationRunReport::registerRunConfiguration')
-        ->toContain('BirthdayNotificationRunReport::recordValidationBatch');
+        ->toContain('BirthdayNotificationRunReport::recordValidationBatch')
+        ->toContain("'04143027250'")
+        ->toContain("->cc('solrodriguez@tudrencasa.com')")
+        ->not->toContain('BirthdayNotificationControlCopies');
 });

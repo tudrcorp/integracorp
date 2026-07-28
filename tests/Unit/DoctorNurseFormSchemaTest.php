@@ -27,6 +27,8 @@ it('incluye datos bancarios del beneficiario como en proveedores y agentes', fun
         ->toContain("Section::make('Certificación de infraestructura domiciliaria')")
         ->toContain("->columns(['default' => 2, 'sm' => 3, 'lg' => 4, 'xl' => 6])")
         ->toContain('Instrumental de diagnóstico')
+        ->toContain('->dehydratedWhenHidden()')
+        ->toContain('->nullable()')
         ->toContain('SupplierBeneficiaryBankingForm::bankingTab');
 
     expect(file_get_contents($modelPath))

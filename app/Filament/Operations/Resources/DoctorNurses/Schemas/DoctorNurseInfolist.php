@@ -72,9 +72,13 @@ class DoctorNurseInfolist
         return (string) preg_replace('/^equip_/', 'equip_desc_', $key);
     }
 
-    private static function homeCareEquipmentDescription(DoctorNurse $record, string $field): ?string
+    private static function homeCareEquipmentDescription(DoctorNurse $record, string $booleanField, string $descriptionField): ?string
     {
-        $text = trim((string) ($record->{$field} ?? ''));
+        if (! filter_var($record->{$booleanField} ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            return null;
+        }
+
+        $text = trim((string) ($record->{$descriptionField} ?? ''));
 
         return $text !== '' ? 'Descripción: '.$text : null;
     }
@@ -101,7 +105,7 @@ class DoctorNurseInfolist
                 ->default(false)
                 ->getStateUsing(fn (?DoctorNurse $record): bool => (bool) ($record?->{$fieldKey} ?? false))
                 ->helperText(fn (?DoctorNurse $record): ?string => $record
-                    ? self::homeCareEquipmentDescription($record, $descriptionField)
+                    ? self::homeCareEquipmentDescription($record, $fieldKey, $descriptionField)
                     : null);
         }
 

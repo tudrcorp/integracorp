@@ -20,8 +20,11 @@ uses(Tests\TestCase::class);
 
 beforeEach(function (): void {
     config([
+        'cache.default' => 'array',
         'database.default' => 'sqlite',
         'database.connections.sqlite.database' => ':memory:',
+        'mass-notifications.whatsapp_throttle_seconds' => 0,
+        'mass-notifications.whatsapp_lock_wait_seconds' => 0,
     ]);
 
     DB::purge('sqlite');

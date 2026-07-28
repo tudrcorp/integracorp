@@ -18,7 +18,9 @@ it('CreateAgent provisiona usuario con clave por defecto e is_agent', function (
         ->toContain("'12345678'");
 });
 
-it('el job de carta de bienvenida envía copia oculta a solrodriguez', function (): void {
+it('el job de carta de bienvenida envía copia a comercial y copia oculta a solrodriguez', function (): void {
     $job = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/SendCartaBienvenidaAgenteAgencia.php');
-    expect($job)->toContain("->bcc('solrodriguez@tudrencasa.com')");
+    expect($job)
+        ->toContain("->cc('dptocomercialtdg@gmail.com')")
+        ->toContain("->bcc('solrodriguez@tudrencasa.com')");
 });

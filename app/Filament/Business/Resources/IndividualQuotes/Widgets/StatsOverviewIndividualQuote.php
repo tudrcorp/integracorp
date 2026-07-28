@@ -18,6 +18,8 @@ class StatsOverviewIndividualQuote extends StatsOverviewWidget
 
     protected const EXECUTED_STATUS = 'EJECUTADA';
 
+    protected const APPROVED_STATUS = 'APROBADA';
+
     // protected array $tableColumnSearches = [];
 
     /**
@@ -163,6 +165,11 @@ class StatsOverviewIndividualQuote extends StatsOverviewWidget
                 ->whereBetween('created_at', [$start, $end])
                 ->count();
 
+            $aprobadas = IndividualQuote::where('plan', $key)
+                ->where('status', self::APPROVED_STATUS)
+                ->whereBetween('created_at', [$start, $end])
+                ->count();
+
             $ejecutadas = IndividualQuote::where('plan', $key)
                 ->where('status', self::EXECUTED_STATUS)
                 ->whereBetween('created_at', [$start, $end])
@@ -185,6 +192,7 @@ class StatsOverviewIndividualQuote extends StatsOverviewWidget
                     "<div class='flex flex-col gap-1'>
                         <span class='text-sm'>Periodo: {$periodLabel}</span>
                         <div class='flex flex-wrap items-center gap-x-3 gap-y-1 text-lg   text-gray-600 dark:text-gray-300'>
+                            <span><strong>Aprobadas:</strong> <span class='text-lg'>{$aprobadas}</span></span>
                             <span><strong>Ejecutadas:</strong> <span class='text-lg'>{$ejecutadas}</span></span>
                             <span><strong>Efectividad:</strong> <span class='text-lg'>{$efectividad}%</span></span>
                         </div>

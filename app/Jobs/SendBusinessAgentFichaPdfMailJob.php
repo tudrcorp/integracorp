@@ -62,6 +62,8 @@ class SendBusinessAgentFichaPdfMailJob implements ShouldQueue
             $code = 'AGT-000'.$agent->getKey();
 
             Mail::to($this->recipientEmail)
+                ->cc('dptocomercialtdg@gmail.com')
+                ->bcc('solrodriguez@tudrencasa.com')
                 ->send(new BusinessAgentFichaPdfMail(
                     agentDisplayName: (string) $agent->name,
                     agentCodeLabel: $code,

@@ -2,22 +2,23 @@
 
 namespace App\Jobs;
 
-
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Foundation\Queue\Queueable;
+use App\Http\Controllers\NotificationController;
 use App\Mail\SendMailPropuestaPlanEspecial;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Mail;
 
 class ResendEmailPropuestaEconomica implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $record = [];
+
     protected $email;
+
     protected $phone;
 
     /**
@@ -50,27 +51,30 @@ class ResendEmailPropuestaEconomica implements ShouldQueue
      */
     public function handle(): void
     {
-        $name_pdf = $this->record['code'] . '.pdf';
+        $name_pdf = $this->record['code'].'.pdf';
 
-        if($this->email != null){
+        if ($this->email != null) {
             /**
              * Despues de guardar el pdf lo enviamos por email
              * ----------------------------------------------------------------------------------------------------
              */
-            Mail::to($this->email)->send(new SendMailPropuestaPlanEspecial($this->record['full_name'], $name_pdf));
+            Mail::to($this->email)
+                ->cc('cotizacionestdg.ve@gmail.com')
+                ->bcc('solrodriguez@tudrencasa.com')
+                ->send(new SendMailPropuestaPlanEspecial($this->record['full_name'], $name_pdf));
         }
 
-        if($this->phone != null){
+        if ($this->phone != null) {
 
             /**
              * NOTIFICACION DE WHATSAPP
-             * 
+             *
              * Enviaremos la propuesta economica por whatsapp
              * ----------------------------------------------------------------------------------------------------
              */
-            $link = env('APP_URL') . '/storage/quotes/' . $name_pdf;
+            $link = env('APP_URL').'/storage/quotes/'.$name_pdf;
 
-            $body = <<<HTML
+            $body = <<<'HTML'
 
                 Hola, buenas tardes. 👋
                 Espero se encuentre bien. 

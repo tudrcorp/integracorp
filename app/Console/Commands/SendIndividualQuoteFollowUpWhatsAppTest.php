@@ -89,6 +89,26 @@ class SendIndividualQuoteFollowUpWhatsAppTest extends Command
             $this->line($body);
             $this->newLine();
 
+            if ($followUpDays === 3) {
+                $this->info('Mensajes a clientes cotizados:');
+                foreach ($quotes as $quote) {
+                    $this->line(str_repeat('·', 40));
+                    $this->comment('Cliente: '.(string) ($quote->full_name ?: 'Cliente').' | Tel: '.(string) ($quote->phone ?: 'sin teléfono'));
+                    $this->line(IndividualQuoteDayThreeFollowUp::clientWhatsappBody($quote));
+                    $this->newLine();
+                }
+            }
+
+            if ($followUpDays === 12) {
+                $this->info('Mensajes a clientes cotizados:');
+                foreach ($quotes as $quote) {
+                    $this->line(str_repeat('·', 40));
+                    $this->comment('Cliente: '.(string) ($quote->full_name ?: 'Cliente').' | Tel: '.(string) ($quote->phone ?: 'sin teléfono'));
+                    $this->line(IndividualQuoteDayTwelveFollowUp::clientWhatsappBody($quote));
+                    $this->newLine();
+                }
+            }
+
             if ($followUpDays === 5) {
                 $this->comment('Video: '.IndividualQuoteDayFiveFollowUp::followUpVideoUrl());
                 $this->newLine();
