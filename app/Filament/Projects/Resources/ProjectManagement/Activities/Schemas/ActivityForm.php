@@ -11,6 +11,7 @@ use App\Models\ProjectManagement\Sprint;
 use App\Support\Filament\ProjectManagement\ProjectManagementActivityAppearance;
 use App\Support\Filament\ProjectManagement\ProjectManagementCollaboratorSelect;
 use App\Support\Filament\ProjectManagement\ProjectManagementFilamentSchemas;
+use App\Support\ProjectManagement\InProgressHelpDeskOptions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
@@ -157,6 +158,16 @@ class ActivityForm
                                 })
                                 ->searchable()
                                 ->preload(),
+                            Select::make('help_desk_id')
+                                ->label('Ticket')
+                                ->prefixIcon('heroicon-m-ticket')
+                                ->helperText('Escribe el ID o parte de la descripción. Solo tickets EN PROCESO.')
+                                ->searchable()
+                                ->getSearchResultsUsing(fn (string $search): array => InProgressHelpDeskOptions::search($search))
+                                ->getOptionLabelUsing(fn ($value): ?string => filled($value)
+                                    ? InProgressHelpDeskOptions::labelForId((int) $value)
+                                    : null)
+                                ->columnSpanFull(),
                             TextInput::make('story_points')
                                 ->label('Story points')
                                 ->prefixIcon('heroicon-m-hashtag')
