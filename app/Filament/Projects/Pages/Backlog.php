@@ -12,6 +12,8 @@ use App\Models\ProjectManagement\Project;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\ProjectManagement\ProjectManagementActivityAppearance;
 use App\Support\ProjectManagement\BacklogOrdering;
+use App\Support\ProjectManagement\InProgressHelpDeskOptions;
+use App\Support\ProjectManagement\ToBacklogSession;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -49,7 +51,7 @@ class Backlog extends Page implements HasTable
             ->query(
                 Activity::query()
                     ->whereNull('sprint_id')
-                    ->with(['project:id,name', 'epic:id,name'])
+                    ->with(['project:id,name', 'epic:id,name', 'helpDesk:id,description'])
                     ->orderByRaw('CASE WHEN backlog_order IS NULL THEN 1 ELSE 0 END')
                     ->orderBy('backlog_order')
                     ->orderByDesc('priority'),
@@ -83,6 +85,20 @@ class Backlog extends Page implements HasTable
                     ->badge()
                     ->color('primary')
                     ->placeholder('—'),
+                TextColumn::make('helpDesk.id')
+                    ->label('Ticket')
+                    ->badge()
+                    ->color('gray')
+                    ->formatStateUsing(function (?int $state, Activity $record): string {
+                        if ($record->helpDesk === null) {
+                            return '—';
+                        }
+
+                        return InProgressHelpDeskOptions::label($record->helpDesk);
+                    })
+                    ->placeholder('—')
+                    ->wrap()
+                    ->toggleable(),
                 TextColumn::make('story_points')
                     ->label('Pts')
                     ->badge()
@@ -190,6 +206,12 @@ class Backlog extends Page implements HasTable
                         ->numeric()
                         ->minValue(0)
                         ->maxValue(100),
+                    Select::make('help_desk_id')
+                        ->label('Ticket')
+                        ->helperText('Lista de tickets preparados con «Para BackLog» (solo EN PROCESO). Al asociarlo se elimina de esa lista.')
+                        ->options(fn (): array => ToBacklogSession::options())
+                        ->searchable()
+                        ->preload(),
                     Select::make('priority')
                         ->label('Prioridad')
                         ->options([
@@ -204,9 +226,12 @@ class Backlog extends Page implements HasTable
                         ->rows(4),
                 ])
                 ->action(function (array $data): void {
+                    $helpDeskId = filled($data['help_desk_id'] ?? null) ? (int) $data['help_desk_id'] : null;
+
                     Activity::query()->create([
                         'project_id' => $data['project_id'],
                         'epic_id' => $data['epic_id'] ?? null,
+                        'help_desk_id' => $helpDeskId,
                         'title' => $data['title'],
                         'story_points' => $data['story_points'] ?? null,
                         'priority' => $data['priority'] ?? 'medium',
@@ -218,6 +243,10 @@ class Backlog extends Page implements HasTable
                         'executor_type' => null,
                         'executor_id' => null,
                     ]);
+
+                    if ($helpDeskId !== null) {
+                        ToBacklogSession::remove($helpDeskId);
+                    }
 
                     Notification::make()
                         ->title('Historia creada en el backlog')

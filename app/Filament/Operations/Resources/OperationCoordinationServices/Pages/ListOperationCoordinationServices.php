@@ -154,7 +154,7 @@ class ListOperationCoordinationServices extends ListRecords
             ->livewireProperty('activeTab')
             ->contained(false)
             ->extraAttributes([
-                'class' => 'fi-supplier-convenio-tabs-ios fi-supplier-status-tabs-ios',
+                'class' => 'fi-status-filter-tabs-ios fi-supplier-status-tabs-ios',
             ])
             ->tabs($tabs)
             ->hidden(empty($tabs));

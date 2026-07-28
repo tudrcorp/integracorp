@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Http\Controllers\HelpdeskExportCsvController;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
+use App\Support\ProjectManagement\ToBacklogSession;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -80,6 +81,48 @@ final class HelpdeskTableConfigurator
             ))
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('toBacklog')
+                        ->label('Para BackLog')
+                        ->icon('heroicon-o-queue-list')
+                        ->color('primary')
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records): void {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos un ticket')
+                                    ->body('Marca tickets en estatus EN PROCESO para enviarlos al backlog.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $result = ToBacklogSession::addFromRecords($records);
+
+                            if ($result['added'] === 0) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Ningún ticket agregado')
+                                    ->body('Solo se pueden agregar tickets en estatus EN PROCESO.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $body = $result['added'] === 1
+                                ? '1 ticket listo para asociar en el Backlog.'
+                                : $result['added'].' tickets listos para asociar en el Backlog.';
+
+                            if ($result['skipped'] > 0) {
+                                $body .= ' Se omitieron '.$result['skipped'].' por no estar EN PROCESO.';
+                            }
+
+                            Notification::make()
+                                ->success()
+                                ->title('Tickets preparados para BackLog')
+                                ->body($body)
+                                ->send();
+                        }),
                     BulkAction::make('exportCsvController')
                         ->label('Exportar CSV')
                         ->icon('heroicon-o-arrow-down-tray')

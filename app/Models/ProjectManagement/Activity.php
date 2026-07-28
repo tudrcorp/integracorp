@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\ProjectManagement;
 
+use App\Models\HelpDesk;
 use App\Models\ProjectManagement\Concerns\InteractsWithProjectManagementDocuments;
 use App\Models\ProjectManagement\Concerns\InteractsWithProjectManagementNotes;
 use App\Models\ProjectManagement\Concerns\TracksActivityScrumMetrics;
@@ -24,6 +25,7 @@ class Activity extends Model
         'subproject_id',
         'epic_id',
         'sprint_id',
+        'help_desk_id',
         'title',
         'description',
         'acceptance_criteria',
@@ -81,6 +83,11 @@ class Activity extends Model
     public function sprint(): BelongsTo
     {
         return $this->belongsTo(Sprint::class, 'sprint_id');
+    }
+
+    public function helpDesk(): BelongsTo
+    {
+        return $this->belongsTo(HelpDesk::class, 'help_desk_id');
     }
 
     public function executor(): MorphTo

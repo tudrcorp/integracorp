@@ -237,17 +237,18 @@
   }
 }
 
-/* Pestañas tipo control segmentado iOS: filtro por tipo de convenio en lista de proveedores */
+/* Pestañas tipo control segmentado iOS: filtros de lista (convenio, estado, etc.) */
 @layer components {
-  .fi-supplier-convenio-tabs-ios.fi-sc-tabs {
+  .fi-supplier-convenio-tabs-ios.fi-sc-tabs,
+  .fi-status-filter-tabs-ios.fi-sc-tabs {
     @apply mb-5 w-full;
     display: flex;
     flex-direction: column;
     gap: 0.625rem;
   }
 
-  .fi-supplier-convenio-tabs-ios.fi-sc-tabs::before {
-    content: 'Tipo de convenio';
+  .fi-supplier-convenio-tabs-ios.fi-sc-tabs::before,
+  .fi-status-filter-tabs-ios.fi-sc-tabs::before {
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -255,7 +256,16 @@
     color: rgb(113 113 122);
   }
 
-  .dark .fi-supplier-convenio-tabs-ios.fi-sc-tabs::before {
+  .fi-supplier-convenio-tabs-ios.fi-sc-tabs::before {
+    content: 'Tipo de convenio';
+  }
+
+  .fi-status-filter-tabs-ios.fi-sc-tabs::before {
+    content: 'Estado';
+  }
+
+  .dark .fi-supplier-convenio-tabs-ios.fi-sc-tabs::before,
+  .dark .fi-status-filter-tabs-ios.fi-sc-tabs::before {
     color: rgb(161 161 170);
   }
 
@@ -264,6 +274,7 @@
   }
 
   .fi-supplier-convenio-tabs-ios nav.fi-tabs,
+  .fi-status-filter-tabs-ios nav.fi-tabs,
   .fi-supplier-status-tabs-ios nav.fi-tabs {
     display: flex;
     flex-wrap: wrap;
@@ -281,12 +292,42 @@
   }
 
   .dark .fi-supplier-convenio-tabs-ios nav.fi-tabs,
+  .dark .fi-status-filter-tabs-ios nav.fi-tabs,
   .dark .fi-supplier-status-tabs-ios nav.fi-tabs {
     background: color-mix(in oklab, #ffffff 10%, transparent);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
       inset 0 -1px 0 rgba(0, 0, 0, 0.35),
       0 1px 3px rgba(0, 0, 0, 0.25);
+  }
+
+  /**
+   * Mobile: una sola fila con scroll horizontal (evita el “blob” de wrap
+   * dentro de la píldora con border-radius 9999px).
+   */
+  @media (max-width: 767px) {
+    .fi-supplier-convenio-tabs-ios nav.fi-tabs,
+    .fi-status-filter-tabs-ios nav.fi-tabs,
+    .fi-supplier-status-tabs-ios nav.fi-tabs {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+      max-width: 100%;
+    }
+
+    .fi-supplier-convenio-tabs-ios nav.fi-tabs::-webkit-scrollbar,
+    .fi-status-filter-tabs-ios nav.fi-tabs::-webkit-scrollbar,
+    .fi-supplier-status-tabs-ios nav.fi-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .fi-supplier-status-tabs-ios .fi-tabs-item.fi-supplier-status-tab-pill {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
   }
 
   .fi-supplier-status-tabs-ios .fi-tabs-item.fi-supplier-status-tab-pill {
@@ -336,7 +377,8 @@
     will-change: transform, opacity;
   }
 
-  .fi-supplier-convenio-tabs-ios .fi-tabs-item.fi-supplier-status-tab-pill.fi-active {
+  .fi-supplier-convenio-tabs-ios .fi-tabs-item.fi-supplier-status-tab-pill.fi-active,
+  .fi-status-filter-tabs-ios .fi-tabs-item.fi-supplier-status-tab-pill.fi-active {
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.9),
       0 2px 8px rgba(45, 137, 202, 0.2),
@@ -372,7 +414,8 @@
     }
   }
 
-  .dark .fi-supplier-convenio-tabs-ios .fi-tabs-item.fi-supplier-status-tab-pill.fi-active {
+  .dark .fi-supplier-convenio-tabs-ios .fi-tabs-item.fi-supplier-status-tab-pill.fi-active,
+  .dark .fi-status-filter-tabs-ios .fi-tabs-item.fi-supplier-status-tab-pill.fi-active {
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.12),
       0 6px 22px rgba(0, 0, 0, 0.55),
@@ -8194,6 +8237,1488 @@
     background: color-mix(in oklch, white 8%, transparent);
     color: color-mix(in oklch, #bae6fd 88%, white);
     box-shadow: inset 0 1px 0 color-mix(in oklch, white 10%, transparent);
+  }
+
+  /* ── Panel Métricas/KPI · Liquid Glass 2026 ── */
+  .fi-panel-metrics {
+    --metrics-glass-sat: 200%;
+    --metrics-glass-blur: 28px;
+    --metrics-bg-light:
+      radial-gradient(110% 75% at 6% -8%, color-mix(in oklch, #2dd4bf 24%, transparent), transparent 58%),
+      radial-gradient(90% 65% at 96% -4%, color-mix(in oklch, #38bdf8 18%, transparent), transparent 52%),
+      radial-gradient(90% 70% at 92% 110%, color-mix(in oklch, #818cf8 14%, transparent), transparent 50%),
+      linear-gradient(165deg, #f0fdfa 0%, #eef2ff 45%, #f8fafc 100%);
+    --metrics-bg-dark:
+      radial-gradient(110% 75% at 6% -8%, color-mix(in oklch, #0f766e 30%, transparent), transparent 58%),
+      radial-gradient(90% 65% at 96% -4%, color-mix(in oklch, #0369a1 24%, transparent), transparent 52%),
+      radial-gradient(90% 70% at 92% 110%, color-mix(in oklch, #1e3a8a 18%, transparent), transparent 50%),
+      linear-gradient(165deg, #020617 0%, #0f172a 55%, #042f2e 100%);
+  }
+
+  /*
+    Un solo lienzo de fondo (viewport-fixed) evita la franja vertical:
+    fi-main + fi-main-ctn con el mismo radial en cajas distintas se desalineaban.
+  */
+  .fi-body.fi-panel-metrics,
+  .fi-panel-metrics .fi-layout,
+  .fi-panel-metrics .fi-main-ctn {
+    background-color: #f8fafc;
+    background-image: var(--metrics-bg-light);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+
+  .dark .fi-body.fi-panel-metrics,
+  .dark .fi-panel-metrics .fi-layout,
+  .dark .fi-panel-metrics .fi-main-ctn {
+    background-color: #020617;
+    background-image: var(--metrics-bg-dark);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+
+  .fi-panel-metrics .fi-main,
+  .fi-panel-metrics .fi-page,
+  .fi-panel-metrics .fi-page-header-main-ctn,
+  .fi-panel-metrics .fi-page-main,
+  .fi-panel-metrics .fi-page-content {
+    background: transparent !important;
+    background-image: none !important;
+  }
+
+  .fi-panel-metrics .fi-main-ctn {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .fi-panel-metrics .fi-sidebar {
+    border-right: 1px solid color-mix(in oklch, white 45%, transparent);
+    background-color: color-mix(in oklch, white 22%, transparent);
+    backdrop-filter: blur(var(--metrics-glass-blur)) saturate(var(--metrics-glass-sat));
+    -webkit-backdrop-filter: blur(var(--metrics-glass-blur)) saturate(var(--metrics-glass-sat));
+    box-shadow:
+      inset 1px 0 0 color-mix(in oklch, white 55%, transparent),
+      18px 0 48px -18px color-mix(in oklch, black 10%, transparent);
+  }
+
+  .dark .fi-panel-metrics .fi-sidebar {
+    border-right-color: color-mix(in oklch, white 10%, transparent);
+    background-color: color-mix(in oklch, #0f172a 55%, transparent);
+    box-shadow:
+      inset 1px 0 0 color-mix(in oklch, white 8%, transparent),
+      18px 0 48px -18px color-mix(in oklch, black 45%, transparent);
+  }
+
+  .fi-panel-metrics .fi-sidebar-item-btn,
+  .fi-panel-metrics .fi-sidebar-group-btn {
+    border-radius: 0.9rem;
+    transition:
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .fi-panel-metrics .fi-sidebar-item-btn:active,
+  .fi-panel-metrics .fi-sidebar-group-btn:active {
+    transform: scale(0.98);
+  }
+
+  .fi-panel-metrics .fi-sidebar-item-btn:hover,
+  .fi-panel-metrics .fi-sidebar-group-btn:hover {
+    background-color: color-mix(in oklch, white 42%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 70%, transparent),
+      0 8px 24px -12px color-mix(in oklch, #0f766e 28%, transparent);
+  }
+
+  .dark .fi-panel-metrics .fi-sidebar-item-btn:hover,
+  .dark .fi-panel-metrics .fi-sidebar-group-btn:hover {
+    background-color: color-mix(in oklch, white 8%, transparent);
+  }
+
+  .fi-metrics-module {
+    @apply w-full max-w-full;
+  }
+
+  .fi-metrics-module__eyebrow {
+    @apply text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-teal-700/80 dark:text-teal-200/80;
+  }
+
+  .fi-metrics-module__title {
+    @apply mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl;
+  }
+
+  .fi-metrics-module__subtitle {
+    @apply mt-2 max-w-2xl text-sm leading-relaxed text-slate-700 dark:text-slate-300;
+  }
+
+  .fi-metrics-module__grid {
+    @apply mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3;
+  }
+
+  .fi-metrics-liquid-kpi {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    border: 1px solid color-mix(in oklch, white 55%, transparent);
+    background-color: color-mix(in oklch, white 28%, transparent);
+    backdrop-filter: blur(18px) saturate(190%);
+    -webkit-backdrop-filter: blur(18px) saturate(190%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 70%, transparent),
+      0 16px 40px -18px color-mix(in oklch, black 12%, transparent);
+    @apply p-4 transition-transform duration-200 ease-out;
+  }
+
+  .fi-metrics-liquid-kpi:hover {
+    transform: translateY(-2px) scale(1.01);
+  }
+
+  .fi-metrics-liquid-kpi:active {
+    transform: scale(0.98);
+  }
+
+  .dark .fi-metrics-liquid-kpi {
+    border-color: color-mix(in oklch, white 10%, transparent);
+    background-color: color-mix(in oklch, white 6%, transparent);
+  }
+
+  .fi-metrics-liquid-kpi__label {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-metrics-liquid-kpi__value {
+    @apply mt-2 block text-xl font-semibold tracking-tight text-slate-950 dark:text-white;
+  }
+
+  .fi-metrics-liquid-kpi__hint {
+    @apply mt-1 block text-xs leading-relaxed text-slate-600 dark:text-slate-300;
+  }
+
+  /* Subnavegación Corretaje/Viajes → tabs Liquid Glass */
+  .fi-panel-metrics .fi-page-sub-navigation-tabs {
+    --metrics-tab-accent: #2dd4bf;
+    gap: 0.4rem;
+    width: fit-content;
+    max-width: 100%;
+    padding: 0.35rem;
+    border-radius: 1.15rem;
+    border: 1px solid color-mix(in oklch, white 14%, transparent);
+    background-color: color-mix(in oklch, #020617 42%, transparent);
+    backdrop-filter: blur(22px) saturate(190%);
+    -webkit-backdrop-filter: blur(22px) saturate(190%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 12%, transparent),
+      0 14px 36px -18px color-mix(in oklch, black 45%, transparent);
+  }
+
+  .fi-panel-metrics .fi-page-sub-navigation-tabs.fi-tabs,
+  .fi-panel-metrics .fi-page-sub-navigation-tabs {
+    @apply mb-4;
+  }
+
+  .fi-panel-metrics .fi-page-sub-navigation-tabs .fi-tabs-item {
+    border-radius: 0.9rem;
+    border: 1px solid transparent;
+    background: transparent;
+    color: color-mix(in oklch, white 78%, transparent);
+    box-shadow: none;
+    transition:
+      transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 160ms ease,
+      color 160ms ease,
+      box-shadow 160ms ease,
+      border-color 160ms ease;
+  }
+
+  .fi-panel-metrics .fi-page-sub-navigation-tabs .fi-tabs-item:hover {
+    background-color: color-mix(in oklch, white 8%, transparent);
+    color: white;
+  }
+
+  .fi-panel-metrics .fi-page-sub-navigation-tabs .fi-tabs-item:active {
+    transform: scale(0.98);
+  }
+
+  .fi-panel-metrics .fi-page-sub-navigation-tabs .fi-tabs-item.fi-active,
+  .fi-panel-metrics .fi-page-sub-navigation-tabs .fi-tabs-item[aria-selected='true'],
+  .fi-panel-metrics .fi-page-sub-navigation-tabs .fi-tabs-item[data-active='true'] {
+    border-color: color-mix(in oklch, var(--metrics-tab-accent) 28%, transparent);
+    background-color: color-mix(in oklch, #0f172a 72%, transparent);
+    color: var(--metrics-tab-accent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 10%, transparent),
+      0 0 0 1px color-mix(in oklch, var(--metrics-tab-accent) 12%, transparent),
+      0 10px 28px -14px color-mix(in oklch, var(--metrics-tab-accent) 45%, transparent);
+  }
+
+  .fi-panel-metrics .fi-page-sub-navigation-tabs .fi-tabs-item.fi-active .fi-icon,
+  .fi-panel-metrics .fi-page-sub-navigation-tabs .fi-tabs-item[aria-selected='true'] .fi-icon,
+  .fi-panel-metrics .fi-page-sub-navigation-tabs .fi-tabs-item[data-active='true'] .fi-icon {
+    color: var(--metrics-tab-accent);
+  }
+
+  .fi-panel-metrics .fi-page-sub-navigation-tabs .fi-tabs-item .fi-icon {
+    color: inherit;
+  }
+
+  .fi-panel-metrics .fi-page-sub-navigation-tabs.fi-metrics-subnav-tabs,
+  .fi-panel-metrics .fi-metrics-subnav-tabs {
+    border-radius: 1.15rem;
+  }
+
+  .fi-panel-metrics .fi-metrics-corretaje-agents-stats,
+  .fi-panel-metrics .fi-ios-liquid-glass-stats-overview-agent {
+    @apply mb-2;
+  }
+
+  .fi-panel-metrics .fi-metrics-corretaje-agent-stat--teal .fi-wi-stats-overview-stat-value {
+    color: #0f766e;
+  }
+
+  .fi-panel-metrics .fi-metrics-corretaje-agent-stat--emerald .fi-wi-stats-overview-stat-value {
+    color: #059669;
+  }
+
+  .fi-panel-metrics .fi-metrics-corretaje-agent-stat--sky .fi-wi-stats-overview-stat-value {
+    color: #0284c7;
+  }
+
+  .fi-panel-metrics .fi-metrics-corretaje-agent-stat--violet .fi-wi-stats-overview-stat-value {
+    color: #7c3aed;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-corretaje-agent-stat--teal .fi-wi-stats-overview-stat-value {
+    color: #5eead4;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-corretaje-agent-stat--emerald .fi-wi-stats-overview-stat-value {
+    color: #6ee7b7;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-corretaje-agent-stat--sky .fi-wi-stats-overview-stat-value {
+    color: #7dd3fc;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-corretaje-agent-stat--violet .fi-wi-stats-overview-stat-value {
+    color: #c4b5fd;
+  }
+
+  /* Corretaje · Agentes — gráfico por estado (horizontal + Liquid Glass) */
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart,
+  .fi-panel-metrics .fi-metrics-agents-by-affiliations-chart,
+  .fi-panel-metrics .fi-metrics-agents-by-state-radar-chart,
+  .fi-panel-metrics .fi-metrics-agencies-by-affiliation-amount-chart,
+  .fi-panel-metrics .fi-metrics-agencies-by-state-chart {
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "SF Pro Display",
+      "Segoe UI",
+      system-ui,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    @apply mt-3 tracking-[-0.015em];
+    content-visibility: auto;
+    contain: layout style paint;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__canvas-el,
+  .fi-panel-metrics .fi-metrics-registration-mom__chart-el {
+    animation: fi-metrics-chart-reveal 280ms ease-out both;
+    will-change: opacity, transform;
+  }
+
+  @keyframes fi-metrics-chart-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Skeleton de carga lazy para gráficos Metrics */
+  .fi-panel-metrics .fi-metrics-chart-loading {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 1.4rem;
+    border: 1px solid color-mix(in oklch, white 58%, transparent);
+    background-color: color-mix(in oklch, white 24%, transparent);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 78%, transparent),
+      0 10px 36px -16px color-mix(in oklch, #0f766e 18%, transparent);
+    @apply mt-3;
+    content-visibility: auto;
+    contain: layout style paint;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__shell {
+    @apply flex h-full flex-col gap-4 px-4 py-4 sm:px-5 sm:py-5;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__header {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__eyebrow {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-teal-700/75 dark:text-teal-300/75;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__title {
+    @apply mt-0.5 text-sm font-semibold tracking-tight text-gray-800 dark:text-gray-100 sm:text-base;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__line {
+    display: block;
+    height: 0.55rem;
+    margin-top: 0.55rem;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklch, #94a3b8 22%, transparent) 0%,
+      color-mix(in oklch, #cbd5e1 42%, transparent) 45%,
+      color-mix(in oklch, #94a3b8 22%, transparent) 100%
+    );
+    background-size: 200% 100%;
+    animation: fi-metrics-shimmer 1.25s linear infinite;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__line--wide {
+    width: min(14rem, 70%);
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__chips {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__chip {
+    width: 4.5rem;
+    height: 2rem;
+    border-radius: 999px;
+    background: color-mix(in oklch, white 55%, transparent);
+    border: 1px solid color-mix(in oklch, white 45%, transparent);
+    animation: fi-metrics-pulse 1.4s ease-in-out infinite;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__chip--accent {
+    width: 5.5rem;
+    animation-delay: 120ms;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__canvas {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 12rem;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in oklch, white 42%, transparent);
+    background: color-mix(in oklch, white 35%, transparent);
+    overflow: hidden;
+    @apply px-3 pb-2 pt-4;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__bars {
+    @apply relative z-[1] flex h-full items-end justify-between gap-2;
+    min-height: 10.5rem;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__bar {
+    flex: 1 1 0;
+    height: var(--fi-metrics-bar-h, 50%);
+    max-width: 2.4rem;
+    border-radius: 0.65rem 0.65rem 0.15rem 0.15rem;
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklch, #2dd4bf 72%, transparent) 0%,
+      color-mix(in oklch, #0f766e 55%, transparent) 100%
+    );
+    transform-origin: bottom center;
+    animation: fi-metrics-bar-bounce 1.15s ease-in-out infinite;
+    animation-delay: var(--fi-metrics-bar-delay, 0ms);
+    opacity: 0.78;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__pulse {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 30%,
+      color-mix(in oklch, white 42%, transparent) 48%,
+      transparent 66%
+    );
+    background-size: 220% 100%;
+    animation: fi-metrics-shimmer 1.4s linear infinite;
+    pointer-events: none;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__hint {
+    @apply inline-flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-chart-loading__spinner {
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 999px;
+    border: 2px solid color-mix(in oklch, #14b8a6 28%, transparent);
+    border-top-color: #0d9488;
+    animation: fi-metrics-spin 0.75s linear infinite;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-chart-loading {
+    border-color: color-mix(in oklch, white 12%, transparent);
+    background-color: color-mix(in oklch, #0f172a 58%, transparent);
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-chart-loading__canvas {
+    border-color: color-mix(in oklch, white 10%, transparent);
+    background: color-mix(in oklch, #020617 45%, transparent);
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-chart-loading__chip {
+    background: color-mix(in oklch, #0f172a 70%, transparent);
+    border-color: color-mix(in oklch, white 10%, transparent);
+  }
+
+  @keyframes fi-metrics-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  @keyframes fi-metrics-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fi-metrics-bar-bounce {
+    0%,
+    100% {
+      transform: scaleY(0.72);
+      opacity: 0.55;
+    }
+    50% {
+      transform: scaleY(1);
+      opacity: 0.95;
+    }
+  }
+
+  @keyframes fi-metrics-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fi-panel-metrics .fi-metrics-chart-loading__bar,
+    .fi-panel-metrics .fi-metrics-chart-loading__chip,
+    .fi-panel-metrics .fi-metrics-chart-loading__line,
+    .fi-panel-metrics .fi-metrics-chart-loading__pulse,
+    .fi-panel-metrics .fi-metrics-chart-loading__spinner,
+    .fi-panel-metrics .fi-metrics-agents-by-state-chart__canvas-el,
+    .fi-panel-metrics .fi-metrics-registration-mom__chart-el {
+      animation: none !important;
+    }
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-radar-chart__canvas,
+  .fi-panel-metrics .fi-metrics-agents-sales-by-state-radar-chart__canvas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-sales-by-state-radar-chart {
+    @apply mt-3;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart .fi-section {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 1.4rem;
+    border: 1px solid color-mix(in oklch, white 58%, transparent);
+    background-color: color-mix(in oklch, white 24%, transparent);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 78%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 4%, transparent),
+      0 10px 36px -16px color-mix(in oklch, #0f766e 22%, transparent),
+      0 22px 56px -20px color-mix(in oklch, black 12%, transparent);
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart .fi-section::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(110% 80% at 6% -20%, color-mix(in oklch, #2dd4bf 34%, transparent), transparent 58%),
+      radial-gradient(90% 70% at 96% 110%, color-mix(in oklch, #38bdf8 26%, transparent), transparent 55%),
+      linear-gradient(
+        165deg,
+        color-mix(in oklch, white 40%, transparent) 0%,
+        color-mix(in oklch, white 8%, transparent) 52%,
+        color-mix(in oklch, #99f6e4 10%, transparent) 100%
+      );
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart .fi-section-header,
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart .fi-section-content-ctn {
+    position: relative;
+    z-index: 1;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart .fi-section-header {
+    @apply flex flex-col items-stretch gap-3 border-b border-black/[0.05] bg-transparent px-4 py-3.5 dark:border-white/[0.08] sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:px-5;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart .fi-section-header-text-ctn {
+    @apply min-w-[14rem] max-w-full flex-1 basis-[16rem];
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart .fi-section-header-after-ctn {
+    @apply min-w-0 max-w-full flex-1 basis-[20rem];
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart .fi-section-header-heading {
+    @apply text-[1.08rem] font-semibold tracking-tight text-slate-950 dark:text-slate-50;
+    overflow-wrap: break-word;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart .fi-section-header-description {
+    @apply mt-0.5 text-[0.8rem] leading-relaxed text-slate-600 dark:text-slate-300;
+    overflow-wrap: break-word;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart .fi-section-content-ctn {
+    @apply px-3 pb-4 pt-2 sm:px-5 sm:pb-5;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__chips {
+    @apply flex max-w-full flex-wrap items-center justify-start gap-1.5 sm:justify-end;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__chip {
+    @apply inline-flex min-w-0 flex-col rounded-2xl border border-black/[0.06] bg-white/55 px-3 py-1.5 shadow-sm backdrop-blur-md dark:border-white/[0.1] dark:bg-slate-950/45;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__chip--accent {
+    border-color: color-mix(in oklch, #14b8a6 28%, transparent);
+    background:
+      linear-gradient(
+        145deg,
+        color-mix(in oklch, #ccfbf1 55%, transparent),
+        color-mix(in oklch, white 50%, transparent)
+      );
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__chip-label {
+    @apply text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__chip-value {
+    @apply mt-0.5 truncate text-[0.9rem] font-semibold tracking-tight text-slate-950 dark:text-white;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__chip-meta {
+    @apply text-[0.78rem] font-medium text-teal-700 dark:text-teal-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-yoy--up {
+    @apply text-emerald-600 dark:text-emerald-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-yoy--down {
+    @apply text-rose-600 dark:text-rose-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-yoy--flat {
+    @apply text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-afiliaciones-plan-amount-pie__canvas {
+    @apply flex items-center justify-center overflow-visible;
+  }
+
+  .fi-panel-metrics .fi-metrics-afiliaciones-plan-amount-combined-pie .fi-section-content-ctn,
+  .fi-panel-metrics .fi-metrics-afiliaciones-plan-amount-combined-pie .fi-wi-chart-canvas-ctn {
+    overflow: visible;
+  }
+
+  @media (max-width: 1279px) {
+    .fi-panel-metrics .fi-metrics-afiliaciones-plan-amount-combined-pie .fi-metrics-afiliaciones-plan-amount-pie__canvas .fi-wi-chart-canvas-ctn {
+      min-height: 400px;
+    }
+  }
+
+  .fi-panel-metrics .fi-metrics-afiliaciones-plan-amount-combined-pie__chips {
+    @apply mb-3 justify-start;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-afiliaciones-plan-amount-pie .fi-section-header-heading,
+  .dark .fi-panel-metrics .fi-metrics-afiliaciones-plan-amount-pie .fi-section-header-description {
+    @apply text-slate-50;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary {
+    @apply flex flex-col gap-3 rounded-2xl border border-black/[0.05] bg-white/45 p-3 shadow-sm backdrop-blur-md dark:border-white/[0.08] dark:bg-slate-950/40 sm:p-4;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__period-eyebrow {
+    @apply text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__period-title {
+    @apply mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[1.05rem] font-semibold tracking-tight text-slate-950 dark:text-slate-50;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__period-vs {
+    @apply text-[0.78rem] font-medium uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__cards {
+    @apply grid gap-2 sm:grid-cols-2;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__card {
+    @apply rounded-2xl border border-black/[0.05] bg-white/60 px-3 py-2.5 dark:border-white/[0.08] dark:bg-slate-950/50;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__card--up {
+    border-color: color-mix(in oklch, #10b981 28%, transparent);
+    background:
+      linear-gradient(
+        150deg,
+        color-mix(in oklch, #d1fae5 48%, transparent),
+        color-mix(in oklch, white 55%, transparent)
+      );
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__card--down {
+    border-color: color-mix(in oklch, #f43f5e 24%, transparent);
+    background:
+      linear-gradient(
+        150deg,
+        color-mix(in oklch, #ffe4e6 42%, transparent),
+        color-mix(in oklch, white 55%, transparent)
+      );
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-mom-summary__card--up {
+    background:
+      linear-gradient(
+        150deg,
+        color-mix(in oklch, #064e3b 42%, transparent),
+        color-mix(in oklch, #0f172a 70%, transparent)
+      );
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-mom-summary__card--down {
+    background:
+      linear-gradient(
+        150deg,
+        color-mix(in oklch, #4c0519 38%, transparent),
+        color-mix(in oklch, #0f172a 70%, transparent)
+      );
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__card-head {
+    @apply flex items-center justify-between gap-2;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__card-label {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__badge {
+    @apply rounded-full px-2 py-0.5 text-[0.72rem] font-semibold tracking-tight;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__badge--up {
+    @apply bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__badge--down {
+    @apply bg-rose-500/15 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__badge--flat {
+    @apply bg-slate-500/10 text-slate-600 dark:bg-slate-400/10 dark:text-slate-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__intro {
+    @apply mt-1.5 max-w-3xl text-[0.8125rem] leading-relaxed text-slate-600 dark:text-slate-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__card-help,
+  .fi-panel-metrics .fi-metrics-mom-summary__card-current-hint,
+  .fi-panel-metrics .fi-metrics-mom-summary__card-sentence,
+  .fi-panel-metrics .fi-metrics-mom-summary__meta-help {
+    @apply text-[0.75rem] leading-relaxed text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__card-help {
+    @apply mt-1;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__card-value {
+    @apply mt-1.5 text-[1.55rem] font-semibold leading-none tracking-tight text-slate-950 dark:text-white;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__card-current-hint {
+    @apply mt-1;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__card-sentence {
+    @apply mt-2 border-t border-black/[0.04] pt-2 font-medium text-slate-700 dark:border-white/[0.08] dark:text-slate-200;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__meta-help {
+    @apply mt-1 block;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__verdict {
+    @apply mt-2 rounded-xl bg-black/[0.03] px-2.5 py-1.5 text-[0.78rem] font-medium leading-relaxed text-slate-700 dark:bg-white/[0.05] dark:text-slate-200;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__card-foot {
+    @apply mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[0.78rem] text-slate-600 dark:text-slate-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__delta--up {
+    @apply font-semibold text-emerald-700 dark:text-emerald-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__delta--down {
+    @apply font-semibold text-rose-700 dark:text-rose-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__delta--flat {
+    @apply font-semibold text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__meta {
+    @apply grid gap-2 sm:grid-cols-3;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__meta-item {
+    @apply rounded-xl border border-black/[0.04] bg-white/40 px-3 py-2 dark:border-white/[0.07] dark:bg-slate-950/35;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__meta-item--accent {
+    border-color: color-mix(in oklch, #14b8a6 26%, transparent);
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__meta-label {
+    @apply block text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__meta-value {
+    @apply mt-0.5 block truncate text-[0.88rem] font-semibold tracking-tight text-slate-950 dark:text-slate-50;
+  }
+
+  .fi-panel-metrics .fi-metrics-mom-summary__meta-sub {
+    @apply font-medium text-teal-700 dark:text-teal-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__canvas {
+    @apply rounded-2xl border border-black/[0.045] bg-white/40 p-2 shadow-inner dark:border-white/[0.08] dark:bg-slate-950/30 sm:p-3;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__canvas-el {
+    display: block;
+    max-width: 100%;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart span.fi-wi-chart-grid-color {
+    color: rgb(100 116 139 / 0.28);
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-agents-by-state-chart span.fi-wi-chart-grid-color {
+    color: rgb(255 255 255 / 0.16);
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart span.fi-wi-chart-text-color {
+    color: rgb(15 23 42);
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-agents-by-state-chart span.fi-wi-chart-text-color {
+    color: rgb(248 250 252);
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart span.fi-wi-chart-border-color {
+    color: rgb(15 23 42 / 0.55);
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-agents-by-state-chart span.fi-wi-chart-border-color {
+    color: rgb(255 255 255 / 0.28);
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__empty {
+    @apply flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-2xl border border-black/[0.05] bg-white/35 px-6 py-12 text-center shadow-inner backdrop-blur-md dark:border-white/[0.08] dark:bg-slate-950/30;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__empty-icon {
+    @apply rounded-2xl bg-teal-500/10 p-3 text-teal-700 dark:bg-teal-400/10 dark:text-teal-200;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__empty-title {
+    @apply text-[0.95rem] font-semibold tracking-tight text-slate-950 dark:text-slate-50;
+  }
+
+  .fi-panel-metrics .fi-metrics-agents-by-state-chart__empty-body {
+    @apply max-w-sm text-[0.8125rem] leading-relaxed text-slate-600 dark:text-slate-300;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-agents-by-state-chart .fi-section {
+    border-color: color-mix(in oklch, white 12%, transparent);
+    background-color: color-mix(in oklch, #0f172a 58%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 10%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 30%, transparent),
+      0 14px 40px -18px color-mix(in oklch, black 50%, transparent);
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-agents-by-state-chart .fi-section::before {
+    background:
+      radial-gradient(110% 80% at 8% -18%, color-mix(in oklch, #14b8a6 20%, transparent), transparent 55%),
+      radial-gradient(90% 70% at 92% 108%, color-mix(in oklch, #0ea5e9 16%, transparent), transparent 52%),
+      linear-gradient(165deg, color-mix(in oklch, white 7%, transparent), transparent 55%);
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-agents-by-state-chart__chip--accent {
+    background:
+      linear-gradient(
+        145deg,
+        color-mix(in oklch, #134e4a 55%, transparent),
+        color-mix(in oklch, #0f172a 60%, transparent)
+      );
+  }
+
+  /* Corretaje · Agencias — captación MoM (mes actual vs mes pasado) */
+  .fi-panel-metrics .fi-metrics-registration-mom {
+    @apply mt-1 mb-2;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__shell {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 1.4rem;
+    border: 1px solid color-mix(in oklch, white 58%, transparent);
+    background-color: color-mix(in oklch, white 24%, transparent);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 78%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 4%, transparent),
+      0 10px 36px -16px color-mix(in oklch, #0284c7 18%, transparent),
+      0 22px 56px -20px color-mix(in oklch, black 12%, transparent);
+    @apply px-4 py-4 sm:px-5 sm:py-5;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__shell::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(110% 80% at 4% -20%, color-mix(in oklch, #38bdf8 28%, transparent), transparent 58%),
+      radial-gradient(90% 70% at 96% 110%, color-mix(in oklch, #a78bfa 22%, transparent), transparent 55%),
+      linear-gradient(
+        165deg,
+        color-mix(in oklch, white 40%, transparent) 0%,
+        color-mix(in oklch, white 8%, transparent) 52%,
+        color-mix(in oklch, #e0f2fe 10%, transparent) 100%
+      );
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__header,
+  .fi-panel-metrics .fi-metrics-registration-mom__grid {
+    position: relative;
+    z-index: 1;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__header {
+    @apply mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-start sm:justify-between;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__eyebrow {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-sky-700/80 dark:text-sky-300/80;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__title {
+    @apply mt-0.5 text-base font-semibold tracking-tight text-gray-900 dark:text-white sm:text-lg;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__subtitle {
+    @apply mt-1 text-sm text-gray-600 dark:text-gray-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__legend {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__legend-item {
+    @apply rounded-full px-2.5 py-1 text-[0.7rem] font-semibold tracking-wide;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__legend-item--up {
+    @apply bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__legend-item--down {
+    @apply bg-rose-500/15 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__legend-item--flat {
+    @apply bg-amber-500/15 text-amber-800 dark:bg-amber-400/15 dark:text-amber-200;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__grid {
+    @apply grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__grid--3 {
+    @apply xl:grid-cols-3;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.15rem;
+    border: 1px solid color-mix(in oklch, white 50%, transparent);
+    background: color-mix(in oklch, white 55%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 70%, transparent),
+      0 8px 24px -14px color-mix(in oklch, black 18%, transparent);
+    @apply p-4 sm:p-5;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__card--trend-up {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 70%, transparent),
+      0 0 0 1px color-mix(in oklch, #10b981 28%, transparent),
+      0 10px 28px -14px color-mix(in oklch, #059669 35%, transparent);
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__card--trend-down {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 70%, transparent),
+      0 0 0 1px color-mix(in oklch, #f43f5e 28%, transparent),
+      0 10px 28px -14px color-mix(in oklch, #e11d48 30%, transparent);
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__card-top {
+    @apply mb-4 flex items-start justify-between gap-3;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__card-label {
+    @apply text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-gray-700 dark:text-gray-200;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__card--sky .fi-metrics-registration-mom__card-label {
+    @apply text-sky-700 dark:text-sky-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__card--violet .fi-metrics-registration-mom__card-label {
+    @apply text-violet-700 dark:text-violet-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__card--emerald .fi-metrics-registration-mom__card-label {
+    @apply text-emerald-700 dark:text-emerald-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__card--rose .fi-metrics-registration-mom__card-label {
+    @apply text-rose-700 dark:text-rose-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__card-period {
+    @apply mt-1 text-xs text-gray-500 dark:text-gray-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__badge {
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold tracking-tight;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__badge-icon {
+    @apply size-4;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__badge--up {
+    @apply bg-emerald-500 text-white shadow-sm shadow-emerald-500/30;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__badge--down {
+    @apply bg-rose-500 text-white shadow-sm shadow-rose-500/30;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__badge--flat {
+    @apply bg-amber-500 text-white shadow-sm shadow-amber-500/30;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__metrics {
+    @apply mb-3 flex items-end justify-between gap-4;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__chart {
+    @apply mb-4;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__chart-head {
+    @apply mb-2 flex items-center justify-between gap-2;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__chart-title {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__chart-hint {
+    @apply text-[0.65rem] font-medium text-gray-400 dark:text-gray-500;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__chart-canvas {
+    overflow: hidden;
+    border-radius: 0.85rem;
+    border: 1px solid color-mix(in oklch, white 42%, transparent);
+    background: color-mix(in oklch, white 35%, transparent);
+    @apply px-2 pt-2 pb-1;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__chart-ctn,
+  .fi-panel-metrics .fi-metrics-registration-mom__chart-el {
+    width: 100% !important;
+    height: 96px !important;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-registration-mom__chart-canvas {
+    border-color: color-mix(in oklch, white 10%, transparent);
+    background: color-mix(in oklch, #020617 45%, transparent);
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__current {
+    @apply text-4xl font-semibold tracking-tight text-gray-900 dark:text-white sm:text-5xl;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__current-hint {
+    @apply mt-1 text-xs font-medium capitalize text-gray-500 dark:text-gray-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__vs {
+    @apply text-right;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__vs-label {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__previous {
+    @apply mt-1 text-2xl font-semibold tabular-nums text-gray-700 dark:text-gray-200;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__delta {
+    @apply mt-0.5 text-sm font-semibold;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__delta--up {
+    @apply text-emerald-600 dark:text-emerald-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__delta--down {
+    @apply text-rose-600 dark:text-rose-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__delta--flat {
+    @apply text-amber-700 dark:text-amber-200;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__verdict {
+    @apply flex flex-col gap-0.5 rounded-xl px-3 py-2.5;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__verdict--up {
+    @apply bg-emerald-500/12 dark:bg-emerald-400/12;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__verdict--down {
+    @apply bg-rose-500/12 dark:bg-rose-400/12;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__verdict--flat {
+    @apply bg-amber-500/12 dark:bg-amber-400/12;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__verdict-label {
+    @apply text-sm font-bold tracking-tight;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__verdict--up .fi-metrics-registration-mom__verdict-label {
+    @apply text-emerald-700 dark:text-emerald-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__verdict--down .fi-metrics-registration-mom__verdict-label {
+    @apply text-rose-700 dark:text-rose-300;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__verdict--flat .fi-metrics-registration-mom__verdict-label {
+    @apply text-amber-800 dark:text-amber-200;
+  }
+
+  .fi-panel-metrics .fi-metrics-registration-mom__verdict-detail {
+    @apply text-xs text-gray-600 dark:text-gray-300;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-registration-mom__shell {
+    border-color: color-mix(in oklch, white 12%, transparent);
+    background-color: color-mix(in oklch, #0f172a 58%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 10%, transparent),
+      inset 0 -1px 0 color-mix(in oklch, black 30%, transparent),
+      0 14px 40px -18px color-mix(in oklch, black 50%, transparent);
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-registration-mom__shell::before {
+    background:
+      radial-gradient(110% 80% at 8% -18%, color-mix(in oklch, #0ea5e9 18%, transparent), transparent 55%),
+      radial-gradient(90% 70% at 92% 108%, color-mix(in oklch, #8b5cf6 14%, transparent), transparent 52%),
+      linear-gradient(165deg, color-mix(in oklch, white 7%, transparent), transparent 55%);
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-registration-mom__card {
+    border-color: color-mix(in oklch, white 10%, transparent);
+    background: color-mix(in oklch, #0f172a 62%, transparent);
+  }
+
+  /* Drill-down afiliaciones por tipo → detalle por agencia */
+  .fi-panel-metrics .fi-metrics-agencies-affiliations-drill__chips {
+    @apply flex-wrap items-center;
+  }
+
+  .fi-panel-metrics .fi-metrics-agencies-affiliations-drill__back {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.7rem] font-semibold tracking-wide text-teal-800 transition duration-200 ease-out dark:text-teal-200;
+    border: 1px solid color-mix(in oklch, #14b8a6 35%, transparent);
+    background:
+      linear-gradient(
+        145deg,
+        color-mix(in oklch, #99f6e4 42%, transparent),
+        color-mix(in oklch, white 28%, transparent)
+      );
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, white 55%, transparent),
+      0 8px 20px -14px color-mix(in oklch, #0f766e 45%, transparent);
+  }
+
+  .fi-panel-metrics .fi-metrics-agencies-affiliations-drill__back:hover {
+    transform: translateY(-1px);
+  }
+
+  .fi-panel-metrics .fi-metrics-agencies-affiliations-drill__back:active {
+    transform: scale(0.98);
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-agencies-affiliations-drill__back {
+    border-color: color-mix(in oklch, #2dd4bf 28%, transparent);
+    background:
+      linear-gradient(
+        145deg,
+        color-mix(in oklch, #134e4a 55%, transparent),
+        color-mix(in oklch, #0f172a 60%, transparent)
+      );
+  }
+
+  .fi-panel-metrics .fi-metrics-agencies-affiliations-drill__stage {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+    filter: blur(1.5px);
+    transition:
+      opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 340ms cubic-bezier(0.22, 1, 0.36, 1),
+      filter 280ms ease;
+    will-change: opacity, transform;
+  }
+
+  .fi-panel-metrics .fi-metrics-agencies-affiliations-drill__stage.is-ready {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fi-panel-metrics .fi-metrics-agencies-affiliations-drill__stage {
+      transition: none;
+      filter: none;
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  /* —— Venezuela national activity map —— */
+  .fi-panel-metrics .fi-metrics-ve-map {
+    @apply w-full;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__shell {
+    @apply relative overflow-hidden rounded-3xl border border-teal-900/8 bg-gradient-to-br from-white via-teal-50/40 to-sky-50/50 p-5 shadow-[0_20px_50px_-28px_rgba(15,118,110,0.35)] sm:p-7;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-ve-map__shell {
+    border-color: color-mix(in oklch, #2dd4bf 18%, transparent);
+    background:
+      linear-gradient(
+        145deg,
+        color-mix(in oklch, #0f172a 92%, #134e4a),
+        color-mix(in oklch, #0b1220 88%, #164e63)
+      );
+    box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.55);
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__header {
+    @apply mb-5;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__kpis {
+    @apply mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__kpi {
+    @apply rounded-2xl border border-slate-200/90 bg-white px-4 py-3;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.06),
+      0 8px 20px -12px rgba(15, 23, 42, 0.18);
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-ve-map__kpi {
+    border-color: color-mix(in oklch, white 12%, transparent);
+    background: color-mix(in oklch, #0f172a 78%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__kpi-label {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__kpi-value {
+    @apply mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-white;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__kpi-delta {
+    @apply mt-1 text-xs font-semibold text-slate-600 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__kpi[data-trend='up'] .fi-metrics-ve-map__kpi-delta {
+    @apply text-emerald-700 dark:text-emerald-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__kpi[data-trend='down'] .fi-metrics-ve-map__kpi-delta {
+    @apply text-rose-700 dark:text-rose-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__kpi[data-trend='new'] .fi-metrics-ve-map__kpi-delta,
+  .fi-panel-metrics .fi-metrics-ve-map__kpi[data-trend='flat'] .fi-metrics-ve-map__kpi-delta {
+    @apply text-slate-600 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__layout {
+    @apply grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__canvas-wrap {
+    @apply relative w-full min-w-0;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__svg {
+    @apply h-auto w-full;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__state {
+    stroke: rgba(15, 23, 42, 0.35);
+    stroke-width: 1.15;
+    vector-effect: non-scaling-stroke;
+    cursor: pointer;
+    transition:
+      fill 220ms ease,
+      stroke 220ms ease,
+      opacity 220ms ease,
+      filter 220ms ease;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-ve-map__state {
+    stroke: rgba(226, 232, 240, 0.45);
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__state:hover,
+  .fi-panel-metrics .fi-metrics-ve-map__state:focus-visible,
+  .fi-panel-metrics .fi-metrics-ve-map__state.is-active {
+    stroke: #7c3aed;
+    stroke-width: 2.4;
+    filter: drop-shadow(0 0 8px rgba(124, 58, 237, 0.55));
+    outline: none;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-ve-map__state:hover,
+  .dark .fi-panel-metrics .fi-metrics-ve-map__state:focus-visible,
+  .dark .fi-panel-metrics .fi-metrics-ve-map__state.is-active {
+    stroke: #c4b5fd;
+    filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.65));
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__state.is-dimmed {
+    opacity: 0.38;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__leader {
+    stroke: #7c3aed;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-dasharray: 4 5;
+    animation: fi-metrics-ve-map-draw 420ms ease both;
+    pointer-events: none;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__anchor {
+    fill: #7c3aed;
+    stroke: white;
+    stroke-width: 2;
+    pointer-events: none;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-ve-map__leader {
+    stroke: #c4b5fd;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-ve-map__anchor {
+    fill: #a78bfa;
+    stroke: #0f172a;
+  }
+
+  @keyframes fi-metrics-ve-map-draw {
+    from {
+      opacity: 0;
+      stroke-dashoffset: 24;
+    }
+    to {
+      opacity: 1;
+      stroke-dashoffset: 0;
+    }
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__legend {
+    @apply mt-3 flex items-center justify-center gap-3 text-[0.7rem] font-medium text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__legend-bar {
+    @apply h-2.5 w-44 rounded-full;
+    background: linear-gradient(
+      90deg,
+      rgb(203, 213, 225) 0%,
+      rgb(103, 232, 249) 18%,
+      rgb(45, 212, 191) 45%,
+      rgb(14, 165, 233) 72%,
+      rgb(124, 58, 237) 100%
+    );
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__panel {
+    @apply rounded-2xl border border-white/80 bg-white/85 p-4 shadow-lg backdrop-blur-xl;
+    animation: fi-metrics-ve-map-fade 280ms ease both;
+  }
+
+  .dark .fi-panel-metrics .fi-metrics-ve-map__panel {
+    border-color: color-mix(in oklch, white 12%, transparent);
+    background: color-mix(in oklch, #0f172a 88%, transparent);
+  }
+
+  @keyframes fi-metrics-ve-map-fade {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__card-eyebrow {
+    @apply text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-teal-700/80 dark:text-teal-200/80;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__card-title {
+    @apply mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-white;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__panel-hint {
+    @apply mt-1 mb-4 text-xs text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__card-rows {
+    @apply space-y-2;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__card-row {
+    @apply grid grid-cols-[1fr_auto_auto] items-baseline gap-2 rounded-xl bg-slate-50/90 px-3 py-2.5 dark:bg-white/5;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__card-row-label {
+    @apply text-xs font-medium text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__card-row-value {
+    @apply text-sm font-semibold text-slate-900 dark:text-white;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__card-row-delta {
+    @apply min-w-[3.75rem] text-right text-xs font-semibold;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__card-row-delta[data-trend='up'] {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__card-row-delta[data-trend='down'] {
+    @apply text-rose-600 dark:text-rose-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__card-row-delta[data-trend='flat'],
+  .fi-panel-metrics .fi-metrics-ve-map__card-row-delta[data-trend='new'] {
+    @apply text-slate-400;
+  }
+
+  .fi-panel-metrics .fi-metrics-ve-map__card-pin {
+    @apply mt-3 text-[0.7rem] text-slate-400;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fi-panel-metrics .fi-metrics-ve-map__leader,
+    .fi-panel-metrics .fi-metrics-ve-map__panel,
+    .fi-panel-metrics .fi-metrics-ve-map__state {
+      animation: none !important;
+      transition: none !important;
+    }
   }
 }
 
