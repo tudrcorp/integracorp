@@ -94,6 +94,8 @@ it('el sender ya no hace sleep después del POST exitoso', function (): void {
     expect($src)->toContain('paceBeforeSend')
         ->and($src)->toContain('Cache::lock')
         ->and($src)->toContain('rememberLastSentAt')
+        ->and($src)->toContain("Log::debug('MassNotificationWhatsAppSender: canal ocupado, reintentar'")
+        ->and($src)->not->toContain("Log::info('MassNotificationWhatsAppSender: canal ocupado, reintentar'")
         ->and($src)->not->toMatch('/apiResponseSucceeded[\s\S]*sleep\(/');
 });
 
@@ -102,5 +104,9 @@ it('el job reencola cuando el lock del canal está ocupado', function (): void {
 
     expect($src)->toContain('LockTimeoutException')
         ->and($src)->toContain('$this->release(')
-        ->and($src)->toContain('backoff');
+        ->and($src)->toContain('backoff')
+        ->and($src)->toContain('public int $tries = 100')
+        ->and($src)->toContain('public int $maxExceptions = 5')
+        ->and($src)->toContain('public int $timeout = 120')
+        ->and($src)->toContain('retryUntil');
 });

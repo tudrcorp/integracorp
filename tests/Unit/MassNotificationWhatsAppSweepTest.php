@@ -130,6 +130,7 @@ it('detecta respuestas de API UltraMsg exitosas y fallidas', function (): void {
 
 it('encola WhatsApp en un batch y programa el barrido final', function (): void {
     Bus::fake();
+    config(['mass-notifications.whatsapp_throttle_seconds' => 20]);
 
     $notification = createSweepTestNotification([
         'channels' => ['email', 'whatsapp'],
@@ -146,15 +147,63 @@ it('encola WhatsApp en un batch y programa el barrido final', function (): void 
 
     expect($result->success)->toBeTrue()
         ->and($result->queuedJobs)->toBe(2)
-        ->and($result->message)->toContain('reintentarán automáticamente');
+        ->and($result->message)->toContain('reintentarán automáticamente')
+        ->and($result->message)->toContain('ETA')
+        ->and($result->message)->toContain('1 cada 20 s');
 
     Bus::assertBatched(function ($batch) use ($notification): bool {
+        $job = $batch->jobs->first();
+
         return $batch->name === 'mass-notification-whatsapp-'.$notification->id
             && $batch->jobs->count() === 1
-            && $batch->jobs->first() instanceof SendNotificationMasive;
+            && $job instanceof SendNotificationMasive
+            && (int) $job->delay?->timestamp === (int) now()->timestamp;
     });
 
     Bus::assertDispatched(SendNotificationMasiveEmail::class);
+});
+
+it('espacia varios WhatsApp con delays acumulados al despachar', function (): void {
+    Bus::fake();
+    config(['mass-notifications.whatsapp_throttle_seconds' => 20]);
+
+    $notification = createSweepTestNotification();
+
+    foreach (['04141111111', '04142222222', '04143333333'] as $index => $phone) {
+        DataNotification::query()->create([
+            'mass_notification_id' => $notification->id,
+            'fullName' => 'Destinatario '.$index,
+            'phone' => $phone,
+        ]);
+    }
+
+    $result = MassNotificationDispatchService::dispatch($notification->fresh());
+
+    expect($result->success)->toBeTrue()
+        ->and($result->queuedJobs)->toBe(3);
+
+    Bus::assertBatched(function ($batch) use ($notification): bool {
+        if ($batch->name !== 'mass-notification-whatsapp-'.$notification->id) {
+            return false;
+        }
+
+        if ($batch->jobs->count() !== 3) {
+            return false;
+        }
+
+        $base = now()->timestamp;
+        $expected = [
+            $base,
+            $base + 20,
+            $base + 40,
+        ];
+
+        $actual = $batch->jobs->map(
+            fn ($job): int => (int) $job->delay?->timestamp
+        )->all();
+
+        return $actual === $expected;
+    });
 });
 
 it('el barrido marca fallidos con la razón cuando el teléfono está vacío', function (): void {
@@ -175,6 +224,53 @@ it('el barrido marca fallidos con la razón cuando el teléfono está vacío', f
 
     expect($recipient->whatsapp_status)->toBe(MassNotificationDeliveryStatus::Failed)
         ->and($recipient->whatsapp_error)->toContain('Teléfono vacío');
+});
+
+it('el barrido reencola pendientes con delays escalonados', function (): void {
+    Bus::fake();
+    config(['mass-notifications.whatsapp_throttle_seconds' => 15]);
+
+    $notification = createSweepTestNotification([
+        'is_sent' => true,
+    ]);
+
+    foreach (['04141110001', '04141110002'] as $index => $phone) {
+        DataNotification::query()->create([
+            'mass_notification_id' => $notification->id,
+            'fullName' => 'Pendiente '.$index,
+            'phone' => $phone,
+            'whatsapp_status' => MassNotificationDeliveryStatus::Failed->value,
+            'whatsapp_error' => 'Fallo previo',
+        ]);
+    }
+
+    (new SweepMassNotificationWhatsAppFailures($notification->id))->handle();
+
+    Bus::assertBatched(function ($batch) use ($notification): bool {
+        if ($batch->name !== 'mass-notification-whatsapp-sweep-'.$notification->id) {
+            return false;
+        }
+
+        if ($batch->jobs->count() !== 2) {
+            return false;
+        }
+
+        $base = now()->timestamp;
+        $expected = [
+            $base,
+            $base + 15,
+        ];
+
+        $actual = $batch->jobs->map(
+            fn ($job): int => (int) $job->delay?->timestamp
+        )->all();
+
+        return $actual === $expected
+            && $batch->jobs->every(fn ($job): bool => $job instanceof SendNotificationMasive);
+    });
+
+    expect(DataNotification::query()->where('whatsapp_status', MassNotificationDeliveryStatus::Pending->value)->count())
+        ->toBe(2);
 });
 
 it('el barrido ignora destinatarios ya enviados', function (): void {

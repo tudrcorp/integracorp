@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Support\MassNotificationRecipientDelivery;
 use App\Support\MassNotificationWhatsAppSender;
+use DateTimeInterface;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,9 +22,22 @@ class SendNotificationMasive implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 25;
+    /**
+     * Intentos totales permitidos (incluye release por canal ocupado).
+     * El espaciado al encolar hace raro el lock timeout; esto cubre campañas concurrentes.
+     */
+    public int $tries = 100;
 
-    public int $timeout = 960;
+    /**
+     * Fallos reales (API / RuntimeException). Los release por lock no lanzan excepción.
+     */
+    public int $maxExceptions = 5;
+
+    /**
+     * Debe ser menor que config queue.connections.redis.retry_after (900).
+     * Un envío WhatsApp + pace no necesita 16 minutos.
+     */
+    public int $timeout = 120;
 
     /**
      * @return list<int>
@@ -33,6 +47,11 @@ class SendNotificationMasive implements ShouldQueue
         $throttle = max(5, (int) config('mass-notifications.whatsapp_throttle_seconds', 20));
 
         return [$throttle, $throttle, $throttle * 2];
+    }
+
+    public function retryUntil(): DateTimeInterface
+    {
+        return now()->addHours(6);
     }
 
     /**

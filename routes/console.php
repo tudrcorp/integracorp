@@ -34,8 +34,10 @@ $dailyAuditSummaryIsActive = static fn (): bool => SystemNotificationRecipients:
 $operationInventoryLowStockIsActive = static fn (): bool => SystemNotificationRecipients::isActive(SystemNotificationKey::OperationInventoryLowStock);
 
 /**
- * Tarea que se ejecuta para enviar las tarjetas de cumpleaños
- * Se ejecutara todos los dias a las 8:00am
+ * Tarea que se ejecuta para enviar las tarjetas de cumpleaños.
+ * Se ejecuta todos los días a las 8:00am.
+ * Copias testigo y resumen de ejecución: Centro de notificaciones
+ * (Copia testigo cumpleaños / Resumen cumpleaños).
  */
 Schedule::job(new SendNotificationBirthday, 'system')->dailyAt('8:00');
 

@@ -14,6 +14,8 @@ enum SystemNotificationKey: string
     case DailyAuditSummary = 'daily_audit_summary';
     case OperationInventoryLowStock = 'operation_inventory_low_stock';
     case TelemedicineCaseReversal = 'telemedicine_case_reversal';
+    case BirthdayNotificationWitnessCopy = 'birthday_notification_witness_copy';
+    case BirthdayNotificationSummary = 'birthday_notification_summary';
 
     public function label(): string
     {
@@ -26,6 +28,8 @@ enum SystemNotificationKey: string
             self::DailyAuditSummary => 'Auditorías completas',
             self::OperationInventoryLowStock => 'Stock bajo de inventario',
             self::TelemedicineCaseReversal => 'Reverso de casos de telemedicina',
+            self::BirthdayNotificationWitnessCopy => 'Copia testigo cumpleaños',
+            self::BirthdayNotificationSummary => 'Resumen cumpleaños',
         };
     }
 
@@ -40,6 +44,8 @@ enum SystemNotificationKey: string
             self::DailyAuditSummary => 'Destinatarios del reporte diario de auditorías completas (agencias, agentes y afiliaciones).',
             self::OperationInventoryLowStock => 'Destinatarios de la alerta diaria de productos de inventario Diagnomóvil con existencia total menor o igual al umbral configurado.',
             self::TelemedicineCaseReversal => 'Destinatarios de la alerta cuando un médico reversa un caso desde el panel de telemedicina (correo y WhatsApp con la nota del reverso).',
+            self::BirthdayNotificationWitnessCopy => 'Copias testigo de cada tarjeta de cumpleaños enviada (WhatsApp duplicado y CC en el correo). No incluye el resumen de la corrida.',
+            self::BirthdayNotificationSummary => 'Destinatarios del resumen de ejecución de la tarea diaria de tarjetas de cumpleaños (totales, fallas y configuración). No reciben la copia de cada envío.',
         };
     }
 
@@ -54,6 +60,8 @@ enum SystemNotificationKey: string
             self::DailyAuditSummary => 'Reporte diario de auditorías',
             self::OperationInventoryLowStock => 'Alerta diaria de stock bajo',
             self::TelemedicineCaseReversal => 'Alerta de reverso de caso',
+            self::BirthdayNotificationWitnessCopy => 'Copia testigo de cada envío',
+            self::BirthdayNotificationSummary => 'Resumen de la corrida diaria',
         };
     }
 
@@ -68,6 +76,8 @@ enum SystemNotificationKey: string
             self::DailyAuditSummary => 'Cada día a las 7:00 se contabilizan agencias, agentes y afiliaciones con auditoría completa (todos los puntos verificados) y se envía el resumen por WhatsApp y correo a estos contactos.',
             self::OperationInventoryLowStock => 'Cada vez que un producto activo quede con existencia total menor o igual al umbral se envía una alerta inmediata por correo y WhatsApp. Además, cada día a las 8:00 se reenvía el listado completo mientras sigan bajo el umbral (configurable en Parámetros de Inventario).',
             self::TelemedicineCaseReversal => 'Cuando un médico reversa un caso, el sistema elimina el caso para permitir la reasignación y dispara de forma asíncrona un correo y un WhatsApp detallados, resaltando la nota/observación del médico.',
+            self::BirthdayNotificationWitnessCopy => 'Por cada tarjeta enviada al cumpleañero, estos contactos reciben una copia: WhatsApp duplicado (con demora) y CC en el correo. Sirve para auditar el contenido enviado, no el resultado de la tarea.',
+            self::BirthdayNotificationSummary => 'Al terminar la corrida de las 8:00, estos contactos reciben el resumen operativo (validaciones, envíos encolados, fallas y tarjetas aprobadas). No reciben la tarjeta de cada persona.',
         };
     }
 
@@ -125,6 +135,18 @@ enum SystemNotificationKey: string
                 '3. Eliminar caso',
                 '4. Email + WhatsApp async',
             ],
+            self::BirthdayNotificationWitnessCopy => [
+                '1. Cumpleaños hoy',
+                '2. Envío al destinatario',
+                '3. Copia WhatsApp testigo',
+                '4. CC en correo',
+            ],
+            self::BirthdayNotificationSummary => [
+                '1. Cron 8:00',
+                '2. Procesar tarjetas',
+                '3. Armar resumen',
+                '4. Email + WhatsApp',
+            ],
         };
     }
 
@@ -139,6 +161,8 @@ enum SystemNotificationKey: string
             self::DailyAuditSummary => 'Criterio del reporte:',
             self::OperationInventoryLowStock => 'Criterio de la alerta:',
             self::TelemedicineCaseReversal => 'Acción requerida:',
+            self::BirthdayNotificationWitnessCopy => 'Copia testigo:',
+            self::BirthdayNotificationSummary => 'Resumen de ejecución:',
         };
     }
 
@@ -153,6 +177,8 @@ enum SystemNotificationKey: string
             self::DailyAuditSummary => 'solo se contabilizan registros con TODOS los puntos de auditoría verificados. Las auditorías parciales no entran en los totales.',
             self::OperationInventoryLowStock => 'solo se incluyen productos activos cuya existencia total (suma de todos los almacenes) sea menor o igual al umbral. Si no hay productos bajo umbral, no se envía notificación. El umbral se configura en Operaciones → Parámetros de Inventario.',
             self::TelemedicineCaseReversal => 'al recibir la alerta debe reasignar el paciente desde Operaciones (TDG o proveedor). El caso ya fue eliminado; revise con atención la nota del médico.',
+            self::BirthdayNotificationWitnessCopy => 'estos contactos reciben una copia de cada tarjeta enviada (WhatsApp y/o CC en email). El resumen consolidado de la corrida se configura en la pestaña «Resumen cumpleaños».',
+            self::BirthdayNotificationSummary => 'estos contactos reciben solo el resumen de la corrida (totales y fallas). Las copias de cada tarjeta se configuran en la pestaña «Copia testigo cumpleaños».',
         };
     }
 
@@ -167,6 +193,8 @@ enum SystemNotificationKey: string
             self::DailyAuditSummary => 'heroicon-o-clipboard-document-check',
             self::OperationInventoryLowStock => 'heroicon-o-cube',
             self::TelemedicineCaseReversal => 'heroicon-o-arrow-uturn-left',
+            self::BirthdayNotificationWitnessCopy => 'heroicon-o-document-duplicate',
+            self::BirthdayNotificationSummary => 'heroicon-o-chart-bar',
         };
     }
 
@@ -188,6 +216,10 @@ enum SystemNotificationKey: string
             ],
             self::OperationInventoryLowStock => [],
             self::TelemedicineCaseReversal => [],
+            self::BirthdayNotificationWitnessCopy => [
+                'solrodriguez@tudrencasa.com',
+            ],
+            self::BirthdayNotificationSummary => [],
         };
     }
 
@@ -218,6 +250,13 @@ enum SystemNotificationKey: string
             ],
             self::OperationInventoryLowStock => [],
             self::TelemedicineCaseReversal => [],
+            self::BirthdayNotificationWitnessCopy => [
+                '04143027250',
+            ],
+            self::BirthdayNotificationSummary => [
+                '04127018390',
+                '04143027250',
+            ],
         };
     }
 
@@ -232,6 +271,8 @@ enum SystemNotificationKey: string
             self::DailyAuditSummary => 'Sin destinatarios configurados. El conteo de auditorías se calculará igual, pero no se enviará el resumen.',
             self::OperationInventoryLowStock => 'Sin destinatarios configurados. El cron revisará el stock, pero no se enviará la alerta diaria.',
             self::TelemedicineCaseReversal => 'Sin destinatarios configurados. El médico podrá reversar el caso, pero no se enviará la alerta por correo ni WhatsApp.',
+            self::BirthdayNotificationWitnessCopy => 'Sin copias testigo. Las tarjetas seguirán enviándose a los cumpleañeros, pero no habrá copia WhatsApp ni CC en el correo.',
+            self::BirthdayNotificationSummary => 'Sin destinatarios de resumen. Las tarjetas se enviarán igual, pero no se notificará el resultado de la corrida.',
         };
     }
 
@@ -264,6 +305,12 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseReversal => $empty
                 ? 'Sin destinatarios. El reverso del caso seguirá eliminándolo, pero no se enviará la alerta.'
                 : 'La alerta de reverso de caso se enviará por correo y WhatsApp a los contactos configurados.',
+            self::BirthdayNotificationWitnessCopy => $empty
+                ? 'Sin copias testigo. Las tarjetas seguirán enviándose a los cumpleañeros.'
+                : 'Cada tarjeta enviada generará copia WhatsApp y/o CC en correo para los contactos configurados.',
+            self::BirthdayNotificationSummary => $empty
+                ? 'Sin destinatarios. El resumen de la corrida no se enviará.'
+                : 'El resumen de ejecución de tarjetas de cumpleaños se enviará a los contactos configurados.',
         };
     }
 
@@ -272,6 +319,8 @@ enum SystemNotificationKey: string
         return ! in_array($this, [
             self::CompanyAssociateRegistration,
             self::TelemedicineCaseReversal,
+            self::BirthdayNotificationWitnessCopy,
+            self::BirthdayNotificationSummary,
         ], true);
     }
 
@@ -286,6 +335,8 @@ enum SystemNotificationKey: string
             self::DailyAuditSummary => 'Si está inactiva, no se calculará ni enviará el reporte diario de auditorías.',
             self::OperationInventoryLowStock => 'Si está inactiva, no se ejecutará la revisión diaria ni se enviará la alerta de stock bajo.',
             self::TelemedicineCaseReversal => 'Si está inactiva, el médico podrá reversar el caso, pero no se enviará la alerta por correo ni WhatsApp.',
+            self::BirthdayNotificationWitnessCopy => 'Si está inactiva, las tarjetas seguirán enviándose a los cumpleañeros, pero no se enviarán copias testigo.',
+            self::BirthdayNotificationSummary => 'Si está inactiva, las tarjetas seguirán enviándose, pero no se enviará el resumen de la corrida.',
         };
     }
 
@@ -303,6 +354,8 @@ enum SystemNotificationKey: string
             self::DailyAuditSummary,
             self::OperationInventoryLowStock,
             self::TelemedicineCaseReversal,
+            self::BirthdayNotificationWitnessCopy,
+            self::BirthdayNotificationSummary,
         ];
     }
 }

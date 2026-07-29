@@ -48,7 +48,7 @@ final class MassNotificationWhatsAppSender
                 return $result;
             });
         } catch (LockTimeoutException $exception) {
-            Log::info('MassNotificationWhatsAppSender: canal ocupado, reintentar', [
+            Log::debug('MassNotificationWhatsAppSender: canal ocupado, reintentar', [
                 'phone' => $phone,
                 'message' => $exception->getMessage(),
             ]);

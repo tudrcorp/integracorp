@@ -69,6 +69,7 @@ it('los jobs de envío masivo reciben el id del destinatario', function (): void
     $emailJob = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/SendNotificationMasiveEmail.php');
     $whatsappJob = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/SendNotificationMasive.php');
     $service = file_get_contents(dirname(__DIR__, 2).'/app/Support/MassNotificationDispatchService.php');
+    $scheduler = file_get_contents(dirname(__DIR__, 2).'/app/Support/MassNotificationWhatsAppJobScheduler.php');
 
     expect($emailJob)->toContain('dataNotificationId')
         ->and($whatsappJob)->toContain('dataNotificationId')
@@ -78,7 +79,12 @@ it('los jobs de envío masivo reciben el id del destinatario', function (): void
         ->and($whatsappJob)->toContain('LockTimeoutException')
         ->and($whatsappJob)->toContain('$this->release(')
         ->and($service)->toContain('Bus::batch')
-        ->and($service)->toContain('SweepMassNotificationWhatsAppFailures');
+        ->and($service)->toContain('SweepMassNotificationWhatsAppFailures')
+        ->and($service)->toContain('MassNotificationWhatsAppJobScheduler::withStaggeredDelays')
+        ->and($service)->toContain('MassNotificationWhatsAppJobScheduler::successMessage')
+        ->and($scheduler)->toContain('withStaggeredDelays')
+        ->and($scheduler)->toContain('throttleSeconds')
+        ->and($scheduler)->toContain('ETA');
 });
 
 it('MassNotificationDeliveryStatus expone etiquetas en español', function (): void {

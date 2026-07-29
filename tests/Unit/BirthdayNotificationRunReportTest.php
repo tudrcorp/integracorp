@@ -78,24 +78,31 @@ it('registra validaciones por lote y las refleja en el resumen whatsapp', functi
         ->toContain('Las fallas totales no equivalen a personas distintas');
 });
 
-it('expone resumen whatsapp al finalizar el job de cumpleaños', function (): void {
+it('expone resumen y copias testigo desde el centro de notificaciones', function (): void {
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/BirthdayNotificationRunReport.php'))
-        ->toContain('ScheduledNotificationPhones::all()')
-        ->toContain('04143027250')
+        ->toContain('SystemNotificationKey::BirthdayNotificationSummary')
+        ->toContain('SystemNotificationKey::BirthdayNotificationWitnessCopy')
+        ->toContain('SystemNotificationRecipients::phones')
+        ->toContain('SystemNotificationRecipients::emails')
+        ->toContain('queueWitnessWhatsAppCopies')
+        ->toContain('mailerWithWitnessCopies')
+        ->toContain('BirthdayNotificationSummaryMail')
         ->toContain('finishAndNotify')
         ->toContain('WhatsAppBrandImage::RELATIVE_PATH')
         ->toContain("'image'")
         ->toContain('Email nulo o vacío')
         ->toContain('Email mal escrito o inválido')
         ->toContain('registerRunConfiguration')
-        ->toContain('recordValidationBatch');
+        ->toContain('recordValidationBatch')
+        ->not->toContain('ScheduledNotificationPhones::all()');
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Services/NotificationMasiveService.php'))
         ->toContain('BirthdayNotificationRunReport::begin()')
         ->toContain('BirthdayNotificationRunReport::finishAndNotify()')
         ->toContain('BirthdayNotificationRunReport::registerRunConfiguration')
         ->toContain('BirthdayNotificationRunReport::recordValidationBatch')
-        ->toContain("'04143027250'")
-        ->toContain("->cc('solrodriguez@tudrencasa.com')")
-        ->not->toContain('BirthdayNotificationControlCopies');
+        ->toContain('BirthdayNotificationRunReport::queueWitnessWhatsAppCopies')
+        ->toContain('BirthdayNotificationRunReport::mailerWithWitnessCopies')
+        ->not->toContain("'04143027250'")
+        ->not->toContain("->cc('solrodriguez@tudrencasa.com')");
 });
