@@ -71,7 +71,9 @@ it('el centro de notificaciones gestiona asociados y follow-up por pestañas', f
         ->toContain("case StructureBackup = 'structure_backup'")
         ->toContain("case DailyAuditSummary = 'daily_audit_summary'")
         ->toContain("case OperationInventoryLowStock = 'operation_inventory_low_stock'")
-        ->toContain("case TelemedicineCaseReversal = 'telemedicine_case_reversal'");
+        ->toContain("case TelemedicineCaseReversal = 'telemedicine_case_reversal'")
+        ->toContain("case BirthdayNotificationWitnessCopy = 'birthday_notification_witness_copy'")
+        ->toContain("case BirthdayNotificationSummary = 'birthday_notification_summary'");
 
     expect(SystemNotificationKey::AgentQuoteAnulation->defaultEmails())
         ->toBe(['cotizaciones@tudrencasa.com']);
@@ -91,8 +93,28 @@ it('el centro de notificaciones gestiona asociados y follow-up por pestañas', f
         ->toBe('Stock bajo de inventario')
         ->and(SystemNotificationKey::managed())
         ->toContain(SystemNotificationKey::OperationInventoryLowStock)
-        ->toContain(SystemNotificationKey::TelemedicineCaseReversal);
+        ->toContain(SystemNotificationKey::TelemedicineCaseReversal)
+        ->toContain(SystemNotificationKey::BirthdayNotificationWitnessCopy)
+        ->toContain(SystemNotificationKey::BirthdayNotificationSummary);
 
     expect(SystemNotificationKey::TelemedicineCaseReversal->label())
         ->toBe('Reverso de casos de telemedicina');
+
+    expect(SystemNotificationKey::BirthdayNotificationWitnessCopy->label())
+        ->toBe('Copia testigo cumpleaños')
+        ->and(SystemNotificationKey::BirthdayNotificationWitnessCopy->defaultEmails())
+        ->toBe(['solrodriguez@tudrencasa.com'])
+        ->and(SystemNotificationKey::BirthdayNotificationWitnessCopy->defaultPhones())
+        ->toBe(['04143027250'])
+        ->and(SystemNotificationKey::BirthdayNotificationWitnessCopy->pausesScheduledTask())
+        ->toBeFalse();
+
+    expect(SystemNotificationKey::BirthdayNotificationSummary->label())
+        ->toBe('Resumen cumpleaños')
+        ->and(SystemNotificationKey::BirthdayNotificationSummary->defaultPhones())
+        ->toBe(['04127018390', '04143027250'])
+        ->and(SystemNotificationKey::BirthdayNotificationSummary->defaultEmails())
+        ->toBe([])
+        ->and(SystemNotificationKey::BirthdayNotificationSummary->pausesScheduledTask())
+        ->toBeFalse();
 });

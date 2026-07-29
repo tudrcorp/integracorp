@@ -332,33 +332,12 @@ class NotificationMasiveService
                                             $rowsNotifications[$i]['type']
                                         );
 
-                                        BirthdayNotificationRunReport::queueWhatsApp(
+                                        BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
                                             $data[$k]->name,
-                                            '04143027250',
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
-                                            $rowsNotifications[$i]['type'],
-                                        )->delay(now()->addSeconds(10));
-
-                                        // NotificationController::notificationBirthday(
-                                        //     $data[$k]->name,
-                                        //     $data[$k]->phone,
-                                        //     $rowsNotifications[$i]['content'],
-                                        //     $rowsNotifications[$i]['file'],
-                                        //     $rowsNotifications[$i]['type']
-                                        // );
-
-                                        // sleep(5);
-
-                                        // NotificationController::notificationBirthday(
-                                        //     $data[$k]->name,
-                                        //     '04143027250',
-                                        //     $rowsNotifications[$i]['content'],
-                                        //     $rowsNotifications[$i]['file'],
-                                        //     $rowsNotifications[$i]['type']
-                                        // );
-
-                                        // LogController::logSuccessWp($data[$k]->phone);
+                                            $rowsNotifications[$i]['type']
+                                        );
 
                                     } else {
                                         continue;
@@ -448,13 +427,12 @@ class NotificationMasiveService
                                             $rowsNotifications[$i]['type']
                                         );
 
-                                        BirthdayNotificationRunReport::queueWhatsApp(
+                                        BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
                                             $data[$k]->name_corporative,
-                                            '04143027250',
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
                                             $rowsNotifications[$i]['type']
-                                        )->delay(now()->addSeconds(10));
+                                        );
 
                                         // LogController::logSuccessWp($data[$k]->phone);
 
@@ -578,13 +556,12 @@ class NotificationMasiveService
                                                 $rowsNotifications[$i]['type']
                                             );
 
-                                            BirthdayNotificationRunReport::queueWhatsApp(
+                                            BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
                                                 $data[$k]->full_name,
-                                                '04143027250',
                                                 $rowsNotifications[$i]['content'],
                                                 $rowsNotifications[$i]['file'],
                                                 $rowsNotifications[$i]['type']
-                                            )->delay(now()->addSeconds(10));
+                                            );
 
                                             // LogController::logSuccess($data[$k]->email);
 
@@ -708,13 +685,12 @@ class NotificationMasiveService
                                             $rowsNotifications[$i]['type']
                                         );
 
-                                        BirthdayNotificationRunReport::queueWhatsApp(
+                                        BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
                                             $data[$k]->first_name,
-                                            '04143027250',
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
                                             $rowsNotifications[$i]['type']
-                                        )->delay(now()->addSeconds(10));
+                                        );
 
                                         // LogController::logSuccess($data[$k]->email);
                                     } else {
@@ -806,13 +782,12 @@ class NotificationMasiveService
                                             $rowsNotifications[$i]['type']
                                         );
 
-                                        BirthdayNotificationRunReport::queueWhatsApp(
+                                        BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
                                             $data[$k]->fullName,
-                                            '04143027250',
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
                                             $rowsNotifications[$i]['type']
-                                        )->delay(now()->addSeconds(10));
+                                        );
 
                                         LogController::logSuccess($data[$k]->emailCorporativo);
 
@@ -906,13 +881,12 @@ class NotificationMasiveService
                                             $rowsNotifications[$i]['type']
                                         );
 
-                                        BirthdayNotificationRunReport::queueWhatsApp(
+                                        BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
                                             $data[$k]->name,
-                                            '04143027250',
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
                                             $rowsNotifications[$i]['type']
-                                        )->delay(now()->addSeconds(10));
+                                        );
 
                                         // LogController::logSuccess($data[$k]->personal_phone);
                                     } else {
@@ -1011,8 +985,7 @@ class NotificationMasiveService
                                         BirthdayNotificationRunReport::sendBirthdayEmail(
                                             $data[$k]->email,
                                             $data[$k]->name,
-                                            fn () => Mail::to($data[$k]->email)
-                                                ->cc('solrodriguez@tudrencasa.com')
+                                            fn () => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
                                                 ->send(new NotificationMasiveMailBirthday(
                                                     $data[$k]->name,
                                                     $rowsNotifications[$i]['file'],
@@ -1107,8 +1080,7 @@ class NotificationMasiveService
                                         BirthdayNotificationRunReport::sendBirthdayEmail(
                                             $data[$k]->email,
                                             $data[$k]->name_corporative,
-                                            fn () => Mail::to($data[$k]->email)
-                                                ->cc('solrodriguez@tudrencasa.com')
+                                            fn () => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
                                                 ->send(new NotificationMasiveMailBirthday(
                                                     $data[$k]->name_corporative,
                                                     $rowsNotifications[$i]['file'],
@@ -1202,8 +1174,7 @@ class NotificationMasiveService
                                             BirthdayNotificationRunReport::sendBirthdayEmail(
                                                 $data[$k]->email,
                                                 $data[$k]->full_name,
-                                                fn () => Mail::to($data[$k]->email)
-                                                    ->cc('solrodriguez@tudrencasa.com')
+                                                fn () => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
                                                     ->send(new NotificationMasiveMailBirthday(
                                                         $data[$k]->full_name,
                                                         $rowsNotifications[$i]['file'],
@@ -1299,8 +1270,7 @@ class NotificationMasiveService
                                         BirthdayNotificationRunReport::sendBirthdayEmail(
                                             $data[$k]->email,
                                             $data[$k]->first_name,
-                                            fn () => Mail::to($data[$k]->email)
-                                                ->cc('solrodriguez@tudrencasa.com')
+                                            fn () => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
                                                 ->send(new NotificationMasiveMailBirthday(
                                                     $data[$k]->first_name,
                                                     $rowsNotifications[$i]['file'],
@@ -1394,8 +1364,7 @@ class NotificationMasiveService
                                         BirthdayNotificationRunReport::sendBirthdayEmail(
                                             $data[$k]->emailCorporativo,
                                             $data[$k]->fullName,
-                                            fn () => Mail::to($data[$k]->emailCorporativo)
-                                                ->cc('solrodriguez@tudrencasa.com')
+                                            fn () => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->emailCorporativo)
                                                 ->send(new NotificationMasiveMailBirthday(
                                                     $data[$k]->fullName,
                                                     $rowsNotifications[$i]['file'],
@@ -1490,8 +1459,7 @@ class NotificationMasiveService
                                         BirthdayNotificationRunReport::sendBirthdayEmail(
                                             $data[$k]->correo_principal,
                                             $data[$k]->name,
-                                            fn () => Mail::to($data[$k]->correo_principal)
-                                                ->cc('solrodriguez@tudrencasa.com')
+                                            fn () => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->correo_principal)
                                                 ->send(new NotificationMasiveMailBirthday(
                                                     $data[$k]->name,
                                                     $rowsNotifications[$i]['file'],

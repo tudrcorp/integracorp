@@ -5,19 +5,19 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Enums\MassNotificationDeliveryStatus;
+use App\Enums\SystemNotificationKey;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
 use App\Jobs\WhatsAppBirthdayNotification;
+use App\Mail\BirthdayNotificationSummaryMail;
+use Illuminate\Mail\PendingMail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 final class BirthdayNotificationRunReport
 {
-    public const SUMMARY_PHONE = '04127018390';
-
     private const SUMMARY_IMAGE = WhatsAppBrandImage::RELATIVE_PATH;
-
-    private const CONTROL_PHONE = '04143027250';
 
     /** @var list<string> */
     private const ALL_GROUPS = [
@@ -150,7 +150,7 @@ final class BirthdayNotificationRunReport
         string $file,
         string $type,
     ): \Illuminate\Foundation\Bus\PendingDispatch {
-        $isControlCopy = self::isControlPhone($phone);
+        $isControlCopy = self::isWitnessCopyPhone($phone);
         $deliveryId = null;
 
         if (self::$active && self::$currentGroup !== null && ! $isControlCopy) {
@@ -176,6 +176,57 @@ final class BirthdayNotificationRunReport
             $isControlCopy,
             $deliveryId,
         );
+    }
+
+    /**
+     * Encola copias testigo WhatsApp a los teléfonos del Centro de notificaciones.
+     */
+    public static function queueWitnessWhatsAppCopies(
+        string $name,
+        string $content,
+        string $file,
+        string $type,
+    ): void {
+        foreach (self::witnessCopyPhones() as $index => $phone) {
+            self::queueWhatsApp($name, $phone, $content, $file, $type)
+                ->delay(now()->addSeconds(10 + ($index * 2)));
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function witnessCopyEmails(): array
+    {
+        if (! SystemNotificationRecipients::isActive(SystemNotificationKey::BirthdayNotificationWitnessCopy)) {
+            return [];
+        }
+
+        return SystemNotificationRecipients::emails(SystemNotificationKey::BirthdayNotificationWitnessCopy);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function witnessCopyPhones(): array
+    {
+        if (! SystemNotificationRecipients::isActive(SystemNotificationKey::BirthdayNotificationWitnessCopy)) {
+            return [];
+        }
+
+        return SystemNotificationRecipients::phones(SystemNotificationKey::BirthdayNotificationWitnessCopy);
+    }
+
+    public static function mailerWithWitnessCopies(string $toEmail): PendingMail
+    {
+        $mailer = Mail::to($toEmail);
+        $cc = self::witnessCopyEmails();
+
+        if ($cc !== []) {
+            $mailer->cc($cc);
+        }
+
+        return $mailer;
     }
 
     /**
@@ -288,11 +339,22 @@ final class BirthdayNotificationRunReport
         self::$active = false;
         self::$currentNotificationId = null;
 
+        if (! SystemNotificationRecipients::isActive(SystemNotificationKey::BirthdayNotificationSummary)) {
+            return;
+        }
+
+        $phones = SystemNotificationRecipients::phones(SystemNotificationKey::BirthdayNotificationSummary);
+        $emails = SystemNotificationRecipients::emails(SystemNotificationKey::BirthdayNotificationSummary);
+
+        if ($phones === [] && $emails === []) {
+            return;
+        }
+
         try {
             $fullMessage = self::buildSummaryMessage();
             $imageCaption = self::buildWhatsAppImageCaption();
 
-            foreach (ScheduledNotificationPhones::all() as $phone) {
+            foreach ($phones as $phone) {
                 NotificationController::notificationBirthday(
                     'Equipo Integracorp',
                     $phone,
@@ -307,8 +369,23 @@ final class BirthdayNotificationRunReport
                     $fullMessage,
                 );
             }
+
+            foreach ($emails as $email) {
+                if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    Log::warning('BirthdayNotificationRunReport: correo de resumen inválido.', [
+                        'email' => $email,
+                    ]);
+
+                    continue;
+                }
+
+                Mail::to($email)->send(new BirthdayNotificationSummaryMail(
+                    recipientEmail: $email,
+                    summaryMessage: $fullMessage,
+                ));
+            }
         } catch (Throwable $exception) {
-            Log::error('BirthdayNotificationRunReport: no se pudo enviar resumen por WhatsApp.', [
+            Log::error('BirthdayNotificationRunReport: no se pudo enviar resumen de cumpleaños.', [
                 'message' => $exception->getMessage(),
             ]);
         }
@@ -388,11 +465,55 @@ final class BirthdayNotificationRunReport
         };
     }
 
-    private static function isControlPhone(string $phone): bool
+    private static function isWitnessCopyPhone(string $phone): bool
     {
-        $normalized = preg_replace('/\D/', '', $phone) ?? '';
+        $normalized = self::normalizePhoneDigits($phone);
 
-        return in_array($normalized, [self::CONTROL_PHONE, '584143027250'], true);
+        if ($normalized === '') {
+            return false;
+        }
+
+        foreach (self::witnessCopyPhones() as $witnessPhone) {
+            if (self::phonesMatch($normalized, self::normalizePhoneDigits($witnessPhone))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function normalizePhoneDigits(string $phone): string
+    {
+        return preg_replace('/\D/', '', $phone) ?? '';
+    }
+
+    private static function phonesMatch(string $left, string $right): bool
+    {
+        if ($left === '' || $right === '') {
+            return false;
+        }
+
+        if ($left === $right) {
+            return true;
+        }
+
+        $leftTail = self::phoneNationalTail($left);
+        $rightTail = self::phoneNationalTail($right);
+
+        return $leftTail !== '' && $leftTail === $rightTail;
+    }
+
+    private static function phoneNationalTail(string $digits): string
+    {
+        if (str_starts_with($digits, '58') && strlen($digits) >= 12) {
+            return substr($digits, -10);
+        }
+
+        if (str_starts_with($digits, '0') && strlen($digits) >= 11) {
+            return substr($digits, -10);
+        }
+
+        return strlen($digits) >= 10 ? substr($digits, -10) : $digits;
     }
 
     private static function failureCategory(string $channel, string $message): string

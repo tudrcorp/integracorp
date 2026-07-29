@@ -7,12 +7,13 @@ namespace App\Jobs;
 use App\Models\DataNotification;
 use App\Models\MassNotification;
 use App\Support\MassNotificationRecipientDelivery;
-use App\Support\MassNotificationWhatsAppSender;
+use App\Support\MassNotificationWhatsAppJobScheduler;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 
 class SweepMassNotificationWhatsAppFailures implements ShouldQueue
@@ -21,7 +22,7 @@ class SweepMassNotificationWhatsAppFailures implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 3600;
+    public int $timeout = 120;
 
     public function __construct(
         public int $massNotificationId,
@@ -58,40 +59,56 @@ class SweepMassNotificationWhatsAppFailures implements ShouldQueue
         }
 
         $infoNotificationArray = $notification->toArray();
-        $retried = 0;
-        $recovered = 0;
-        $stillFailed = 0;
+        $retryJobs = [];
+        $skippedEmpty = 0;
 
         foreach ($recipients as $recipient) {
-            $retried++;
+            $phone = trim((string) ($recipient->phone ?? ''));
 
-            MassNotificationRecipientDelivery::markWhatsappPending($recipient->id);
-
-            $result = MassNotificationWhatsAppSender::send(
-                $recipient->toArray(),
-                $infoNotificationArray,
-                throttle: true,
-            );
-
-            if ($result->success) {
-                MassNotificationRecipientDelivery::markWhatsappSent($recipient->id);
-                $recovered++;
+            if ($phone === '') {
+                MassNotificationRecipientDelivery::markWhatsappFailed(
+                    $recipient->id,
+                    'Teléfono vacío o no disponible',
+                );
+                $skippedEmpty++;
 
                 continue;
             }
 
-            MassNotificationRecipientDelivery::markWhatsappFailed(
+            MassNotificationRecipientDelivery::markWhatsappPending($recipient->id);
+
+            $payload = $recipient->toArray();
+            $payload['phone'] = $phone;
+
+            $retryJobs[] = new SendNotificationMasive(
+                $payload,
+                $infoNotificationArray,
                 $recipient->id,
-                $result->errorMessage ?? 'No se pudo reenviar por WhatsApp',
             );
-            $stillFailed++;
         }
 
-        Log::info('SweepMassNotificationWhatsAppFailures: finalizado', [
+        if ($retryJobs === []) {
+            Log::info('SweepMassNotificationWhatsAppFailures: finalizado sin reencolar', [
+                'mass_notification_id' => $this->massNotificationId,
+                'skipped_empty' => $skippedEmpty,
+            ]);
+
+            return;
+        }
+
+        $staggeredJobs = MassNotificationWhatsAppJobScheduler::withStaggeredDelays($retryJobs);
+
+        Bus::batch($staggeredJobs)
+            ->name('mass-notification-whatsapp-sweep-'.$this->massNotificationId)
+            ->onQueue('system')
+            ->allowFailures()
+            ->dispatch();
+
+        Log::info('SweepMassNotificationWhatsAppFailures: reencolados con delays escalonados', [
             'mass_notification_id' => $this->massNotificationId,
-            'retried' => $retried,
-            'recovered' => $recovered,
-            'still_failed' => $stillFailed,
+            'requeued' => count($staggeredJobs),
+            'skipped_empty' => $skippedEmpty,
+            'throttle_seconds' => MassNotificationWhatsAppJobScheduler::throttleSeconds(),
         ]);
     }
 }

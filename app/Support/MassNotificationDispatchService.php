@@ -84,10 +84,13 @@ class MassNotificationDispatchService
             );
         }
 
+        $whatsappCount = count($whatsappJobs);
+
         if ($whatsappJobs !== []) {
             $massNotificationId = $record->id;
+            $staggeredWhatsappJobs = MassNotificationWhatsAppJobScheduler::withStaggeredDelays($whatsappJobs);
 
-            Bus::batch($whatsappJobs)
+            Bus::batch($staggeredWhatsappJobs)
                 ->name('mass-notification-whatsapp-'.$massNotificationId)
                 ->onQueue('system')
                 ->allowFailures()
@@ -103,7 +106,7 @@ class MassNotificationDispatchService
 
         return new MassNotificationDispatchResult(
             success: true,
-            message: 'Envío encolado exitosamente. Al finalizar, se reintentarán automáticamente los WhatsApp pendientes o fallidos. Integracorp te notificará cuando el proceso finalice.',
+            message: MassNotificationWhatsAppJobScheduler::successMessage($queuedJobs, $whatsappCount),
             queuedJobs: $queuedJobs,
         );
     }
