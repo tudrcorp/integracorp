@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Http\Controllers\UtilsController;
 use App\Models\Affiliation;
+use App\Models\AffiliationCorporate;
 use App\Models\Collection;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -69,7 +70,7 @@ final class AffiliationRenewalCollectionGenerator
             $expirationDays = $paymentFrequency === 'MENSUAL' ? 30 : 5;
 
             $collection = new Collection;
-            $collection->sale_id = $this->resolveSaleIdForAffiliation($affiliation);
+            $collection->sale_id = $this->resolveSaleIdForAffiliationCode((string) $affiliation->code);
             $collection->include_date = $includeDate;
             $collection->owner_code = $affiliation->owner_code;
             $collection->code_agency = $affiliation->code_agency;
@@ -106,6 +107,73 @@ final class AffiliationRenewalCollectionGenerator
         return $created;
     }
 
+    public function createPendingCollectionsForCorporateRenewal(
+        AffiliationCorporate $affiliation,
+        Carbon $effectiveDate,
+        ?string $createdBy = null,
+    ): int {
+        $affiliation->loadMissing(['corporate_quote', 'corporateAffiliates']);
+
+        $paymentFrequency = (string) ($affiliation->payment_frequency ?? 'ANUAL');
+        $paymentDates = self::upcomingPaymentDates($effectiveDate->copy()->startOfDay(), $paymentFrequency);
+
+        if ($paymentDates === []) {
+            return 0;
+        }
+
+        $createdBy ??= Auth::user()?->name ?? 'SISTEMA';
+        $periodAmount = (float) ($affiliation->total_amount ?? 0);
+        $includeDate = $effectiveDate->format('d/m/Y');
+        $lastInvoiceNumber = $this->resolveLastCollectionInvoiceNumber();
+        $created = 0;
+        $firstAffiliate = $affiliation->corporateAffiliates
+            ->whereIn('status', ['ACTIVO', 'PRE-APROBADA'])
+            ->first();
+        $persons = (string) ($affiliation->poblation
+            ?? $affiliation->corporateAffiliates->whereIn('status', ['ACTIVO', 'PRE-APROBADA'])->count());
+
+        foreach ($paymentDates as $paymentDate) {
+            $nextPaymentDate = $paymentDate->format('d/m/Y');
+            $expirationDays = $paymentFrequency === 'MENSUAL' ? 30 : 5;
+
+            $collection = new Collection;
+            $collection->sale_id = $this->resolveSaleIdForAffiliationCode((string) $affiliation->code);
+            $collection->include_date = $includeDate;
+            $collection->owner_code = $affiliation->owner_code;
+            $collection->code_agency = $affiliation->code_agency;
+            $collection->plan_id = $firstAffiliate?->plan_id;
+            $collection->coverage_id = $firstAffiliate?->coverage_id;
+            $collection->agent_id = $affiliation->agent_id;
+            $collection->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumber);
+            $collection->quote_number = (string) ($affiliation->corporate_quote?->code ?? 'N/A');
+            $collection->affiliation_code = $affiliation->code;
+            $collection->affiliate_full_name = $affiliation->name_corporate;
+            $collection->affiliate_contact = $affiliation->full_name_contact ?? $affiliation->name_corporate;
+            $collection->affiliate_ci_rif = $affiliation->rif;
+            $collection->affiliate_phone = $affiliation->phone_contact ?? $affiliation->phone;
+            $collection->affiliate_email = $affiliation->email_contact ?? $affiliation->email;
+            $collection->affiliate_status = $affiliation->status;
+            $collection->type = 'AFILIACION CORPORATIVA';
+            $collection->service = 'servicio';
+            $collection->persons = $persons;
+            $collection->total_amount = $periodAmount;
+            $collection->payment_method = null;
+            $collection->payment_frequency = $paymentFrequency;
+            $collection->next_payment_date = $nextPaymentDate;
+            $collection->filter_next_payment_date = $paymentDate->format('Y-m-d');
+            $collection->expiration_date = $paymentDate->copy()->addDays($expirationDays)->format('d/m/Y');
+            $collection->status = 'POR PAGAR';
+            $collection->days = 0;
+            $collection->created_by = $createdBy;
+            $collection->save();
+
+            $lastInvoiceNumber = $collection->collection_invoice_number;
+            $created++;
+        }
+
+        return $created;
+    }
+
     private function resolveLastCollectionInvoiceNumber(): string
     {
         $lastCollection = Collection::query()->latest('id')->first();
@@ -117,10 +185,10 @@ final class AffiliationRenewalCollectionGenerator
         return (string) $lastCollection->collection_invoice_number;
     }
 
-    private function resolveSaleIdForAffiliation(Affiliation $affiliation): ?int
+    private function resolveSaleIdForAffiliationCode(string $affiliationCode): ?int
     {
         $saleId = Collection::query()
-            ->where('affiliation_code', $affiliation->code)
+            ->where('affiliation_code', $affiliationCode)
             ->whereNotNull('sale_id')
             ->latest('id')
             ->value('sale_id');

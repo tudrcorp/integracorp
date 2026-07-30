@@ -8,6 +8,7 @@ use App\Jobs\ExpireOperationServiceOrders;
 use App\Jobs\ExportCorporateAffiliations;
 use App\Jobs\ExportIndividualAffiliations;
 use App\Jobs\ExportScheduledEntity;
+use App\Jobs\PrepareAffiliationCorporateRenovations;
 use App\Jobs\PrepareAffiliationRenovations;
 use App\Jobs\SendCollaboratorAnniversaryNotification;
 use App\Jobs\SendDailyAuditSummary;
@@ -101,6 +102,12 @@ Schedule::job(new UpdateAnnualCollectionRemainingDays, 'system')->dailyAt('6:00'
  * cuando faltan 30 o más días para la fecha de renovación (effective_date + 1 año).
  */
 Schedule::job(new PrepareAffiliationRenovations, 'renovations')->dailyAt('6:00');
+
+/**
+ * Prepara renovaciones corporativas: recalcula tarifas por edad y crea registro en renovation_corporates
+ * cuando faltan 30 o menos días para la fecha de renovación (effective_date + 1 año).
+ */
+Schedule::job(new PrepareAffiliationCorporateRenovations, 'renovations')->dailyAt('6:00');
 
 /**
  * Recalcula días restantes hasta dateEnd (vaucher ILS) en familiares afiliados.

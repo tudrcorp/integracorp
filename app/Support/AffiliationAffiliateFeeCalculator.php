@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Models\Affiliate;
+use App\Models\AffiliateCorporate;
 use App\Models\Affiliation;
 use App\Models\AgeRange;
 use App\Models\Fee;
@@ -153,19 +154,130 @@ final class AffiliationAffiliateFeeCalculator
 
     public function resolveFeeForAffiliateAge(Affiliation $affiliation, int $affiliateAge): ?Fee
     {
+        return $this->resolveFeeForPlanCoverageAndAge(
+            (int) $affiliation->plan_id,
+            $this->isInitialPlanWithoutCoverage($affiliation) ? null : ($affiliation->coverage_id !== null ? (int) $affiliation->coverage_id : null),
+            $affiliateAge,
+            $this->isInitialPlanWithoutCoverage($affiliation),
+        );
+    }
+
+    public function resolveFeeForPlanCoverageAndAge(
+        int $planId,
+        ?int $coverageId,
+        int $affiliateAge,
+        bool $isInitialPlanWithoutCoverage = false,
+    ): ?Fee {
         $query = Fee::query()->with('ageRange');
 
-        if ($this->isInitialPlanWithoutCoverage($affiliation)) {
+        if ($isInitialPlanWithoutCoverage || $planId === self::INITIAL_PLAN_ID) {
             $query->where('age_range_id', 1);
         } else {
-            $query->where('coverage_id', $affiliation->coverage_id);
-        }
+            if ($coverageId === null) {
+                return null;
+            }
 
-        $planId = (int) $affiliation->plan_id;
+            $query->where('coverage_id', $coverageId);
+        }
 
         return $query
             ->get()
             ->first(fn (Fee $fee): bool => $this->feeMatchesAffiliateAgeForPlan($affiliateAge, $fee, $planId));
+    }
+
+    /**
+     * @return array{annual_fee: float, period_amount: float, age_range_id: int|null, coverage_id: int|null}|null
+     */
+    public function calculateAmountsForPlanCoverageAndAge(
+        int $planId,
+        ?int $coverageId,
+        int $affiliateAge,
+        string $paymentFrequency,
+    ): ?array {
+        $isInitial = $planId === self::INITIAL_PLAN_ID;
+        $fee = $this->resolveFeeForPlanCoverageAndAge($planId, $coverageId, $affiliateAge, $isInitial);
+
+        if ($fee === null) {
+            return null;
+        }
+
+        $annualFee = (float) $fee->price;
+
+        return [
+            'annual_fee' => $annualFee,
+            'period_amount' => $this->totalAmountForPaymentFrequency($annualFee, $paymentFrequency),
+            'age_range_id' => $fee->age_range_id,
+            'coverage_id' => $isInitial ? null : $coverageId,
+        ];
+    }
+
+    /**
+     * Edad de afiliado corporativo a la fecha de corrida (prioriza fecha de nacimiento).
+     */
+    public function resolveAffiliateCorporateAgeForRenewal(AffiliateCorporate $affiliate, Carbon $referenceDate): ?int
+    {
+        $birth = $this->parseBirthDate($affiliate->birth_date);
+
+        if ($birth !== null) {
+            $reference = $referenceDate->copy()->startOfDay();
+
+            if ($reference->lt($birth)) {
+                return 0;
+            }
+
+            return (int) $birth->diffInYears($reference);
+        }
+
+        if (filled($affiliate->age)) {
+            return (int) $affiliate->age;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  iterable<AffiliateCorporate>  $affiliates
+     * @return array{requires_negotiation: bool, message: string|null, out_of_range_affiliate_ids: list<int>}
+     */
+    public function evaluateIdealToSpecialPlanTransitionForCorporateRenewal(
+        iterable $affiliates,
+        Carbon $referenceDate,
+    ): array {
+        $outOfRangeAffiliateIds = [];
+
+        foreach ($affiliates as $affiliate) {
+            if ((int) ($affiliate->plan_id ?? 0) !== self::IDEAL_PLAN_ID) {
+                continue;
+            }
+
+            if (blank($affiliate->coverage_id)) {
+                continue;
+            }
+
+            $age = $this->resolveAffiliateCorporateAgeForRenewal($affiliate, $referenceDate);
+
+            if ($age === null) {
+                continue;
+            }
+
+            if (! $this->affiliateAgeFitsPlanAgeRanges(self::IDEAL_PLAN_ID, $age, (int) $affiliate->coverage_id)) {
+                $outOfRangeAffiliateIds[] = (int) $affiliate->id;
+            }
+        }
+
+        if ($outOfRangeAffiliateIds === []) {
+            return [
+                'requires_negotiation' => false,
+                'message' => null,
+                'out_of_range_affiliate_ids' => [],
+            ];
+        }
+
+        return [
+            'requires_negotiation' => true,
+            'message' => self::NEGOTIATION_MESSAGE_IDEAL_OUT_OF_RANGE,
+            'out_of_range_affiliate_ids' => $outOfRangeAffiliateIds,
+        ];
     }
 
     public function resolveFeeForAffiliate(Affiliation $affiliation, Affiliate $affiliate): ?Fee

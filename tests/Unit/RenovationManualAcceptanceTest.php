@@ -14,6 +14,7 @@ it('expone checkbox y campos manuales en la bulk action de aceptar renovaciones'
         ->toContain('manual_commercial_config')
         ->toContain('calculated_cost_preview')
         ->toContain('Rango de edad (titular)')
+        ->toContain('affiliationCorporate')
         ->toContain('Section::make')
         ->toContain('Propuesta del sistema');
 });
@@ -24,7 +25,8 @@ it('calcula montos manuales de renovación con tarifa del titular y familiares',
 
     expect($pricing)
         ->toContain('previewFamilyTotals')
-        ->toContain('amountsForTitularAgeRange');
+        ->toContain('amountsForTitularAgeRange')
+        ->toContain('previewFromRenovationCorporate');
 
     expect($service)
         ->toContain('applyManualCommercialConfig')

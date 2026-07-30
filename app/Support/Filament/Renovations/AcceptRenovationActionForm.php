@@ -7,6 +7,7 @@ namespace App\Support\Filament\Renovations;
 use App\Models\AgeRange;
 use App\Models\Plan;
 use App\Models\Renovation;
+use App\Models\RenovationCorporate;
 use App\Support\AffiliationAffiliateFeeCalculator;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -16,6 +17,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 
@@ -26,13 +28,26 @@ final class AcceptRenovationActionForm
     private const PREVIEW_CARD_CLASS = 'rounded-2xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/40 p-4 shadow-sm dark:border-emerald-800/40 dark:from-emerald-950/40 dark:via-slate-950/95 dark:to-emerald-950/20';
 
     /**
-     * @param  Collection<int, Renovation>  $records
+     * @param  Collection<int, Renovation|RenovationCorporate>  $records
      * @return array<int, \Filament\Schemas\Components\Component|\Filament\Forms\Components\Component>
      */
     public static function schema(Collection $records): array
     {
-        /** @var Renovation|null $reference */
-        $reference = $records->first()?->loadMissing(['plan', 'coverage', 'affiliation']);
+        /** @var Renovation|RenovationCorporate|null $reference */
+        $reference = $records->first();
+
+        if ($reference instanceof RenovationCorporate) {
+            $reference->loadMissing(['plan', 'coverage', 'affiliationCorporate']);
+        } elseif ($reference instanceof Renovation) {
+            $reference->loadMissing(['plan', 'coverage', 'affiliation']);
+        }
+
+        $isCorporate = $reference instanceof RenovationCorporate;
+        $partyLabel = $isCorporate ? 'Empresa' : 'Titular';
+        $ageRangeLabel = $isCorporate ? 'Rango de edad (referencia)' : 'Rango de edad (titular)';
+        $manualHelper = $isCorporate
+            ? 'El costo de la población se calculará automáticamente según su selección.'
+            : 'El costo del afiliado y su familia se calculará automáticamente según su selección.';
 
         return [
             Section::make('Resumen')
@@ -41,7 +56,7 @@ final class AcceptRenovationActionForm
                 ->schema([
                     Placeholder::make('selection_summary')
                         ->hiddenLabel()
-                        ->content(fn (): HtmlString => self::selectionSummaryHtml($records, $reference))
+                        ->content(fn (): HtmlString => self::selectionSummaryHtml($records, $reference, $partyLabel))
                         ->columnSpanFull(),
                 ])
                 ->columnSpanFull()
@@ -53,7 +68,7 @@ final class AcceptRenovationActionForm
                 ->schema([
                     Toggle::make('manual_commercial_config')
                         ->label('Configurar manualmente plan, cobertura, rango de edad y frecuencia')
-                        ->helperText('El costo del afiliado y su familia se calculará automáticamente según su selección.')
+                        ->helperText($manualHelper)
                         ->live()
                         ->columnSpanFull(),
                 ])
@@ -94,7 +109,7 @@ final class AcceptRenovationActionForm
                                     $set('coverage_id', null);
                                 }),
                             Select::make('age_range_id')
-                                ->label('Rango de edad (titular)')
+                                ->label($ageRangeLabel)
                                 ->options(fn (Get $get): array => filled($get('plan_id'))
                                     ? AgeRange::query()
                                         ->where('plan_id', $get('plan_id'))
@@ -165,19 +180,24 @@ final class AcceptRenovationActionForm
     }
 
     /**
-     * @param  Collection<int, Renovation>  $records
+     * @param  Collection<int, Renovation|RenovationCorporate>  $records
      */
-    private static function selectionSummaryHtml(Collection $records, ?Renovation $reference): HtmlString
-    {
+    private static function selectionSummaryHtml(
+        Collection $records,
+        ?Model $reference,
+        string $partyLabel,
+    ): HtmlString {
         $count = $records->count();
         $countLabel = $count === 1 ? '1 renovación seleccionada' : "{$count} renovaciones seleccionadas";
 
-        $code = e((string) ($reference?->code_affiliation ?? '—'));
-        $titular = e((string) ($reference?->affiliation?->full_name_ti ?? '—'));
-        $renewalDate = $reference?->date_renewal?->format('d/m/Y') ?? '—';
+        $code = e((string) ($reference?->getAttribute('code_affiliation') ?? '—'));
+        $partyName = e(self::partyName($reference));
+        $renewalDate = $reference instanceof Renovation || $reference instanceof RenovationCorporate
+            ? ($reference->date_renewal?->format('d/m/Y') ?? '—')
+            : '—';
 
         $extra = $count > 1
-            ? '<p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Se muestra la primera selección como referencia. Cada afiliación se procesará con sus propios familiares.</p>'
+            ? '<p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Se muestra la primera selección como referencia. Cada afiliación se procesará con sus propios afiliados.</p>'
             : '';
 
         $cardClass = self::CARD_CLASS;
@@ -187,7 +207,7 @@ final class AcceptRenovationActionForm
                 <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{$countLabel}</p>
                 <dl class="mt-3 grid gap-2 text-sm sm:grid-cols-3">
                     <div><dt class="text-slate-500 dark:text-slate-400">Código</dt><dd class="font-medium text-slate-900 dark:text-slate-100">{$code}</dd></div>
-                    <div><dt class="text-slate-500 dark:text-slate-400">Titular</dt><dd class="font-medium text-slate-900 dark:text-slate-100">{$titular}</dd></div>
+                    <div><dt class="text-slate-500 dark:text-slate-400">{$partyLabel}</dt><dd class="font-medium text-slate-900 dark:text-slate-100">{$partyName}</dd></div>
                     <div><dt class="text-slate-500 dark:text-slate-400">Renovación</dt><dd class="font-medium text-slate-900 dark:text-slate-100">{$renewalDate}</dd></div>
                 </dl>
                 {$extra}
@@ -195,9 +215,22 @@ final class AcceptRenovationActionForm
         HTML);
     }
 
-    private static function automaticProposalHtml(?Renovation $reference): HtmlString
+    private static function partyName(?Model $reference): string
     {
-        if ($reference === null) {
+        if ($reference instanceof RenovationCorporate) {
+            return (string) ($reference->affiliationCorporate?->name_corporate ?? '—');
+        }
+
+        if ($reference instanceof Renovation) {
+            return (string) ($reference->affiliation?->full_name_ti ?? '—');
+        }
+
+        return '—';
+    }
+
+    private static function automaticProposalHtml(?Model $reference): HtmlString
+    {
+        if (! ($reference instanceof Renovation || $reference instanceof RenovationCorporate)) {
             return new HtmlString('<p class="text-sm text-slate-500 dark:text-slate-400">No hay datos de referencia.</p>');
         }
 
@@ -224,9 +257,9 @@ final class AcceptRenovationActionForm
     }
 
     /**
-     * @param  Collection<int, Renovation>  $records
+     * @param  Collection<int, Renovation|RenovationCorporate>  $records
      */
-    private static function costPreviewHtml(Get $get, Collection $records, ?Renovation $reference): HtmlString
+    private static function costPreviewHtml(Get $get, Collection $records, ?Model $reference): HtmlString
     {
         $planId = (int) ($get('plan_id') ?? 0);
         $ageRangeId = (int) ($get('age_range_id') ?? 0);
@@ -245,13 +278,25 @@ final class AcceptRenovationActionForm
             return new HtmlString('<p class="text-sm text-slate-500 dark:text-slate-400">—</p>');
         }
 
-        $preview = app(RenovationManualAcceptancePricing::class)->previewFromRenovation(
-            $reference->loadMissing('affiliation.affiliates'),
-            $planId,
-            $coverageId,
-            $ageRangeId,
-            $frequency,
-        );
+        $pricing = app(RenovationManualAcceptancePricing::class);
+
+        $preview = match (true) {
+            $reference instanceof RenovationCorporate => $pricing->previewFromRenovationCorporate(
+                $reference->loadMissing('affiliationCorporate.corporateAffiliates'),
+                $planId,
+                $coverageId,
+                $ageRangeId,
+                $frequency,
+            ),
+            $reference instanceof Renovation => $pricing->previewFromRenovation(
+                $reference->loadMissing('affiliation.affiliates'),
+                $planId,
+                $coverageId,
+                $ageRangeId,
+                $frequency,
+            ),
+            default => null,
+        };
 
         if ($preview === null) {
             return new HtmlString('<p class="text-sm text-danger-600 dark:text-danger-400">No se encontró tarifa para la combinación seleccionada.</p>');
@@ -273,9 +318,11 @@ final class AcceptRenovationActionForm
         $family = number_format($preview['subtotal_anual'], 2);
         $period = number_format($periodAmount, 2);
         $persons = (string) $preview['total_persons'];
+        $primaryCostLabel = $reference instanceof RenovationCorporate ? 'Referencia anual' : 'Titular anual';
+        $groupCostLabel = $reference instanceof RenovationCorporate ? 'Población anual' : 'Familia anual';
 
         $note = $records->count() > 1
-            ? '<p class="mt-3 text-xs text-emerald-800/80 dark:text-emerald-200/80">Vista previa de la primera afiliación. Cada registro recalculará montos según sus familiares.</p>'
+            ? '<p class="mt-3 text-xs text-emerald-800/80 dark:text-emerald-200/80">Vista previa de la primera afiliación. Cada registro recalculará montos según sus afiliados.</p>'
             : '';
 
         $previewCardClass = self::PREVIEW_CARD_CLASS;
@@ -284,8 +331,8 @@ final class AcceptRenovationActionForm
             <div class="{$previewCardClass}">
                 <p class="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">Vista previa del costo</p>
                 <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                    <div><dt class="text-slate-500 dark:text-slate-400">Titular anual</dt><dd class="text-lg font-semibold text-slate-900 dark:text-slate-100">US$ {$titular}</dd></div>
-                    <div><dt class="text-slate-500 dark:text-slate-400">Familia anual</dt><dd class="text-lg font-semibold text-emerald-700 dark:text-emerald-300">US$ {$family}</dd></div>
+                    <div><dt class="text-slate-500 dark:text-slate-400">{$primaryCostLabel}</dt><dd class="text-lg font-semibold text-slate-900 dark:text-slate-100">US$ {$titular}</dd></div>
+                    <div><dt class="text-slate-500 dark:text-slate-400">{$groupCostLabel}</dt><dd class="text-lg font-semibold text-emerald-700 dark:text-emerald-300">US$ {$family}</dd></div>
                     <div><dt class="text-slate-500 dark:text-slate-400">{$periodLabel}</dt><dd class="text-lg font-semibold text-slate-900 dark:text-slate-100">US$ {$period}</dd></div>
                     <div><dt class="text-slate-500 dark:text-slate-400">Personas</dt><dd class="text-lg font-semibold text-slate-900 dark:text-slate-100">{$persons}</dd></div>
                 </dl>
