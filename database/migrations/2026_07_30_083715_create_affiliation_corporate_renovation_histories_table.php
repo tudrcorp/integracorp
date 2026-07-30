@@ -8,14 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Si un intento previo falló por el nombre largo del índice, la tabla puede existir a medias.
         if (Schema::hasTable('affiliation_corporate_renovation_histories')) {
-            return;
+            Schema::drop('affiliation_corporate_renovation_histories');
         }
 
         Schema::create('affiliation_corporate_renovation_histories', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('affiliation_corporate_id')->index();
-            $table->unsignedBigInteger('affiliate_corporate_id')->nullable()->index();
+            $table->unsignedBigInteger('affiliation_corporate_id')->index('acrh_aff_corp_id_idx');
+            $table->unsignedBigInteger('affiliate_corporate_id')->nullable()->index('acrh_affil_corp_id_idx');
             $table->unsignedBigInteger('source_renovation_corporate_id')->nullable();
             $table->timestamp('accepted_at');
             $table->string('accepted_by');
