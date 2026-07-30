@@ -8,6 +8,8 @@ use App\Models\City;
 use App\Models\CorporateAlly;
 use App\Models\State;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
@@ -19,6 +21,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class CorporateAlliesTable
 {
@@ -26,17 +29,10 @@ class CorporateAlliesTable
     {
         return $table
             ->heading('Aliados corporativos')
-            ->description('Listado de aliados corporativos con ubicación, convenio, contacto y datos de pago. Use columnas ocultas y filtros para afinar la búsqueda.')
+            ->description('Use filtros y columnas ocultas para afinar por ubicación, convenio, contacto o datos de pago.')
             ->defaultSort('company_name', 'asc')
             ->defaultSortOptionLabel('Razón social (A–Z)')
             ->columns([
-                TextColumn::make('id')
-                    ->label('ID')
-                    ->icon('heroicon-m-finger-print')
-                    ->sortable()
-                    ->fontFamily(FontFamily::Mono)
-                    ->alignCenter()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('company_name')
                     ->label('Razón social')
                     ->icon('heroicon-o-building-office-2')
@@ -48,37 +44,48 @@ class CorporateAlliesTable
                     ->tooltip(fn (CorporateAlly $record): string => trim((string) ($record->company_name ?? '')) ?: '—')
                     ->placeholder('—')
                     ->extraCellAttributes(fn (): array => [
-                        'class' => 'min-w-44 sm:min-w-56 max-w-sm align-top',
+                        'class' => 'min-w-52 sm:min-w-64 lg:min-w-72 max-w-[28rem] align-top',
                     ]),
                 TextColumn::make('rif')
                     ->label('RIF')
-                    ->icon('heroicon-o-identification')
                     ->searchable()
                     ->sortable()
                     ->fontFamily(FontFamily::Mono)
+                    ->copyable()
+                    ->copyMessage('RIF copiado')
                     ->placeholder('—')
                     ->toggleable(),
+                TextColumn::make('location')
+                    ->label('Ubicación')
+                    ->icon('heroicon-o-map-pin')
+                    ->getStateUsing(fn (CorporateAlly $record): string => self::formatLocation($record))
+                    ->wrap()
+                    ->lineClamp(2)
+                    ->tooltip(fn (CorporateAlly $record): string => self::formatLocation($record, includeCountryAlways: true))
+                    ->placeholder('—')
+                    ->extraCellAttributes(fn (): array => [
+                        'class' => 'min-w-40 sm:min-w-48 max-w-xs align-top',
+                    ]),
                 TextColumn::make('country.name')
                     ->label('País')
-                    ->icon('heroicon-o-globe-americas')
                     ->searchable()
                     ->sortable()
-                    ->placeholder('—'),
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('state.definition')
                     ->label('Estado')
-                    ->icon('heroicon-o-map-pin')
                     ->searchable()
                     ->sortable()
-                    ->placeholder('—'),
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('city.definition')
                     ->label('Ciudad')
-                    ->icon('heroicon-o-map')
                     ->searchable()
                     ->sortable()
-                    ->placeholder('—'),
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('supplier_category')
-                    ->label('Categoría proveedor')
-                    ->icon('heroicon-o-tag')
+                    ->label('Categoría')
                     ->badge()
                     ->color('gray')
                     ->searchable()
@@ -86,8 +93,7 @@ class CorporateAlliesTable
                     ->placeholder('—')
                     ->toggleable(),
                 TextColumn::make('type_agreement')
-                    ->label('Tipo de convenio')
-                    ->icon('heroicon-o-document-text')
+                    ->label('Convenio')
                     ->badge()
                     ->color(fn (?string $state): string => match (true) {
                         str_contains(strtoupper((string) $state), 'PREFERENCIAL') => 'success',
@@ -100,112 +106,113 @@ class CorporateAlliesTable
                     ->placeholder('—'),
                 TextColumn::make('status_agreement')
                     ->label('Estatus convenio')
-                    ->icon('heroicon-o-document-check')
                     ->badge()
-                    ->color(fn (?string $state): string => match (strtoupper((string) $state)) {
-                        'AFILIADO', 'ACTIVO' => 'success',
-                        'EN PROCESO' => 'warning',
-                        'INACTIVO', 'SUSPENDIDO' => 'danger',
-                        default => 'gray',
-                    })
+                    ->color(fn (?string $state): string => self::statusBadgeColor($state))
                     ->searchable()
                     ->sortable()
                     ->placeholder('—'),
+                TextColumn::make('status')
+                    ->label('Estatus')
+                    ->badge()
+                    ->color(fn (?string $state): string => self::statusBadgeColor($state))
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('—'),
+                TextColumn::make('contact')
+                    ->label('Contacto')
+                    ->icon('heroicon-o-phone')
+                    ->getStateUsing(fn (CorporateAlly $record): HtmlString|string => self::formatContactHtml($record))
+                    ->html()
+                    ->tooltip(fn (CorporateAlly $record): ?string => self::formatContactPlain($record))
+                    ->placeholder('—')
+                    ->extraCellAttributes(fn (): array => [
+                        'class' => 'min-w-44 sm:min-w-56 max-w-xs align-top',
+                    ]),
                 TextColumn::make('phone')
                     ->label('Teléfono principal')
-                    ->icon('heroicon-o-phone')
                     ->searchable()
                     ->fontFamily(FontFamily::Mono)
+                    ->copyable()
+                    ->copyMessage('Teléfono copiado')
                     ->placeholder('—')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('people_contact')
                     ->label('Teléfono secundario')
-                    ->icon('heroicon-o-device-phone-mobile')
                     ->searchable()
                     ->fontFamily(FontFamily::Mono)
+                    ->copyable()
+                    ->copyMessage('Teléfono copiado')
                     ->placeholder('—')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('email')
                     ->label('Correo')
-                    ->icon('heroicon-o-envelope')
                     ->searchable()
+                    ->copyable()
+                    ->copyMessage('Correo copiado')
+                    ->limit(32)
+                    ->tooltip(fn (CorporateAlly $record): ?string => strlen((string) ($record->email ?? '')) > 32 ? $record->email : null)
                     ->placeholder('—')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('social_networks')
                     ->label('Redes sociales')
-                    ->icon('heroicon-o-share')
                     ->wrap()
                     ->lineClamp(2)
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('address')
                     ->label('Dirección')
-                    ->icon('heroicon-o-home')
                     ->wrap()
                     ->lineClamp(2)
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('services')
                     ->label('Servicios')
-                    ->icon('heroicon-o-briefcase')
                     ->wrap()
                     ->lineClamp(2)
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('payment_term')
                     ->label('Plazo de pago')
-                    ->icon('heroicon-o-calendar-days')
                     ->searchable()
                     ->sortable()
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('supplier_payment')
                     ->label('Forma de pago proveedor')
-                    ->icon('heroicon-o-banknotes')
                     ->searchable()
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('local_beneficiary_account_bank')
                     ->label('Banco local')
-                    ->icon('heroicon-o-building-library')
                     ->searchable()
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('extra_beneficiary_account_bank')
                     ->label('Banco internacional')
-                    ->icon('heroicon-o-globe-alt')
                     ->searchable()
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('extra_beneficiary_zelle')
                     ->label('Zelle')
-                    ->icon('heroicon-o-currency-dollar')
                     ->searchable()
                     ->fontFamily(FontFamily::Mono)
+                    ->copyable()
+                    ->copyMessage('Zelle copiado')
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('status')
-                    ->label('Estatus')
-                    ->icon('heroicon-o-signal')
-                    ->badge()
-                    ->color(fn (?string $state): string => match (strtoupper((string) $state)) {
-                        'AFILIADO', 'ACTIVO' => 'success',
-                        'EN PROCESO' => 'warning',
-                        'INACTIVO', 'SUSPENDIDO' => 'danger',
-                        default => 'gray',
-                    })
-                    ->searchable()
+                TextColumn::make('id')
+                    ->label('ID')
                     ->sortable()
-                    ->placeholder('—'),
+                    ->fontFamily(FontFamily::Mono)
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Creado')
-                    ->icon('heroicon-o-clock')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
                     ->label('Actualizado')
-                    ->icon('heroicon-o-arrow-path')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -312,18 +319,93 @@ class CorporateAlliesTable
                     ->icon('heroicon-o-funnel'),
             )
             ->recordActions([
-                ViewAction::make()
-                    ->label('Ver')
-                    ->icon('heroicon-o-eye'),
-                EditAction::make()
-                    ->label('Editar')
-                    ->icon('heroicon-o-pencil-square'),
+                ActionGroup::make([
+                    ViewAction::make()
+                        ->label('Ver')
+                        ->icon('heroicon-o-eye'),
+                    EditAction::make()
+                        ->label('Editar')
+                        ->icon('heroicon-o-pencil-square'),
+                ])
+                    ->label('Acciones')
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->button()
+                    ->color('gray'),
             ])
             ->emptyStateHeading('Sin aliados corporativos')
-            ->emptyStateDescription('Cree un registro desde «Crear aliado corporativo» o relaje los filtros y la búsqueda.')
+            ->emptyStateDescription('Cree un aliado o relaje los filtros y la búsqueda para ver resultados.')
             ->emptyStateIcon('heroicon-o-building-office-2')
+            ->emptyStateActions([
+                CreateAction::make()
+                    ->label('Crear aliado corporativo')
+                    ->icon('heroicon-o-plus'),
+            ])
             ->striped()
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(25);
+    }
+
+    private static function statusBadgeColor(?string $state): string
+    {
+        return match (strtoupper((string) $state)) {
+            'AFILIADO', 'ACTIVO' => 'success',
+            'EN PROCESO' => 'warning',
+            'INACTIVO', 'SUSPENDIDO' => 'danger',
+            default => 'gray',
+        };
+    }
+
+    private static function formatLocation(CorporateAlly $record, bool $includeCountryAlways = false): string
+    {
+        $state = trim((string) ($record->state?->definition ?? ''));
+        $city = trim((string) ($record->city?->definition ?? ''));
+        $country = trim((string) ($record->country?->name ?? ''));
+
+        $parts = array_values(array_filter([$state, $city], filled(...)));
+
+        $location = $parts === [] ? '' : implode(' · ', $parts);
+
+        $shouldShowCountry = $includeCountryAlways
+            || (filled($country) && ! str_contains(mb_strtoupper($country), 'VENEZUELA'));
+
+        if ($shouldShowCountry && filled($country)) {
+            $location = filled($location) ? "{$location} · {$country}" : $country;
+        }
+
+        return filled($location) ? $location : '—';
+    }
+
+    private static function formatContactPlain(CorporateAlly $record): ?string
+    {
+        $lines = array_values(array_filter([
+            trim((string) ($record->phone ?? '')),
+            trim((string) ($record->email ?? '')),
+        ], filled(...)));
+
+        return $lines === [] ? null : implode(' · ', $lines);
+    }
+
+    private static function formatContactHtml(CorporateAlly $record): HtmlString|string
+    {
+        $phone = trim((string) ($record->phone ?? ''));
+        $email = trim((string) ($record->email ?? ''));
+
+        if ($phone === '' && $email === '') {
+            return '—';
+        }
+
+        $html = '<div class="space-y-0.5 text-xs leading-snug">';
+
+        if ($phone !== '') {
+            $html .= '<div class="font-mono text-gray-900 dark:text-gray-100">'.e($phone).'</div>';
+        }
+
+        if ($email !== '') {
+            $html .= '<div class="truncate text-gray-600 dark:text-gray-400" title="'.e($email).'">'.e($email).'</div>';
+        }
+
+        $html .= '</div>';
+
+        return new HtmlString($html);
     }
 }
