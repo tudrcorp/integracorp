@@ -7,6 +7,7 @@ namespace App\Support\Filament;
 use App\Filament\Administration\Pages\AgendaCorporativa as AdministrationAgendaCorporativa;
 use App\Filament\Administration\Pages\CalendariosTdg as AdministrationCalendariosTdg;
 use App\Filament\Administration\Pages\CompensacionVaucher;
+use App\Filament\Administration\Resources\AffiliationCorporateRenovationHistories\AffiliationCorporateRenovationHistoryResource as AdministrationAffiliationCorporateRenovationHistoryResource;
 use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource as AdministrationAffiliationCorporateResource;
 use App\Filament\Administration\Resources\AffiliationRenovationHistories\AffiliationRenovationHistoryResource as AdministrationAffiliationRenovationHistoryResource;
 use App\Filament\Administration\Resources\Affiliations\AffiliationResource as AdministrationAffiliationResource;
@@ -18,6 +19,7 @@ use App\Filament\Administration\Resources\CommissionPayrolls\CommissionPayrollRe
 use App\Filament\Administration\Resources\Commissions\CommissionResource;
 use App\Filament\Administration\Resources\DownloadZones\DownloadZoneResource as AdministrationDownloadZoneResource;
 use App\Filament\Administration\Resources\Helpdesks\HelpdeskResource as AdministrationHelpdeskResource;
+use App\Filament\Administration\Resources\RenovationCorporates\RenovationCorporateResource as AdministrationRenovationCorporateResource;
 use App\Filament\Administration\Resources\Renovations\RenovationResource as AdministrationRenovationResource;
 use App\Filament\Administration\Resources\RrhhAsignacions\RrhhAsignacionResource;
 use App\Filament\Administration\Resources\RrhhCargos\RrhhCargoResource;
@@ -32,6 +34,7 @@ use App\Filament\Business\Clusters\NuevosNegocios\NuevosNegociosCluster;
 use App\Filament\Business\Pages\AgendaCorporativa;
 use App\Filament\Business\Pages\CalendariosTdg;
 use App\Filament\Business\Resources\AccountManagers\AccountManagerResource;
+use App\Filament\Business\Resources\AffiliationCorporateRenovationHistories\AffiliationCorporateRenovationHistoryResource;
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Business\Resources\AffiliationRenovationHistories\AffiliationRenovationHistoryResource;
 use App\Filament\Business\Resources\Affiliations\AffiliationResource;
@@ -61,6 +64,7 @@ use App\Filament\Business\Resources\PlanGenerators\PlanGeneratorResource;
 use App\Filament\Business\Resources\Plans\PlanResource;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentResource;
 use App\Filament\Business\Resources\Regions\RegionResource;
+use App\Filament\Business\Resources\RenovationCorporates\RenovationCorporateResource;
 use App\Filament\Business\Resources\Renovations\RenovationResource;
 use App\Filament\Business\Resources\States\StateResource;
 use App\Filament\Business\Resources\SystemAuditTraces\SystemAuditTraceResource;
@@ -88,6 +92,18 @@ use App\Filament\Marketing\Resources\MassNotifications\MassNotificationResource;
 use App\Filament\Marketing\Resources\RrhhColaboradors\RrhhColaboradorResource as MarketingRrhhColaboradorResource;
 use App\Filament\Marketing\Resources\TravelAgencies\TravelAgencyResource as MarketingTravelAgencyResource;
 use App\Filament\Marketing\Resources\Zones\ZoneResource as MarketingZoneResource;
+use App\Filament\Metrics\Clusters\Negocios\CorretajeCluster;
+use App\Filament\Metrics\Clusters\Negocios\ViajesCluster;
+use App\Filament\Metrics\Pages\Administracion as MetricsAdministracion;
+use App\Filament\Metrics\Pages\Afiliaciones as MetricsAfiliaciones;
+use App\Filament\Metrics\Pages\Cotizaciones as MetricsCotizaciones;
+use App\Filament\Metrics\Pages\Negocios\Corretaje\CorretajeAgencies;
+use App\Filament\Metrics\Pages\Negocios\Corretaje\CorretajeAgents;
+use App\Filament\Metrics\Pages\Negocios\Viajes\ViajesAgencies;
+use App\Filament\Metrics\Pages\Negocios\Viajes\ViajesAgents;
+use App\Filament\Metrics\Pages\Operaciones as MetricsOperaciones;
+use App\Filament\Metrics\Pages\Proveedores as MetricsProveedores;
+use App\Filament\Metrics\Pages\Proyectos as MetricsProyectos;
 use App\Filament\Operations\Pages\AgendaCorporativa as OperationsAgendaCorporativa;
 use App\Filament\Operations\Pages\CalendariosTdg as OperationsCalendariosTdg;
 use App\Filament\Operations\Pages\DashboardOperaciones;
@@ -155,7 +171,9 @@ final class DepartmentNavigationPermissionRegistry
         AffiliationResource::class => ['afiliaciones-individuales'],
         AffiliationCorporateResource::class => ['afiliaciones-corporativas'],
         RenovationResource::class => ['renovaciones-individuales'],
+        RenovationCorporateResource::class => ['renovaciones-corporativas'],
         AffiliationRenovationHistoryResource::class => ['historico-renovaciones'],
+        AffiliationCorporateRenovationHistoryResource::class => ['historico-renovaciones-corporativas'],
         AgencyResource::class => ['agencias-de-corretaje'],
         AgentResource::class => ['agentes-de-corretaje'],
         TravelAgencyResource::class => ['agencias-de-viaje'],
@@ -193,7 +211,9 @@ final class DepartmentNavigationPermissionRegistry
         AdministrationAffiliationResource::class => ['afiliaciones-individuales'],
         AdministrationAffiliationCorporateResource::class => ['afiliaciones-corporativas'],
         AdministrationRenovationResource::class => ['renovaciones-individuales'],
+        AdministrationRenovationCorporateResource::class => ['renovaciones-corporativas'],
         AdministrationAffiliationRenovationHistoryResource::class => ['historico-renovaciones'],
+        AdministrationAffiliationCorporateRenovationHistoryResource::class => ['historico-renovaciones-corporativas'],
         AdministrationAgencyResource::class => ['agencias-de-corretaje'],
         AdministrationAgentResource::class => ['agentes-de-corretaje'],
         SaleResource::class => ['ventas'],
@@ -278,6 +298,20 @@ final class DepartmentNavigationPermissionRegistry
         ActivityResource::class => ['actividades'],
         Kanban::class => ['kanban'],
         Help::class => ['ayuda-proyectos'],
+
+        // METRICAS / KPI
+        CorretajeCluster::class => ['metricas-corretaje'],
+        ViajesCluster::class => ['metricas-viajes'],
+        CorretajeAgents::class => ['metricas-corretaje-agentes'],
+        CorretajeAgencies::class => ['metricas-corretaje-agencias'],
+        ViajesAgencies::class => ['metricas-viajes-agencias'],
+        ViajesAgents::class => ['metricas-viajes-agentes'],
+        MetricsCotizaciones::class => ['metricas-cotizaciones'],
+        MetricsAfiliaciones::class => ['metricas-afiliaciones'],
+        MetricsAdministracion::class => ['metricas-administracion'],
+        MetricsProveedores::class => ['metricas-proveedores'],
+        MetricsOperaciones::class => ['metricas-operaciones'],
+        MetricsProyectos::class => ['metricas-proyectos'],
     ];
 
     /**

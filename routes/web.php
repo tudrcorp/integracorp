@@ -241,6 +241,9 @@ Route::get('business/export-individual-quotes-csv', App\Http\Controllers\Individ
 Route::get('business/export-renovations-csv', App\Http\Controllers\RenovationExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('business.renovations.export-csv');
+Route::get('business/export-renovation-corporates-csv', App\Http\Controllers\RenovationCorporateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.renovation-corporates.export-csv');
 
 Route::get('business/export-helpdesks-csv', App\Http\Controllers\HelpdeskExportCsvController::class)
     ->middleware(['web', 'auth'])

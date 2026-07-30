@@ -79,9 +79,4 @@ class Renovation extends Model
     {
         return $this->belongsTo(AgeRange::class);
     }
-
-    public function renovationCorporate(): BelongsTo
-    {
-        return $this->belongsTo(RenovationCorporate::class);
-    }
 }

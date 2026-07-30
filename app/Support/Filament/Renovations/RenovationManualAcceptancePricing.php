@@ -9,6 +9,7 @@ use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Models\Fee;
 use App\Models\Renovation;
+use App\Models\RenovationCorporate;
 use App\Support\AffiliationAffiliateFeeCalculator;
 use Carbon\Carbon;
 
@@ -145,6 +146,92 @@ final class RenovationManualAcceptancePricing
             $ageRangeId,
             $paymentFrequency,
         );
+    }
+
+    /**
+     * @return array{
+     *     subtotal_anual: float,
+     *     subtotal_quarterly: float,
+     *     subtotal_biannual: float,
+     *     subtotal_monthly: float,
+     *     titular_annual: float,
+     *     total_persons: int
+     * }|null
+     */
+    public function previewFromRenovationCorporate(
+        RenovationCorporate $renovation,
+        int $planId,
+        ?int $coverageId,
+        int $ageRangeId,
+        string $paymentFrequency,
+        ?Carbon $referenceDate = null,
+    ): ?array {
+        $affiliation = $renovation->affiliationCorporate;
+
+        if ($affiliation === null) {
+            return null;
+        }
+
+        $referenceDate = ($referenceDate ?? Carbon::today())->copy()->startOfDay();
+        $titularAmounts = $this->amountsForTitularAgeRange(
+            $planId,
+            $coverageId,
+            $ageRangeId,
+            $paymentFrequency,
+        );
+
+        if ($titularAmounts === null) {
+            return null;
+        }
+
+        $affiliates = $affiliation->corporateAffiliates()
+            ->whereIn('status', PrepareAffiliationRenovations::AFFILIATE_STATUSES_FOR_RENEWAL)
+            ->get();
+
+        $subtotalAnual = 0.0;
+        $referenceAnnual = $titularAmounts['annual_fee'];
+        $isFirst = true;
+
+        foreach ($affiliates as $affiliate) {
+            if ($isFirst) {
+                $subtotalAnual += $referenceAnnual;
+                $isFirst = false;
+
+                continue;
+            }
+
+            $age = $this->calculator->resolveAffiliateCorporateAgeForRenewal($affiliate, $referenceDate);
+
+            if ($age === null) {
+                return null;
+            }
+
+            $amounts = $this->calculator->calculateAmountsForPlanCoverageAndAge(
+                $planId,
+                $coverageId,
+                $age,
+                $paymentFrequency,
+            );
+
+            if ($amounts === null) {
+                return null;
+            }
+
+            $subtotalAnual += $amounts['annual_fee'];
+        }
+
+        if ($affiliates->isEmpty()) {
+            $subtotalAnual = $referenceAnnual;
+        }
+
+        return [
+            'subtotal_anual' => round($subtotalAnual, 2),
+            'subtotal_quarterly' => round($subtotalAnual / 4, 2),
+            'subtotal_biannual' => round($subtotalAnual / 2, 2),
+            'subtotal_monthly' => round($subtotalAnual / 12, 2),
+            'titular_annual' => round($referenceAnnual, 2),
+            'total_persons' => $affiliates->count() ?: 1,
+        ];
     }
 
     public function resolveFee(int $planId, ?int $coverageId, int $ageRangeId): ?Fee

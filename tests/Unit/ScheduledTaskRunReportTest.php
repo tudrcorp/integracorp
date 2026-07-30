@@ -83,6 +83,7 @@ it('los jobs programados usan el reporte de ejecución por whatsapp', function (
         'SendCollaboratorAnniversaryNotification.php',
         'UpdateAnnualCollectionRemainingDays.php',
         'PrepareAffiliationRenovations.php',
+        'PrepareAffiliationCorporateRenovations.php',
         'UpdateAffiliateIlsRemainingDays.php',
         'AnulateAgentQuotes.php',
         'ExpireOperationServiceOrders.php',

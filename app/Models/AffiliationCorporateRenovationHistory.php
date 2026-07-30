@@ -7,17 +7,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class RenovationCorporate extends Model
+class AffiliationCorporateRenovationHistory extends Model
 {
-    protected $table = 'renovation_corporates';
+    protected $table = 'affiliation_corporate_renovation_histories';
 
     protected $fillable = [
         'affiliation_corporate_id',
+        'affiliate_corporate_id',
+        'source_renovation_corporate_id',
+        'accepted_at',
+        'accepted_by',
+        'previous_effective_date',
+        'new_effective_date',
         'date_renewal',
-        'remaining_days',
-        'status',
-        'created_by',
-        'updated_by',
+        'remaining_days_at_accept',
+        'status_at_accept',
         'code_affiliation',
         'agent_id',
         'code_agency',
@@ -38,12 +42,12 @@ class RenovationCorporate extends Model
         'is_negotiation_candidate',
         'negotiation_notes',
         'previous_plan_id',
-        'info_renovation',
     ];
 
     protected function casts(): array
     {
         return [
+            'accepted_at' => 'datetime',
             'date_renewal' => 'date',
             'birth_date' => 'date',
             'age' => 'integer',
@@ -53,13 +57,17 @@ class RenovationCorporate extends Model
             'subtotal_quarterly' => 'decimal:2',
             'subtotal_biannual' => 'decimal:2',
             'subtotal_monthly' => 'decimal:2',
-            'info_renovation' => 'array',
         ];
     }
 
     public function affiliationCorporate(): BelongsTo
     {
         return $this->belongsTo(AffiliationCorporate::class);
+    }
+
+    public function affiliateCorporate(): BelongsTo
+    {
+        return $this->belongsTo(AffiliateCorporate::class);
     }
 
     public function plan(): BelongsTo

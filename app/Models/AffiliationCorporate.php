@@ -168,6 +168,22 @@ class AffiliationCorporate extends Model
         return $this->belongsTo(Agency::class, 'code_agency', 'code');
     }
 
+    /**
+     * @return HasMany<\App\Models\AffiliationCorporateRenovationHistory, $this>
+     */
+    public function renovationHistories(): HasMany
+    {
+        return $this->hasMany(AffiliationCorporateRenovationHistory::class)->orderByDesc('accepted_at');
+    }
+
+    /**
+     * @return HasMany<\App\Models\RenovationCorporate, $this>
+     */
+    public function renovations(): HasMany
+    {
+        return $this->hasMany(RenovationCorporate::class);
+    }
+
     public function businessUnit(): BelongsTo
     {
         return $this->belongsTo(BusinessUnit::class);
