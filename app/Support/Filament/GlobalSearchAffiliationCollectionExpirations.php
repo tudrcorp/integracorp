@@ -10,7 +10,6 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Illuminate\Support\Collection as IlluminateCollection;
 use Illuminate\Support\HtmlString;
 
 final class GlobalSearchAffiliationCollectionExpirations
@@ -148,6 +147,50 @@ final class GlobalSearchAffiliationCollectionExpirations
         return $sortedDates[0];
     }
 
+    /**
+     * Separa cobranzas POR PAGAR en vencidas (fecha anterior a hoy) y vigentes/futuras (fecha de hoy o posterior).
+     * Ambas listas quedan ordenadas por `next_payment_date` ascendente.
+     *
+     * @param  EloquentCollection<int, BillingCollection>  $rows
+     * @return array{overdue: list<BillingCollection>, upcoming: list<BillingCollection>}
+     */
+    public static function partitionPorPagarByOverdue(Carbon $today, EloquentCollection $rows): array
+    {
+        $todayStart = $today->copy()->startOfDay();
+
+        /** @var list<array{row: BillingCollection, paymentDate: Carbon}> $overdue */
+        $overdue = [];
+        /** @var list<array{row: BillingCollection, paymentDate: Carbon}> $upcoming */
+        $upcoming = [];
+
+        foreach ($rows as $row) {
+            $paymentDate = self::parseStoredDateToStartOfDay($row->next_payment_date);
+            if ($paymentDate === null) {
+                continue;
+            }
+
+            $item = [
+                'row' => $row,
+                'paymentDate' => $paymentDate,
+            ];
+
+            if ($paymentDate->lessThan($todayStart)) {
+                $overdue[] = $item;
+            } else {
+                $upcoming[] = $item;
+            }
+        }
+
+        $byDate = static fn (array $a, array $b): int => $a['paymentDate']->timestamp <=> $b['paymentDate']->timestamp;
+        usort($overdue, $byDate);
+        usort($upcoming, $byDate);
+
+        return [
+            'overdue' => array_column($overdue, 'row'),
+            'upcoming' => array_column($upcoming, 'row'),
+        ];
+    }
+
     public static function paymentExpirationDetailsValue(?string $affiliationCode): HtmlString|string
     {
         if (! filled($affiliationCode)) {
@@ -173,63 +216,71 @@ final class GlobalSearchAffiliationCollectionExpirations
             return 'Sin cobranzas POR PAGAR';
         }
 
-        /** @var IlluminateCollection<int, Carbon> $parsed */
-        $parsed = collect();
-        foreach ($rows as $row) {
-            $d = self::parseStoredDateToStartOfDay($row->next_payment_date);
-            if ($d !== null) {
-                $parsed->push($d);
-            }
-        }
+        $today = now();
+        $partition = self::partitionPorPagarByOverdue($today, $rows);
+        $overdueRows = $partition['overdue'];
+        $upcomingRows = $partition['upcoming'];
 
-        if ($parsed->isEmpty()) {
+        if ($overdueRows === [] && $upcomingRows === []) {
             return '—';
         }
 
-        $nextRow = self::pickNextCollectionRow(now(), $rows);
-
+        $nextRow = $upcomingRows[0] ?? $overdueRows[0] ?? null;
         if ($nextRow === null) {
             return '—';
         }
 
         $sale = null;
-        if ($nextRow?->relationLoaded('sale')) {
+        if ($nextRow->relationLoaded('sale')) {
             /** @var Sale|null $loadedSale */
             $loadedSale = $nextRow->getRelation('sale');
             $sale = $loadedSale;
         }
 
-        if ($sale === null && filled($nextRow?->sale_id)) {
+        if ($sale === null && filled($nextRow->sale_id)) {
             $sale = Sale::query()
                 ->select(['id', 'date_activation', 'payment_frequency'])
                 ->find($nextRow->sale_id);
         }
 
         $desdeLabel = self::rawColumnForDisplay($sale, 'date_activation');
-        $proximoLabel = self::rawColumnForDisplay($nextRow, 'next_payment_date');
         $frequency = filled($sale?->payment_frequency)
             ? (string) $sale->payment_frequency
-            : (filled($nextRow?->payment_frequency) ? (string) $nextRow->payment_frequency : null);
+            : (filled($nextRow->payment_frequency) ? (string) $nextRow->payment_frequency : null);
 
-        $html = '<div class="space-y-1.5 text-[11px] leading-snug">';
-        $html .= '<div class="text-gray-600 dark:text-gray-400"><span class="font-medium text-gray-700 dark:text-gray-300">Desde:</span> ';
-        $html .= '<span class="font-semibold text-gray-900 dark:text-gray-100">'.e($desdeLabel).'</span></div>';
+        $html = '<div class="fi-global-search-payment-meta">';
+        $html .= '<div><span class="fi-global-search-payment-meta__label">Desde:</span> ';
+        $html .= '<span class="fi-global-search-payment-meta__value">'.e($desdeLabel).'</span></div>';
 
-        $html .= '<div class="text-gray-600 dark:text-gray-400"><span class="font-medium text-gray-700 dark:text-gray-300">Próximo pago';
-        if (filled($frequency)) {
-            $html .= ' <span class="font-normal text-gray-500 dark:text-gray-500">('.e($frequency).')</span>';
-        }
-        $html .= ':</span> ';
-        if ($proximoLabel !== '—') {
-            $html .= '<span class="inline-flex items-center rounded-md bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-950 ring-1 ring-amber-300/80 dark:bg-amber-500/15 dark:text-amber-100 dark:ring-amber-400/35">'.e($proximoLabel).'</span>';
-            $overdueDays = self::calendarDaysOverdueSinceStoredExpiration($nextRow->next_payment_date, now());
-            if ($overdueDays !== null && $overdueDays > 0) {
-                $html .= ' <span class="text-rose-600 dark:text-rose-400" title="Días transcurridos desde el vencimiento">('.e((string) $overdueDays).' días vencidos)</span>';
+        foreach ($overdueRows as $overdueRow) {
+            $overdueLabel = self::rawColumnForDisplay($overdueRow, 'next_payment_date');
+            $overdueDays = self::calendarDaysOverdueSinceStoredExpiration($overdueRow->next_payment_date, $today);
+            $html .= '<div><span class="fi-global-search-payment-meta__overdue-label">Pago vencido:</span> ';
+            if ($overdueLabel !== '—') {
+                $html .= '<span class="fi-global-search-payment-badge fi-global-search-payment-badge--overdue">'.e($overdueLabel).'</span>';
+                if ($overdueDays !== null && $overdueDays > 0) {
+                    $html .= ' <span class="fi-global-search-payment-meta__overdue-days" title="Días transcurridos desde el vencimiento">('.e((string) $overdueDays).' días vencidos)</span>';
+                }
+            } else {
+                $html .= '<span>—</span>';
             }
-        } else {
-            $html .= '<span>—</span>';
+            $html .= '</div>';
         }
-        $html .= '</div>';
+
+        if ($upcomingRows !== []) {
+            $proximoLabel = self::rawColumnForDisplay($upcomingRows[0], 'next_payment_date');
+            $html .= '<div><span class="fi-global-search-payment-meta__label">Próximo pago';
+            if (filled($frequency)) {
+                $html .= ' <span class="fi-global-search-payment-meta__freq">('.e($frequency).')</span>';
+            }
+            $html .= ':</span> ';
+            if ($proximoLabel !== '—') {
+                $html .= '<span class="fi-global-search-payment-badge fi-global-search-payment-badge--upcoming">'.e($proximoLabel).'</span>';
+            } else {
+                $html .= '<span>—</span>';
+            }
+            $html .= '</div>';
+        }
 
         $html .= '</div>';
 

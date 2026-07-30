@@ -1098,6 +1098,85 @@
     @apply border-slate-500/28 bg-slate-500/12 text-slate-200;
   }
 
+  /** Cobranzas en búsqueda global (próximo pago / vencido) */
+  .fi-global-search-payment-meta {
+    @apply space-y-1.5 text-[11px] leading-snug text-gray-600;
+  }
+
+  .dark .fi-global-search-payment-meta {
+    @apply text-gray-400;
+  }
+
+  .fi-global-search-payment-meta__label {
+    @apply font-medium text-gray-700;
+  }
+
+  .dark .fi-global-search-payment-meta__label {
+    @apply text-gray-300;
+  }
+
+  .fi-global-search-payment-meta__value {
+    @apply font-semibold text-gray-900;
+  }
+
+  .dark .fi-global-search-payment-meta__value {
+    @apply text-gray-100;
+  }
+
+  .fi-global-search-payment-meta__freq {
+    @apply font-normal text-gray-500;
+  }
+
+  .dark .fi-global-search-payment-meta__freq {
+    @apply text-gray-500;
+  }
+
+  .fi-global-search-payment-meta__overdue-label {
+    @apply font-medium text-rose-700;
+  }
+
+  .dark .fi-global-search-payment-meta__overdue-label {
+    @apply text-rose-300;
+  }
+
+  .fi-global-search-payment-meta__overdue-days {
+    @apply text-rose-600;
+  }
+
+  .dark .fi-global-search-payment-meta__overdue-days {
+    @apply text-rose-300;
+  }
+
+  .fi-global-search-payment-badge {
+    box-sizing: border-box;
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    border-width: 1px;
+    border-style: solid;
+    outline: none;
+    box-shadow: none;
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-ring-offset-shadow: 0 0 #0000;
+    @apply rounded-md px-1.5 py-0.5 text-[11px] font-semibold leading-snug;
+  }
+
+  .fi-global-search-payment-badge--overdue {
+    @apply border-rose-200/90 bg-rose-50 text-rose-950;
+  }
+
+  .dark .fi-global-search-payment-badge--overdue {
+    @apply border-rose-400/35 bg-rose-500/20 text-rose-100;
+  }
+
+  .fi-global-search-payment-badge--upcoming {
+    @apply border-amber-200/90 bg-amber-50 text-amber-950;
+  }
+
+  .dark .fi-global-search-payment-badge--upcoming {
+    @apply border-amber-400/35 bg-amber-500/20 text-amber-100;
+  }
+
   .fi-business-panel-stepper-track {
     display: flex;
     flex-wrap: nowrap;
