@@ -33,3 +33,21 @@ it('modelo corporate ally observacion define tabla y relación', function () {
         ->and(method_exists($ally, 'state'))->toBeTrue()
         ->and(method_exists($ally, 'city'))->toBeTrue();
 });
+
+it('tabla de aliados corporativos compacta ubicación contacto y acciones', function () {
+    $tablePath = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/CorporateAllies/Tables/CorporateAlliesTable.php';
+    $contents = file_get_contents($tablePath);
+
+    expect($contents)
+        ->toContain("TextColumn::make('company_name')")
+        ->toContain("TextColumn::make('location')")
+        ->toContain("TextColumn::make('contact')")
+        ->toContain('formatLocation')
+        ->toContain('formatContactHtml')
+        ->toContain('ActionGroup::make([')
+        ->toContain('CreateAction::make()')
+        ->toContain("->label('Estatus convenio')")
+        ->toContain("->label('Estatus')")
+        ->toContain('isToggledHiddenByDefault: true')
+        ->toContain("->description('Use filtros y columnas ocultas para afinar por ubicación, convenio, contacto o datos de pago.')");
+});

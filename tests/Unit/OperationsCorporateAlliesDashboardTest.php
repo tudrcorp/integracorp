@@ -58,9 +58,15 @@ it('define dashboard de aliados corporativos con estructura de resource', functi
 
     expect($tableContents)->toContain("->heading('Aliados corporativos')")
         ->toContain("TextColumn::make('company_name')")
+        ->toContain("TextColumn::make('location')")
+        ->toContain("TextColumn::make('contact')")
         ->toContain("TextColumn::make('type_agreement')")
         ->toContain("TextColumn::make('status_agreement')")
+        ->toContain("TextColumn::make('status')")
         ->toContain("TextColumn::make('extra_beneficiary_zelle')")
+        ->toContain('->copyable()')
+        ->toContain('ActionGroup::make([')
+        ->toContain('->emptyStateActions([')
         ->not->toContain("whereRaw('1 = 0')")
         ->toContain("->emptyStateHeading('Sin aliados corporativos')");
 
