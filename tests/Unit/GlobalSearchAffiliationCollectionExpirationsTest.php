@@ -139,7 +139,65 @@ it('paymentExpirationDetailsValue usa exclusivamente next_payment_date', functio
     expect($contents)
         ->toContain("->whereNotNull('next_payment_date')")
         ->toContain("->get(['id', 'sale_id', 'next_payment_date', 'payment_frequency'])")
-        ->toContain("rawColumnForDisplay(\$nextRow, 'next_payment_date')")
+        ->toContain("rawColumnForDisplay(\$overdueRow, 'next_payment_date')")
+        ->toContain("rawColumnForDisplay(\$upcomingRows[0], 'next_payment_date')")
+        ->toContain('fi-global-search-payment-badge--overdue')
+        ->toContain('fi-global-search-payment-badge--upcoming')
         ->not->toContain('rawNextPaymentDateForDisplay')
         ->not->toContain('paymentDateForCollection');
+});
+
+it('theme define estilos dark para badges de cobranza en búsqueda global', function (): void {
+    $theme = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
+
+    expect($theme)
+        ->toContain('.fi-global-search-payment-badge--overdue')
+        ->toContain('.fi-global-search-payment-badge--upcoming')
+        ->toContain('.dark .fi-global-search-payment-badge--overdue')
+        ->toContain('.dark .fi-global-search-payment-badge--upcoming');
+});
+
+it('partitionPorPagarByOverdue separa cuotas vencidas y próximas', function (): void {
+    $today = Carbon::parse('2026-07-30');
+    $rows = new EloquentCollection([
+        new BillingCollection(['next_payment_date' => '12/09/2026']),
+        new BillingCollection(['next_payment_date' => '12/06/2026']),
+        new BillingCollection(['next_payment_date' => '12/03/2026']),
+    ]);
+
+    $partition = GlobalSearchAffiliationCollectionExpirations::partitionPorPagarByOverdue($today, $rows);
+
+    expect($partition['overdue'])->toHaveCount(2)
+        ->and((string) $partition['overdue'][0]->next_payment_date)->toBe('12/03/2026')
+        ->and((string) $partition['overdue'][1]->next_payment_date)->toBe('12/06/2026')
+        ->and($partition['upcoming'])->toHaveCount(1)
+        ->and((string) $partition['upcoming'][0]->next_payment_date)->toBe('12/09/2026');
+});
+
+it('partitionPorPagarByOverdue deja solo upcoming cuando no hay vencidas', function (): void {
+    $today = Carbon::parse('2026-05-10');
+    $rows = new EloquentCollection([
+        new BillingCollection(['next_payment_date' => '12/06/2026']),
+        new BillingCollection(['next_payment_date' => '12/09/2026']),
+    ]);
+
+    $partition = GlobalSearchAffiliationCollectionExpirations::partitionPorPagarByOverdue($today, $rows);
+
+    expect($partition['overdue'])->toBe([])
+        ->and($partition['upcoming'])->toHaveCount(2)
+        ->and((string) $partition['upcoming'][0]->next_payment_date)->toBe('12/06/2026');
+});
+
+it('partitionPorPagarByOverdue deja solo overdue cuando todas están vencidas', function (): void {
+    $today = Carbon::parse('2026-10-01');
+    $rows = new EloquentCollection([
+        new BillingCollection(['next_payment_date' => '12/09/2026']),
+        new BillingCollection(['next_payment_date' => '12/06/2026']),
+    ]);
+
+    $partition = GlobalSearchAffiliationCollectionExpirations::partitionPorPagarByOverdue($today, $rows);
+
+    expect($partition['upcoming'])->toBe([])
+        ->and($partition['overdue'])->toHaveCount(2)
+        ->and((string) $partition['overdue'][0]->next_payment_date)->toBe('12/06/2026');
 });
