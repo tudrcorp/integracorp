@@ -156,7 +156,8 @@ it('envía de inmediato cuando no hay fecha programada', function (): void {
 
     Bus::assertBatched(fn ($batch): bool => $batch->jobs->count() === 1
         && $batch->jobs->first() instanceof SendNotificationMasive);
-    Bus::assertDispatched(SendNotificationMasiveEmail::class);
+    Bus::assertBatched(fn ($batch): bool => $batch->jobs->count() === 1
+        && $batch->jobs->first() instanceof SendNotificationMasiveEmail);
 });
 
 it('rechaza el envío cuando la notificación ya fue encolada', function (): void {

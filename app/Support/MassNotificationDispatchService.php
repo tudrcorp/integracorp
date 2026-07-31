@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Jobs\ReconcileMassNotificationEmailDelivery;
 use App\Jobs\SendNotificationMasive;
 use App\Jobs\SendNotificationMasiveEmail;
 use App\Jobs\SweepMassNotificationWhatsAppFailures;
@@ -65,6 +66,7 @@ class MassNotificationDispatchService
         $infoNotificationArray = $record->toArray();
         $queuedJobs = 0;
         $whatsappJobs = [];
+        $emailJobs = [];
 
         /** @var DataNotification $recipient */
         foreach ($recipients as $recipient) {
@@ -74,6 +76,7 @@ class MassNotificationDispatchService
                 $infoNotificationArray,
                 $record,
                 $whatsappJobs,
+                $emailJobs,
             );
         }
 
@@ -85,9 +88,9 @@ class MassNotificationDispatchService
         }
 
         $whatsappCount = count($whatsappJobs);
+        $massNotificationId = $record->id;
 
         if ($whatsappJobs !== []) {
-            $massNotificationId = $record->id;
             $staggeredWhatsappJobs = MassNotificationWhatsAppJobScheduler::withStaggeredDelays($whatsappJobs);
 
             Bus::batch($staggeredWhatsappJobs)
@@ -96,6 +99,18 @@ class MassNotificationDispatchService
                 ->allowFailures()
                 ->finally(function (Batch $batch) use ($massNotificationId): void {
                     SweepMassNotificationWhatsAppFailures::dispatch($massNotificationId)
+                        ->onQueue('system');
+                })
+                ->dispatch();
+        }
+
+        if ($emailJobs !== []) {
+            Bus::batch($emailJobs)
+                ->name('mass-notification-email-'.$massNotificationId)
+                ->onQueue('system')
+                ->allowFailures()
+                ->finally(function (Batch $batch) use ($massNotificationId): void {
+                    ReconcileMassNotificationEmailDelivery::dispatch($massNotificationId)
                         ->onQueue('system');
                 })
                 ->dispatch();
@@ -170,6 +185,7 @@ class MassNotificationDispatchService
     /**
      * @param  Collection<int, string>  $channels
      * @param  list<SendNotificationMasive>  $whatsappJobs
+     * @param  list<SendNotificationMasiveEmail>  $emailJobs
      */
     private static function queueRecipientChannels(
         DataNotification $recipient,
@@ -177,6 +193,7 @@ class MassNotificationDispatchService
         array $infoNotificationArray,
         MassNotification $record,
         array &$whatsappJobs,
+        array &$emailJobs,
     ): int {
         $queuedJobs = 0;
 
@@ -197,11 +214,11 @@ class MassNotificationDispatchService
         if ($channels->contains('email')) {
             if (filled($recipient->email)) {
                 MassNotificationRecipientDelivery::markEmailPending($recipient->id);
-                SendNotificationMasiveEmail::dispatch(
+                $emailJobs[] = new SendNotificationMasiveEmail(
                     $recipient->email,
                     $record,
                     $recipient->id,
-                )->onQueue('system');
+                );
                 $queuedJobs++;
             } else {
                 MassNotificationRecipientDelivery::markEmailSkipped($recipient->id, 'Correo vacío o no disponible');

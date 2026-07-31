@@ -10,6 +10,7 @@ use App\Jobs\ExportIndividualAffiliations;
 use App\Jobs\ExportScheduledEntity;
 use App\Jobs\PrepareAffiliationCorporateRenovations;
 use App\Jobs\PrepareAffiliationRenovations;
+use App\Jobs\ReconcileOrphanedMassNotificationEmails;
 use App\Jobs\SendCollaboratorAnniversaryNotification;
 use App\Jobs\SendDailyAuditSummary;
 use App\Jobs\SendIndividualQuoteDayFiveFollowUp;
@@ -134,6 +135,11 @@ Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('7:30');
  * Dispara notificaciones masivas cuya fecha programada ya venció.
  */
 Schedule::job(new DispatchScheduledMassNotifications, 'system')->everyMinute();
+
+/**
+ * Marca como fallidos los emails masivos que quedaron "pending" sin job en cola.
+ */
+Schedule::job(new ReconcileOrphanedMassNotificationEmails, 'system')->everyFiveMinutes();
 
 /**
  * Respaldo completo de la base de datos en .sql (estructura + datos).
