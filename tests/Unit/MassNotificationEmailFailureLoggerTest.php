@@ -73,12 +73,15 @@ it('el job de correo masivo registra fallos de intento y permanentes con el logg
     $jobSrc = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/SendNotificationMasiveEmail.php');
     $viewSrc = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Marketing/Resources/MassNotifications/Pages/ViewMassNotification.php');
     $controllerSrc = file_get_contents(dirname(__DIR__, 2).'/app/Http/Controllers/NotificationController.php');
+    $serviceSrc = file_get_contents(dirname(__DIR__, 2).'/app/Services/NotificationMasiveService.php');
 
     expect($jobSrc)->toContain('MassNotificationEmailFailureLogger::log')
         ->and($jobSrc)->toContain("stage: 'job_attempt'")
         ->and($jobSrc)->toContain("stage: 'job_failed_permanently'")
         ->and($viewSrc)->toContain("stage: 'dispatch_enqueue'")
         ->and($controllerSrc)->toContain("stage: 'test_email'")
+        ->and($serviceSrc)->toContain('Mass notification email: aceptado por SMTP')
+        ->and($serviceSrc)->not->toContain('sleep(5)')
         ->and(class_exists(SendNotificationMasiveEmail::class))->toBeTrue()
         ->and(class_exists(MassNotificationEmailFailureLogger::class))->toBeTrue();
 });

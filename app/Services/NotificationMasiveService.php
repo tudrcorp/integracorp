@@ -14,6 +14,7 @@ use App\Models\DataNotification;
 use App\Models\MassNotification;
 use App\Models\TelemedicinePatientMedications;
 use App\Support\BirthdayNotificationRunReport;
+use App\Support\MassNotificationEmailSubject;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -49,10 +50,20 @@ class NotificationMasiveService
     {
         set_time_limit(0);
 
-        Log::info('Destinatario:'.$email);
+        Log::info('Mass notification email: enviando', [
+            'mass_notification_id' => $record->id,
+            'recipient_email' => $email,
+            'email_subject' => MassNotificationEmailSubject::resolve($record),
+            'mailer' => config('mail.default'),
+        ]);
+
         Mail::to($email)->send(new NotificationMasiveMail($record->toArray()));
 
-        sleep(5);
+        Log::info('Mass notification email: aceptado por SMTP', [
+            'mass_notification_id' => $record->id,
+            'recipient_email' => $email,
+            'email_subject' => MassNotificationEmailSubject::resolve($record),
+        ]);
     }
 
     /**
