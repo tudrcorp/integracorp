@@ -4,13 +4,13 @@ namespace App\Jobs;
 
 use App\Models\MassNotification;
 use App\Services\NotificationMasiveService;
+use App\Support\MassNotificationEmailFailureLogger;
 use App\Support\MassNotificationRecipientDelivery;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class SendNotificationMasiveEmail implements ShouldQueue
@@ -29,8 +29,27 @@ class SendNotificationMasiveEmail implements ShouldQueue
 
     public function handle(): void
     {
-        NotificationMasiveService::sendEmail($this->email, $this->massNotification);
-        MassNotificationRecipientDelivery::markEmailSent($this->dataNotificationId);
+        try {
+            NotificationMasiveService::sendEmail($this->email, $this->massNotification);
+            MassNotificationRecipientDelivery::markEmailSent($this->dataNotificationId);
+        } catch (Throwable $exception) {
+            MassNotificationEmailFailureLogger::log(
+                exception: $exception,
+                stage: 'job_attempt',
+                record: $this->massNotification,
+                email: $this->email,
+                dataNotificationId: $this->dataNotificationId,
+                context: [
+                    'job' => self::class,
+                    'attempt' => $this->attempts(),
+                    'max_tries' => $this->tries,
+                    'will_retry' => $this->attempts() < $this->tries,
+                    'queue' => $this->queue,
+                ],
+            );
+
+            throw $exception;
+        }
     }
 
     public function failed(?Throwable $exception): void
@@ -40,10 +59,20 @@ class SendNotificationMasiveEmail implements ShouldQueue
             $exception?->getMessage() ?? 'Error desconocido en el job de correo',
         );
 
-        Log::info('SendNotificationMasiveEmail: FAILED', [
-            'data_notification_id' => $this->dataNotificationId,
-            'email' => $this->email,
-            'exception' => $exception,
-        ]);
+        if ($exception instanceof Throwable) {
+            MassNotificationEmailFailureLogger::log(
+                exception: $exception,
+                stage: 'job_failed_permanently',
+                record: $this->massNotification,
+                email: $this->email,
+                dataNotificationId: $this->dataNotificationId,
+                context: [
+                    'job' => self::class,
+                    'attempt' => $this->attempts(),
+                    'max_tries' => $this->tries,
+                    'queue' => $this->queue,
+                ],
+            );
+        }
     }
 }

@@ -10,7 +10,9 @@ use App\Mail\MyTestEmail;
 use App\Mail\SendNotificationMailSingle;
 use App\Models\DataNotification;
 use App\Models\Guest;
+use App\Models\MassNotification;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\MassNotificationEmailFailureLogger;
 use App\Support\MassNotificationRecipientDelivery;
 use App\Support\RunReportMessageFormatter;
 use App\Support\ScheduledNotificationPhones;
@@ -2343,7 +2345,17 @@ class NotificationController extends Controller
                 false,
                 $th->getMessage(),
             );
-            Log::error($th);
+            MassNotificationEmailFailureLogger::log(
+                exception: $th,
+                stage: 'test_email',
+                record: $record instanceof MassNotification ? $record : null,
+                email: $data['email'] ?? null,
+                context: [
+                    'source' => self::class.'::sendNotificationEmailSingle',
+                    'mailable' => SendNotificationMailSingle::class,
+                    'test_name' => $data['name'] ?? null,
+                ],
+            );
 
             return false;
         }

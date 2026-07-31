@@ -78,7 +78,13 @@ it('aplica estilo iOS al formulario y acciones de colaboradores', function (): v
         ->toContain('filament.administration.rrhh-colaboradors.colaborador-quick-profile')
         ->toContain('Perfil del Colaborador')
         ->toContain('EditAction::make()')
-        ->toContain('DeleteBulkAction::make()');
+        ->toContain('DeleteBulkAction::make()')
+        ->toContain("TextColumn::make('departamento.description')")
+        ->toContain("TextColumn::make('cargo.description')");
+
+    expect($tableContents)
+        ->not->toContain("->searchable(['departamento.description'])")
+        ->and($tableContents)->not->toContain("->searchable(['cargo.description'])");
 
     expect($listPageContents)
         ->toContain('ticket-btn-ios')

@@ -71,7 +71,7 @@ class RrhhColaboradorsTable
 
                 TextColumn::make('departamento.description')
                     ->label('Departamento')
-                    ->searchable(['departamento.description'])
+                    ->searchable()
                     ->sortable()
                     ->badge()
                     ->icon('heroicon-m-building-office-2')
@@ -79,7 +79,7 @@ class RrhhColaboradorsTable
 
                 TextColumn::make('cargo.description')
                     ->label('Cargo')
-                    ->searchable(['cargo.description'])
+                    ->searchable()
                     ->sortable()
                     ->badge()
                     ->icon('heroicon-m-briefcase')
