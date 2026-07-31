@@ -7,6 +7,7 @@ use App\Http\Controllers\NotificationController;
 use App\Models\DataNotification;
 use App\Models\MassNotificationFolder;
 use App\Support\MassNotificationDispatchService;
+use App\Support\MassNotificationEmailFailureLogger;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -174,7 +175,15 @@ class MassNotificationsTable
                                     ->{$result->success ? 'success' : 'warning'}()
                                     ->send();
                             } catch (\Throwable $th) {
-                                Log::error($th);
+                                MassNotificationEmailFailureLogger::log(
+                                    exception: $th,
+                                    stage: 'dispatch_enqueue',
+                                    record: $record,
+                                    context: [
+                                        'source' => self::class.'::send_notification',
+                                        'recipient_count' => $record->dataNotifications()->count(),
+                                    ],
+                                );
 
                                 Notification::make()
                                     ->body('No se pudo encolar el envío masivo. Revisa los logs del sistema.')
