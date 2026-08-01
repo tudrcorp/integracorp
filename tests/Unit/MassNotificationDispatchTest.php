@@ -80,6 +80,7 @@ it('los jobs de envío masivo reciben el id del destinatario', function (): void
         ->and($whatsappJob)->toContain('$this->release(')
         ->and($service)->toContain('Bus::batch')
         ->and($service)->toContain('SweepMassNotificationWhatsAppFailures')
+        ->and($service)->toContain('ReconcileMassNotificationEmailDelivery')
         ->and($service)->toContain('MassNotificationWhatsAppJobScheduler::withStaggeredDelays')
         ->and($service)->toContain('MassNotificationWhatsAppJobScheduler::successMessage')
         ->and($scheduler)->toContain('withStaggeredDelays')
