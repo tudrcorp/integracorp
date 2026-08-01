@@ -6,6 +6,7 @@ use App\Models\MassNotification;
 use App\Services\NotificationMasiveService;
 use App\Support\MassNotificationEmailFailureLogger;
 use App\Support\MassNotificationRecipientDelivery;
+use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -15,7 +16,7 @@ use Throwable;
 
 class SendNotificationMasiveEmail implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 5;
 
@@ -29,6 +30,10 @@ class SendNotificationMasiveEmail implements ShouldQueue
 
     public function handle(): void
     {
+        if ($this->batch()?->cancelled()) {
+            return;
+        }
+
         try {
             NotificationMasiveService::sendEmail($this->email, $this->massNotification);
             MassNotificationRecipientDelivery::markEmailSent($this->dataNotificationId);
