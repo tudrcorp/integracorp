@@ -72,6 +72,7 @@ it('los jobs de envío masivo reciben el id del destinatario', function (): void
     $scheduler = file_get_contents(dirname(__DIR__, 2).'/app/Support/MassNotificationWhatsAppJobScheduler.php');
 
     expect($emailJob)->toContain('dataNotificationId')
+        ->and($emailJob)->toContain('Batchable')
         ->and($whatsappJob)->toContain('dataNotificationId')
         ->and($emailJob)->toContain('markEmailSent')
         ->and($whatsappJob)->toContain('markWhatsappSent')
