@@ -340,6 +340,12 @@
                 </tr>
                 <tr>
                     <td colspan="2">
+                        <div class="label">Fecha y hora de cita</div>
+                        <div class="value">{{ filled($order->appointment_at) ? $order->appointment_at->timezone(config('app.timezone'))->format('d/m/Y H:i') : '—' }}</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2">
                         <div class="label">Dirección</div>
                         <div class="value-muted">{{ $coord->address ?? '—' }}</div>
                     </td>

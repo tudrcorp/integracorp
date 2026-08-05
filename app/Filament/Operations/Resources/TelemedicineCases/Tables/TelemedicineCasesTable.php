@@ -6,8 +6,11 @@ use App\Models\ObservationCase;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineDoctor;
+use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\CaseFollowUpChatManager;
+use App\Support\Telemedicine\TelemedicineCaseCreatedAtChangeAction;
+use App\Support\Telemedicine\TelemedicineCaseIdentity;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
@@ -161,7 +164,12 @@ class TelemedicineCasesTable
                         && CaseFollowUpChatManager::canAccessCase(Auth::user(), $record))
                     ->action(function (TelemedicineCase $record, $livewire): void {
                         $livewire->dispatch('operations-case-chat-open', caseId: $record->id);
-                    }),
+                    })
+                    ->button()
+                    ->extraAttributes([
+                        'x-on:click.stop' => '',
+                        'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                    ]),
                 ActionGroup::make([
                     ViewAction::make()
                         ->label('Ver detalle')
@@ -176,11 +184,17 @@ class TelemedicineCasesTable
                         ->action(function (TelemedicineCase $record, $livewire): void {
                             $livewire->dispatch('operations-case-chat-open', caseId: $record->id);
                         }),
+                    TelemedicineCaseCreatedAtChangeAction::make(),
                 ])
-                    ->icon(Heroicon::OutlinedEllipsisHorizontalCircle)
-                    ->tooltip('Más acciones')
+                    ->icon(Heroicon::EllipsisHorizontal)
+                    ->tooltip('Acciones del caso')
+                    ->color('gray')
                     ->button()
-                    ->label('Más'),
+                    ->label('Acciones')
+                    ->extraAttributes([
+                        'x-on:click.stop' => '',
+                        'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                    ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -241,9 +255,16 @@ class TelemedicineCasesTable
                                     $mainServiceName = $latestConsultation?->telemedicineServiceList?->name ?? 'NO ESPECIFICADO';
                                     $derivedServiceName = $latestConsultation?->telemedicineServiceListDrift?->name ?? 'NO ESPECIFICADO';
                                     $patient = $record->telemedicinePatient;
-                                    $patientName = (string) ($patient?->full_name ?? $record->patient_name ?? 'NO ESPECIFICADO');
-                                    $patientIdentification = (string) ($patient?->nro_identificacion ?? 'NO ESPECIFICADO');
-                                    $patientRelationship = 'TITULAR';
+                                    $identity = $patient !== null
+                                        ? TelemedicineCaseIdentity::coordinationIdentity(
+                                            $latestConsultation?->toArray() ?? [],
+                                            $patient,
+                                        )
+                                        : [
+                                            'patient' => (string) ($record->patient_name ?? 'NO ESPECIFICADO'),
+                                            'ci_patient' => 'NO ESPECIFICADO',
+                                            'relationship_patient' => null,
+                                        ];
                                     $contractor = $patient?->afilliation_id === null ? 'CORPORATIVO' : 'INDIVIDUAL';
 
                                     $coordination = OperationCoordinationService::query()->create([
@@ -255,9 +276,9 @@ class TelemedicineCasesTable
                                         'date_service' => now(),
                                         'reference_number' => $latestConsultation?->code_reference ?? $record->code,
                                         'status' => 'PENDIENTE',
-                                        'patient' => (string) ($record->patient_name ?? $patientName),
-                                        'ci_patient' => $patientIdentification,
-                                        'relationship_patient' => $patientRelationship,
+                                        'patient' => $identity['patient'],
+                                        'ci_patient' => $identity['ci_patient'] ?? 'NO ESPECIFICADO',
+                                        'relationship_patient' => $identity['relationship_patient'],
                                         'contractor' => $contractor,
                                         'symptoms_diagnosis' => (string) ($latestConsultation?->diagnostic_impression ?? $record->reason ?? 'NO ESPECIFICADO'),
                                         'servicie' => $mainServiceName,

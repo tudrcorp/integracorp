@@ -73,6 +73,7 @@ class UserFormPermissionOptions
         'telemedicinehistorypatientresource' => ['historia-clinica'],
         'operationcoordinationserviceresource' => ['servicios-medicos'],
         'operationserviceorderresource' => ['ordenes-servicios'],
+        'operationmedicalappointmentresource' => ['citas-medicas'],
         'accountsreceivableresource' => ['cuentas-por-cobrar'],
         'accountspayableresource' => ['cuentas-por-pagar'],
         'operationtypeserviceresource' => ['tipos-servicios'],
@@ -94,6 +95,18 @@ class UserFormPermissionOptions
         'activityresource' => ['actividades'],
         'kanban' => ['kanban'],
         'help' => ['ayuda-proyectos'],
+        'corretajecluster' => ['metricas-corretaje'],
+        'viajescluster' => ['metricas-viajes'],
+        'corretajeagents' => ['metricas-corretaje-agentes'],
+        'corretajeagencies' => ['metricas-corretaje-agencias'],
+        'viajesagencies' => ['metricas-viajes-agencias'],
+        'viajesagents' => ['metricas-viajes-agentes'],
+        'cotizaciones' => ['metricas-cotizaciones'],
+        'afiliaciones' => ['metricas-afiliaciones'],
+        'administracion' => ['metricas-administracion'],
+        'proveedores' => ['metricas-proveedores'],
+        'operaciones' => ['metricas-operaciones'],
+        'proyectos' => ['metricas-proyectos'],
     ];
 
     /**

@@ -5,11 +5,13 @@ namespace App\Filament\Operations\Resources\OperationInventoryOutflows\Tables;
 use App\Http\Controllers\OperationInventoryOutflowExportCsvController;
 use App\Models\OperationInventoryOutflow;
 use App\Support\Filament\CsvExportDownloadTrigger;
+use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -21,8 +23,19 @@ class OperationInventoryOutflowsTable
     {
         return $table
             ->heading('Salidas de inventario')
-            ->description('Registro de salidas y ajustes por producto y almacén.')
+            ->description('Despachos, ajustes y salidas vinculadas a telemedicina.')
             ->defaultSort('created_at', 'desc')
+            ->searchable()
+            ->searchPlaceholder('Buscar por código, producto, almacén, caso o tipo…')
+            ->persistSearchInSession()
+            ->persistFiltersInSession()
+            ->deferFilters(false)
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->emptyStateHeading('Sin salidas de inventario')
+            ->emptyStateDescription('Cuando se registre una salida o un despacho de telemedicina aparecerá aquí.')
+            ->emptyStateIcon(Heroicon::OutlinedArrowLeftStartOnRectangle)
+            ->striped()
             ->columns([
                 TextColumn::make('product.code')
                     ->label('Código')
@@ -35,7 +48,7 @@ class OperationInventoryOutflowsTable
                         ?? '—'),
                 TextColumn::make('product.name')
                     ->label('Producto')
-                    ->icon('heroicon-o-cube')
+                    ->icon(Heroicon::OutlinedCube)
                     ->weight(FontWeight::SemiBold)
                     ->searchable()
                     ->sortable()
@@ -48,7 +61,7 @@ class OperationInventoryOutflowsTable
                     ->label('Almacén')
                     ->badge()
                     ->color('info')
-                    ->icon('heroicon-o-building-storefront')
+                    ->icon(Heroicon::OutlinedBuildingStorefront)
                     ->searchable()
                     ->sortable()
                     ->getStateUsing(fn (OperationInventoryOutflow $record): string => $record->ubication?->name
@@ -64,10 +77,27 @@ class OperationInventoryOutflowsTable
                 TextColumn::make('type_entry')
                     ->label('Tipo de salida')
                     ->badge()
-                    ->color('warning')
-                    ->icon('heroicon-o-arrow-left-start-on-rectangle')
+                    ->color(fn (?string $state): string => match (mb_strtoupper(trim((string) ($state ?? '')))) {
+                        'SALIDA TELEMEDICINA' => 'danger',
+                        'AJUSTE INICIAL' => 'gray',
+                        'AJUSTE DE EXISTENCIA', 'AJUSTE DE INVENTARIO' => 'warning',
+                        default => 'warning',
+                    })
+                    ->icon(fn (?string $state): string => match (mb_strtoupper(trim((string) ($state ?? '')))) {
+                        'SALIDA TELEMEDICINA' => 'heroicon-o-heart',
+                        default => 'heroicon-o-arrow-left-start-on-rectangle',
+                    })
                     ->searchable()
                     ->placeholder('—'),
+                TextColumn::make('telemedicineCase.code')
+                    ->label('Nº caso')
+                    ->badge()
+                    ->color('primary')
+                    ->icon('healthicons-f-health-literacy')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('—')
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? mb_strtoupper((string) $state) : '—'),
                 TextColumn::make('observations')
                     ->label('Motivo / nota')
                     ->wrap()
@@ -76,15 +106,16 @@ class OperationInventoryOutflowsTable
                     ->toggleable(),
                 TextColumn::make('created_by')
                     ->label('Registrado por')
-                    ->icon('heroicon-m-user')
+                    ->icon(Heroicon::User)
                     ->placeholder('—')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->label('Fecha')
                     ->dateTime('d/m/Y H:i')
                     ->description(fn (OperationInventoryOutflow $record): string => $record->created_at?->diffForHumans() ?? '')
                     ->sortable()
-                    ->icon('heroicon-m-calendar-days'),
+                    ->icon(Heroicon::CalendarDays),
             ])
             ->filters([
                 SelectFilter::make('operation_inventory_ubication_id')
@@ -102,13 +133,19 @@ class OperationInventoryOutflowsTable
                     ]),
             ])
             ->recordActions([
-                ViewAction::make()->label('Ver'),
+                ViewAction::make()
+                    ->label('Ver')
+                    ->icon(Heroicon::OutlinedEye)
+                    ->color('info')
+                    ->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                    ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('export_outflows_csv')
                         ->label('Exportar CSV')
-                        ->icon('heroicon-o-arrow-down-tray')
+                        ->icon(Heroicon::OutlinedArrowDownTray)
                         ->color('success')
                         ->deselectRecordsAfterCompletion()
                         ->action(function (Collection $records, BulkAction $action): void {

@@ -2,17 +2,16 @@
 
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Actions;
 
-use App\Http\Controllers\UtilsController;
 use App\Jobs\AssignedCase;
 use App\Models\AnotherAddress;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\State;
-use App\Models\TelemedicineCase;
 use App\Models\TelemedicineDoctor;
 use App\Models\TelemedicinePatient;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\SecurityAudit;
+use App\Support\Telemedicine\TelemedicineCaseFactory;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Radio;
@@ -274,21 +273,10 @@ class AssignDoctorAction
                      */
                     if ($data['feedback'] == true) {
 
-                        $case = TelemedicineCase::create([
-                            'code' => UtilsController::generateCaseCode(),
-                            'telemedicine_patient_id' => $record->id,
+                        $case = TelemedicineCaseFactory::createForPatient($record, [
                             'telemedicine_doctor_id' => $data['doctor_id'],
-                            'patient_name' => $record->full_name,
-                            'patient_age' => $record->age,
-                            'patient_sex' => $record->sex,
-                            'patient_phone' => $record->phone,
-                            'patient_address' => $record->address,
-                            'patient_country_id' => $record->country_id,
-                            'patient_state_id' => $record->state_id,
-                            'patient_city_id' => $record->city_id,
                             'reason' => $data['reason'],
                             'ambulanceParking' => $data['ambulanceParking'],
-                            'status' => 'ASIGNADO',
                             'belongs_to' => $data['belongs_to'] ?? null,
                             'assigned_by' => Auth::user()->name,
                             'managed_by' => $doctor->managed_by,
@@ -332,14 +320,8 @@ class AssignDoctorAction
                         /**Tomo la informacion de la tabla de ubicaciones registradas */
                         $address = AnotherAddress::find($data['address_id']);
 
-                        $case = TelemedicineCase::create([
-
-                            'code' => UtilsController::generateCaseCode(),
-                            'telemedicine_patient_id' => $record->id,
+                        $case = TelemedicineCaseFactory::createForPatient($record, [
                             'telemedicine_doctor_id' => $data['doctor_id'],
-                            'patient_name' => $record->full_name,
-                            'patient_age' => $record->age,
-                            'patient_sex' => $record->sex,
                             'patient_phone' => $address['phone_1'],
                             'patient_phone_2' => $address['phone_2'],
                             'patient_address' => $address['address'],
@@ -348,7 +330,6 @@ class AssignDoctorAction
                             'patient_city_id' => $address['city_id'],
                             'reason' => $data['reason'],
                             'ambulanceParking' => $data['ambulanceParking'],
-                            'status' => 'ASIGNADO',
                             'belongs_to' => $data['belongs_to'] ?? null,
                             'assigned_by' => Auth::user()->name,
                             'managed_by' => $doctor->managed_by,
@@ -403,14 +384,8 @@ class AssignDoctorAction
                         $address->telemedicine_patient_id = $record->id;
                         $address->save();
 
-                        $case = TelemedicineCase::create([
-
-                            'code' => UtilsController::generateCaseCode(),
-                            'telemedicine_patient_id' => $record->id,
+                        $case = TelemedicineCaseFactory::createForPatient($record, [
                             'telemedicine_doctor_id' => $data['doctor_id'],
-                            'patient_name' => $record->full_name,
-                            'patient_age' => $record->age,
-                            'patient_sex' => $record->sex,
                             'patient_phone' => $address->phone_1,
                             'patient_phone_2' => $address->phone_2,
                             'patient_address' => $address->address,
@@ -419,7 +394,6 @@ class AssignDoctorAction
                             'patient_city_id' => $address->city_id,
                             'reason' => $data['reason'],
                             'ambulanceParking' => $data['ambulanceParking'],
-                            'status' => 'ASIGNADO',
                             'belongs_to' => $data['belongs_to'] ?? null,
                             'assigned_by' => Auth::user()->name,
                             'managed_by' => $doctor->managed_by,

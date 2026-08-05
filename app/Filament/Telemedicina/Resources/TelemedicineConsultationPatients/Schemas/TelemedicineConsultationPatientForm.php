@@ -11,6 +11,7 @@ use App\Models\TelemedicineListStudy;
 use App\Models\TelemedicinePriority;
 use App\Models\TelemedicineServiceList;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineMedicationInventoryOptions;
 use Filament\Actions\Action;
@@ -23,6 +24,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Icon;
@@ -73,6 +75,12 @@ class TelemedicineConsultationPatientForm
         $countCase = filled($caseId)
             ? TelemedicineConsultationPatient::where('telemedicine_case_id', $caseId)->count()
             : 0;
+        $caseCanBeDischarged = filled($caseId)
+            ? TelemedicineCaseDischargeGuard::caseCanBeDischarged((int) $caseId)
+            : true;
+        $dischargeBlockedMessage = filled($caseId) && ! $caseCanBeDischarged
+            ? TelemedicineCaseDischargeGuard::blockingMessage((int) $caseId)
+            : null;
 
         return $schema
             ->components([
@@ -238,8 +246,7 @@ class TelemedicineConsultationPatientForm
                                         ->helperText('Peso (kg), el punto(.) es el separador de decimales. Ej: 60.5')
                                         ->numeric()
                                         ->live(onBlur: true)
-                                        ->prefixIcon('healthicons-f-i-utensils')
-                                        ->required(),
+                                        ->prefixIcon('healthicons-f-i-utensils'),
                                     TextInput::make('estatura')
                                         ->label('Estatura')
                                         ->helperText('Metros(mts), el punto(.) es el separador de decimales, Ej: 1.70')
@@ -249,8 +256,7 @@ class TelemedicineConsultationPatientForm
                                         ->afterStateUpdated(function (string $context, $state, Set $set, Get $get) {
                                             $cal = $get('peso') / ($get('estatura') * $get('estatura'));
                                             $set('imc', round($cal, 2));
-                                        })
-                                        ->required(),
+                                        }),
                                     TextInput::make('imc')
                                         // peso/estatura * 2
                                         ->label('Indice de Masa Corporal (IMC)')
@@ -527,7 +533,10 @@ class TelemedicineConsultationPatientForm
                                 ->schema([
                                     ToggleButtons::make('feedbackOne')
                                         ->label('¿Dar de alta al paciente en esta sesión?')
-                                        ->helperText('Alta médica: no se mostrarán tipo de servicio ni complementos (la prioridad ya se definió en el primer paso). Continuar: podrás definir el siguiente paso asistencial.')
+                                        ->helperText(
+                                            $dischargeBlockedMessage
+                                                ?? 'Alta médica: solo si todos los servicios asociados están finalizados o caducados (sin pendientes ni en gestión). Continuar: podrás definir el siguiente paso asistencial.'
+                                        )
                                         ->boolean(
                                             trueLabel: 'Sí — alta médica',
                                             falseLabel: 'No — asignar servicio',
@@ -536,6 +545,17 @@ class TelemedicineConsultationPatientForm
                                         ->grouped()
                                         ->inline(true)
                                         ->live()
+                                        ->afterStateUpdated(function (mixed $state, Set $set) use ($caseCanBeDischarged, $dischargeBlockedMessage): void {
+                                            if ($state == true && ! $caseCanBeDischarged) {
+                                                $set('feedbackOne', false);
+
+                                                Notification::make()
+                                                    ->title('Alta médica no disponible')
+                                                    ->body($dischargeBlockedMessage ?? 'Hay servicios asociados pendientes o en gestión.')
+                                                    ->warning()
+                                                    ->send();
+                                            }
+                                        })
                                         ->colors([
                                             1 => 'success',
                                             0 => 'primary',

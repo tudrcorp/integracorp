@@ -111,6 +111,7 @@ final class TelemedicineMedicationInventoryDeductor
 
         OperationInventoryOutflow::query()->create([
             'operation_inventory_id' => $inventory->id,
+            'telemedicine_case_id' => $consultationModel->telemedicine_case_id,
             'operation_inventory_product_id' => $inventory->operation_inventory_product_id,
             'operation_inventory_ubication_id' => $inventory->operation_inventory_ubication_id,
             'operation_inventory_type_id' => $typeId,

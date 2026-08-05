@@ -26,6 +26,10 @@ class OperationInventoryOutflowResource extends Resource
 
     protected static ?string $navigationLabel = 'Salidas de Inventario';
 
+    protected static ?string $modelLabel = 'Salida de Inventario';
+
+    protected static ?string $pluralModelLabel = 'Salidas de Inventario';
+
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrow-left-start-on-rectangle';
 
     protected static string|UnitEnum|null $navigationGroup = 'INVENTARIO DIAGNOMOVIL';
@@ -53,6 +57,7 @@ class OperationInventoryOutflowResource extends Resource
             ->with([
                 'product',
                 'ubication',
+                'telemedicineCase',
                 'operationInventory.operationInventoryType',
             ]);
     }

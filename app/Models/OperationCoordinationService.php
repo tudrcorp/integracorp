@@ -60,6 +60,9 @@ class OperationCoordinationService extends Model
         'updated_by',
         'managed_by',
         'supplier_id',
+        'assigned_to_supplier_by_tdg',
+        'assigned_to_supplier_by_tdg_at',
+        'assigned_to_supplier_by_tdg_by',
         'uploaded_documents',
     ];
 
@@ -67,6 +70,8 @@ class OperationCoordinationService extends Model
     {
         return [
             'uploaded_documents' => 'array',
+            'assigned_to_supplier_by_tdg' => 'boolean',
+            'assigned_to_supplier_by_tdg_at' => 'datetime',
         ];
     }
 

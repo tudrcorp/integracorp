@@ -32,6 +32,7 @@ class OperationAccountsReceivable extends Model
         'reassigned_by_user_id',
         'reassigned_by_analyst_name',
         'status',
+        'is_courtesy',
         'created_by',
         'updated_by',
     ];
@@ -42,6 +43,7 @@ class OperationAccountsReceivable extends Model
             'quote_amount_usd' => 'decimal:2',
             'quote_amount_ves' => 'decimal:2',
             'bcv_rate' => 'decimal:4',
+            'is_courtesy' => 'boolean',
         ];
     }
 

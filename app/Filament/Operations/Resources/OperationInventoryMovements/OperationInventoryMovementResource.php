@@ -26,6 +26,10 @@ class OperationInventoryMovementResource extends Resource
 
     protected static ?string $navigationLabel = 'Movimientos de Inventario';
 
+    protected static ?string $modelLabel = 'Movimiento de Inventario';
+
+    protected static ?string $pluralModelLabel = 'Movimientos de Inventario';
+
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-adjustments-horizontal';
 
     protected static string|UnitEnum|null $navigationGroup = 'INVENTARIO DIAGNOMOVIL';

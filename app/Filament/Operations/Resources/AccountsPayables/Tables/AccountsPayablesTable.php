@@ -131,10 +131,18 @@ class AccountsPayablesTable
                     ->icon(fn (OperationQuoteGenerator $record): ?string => $record->is_cash ? 'heroicon-m-exclamation-triangle' : null)
                     ->color(fn (OperationQuoteGenerator $record): string => $record->is_cash ? 'danger' : 'gray')
                     ->weight(FontWeight::Bold),
+                TextColumn::make('is_courtesy')
+                    ->label('Cortesía')
+                    ->state(fn (OperationQuoteGenerator $record): string => $record->is_courtesy ? 'CORTESÍA' : '—')
+                    ->badge()
+                    ->color(fn (OperationQuoteGenerator $record): string => $record->is_courtesy ? 'success' : 'gray')
+                    ->toggleable(),
             ])
-            ->recordClasses(fn (OperationQuoteGenerator $record): array => $record->is_cash
-                ? ['border-l-4 border-amber-500 bg-amber-50/90 dark:border-amber-500 dark:bg-amber-950/40']
-                : [])
+            ->recordClasses(fn (OperationQuoteGenerator $record): array => match (true) {
+                (bool) $record->is_cash => ['border-l-4 border-amber-500 bg-amber-50/90 dark:border-amber-500 dark:bg-amber-950/40'],
+                (bool) $record->is_courtesy => ['border-l-4 border-emerald-500 bg-emerald-50/90 dark:border-emerald-500 dark:bg-emerald-950/40'],
+                default => [],
+            })
             ->filters([
                 //
             ])

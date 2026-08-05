@@ -7,6 +7,7 @@ namespace App\Support\Filament\Operations;
 use App\Models\OperationCoordinationService;
 use App\Models\OperationServiceOrder;
 use App\Models\TelemedicineDoctor;
+use App\Support\Operations\CoordinationServiceAccess;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
@@ -108,7 +109,11 @@ final class OperationsSupplierScope
      */
     public static function applyCoordinationListScope(Builder $query): Builder
     {
-        self::applyToQuery($query);
+        $supplierId = self::currentSupplierId();
+
+        if ($supplierId !== null) {
+            CoordinationServiceAccess::applyProviderCoordinationVisibilityScope($query, $supplierId);
+        }
 
         if (in_array('ATENMEDI', Auth::user()?->departament ?? [], true)) {
             $query->where('managed_by', 'ATENMEDI');

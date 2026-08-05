@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Actions;
 
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
-use App\Http\Controllers\UtilsController;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineListLaboratory;
@@ -17,6 +16,8 @@ use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\SecurityAudit;
+use App\Support\Telemedicine\TelemedicineCaseFactory;
+use App\Support\Telemedicine\TelemedicineCaseIdentity;
 use App\Support\Telemedicine\TelemedicineCoverageCatalog;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -34,7 +35,7 @@ class RegisterTpaRetailServicesAction
 
     private const NOT_COVERED = 'NO CUBIERTO';
 
-    private const CASE_STATUS = 'TPA/RETAIL';
+    private const CASE_STATUS = 'RETAIL';
 
     private const STANDALONE_SERVICES_FIELD = 'standalone_services';
 
@@ -58,11 +59,11 @@ class RegisterTpaRetailServicesAction
     public static function make(): Action
     {
         return Action::make('register_tpa_retail_services')
-            ->label('Registrar servicios TPA/RETAIL')
+            ->label('Registrar servicios RETAIL')
             ->icon('heroicon-o-clipboard-document-check')
             ->color('success')
             ->modalWidth(Width::FiveExtraLarge)
-            ->modalHeading('Registro de servicios TPA/RETAIL')
+            ->modalHeading('Registro de servicios RETAIL')
             ->modalDescription('Seleccione servicios adicionales, laboratorios, estudios y consultas con especialistas. Cada selección se enviará a Coordinación de Servicios para su gestión.')
             ->modalSubmitActionLabel('Registrar servicios')
             ->form(self::formSchema())
@@ -406,17 +407,7 @@ class RegisterTpaRetailServicesAction
 
     private static function createCase(TelemedicinePatient $record): TelemedicineCase
     {
-        return TelemedicineCase::create([
-            'code' => UtilsController::generateCaseCode(),
-            'telemedicine_patient_id' => $record->id,
-            'patient_name' => $record->full_name,
-            'patient_age' => $record->age,
-            'patient_sex' => $record->sex,
-            'patient_phone' => $record->phone,
-            'patient_address' => $record->address,
-            'patient_country_id' => $record->country_id,
-            'patient_state_id' => $record->state_id,
-            'patient_city_id' => $record->city_id,
+        return TelemedicineCaseFactory::createForPatient($record, [
             'reason' => 'SERVICIOS TPA/RETAIL',
             'status' => self::CASE_STATUS,
             'assigned_by' => Auth::user()?->name,
@@ -428,6 +419,7 @@ class RegisterTpaRetailServicesAction
     private static function createCoordinationService(TelemedicinePatient $record, TelemedicineCase $case, string $specificService): OperationCoordinationService
     {
         $userName = Auth::user()?->name ?? '...';
+        $identity = TelemedicineCaseIdentity::coordinationIdentity([], $record);
 
         return OperationCoordinationService::create([
             'telemedicine_patient_id' => $record->id,
@@ -438,11 +430,11 @@ class RegisterTpaRetailServicesAction
             'business_unit_id' => $record->business_unit_id,
             'reference_number' => $case->code ?? self::buildReferenceNumber($record),
             'status' => 'PENDIENTE',
-            'patient' => $record->full_name,
-            'ci_patient' => $record->nro_identificacion ?? '...',
-            'birth_date_patient' => $record->birth_date,
-            'relationship_patient' => 'TITULAR',
-            'age_patient' => $record->age,
+            'patient' => $identity['patient'],
+            'ci_patient' => $identity['ci_patient'] ?? '...',
+            'birth_date_patient' => $identity['birth_date_patient'],
+            'relationship_patient' => $identity['relationship_patient'],
+            'age_patient' => $identity['age_patient'],
             'contractor' => $record->afilliation_id === null ? 'CORPORATIVO' : 'INDIVIDUAL',
             'state_id' => $record->state_id,
             'city_id' => $record->city_id,

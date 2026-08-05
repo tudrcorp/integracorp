@@ -3,17 +3,20 @@
 namespace App\Filament\Operations\Resources\OperationServiceOrders\Tables;
 
 use App\Http\Controllers\ApiBcvController;
+use App\Http\Controllers\OperationServiceOrderExportCsvController;
 use App\Models\OperationServiceOrder;
 use App\Models\OperationServiceOrderItem;
 use App\Models\OperationServiceOrderQuote;
 use App\Models\Supplier;
 use App\Services\OperationServiceOrderMedicationQuotePdfService;
+use App\Support\Filament\CsvExportDownloadTrigger;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\OperationServiceOrderCoordinationSync;
 use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\CheckboxList;
@@ -68,6 +71,48 @@ class OperationServiceOrdersTable
         }
 
         return '—';
+    }
+
+    /**
+     * Búsqueda global: orden, paciente (case-insensitive), caso, descripción y proveedor.
+     */
+    public static function applyTableSearch(Builder $query, string $search): Builder
+    {
+        $term = trim($search);
+
+        if ($term === '') {
+            return $query;
+        }
+
+        $like = '%'.mb_strtolower($term).'%';
+
+        return $query->where(function (Builder $inner) use ($like): void {
+            $inner
+                ->whereRaw('LOWER(order_number) LIKE ?', [$like])
+                ->orWhereRaw('LOWER(COALESCE(description, \'\')) LIKE ?', [$like])
+                ->orWhereRaw('LOWER(COALESCE(supplier_external, \'\')) LIKE ?', [$like])
+                ->orWhereHas(
+                    'supplier',
+                    fn (Builder $supplierQuery): Builder => $supplierQuery->whereRaw('LOWER(name) LIKE ?', [$like]),
+                )
+                ->orWhereHas(
+                    'telemedicineSupplier',
+                    fn (Builder $supplierQuery): Builder => $supplierQuery->whereRaw('LOWER(name) LIKE ?', [$like]),
+                )
+                ->orWhereHas('operationCoordinationService', function (Builder $coordinationQuery) use ($like): void {
+                    $coordinationQuery
+                        ->whereRaw('LOWER(COALESCE(patient, \'\')) LIKE ?', [$like])
+                        ->orWhereHas(
+                            'telemedicinePatient',
+                            fn (Builder $patientQuery): Builder => $patientQuery->whereRaw('LOWER(COALESCE(full_name, \'\')) LIKE ?', [$like]),
+                        )
+                        ->orWhereHas('telemedicineCase', function (Builder $caseQuery) use ($like): void {
+                            $caseQuery
+                                ->whereRaw('LOWER(COALESCE(code, \'\')) LIKE ?', [$like])
+                                ->orWhereRaw('LOWER(COALESCE(patient_name, \'\')) LIKE ?', [$like]);
+                        });
+                });
+        });
     }
 
     private static function supplierLabel(OperationServiceOrder $record): string
@@ -296,8 +341,10 @@ class OperationServiceOrdersTable
             ->heading('Órdenes de servicio')
             ->description('Órdenes generadas desde coordinación. Vigencia de 10 días desde la aprobación; vencidas pasan a CADUCADA. La franja lateral refleja la prioridad salvo en órdenes cerradas.')
             ->defaultSort('created_at', 'desc')
+            ->searchable()
             ->searchPlaceholder('Buscar por orden, paciente, caso, proveedor o descripción…')
             ->persistSearchInSession()
+            ->searchUsing(fn (Builder $query, string $search): Builder => self::applyTableSearch($query, $search))
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(25)
             ->emptyStateHeading('Sin órdenes de servicio')
@@ -321,7 +368,6 @@ class OperationServiceOrdersTable
             ->columns([
                 TextColumn::make('order_number')
                     ->label('Nº orden')
-                    ->searchable()
                     ->sortable()
                     ->weight('semibold')
                     ->icon('heroicon-m-hashtag')
@@ -334,14 +380,12 @@ class OperationServiceOrdersTable
                     ->badge()
                     ->color('primary')
                     ->icon('healthicons-f-health-literacy')
-                    ->searchable()
                     ->sortable()
                     ->placeholder('—')
                     ->formatStateUsing(fn (?string $state): string => filled($state) ? mb_strtoupper((string) $state) : '—'),
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
-                    ->searchable()
                     ->sortable()
                     ->icon(fn (?string $state): string => self::statusIcon($state))
                     ->color(fn (?string $state): string => match (mb_strtoupper(trim((string) $state))) {
@@ -356,16 +400,20 @@ class OperationServiceOrdersTable
                     ->description(fn (OperationServiceOrder $record): ?string => OperationServiceOrderValidity::vigenciaLabel($record) !== '—'
                         ? OperationServiceOrderValidity::vigenciaLabel($record)
                         : null),
+                TextColumn::make('is_courtesy')
+                    ->label('Cortesía')
+                    ->state(fn (OperationServiceOrder $record): string => $record->is_courtesy ? 'CORTESÍA' : '—')
+                    ->badge()
+                    ->color(fn (OperationServiceOrder $record): string => $record->is_courtesy ? 'success' : 'gray')
+                    ->toggleable(),
                 TextColumn::make('telemedicinePriority.name')
                     ->label('Prioridad')
                     ->badge()
-                    ->searchable()
                     ->sortable()
                     ->color(fn (?string $state): string => TelemedicinePriorityFilamentBadge::color($state ?? ''))
                     ->icon(fn (?string $state): string => TelemedicinePriorityFilamentBadge::icon($state ?? '')),
                 TextColumn::make('supplier.name')
                     ->label('Proveedor')
-                    ->searchable()
                     ->sortable()
                     ->placeholder('—')
                     ->limit(28)
@@ -379,11 +427,9 @@ class OperationServiceOrdersTable
                     ->badge()
                     ->color('gray')
                     ->icon(fn (?string $state): string => self::serviceTypeIcon($state))
-                    ->searchable()
                     ->toggleable(),
                 TextColumn::make('description')
                     ->label('Descripción')
-                    ->searchable()
                     ->wrap()
                     ->lineClamp(2)
                     ->placeholder('—')
@@ -405,12 +451,10 @@ class OperationServiceOrdersTable
                     ->badge()
                     ->color('gray')
                     ->sortable()
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament ?? [], true))
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('supplier_external')
                     ->label('Proveedor No Convenido')
-                    ->searchable()
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('currency')
@@ -444,7 +488,6 @@ class OperationServiceOrdersTable
                     ->label('Método de pago')
                     ->badge()
                     ->color('gray')
-                    ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->formatStateUsing(fn (?string $state): string => $state ? (self::paymentMethodOptions()[$state] ?? $state) : '—'),
                 TextColumn::make('status_payment')
@@ -455,7 +498,6 @@ class OperationServiceOrdersTable
                         'PENDIENTE' => 'danger',
                         default => 'gray',
                     })
-                    ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('service_order_pdf_path')
                     ->label('PDF orden')
@@ -479,11 +521,9 @@ class OperationServiceOrdersTable
                     ->toggleable(),
                 TextColumn::make('created_by')
                     ->label('Creado por')
-                    ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_by')
                     ->label('Actualizado por')
-                    ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Creado')
@@ -983,6 +1023,31 @@ class OperationServiceOrdersTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('export_service_orders_csv')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records, BulkAction $action): void {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una orden')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $token = OperationServiceOrderExportCsvController::storeIdsAndGetToken(
+                                $records->pluck('id')->all()
+                            );
+
+                            CsvExportDownloadTrigger::fromAction(
+                                $action,
+                                route('operations.operation-service-orders.export-csv', ['token' => $token]),
+                            );
+                        }),
                     DeleteBulkAction::make(),
                 ]),
             ]);

@@ -27,13 +27,17 @@ use App\Services\OperationServiceOrderQuotePdfService;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\AccountsReceivableManager;
+use App\Support\Operations\AssignCoordinationServiceToSupplier;
 use App\Support\Operations\CoordinationServiceBulkReversal;
+use App\Support\Operations\CoordinationServiceCourtesy;
+use App\Support\Operations\CoordinationServiceCourtesyActions;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\CoordinationServiceQuoteManager;
 use App\Support\Operations\OperationServiceOrderCoveredPricingFormFields;
 use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderProviderSelection;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
+use App\Support\Operations\ReassignAmbulanceCoordinationToTdgDoctor;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
@@ -71,6 +75,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
+use InvalidArgumentException;
 
 class OperationCoordinationServicesTable
 {
@@ -231,7 +236,7 @@ class OperationCoordinationServicesTable
     public static function configure(Table $table): Table
     {
         $selectTdgDoctorForAmbulanceAction = Action::make('selectTdgDoctorForAmbulanceFollowUp')
-            ->modalHeading('Seleccionar Doctor TDG para seguimiento de caso')
+            ->modalHeading('Reasignar TRASLADO EN AMBULANCIA a TDG')
             ->modalDescription(function (OperationCoordinationService $record): Htmlable {
                 $current = $record->relationLoaded('telemedicineDoctor')
                     ? $record->telemedicineDoctor
@@ -242,8 +247,12 @@ class OperationCoordinationServicesTable
                     : '<span class="opacity-70">Sin médico TDG asignado aún.</span>';
 
                 $caseNote = filled($record->telemedicine_case_id)
-                    ? 'Caso telemedicina <span class="font-mono font-medium text-gray-800 dark:text-gray-200">#'.e((string) $record->telemedicine_case_id).'</span> · el médico del caso se actualizará en la misma operación.'
-                    : 'Esta orden no tiene caso de telemedicina vinculado; solo se actualizará la coordinación.';
+                    ? 'Caso telemedicina <span class="font-mono font-medium text-gray-800 dark:text-gray-200">#'.e((string) $record->telemedicine_case_id).'</span> · el caso pasará a gestión TDG y quedará visible en el panel de telemedicina.'
+                    : 'Esta coordinación no tiene caso de telemedicina vinculado; no se podrá completar la reasignación.';
+
+                $alreadyReassigned = ReassignAmbulanceCoordinationToTdgDoctor::isAlreadyReassigned($record)
+                    ? '<p class="mt-2 text-xs font-medium text-amber-800 dark:text-amber-100">Ya está reasignada a TDG. Puede cambiar el médico; se registrará una nueva entrada en bitácora sin duplicar la cuenta por cobrar.</p>'
+                    : '<p class="mt-2 text-xs text-rose-900/80 dark:text-rose-100/80">Al confirmar, el estatus pasará a <span class="font-semibold">REASIGNADO A TDG</span>, saldrá del cuadro de control de coordinación y quedará registrado en la bitácora del caso.</p>';
 
                 return new HtmlString(
                     '<div class="space-y-4 text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
@@ -264,6 +273,7 @@ class OperationCoordinationServicesTable
                     .'<span class="text-sm font-medium">Médico TDG actual: '.$currentDoctorHtml.'</span>'
                     .'</p>'
                     .'<p class="mt-2 text-xs text-rose-900/80 dark:text-rose-100/80">'.$caseNote.'</p>'
+                    .$alreadyReassigned
                     .'</div>'
                     .'</div>'
                 );
@@ -271,7 +281,7 @@ class OperationCoordinationServicesTable
             ->modalIcon(Heroicon::OutlinedUserGroup)
             ->modalIconColor('danger')
             ->modalWidth(Width::TwoExtraLarge)
-            ->modalSubmitActionLabel('Asignar médico TDG')
+            ->modalSubmitActionLabel('Reasignar a TDG')
             ->modalCancelActionLabel('Cancelar')
             ->modalSubmitAction(
                 fn (Action $action): Action => $action
@@ -290,7 +300,6 @@ class OperationCoordinationServicesTable
                 'class' => 'fi-ambulance-tdg-doctor-modal overflow-hidden rounded-2xl ring-1 ring-gray-950/5 dark:ring-white/10',
             ], merge: true)
             ->closeModalByClickingAway(false)
-            // FORMULARIO PARA ASIGNAR EL MEDICO TDG
             ->form([
                 Grid::make(1)
                     ->schema([
@@ -302,7 +311,7 @@ class OperationCoordinationServicesTable
                                 Select::make('telemedicine_doctor_id')
                                     ->label('Seleccione al médico')
                                     ->placeholder('Escriba para filtrar por nombre o especialidad…')
-                                    ->helperText('Se guarda en la orden y, si aplica, en el caso de telemedicina vinculado.')
+                                    ->helperText('Se asignará en la coordinación y en el caso de telemedicina vinculado.')
                                     ->options(fn (): array => TelemedicineDoctor::query()
                                         ->where('status', 'ACTIVO')
                                         ->where('managed_by', 'TDG')
@@ -317,6 +326,19 @@ class OperationCoordinationServicesTable
                                     ->native(false)
                                     ->required()
                                     ->columnSpanFull(),
+                                Textarea::make('reassignment_observation')
+                                    ->label('Motivo de la reasignación')
+                                    ->placeholder('Ej.: Traslado requiere seguimiento médico TDG, escalamiento por complejidad clínica…')
+                                    ->helperText('Campo obligatorio. Mínimo 10 caracteres. Se guarda en observaciones de la coordinación y en la bitácora del caso.')
+                                    ->required()
+                                    ->minLength(10)
+                                    ->maxLength(5000)
+                                    ->rows(4)
+                                    ->columnSpanFull()
+                                    ->validationMessages([
+                                        'required' => 'Debes indicar el motivo de la reasignación.',
+                                        'minLength' => 'El motivo debe tener al menos 10 caracteres.',
+                                    ]),
                             ]),
                     ]),
             ])
@@ -324,32 +346,45 @@ class OperationCoordinationServicesTable
                 'telemedicine_doctor_id' => $record->telemedicine_doctor_id,
             ])
             ->action(function (OperationCoordinationService $record, array $data): void {
-                $doctorId = (int) $data['telemedicine_doctor_id'];
+                try {
+                    $result = ReassignAmbulanceCoordinationToTdgDoctor::execute(
+                        $record,
+                        (int) $data['telemedicine_doctor_id'],
+                        (string) ($data['reassignment_observation'] ?? ''),
+                        Auth::user(),
+                    );
+                } catch (InvalidArgumentException $exception) {
+                    Notification::make()
+                        ->title('No se pudo reasignar a TDG')
+                        ->body($exception->getMessage())
+                        ->danger()
+                        ->send();
 
-                DB::transaction(function () use ($record, $doctorId): void {
-                    $record->telemedicine_doctor_id = $doctorId;
-                    $record->updated_by = Auth::user()?->name;
-                    $record->save();
+                    return;
+                }
 
-                    if (filled($record->telemedicine_case_id)) {
-                        TelemedicineCase::query()
-                            ->whereKey($record->telemedicine_case_id)
-                            ->update(['telemedicine_doctor_id' => $doctorId]);
-                    }
-                });
+                $doctorName = filled($result['doctor']->full_name)
+                    ? (string) $result['doctor']->full_name
+                    : 'el médico seleccionado';
+
+                $body = $result['first_reassignment']
+                    ? 'La coordinación quedó en REASIGNADO A TDG, salió del cuadro de control y el caso quedó a cargo de '.$doctorName.' en telemedicina. Se registró la bitácora'
+                        .($result['created_receivable'] ? ' y la cuenta por cobrar.' : '.')
+                    : 'El caso quedó asignado a '.$doctorName.'. Se registró la actualización en la bitácora del caso.';
+
+                if ($result['case_reopened'] ?? false) {
+                    $body .= ' El caso estaba en ALTA MÉDICA y se reabrió a EN SEGUIMIENTO para que sea visible en telemedicina.';
+                }
 
                 Notification::make()
-                    ->title('Doctor TDG asignado')
-                    ->body(
-                        filled($record->telemedicine_case_id)
-                            ? 'La orden y el caso de telemedicina vinculado quedaron asignados al médico seleccionado.'
-                            : 'La orden quedó vinculada al médico seleccionado para seguimiento.'
-                    )
+                    ->title($result['first_reassignment']
+                        ? 'Reasignado a TDG'
+                        : 'Médico TDG actualizado')
+                    ->body($body)
                     ->success()
                     ->send();
             })
-            ->visible(fn (OperationCoordinationService $record): bool => TelemedicineDerivedServiceBadge::specificServiceIsTrasladoEnAmbulancia($record->specific_service));
-
+            ->visible(fn (OperationCoordinationService $record): bool => ReassignAmbulanceCoordinationToTdgDoctor::isEligible($record));
         $reassignManagedByToTdgAction = Action::make('reassignCoordinationManagedByToTdg')
             ->modalHeading('Reasignar gestión del servicio a TDG')
             ->modalDescription(function (OperationCoordinationService $record): Htmlable {
@@ -466,7 +501,110 @@ class OperationCoordinationServicesTable
                     ->success()
                     ->send();
             })
-            ->visible(fn (OperationCoordinationService $record): bool => ! self::coordinationIsManagedByTdg($record));
+            ->visible(fn (OperationCoordinationService $record): bool => ! self::coordinationIsManagedByTdg($record)
+                && OperationsSupplierScope::currentSupplierId() !== null);
+
+        $assignCoordinationToSupplierAction = Action::make('assignCoordinationToSupplier')
+            ->label('Asignar a proveedor')
+            ->icon(Heroicon::OutlinedBuildingOffice2)
+            ->color('info')
+            ->modalHeading('Asignar coordinación a proveedor')
+            ->modalDescription(function (OperationCoordinationService $record): Htmlable {
+                $currentSupplier = filled($record->supplier_id)
+                    ? (string) (Supplier::query()->whereKey($record->supplier_id)->value('name') ?? 'Proveedor #'.$record->supplier_id)
+                    : 'Sin proveedor';
+
+                return new HtmlString(
+                    '<div class="space-y-3 text-sm text-gray-600 dark:text-gray-300">'
+                    .'<p>Asigna esta coordinación a los analistas de un proveedor. Podrán ver y gestionar todos los ítems del servicio (no solo medicamentos/labs cubiertos).</p>'
+                    .'<p>Proveedor actual: <span class="font-semibold text-gray-900 dark:text-white">'.e($currentSupplier).'</span></p>'
+                    .'<p>Referencia: <span class="font-semibold text-gray-900 dark:text-white">'.e($record->reference_number ?? '—').'</span></p>'
+                    .'</div>'
+                );
+            })
+            ->modalIcon(Heroicon::OutlinedBuildingOffice2)
+            ->modalIconColor('info')
+            ->modalWidth(Width::ExtraLarge)
+            ->modalSubmitActionLabel('Sí, asignar a proveedor')
+            ->modalCancelActionLabel('Cancelar')
+            ->modalSubmitAction(
+                fn (Action $action): Action => $action
+                    ->color('info')
+                    ->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                    ])
+            )
+            ->modalCancelAction(
+                fn (Action $action): Action => $action
+                    ->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                    ])
+            )
+            ->closeModalByClickingAway(false)
+            ->fillForm(fn (OperationCoordinationService $record): array => [
+                'supplier_id' => $record->supplier_id,
+            ])
+            ->form([
+                Select::make('supplier_id')
+                    ->label('Proveedor')
+                    ->placeholder('Seleccione el proveedor…')
+                    ->options(fn (): array => Supplier::query()
+                        ->orderBy('name')
+                        ->get(['id', 'name', 'razon_social'])
+                        ->mapWithKeys(fn (Supplier $supplier): array => [
+                            $supplier->id => filled($supplier->name)
+                                ? (string) $supplier->name
+                                : (filled($supplier->razon_social) ? (string) $supplier->razon_social : 'Proveedor #'.$supplier->id),
+                        ])
+                        ->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->required()
+                    ->columnSpanFull(),
+                Textarea::make('assignment_observation')
+                    ->label('Motivo de la asignación')
+                    ->placeholder('Ej.: Delegación de estudios/especialistas para gestión del proveedor…')
+                    ->helperText('Campo obligatorio. Mínimo 10 caracteres. Se guarda en observaciones y en la bitácora del caso.')
+                    ->required()
+                    ->minLength(10)
+                    ->maxLength(5000)
+                    ->rows(4)
+                    ->columnSpanFull()
+                    ->validationMessages([
+                        'required' => 'Debes indicar el motivo de la asignación.',
+                        'minLength' => 'El motivo debe tener al menos 10 caracteres.',
+                    ]),
+            ])
+            ->action(function (OperationCoordinationService $record, array $data): void {
+                try {
+                    $result = AssignCoordinationServiceToSupplier::execute(
+                        $record,
+                        (int) $data['supplier_id'],
+                        (string) ($data['assignment_observation'] ?? ''),
+                        Auth::user(),
+                    );
+                } catch (InvalidArgumentException $exception) {
+                    Notification::make()
+                        ->title('No se pudo asignar al proveedor')
+                        ->body($exception->getMessage())
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                $supplierName = filled($result['supplier']->name)
+                    ? (string) $result['supplier']->name
+                    : 'el proveedor seleccionado';
+
+                Notification::make()
+                    ->title('Coordinación asignada a proveedor')
+                    ->body('La coordinación quedó asignada a '.$supplierName.'. Sus analistas podrán gestionar todos los ítems del servicio.')
+                    ->success()
+                    ->send();
+            })
+            ->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst());
 
         $clinicCoordinationDocumentsAction = Action::make('clinicCoordinationDocuments')
             ->label(fn (OperationCoordinationService $record): string => $record->status === 'FINALIZADO'
@@ -1199,18 +1337,20 @@ class OperationCoordinationServicesTable
                         : 'heroicon-m-information-circle')
                     ->action($selectTdgDoctorForAmbulanceAction)
                     ->tooltip(function (OperationCoordinationService $record): ?string {
-                        if (! TelemedicineDerivedServiceBadge::specificServiceIsTrasladoEnAmbulancia($record->specific_service)) {
+                        if (! ReassignAmbulanceCoordinationToTdgDoctor::isEligible($record)) {
                             return null;
                         }
 
-                        return 'Clic para asignar o cambiar el doctor TDG de seguimiento';
+                        return ReassignAmbulanceCoordinationToTdgDoctor::isAlreadyReassigned($record)
+                            ? 'Clic para cambiar el médico TDG (ya reasignada)'
+                            : 'Clic para reasignar a TDG: sale del cuadro de control y pasa a telemedicina';
                     })
-                    ->extraCellAttributes(fn (OperationCoordinationService $record): array => TelemedicineDerivedServiceBadge::specificServiceIsTrasladoEnAmbulancia($record->specific_service)
+                    ->extraCellAttributes(fn (OperationCoordinationService $record): array => ReassignAmbulanceCoordinationToTdgDoctor::isEligible($record)
                         ? [
                             'class' => 'transition active:opacity-90',
                         ]
                         : [])
-                    ->extraAttributes(fn (OperationCoordinationService $record): array => TelemedicineDerivedServiceBadge::specificServiceIsTrasladoEnAmbulancia($record->specific_service)
+                    ->extraAttributes(fn (OperationCoordinationService $record): array => ReassignAmbulanceCoordinationToTdgDoctor::isEligible($record)
                         ? [
                             'class' => 'cursor-pointer underline decoration-dotted underline-offset-2 hover:opacity-90 active:opacity-75',
                         ]
@@ -1230,10 +1370,25 @@ class OperationCoordinationServicesTable
                             'CANCELADO' => 'gray',
                             'FINALIZADO' => 'success',
                             'NOVEDAD ADMON ESTUDIO' => 'danger',
+                            ReassignAmbulanceCoordinationToTdgDoctor::STATUS_REASSIGNED_TO_TDG => 'danger',
                             default => 'gray',
                         };
                     })
                     ->searchable(),
+                TextColumn::make('courtesy_badge')
+                    ->label('Cortesía')
+                    ->badge()
+                    ->state(function (OperationCoordinationService $record): string {
+                        $count = CoordinationServiceCourtesy::courtesyItemsCount($record);
+
+                        if ($count <= 0) {
+                            return '—';
+                        }
+
+                        return $count === 1 ? 'CORTESÍA (1)' : 'CORTESÍA ('.$count.')';
+                    })
+                    ->color(fn (string $state): string => $state === '—' ? 'gray' : 'success')
+                    ->toggleable(),
                 TextColumn::make('telemedicinePriority.name')
                     ->label('Prioridad')
                     ->badge()
@@ -1469,6 +1624,9 @@ class OperationCoordinationServicesTable
                     $editNegotiationAndPricingAction,
                     $clinicCoordinationDocumentsAction,
                     $selectTdgDoctorForAmbulanceAction,
+                    $assignCoordinationToSupplierAction,
+                    CoordinationServiceCourtesyActions::makeMarkRecordAction(),
+                    CoordinationServiceCourtesyActions::makeReverseRecordAction(),
                     Action::make('manage_service_items')
                         ->label('Gestionar Servicio')
                         ->icon('heroicon-m-document-text')
@@ -1486,6 +1644,8 @@ class OperationCoordinationServicesTable
             ], position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([
                 BulkActionGroup::make([
+                    CoordinationServiceCourtesyActions::makeMarkBulkAction(),
+                    CoordinationServiceCourtesyActions::makeReverseBulkAction(),
                     CoordinationServiceBulkReversal::makeBulkAction(),
                     DeleteBulkAction::make(),
                 ]),
@@ -1816,6 +1976,7 @@ class OperationCoordinationServicesTable
             'service_type' => $serviceOrderType,
             'status' => 'EN GESTION',
             'observations' => $data['service_order_observations'] ?? null,
+            'appointment_at' => $data['appointment_at'] ?? null,
             'created_by' => Auth::user()?->name,
             'updated_by' => Auth::user()?->name,
         ];
@@ -1995,15 +2156,29 @@ class OperationCoordinationServicesTable
     }
 
     /**
+     * Excluye coordinaciones reasignadas a TDG (traslado en ambulancia) del
+     * cuadro de control operativo.
+     */
+    public static function applyHideReassignedToTdgScope(Builder $query): Builder
+    {
+        return $query->whereRaw(
+            'UPPER(TRIM(status)) != ?',
+            [ReassignAmbulanceCoordinationToTdgDoctor::STATUS_REASSIGNED_TO_TDG]
+        );
+    }
+
+    /**
      * Mantiene visibles únicamente las coordinaciones con trabajo pendiente: se
      * conservan las que aún no tienen ítems o las que tienen al menos un ítem
      * PENDIENTE o EN GESTION, y se ocultan aquellas cuyos ítems están todos
      * cerrados (finalizados/cancelados/caducados), para que el usuario se centre
-     * en lo que debe gestionar y finalizar.
+     * en lo que debe gestionar y finalizar. También oculta las reasignadas a TDG.
      */
     public static function applyHideFullyFinalizedScope(Builder $query): Builder
     {
         $openStatuses = ['PENDIENTE', 'EN GESTION'];
+
+        self::applyHideReassignedToTdgScope($query);
 
         return $query->where(function (Builder $outer) use ($openStatuses): void {
             $outer

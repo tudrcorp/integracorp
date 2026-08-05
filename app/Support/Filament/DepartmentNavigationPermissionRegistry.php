@@ -125,6 +125,7 @@ use App\Filament\Operations\Resources\OperationInventoryOutflows\OperationInvent
 use App\Filament\Operations\Resources\OperationInventoryProductCategories\OperationInventoryProductCategoryResource;
 use App\Filament\Operations\Resources\OperationInventoryProducts\OperationInventoryProductResource;
 use App\Filament\Operations\Resources\OperationInventoryUbications\OperationInventoryUbicationResource;
+use App\Filament\Operations\Resources\OperationMedicalAppointments\OperationMedicalAppointmentResource;
 use App\Filament\Operations\Resources\OperationOnCallUsers\OperationOnCallUserResource;
 use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrderResource;
 use App\Filament\Operations\Resources\OperationStatusServices\OperationStatusServiceResource;
@@ -273,6 +274,7 @@ final class DepartmentNavigationPermissionRegistry
         TelemedicineHistoryPatientResource::class => ['historia-clinica'],
         OperationCoordinationServiceResource::class => ['servicios-medicos'],
         OperationServiceOrderResource::class => ['ordenes-servicios'],
+        OperationMedicalAppointmentResource::class => ['citas-medicas'],
         AccountsReceivableResource::class => ['cuentas-por-cobrar'],
         AccountsPayableResource::class => ['cuentas-por-pagar'],
         OperationTypeServiceResource::class => ['tipos-servicios'],

@@ -9,7 +9,9 @@ use App\Models\OperationInventoryUbication;
 use App\Models\OperationQuoteGenerator;
 use App\Models\TelemedicinePriority;
 use App\Support\Operations\CoordinationServiceQuoteManager;
+use App\Support\Operations\MedicalAppointmentManager;
 use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -190,6 +192,35 @@ final class ManageCoordinationServiceQuotesForm
                                     ->required(fn (Get $get): bool => CoordinationServiceQuoteManager::hasApprovedQuotePendingOrderInForm($get('quote_statuses')))
                                     ->prefixIcon(Heroicon::OutlinedBolt)
                                     ->native(false),
+                                DateTimePicker::make('appointment_at')
+                                    ->label('Fecha y hora de la cita')
+                                    ->seconds(false)
+                                    ->native(false)
+                                    ->visible(fn (Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                        CoordinationServiceQuoteManager::approvedQuoteServiceType((int) $get('approved_quote_id'))
+                                    ))
+                                    ->required(fn (Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                        CoordinationServiceQuoteManager::approvedQuoteServiceType((int) $get('approved_quote_id'))
+                                    ))
+                                    ->helperText('Obligatoria para servicios con asistencia presencial del paciente.')
+                                    ->prefixIcon(Heroicon::OutlinedCalendarDays)
+                                    ->columnSpanFull(),
+                                TextInput::make('supplier_notify_email')
+                                    ->label('Correo del proveedor (cita)')
+                                    ->email()
+                                    ->maxLength(255)
+                                    ->visible(fn (Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                        CoordinationServiceQuoteManager::approvedQuoteServiceType((int) $get('approved_quote_id'))
+                                    ))
+                                    ->helperText('Si el proveedor no tiene correo en ficha, indíquelo aquí.'),
+                                TextInput::make('supplier_notify_phone')
+                                    ->label('Teléfono WhatsApp del proveedor (cita)')
+                                    ->tel()
+                                    ->maxLength(30)
+                                    ->visible(fn (Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                        CoordinationServiceQuoteManager::approvedQuoteServiceType((int) $get('approved_quote_id'))
+                                    ))
+                                    ->helperText('Si el proveedor no tiene teléfono en ficha, indíquelo aquí.'),
                                 Select::make('operation_inventory_ubication_id')
                                     ->label('Ubicación inventario (medicamentos)')
                                     ->options(OperationInventoryUbication::query()->where('is_active', true)->orderBy('name', 'asc')->pluck('name', 'id'))

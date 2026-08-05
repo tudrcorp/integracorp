@@ -28,7 +28,9 @@ class OperationServiceOrder extends Model
         'total_amount_ves',
         'payment_method',
         'status',
+        'is_courtesy',
         'approved_at',
+        'appointment_at',
         'managed_by',
         'telemedicine_supplier_id',
         'observations',
@@ -47,10 +49,12 @@ class OperationServiceOrder extends Model
     {
         return [
             'approved_at' => 'datetime',
+            'appointment_at' => 'datetime',
             'total_items' => 'integer',
             'total_items_unit' => 'integer',
             'files' => 'array',
             'uploaded_documents' => 'array',
+            'is_courtesy' => 'boolean',
         ];
     }
 
@@ -100,6 +104,11 @@ class OperationServiceOrder extends Model
     public function approvedOperationQuote(): HasOne
     {
         return $this->hasOne(OperationQuoteGenerator::class, 'operation_service_order_id');
+    }
+
+    public function medicalAppointment(): HasOne
+    {
+        return $this->hasOne(OperationMedicalAppointment::class);
     }
 
     protected static function booted(): void

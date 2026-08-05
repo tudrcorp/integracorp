@@ -11,6 +11,7 @@ class OperationInventoryOutflow extends Model
 
     protected $fillable = [
         'operation_inventory_id',
+        'telemedicine_case_id',
         'operation_inventory_product_id',
         'operation_inventory_ubication_id',
         'quantity',
@@ -33,6 +34,11 @@ class OperationInventoryOutflow extends Model
     public function operationInventory(): BelongsTo
     {
         return $this->belongsTo(OperationInventory::class);
+    }
+
+    public function telemedicineCase(): BelongsTo
+    {
+        return $this->belongsTo(TelemedicineCase::class);
     }
 
     public function product(): BelongsTo

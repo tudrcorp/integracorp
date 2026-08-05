@@ -59,5 +59,6 @@ it('el deductor sincroniza existencia, stock, outflow y movimiento', function ()
         ->toContain('OperationInventoryOutflow::query()->create')
         ->toContain('OperationInventoryMovement::query()->create')
         ->toContain('OperationInventoryProductStock::query()')
-        ->toContain('TelemedicineMedicationInventoryOptions::shouldDeductInventory');
+        ->toContain('TelemedicineMedicationInventoryOptions::shouldDeductInventory')
+        ->toContain("'telemedicine_case_id' => \$consultationModel->telemedicine_case_id");
 });
