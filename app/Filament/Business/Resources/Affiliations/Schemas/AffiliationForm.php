@@ -851,11 +851,6 @@ class AffiliationForm
                                         TextInput::make('nro_identificacion_payer')
                                             ->label('Nro. de Identificación')
                                             ->prefixIcon('heroicon-s-identification')
-                                            ->unique(
-                                                ignoreRecord: true,
-                                                table: 'affiliations',
-                                                column: 'nro_identificacion_payer',
-                                            )
                                             ->mask('999999999')
                                             ->rules([
                                                 'regex:/^[0-9]+$/', // Acepta de 1 a 6 dígitos
