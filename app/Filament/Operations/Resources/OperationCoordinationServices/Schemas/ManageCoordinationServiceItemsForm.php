@@ -11,10 +11,12 @@ use App\Models\Supplier;
 use App\Models\TelemedicinePriority;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\ManageQuoteSupplierCreator;
+use App\Support\Operations\MedicalAppointmentManager;
 use App\Support\Operations\OperationServiceOrderCoveredPricingFormFields;
 use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -227,6 +229,65 @@ final class ManageCoordinationServiceItemsForm
                                                 ->required()
                                                 ->prefixIcon(Heroicon::OutlinedBolt)
                                                 ->native(false),
+                                            DateTimePicker::make('appointment_at')
+                                                ->label('Fecha y hora de la cita')
+                                                ->seconds(false)
+                                                ->native(false)
+                                                ->required(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
+                                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                    )
+                                                ))
+                                                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
+                                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                    )
+                                                ))
+                                                ->helperText('Obligatoria para servicios con asistencia presencial del paciente.')
+                                                ->prefixIcon(Heroicon::OutlinedCalendarDays)
+                                                ->columnSpanFull(),
+                                            TextInput::make('supplier_notify_email')
+                                                ->label('Correo del proveedor (cita)')
+                                                ->email()
+                                                ->maxLength(255)
+                                                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
+                                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                    )
+                                                ) && MedicalAppointmentManager::supplierNeedsManualNotifyContacts(
+                                                    filled($get('supplier_id')) ? (int) $get('supplier_id') : null,
+                                                    (bool) $get('register_unregistered_provider'),
+                                                ))
+                                                ->required(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
+                                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                    )
+                                                ) && MedicalAppointmentManager::supplierNeedsManualNotifyContacts(
+                                                    filled($get('supplier_id')) ? (int) $get('supplier_id') : null,
+                                                    (bool) $get('register_unregistered_provider'),
+                                                ))
+                                                ->helperText('Requerido cuando el proveedor no tiene correo en ficha o es no convenido.'),
+                                            TextInput::make('supplier_notify_phone')
+                                                ->label('Teléfono WhatsApp del proveedor (cita)')
+                                                ->tel()
+                                                ->maxLength(30)
+                                                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
+                                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                    )
+                                                ) && MedicalAppointmentManager::supplierNeedsManualNotifyContacts(
+                                                    filled($get('supplier_id')) ? (int) $get('supplier_id') : null,
+                                                    (bool) $get('register_unregistered_provider'),
+                                                ))
+                                                ->required(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
+                                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                    )
+                                                ) && MedicalAppointmentManager::supplierNeedsManualNotifyContacts(
+                                                    filled($get('supplier_id')) ? (int) $get('supplier_id') : null,
+                                                    (bool) $get('register_unregistered_provider'),
+                                                ))
+                                                ->helperText('Requerido para notificar cambios de cita al proveedor.'),
                                             Select::make('operation_inventory_ubication_id')
                                                 ->label('Ubicación inventario (medicamentos)')
                                                 ->options(OperationInventoryUbication::query()->where('is_active', true)->orderBy('name', 'asc')->pluck('name', 'id'))

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+uses(Tests\TestCase::class);
+
 it('OperationCoordinationServicesTable resalta servicios con badge info/danger según derivado crítico', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
     $contents = file_get_contents($path);
@@ -20,14 +22,29 @@ it('OperationCoordinationServicesTable define la acción modal de doctor TDG par
 
     expect($contents)
         ->toContain("Action::make('selectTdgDoctorForAmbulanceFollowUp')")
-        ->and($contents)->toContain('Seleccionar Doctor TDG para seguimiento de caso')
-        ->and($contents)->toContain('TelemedicineDerivedServiceBadge::specificServiceIsTrasladoEnAmbulancia')
+        ->and($contents)->toContain('Reasignar TRASLADO EN AMBULANCIA a TDG')
+        ->and($contents)->toContain('ReassignAmbulanceCoordinationToTdgDoctor::execute')
+        ->and($contents)->toContain('ReassignAmbulanceCoordinationToTdgDoctor::isEligible')
         ->and($contents)->toContain('TelemedicineDoctor::query()')
         ->and($contents)->toContain("'managed_by', 'TDG'")
-        ->and($contents)->toContain('TelemedicineCase::query()')
+        ->and($contents)->toContain("Textarea::make('reassignment_observation')")
         ->and($contents)->toContain('telemedicine_case_id')
         ->and($contents)->toContain('Width::TwoExtraLarge')
-        ->and($contents)->toContain('FilamentIosButton::extraClassForFilamentColor');
+        ->and($contents)->toContain('FilamentIosButton::extraClassForFilamentColor')
+        ->and($contents)->toContain('applyHideReassignedToTdgScope');
+});
+
+it('OperationCoordinationServicesTable oculta coordinaciones reasignadas a TDG del tab Todas', function (): void {
+    $table = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php');
+    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ListOperationCoordinationServices.php');
+
+    expect($table)
+        ->toContain('public static function applyHideReassignedToTdgScope(Builder $query): Builder')
+        ->toContain('self::applyHideReassignedToTdgScope($query)')
+        ->toContain('ReassignAmbulanceCoordinationToTdgDoctor::STATUS_REASSIGNED_TO_TDG');
+
+    expect($page)
+        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query)');
 });
 
 it('OperationCoordinationServicesTable define la acción modal de reasignación de gestión a TDG en la columna managed_by', function (): void {
@@ -63,7 +80,7 @@ it('OperationCoordinationServicesTable define acción de documentos de ingreso y
         ->and($contents)->toContain('clinicCoordinationDocuments')
         ->and($contents)->toContain('filament.operations.coordination.clinic-documents-modal')
         ->and(file_exists($livewirePath))->toBeTrue()
-        ->and(file_get_contents($livewirePath))->toContain('class OperationCoordinationServicesTableServiceColumnsTest');
+        ->and(file_get_contents($livewirePath))->toContain('class ClinicCoordinationDocumentsManager');
 
     $uploaderPartial = dirname(__DIR__, 2).'/resources/views/livewire/operations/partials/clinic-document-uploader-zone.blade.php';
     $partialContents = file_get_contents($uploaderPartial);
@@ -86,7 +103,7 @@ it('OperationCoordinationServicesTable define acción modal de negociación y pr
         ->and($contents)->toContain('stickyModalFooter()')
         ->and($contents)->toContain('fi-modal-content]:overflow-y-auto')
         ->and($contents)->not->toContain("SelectColumn::make('type_service')")
-        ->and($contents)->not->toContain('RecordActionsPosition::');
+        ->and($contents)->toContain('RecordActionsPosition::');
 });
 
 it('OperationCoordinationServicesTable enlaza a la página de gestión de ítems', function (): void {
@@ -401,6 +418,18 @@ it('OperationCoordinationServicesTable muestra linea y unidad de negocio del pac
 });
 
 it('deshabilita medicamentos y laboratorios cubiertos para TDG salvo que la coordinación sea gestionada por TDG', function (): void {
+    $tdgUser = new \App\Models\User;
+    $tdgUser->forceFill([
+        'id' => 9001,
+        'name' => 'TDG Analyst',
+        'email' => 'tdg-analyst@example.com',
+        'supplier_id' => null,
+        'is_proveedor_amd' => false,
+        'departament' => ['OPERACIONES'],
+        'status' => 'ACTIVO',
+    ]);
+    \Illuminate\Support\Facades\Auth::login($tdgUser);
+
     $noTdg = new \App\Models\OperationCoordinationService(['managed_by' => 'ATENMEDI']);
     $tdg = new \App\Models\OperationCoordinationService(['managed_by' => 'TDG']);
 
@@ -408,20 +437,60 @@ it('deshabilita medicamentos y laboratorios cubiertos para TDG salvo que la coor
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Laboratorio', true))->toBeFalse()
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Medicamento', true))->toBeTrue()
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Laboratorio', true))->toBeTrue();
+
+    \Illuminate\Support\Facades\Auth::logout();
 });
 
 it('permite gestionar a TDG los items no cubiertos y los cubiertos de otras categorías sin reasignación', function (): void {
+    $tdgUser = new \App\Models\User;
+    $tdgUser->forceFill([
+        'id' => 9002,
+        'name' => 'TDG Analyst',
+        'email' => 'tdg-analyst-2@example.com',
+        'supplier_id' => null,
+        'is_proveedor_amd' => false,
+        'departament' => ['OPERACIONES'],
+        'status' => 'ACTIVO',
+    ]);
+    \Illuminate\Support\Facades\Auth::login($tdgUser);
+
     $noTdg = new \App\Models\OperationCoordinationService(['managed_by' => 'ATENMEDI']);
 
     expect(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', false))->toBeTrue()
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Laboratorio', null))->toBeTrue()
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Estudio', true))->toBeTrue()
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Especialista', true))->toBeTrue();
+
+    \Illuminate\Support\Facades\Auth::logout();
 });
 
-it('CoordinationServiceItemsManager aplica la regla TDG al construir items de medicamentos y laboratorios', function (): void {
+it('CoordinationServiceItemsManager aplica la regla de acceso por rol al construir items', function (): void {
     $manager = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CoordinationServiceItemsManager.php');
 
-    expect(substr_count($manager, "coveredItemIsManageableByTdg(\$record, 'Medicamento', \$coverage)"))->toBe(1)
-        ->and(substr_count($manager, "coveredItemIsManageableByTdg(\$record, 'Laboratorio', \$coverage)"))->toBe(1);
+    expect(substr_count($manager, 'CoordinationServiceAccess::itemIsManageableByUser($record, $category, $coverage)'))->toBeGreaterThanOrEqual(4)
+        ->and(substr_count($manager, 'CoordinationServiceAccess::itemIsVisibleToUser($record, $category, $coverage)'))->toBeGreaterThanOrEqual(4);
+});
+
+it('OperationCoordinationServicesTable define acción TDG para asignar coordinación a proveedor', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("Action::make('assignCoordinationToSupplier')")
+        ->toContain('AssignCoordinationServiceToSupplier::execute')
+        ->toContain("->modalHeading('Asignar coordinación a proveedor')")
+        ->toContain("Select::make('supplier_id')")
+        ->toContain("Textarea::make('assignment_observation')")
+        ->toContain('authenticatedUserIsTdgAnalyst()')
+        ->toContain('$assignCoordinationToSupplierAction');
+});
+
+it('incluye migración de assigned_to_supplier_by_tdg en operation_coordination_services', function (): void {
+    $path = dirname(__DIR__, 2).'/database/migrations/2026_08_04_185600_add_assigned_to_supplier_by_tdg_to_operation_coordination_services_table.php';
+    $src = file_get_contents($path);
+
+    expect(is_string($src))->toBeTrue()
+        ->and($src)->toContain('assigned_to_supplier_by_tdg')
+        ->and($src)->toContain('assigned_to_supplier_by_tdg_at')
+        ->and($src)->toContain('assigned_to_supplier_by_tdg_by');
 });

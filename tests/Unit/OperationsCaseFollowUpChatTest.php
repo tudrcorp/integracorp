@@ -145,5 +145,9 @@ it('expone accion para abrir el chat desde la tabla de casos en operaciones', fu
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicineCases/Tables/TelemedicineCasesTable.php'))
         ->toContain("Action::make('openCaseFollowUpChat')")
         ->toContain("dispatch('operations-case-chat-open', caseId: \$record->id)")
-        ->toContain('CaseFollowUpChatManager::FOLLOW_UP_STATUS');
+        ->toContain('CaseFollowUpChatManager::FOLLOW_UP_STATUS')
+        ->toContain("FilamentIosButton::extraClassForFilamentColor('info')")
+        ->toContain("FilamentIosButton::extraClassForFilamentColor('gray')")
+        ->toContain("->label('Acciones')")
+        ->toContain('Heroicon::EllipsisHorizontal');
 });

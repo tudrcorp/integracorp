@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Observers\TelemedicinePatientObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[ObservedBy([TelemedicinePatientObserver::class])]
 class TelemedicinePatient extends Model
 {
     public const DEFAULT_PATIENT_PORTAL_PASSWORD = '12345678';

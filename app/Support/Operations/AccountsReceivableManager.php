@@ -74,11 +74,16 @@ final class AccountsReceivableManager
             'quote_amount_usd' => $amountUsd,
             'quote_amount_ves' => $amountVes,
             'bcv_rate' => $bcvRate,
+            'is_courtesy' => (bool) $quote->is_courtesy,
             'status' => filled($receivable->operation_service_order_id)
                 ? OperationAccountsReceivable::STATUS_COMPLETED
                 : OperationAccountsReceivable::STATUS_QUOTE_ASSIGNED,
             'updated_by' => Auth::user()?->name ?? 'SISTEMA',
         ]);
+
+        if ((bool) $quote->is_courtesy) {
+            CourtesyFinanceNotifier::dispatchForReceivable((int) $receivable->id);
+        }
     }
 
     public static function syncFromServiceOrder(OperationServiceOrder $order): void
@@ -98,6 +103,7 @@ final class AccountsReceivableManager
         $updates = [
             'operation_service_order_id' => $order->id,
             'service_order_number' => filled($order->order_number) ? (string) $order->order_number : null,
+            'is_courtesy' => (bool) $order->is_courtesy || (bool) $receivable->is_courtesy,
             'updated_by' => Auth::user()?->name ?? 'SISTEMA',
         ];
 
@@ -106,6 +112,10 @@ final class AccountsReceivableManager
         }
 
         $receivable->update($updates);
+
+        if ((bool) ($updates['is_courtesy'] ?? false)) {
+            CourtesyFinanceNotifier::dispatchForReceivable((int) $receivable->id);
+        }
     }
 
     private static function pendingReceivableForCoordination(int $coordinationId): ?OperationAccountsReceivable

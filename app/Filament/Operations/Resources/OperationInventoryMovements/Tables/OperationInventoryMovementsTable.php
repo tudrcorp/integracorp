@@ -3,11 +3,12 @@
 namespace App\Filament\Operations\Resources\OperationInventoryMovements\Tables;
 
 use App\Models\OperationInventoryMovement;
+use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\FontWeight;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -18,8 +19,19 @@ class OperationInventoryMovementsTable
     {
         return $table
             ->heading('Movimientos de inventario')
-            ->description('Despachos y movimientos asociados a telemedicina y unidades de negocio.')
+            ->description('Despachos asociados a telemedicina, pacientes y unidades de negocio.')
             ->defaultSort('created_at', 'desc')
+            ->searchable()
+            ->searchPlaceholder('Buscar por código, producto, caso, paciente o tipo…')
+            ->persistSearchInSession()
+            ->persistFiltersInSession()
+            ->deferFilters(false)
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->emptyStateHeading('Sin movimientos de inventario')
+            ->emptyStateDescription('Cuando se registre un despacho desde telemedicina aparecerá aquí.')
+            ->emptyStateIcon(Heroicon::OutlinedArrowsRightLeft)
+            ->striped()
             ->columns([
                 TextColumn::make('operationInventory.product.code')
                     ->label('Código')
@@ -32,7 +44,7 @@ class OperationInventoryMovementsTable
                         ?? '—'),
                 TextColumn::make('operationInventory.name')
                     ->label('Producto')
-                    ->icon('heroicon-o-cube')
+                    ->icon(Heroicon::OutlinedCube)
                     ->weight(FontWeight::SemiBold)
                     ->searchable()
                     ->sortable()
@@ -43,6 +55,7 @@ class OperationInventoryMovementsTable
                     ->label('Almacén')
                     ->badge()
                     ->color('info')
+                    ->icon(Heroicon::OutlinedBuildingStorefront)
                     ->getStateUsing(fn (OperationInventoryMovement $record): string => $record->operationInventory?->ubicationRelation?->name
                         ?? $record->operationInventory?->ubication
                         ?? '—'),
@@ -56,20 +69,36 @@ class OperationInventoryMovementsTable
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
-                    ->color('gray')
+                    ->color(fn (?string $state): string => match (mb_strtoupper(trim((string) ($state ?? '')))) {
+                        'SALIDA TELEMEDICINA' => 'danger',
+                        default => 'gray',
+                    })
+                    ->icon(fn (?string $state): string => match (mb_strtoupper(trim((string) ($state ?? '')))) {
+                        'SALIDA TELEMEDICINA' => 'heroicon-o-heart',
+                        default => 'heroicon-o-arrows-right-left',
+                    })
                     ->searchable()
                     ->placeholder('—'),
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
                     ->color(fn (?string $state): string => match (mb_strtoupper(trim((string) ($state ?? '')))) {
-                        'ACTIVO', 'COMPLETADO', 'FINALIZADO' => 'success',
+                        'ACTIVO', 'COMPLETADO', 'FINALIZADO', 'DESPACHADO' => 'success',
                         'PENDIENTE' => 'warning',
                         'ANULADO', 'CANCELADO' => 'danger',
                         default => 'gray',
                     })
                     ->searchable()
                     ->placeholder('—'),
+                TextColumn::make('telemedicineCase.code')
+                    ->label('Nº caso')
+                    ->badge()
+                    ->color('primary')
+                    ->icon('healthicons-f-health-literacy')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('—')
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? mb_strtoupper((string) $state) : '—'),
                 TextColumn::make('telemedicinePatient.full_name')
                     ->label('Paciente')
                     ->searchable()
@@ -81,15 +110,16 @@ class OperationInventoryMovementsTable
                     ->placeholder('—'),
                 TextColumn::make('created_by')
                     ->label('Registrado por')
-                    ->icon('heroicon-m-user')
+                    ->icon(Heroicon::User)
                     ->placeholder('—')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->label('Fecha')
                     ->dateTime('d/m/Y H:i')
                     ->description(fn (OperationInventoryMovement $record): string => $record->created_at?->diffForHumans() ?? '')
                     ->sortable()
-                    ->icon('heroicon-m-calendar-days'),
+                    ->icon(Heroicon::CalendarDays),
             ])
             ->filters([
                 SelectFilter::make('type')
@@ -112,8 +142,13 @@ class OperationInventoryMovementsTable
                         ->all()),
             ])
             ->recordActions([
-                ViewAction::make()->label('Ver'),
-                EditAction::make()->label('Editar'),
+                ViewAction::make()
+                    ->label('Ver')
+                    ->icon(Heroicon::OutlinedEye)
+                    ->color('info')
+                    ->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                    ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

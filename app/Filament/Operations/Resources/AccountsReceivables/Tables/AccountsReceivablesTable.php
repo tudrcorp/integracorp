@@ -114,7 +114,16 @@ class AccountsReceivablesTable
                     ->formatStateUsing(fn (?string $state): string => AccountsReceivablePresenter::statusLabel($state))
                     ->badge()
                     ->color(fn (?string $state): string => AccountsReceivablePresenter::statusColor($state)),
+                TextColumn::make('is_courtesy')
+                    ->label('Cortesía')
+                    ->state(fn (OperationAccountsReceivable $record): string => $record->is_courtesy ? 'CORTESÍA' : '—')
+                    ->badge()
+                    ->color(fn (OperationAccountsReceivable $record): string => $record->is_courtesy ? 'success' : 'gray')
+                    ->toggleable(),
             ])
+            ->recordClasses(fn (OperationAccountsReceivable $record): array => $record->is_courtesy
+                ? ['border-l-4 border-emerald-500 bg-emerald-50/90 dark:border-emerald-500 dark:bg-emerald-950/40']
+                : [])
             ->recordActions([
                 ViewAction::make(),
             ]);

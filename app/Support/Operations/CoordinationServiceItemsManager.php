@@ -143,7 +143,7 @@ final class CoordinationServiceItemsManager
         $record->telemedicinePatientMedications()
             ->orderBy('id')
             ->with('operationInventory:id,is_covered')
-            ->get(['id', 'medicine', 'indications', 'status', 'is_covered', 'operation_inventory_id'])
+            ->get(['id', 'medicine', 'indications', 'status', 'courtesy_status', 'is_covered', 'operation_inventory_id'])
             ->each(function (TelemedicinePatientMedications $item) use ($items, $record): void {
                 $coverage = self::coverageValue('MEDICAMENTOS', $item);
                 $items->push([
@@ -154,6 +154,9 @@ final class CoordinationServiceItemsManager
                     'coverage' => $coverage,
                     'coverage_label' => self::coverageLabel($coverage),
                     'status' => (string) ($item->status ?? '—'),
+                    'courtesy_status' => CoordinationServiceCourtesy::itemIsCourtesy($item->courtesy_status ?? null)
+                        ? CoordinationServiceCourtesy::STATUS
+                        : null,
                     'selectable' => self::isManagementItemSelectable((string) ($item->status ?? ''))
                         && self::coveredItemIsManageableByTdg($record, 'Medicamento', $coverage),
                 ]);
@@ -161,7 +164,7 @@ final class CoordinationServiceItemsManager
 
         $record->telemedicinePatientLabs()
             ->orderBy('id')
-            ->get(['id', 'laboratory', 'type', 'status'])
+            ->get(['id', 'laboratory', 'type', 'status', 'courtesy_status'])
             ->each(function (TelemedicinePatientLab $item) use ($items, $record): void {
                 $coverage = self::coverageValue('LABORATORIOS', $item);
                 $items->push([
@@ -172,6 +175,9 @@ final class CoordinationServiceItemsManager
                     'coverage' => $coverage,
                     'coverage_label' => self::coverageLabel($coverage),
                     'status' => (string) ($item->status ?? '—'),
+                    'courtesy_status' => CoordinationServiceCourtesy::itemIsCourtesy($item->courtesy_status ?? null)
+                        ? CoordinationServiceCourtesy::STATUS
+                        : null,
                     'selectable' => self::isManagementItemSelectable((string) ($item->status ?? ''))
                         && self::coveredItemIsManageableByTdg($record, 'Laboratorio', $coverage),
                 ]);
@@ -179,7 +185,7 @@ final class CoordinationServiceItemsManager
 
         $record->telemedicinePatientStudies()
             ->orderBy('id')
-            ->get(['id', 'study', 'type', 'status'])
+            ->get(['id', 'study', 'type', 'status', 'courtesy_status'])
             ->each(function (TelemedicinePatientStudy $item) use ($items): void {
                 $coverage = self::coverageValue('IMAGENOLOGIA', $item);
                 $items->push([
@@ -190,13 +196,16 @@ final class CoordinationServiceItemsManager
                     'coverage' => $coverage,
                     'coverage_label' => self::coverageLabel($coverage),
                     'status' => (string) ($item->status ?? '—'),
+                    'courtesy_status' => CoordinationServiceCourtesy::itemIsCourtesy($item->courtesy_status ?? null)
+                        ? CoordinationServiceCourtesy::STATUS
+                        : null,
                     'selectable' => self::isManagementItemSelectable((string) ($item->status ?? '')),
                 ]);
             });
 
         $record->telemedicinePatientSpecialties()
             ->orderBy('id')
-            ->get(['id', 'specialty', 'type', 'status'])
+            ->get(['id', 'specialty', 'type', 'status', 'courtesy_status'])
             ->each(function (TelemedicinePatientSpecialty $item) use ($items, $record): void {
                 $coverage = self::coverageValue('ESPECIALISTA', $item);
                 $isTpaStandaloneServiceItem = RegisterTpaRetailServicesAction::isTpaRetailStandaloneCoordination($record)
@@ -210,6 +219,9 @@ final class CoordinationServiceItemsManager
                     'coverage' => $coverage,
                     'coverage_label' => self::coverageLabel($coverage),
                     'status' => (string) ($item->status ?? '—'),
+                    'courtesy_status' => CoordinationServiceCourtesy::itemIsCourtesy($item->courtesy_status ?? null)
+                        ? CoordinationServiceCourtesy::STATUS
+                        : null,
                     'selectable' => self::isManagementItemSelectable((string) ($item->status ?? '')),
                 ]);
             });
@@ -599,10 +611,15 @@ final class CoordinationServiceItemsManager
             $categoryClass = self::managementCategoryBadgeClass($item['category']);
             $coverageClass = self::managementCoverageBadgeClass($item['coverage']);
             $statusClass = self::managementStatusBadgeClass($item['status']);
+            $isCourtesy = CoordinationServiceCourtesy::itemIsCourtesy($item['courtesy_status'] ?? null);
 
             $row = '<tr>'
                 .'<td><span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset '.$categoryClass.'">'.e($item['category']).'</span></td>'
-                .'<td class="fi-manage-service-items-table-item">'.e($item['label']).'</td>'
+                .'<td class="fi-manage-service-items-table-item">'.e($item['label'])
+                .($isCourtesy
+                    ? ' <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 bg-emerald-100 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/20 dark:text-emerald-200">CORTESÍA</span>'
+                    : '')
+                .'</td>'
                 .'<td>'.e($item['detail']).'</td>'
                 .'<td><span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset '.$coverageClass.'">'.e($item['coverage_label']).'</span></td>';
 
@@ -646,6 +663,7 @@ final class CoordinationServiceItemsManager
         return self::associatedServiceItemsForManagement($record)
             ->mapWithKeys(fn (array $item): array => [
                 $item['key'] => $item['category'].': '.$item['label'].' · '.$item['coverage_label'].' · '.$item['status']
+                    .(CoordinationServiceCourtesy::itemIsCourtesy($item['courtesy_status'] ?? null) ? ' · CORTESÍA' : '')
                     .($item['selectable'] ? '' : ' · No disponible para gestión'),
             ])
             ->all();
@@ -670,7 +688,8 @@ final class CoordinationServiceItemsManager
         return self::associatedServiceItemsForManagement($record)
             ->filter(fn (array $item): bool => $item['selectable'])
             ->mapWithKeys(fn (array $item): array => [
-                $item['key'] => $item['category'].': '.$item['label'].' · '.$item['coverage_label'].' · '.$item['status'],
+                $item['key'] => $item['category'].': '.$item['label'].' · '.$item['coverage_label'].' · '.$item['status']
+                    .(CoordinationServiceCourtesy::itemIsCourtesy($item['courtesy_status'] ?? null) ? ' · CORTESÍA' : ''),
             ])
             ->all();
     }
@@ -1132,6 +1151,10 @@ final class CoordinationServiceItemsManager
             );
 
             $tooltip = $label.' · '.$item['coverage_label'].' · '.$displayStatus;
+            $isCourtesy = CoordinationServiceCourtesy::itemIsCourtesy($item['courtesy_status'] ?? null);
+            if ($isCourtesy) {
+                $tooltip .= ' · CORTESÍA';
+            }
             if ($orderNumber !== '') {
                 $tooltip .= ' · '.$orderNumber;
             } else {
@@ -1151,6 +1174,9 @@ final class CoordinationServiceItemsManager
                 .'</span>'
                 .'<span class="fi-coordination-clinical-item__trail">'
                 .'<span class="fi-coordination-clinical-item__meta">'
+                .($isCourtesy
+                    ? '<span class="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-800 bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-200" title="CORTESÍA">COR</span>'
+                    : '')
                 .'<span class="'.$coverageClass.'" title="'.e((string) $item['coverage_label']).'">'.e($coverageAbbrev).'</span>'
                 .'<span class="'.$statusClass.'" title="'.e($displayStatus).'">'.e($statusAbbrev).'</span>'
                 .'</span>'
@@ -1387,6 +1413,9 @@ final class CoordinationServiceItemsManager
             'operation_inventory_ubication_id' => null,
             'service_order_description' => null,
             'service_order_observations' => null,
+            'appointment_at' => null,
+            'supplier_notify_email' => null,
+            'supplier_notify_phone' => null,
             'service_order_bcv_rate' => OperationCoordinationServicesTable::referenciaTasaBcvDesdeApi(),
             'service_order_price_usd' => null,
             'service_order_price_ves' => null,
@@ -1825,40 +1854,93 @@ final class CoordinationServiceItemsManager
         array $coveredKeys,
         string $serviceOrderType
     ): bool {
-        $records = OperationCoordinationServicesTable::selectedServiceOrderRecordsByType(
-            $record,
-            OperationCoordinationServicesTable::managementKeysToNumericIds($coveredKeys),
-            $serviceOrderType
-        );
+        $partitions = CoordinationServiceCourtesy::partitionKeysByCourtesy($record, $coveredKeys);
+        $created = 0;
+        $bothGroups = $partitions['regular'] !== [] && $partitions['courtesy'] !== [];
 
-        if ($records->isEmpty()) {
+        foreach (['regular' => false, 'courtesy' => true] as $group => $isCourtesy) {
+            $keys = $partitions[$group];
+
+            if ($keys === []) {
+                continue;
+            }
+
+            $records = OperationCoordinationServicesTable::selectedServiceOrderRecordsByType(
+                $record,
+                OperationCoordinationServicesTable::managementKeysToNumericIds($keys),
+                $serviceOrderType
+            );
+
+            if ($records->isEmpty()) {
+                continue;
+            }
+
+            $groupData = $data;
+
+            if ($bothGroups && $isCourtesy && filled($groupData['order_number'] ?? null)) {
+                $groupData['order_number'] = rtrim((string) $groupData['order_number']).'-C';
+            }
+
+            $payload = OperationCoordinationServicesTable::buildServiceOrderPayload($record, $groupData, $serviceOrderType);
+
+            if ($payload === null) {
+                continue;
+            }
+
+            $payload['is_courtesy'] = $isCourtesy;
+
+            if ($serviceOrderType === 'MEDICAMENTOS') {
+                $payload['medications_list'] = $records->map(fn (TelemedicinePatientMedications $item): array => [
+                    'quantity' => 1,
+                    'indications' => $item->indications ?? null,
+                ])->values()->all();
+            }
+
+            if (! OperationServiceOrderController::create($payload, $record->toArray(), $records)) {
+                continue;
+            }
+
+            $order = OperationServiceOrder::query()
+                ->where('operation_coordination_service_id', $record->id)
+                ->when(
+                    filled($payload['order_number'] ?? null),
+                    fn ($query) => $query->where('order_number', $payload['order_number']),
+                )
+                ->latest('id')
+                ->first();
+
+            if ($order instanceof OperationServiceOrder) {
+                AccountsReceivableManager::syncFromServiceOrder($order);
+                MedicalAppointmentManager::createFromServiceOrder($order, [
+                    'email' => $data['supplier_notify_email'] ?? null,
+                    'phone' => $data['supplier_notify_phone'] ?? null,
+                ]);
+            }
+
+            $created++;
+        }
+
+        if ($created === 0) {
             Notification::make()
                 ->title('Orden de servicio')
-                ->body('Los ítems cubiertos seleccionados no están disponibles para crear la orden.')
+                ->body('Los ítems cubiertos seleccionados no estaban disponibles para crear la orden.')
                 ->warning()
                 ->send();
 
             return false;
         }
 
-        $payload = OperationCoordinationServicesTable::buildServiceOrderPayload($record, $data, $serviceOrderType);
-
-        if ($payload === null) {
-            return false;
-        }
-
-        if ($serviceOrderType === 'MEDICAMENTOS') {
-            $payload['medications_list'] = $records->map(fn (TelemedicinePatientMedications $item): array => [
-                'quantity' => 1,
-                'indications' => $item->indications ?? null,
-            ])->values()->all();
-        }
-
-        OperationServiceOrderController::create($payload, $record->toArray(), $records);
-
         $record->service_order_number = $data['order_number'] ?? $record->service_order_number;
         $record->updated_by = Auth::user()?->name;
         $record->save();
+
+        if ($created > 1) {
+            Notification::make()
+                ->title('Órdenes separadas por cortesía')
+                ->body('Se generaron documentos separados: uno regular y uno por CORTESÍA.')
+                ->info()
+                ->send();
+        }
 
         return true;
     }
@@ -1935,6 +2017,8 @@ final class CoordinationServiceItemsManager
                 : self::resolveManageQuoteSupplierAddress($supplierId);
         }
 
+        $isCourtesy = (bool) ($data['is_courtesy'] ?? false);
+
         $quote = OperationQuoteGenerator::query()->create([
             'telemedicine_patient_id' => $record->telemedicine_patient_id,
             'telemedicine_case_id' => $record->telemedicine_case_id,
@@ -1952,6 +2036,7 @@ final class CoordinationServiceItemsManager
             'porcentaje_ganancia' => $porcentaje,
             'subtotal' => $subtotal,
             'total' => $total,
+            'is_courtesy' => $isCourtesy,
             'created_by' => Auth::user()?->name ?? 'system',
             'updated_by' => Auth::user()?->name,
         ]);
@@ -1960,7 +2045,12 @@ final class CoordinationServiceItemsManager
             'quote_pdf_path' => OperationQuoteGeneratorPdfService::store($quote, $record, $bcvRate),
         ]);
 
-        AccountsReceivableManager::syncFromQuote($quote->fresh() ?? $quote);
+        $freshQuote = $quote->fresh() ?? $quote;
+        AccountsReceivableManager::syncFromQuote($freshQuote);
+
+        if ($isCourtesy) {
+            CourtesyFinanceNotifier::dispatchForQuote((int) $freshQuote->id);
+        }
 
         $record->neto = $subtotal;
         $record->porcen_tdec = $porcentaje;
@@ -1978,26 +2068,53 @@ final class CoordinationServiceItemsManager
         array $nonCoveredKeys,
         string $quoteType
     ): bool {
-        $items = self::buildManageQuoteItemsPayload(
-            $record,
-            $nonCoveredKeys,
-            (array) ($data['manage_quote_line_items'] ?? [])
-        );
+        $partitions = CoordinationServiceCourtesy::partitionKeysByCourtesy($record, $nonCoveredKeys);
+        $created = 0;
 
-        if ($items === []) {
+        foreach (['regular' => false, 'courtesy' => true] as $group => $isCourtesy) {
+            $keys = $partitions[$group];
+
+            if ($keys === []) {
+                continue;
+            }
+
+            $items = self::buildManageQuoteItemsPayload(
+                $record,
+                $keys,
+                (array) ($data['manage_quote_line_items'] ?? [])
+            );
+
+            if ($items === []) {
+                continue;
+            }
+
+            $groupData = $data;
+            $groupData['is_courtesy'] = $isCourtesy;
+
+            try {
+                self::persistManageQuote($record, $groupData, $quoteType, $items);
+                $created++;
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        if ($created === 0) {
             Notification::make()
                 ->title('Cotización')
-                ->body('Los ítems no cubiertos seleccionados no están disponibles para registrar la cotización.')
+                ->body('Los ítems no cubiertos seleccionados no estaban disponibles para registrar la cotización.')
                 ->warning()
                 ->send();
 
             return false;
         }
 
-        try {
-            self::persistManageQuote($record, $data, $quoteType, $items);
-        } catch (\Throwable) {
-            return false;
+        if ($created > 1) {
+            Notification::make()
+                ->title('Cotizaciones separadas por cortesía')
+                ->body('Se generaron documentos separados: uno regular y uno por CORTESÍA.')
+                ->info()
+                ->send();
         }
 
         return true;

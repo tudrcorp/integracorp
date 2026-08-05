@@ -35,6 +35,7 @@ use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\ConsultationCreateWizardDefaults;
 use App\Support\Telemedicine\TelemedicineAmdFileRegistrar;
 use App\Support\Telemedicine\TelemedicineAmdInformRegistrar;
+use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
@@ -381,6 +382,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         if (isset($data['feedbackOne']) && $data['feedbackOne'] == true) {
+            $caseId = (int) ($data['telemedicine_case_id'] ?? 0);
+            TelemedicineCaseDischargeGuard::assertCanBeDischarged($caseId);
+
             session()->put('feedbackOne', $data['feedbackOne']);
             $consult = TelemedicineConsultationPatient::where('telemedicine_case_id', $data['telemedicine_case_id'])->latest()->first();
             $data['telemedicine_service_list_id'] = $consult->telemedicine_service_list_drift_id;
@@ -720,21 +724,38 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     // Actualizo el estatus del
 
                     if (isset($feedbackOne) && $feedbackOne == true) {
-                        // dd($record);
-                        // Actualizamos la informacion en la tabla de casos
-                        $case = TelemedicineCase::where('id', $record['telemedicine_case_id'])->first();
-                        $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
-                        $case->updated_at = now();
-                        $case->status = 'ALTA MEDICA';
-                        $case->save();
+                        $caseId = (int) $record['telemedicine_case_id'];
 
-                        // Actualizamos la informacion en la tabla de consultas
-                        $consult = TelemedicineConsultationPatient::where('telemedicine_case_id', $record['telemedicine_case_id'])->latest()->first();
-                        $consult->updated_at = now();
-                        $consult->status = 'ALTA MEDICA';
-                        $consult->save();
+                        if (! TelemedicineCaseDischargeGuard::caseCanBeDischarged($caseId)) {
+                            Notification::make()
+                                ->title('Alta médica bloqueada')
+                                ->body(TelemedicineCaseDischargeGuard::blockingMessage($caseId))
+                                ->danger()
+                                ->send();
 
-                        session()->forget('feedbackOne');
+                            $case = TelemedicineCase::where('id', $caseId)->first();
+                            $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
+                            $case->updated_at = now();
+                            $case->status = 'EN SEGUIMIENTO';
+                            $case->save();
+
+                            session()->forget('feedbackOne');
+                        } else {
+                            // Actualizamos la informacion en la tabla de casos
+                            $case = TelemedicineCase::where('id', $caseId)->first();
+                            $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
+                            $case->updated_at = now();
+                            $case->status = 'ALTA MEDICA';
+                            $case->save();
+
+                            // Actualizamos la informacion en la tabla de consultas
+                            $consult = TelemedicineConsultationPatient::where('telemedicine_case_id', $caseId)->latest()->first();
+                            $consult->updated_at = now();
+                            $consult->status = 'ALTA MEDICA';
+                            $consult->save();
+
+                            session()->forget('feedbackOne');
+                        }
 
                     } else {
                         $case = TelemedicineCase::where('id', $record['telemedicine_case_id'])->first();

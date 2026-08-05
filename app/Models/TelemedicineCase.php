@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Observers\TelemedicineCaseObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[ObservedBy([TelemedicineCaseObserver::class])]
 class TelemedicineCase extends Model
 {
     protected $table = 'telemedicine_cases';

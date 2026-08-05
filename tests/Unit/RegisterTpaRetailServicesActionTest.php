@@ -94,8 +94,7 @@ it('crea un caso de telemedicina para engranar las relaciones', function (): voi
     $source = tpaRetailActionSource();
 
     expect($source)
-        ->toContain('TelemedicineCase::create')
-        ->toContain('UtilsController::generateCaseCode()')
+        ->toContain('TelemedicineCaseFactory::createForPatient')
         ->toContain("const CASE_STATUS = 'TPA/RETAIL'")
         ->toContain("'telemedicine_case_id' => \$case->id");
 });

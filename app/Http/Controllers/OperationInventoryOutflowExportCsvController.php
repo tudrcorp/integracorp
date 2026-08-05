@@ -45,23 +45,34 @@ final class OperationInventoryOutflowExportCsvController extends Controller
                 'Almacén',
                 'Cantidad saliente',
                 'Tipo de salida',
+                'Nº caso',
                 'Motivo / nota',
                 'Registrado por',
                 'Fecha',
             ]);
 
             OperationInventoryOutflow::query()
-                ->with(['product:id,code,name', 'ubication:id,name', 'operationInventory:id,name,barcode,ubication'])
+                ->with([
+                    'product:id,code,name',
+                    'ubication:id,name',
+                    'operationInventory:id,name,barcode,ubication',
+                    'telemedicineCase:id,code',
+                ])
                 ->whereIn('id', $ids)
                 ->orderBy('id')
                 ->lazyById(200)
                 ->each(function (OperationInventoryOutflow $record) use ($handle): void {
+                    $caseCode = filled($record->telemedicineCase?->code)
+                        ? mb_strtoupper((string) $record->telemedicineCase->code)
+                        : '—';
+
                     fputcsv($handle, [
                         (string) ($record->product?->code ?? $record->operationInventory?->barcode ?? '—'),
                         (string) ($record->product?->name ?? $record->operationInventory?->name ?? '—'),
                         (string) ($record->ubication?->name ?? $record->operationInventory?->ubication ?? '—'),
                         (string) ((int) $record->quantity),
                         (string) ($record->type_entry ?? '—'),
+                        $caseCode,
                         (string) ($record->observations ?? '—'),
                         (string) ($record->created_by ?? '—'),
                         $record->created_at?->format('d/m/Y H:i') ?? '—',

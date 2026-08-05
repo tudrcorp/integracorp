@@ -18,7 +18,9 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
@@ -33,6 +35,63 @@ class TelemedicineCaseResource extends Resource
     protected static ?string $navigationLabel = 'Gestión de Casos';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-list';
+
+    protected static ?string $recordTitleAttribute = 'code';
+
+    protected static int $globalSearchResultsLimit = 12;
+
+    protected static ?int $globalSearchSort = 10;
+
+    /**
+     * @return array<int, string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return [
+            'code',
+        ];
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string|Htmlable
+    {
+        if (! $record instanceof TelemedicineCase) {
+            return parent::getGlobalSearchResultTitle($record);
+        }
+
+        $code = trim((string) ($record->code ?? ''));
+
+        return $code !== '' ? $code : 'Caso #'.$record->getKey();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        if (! $record instanceof TelemedicineCase) {
+            return [];
+        }
+
+        return [
+            'Nro. de caso' => filled($record->code) ? (string) $record->code : '—',
+            'Paciente' => filled($record->patient_name)
+                ? (string) $record->patient_name
+                : (filled($record->telemedicinePatient?->full_name) ? (string) $record->telemedicinePatient->full_name : '—'),
+            'Médico' => filled($record->telemedicineDoctor?->full_name)
+                ? (string) $record->telemedicineDoctor->full_name
+                : '—',
+            'Estatus' => filled($record->status) ? (string) $record->status : '—',
+        ];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()
+            ->with([
+                'telemedicinePatient:id,full_name',
+                'telemedicineDoctor:id,full_name',
+            ]);
+    }
 
     public static function form(Schema $schema): Schema
     {

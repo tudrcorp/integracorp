@@ -2,8 +2,10 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas;
 
-use Filament\Forms\Components\TextInput;
+use App\Models\TelemedicinePatient;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class TelemedicineCaseForm
@@ -16,14 +18,37 @@ class TelemedicineCaseForm
                 TextInput::make('telemedicine_patient_id')
                     ->tel()
                     ->required()
-                    ->numeric(),
+                    ->numeric()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set, mixed $state): void {
+                        if (! filled($state)) {
+                            return;
+                        }
+
+                        $patient = TelemedicinePatient::query()->find($state);
+
+                        if ($patient === null) {
+                            return;
+                        }
+
+                        $set('patient_name', trim((string) $patient->full_name));
+                        $set('patient_age', $patient->age);
+                        $set('patient_sex', $patient->sex);
+                    }),
                 TextInput::make('telemedicine_doctor_id')
                     ->tel()
                     ->required()
                     ->numeric(),
-                TextInput::make('patient_name'),
-                TextInput::make('patient_age'),
-                TextInput::make('patient_sex'),
+                TextInput::make('patient_name')
+                    ->disabled()
+                    ->dehydrated()
+                    ->helperText('Se sincroniza automáticamente con el paciente vinculado.'),
+                TextInput::make('patient_age')
+                    ->disabled()
+                    ->dehydrated(),
+                TextInput::make('patient_sex')
+                    ->disabled()
+                    ->dehydrated(),
                 TextInput::make('patient_phone')
                     ->tel(),
                 TextInput::make('patient_address'),

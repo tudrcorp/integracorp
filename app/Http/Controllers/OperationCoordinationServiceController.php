@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicineServiceList;
 use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Telemedicine\TelemedicineCaseIdentity;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,7 @@ class OperationCoordinationServiceController extends Controller
             try {
 
                 $service = TelemedicineServiceList::find($record['telemedicine_service_list_id']);
+                $identity = TelemedicineCaseIdentity::coordinationIdentity($record, $patient);
 
                 $payload = [
 
@@ -36,11 +38,11 @@ class OperationCoordinationServiceController extends Controller
                     'reference_number' => $record['code_reference'],
                     'status' => 'PENDIENTE',
                     'telemedicine_priority_id' => $record['telemedicine_priority_id'],
-                    'patient' => $record['full_name'],
-                    'ci_patient' => $patient['nro_identificacion'],
-                    'birth_date_patient' => $patient['birth_date'],
-                    'relationship_patient' => 'TITULAR',
-                    'age_patient' => $patient['age'],
+                    'patient' => $identity['patient'],
+                    'ci_patient' => $identity['ci_patient'],
+                    'birth_date_patient' => $identity['birth_date_patient'],
+                    'relationship_patient' => $identity['relationship_patient'],
+                    'age_patient' => $identity['age_patient'],
                     'contractor' => $patient['afilliation_id'] == null ? 'CORPORATIVO' : 'INDIVIDUAL',
                     'state_id' => $patient['state_id'],
                     'city_id' => $patient['city_id'],
@@ -78,11 +80,11 @@ class OperationCoordinationServiceController extends Controller
 
                 // Compatibilidad con BD que aún no corrieron la migración que elimina estos campos.
                 if (Schema::hasColumn('operation_coordination_services', 'holder')) {
-                    $payload['holder'] = (string) ($patient['full_name'] ?? $record['full_name'] ?? 'TITULAR');
+                    $payload['holder'] = (string) ($patient['full_name'] ?? $identity['patient']);
                 }
 
                 if (Schema::hasColumn('operation_coordination_services', 'ci_holder')) {
-                    $payload['ci_holder'] = $patient['nro_identificacion'] ?? null;
+                    $payload['ci_holder'] = $identity['ci_patient'] ?? null;
                 }
 
                 $operationCoordinationService = OperationCoordinationService::create($payload);

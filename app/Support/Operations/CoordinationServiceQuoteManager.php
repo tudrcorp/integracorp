@@ -1049,6 +1049,8 @@ final class CoordinationServiceQuoteManager
             return 0;
         }
 
+        $payload['is_courtesy'] = (bool) $quote->is_courtesy;
+
         if ($quote->type_service === 'MEDICAMENTOS') {
             $payload['medications_list'] = $records->map(fn (TelemedicinePatientMedications $item): array => [
                 'quantity' => 1,
@@ -1075,6 +1077,10 @@ final class CoordinationServiceQuoteManager
 
             AccountsReceivableManager::syncFromServiceOrder($order);
             AccountsReceivableManager::syncFromQuote($quote->fresh() ?? $quote);
+            MedicalAppointmentManager::createFromServiceOrder($order, [
+                'email' => $data['supplier_notify_email'] ?? null,
+                'phone' => $data['supplier_notify_phone'] ?? null,
+            ]);
 
             return (int) $order->id;
         }

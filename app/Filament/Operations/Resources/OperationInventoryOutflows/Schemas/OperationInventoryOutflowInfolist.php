@@ -79,6 +79,12 @@ class OperationInventoryOutflowInfolist
                                                     ->badge()
                                                     ->color('warning')
                                                     ->placeholder('—'),
+                                                TextEntry::make('telemedicineCase.code')
+                                                    ->label('Nº caso')
+                                                    ->badge()
+                                                    ->color('primary')
+                                                    ->placeholder('—')
+                                                    ->formatStateUsing(fn (?string $state): string => filled($state) ? mb_strtoupper((string) $state) : '—'),
                                                 TextEntry::make('observations')
                                                     ->label('Motivo / nota')
                                                     ->placeholder('—')

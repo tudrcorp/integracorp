@@ -18,6 +18,7 @@ it('configura búsqueda global en panel operaciones y recursos clave', function 
     $otherPaths = [
         dirname(__DIR__, 2).'/app/Filament/Operations/Resources/Affiliates/AffiliateResource.php',
         dirname(__DIR__, 2).'/app/Filament/Operations/Resources/AffiliateCorporates/AffiliateCorporateResource.php',
+        dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicineCases/TelemedicineCaseResource.php',
     ];
 
     $trait = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/Concerns/ConfiguresOperationsSupplierGlobalSearch.php');
@@ -48,4 +49,15 @@ it('configura búsqueda global en panel operaciones y recursos clave', function 
 
     expect(file_get_contents($supplierPaths['DoctorNurseResource']))
         ->toContain("return 'natural'");
+
+    $telemedicineCaseResource = file_get_contents(
+        dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicineCases/TelemedicineCaseResource.php'
+    );
+
+    expect($telemedicineCaseResource)
+        ->toContain("protected static ?string \$recordTitleAttribute = 'code'")
+        ->toContain("'code'")
+        ->toContain('getGlobalSearchResultTitle')
+        ->toContain('Nro. de caso')
+        ->toContain('getGlobalSearchEloquentQuery');
 });

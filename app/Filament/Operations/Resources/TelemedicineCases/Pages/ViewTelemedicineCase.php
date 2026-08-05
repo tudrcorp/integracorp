@@ -5,6 +5,8 @@ namespace App\Filament\Operations\Resources\TelemedicineCases\Pages;
 use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Models\TelemedicineCase;
+use App\Support\Filament\FilamentIosButton;
+use App\Support\Telemedicine\TelemedicineCaseCreatedAtChangeAction;
 use App\Support\Telemedicine\TelemedicineCaseDocumentSendAction;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ViewRecord;
@@ -47,6 +49,13 @@ class ViewTelemedicineCase extends ViewRecord
                 ->url(TelemedicinePatientResource::getUrl('view', [
                     'record' => $case->telemedicine_patient_id,
                 ]));
+        }
+
+        if ($case instanceof TelemedicineCase && mb_strtoupper(trim((string) $case->status)) === 'ALTA MEDICA') {
+            $actions[] = TelemedicineCaseCreatedAtChangeAction::make($case)
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
+                ]);
         }
 
         return $actions;

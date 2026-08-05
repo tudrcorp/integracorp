@@ -17,6 +17,10 @@ class TelemedicinePatientSpecialty extends Model
         'specialty',
         'assigned_by',
         'status',
+        'courtesy_status',
+        'courtesy_reason',
+        'courtesy_updated_at',
+        'courtesy_updated_by',
         'operation_coordination_service_id',
     ];
 
