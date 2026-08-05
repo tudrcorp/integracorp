@@ -38,10 +38,12 @@ class OperationCoordinationServiceController extends Controller
                     'reference_number' => $record['code_reference'],
                     'status' => 'PENDIENTE',
                     'telemedicine_priority_id' => $record['telemedicine_priority_id'],
-                    'patient' => $identity['patient'],
-                    'ci_patient' => $identity['ci_patient'],
+                    'patient' => filled($identity['patient'] ?? null) ? (string) $identity['patient'] : '—',
+                    'ci_patient' => filled($identity['ci_patient'] ?? null) ? (string) $identity['ci_patient'] : 'NO ESPECIFICADO',
                     'birth_date_patient' => $identity['birth_date_patient'],
-                    'relationship_patient' => $identity['relationship_patient'],
+                    'relationship_patient' => filled($identity['relationship_patient'] ?? null)
+                        ? (string) $identity['relationship_patient']
+                        : 'TITULAR',
                     'age_patient' => $identity['age_patient'],
                     'contractor' => $patient['afilliation_id'] == null ? 'CORPORATIVO' : 'INDIVIDUAL',
                     'state_id' => $patient['state_id'],
