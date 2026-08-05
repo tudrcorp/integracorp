@@ -157,7 +157,34 @@ it('usa identidad del paciente FK en coordinación y no el nombre de consulta aj
     expect($identity['patient'])->toBe('TROCONIZ ESTRELLA')
         ->and($identity['ci_patient'])->toBe('V12345678')
         ->and($identity['age_patient'])->toBe('40')
-        ->and($identity['relationship_patient'])->toBeNull();
+        ->and($identity['relationship_patient'])->toBe('TITULAR');
+});
+
+it('preserva el parentesco de la consulta y usa TITULAR si no viene', function (): void {
+    $withRelationship = TelemedicineCaseIdentity::coordinationIdentity(
+        [
+            'relationship_patient' => 'HIJO',
+        ],
+        [
+            'id' => 9,
+            'full_name' => 'PACIENTE HIJO',
+            'nro_identificacion' => 'V999',
+        ],
+    );
+
+    $withoutRelationship = TelemedicineCaseIdentity::coordinationIdentity(
+        [],
+        [
+            'id' => 10,
+            'full_name' => 'PACIENTE SIN PARENTESCO',
+            'nro_identificacion' => '',
+        ],
+    );
+
+    expect($withRelationship['relationship_patient'])->toBe('HIJO')
+        ->and($withoutRelationship['relationship_patient'])->toBe('TITULAR')
+        ->and($withoutRelationship['ci_patient'])->toBe('NO ESPECIFICADO')
+        ->and($withoutRelationship['patient'])->toBe('PACIENTE SIN PARENTESCO');
 });
 
 it('el comando de auditoría detecta inconsistencias históricas', function (): void {

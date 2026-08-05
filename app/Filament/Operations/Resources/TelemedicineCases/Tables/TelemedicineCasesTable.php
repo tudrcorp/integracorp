@@ -263,7 +263,7 @@ class TelemedicineCasesTable
                                         : [
                                             'patient' => (string) ($record->patient_name ?? 'NO ESPECIFICADO'),
                                             'ci_patient' => 'NO ESPECIFICADO',
-                                            'relationship_patient' => null,
+                                            'relationship_patient' => 'TITULAR',
                                         ];
                                     $contractor = $patient?->afilliation_id === null ? 'CORPORATIVO' : 'INDIVIDUAL';
 

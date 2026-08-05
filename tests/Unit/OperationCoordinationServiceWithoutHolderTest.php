@@ -10,6 +10,8 @@ it('crea coordinación desde telemedicina sin exigir rol de guardia ni campos de
         ->not->toContain('date_OnCall')
         ->toContain("'patient'")
         ->toContain("'ci_patient'")
+        ->toContain("'relationship_patient'")
+        ->toContain("'TITULAR'")
         ->toContain("Schema::hasColumn('operation_coordination_services', 'holder')")
         ->toContain("Schema::hasColumn('operation_coordination_services', 'ci_holder')");
 });

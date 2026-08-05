@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Support\Telemedicine;
 
+use App\Models\Affiliate;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicinePatient;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class TelemedicineCaseIdentity
 {
@@ -110,7 +113,7 @@ class TelemedicineCaseIdentity
      *
      * @param  array<string, mixed>  $consultationRecord
      * @param  array<string, mixed>|TelemedicinePatient  $patient
-     * @return array{patient: string, ci_patient: mixed, birth_date_patient: mixed, age_patient: mixed, relationship_patient: string|null}
+     * @return array{patient: string, ci_patient: string, birth_date_patient: mixed, age_patient: mixed, relationship_patient: string}
      */
     public static function coordinationIdentity(array $consultationRecord, array|TelemedicinePatient $patient): array
     {
@@ -130,14 +133,49 @@ class TelemedicineCaseIdentity
             ]);
         }
 
+        $ciPatient = trim((string) ($patientData['nro_identificacion'] ?? ''));
+
         return [
             'patient' => $canonicalName !== '' ? $canonicalName : ($consultationName !== '' ? $consultationName : '—'),
-            'ci_patient' => $patientData['nro_identificacion'] ?? null,
+            'ci_patient' => $ciPatient !== '' ? $ciPatient : 'NO ESPECIFICADO',
             'birth_date_patient' => $patientData['birth_date'] ?? null,
             'age_patient' => $patientData['age'] ?? null,
-            'relationship_patient' => filled($consultationRecord['relationship_patient'] ?? null)
-                ? (string) $consultationRecord['relationship_patient']
-                : null,
+            'relationship_patient' => self::resolveRelationshipPatient($consultationRecord, $patientData),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $consultationRecord
+     * @param  array<string, mixed>  $patientData
+     */
+    private static function resolveRelationshipPatient(array $consultationRecord, array $patientData): string
+    {
+        if (filled($consultationRecord['relationship_patient'] ?? null)) {
+            return trim((string) $consultationRecord['relationship_patient']);
+        }
+
+        if (filled($patientData['relationship'] ?? null)) {
+            return trim((string) $patientData['relationship']);
+        }
+
+        $affiliationId = $patientData['afilliation_id'] ?? null;
+        $ci = trim((string) ($patientData['nro_identificacion'] ?? ''));
+
+        if (filled($affiliationId) && $ci !== '' && Schema::hasTable('affiliates')) {
+            try {
+                $relationship = Affiliate::query()
+                    ->where('affiliation_id', $affiliationId)
+                    ->where('nro_identificacion', $ci)
+                    ->value('relationship');
+
+                if (filled($relationship)) {
+                    return trim((string) $relationship);
+                }
+            } catch (Throwable) {
+                // Si la lookup falla, se usa el default seguro para no bloquear la coordinación.
+            }
+        }
+
+        return 'TITULAR';
     }
 }
