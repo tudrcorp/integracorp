@@ -35,6 +35,7 @@ class ConsultationsRelationManager extends RelationManager
             ->paginationPageOptions([10, 25, 50])
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
                 'telemedicinePatientMedications.operationInventory',
+                'telemedicineGeneralService',
             ]))
             ->columns([
                 TextColumn::make('created_at')
@@ -73,6 +74,15 @@ class ConsultationsRelationManager extends RelationManager
                     ->badge()
                     ->color('success')
                     ->icon(Heroicon::OutlinedCheckCircle)
+                    ->searchable()
+                    ->sortable()
+                    ->wrap(),
+                TextColumn::make('telemedicineGeneralService.name')
+                    ->label('Servicio general')
+                    ->badge()
+                    ->placeholder('—')
+                    ->color('warning')
+                    ->icon(Heroicon::OutlinedWrenchScrewdriver)
                     ->searchable()
                     ->sortable()
                     ->wrap(),

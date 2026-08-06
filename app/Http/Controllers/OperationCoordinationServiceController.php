@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\OperationCoordinationService;
+use App\Models\TelemedicineGeneralService;
 use App\Models\TelemedicineServiceList;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Telemedicine\TelemedicineCaseIdentity;
@@ -24,6 +25,7 @@ class OperationCoordinationServiceController extends Controller
 
                 $service = TelemedicineServiceList::find($record['telemedicine_service_list_id']);
                 $identity = TelemedicineCaseIdentity::coordinationIdentity($record, $patient);
+                $generalServiceName = self::resolveGeneralServiceName($record);
 
                 $payload = [
 
@@ -52,6 +54,7 @@ class OperationCoordinationServiceController extends Controller
                     'phone_holder' => $patient['phone'],
                     'symptoms_diagnosis' => $record['diagnostic_impression'] ?? '...',
                     'servicie' => $service->name,
+                    'general_service' => $generalServiceName,
                     'specific_service' => $operationCoordinationService,
                     'supplier_service' => $record['supplier_service'] ?? '...',
                     'farmadoc' => $record['farmadoc'] ?? '...',
@@ -165,5 +168,23 @@ class OperationCoordinationServiceController extends Controller
         });
 
         return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     */
+    private static function resolveGeneralServiceName(array $record): ?string
+    {
+        $generalServiceId = $record['telemedicine_general_service_id'] ?? null;
+
+        if (! filled($generalServiceId)) {
+            return null;
+        }
+
+        $name = TelemedicineGeneralService::query()
+            ->whereKey((int) $generalServiceId)
+            ->value('name');
+
+        return filled($name) ? (string) $name : null;
     }
 }

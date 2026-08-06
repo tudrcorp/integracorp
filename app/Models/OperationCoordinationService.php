@@ -34,6 +34,7 @@ class OperationCoordinationService extends Model
         'phone_holder',
         'symptoms_diagnosis',
         'servicie',
+        'general_service',
         'specific_service',
         'type_service',
         'supplier_service',

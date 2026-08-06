@@ -130,6 +130,12 @@ class TelemedicineConsultationPatientInfolist
                                                     ->badge()
                                                     ->color('success')
                                                     ->placeholder('—'),
+                                                TextEntry::make('telemedicineGeneralService.name')
+                                                    ->label('Servicio general')
+                                                    ->badge()
+                                                    ->color('warning')
+                                                    ->icon(Heroicon::OutlinedClipboardDocumentList)
+                                                    ->placeholder('—'),
                                                 TextEntry::make('telemedicineServiceListDrift.name')
                                                     ->label('Servicio derivado')
                                                     ->badge()

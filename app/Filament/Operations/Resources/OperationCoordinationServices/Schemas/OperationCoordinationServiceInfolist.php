@@ -153,6 +153,14 @@ class OperationCoordinationServiceInfolist
                                                 TextEntry::make('servicie')
                                                     ->label('Servicio')
                                                     ->placeholder('-'),
+                                                TextEntry::make('general_service')
+                                                    ->label('Servicio general')
+                                                    ->badge()
+                                                    ->color('warning')
+                                                    ->placeholder('-')
+                                                    ->formatStateUsing(fn (?string $state, OperationCoordinationService $record): string => filled($state)
+                                                        ? (string) $state
+                                                        : (string) ($record->telemedicineConsultationPatient?->telemedicineGeneralService?->name ?: '-')),
                                                 TextEntry::make('specific_service')
                                                     ->label('Servicio específico')
                                                     ->placeholder('-'),

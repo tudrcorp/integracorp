@@ -1207,6 +1207,7 @@ class OperationCoordinationServicesTable
                     'telemedicinePatientLabs',
                     'telemedicinePatientStudies',
                     'telemedicinePatientSpecialties',
+                    'telemedicineConsultationPatient.telemedicineGeneralService:id,name',
                 ]);
             })
             ->columns([
@@ -1328,6 +1329,26 @@ class OperationCoordinationServicesTable
                         ? 'heroicon-m-exclamation-triangle'
                         : 'heroicon-m-information-circle')
                     ->searchable(),
+                TextColumn::make('general_service')
+                    ->label('Servicio general')
+                    ->badge()
+                    ->placeholder('—')
+                    ->color('warning')
+                    ->icon('heroicon-m-wrench-screwdriver')
+                    ->getStateUsing(fn (OperationCoordinationService $record): ?string => filled($record->general_service)
+                        ? (string) $record->general_service
+                        : $record->telemedicineConsultationPatient?->telemedicineGeneralService?->name)
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $inner) use ($search): void {
+                            $inner->where('general_service', 'like', "%{$search}%")
+                                ->orWhereHas(
+                                    'telemedicineConsultationPatient.telemedicineGeneralService',
+                                    fn (Builder $relation): Builder => $relation->where('name', 'like', "%{$search}%")
+                                );
+                        });
+                    })
+                    ->sortable()
+                    ->wrap(),
                 TextColumn::make('specific_service')
                     ->label('Servicio Derivado')
                     ->badge()

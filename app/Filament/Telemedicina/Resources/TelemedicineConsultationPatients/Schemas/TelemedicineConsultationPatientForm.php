@@ -5,6 +5,7 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\S
 use App\Models\NoPathologicalHistory;
 use App\Models\OperationInventory;
 use App\Models\TelemedicineConsultationPatient;
+use App\Models\TelemedicineGeneralService;
 use App\Models\TelemedicineListLaboratory;
 use App\Models\TelemedicineListSpecialist;
 use App\Models\TelemedicineListStudy;
@@ -53,6 +54,41 @@ class TelemedicineConsultationPatientForm
         return View::make('filament.telemedicina.consultations.inform-amd-trigger')
             ->columnSpanFull()
             ->visible(fn (Get $get): bool => (int) $get('telemedicine_service_list_id') === TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID);
+    }
+
+    private static function isConsultaGeneralSelected(Get $get): bool
+    {
+        return (int) $get('telemedicine_service_list_id') === TelemedicineServiceList::CONSULTA_GENERAL_ID;
+    }
+
+    private static function generalServiceSelect(): Select
+    {
+        return Select::make('telemedicine_general_service_id')
+            ->label('Servicio General')
+            ->live()
+            ->options(fn (): \Illuminate\Support\Collection => TelemedicineGeneralService::query()
+                ->active()
+                ->orderBy('name')
+                ->pluck('name', 'id'))
+            ->searchable()
+            ->required(fn (Get $get): bool => self::isConsultaGeneralSelected($get))
+            ->visible(fn (Get $get): bool => self::isConsultaGeneralSelected($get))
+            ->dehydrated(fn (Get $get): bool => self::isConsultaGeneralSelected($get))
+            ->helperText('Servicios disponibles para Consulta General. Gestionados por analistas TDG.');
+    }
+
+    /**
+     * @param  mixed  $state
+     */
+    private static function syncServiceListSideEffects(Set $set, Get $get, $state): void
+    {
+        if ((string) $get('telemedicine_service_list_drift_id') === (string) $state) {
+            $set('telemedicine_service_list_drift_id', null);
+        }
+
+        if ((int) $state !== TelemedicineServiceList::CONSULTA_GENERAL_ID) {
+            $set('telemedicine_general_service_id', null);
+        }
     }
 
     public static function configure(Schema $schema): Schema
@@ -400,9 +436,7 @@ class TelemedicineConsultationPatientForm
                                                             return $service?->description ?? '---';
                                                         })
                                                         ->afterStateUpdated(function (Set $set, $state, Get $get): void {
-                                                            if ((string) $get('telemedicine_service_list_drift_id') === (string) $state) {
-                                                                $set('telemedicine_service_list_drift_id', null);
-                                                            }
+                                                            self::syncServiceListSideEffects($set, $get, $state);
                                                         })
                                                         ->searchable()
                                                         ->required(),
@@ -421,6 +455,7 @@ class TelemedicineConsultationPatientForm
                                                         ->searchable()
                                                         ->required()
                                                         ->different('telemedicine_service_list_id'),
+                                                    self::generalServiceSelect(),
                                                     CheckboxList::make('complements')
                                                         // ->hidden(function (Get $get) {
                                                         //     if ($get('telemedicine_service_list_id') == 2) {
@@ -605,9 +640,7 @@ class TelemedicineConsultationPatientForm
                                             return $service?->description ?? '---';
                                         })
                                         ->afterStateUpdated(function (Set $set, $state, Get $get): void {
-                                            if ((string) $get('telemedicine_service_list_drift_id') === (string) $state) {
-                                                $set('telemedicine_service_list_drift_id', null);
-                                            }
+                                            self::syncServiceListSideEffects($set, $get, $state);
                                         })
                                         ->searchable()
                                         ->required(),
@@ -628,6 +661,7 @@ class TelemedicineConsultationPatientForm
                                         ->nullable()
                                         ->searchable()
                                         ->different('telemedicine_service_list_id'),
+                                    self::generalServiceSelect(),
                                     CheckboxList::make('complements')
                                         // ->hidden(function (Get $get) {
                                         //     if ($get('telemedicine_service_list_id') == 2) {
