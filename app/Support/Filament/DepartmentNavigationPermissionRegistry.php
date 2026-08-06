@@ -131,6 +131,7 @@ use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrd
 use App\Filament\Operations\Resources\OperationStatusServices\OperationStatusServiceResource;
 use App\Filament\Operations\Resources\OperationTypeNegotiations\OperationTypeNegotiationResource;
 use App\Filament\Operations\Resources\OperationTypeServices\OperationTypeServiceResource;
+use App\Filament\Operations\Resources\PortalHelpContacts\PortalHelpContactResource;
 use App\Filament\Operations\Resources\Suppliers\SupplierResource;
 use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Filament\Operations\Resources\TelemedicineDoctors\TelemedicineDoctorResource;
@@ -280,6 +281,7 @@ final class DepartmentNavigationPermissionRegistry
         AccountsPayableResource::class => ['cuentas-por-pagar'],
         OperationTypeServiceResource::class => ['tipos-servicios'],
         TelemedicineGeneralServiceResource::class => ['servicios-consulta-general'],
+        PortalHelpContactResource::class => ['contactos-ayuda-portal'],
         OperationTypeNegotiationResource::class => ['tipos-negociacion'],
         OperationStatusServiceResource::class => ['estados-servicio'],
         OperationOnCallUserResource::class => ['roles-de-guardia'],
