@@ -64,6 +64,7 @@ class ViewSale extends ViewRecord
         return match ($type) {
             'AFILIACION INDIVIDUAL' => ['bg' => '#2563eb', 'shadow' => '0 8px 20px rgba(37,99,235,.35)'],
             'AFILIACION CORPORATIVA' => ['bg' => '#16a34a', 'shadow' => '0 8px 20px rgba(22,163,74,.35)'],
+            'NUEVOS NEGOCIOS' => ['bg' => '#d97706', 'shadow' => '0 8px 20px rgba(217,119,6,.35)'],
             default => ['bg' => '#6b7280', 'shadow' => '0 8px 20px rgba(107,114,128,.35)'],
         };
     }
@@ -80,12 +81,14 @@ class ViewSale extends ViewRecord
             'agent',
             'agencyMasterName',
             'affiliation',
+            'company',
             'paidMembershipIndividual.plan',
             'paidMembershipIndividual.coverage',
             'paidMembershipIndividual.agent',
             'paidMembershipCorporate.plan',
             'paidMembershipCorporate.coverage',
             'paidMembershipCorporate.agent',
+            'paidMembershipCompany.company',
             'commission',
         ]);
     }

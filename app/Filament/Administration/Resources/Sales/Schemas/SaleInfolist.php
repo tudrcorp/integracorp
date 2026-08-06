@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Administration\Resources\Sales\Schemas;
 
+use App\Models\CompanyPaidMembership;
 use App\Models\PaidMembership;
 use App\Models\PaidMembershipCorporate;
 use App\Models\Sale;
@@ -93,6 +94,7 @@ class SaleInfolist
                                     ->color(fn (?string $state): string => match ($state) {
                                         'AFILIACION INDIVIDUAL' => 'primary',
                                         'AFILIACION CORPORATIVA' => 'success',
+                                        'NUEVOS NEGOCIOS' => 'warning',
                                         default => 'gray',
                                     }),
                                 TextEntry::make('total_amount')
@@ -387,12 +389,24 @@ class SaleInfolist
                                     ->state(fn (Sale $record): mixed => $record->resolvePaidReceipt()?->coverage?->price)
                                     ->formatStateUsing(fn (mixed $state): string => self::formatUsd($state)),
                                 TextEntry::make('paid_receipt_affiliation_id')
-                                    ->label('ID afiliación')
-                                    ->state(fn (Sale $record): mixed => $record->resolvePaidReceipt() instanceof PaidMembership
-                                        ? $record->resolvePaidReceipt()->affiliation_id
-                                        : ($record->resolvePaidReceipt() instanceof PaidMembershipCorporate
-                                            ? $record->resolvePaidReceipt()->affiliation_corporate_id
-                                            : null)),
+                                    ->label(fn (Sale $record): string => $record->type === 'NUEVOS NEGOCIOS' ? 'ID empresa' : 'ID afiliación')
+                                    ->state(function (Sale $record): mixed {
+                                        $receipt = $record->resolvePaidReceipt();
+
+                                        if ($receipt instanceof PaidMembership) {
+                                            return $receipt->affiliation_id;
+                                        }
+
+                                        if ($receipt instanceof PaidMembershipCorporate) {
+                                            return $receipt->affiliation_corporate_id;
+                                        }
+
+                                        if ($receipt instanceof CompanyPaidMembership) {
+                                            return $receipt->company_id;
+                                        }
+
+                                        return null;
+                                    }),
                                 TextEntry::make('paid_receipt_type_roll')
                                     ->label('Tipo de rol')
                                     ->state(fn (Sale $record): mixed => $record->resolvePaidReceipt()?->type_roll)
@@ -656,7 +670,7 @@ class SaleInfolist
         return number_format((float) $state, 2, ',', '.').' VES';
     }
 
-    private static function documentLabel(PaidMembership|PaidMembershipCorporate|null $receipt, string $attribute): string
+    private static function documentLabel(PaidMembership|PaidMembershipCorporate|CompanyPaidMembership|null $receipt, string $attribute): string
     {
         if ($receipt === null) {
             return '—';
@@ -671,7 +685,7 @@ class SaleInfolist
         return 'Ver comprobante';
     }
 
-    private static function documentUrl(PaidMembership|PaidMembershipCorporate|null $receipt, string $attribute): ?string
+    private static function documentUrl(PaidMembership|PaidMembershipCorporate|CompanyPaidMembership|null $receipt, string $attribute): ?string
     {
         if ($receipt === null) {
             return null;

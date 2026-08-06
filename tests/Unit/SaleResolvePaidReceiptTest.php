@@ -15,3 +15,9 @@ it('resuelve tabla paid_membership_corporates para ventas corporativas', functio
 
     expect($sale->paidReceiptTableName())->toBe('paid_membership_corporates');
 });
+
+it('resuelve tabla company_paid_memberships para ventas de nuevos negocios', function (): void {
+    $sale = new Sale(['type' => 'NUEVOS NEGOCIOS']);
+
+    expect($sale->paidReceiptTableName())->toBe('company_paid_memberships');
+});

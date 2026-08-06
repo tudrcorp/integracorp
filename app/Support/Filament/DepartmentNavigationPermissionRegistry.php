@@ -17,6 +17,7 @@ use App\Filament\Administration\Resources\AnnualCollections\AnnualCollectionReso
 use App\Filament\Administration\Resources\Collections\CollectionResource;
 use App\Filament\Administration\Resources\CommissionPayrolls\CommissionPayrollResource;
 use App\Filament\Administration\Resources\Commissions\CommissionResource;
+use App\Filament\Administration\Resources\CompanyPaidMemberships\CompanyPaidMembershipResource;
 use App\Filament\Administration\Resources\DownloadZones\DownloadZoneResource as AdministrationDownloadZoneResource;
 use App\Filament\Administration\Resources\Helpdesks\HelpdeskResource as AdministrationHelpdeskResource;
 use App\Filament\Administration\Resources\RenovationCorporates\RenovationCorporateResource as AdministrationRenovationCorporateResource;
@@ -220,6 +221,7 @@ final class DepartmentNavigationPermissionRegistry
         AdministrationAgencyResource::class => ['agencias-de-corretaje'],
         AdministrationAgentResource::class => ['agentes-de-corretaje'],
         SaleResource::class => ['ventas'],
+        CompanyPaidMembershipResource::class => ['ventas', 'comprobantes-nuevos-negocios'],
         CollectionResource::class => ['gestion-de-cobranza'],
         AnnualCollectionResource::class => ['cobranza-por-mes'],
         CommissionResource::class => ['detallado-de-comisiones'],
