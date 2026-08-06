@@ -9891,6 +9891,188 @@
       transition: none !important;
     }
   }
+
+  /* Top 10 agencias — filtro de meses (Administración) */
+  .fi-admin-agency-month-filter {
+    @apply rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-sky-50/40 p-4 shadow-sm dark:border-white/10 dark:from-white/[0.04] dark:via-white/[0.02] dark:to-sky-500/[0.06];
+  }
+
+  .fi-admin-agency-month-filter__header {
+    @apply mb-3.5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between;
+  }
+
+  .fi-admin-agency-month-filter__title {
+    @apply text-sm font-semibold text-slate-800 dark:text-slate-100;
+  }
+
+  .fi-admin-agency-month-filter__hint {
+    @apply mt-1 max-w-xl text-xs leading-relaxed text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-admin-agency-month-filter__meta {
+    @apply shrink-0;
+  }
+
+  .fi-admin-agency-month-filter__count {
+    @apply inline-flex items-center rounded-full bg-sky-500/15 px-3 py-1 text-[0.7rem] font-bold uppercase tracking-[0.12em] text-sky-700 ring-1 ring-sky-500/25 dark:bg-sky-400/15 dark:text-sky-200 dark:ring-sky-300/25;
+  }
+
+  .fi-admin-agency-month-filter__years {
+    @apply space-y-3;
+  }
+
+  .fi-admin-agency-month-filter__year-row {
+    @apply flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3;
+  }
+
+  .fi-admin-agency-month-filter__year-badge {
+    @apply inline-flex h-8 w-full shrink-0 items-center justify-center rounded-lg bg-slate-900/[0.06] text-[0.7rem] font-bold tracking-[0.16em] text-slate-600 ring-1 ring-slate-900/10 sm:w-16 dark:bg-white/10 dark:text-slate-200 dark:ring-white/10;
+  }
+
+  .fi-admin-agency-month-filter__months {
+    @apply flex min-w-0 flex-1 flex-wrap gap-1.5;
+  }
+
+  .fi-admin-agency-month-filter__chip {
+    @apply inline-flex min-h-9 min-w-[3.1rem] items-center justify-center rounded-xl px-3 py-1.5 text-xs font-semibold transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70;
+    @apply bg-white text-slate-600 shadow-sm ring-1 ring-slate-200/90 hover:-translate-y-px hover:bg-slate-50 hover:text-slate-900 hover:ring-slate-300;
+    @apply dark:bg-white/[0.07] dark:text-slate-200 dark:ring-white/15 dark:hover:bg-white/[0.12] dark:hover:text-white dark:hover:ring-white/25;
+  }
+
+  .fi-admin-agency-month-filter__chip.is-active {
+    @apply bg-sky-500 text-white shadow-md shadow-sky-500/25 ring-1 ring-sky-300/60 hover:bg-sky-500 hover:text-white;
+    @apply dark:bg-sky-500 dark:text-white dark:ring-sky-300/50 dark:hover:bg-sky-500;
+  }
+
+  .fi-admin-agency-month-filter__chip-label {
+    @apply leading-none;
+  }
+
+  .fi-admin-agency-month-filter__chip:disabled {
+    @apply cursor-wait opacity-60;
+  }
+
+  .fi-admin-agency-monthly-panel {
+    @apply overflow-hidden rounded-2xl border border-slate-200/80 bg-white/70 shadow-sm dark:border-white/10 dark:bg-white/[0.03];
+  }
+
+  .fi-admin-agency-monthly-panel__trigger {
+    @apply flex w-full items-start justify-between gap-3 px-4 py-3.5 text-left transition-colors duration-200 hover:bg-slate-50/80 dark:hover:bg-white/[0.04];
+  }
+
+  .fi-admin-agency-monthly-panel__trigger-main {
+    @apply flex min-w-0 items-start gap-3;
+  }
+
+  .fi-admin-agency-monthly-panel__chevron {
+    @apply mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-700 ring-1 ring-sky-500/20 transition-transform duration-200 dark:bg-sky-400/10 dark:text-sky-200 dark:ring-sky-300/20;
+  }
+
+  .fi-admin-agency-monthly-panel[data-expanded='true'] .fi-admin-agency-monthly-panel__chevron {
+    @apply rotate-180;
+  }
+
+  .fi-admin-agency-monthly-panel__title {
+    @apply block text-sm font-semibold text-slate-900 dark:text-white;
+  }
+
+  .fi-admin-agency-monthly-panel__subtitle {
+    @apply mt-0.5 block text-xs leading-relaxed text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-admin-agency-monthly-panel__trigger-meta {
+    @apply flex shrink-0 flex-col items-end gap-1.5;
+  }
+
+  .fi-admin-agency-monthly-panel__badge {
+    @apply inline-flex items-center rounded-full bg-sky-500/15 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.12em] text-sky-700 ring-1 ring-sky-500/25 dark:bg-sky-400/15 dark:text-sky-200 dark:ring-sky-300/25;
+  }
+
+  .fi-admin-agency-monthly-panel__state {
+    @apply text-[11px] font-semibold text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-admin-agency-monthly-panel__body {
+    @apply border-t border-slate-200/70 px-4 pb-4 pt-3 dark:border-white/10;
+  }
+
+  /* Ventas (Administración) — panel Livewire colapsable (sin Alpine FOUC) */
+  .fi-admin-sales-stats-widget {
+    @apply mb-3;
+  }
+
+  .fi-admin-sales-stats-panel {
+    @apply overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50/80 to-orange-50/40 shadow-sm dark:border-white/10 dark:from-white/[0.05] dark:via-white/[0.025] dark:to-orange-500/[0.07];
+  }
+
+  .fi-admin-sales-stats-widget--ingresos .fi-admin-sales-stats-panel {
+    @apply from-white via-sky-50/50 to-sky-100/30 dark:from-white/[0.05] dark:via-sky-500/[0.06] dark:to-sky-400/[0.08];
+  }
+
+  .fi-admin-sales-stats-widget--planes .fi-admin-sales-stats-panel {
+    @apply from-white via-amber-50/50 to-orange-100/30 dark:from-white/[0.05] dark:via-amber-500/[0.06] dark:to-orange-400/[0.08];
+  }
+
+  .fi-admin-sales-stats-panel__trigger {
+    @apply flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors duration-150 hover:bg-black/[0.02] dark:hover:bg-white/[0.03];
+  }
+
+  .fi-admin-sales-stats-panel__trigger-main {
+    @apply flex min-w-0 items-center gap-3;
+  }
+
+  .fi-admin-sales-stats-panel__icon {
+    @apply flex size-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/15 text-orange-600 ring-1 ring-orange-500/20 dark:bg-orange-400/15 dark:text-orange-300 dark:ring-orange-300/25;
+  }
+
+  .fi-admin-sales-stats-widget--ingresos .fi-admin-sales-stats-panel__icon {
+    @apply bg-sky-500/15 text-sky-700 ring-sky-500/25 dark:bg-sky-400/15 dark:text-sky-200 dark:ring-sky-300/25;
+  }
+
+  .fi-admin-sales-stats-panel__icon-svg {
+    @apply size-5;
+  }
+
+  .fi-admin-sales-stats-panel__title {
+    @apply block text-sm font-bold tracking-[0.04em] text-slate-900 dark:text-white;
+  }
+
+  .fi-admin-sales-stats-panel__subtitle {
+    @apply mt-0.5 block text-xs leading-relaxed text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-admin-sales-stats-panel__trigger-meta {
+    @apply flex shrink-0 items-center gap-2;
+  }
+
+  .fi-admin-sales-stats-panel__state {
+    @apply text-[11px] font-semibold text-slate-500 dark:text-slate-400;
+  }
+
+  .fi-admin-sales-stats-panel__chevron {
+    @apply flex size-8 items-center justify-center rounded-lg bg-slate-900/[0.04] text-slate-600 ring-1 ring-slate-900/10 transition-transform duration-200 dark:bg-white/10 dark:text-slate-200 dark:ring-white/10;
+  }
+
+  .fi-admin-sales-stats-panel[data-expanded='true'] .fi-admin-sales-stats-panel__chevron {
+    @apply rotate-180;
+  }
+
+  .fi-admin-sales-stats-panel__body {
+    @apply border-t border-slate-200/70 px-3 pb-3 pt-3 dark:border-white/10;
+  }
+
+  .fi-admin-sales-stats-section-body.fi-sc-section,
+  .fi-admin-sales-stats-section-body .fi-section {
+    @apply border-0 bg-transparent p-0 shadow-none ring-0;
+  }
+
+  .fi-admin-sales-stats-section-body .fi-section-header {
+    @apply hidden;
+  }
+
+  .fi-admin-sales-stats-section-body .fi-section-content-ctn {
+    @apply m-0 border-0 p-0;
+  }
 }
 
 

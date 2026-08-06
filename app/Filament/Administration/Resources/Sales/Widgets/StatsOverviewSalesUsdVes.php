@@ -3,7 +3,9 @@
 namespace App\Filament\Administration\Resources\Sales\Widgets;
 
 use App\Filament\Administration\Resources\Sales\Pages\ListSales;
+use App\Filament\Administration\Resources\Sales\Widgets\Concerns\HasCollapsibleSalesStatsPanel;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Carbon;
@@ -11,13 +13,28 @@ use Illuminate\Support\HtmlString;
 
 class StatsOverviewSalesUsdVes extends StatsOverviewWidget
 {
+    use HasCollapsibleSalesStatsPanel;
     use InteractsWithPageTable;
 
+    protected string $view = 'filament.administration.widgets.sales-collapsible-stats-overview';
+
     protected ?string $heading = 'ANÁLISIS DE INGRESOS';
+
+    protected ?string $description = 'Totales USD, VES y link de pago · año y mes en curso';
 
     protected function getTablePage(): string
     {
         return ListSales::class;
+    }
+
+    public function salesStatsPanelVariant(): string
+    {
+        return 'ingresos';
+    }
+
+    public function salesStatsPanelIcon(): Heroicon
+    {
+        return Heroicon::OutlinedBanknotes;
     }
 
     protected function getStats(): array
