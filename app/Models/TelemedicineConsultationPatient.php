@@ -40,6 +40,7 @@ class TelemedicineConsultationPatient extends Model
         'priorityMonitoring',
         'observations',
         'telemedicine_service_list_drift_id',
+        'telemedicine_general_service_id',
 
         // ... Datos agregados
         'pa',           // presion arterial
@@ -78,6 +79,11 @@ class TelemedicineConsultationPatient extends Model
     public function telemedicineCase()
     {
         return $this->belongsTo(TelemedicineCase::class);
+    }
+
+    public function telemedicineGeneralService()
+    {
+        return $this->belongsTo(TelemedicineGeneralService::class);
     }
 
     public function amdInforms()

@@ -134,6 +134,7 @@ use App\Filament\Operations\Resources\OperationTypeServices\OperationTypeService
 use App\Filament\Operations\Resources\Suppliers\SupplierResource;
 use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Filament\Operations\Resources\TelemedicineDoctors\TelemedicineDoctorResource;
+use App\Filament\Operations\Resources\TelemedicineGeneralServices\TelemedicineGeneralServiceResource;
 use App\Filament\Operations\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Filament\Projects\Pages\Backlog;
@@ -278,6 +279,7 @@ final class DepartmentNavigationPermissionRegistry
         AccountsReceivableResource::class => ['cuentas-por-cobrar'],
         AccountsPayableResource::class => ['cuentas-por-pagar'],
         OperationTypeServiceResource::class => ['tipos-servicios'],
+        TelemedicineGeneralServiceResource::class => ['servicios-consulta-general'],
         OperationTypeNegotiationResource::class => ['tipos-negociacion'],
         OperationStatusServiceResource::class => ['estados-servicio'],
         OperationOnCallUserResource::class => ['roles-de-guardia'],

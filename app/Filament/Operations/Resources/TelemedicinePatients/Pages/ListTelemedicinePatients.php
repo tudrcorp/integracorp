@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Pages;
 
+use App\Filament\Operations\Resources\TelemedicinePatients\Actions\ReportSiniestralidadAction;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use Filament\Actions\CreateAction;
@@ -24,6 +25,7 @@ class ListTelemedicinePatients extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            ReportSiniestralidadAction::make(),
             CreateAction::make()
                 ->label('Crear Nuevo Paciente')
                 ->icon('heroicon-s-plus')

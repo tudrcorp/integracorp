@@ -34,6 +34,8 @@ class OperationCoordinationServiceForm
                 TextInput::make('symptoms_diagnosis')
                     ->required(),
                 TextInput::make('servicie'),
+                TextInput::make('general_service')
+                    ->label('Servicio general'),
                 TextInput::make('specific_service'),
                 TextInput::make('type_service'),
                 TextInput::make('supplier_service'),

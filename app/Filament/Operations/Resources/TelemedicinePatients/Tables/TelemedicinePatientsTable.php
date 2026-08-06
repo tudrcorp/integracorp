@@ -7,6 +7,7 @@ use App\Models\TelemedicinePatient;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -14,6 +15,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Support\Enums\FontWeight;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -249,7 +251,16 @@ class TelemedicinePatientsTable
                         ->label('Editar')
                         ->hidden(fn (TelemedicinePatient $record) => in_array('ATENMEDI', Auth::user()->departament)),
                     AssignDoctorAction::make(),
-
+                    Action::make('detailed_siniestralidad_report')
+                        ->label('Reporte detallado')
+                        ->icon(Heroicon::OutlinedDocumentChartBar)
+                        ->color('warning')
+                        ->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst())
+                        ->url(fn (TelemedicinePatient $record): string => route(
+                            'operations.telemedicine-patients.siniestralidad-detalle.preview',
+                            ['patient' => $record],
+                        ))
+                        ->openUrlInNewTab(),
                 ]),
             ])
             ->toolbarActions([

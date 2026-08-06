@@ -11,7 +11,10 @@ it('OperationCoordinationServicesTable resalta servicios con badge info/danger s
     expect($contents)
         ->toContain('use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;')
         ->and($contents)->toContain("TextColumn::make('servicie')")
-        ->and($contents)->toContain("TextColumn::make('specific_service')");
+        ->and($contents)->toContain("TextColumn::make('specific_service')")
+        ->and($contents)->toContain("TextColumn::make('general_service')")
+        ->and($contents)->toContain("->label('Servicio general')")
+        ->and($contents)->toContain('telemedicineConsultationPatient.telemedicineGeneralService');
 
     expect(substr_count($contents, 'TelemedicineDerivedServiceBadge::driftNameIsCritical'))->toBeGreaterThanOrEqual(4);
 });

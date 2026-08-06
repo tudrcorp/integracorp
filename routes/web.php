@@ -153,6 +153,26 @@ Route::get('operations/export-operation-service-orders-csv', App\Http\Controller
     ->middleware(['web', 'auth'])
     ->name('operations.operation-service-orders.export-csv');
 
+Route::get('operations/telemedicine-patients/siniestralidad/preview', [App\Http\Controllers\TelemedicinePatientSiniestralidadReportController::class, 'previewPdf'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.telemedicine-patients.siniestralidad.preview');
+
+Route::get('operations/telemedicine-patients/siniestralidad/pdf', [App\Http\Controllers\TelemedicinePatientSiniestralidadReportController::class, 'downloadPdf'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.telemedicine-patients.siniestralidad.pdf');
+
+Route::get('operations/telemedicine-patients/siniestralidad/csv', [App\Http\Controllers\TelemedicinePatientSiniestralidadReportController::class, 'downloadCsv'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.telemedicine-patients.siniestralidad.csv');
+
+Route::get('operations/telemedicine-patients/{patient}/siniestralidad-detalle/preview', [App\Http\Controllers\TelemedicinePatientDetailedSiniestralidadReportController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.telemedicine-patients.siniestralidad-detalle.preview');
+
+Route::get('operations/telemedicine-patients/{patient}/siniestralidad-detalle/pdf', [App\Http\Controllers\TelemedicinePatientDetailedSiniestralidadReportController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.telemedicine-patients.siniestralidad-detalle.pdf');
+
 Route::get('operations/operation-service-orders/report/preview', [App\Http\Controllers\OperationServiceOrderTableReportPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
     ->name('operations.operation-service-orders.report.preview');

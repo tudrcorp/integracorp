@@ -5,6 +5,7 @@ namespace App\Filament\Operations\Resources\TelemedicinePatients\Pages;
 use App\Filament\Operations\Concerns\AppliesOperationsAddressFromMaps;
 use App\Filament\Operations\Resources\TelemedicinePatients\Actions\AssignDoctorAction;
 use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRetailServicesAction;
+use App\Filament\Operations\Resources\TelemedicinePatients\Actions\ReportSiniestralidadAction;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -41,6 +42,7 @@ class ViewTelemedicinePatient extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            ReportSiniestralidadAction::make(),
             AssignDoctorAction::make()
                 ->extraAttributes([
                     'class' => self::TICKET_BUTTON_CLASS,

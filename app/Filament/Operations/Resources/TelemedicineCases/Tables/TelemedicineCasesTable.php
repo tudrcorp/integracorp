@@ -248,12 +248,14 @@ class TelemedicineCasesTable
                                         ->with([
                                             'telemedicineServiceList:id,name',
                                             'telemedicineServiceListDrift:id,name',
+                                            'telemedicineGeneralService:id,name',
                                         ])
                                         ->latest('id')
                                         ->first();
 
                                     $mainServiceName = $latestConsultation?->telemedicineServiceList?->name ?? 'NO ESPECIFICADO';
                                     $derivedServiceName = $latestConsultation?->telemedicineServiceListDrift?->name ?? 'NO ESPECIFICADO';
+                                    $generalServiceName = $latestConsultation?->telemedicineGeneralService?->name;
                                     $patient = $record->telemedicinePatient;
                                     $identity = $patient !== null
                                         ? TelemedicineCaseIdentity::coordinationIdentity(
@@ -282,6 +284,7 @@ class TelemedicineCasesTable
                                         'contractor' => $contractor,
                                         'symptoms_diagnosis' => (string) ($latestConsultation?->diagnostic_impression ?? $record->reason ?? 'NO ESPECIFICADO'),
                                         'servicie' => $mainServiceName,
+                                        'general_service' => $generalServiceName,
                                         'specific_service' => $derivedServiceName,
                                         'bill_price' => 0.00,
                                         'observations' => $bitacoraDescription,

@@ -17,3 +17,23 @@ it('relation manager de consultas en panel telemedicina replica estilos y lógic
         ->toContain('TelemedicineMedicationCoverage::isCovered')
         ->toContain('telemedicine-case-table-ios');
 });
+
+it('muestra la columna servicio general en bitácora de gestión médica de operaciones', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicineCases/RelationManagers/ConsultationsRelationManager.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("->label('Servicio general')")
+        ->toContain('telemedicineGeneralService.name')
+        ->toContain("'telemedicineGeneralService'");
+});
+
+it('muestra la columna servicio general en bitácora de gestión médica de telemedicina', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineCases/RelationManagers/ConsultationsRelationManager.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain("->label('Servicio general')")
+        ->toContain('telemedicineGeneralService.name')
+        ->toContain("'telemedicineGeneralService'");
+});
