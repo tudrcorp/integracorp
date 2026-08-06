@@ -112,6 +112,14 @@ class Agency extends Model
     }
 
     /**
+     * Agencia master a la que pertenece esta agencia (vía owner_code).
+     */
+    public function masterAgency(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'owner_code', 'code');
+    }
+
+    /**
      * Get all of the comments for the Agency
      */
     public function agents(): HasMany

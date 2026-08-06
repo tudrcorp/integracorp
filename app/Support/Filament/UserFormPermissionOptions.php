@@ -78,6 +78,7 @@ class UserFormPermissionOptions
         'accountspayableresource' => ['cuentas-por-pagar'],
         'operationtypeserviceresource' => ['tipos-servicios'],
         'telemedicinegeneralserviceresource' => ['servicios-consulta-general'],
+        'portalhelpcontactresource' => ['contactos-ayuda-portal'],
         'operationtypenegotiationresource' => ['tipos-negociacion'],
         'operationstatusserviceresource' => ['estados-servicio'],
         'operationoncalluserresource' => ['roles-de-guardia'],

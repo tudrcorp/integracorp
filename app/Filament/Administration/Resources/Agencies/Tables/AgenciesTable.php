@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Administration\Resources\Agencies\Tables;
 
+use App\Filament\Administration\Resources\Agencies\Actions\DownloadAgencySalesReportAction;
 use App\Filament\Administration\Resources\Agencies\AgencyResource;
 use App\Http\Controllers\AgencyExportCsvController;
 use App\Http\Controllers\LogController;
@@ -337,6 +338,7 @@ class AgenciesTable
                         ->icon(Heroicon::OutlinedXCircle)
                         ->color('danger')
                         ->requiresConfirmation(),
+                    DownloadAgencySalesReportAction::make(),
                 ])
                     ->label('Acciones')
                     ->icon(Heroicon::OutlinedEllipsisVertical)

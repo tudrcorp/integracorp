@@ -35,6 +35,12 @@ class CommissionsTable
             ->heading('COMISIONES')
             ->description('Registro de pagos(ventas) de afiliaciones activas. Detallado por agencias y agentes')
             ->defaultSort('created_at', 'desc')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'agency.masterAgency',
+                'agent',
+                'plan',
+                'coverage',
+            ]))
             ->columns([
                 TextColumn::make('created_at')
                     ->label('Fecha de calculo')
@@ -60,13 +66,14 @@ class CommissionsTable
                             ->modalSubmitAction(false)
                             ->modalCancelActionLabel('Cerrar')
                             ->modalContent(function (Commission $record): ViewContract {
-                                $commission = $record->loadMissing(['sale.plan', 'sale.coverage', 'agency.accountManager', 'agent.accountManager']);
+                                $commission = $record->loadMissing(['sale.plan', 'sale.coverage', 'agency.accountManager', 'agency.masterAgency', 'agent.accountManager']);
 
                                 $masterAgency = null;
                                 if (filled($commission->agency?->owner_code)) {
-                                    $masterAgency = Agency::query()
-                                        ->where('code', $commission->agency->owner_code)
-                                        ->first();
+                                    $masterAgency = $commission->agency->masterAgency
+                                        ?? Agency::query()
+                                            ->where('code', $commission->agency->owner_code)
+                                            ->first();
                                 }
 
                                 return View::make('filament.administration.commissions.modals.commission-hierarchy-details-modal', [
@@ -75,19 +82,46 @@ class CommissionsTable
                                 ]);
                             })
                     ),
-                TextColumn::make('agency.name_corporative')
-                    ->label('Agencia')
+                TextColumn::make('master_agency_display')
+                    ->label('Agencia Master')
                     ->badge()
-                    ->default(fn ($record): string => $record->code_agency == 'TDG-100' ? 'TUDRENCASA' : '-----')
                     ->color('success')
-                    ->sortable()
-                    ->searchable(),
+                    ->getStateUsing(fn (Commission $record): string => $record->masterAgencyDisplayName())
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $query) use ($search): void {
+                            $query
+                                ->whereHas('agency', function (Builder $agencyQuery) use ($search): void {
+                                    $agencyQuery
+                                        ->where('agency_type_id', 1)
+                                        ->where('name_corporative', 'like', "%{$search}%");
+                                })
+                                ->orWhereHas('agency.masterAgency', function (Builder $masterQuery) use ($search): void {
+                                    $masterQuery
+                                        ->where('agency_type_id', 1)
+                                        ->where('name_corporative', 'like', "%{$search}%");
+                                });
+                        });
+                    }),
+                TextColumn::make('general_agency_display')
+                    ->label('Agencia General')
+                    ->badge()
+                    ->searchable()
+                    ->color('success')
+                    ->getStateUsing(fn (Commission $record): string => $record->generalAgencyDisplayName())
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('agency', function (Builder $agencyQuery) use ($search): void {
+                            $agencyQuery
+                                ->where('agency_type_id', 3)
+                                ->where('name_corporative', 'like', "%{$search}%");
+                        });
+                    }),
                 TextColumn::make('agent.name')
                     ->label('Agente')
                     ->badge()
                     ->icon('heroicon-s-user')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 ColumnGroup::make('Información de la Afiliación')->columns([
                     TextColumn::make('affiliation_code')
                         ->label('Nro. de Afiliación')->badge()->color('info')
@@ -265,7 +299,7 @@ class CommissionsTable
                     CommissionGeneral::make('commision_general')
                         ->label('Total VES')
                         ->alignCenter(),
-                        
+
                 ]),
 
             ])
@@ -273,7 +307,7 @@ class CommissionsTable
                 Group::make('agent.name')
                     ->label('Agente'),
                 Group::make('agency.name_corporative')
-                    ->label('Agencia'),
+                    ->label('Agencia General'),
                 Group::make('payment_method')
                     ->label('Metodo de Pago'),
             ])

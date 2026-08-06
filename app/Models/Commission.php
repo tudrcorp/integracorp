@@ -3,9 +3,18 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Commission extends Model
 {
+    private const AGENCY_TYPE_MASTER = 1;
+
+    private const AGENCY_TYPE_GENERAL = 3;
+
+    private const CASA_MATRIZ_CODE = 'TDG-100';
+
+    private const CASA_MATRIZ_DISPLAY_NAME = 'TUDRENCASA';
+
     protected $table = 'commissions';
 
     protected $fillable = [
@@ -41,38 +50,107 @@ class Commission extends Model
 
     ];
 
-    public function sale()
+    public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class);
     }
 
-    public function plan()
+    public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);
     }
 
-    public function coverage()
+    public function coverage(): BelongsTo
     {
         return $this->belongsTo(Coverage::class);
     }
 
-    public function agent()
+    public function agent(): BelongsTo
     {
         return $this->belongsTo(Agent::class);
     }
 
-    public function agency()
+    public function agency(): BelongsTo
     {
         return $this->belongsTo(Agency::class, 'code_agency', 'code');
     }
 
-    public function ownerNameAgency()
+    public function ownerNameAgency(): BelongsTo
     {
         return $this->belongsTo(Agency::class, 'owner_code', 'code');
     }
 
-    public function generalNameAgency()
+    public function generalNameAgency(): BelongsTo
     {
         return $this->belongsTo(Agency::class, 'code_agency', 'code');
+    }
+
+    /**
+     * Nombre de la agencia master en la jerarquía del pago, o "-" si no aplica.
+     */
+    public function masterAgencyDisplayName(): string
+    {
+        $agency = $this->agency;
+
+        if (! $agency instanceof Agency) {
+            $codeAgency = strtoupper(trim((string) ($this->code_agency ?? '')));
+
+            return $codeAgency === self::CASA_MATRIZ_CODE
+                ? self::CASA_MATRIZ_DISPLAY_NAME
+                : '-';
+        }
+
+        $agencyTypeId = (int) ($agency->agency_type_id ?? 0);
+
+        if ($agencyTypeId === self::AGENCY_TYPE_MASTER) {
+            return $this->formatAgencyDisplayName($agency);
+        }
+
+        if ($agencyTypeId === self::AGENCY_TYPE_GENERAL) {
+            $masterAgency = $agency->relationLoaded('masterAgency')
+                ? $agency->getRelation('masterAgency')
+                : $agency->masterAgency()->where('agency_type_id', self::AGENCY_TYPE_MASTER)->first();
+
+            if ($masterAgency instanceof Agency && (int) ($masterAgency->agency_type_id ?? 0) === self::AGENCY_TYPE_MASTER) {
+                return $this->formatAgencyDisplayName($masterAgency);
+            }
+
+            return '-';
+        }
+
+        return '-';
+    }
+
+    /**
+     * Nombre de la agencia general en la jerarquía del pago, o "-" si no aplica.
+     */
+    public function generalAgencyDisplayName(): string
+    {
+        $agency = $this->agency;
+
+        if (! $agency instanceof Agency) {
+            return '-';
+        }
+
+        if ((int) ($agency->agency_type_id ?? 0) !== self::AGENCY_TYPE_GENERAL) {
+            return '-';
+        }
+
+        $name = trim((string) ($agency->name_corporative ?? ''));
+
+        return $name !== '' ? $name : '-';
+    }
+
+    private function formatAgencyDisplayName(Agency $agency): string
+    {
+        $agencyCode = strtoupper(trim((string) ($agency->code ?? '')));
+
+        if ($agencyCode === self::CASA_MATRIZ_CODE) {
+            return self::CASA_MATRIZ_DISPLAY_NAME;
+        }
+
+        $name = trim((string) ($agency->name_corporative ?? ''));
+
+        return $name !== '' ? $name : '-';
     }
 }
