@@ -83,6 +83,8 @@ class SalesTable
                         return match ($state) {
                             'AFILIACION INDIVIDUAL' => 'primary',
                             'AFILIACION CORPORATIVA' => 'verdeOpaco',
+                            'NUEVOS NEGOCIOS' => 'warning',
+                            default => 'gray',
                         };
                     })
                     ->searchable(),
@@ -1101,6 +1103,7 @@ class SalesTable
                     foreach ($records as $record) {
                         $record->paidMembershipIndividual()->delete();
                         $record->paidMembershipCorporate()->delete();
+                        $record->paidMembershipCompany()->delete();
                         $record->commission()->delete();
                         $record->collections()->delete();
                         $record->delete();

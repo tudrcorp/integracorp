@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class TotalSaleMonthlyNowVsLastAgency extends ChartWidget
 {
-    protected static ?int $sort = 1;
+    protected static ?int $sort = 3;
 
     protected string $view = 'filament.administration.widgets.agency-sales-mom-line-chart';
 

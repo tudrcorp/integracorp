@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class CompanyPaidMembership extends Model
 {
@@ -49,5 +50,10 @@ class CompanyPaidMembership extends Model
     public function planGenerator(): BelongsTo
     {
         return $this->belongsTo(PlanGenerator::class);
+    }
+
+    public function sale(): HasOne
+    {
+        return $this->hasOne(Sale::class, 'invoice_number', 'invoice_number');
     }
 }

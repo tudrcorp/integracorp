@@ -21,6 +21,7 @@ class Sale extends Model
         'invoice_number',
         'affiliation_id',
         'affiliation_code',
+        'company_id',
         'affiliate_full_name',
         'affiliate_contact',
         'affiliate_ci_rif',
@@ -52,6 +53,11 @@ class Sale extends Model
     public function affiliation(): BelongsTo
     {
         return $this->belongsTo(Affiliation::class);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
     }
 
     public function plan(): BelongsTo
@@ -94,15 +100,24 @@ class Sale extends Model
         return $this->hasOne(PaidMembershipCorporate::class, 'invoice_number', 'invoice_number');
     }
 
+    public function paidMembershipCompany(): HasOne
+    {
+        return $this->hasOne(CompanyPaidMembership::class, 'invoice_number', 'invoice_number');
+    }
+
     public function commission(): HasOne
     {
         return $this->hasOne(Commission::class, 'code', 'invoice_number');
     }
 
-    public function resolvePaidReceipt(): PaidMembership|PaidMembershipCorporate|null
+    public function resolvePaidReceipt(): PaidMembership|PaidMembershipCorporate|CompanyPaidMembership|null
     {
         if ($this->type === 'AFILIACION CORPORATIVA') {
             return $this->paidMembershipCorporate;
+        }
+
+        if ($this->type === 'NUEVOS NEGOCIOS') {
+            return $this->paidMembershipCompany;
         }
 
         return $this->paidMembershipIndividual;
@@ -110,8 +125,10 @@ class Sale extends Model
 
     public function paidReceiptTableName(): string
     {
-        return $this->type === 'AFILIACION CORPORATIVA'
-            ? 'paid_membership_corporates'
-            : 'paid_memberships';
+        return match ($this->type) {
+            'AFILIACION CORPORATIVA' => 'paid_membership_corporates',
+            'NUEVOS NEGOCIOS' => 'company_paid_memberships',
+            default => 'paid_memberships',
+        };
     }
 }
