@@ -13,7 +13,12 @@ it('muestra modal de detalle jerarquico al hacer click en nro de venta', functio
         ->toContain('view_commission_hierarchy_detail')
         ->toContain('Comisiones de venta #')
         ->toContain('commission-hierarchy-details-modal')
-        ->toContain("->label('Nro. Venta')");
+        ->toContain("->label('Nro. Venta')")
+        ->toContain("->label('Agencia Master')")
+        ->toContain("->label('Agencia General')")
+        ->toContain('masterAgencyDisplayName')
+        ->toContain('generalAgencyDisplayName')
+        ->not->toContain("->label('Agencia')");
 
     expect($modalContents)
         ->toContain('Jerarquía de comisiones generadas')

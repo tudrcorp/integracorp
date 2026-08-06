@@ -462,6 +462,10 @@ Route::get('administration/agencies/reports/export', AdministrationAgencyReports
     ->middleware(['web', 'auth'])
     ->name('administration.agencies.reports.export');
 
+Route::get('administration/agencies/sales-report/download', App\Http\Controllers\AgencySalesReportController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.agencies.sales-report.download');
+
 Route::get('administration/agents/reports/export', AdministrationAgentReportsExportController::class)
     ->middleware(['web', 'auth'])
     ->name('administration.agents.reports.export');
