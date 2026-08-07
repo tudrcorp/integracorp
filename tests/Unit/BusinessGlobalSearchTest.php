@@ -56,7 +56,7 @@ it('habilita busqueda global optimizada en recursos clave de negocios', function
     ))->toContain('getGlobalSearchResults');
 });
 
-it('define trait de busqueda global sin dividir terminos y con limite', function (): void {
+it('define trait BusinessGlobalSearchTest busqueda global sin dividir terminos y con limite', function (): void {
     $trait = file_get_contents(
         dirname(__DIR__, 2).'/app/Filament/Business/Resources/Concerns/ConfiguresBusinessGlobalSearch.php'
     );
