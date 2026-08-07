@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\Pages;
 
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Business\Resources\AffiliationCorporates\Concerns\OptimizesAffiliationCorporateInfolistPerformance;
+use App\Support\Filament\FilamentIosActionsMenu;
 use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -38,173 +39,166 @@ class ViewAffiliationCorporate extends ViewRecord
                 ->extraAttributes([
                     'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
                 ]),
-            Action::make('attachDocuments')
-                ->label('Adjuntar documentos')
-                ->icon(Heroicon::OutlinedPaperClip)
-                ->color('primary')
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
-                ])
-                ->modalHeading('Adjuntar documentos al expediente')
-                ->modalDescription('Puedes cargar uno o varios archivos en PDF o imagen.')
-                ->modalSubmitActionLabel('Adjuntar')
-                ->modalCancelActionLabel('Cancelar')
-                ->modalSubmitAction(
-                    fn (Action $action) => $action
-                        ->color('primary')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
-                        ])
-                )
-                ->modalCancelAction(
-                    fn (Action $action) => $action
-                        ->color('gray')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
-                        ])
-                )
-                ->form([
-                    FileUpload::make('documents')
-                        ->label('Documentos')
-                        ->disk('public')
-                        ->directory('affiliation-corporates/expedientes')
-                        ->preserveFilenames()
-                        ->multiple()
-                        ->acceptedFileTypes([
-                            'application/pdf',
-                            'image/jpeg',
-                            'image/png',
-                            'image/webp',
-                        ])
-                        ->maxFiles(15)
-                        ->maxSize(10240)
-                        ->downloadable()
-                        ->openable()
-                        ->required(),
-                ])
-                ->action(function (array $data): void {
-                    $files = collect($data['documents'] ?? [])
-                        ->filter(fn (mixed $path): bool => is_string($path) && $path !== '')
-                        ->values();
+            FilamentIosActionsMenu::make([
+                Action::make('attachDocuments')
+                    ->label('Adjuntar documentos')
+                    ->icon(Heroicon::OutlinedPaperClip)
+                    ->color('primary')
+                    ->modalHeading('Adjuntar documentos al expediente')
+                    ->modalDescription('Puedes cargar uno o varios archivos en PDF o imagen.')
+                    ->modalSubmitActionLabel('Adjuntar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalSubmitAction(
+                        fn (Action $action) => $action
+                            ->color('primary')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
+                            ])
+                    )
+                    ->modalCancelAction(
+                        fn (Action $action) => $action
+                            ->color('gray')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                            ])
+                    )
+                    ->form([
+                        FileUpload::make('documents')
+                            ->label('Documentos')
+                            ->disk('public')
+                            ->directory('affiliation-corporates/expedientes')
+                            ->preserveFilenames()
+                            ->multiple()
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'image/jpeg',
+                                'image/png',
+                                'image/webp',
+                            ])
+                            ->maxFiles(15)
+                            ->maxSize(10240)
+                            ->downloadable()
+                            ->openable()
+                            ->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $files = collect($data['documents'] ?? [])
+                            ->filter(fn (mixed $path): bool => is_string($path) && $path !== '')
+                            ->values();
 
-                    if ($files->isEmpty()) {
-                        return;
-                    }
+                        if ($files->isEmpty()) {
+                            return;
+                        }
 
-                    $userId = auth()->id();
+                        $userId = auth()->id();
 
-                    $this->record->affiliationCorporateDocuments()->createMany(
-                        $files
-                            ->map(function (string $path) use ($userId): array {
-                                return [
-                                    'file_path' => $path,
-                                    'original_name' => basename($path),
-                                    'mime_type' => Storage::disk('public')->mimeType($path) ?: null,
-                                    'file_size' => Storage::disk('public')->size($path) ?: null,
-                                    'uploaded_by' => $userId,
-                                ];
-                            })
-                            ->all(),
-                    );
+                        $this->record->affiliationCorporateDocuments()->createMany(
+                            $files
+                                ->map(function (string $path) use ($userId): array {
+                                    return [
+                                        'file_path' => $path,
+                                        'original_name' => basename($path),
+                                        'mime_type' => Storage::disk('public')->mimeType($path) ?: null,
+                                        'file_size' => Storage::disk('public')->size($path) ?: null,
+                                        'uploaded_by' => $userId,
+                                    ];
+                                })
+                                ->all(),
+                        );
 
-                    $this->record->load('affiliationCorporateDocuments');
+                        $this->record->load('affiliationCorporateDocuments');
 
-                    Notification::make()
-                        ->success()
-                        ->title('Documentos adjuntados')
-                        ->body('El expediente se actualizó correctamente.')
-                        ->send();
-                }),
-            Action::make('addObservation')
-                ->label('Agregar observación')
-                ->icon(Heroicon::OutlinedChatBubbleLeftRight)
-                ->color('info')
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('info'),
-                ])
-                ->modalHeading('Registrar observación')
-                ->modalDescription('La observación quedará asociada a esta afiliación corporativa y al analista que la registra.')
-                ->modalSubmitActionLabel('Guardar')
-                ->modalCancelActionLabel('Cancelar')
-                ->modalSubmitAction(
-                    fn (Action $action) => $action
-                        ->color('info')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('info'),
-                        ])
-                )
-                ->modalCancelAction(
-                    fn (Action $action) => $action
-                        ->color('gray')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
-                        ])
-                )
-                ->form([
-                    Textarea::make('description')
-                        ->label('Texto de la observación')
-                        ->placeholder('Escriba la nota o seguimiento administrativo…')
-                        ->required()
-                        ->minLength(2)
-                        ->maxLength(5000)
-                        ->rows(5),
-                ])
-                ->action(function (array $data): void {
-                    $this->record->affiliationCorporateObservations()->create([
-                        'description' => $data['description'],
-                        'created_by' => (string) Auth::id(),
-                    ]);
+                        Notification::make()
+                            ->success()
+                            ->title('Documentos adjuntados')
+                            ->body('El expediente se actualizó correctamente.')
+                            ->send();
+                    }),
+                Action::make('addObservation')
+                    ->label('Agregar observación')
+                    ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                    ->color('info')
+                    ->modalHeading('Registrar observación')
+                    ->modalDescription('La observación quedará asociada a esta afiliación corporativa y al analista que la registra.')
+                    ->modalSubmitActionLabel('Guardar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalSubmitAction(
+                        fn (Action $action) => $action
+                            ->color('info')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                            ])
+                    )
+                    ->modalCancelAction(
+                        fn (Action $action) => $action
+                            ->color('gray')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                            ])
+                    )
+                    ->form([
+                        Textarea::make('description')
+                            ->label('Texto de la observación')
+                            ->placeholder('Escriba la nota o seguimiento administrativo…')
+                            ->required()
+                            ->minLength(2)
+                            ->maxLength(5000)
+                            ->rows(5),
+                    ])
+                    ->action(function (array $data): void {
+                        $this->record->affiliationCorporateObservations()->create([
+                            'description' => $data['description'],
+                            'created_by' => (string) Auth::id(),
+                        ]);
 
-                    $this->record->unsetRelation('affiliationCorporateObservations');
-                    $this->record->load('affiliationCorporateObservations.createdBy:id,name,email');
+                        $this->record->unsetRelation('affiliationCorporateObservations');
+                        $this->record->load('affiliationCorporateObservations.createdBy:id,name,email');
 
-                    Notification::make()
-                        ->success()
-                        ->title('Observación guardada')
-                        ->send();
-                }),
-            Action::make('audit')
-                ->label('Auditoría')
-                ->icon(Heroicon::OutlinedShieldCheck)
-                ->color('warning')
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
-                ])
-                ->visible(fn (): bool => $this->pendingAuditItems() !== [])
-                ->modalHeading('Auditoría de la afiliación corporativa')
-                ->modalDescription('Seleccione uno o varios puntos auditados. Se registrará una observación automática a nombre de INTEGRACORP-AUDITORIA y los puntos auditados se retirarán de la lista.')
-                ->modalSubmitActionLabel('Registrar auditoría')
-                ->modalCancelActionLabel('Cancelar')
-                ->modalSubmitAction(
-                    fn (Action $action) => $action
-                        ->color('warning')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
-                        ])
-                )
-                ->modalCancelAction(
-                    fn (Action $action) => $action
-                        ->color('gray')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
-                        ])
-                )
-                ->form([
-                    CheckboxList::make('items')
-                        ->label('Puntos a auditar')
-                        ->options(fn (): array => $this->pendingAuditItemOptions())
-                        ->descriptions(fn (): array => $this->pendingAuditItemDescriptions())
-                        ->required()
-                        ->bulkToggleable()
-                        ->columns(1),
-                ])
-                ->action(function (array $data): void {
-                    $this->registerAudit($data['items'] ?? []);
-                }),
-            EditAction::make()
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
-                ]),
+                        Notification::make()
+                            ->success()
+                            ->title('Observación guardada')
+                            ->send();
+                    }),
+                Action::make('audit')
+                    ->label('Auditoría')
+                    ->icon(Heroicon::OutlinedShieldCheck)
+                    ->color('warning')
+                    ->visible(fn (): bool => $this->pendingAuditItems() !== [])
+                    ->modalHeading('Auditoría de la afiliación corporativa')
+                    ->modalDescription('Seleccione uno o varios puntos auditados. Se registrará una observación automática a nombre de INTEGRACORP-AUDITORIA y los puntos auditados se retirarán de la lista.')
+                    ->modalSubmitActionLabel('Registrar auditoría')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalSubmitAction(
+                        fn (Action $action) => $action
+                            ->color('warning')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
+                            ])
+                    )
+                    ->modalCancelAction(
+                        fn (Action $action) => $action
+                            ->color('gray')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                            ])
+                    )
+                    ->form([
+                        CheckboxList::make('items')
+                            ->label('Puntos a auditar')
+                            ->options(fn (): array => $this->pendingAuditItemOptions())
+                            ->descriptions(fn (): array => $this->pendingAuditItemDescriptions())
+                            ->required()
+                            ->bulkToggleable()
+                            ->columns(1),
+                    ])
+                    ->action(function (array $data): void {
+                        $this->registerAudit($data['items'] ?? []);
+                    }),
+                EditAction::make()
+                    ->label('Editar')
+                    ->icon(Heroicon::OutlinedPencil)
+                    ->color('primary'),
+            ]),
         ];
     }
 

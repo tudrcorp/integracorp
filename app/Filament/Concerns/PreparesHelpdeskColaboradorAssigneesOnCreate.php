@@ -28,6 +28,13 @@ trait PreparesHelpdeskColaboradorAssigneesOnCreate
     {
         $data['status'] ??= 'PENDIENTE POR INICIAR';
         $data['created_by'] = Auth::user()?->name;
+        $data['created_by_user_id'] = Auth::id();
+        $data['terms_accepted_at'] = now();
+
+        $hours = \App\Support\HelpdeskSla::hoursForPriority($data['priority'] ?? 'MEDIA');
+        $acceptedAt = now();
+        $data['first_response_due_at'] = $acceptedAt->copy()->addHours($hours['first_response']);
+        $data['resolution_due_at'] = $acceptedAt->copy()->addHours($hours['resolution']);
 
         $ids = $data['rrhhColaboradores'] ?? [];
         if (! is_array($ids)) {

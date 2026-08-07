@@ -9,7 +9,6 @@ use App\Filament\Concerns\AssertsHelpdeskTicketCreationAccess;
 use App\Filament\Concerns\DispatchesHelpdeskCreateNotifications;
 use App\Filament\Concerns\LabelsHelpdeskCreateAnotherFormAction;
 use App\Filament\Concerns\PreparesHelpdeskColaboradorAssigneesOnCreate;
-use App\Filament\Concerns\PreparesHelpdeskTeamOnCreate;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 
@@ -19,14 +18,8 @@ class CreateHelpdesk extends CreateRecord
     use DispatchesHelpdeskCreateNotifications;
     use LabelsHelpdeskCreateAnotherFormAction;
     use PreparesHelpdeskColaboradorAssigneesOnCreate;
-    use PreparesHelpdeskTeamOnCreate;
 
     protected static string $resource = HelpdeskResource::class;
-
-    protected static function helpdeskTicketCreationEnforcesQuota(): bool
-    {
-        return false;
-    }
 
     /**
      * @param  array<string, mixed>  $data
@@ -34,9 +27,7 @@ class CreateHelpdesk extends CreateRecord
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data = $this->prepareHelpdeskColaboradorAssigneesForCreate($data);
-
-        return $this->prepareHelpdeskTeamForCreate($data);
+        return $this->prepareHelpdeskColaboradorAssigneesForCreate($data);
     }
 
     protected function getRedirectUrl(): string

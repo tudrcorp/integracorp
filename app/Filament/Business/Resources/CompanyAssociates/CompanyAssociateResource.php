@@ -9,6 +9,7 @@ use App\Filament\Business\Resources\CompanyAssociates\Pages\ListCompanyAssociate
 use App\Filament\Business\Resources\CompanyAssociates\Pages\ViewCompanyAssociate;
 use App\Filament\Business\Resources\CompanyAssociates\Schemas\CompanyAssociateInfolist;
 use App\Filament\Business\Resources\CompanyAssociates\Tables\CompanyAssociatesTable;
+use App\Filament\Business\Resources\Concerns\ConfiguresBusinessGlobalSearch;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\CompanyAssociate;
 use BackedEnum;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Model;
 class CompanyAssociateResource extends Resource
 {
     use AuthorizesDepartmentNavigation;
+    use ConfiguresBusinessGlobalSearch;
 
     protected static ?string $model = CompanyAssociate::class;
 
@@ -38,6 +40,57 @@ class CompanyAssociateResource extends Resource
     protected static ?int $navigationSort = 2;
 
     protected static ?string $recordTitleAttribute = 'full_name';
+
+    protected static int $globalSearchResultsLimit = 8;
+
+    protected static ?int $globalSearchSort = 80;
+
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchSelectColumns(): array
+    {
+        return ['id', 'full_name', 'identity_card', 'email', 'phone', 'company_id'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchTextColumns(): array
+    {
+        return ['full_name', 'email'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchCodeColumns(): array
+    {
+        return [];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchDocumentColumns(): array
+    {
+        return ['identity_card'];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        if (! $record instanceof CompanyAssociate) {
+            return [];
+        }
+
+        return [
+            'Cédula' => filled($record->identity_card) ? (string) $record->identity_card : '—',
+            'Email' => filled($record->email) ? (string) $record->email : '—',
+        ];
+    }
 
     public static function infolist(Schema $schema): Schema
     {

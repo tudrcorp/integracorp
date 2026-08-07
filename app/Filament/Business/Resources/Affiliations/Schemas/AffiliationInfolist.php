@@ -6,7 +6,6 @@ namespace App\Filament\Business\Resources\Affiliations\Schemas;
 
 use App\Filament\Business\Resources\Affiliations\Support\AffiliationInfolistTab;
 use App\Filament\Shared\Affiliations\AffiliationRenovationHistoryInfolist;
-use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Models\AffiliationDocument;
 use App\Models\AffiliationObservation;
@@ -42,29 +41,6 @@ class AffiliationInfolist
             'EXCLUIDO' => 'danger',
             default => 'gray',
         };
-    }
-
-    private static function affiliateStatusColor(?string $state): string
-    {
-        return match (strtoupper(trim((string) $state))) {
-            'ACTIVO', 'ACTIVA' => 'success',
-            'INACTIVO', 'INACTIVA' => 'warning',
-            'EXCLUIDO', 'EXCLUIDA' => 'danger',
-            default => 'gray',
-        };
-    }
-
-    private static function affiliateBusinessContextColor(mixed $affiliateValue, mixed $ownerValue): string
-    {
-        if (blank($affiliateValue)) {
-            return 'gray';
-        }
-
-        if (blank($ownerValue)) {
-            return 'info';
-        }
-
-        return (int) $affiliateValue === (int) $ownerValue ? 'success' : 'warning';
     }
 
     private static function formatStoredFileName(mixed $state): ?string
@@ -345,124 +321,6 @@ class AffiliationInfolist
                                                     ->suffix(' pers.')
                                                     ->badge()
                                                     ->color('primary'),
-                                            ]),
-                                    ])
-                                    ->columnSpanFull(),
-                            ]),
-                        AffiliationInfolistTab::AFILIADOS => Tab::make('Afiliados asociados')
-                            ->icon(Heroicon::OutlinedUsers)
-                            ->schema([
-                                Section::make('Afiliados asociados')
-                                    ->description('Resumen principal de afiliados vinculados. La unidad y línea en verde coinciden con la afiliación; en ámbar están pendientes de sincronizar.')
-                                    ->icon(Heroicon::OutlinedUsers)
-                                    ->extraAttributes([
-                                        'class' => self::IOS_SECTION_CLASS,
-                                    ])
-                                    ->schema([
-                                        Grid::make(1)
-                                            ->extraAttributes([
-                                                'class' => self::IOS_INNER_CLASS,
-                                            ])
-                                            ->schema([
-                                                RepeatableEntry::make('affiliates')
-                                                    ->label('')
-                                                    ->placeholder('No hay afiliados asociados a esta afiliación.')
-                                                    ->table([
-                                                        TableColumn::make('Nombre'),
-                                                        TableColumn::make('Identificación'),
-                                                        TableColumn::make('Parentesco'),
-                                                        TableColumn::make('Unidad de negocio'),
-                                                        TableColumn::make('Línea de servicio'),
-                                                        TableColumn::make('Teléfono'),
-                                                        TableColumn::make('Correo'),
-                                                        TableColumn::make('Estatus'),
-                                                        TableColumn::make('Documento'),
-                                                        TableColumn::make('Documento ILS'),
-                                                    ])
-                                                    ->schema([
-                                                        TextEntry::make('full_name')
-                                                            ->label('Nombre')
-                                                            ->icon(Heroicon::OutlinedUser)
-                                                            ->weight('medium')
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('nro_identificacion')
-                                                            ->label('Identificación')
-                                                            ->icon(Heroicon::OutlinedIdentification)
-                                                            ->copyable()
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('relationship')
-                                                            ->label('Parentesco')
-                                                            ->badge()
-                                                            ->color('gray')
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('businessUnit.definition')
-                                                            ->label('Unidad de negocio')
-                                                            ->icon(Heroicon::OutlinedBuildingOffice2)
-                                                            ->badge()
-                                                            ->weight('semibold')
-                                                            ->color(fn (?string $state, Affiliate $record, ViewRecord $livewire): string => self::affiliateBusinessContextColor(
-                                                                $record->business_unit_id,
-                                                                $livewire->getRecord()->business_unit_id,
-                                                            ))
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('businessLine.definition')
-                                                            ->label('Línea de servicio')
-                                                            ->icon(Heroicon::OutlinedQueueList)
-                                                            ->badge()
-                                                            ->weight('semibold')
-                                                            ->color(fn (?string $state, Affiliate $record, ViewRecord $livewire): string => self::affiliateBusinessContextColor(
-                                                                $record->business_line_id,
-                                                                $livewire->getRecord()->business_line_id,
-                                                            ))
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('phone')
-                                                            ->label('Teléfono')
-                                                            ->icon(Heroicon::OutlinedPhone)
-                                                            ->copyable()
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('email')
-                                                            ->label('Correo')
-                                                            ->icon(Heroicon::OutlinedEnvelope)
-                                                            ->copyable()
-                                                            ->placeholder('—')
-                                                            ->wrap(),
-                                                        TextEntry::make('status')
-                                                            ->label('Estatus')
-                                                            ->badge()
-                                                            ->color(fn (?string $state): string => self::affiliateStatusColor($state))
-                                                            ->placeholder('—'),
-                                                        ImageEntry::make('document')
-                                                            ->label('Documento')
-                                                            ->disk('public')
-                                                            ->visibility('public')
-                                                            ->imageHeight(56)
-                                                            ->extraImgAttributes([
-                                                                'class' => 'rounded-lg border border-slate-200/80 shadow-sm object-cover bg-white',
-                                                                'loading' => 'lazy',
-                                                            ])
-                                                            ->url(fn (Affiliate $record): ?string => filled($record->document)
-                                                                ? asset('storage/'.$record->document)
-                                                                : null)
-                                                            ->openUrlInNewTab()
-                                                            ->visible(fn (Affiliate $record): bool => self::documentIsImage($record->document))
-                                                            ->placeholder('—'),
-                                                        ImageEntry::make('document_ils')
-                                                            ->label('Documento ILS')
-                                                            ->disk('public')
-                                                            ->visibility('public')
-                                                            ->imageHeight(56)
-                                                            ->extraImgAttributes([
-                                                                'class' => 'rounded-lg border border-slate-200/80 shadow-sm object-cover bg-white',
-                                                                'loading' => 'lazy',
-                                                            ])
-                                                            ->url(fn (Affiliate $record): ?string => filled($record->document_ils)
-                                                                ? asset('storage/'.$record->document_ils)
-                                                                : null)
-                                                            ->openUrlInNewTab()
-                                                            ->visible(fn (Affiliate $record): bool => self::documentIsImage($record->document_ils))
-                                                            ->placeholder('—'),
-                                                    ])
-                                                    ->columnSpanFull(),
                                             ]),
                                     ])
                                     ->columnSpanFull(),

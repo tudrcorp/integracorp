@@ -38,13 +38,8 @@ trait OptimizesAffiliationInfolistPerformance
     protected function affiliationHeavyRelationsByTab(): array
     {
         return [
-            AffiliationInfolistTab::AFILIADOS => [
-                'affiliates.businessLine:id,definition',
-                'affiliates.businessUnit:id,definition',
-            ],
             AffiliationInfolistTab::ALIADO_2 => [
-                'affiliates.businessLine:id,definition',
-                'affiliates.businessUnit:id,definition',
+                'affiliates',
             ],
             AffiliationInfolistTab::RENOVACIONES => [
                 'renovationHistories.plan',

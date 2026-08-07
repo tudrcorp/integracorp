@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\WhiteCompanies;
 
+use App\Filament\Business\Resources\Concerns\ConfiguresBusinessGlobalSearch;
 use App\Filament\Business\Resources\WhiteCompanies\Pages\CreateWhiteCompany;
 use App\Filament\Business\Resources\WhiteCompanies\Pages\EditWhiteCompany;
 use App\Filament\Business\Resources\WhiteCompanies\Pages\ListWhiteCompanies;
@@ -13,12 +14,13 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 class WhiteCompanyResource extends Resource
 {
     use AuthorizesDepartmentNavigation;
+    use ConfiguresBusinessGlobalSearch;
 
     protected static ?string $model = WhiteCompany::class;
 
@@ -29,6 +31,59 @@ class WhiteCompanyResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = 'ESTRUCTURA COMERCIAL';
 
     protected static ?int $navigationSort = 5;
+
+    protected static ?string $recordTitleAttribute = 'name';
+
+    protected static int $globalSearchResultsLimit = 8;
+
+    protected static ?int $globalSearchSort = 90;
+
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchSelectColumns(): array
+    {
+        return ['id', 'name', 'rif', 'email', 'phone'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchTextColumns(): array
+    {
+        return ['name', 'email'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchCodeColumns(): array
+    {
+        return [];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchDocumentColumns(): array
+    {
+        return ['rif'];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        if (! $record instanceof WhiteCompany) {
+            return [];
+        }
+
+        return [
+            'RIF' => filled($record->rif) ? (string) $record->rif : '—',
+            'Email' => filled($record->email) ? (string) $record->email : '—',
+        ];
+    }
 
     public static function form(Schema $schema): Schema
     {

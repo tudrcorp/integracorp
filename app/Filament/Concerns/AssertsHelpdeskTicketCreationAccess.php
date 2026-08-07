@@ -9,8 +9,6 @@ use Filament\Notifications\Notification;
 
 trait AssertsHelpdeskTicketCreationAccess
 {
-    abstract protected static function helpdeskTicketCreationEnforcesQuota(): bool;
-
     public static function canAccess(array $parameters = []): bool
     {
         return static::getResource()::canCreate();
@@ -34,9 +32,7 @@ trait AssertsHelpdeskTicketCreationAccess
 
     protected function assertHelpdeskCreationAllowedOrRedirect(): void
     {
-        $verdict = HelpdeskTicketCreationGate::allowsCreation(
-            enforceGroupQuota: static::helpdeskTicketCreationEnforcesQuota(),
-        );
+        $verdict = HelpdeskTicketCreationGate::allowsCreation();
 
         if ($verdict->allowed) {
             return;
@@ -56,9 +52,7 @@ trait AssertsHelpdeskTicketCreationAccess
 
     protected function assertHelpdeskCreationAllowedOrHalt(): void
     {
-        $verdict = HelpdeskTicketCreationGate::allowsCreation(
-            enforceGroupQuota: static::helpdeskTicketCreationEnforcesQuota(),
-        );
+        $verdict = HelpdeskTicketCreationGate::allowsCreation();
 
         if ($verdict->allowed) {
             return;
