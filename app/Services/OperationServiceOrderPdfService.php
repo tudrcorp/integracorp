@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\OperationServiceOrder;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as PdfDocument;
+use Illuminate\Support\Facades\Storage;
 
 class OperationServiceOrderPdfService
 {
@@ -36,8 +37,32 @@ class OperationServiceOrderPdfService
 
     public static function filename(OperationServiceOrder $order): string
     {
-        $safe = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) $order->order_number) ?: 'orden';
+        $safe = preg_replace('/[^a-zA-Z0-9_-]+/', '_', (string) $order->order_number) ?: 'orden';
 
         return 'orden-servicio-'.$safe.'.pdf';
+    }
+
+    /**
+     * Garantiza un PDF persistido en disco público y actualiza service_order_pdf_path.
+     * Útil para órdenes creadas antes de persistir el PDF o sin pasar por el flujo de coordinación.
+     */
+    public static function ensurePersisted(OperationServiceOrder $order, bool $force = false): string
+    {
+        $disk = Storage::disk('public');
+        $current = trim((string) ($order->service_order_pdf_path ?? ''));
+
+        if (! $force && $current !== '' && $disk->exists($current) && $disk->size($current) > 100) {
+            return $current;
+        }
+
+        $safeOrder = preg_replace('/[^a-zA-Z0-9_-]+/', '_', (string) $order->order_number) ?: (string) $order->id;
+        $relativePath = 'operation-service-orders/generated-pdf/service-order-'.$safeOrder.'-'.now()->format('YmdHis').'.pdf';
+
+        $disk->put($relativePath, self::make($order)->output());
+
+        $order->service_order_pdf_path = $relativePath;
+        $order->save();
+
+        return $relativePath;
     }
 }

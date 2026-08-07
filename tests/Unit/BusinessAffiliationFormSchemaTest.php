@@ -11,5 +11,8 @@ it('usa pestañas con contenedor estilizado en el formulario de afiliación indi
         ->toContain('Tab::make(')
         ->toContain('private const TABS_CONTAINER')
         ->toContain("'class' => self::TABS_CONTAINER")
+        ->toContain('private static function editCollapsibleCard')
+        ->toContain('->collapsed(fn (string $operation): bool => $operation === \'edit\')')
+        ->toContain("editCollapsibleCard('Datos del titular')")
         ->not->toContain('Wizard::make');
 });

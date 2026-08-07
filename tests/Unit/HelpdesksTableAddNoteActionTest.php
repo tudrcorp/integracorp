@@ -5,12 +5,14 @@ declare(strict_types=1);
 it('HelpdesksTable define la acción addNote con estilo iOS', function () {
     $configuratorPath = dirname(__DIR__, 2).'/app/Support/HelpdeskTableConfigurator.php';
     $contents = file_get_contents($configuratorPath);
-    $actionsPath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Helpdesks/Actions/HelpdeskTicketModalActions.php';
+    $actionsPath = dirname(__DIR__, 2).'/app/Filament/Shared/Helpdesks/Actions/HelpdeskTicketModalActions.php';
+    $wrapperPath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Helpdesks/Actions/HelpdeskTicketModalActions.php';
     $actions = file_get_contents($actionsPath);
 
     expect($contents)->toContain('makeAddNoteAction()')
         ->toContain("Action::make('previewDocuments')")
         ->toContain('HelpdeskDocumentPaths::')
+        ->and(file_get_contents($wrapperPath))->toContain('SharedHelpdeskTicketModalActions::makeAddNoteAction')
         ->and($actions)
         ->toContain('fi-helpdesk-ios-section')
         ->toContain('HelpdeskObservationAppender::append')

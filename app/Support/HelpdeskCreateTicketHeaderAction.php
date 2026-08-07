@@ -23,9 +23,7 @@ final class HelpdeskCreateTicketHeaderAction
             ->color('primary')
             ->visible(fn (): bool => $resourceClass::canSeeCreateTicketButton())
             ->action(function () use ($resourceClass): void {
-                $verdict = HelpdeskTicketCreationGate::allowsCreation(
-                    enforceGroupQuota: $resourceClass::helpdeskEnforcesCreationQuota(),
-                );
+                $verdict = HelpdeskTicketCreationGate::allowsCreation();
 
                 if (! $verdict->allowed) {
                     Notification::make()

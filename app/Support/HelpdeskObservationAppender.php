@@ -1,16 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Support;
 
 use App\Models\HelpDesk;
+use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 final class HelpdeskObservationAppender
 {
-    public static function append(HelpDesk $record, string $newNote, string $userName, ?Carbon $at = null): void
-    {
+    public static function append(
+        HelpDesk $record,
+        string $newNote,
+        string $userName,
+        ?Carbon $at = null,
+        ?User $user = null,
+        string $eventType = HelpdeskEventRecorder::TYPE_NOTE,
+        ?array $meta = null,
+    ): void {
+        $user ??= auth()->user() instanceof User ? auth()->user() : null;
         $newNote = HelpdeskNoteHtmlSanitizer::sanitize(trim($newNote));
         $merged = self::mergeObservation((string) $record->observation, $newNote, $userName, $at);
+
         if ($merged === (string) $record->observation) {
             return;
         }
@@ -21,13 +34,32 @@ final class HelpdeskObservationAppender
         $record->observation = $merged;
         $record->updated_by = $userName;
 
-        if (\Illuminate\Support\Facades\Schema::hasColumn('help_desks', 'latest_note_at')
-            && \Illuminate\Support\Facades\Schema::hasColumn('help_desks', 'latest_note_by')) {
+        if (Schema::hasColumn('help_desks', 'latest_note_at')
+            && Schema::hasColumn('help_desks', 'latest_note_by')) {
             $record->latest_note_at = $moment;
             $record->latest_note_by = $userName;
+
+            if (Schema::hasColumn('help_desks', 'latest_note_by_user_id')) {
+                $record->latest_note_by_user_id = $user?->getAuthIdentifier();
+            }
+        }
+
+        if (Schema::hasColumn('help_desks', 'first_responded_at')) {
+            HelpdeskSla::markFirstResponseIfNeeded($record, $user);
         }
 
         $record->save();
+
+        if (Schema::hasTable('help_desk_events')) {
+            HelpdeskEventRecorder::record(
+                ticket: $record,
+                type: $eventType,
+                bodyHtml: $newNote,
+                user: $user,
+                meta: $meta,
+                occurredAt: $moment,
+            );
+        }
     }
 
     /**

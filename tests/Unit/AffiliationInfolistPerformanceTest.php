@@ -15,10 +15,11 @@ it('usa tabs Livewire para renderizar solo el tab activo en el infolist individu
     expect($contents)
         ->toContain("->livewireProperty('affiliationInfolistTab')")
         ->toContain('AffiliationInfolistTab::RESUMEN')
-        ->toContain('AffiliationInfolistTab::AFILIADOS')
         ->toContain('AffiliationInfolistTab::RENOVACIONES')
         ->toContain('AffiliationInfolistTab::EXPEDIENTE')
         ->toContain('AffiliationInfolistTab::OBSERVACIONES')
+        ->not->toContain('AffiliationInfolistTab::AFILIADOS')
+        ->not->toContain("Tab::make('Afiliados asociados')")
         ->not->toContain('->persistTab()');
 });
 
@@ -52,7 +53,9 @@ it('diferre las relaciones pesadas al abrir cada tab del infolist individual', f
         ->toContain('updatedAffiliationInfolistTab')
         ->toContain('loadMissing')
         ->toContain('loadCount(\'renovationHistories\')')
-        ->toContain("'affiliates.businessLine:id,definition'")
+        ->toContain("'affiliates'")
+        ->not->toContain('AffiliationInfolistTab::AFILIADOS')
+        ->not->toContain("'affiliates.businessLine:id,definition'")
         ->toContain("'affiliationDocuments'")
         ->toContain("'affiliationObservations.createdBy:id,name,email'")
         ->toContain("'renovationHistories.plan'");

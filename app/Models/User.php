@@ -199,6 +199,15 @@ class User extends Authenticatable implements FilamentUser
                 $this->status = 'ACTIVO';
         }
 
+        if ($panel->getId() === 'metrics') {
+            $departaments = is_array($this->departament) ? $this->departament : [];
+
+            return str_ends_with($this->email, '@tudrencasa.com')
+                && in_array('SUPERADMIN', $departaments, true)
+                && in_array('METRICAS', $departaments, true)
+                && ($this->status === 'ACTIVO' || $this->status == 'ACTIVO');
+        }
+
         return true;
 
     }

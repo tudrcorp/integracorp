@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\AgencyNotFoundForCommissionException;
 use App\Jobs\CreateAvisoDeCobro;
 use App\Jobs\ReciboDePagoCorporativo;
 use App\Mail\SendMailKitBienvenida;
-use App\Models\Agency;
 use App\Models\Collection;
 use App\Models\Commission;
 use App\Models\Sale;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
+use App\Support\PaidMemberships\AgencyTypeForCommission;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
@@ -454,7 +455,11 @@ class PaidMembershipCorporateController extends Controller
                     // Si el codgio de la agencia es diferente a TDG-100 es directo, es decir, el agente pertenece a nosotros
                     if ($data_afiliaciones['code_agency'] != 'TDG-100') {
                         // 2.- Validamos el tipo de agencia
-                        $tipo_agencia = Agency::select('code', 'agency_type_id')->where('code', $data_afiliaciones['code_agency'])->first();
+                        $tipo_agencia = AgencyTypeForCommission::resolveOrFail(
+                            (string) $data_afiliaciones['code_agency'],
+                            isset($data_afiliaciones['code']) ? (string) $data_afiliaciones['code'] : null,
+                            $record->id,
+                        );
 
                         if ($tipo_agencia->agency_type_id == 3) {
                             // Agencia tipo GENERAL
@@ -536,7 +541,11 @@ class PaidMembershipCorporateController extends Controller
                     // Si el codgio de la agencia es diferente a TDG-100 es directo, es decir, el agente pertenece a nosotros
                     if ($data_afiliaciones['code_agency'] != 'TDG-100') {
                         // 2.- Validamos el tipo de agencia
-                        $tipo_agencia = Agency::select('code', 'agency_type_id')->where('code', $data_afiliaciones['code_agency'])->first();
+                        $tipo_agencia = AgencyTypeForCommission::resolveOrFail(
+                            (string) $data_afiliaciones['code_agency'],
+                            isset($data_afiliaciones['code']) ? (string) $data_afiliaciones['code'] : null,
+                            $record->id,
+                        );
 
                         if ($tipo_agencia->agency_type_id == 1) {
                             // Agencia tipo MASTER
@@ -782,7 +791,11 @@ class PaidMembershipCorporateController extends Controller
                     // Si el codgio de la agencia es diferente a TDG-100 es directo, es decir, el agente pertenece a nosotros
                     if ($data_afiliaciones['code_agency'] != 'TDG-100') {
                         // 2.- Validamos el tipo de agencia
-                        $tipo_agencia = Agency::select('code', 'agency_type_id')->where('code', $data_afiliaciones['code_agency'])->first();
+                        $tipo_agencia = AgencyTypeForCommission::resolveOrFail(
+                            (string) $data_afiliaciones['code_agency'],
+                            isset($data_afiliaciones['code']) ? (string) $data_afiliaciones['code'] : null,
+                            $record->id,
+                        );
 
                         if ($tipo_agencia->agency_type_id == 3) {
                             // Agencia tipo GENERAL
@@ -864,7 +877,11 @@ class PaidMembershipCorporateController extends Controller
                     // Si el codgio de la agencia es diferente a TDG-100 es directo, es decir, el agente pertenece a nosotros
                     if ($data_afiliaciones['code_agency'] != 'TDG-100') {
                         // 2.- Validamos el tipo de agencia
-                        $tipo_agencia = Agency::select('code', 'agency_type_id')->where('code', $data_afiliaciones['code_agency'])->first();
+                        $tipo_agencia = AgencyTypeForCommission::resolveOrFail(
+                            (string) $data_afiliaciones['code_agency'],
+                            isset($data_afiliaciones['code']) ? (string) $data_afiliaciones['code'] : null,
+                            $record->id,
+                        );
 
                         if ($tipo_agencia->agency_type_id == 1) {
                             // Agencia tipo MASTER
@@ -964,12 +981,21 @@ class PaidMembershipCorporateController extends Controller
             ]);
 
             // Notificación de error para el usuario
-            Notification::make()
-                ->title('Error al procesar el pago')
-                ->body('No se realizó ningún cambio en el sistema. Motivo: '.$th->getMessage())
-                ->danger()
-                ->persistent() // Para que el usuario tenga tiempo de leerlo
-                ->send();
+            if ($th instanceof AgencyNotFoundForCommissionException) {
+                Notification::make()
+                    ->title('Compensación detenida: agencia inválida')
+                    ->body($th->getMessage())
+                    ->danger()
+                    ->persistent()
+                    ->send();
+            } else {
+                Notification::make()
+                    ->title('Error al procesar el pago')
+                    ->body('No se realizó ningún cambio en el sistema. Motivo: '.$th->getMessage())
+                    ->danger()
+                    ->persistent()
+                    ->send();
+            }
 
         }
     }

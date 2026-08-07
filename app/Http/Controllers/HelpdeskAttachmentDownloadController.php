@@ -8,6 +8,8 @@ use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Models\User;
 use App\Support\HelpdeskDocumentPaths;
+use App\Support\HelpdeskTicketIdentity;
+use App\Support\HelpdeskTicketVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -48,8 +50,7 @@ final class HelpdeskAttachmentDownloadController extends Controller
             return true;
         }
 
-        $creator = trim((string) $helpDesk->created_by);
-        if ($creator !== '' && trim((string) $user->name) === $creator) {
+        if (HelpdeskTicketIdentity::isCreator($helpDesk, $user) || HelpdeskTicketVisibility::canViewGlobalQueue($user)) {
             return true;
         }
 

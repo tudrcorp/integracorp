@@ -9,6 +9,7 @@ return [
     App\Providers\Filament\GeneralPanelProvider::class,
     App\Providers\Filament\MarketingPanelProvider::class,
     App\Providers\Filament\MasterPanelProvider::class,
+    App\Providers\Filament\MetricsPanelProvider::class,
     App\Providers\Filament\OperationsPanelProvider::class,
     App\Providers\Filament\ProjectsPanelProvider::class,
     App\Providers\Filament\TelemedicinaPanelProvider::class,

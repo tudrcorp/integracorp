@@ -5,8 +5,8 @@ declare(strict_types=1);
 use App\Models\HelpdeskGroup;
 use App\Models\User;
 use App\Support\HelpdeskBusinessTicketCreationDenialReason;
-use App\Support\HelpdeskBusinessTicketCreationGate;
 use App\Support\HelpdeskBusinessTicketCreationVerdict;
+use App\Support\HelpdeskTicketCreationGate;
 use App\Support\HelpdeskUserAccess;
 
 it('extrae ids de integrantes del grupo de trabajo', function (): void {
@@ -29,53 +29,45 @@ it('reconoce grupo inactivo', function (): void {
     expect($group->isActive())->toBeFalse();
 });
 
-it('en business el departamento sistemas sin grupo no puede crear hasta pertenecer a un grupo', function (): void {
-    $gate = file_get_contents(dirname(__DIR__, 2).'/app/Support/HelpdeskTicketCreationGate.php');
+it('en business cualquier usuario autenticado puede crear sin grupo ni cuota', function (): void {
+    $user = new User(['departament' => ['SISTEMAS']]);
 
-    $businessGate = file_get_contents(dirname(__DIR__, 2).'/app/Support/HelpdeskBusinessTicketCreationGate.php');
-
-    expect(HelpdeskUserAccess::hasSystemsDepartment(new User(['departament' => ['SISTEMAS']])))->toBeTrue()
-        ->and($businessGate)->toContain('enforceGroupQuota: true')
-        ->and($gate)->toContain('hasSystemsDepartment($user)');
+    expect(HelpdeskUserAccess::hasSystemsDepartment($user))->toBeTrue()
+        ->and(HelpdeskTicketCreationGate::allowsCreation($user)->allowed)->toBeTrue();
 });
 
-it('define cuota por defecto de cinco tickets para grupos nuevos', function (): void {
-    expect(HelpdeskBusinessTicketCreationGate::DEFAULT_GROUP_QUOTA)->toBe(5);
-});
-
-it('muestra el boton crear ticket sin grupo pero bloquea el formulario', function (): void {
+it('oculta el boton crear ticket solo cuando no hay sesion', function (): void {
     $verdict = HelpdeskBusinessTicketCreationVerdict::denied(
-        'Comuníquese con el Departamento de Tecnología para ser incluido en un grupo de trabajo.',
-        denialReason: HelpdeskBusinessTicketCreationDenialReason::MISSING_GROUP,
+        'Debe iniciar sesión para crear un ticket.',
+        denialReason: HelpdeskBusinessTicketCreationDenialReason::UNAUTHENTICATED,
     );
 
     expect($verdict->allowed)->toBeFalse()
+        ->and($verdict->shouldShowCreateTicketButton())->toBeFalse();
+});
+
+it('muestra el boton crear ticket cuando la creacion esta permitida', function (): void {
+    $verdict = HelpdeskBusinessTicketCreationVerdict::allowed();
+
+    expect($verdict->allowed)->toBeTrue()
         ->and($verdict->shouldShowCreateTicketButton())->toBeTrue();
 });
 
-it('oculta el boton crear ticket cuando la cuota del grupo esta agotada', function (): void {
-    $verdict = HelpdeskBusinessTicketCreationVerdict::denied(
-        'Cuota agotada.',
-        denialReason: HelpdeskBusinessTicketCreationDenialReason::QUOTA_EXHAUSTED,
-    );
-
-    expect($verdict->shouldShowCreateTicketButton())->toBeFalse();
-});
-
-it('panel business valida creacion con la regla de grupo y cuota', function (): void {
+it('panel business ya no impone cuota al crear tickets', function (): void {
     $resourcePath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Helpdesks/HelpdeskResource.php';
     $createPath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Helpdesks/Pages/CreateHelpdesk.php';
     $formPath = dirname(__DIR__, 2).'/app/Support/HelpdeskWorkGroupFormSchema.php';
     $modalPath = dirname(__DIR__, 2).'/resources/views/filament/helpdesks/work-groups-modal.blade.php';
     $traitPath = dirname(__DIR__, 2).'/app/Filament/Concerns/ManagesHelpdeskWorkGroupsOnList.php';
+    $gatePath = dirname(__DIR__, 2).'/app/Support/HelpdeskTicketCreationGate.php';
+    $groupPath = dirname(__DIR__, 2).'/app/Models/HelpdeskGroup.php';
 
     expect(file_get_contents($resourcePath))
-        ->toContain('AuthorizesHelpdeskTicketCreation')
-        ->toContain('helpdeskEnforcesCreationQuota');
+        ->toContain('AuthorizesHelpdeskTicketCreation');
 
     expect(file_get_contents($createPath))
         ->toContain('AssertsHelpdeskTicketCreationAccess')
-        ->toContain('helpdeskTicketCreationEnforcesQuota');
+        ->not->toContain('helpdeskTicketCreationEnforcesQuota');
 
     $listPath = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Helpdesks/Pages/ListHelpdesks.php';
 
@@ -88,12 +80,25 @@ it('panel business valida creacion con la regla de grupo y cuota', function (): 
         ->toContain('No puede crear tickets');
 
     expect(file_get_contents($formPath))
-        ->toContain('HelpdeskBusinessTicketCreationGate::DEFAULT_GROUP_QUOTA');
+        ->not->toContain('total_tickets_assigned')
+        ->not->toContain('Cuota de tickets');
 
     expect(file_get_contents($modalPath))
-        ->toContain('mountUpdateHelpdeskWorkGroupQuota')
-        ->toContain('ticketsCreatedCount');
+        ->not->toContain('mountUpdateHelpdeskWorkGroupQuota')
+        ->not->toContain('ticketsCreatedCount')
+        ->not->toContain('Actualizar cuota');
 
     expect(file_get_contents($traitPath))
-        ->toContain('updateHelpdeskWorkGroupQuotaAction');
+        ->not->toContain('updateHelpdeskWorkGroupQuotaAction')
+        ->toContain('editHelpdeskWorkGroupAction');
+
+    expect(file_get_contents($gatePath))
+        ->not->toContain('DEFAULT_GROUP_QUOTA')
+        ->not->toContain('enforceGroupQuota');
+
+    expect(file_get_contents($groupPath))
+        ->not->toContain('total_tickets_assigned')
+        ->not->toContain('ticketsCreatedCount');
+
+    expect(file_exists(dirname(__DIR__, 2).'/app/Support/HelpdeskBusinessTicketCreationGate.php'))->toBeFalse();
 });

@@ -6,7 +6,6 @@ namespace App\Support;
 
 use App\Http\Controllers\HelpdeskExportCsvController;
 use App\Models\HelpDesk;
-use App\Models\RrhhColaborador;
 use App\Support\ProjectManagement\ToBacklogSession;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -18,6 +17,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -35,30 +35,17 @@ final class HelpdeskTableConfigurator
         string $exportRouteName,
         string $modalActionsClass,
         string $helpdeskResourceClass,
-        bool $includeTeamColumns = false,
         bool $includeRecordEditAction = false,
     ): Table {
         return $table
             ->query(function (): Builder {
-                $colaborador = RrhhColaborador::query()
-                    ->where('user_id', Auth::id())
-                    ->first();
-
-                return HelpDesk::query()
-                    ->with(['rrhhColaboradores'])
-                    ->where(function (Builder $q) use ($colaborador): void {
-                        $q->where('created_by', Auth::user()->name);
-                        if ($colaborador) {
-                            $q->orWhereHas(
-                                'rrhhColaboradores',
-                                fn (Builder $sub): Builder => $sub->where('rrhh_colaboradors.id', $colaborador->id)
-                            );
-                        }
-                    })
+                return HelpdeskTicketVisibility::constrainVisible(
+                    HelpDesk::query()->with(['rrhhColaboradores'])
+                )
                     ->orderByRaw(self::statusOrderByCaseSql())
                     ->orderByDesc('updated_at');
             })
-            ->columns(self::columns($includeTeamColumns, $modalActionsClass))
+            ->columns(self::columns($modalActionsClass))
             ->recordClasses(function (HelpDesk $record): array {
                 if (in_array($record->status, HelpdeskTaskStatusOptions::terminalStatuses(), true)) {
                     $classes = [];
@@ -71,9 +58,14 @@ final class HelpdeskTableConfigurator
                     $classes[] = $unreadClass;
                 }
 
+                if (HelpdeskSla::badgeLabel($record) === 'SLA vencido') {
+                    $classes[] = 'fi-helpdesk-ta-sla-breached';
+                }
+
                 return $classes;
             })
-            ->filters([])
+            ->filters(self::filters())
+            ->deferFilters(false)
             ->recordActions(self::recordActions(
                 $modalActionsClass,
                 $helpdeskResourceClass,
@@ -156,12 +148,79 @@ final class HelpdeskTableConfigurator
             'todos' => Tab::make('Todos'),
         ];
 
+        if (HelpdeskTicketVisibility::canViewGlobalQueue()) {
+            $tabs['mios'] = Tab::make('Míos')
+                ->modifyQueryUsing(function (Builder $query): Builder {
+                    $user = Auth::user();
+
+                    if (! $user instanceof \App\Models\User) {
+                        return $query->whereRaw('0 = 1');
+                    }
+
+                    return HelpdeskTicketVisibility::constrainToMine($query, $user);
+                });
+
+            $tabs['sin_asignar'] = Tab::make('Sin asignar')
+                ->modifyQueryUsing(
+                    fn (Builder $query): Builder => HelpdeskTicketVisibility::constrainUnassigned($query)
+                );
+        }
+
         foreach (self::statusTabDefinitions() as $key => [$status, $label]) {
             $tabs[$key] = Tab::make($label)
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', $status));
         }
 
         return $tabs;
+    }
+
+    /**
+     * @return array<int, SelectFilter>
+     */
+    public static function filters(): array
+    {
+        return [
+            SelectFilter::make('status')
+                ->label('Estatus')
+                ->options(HelpdeskTaskStatusOptions::all())
+                ->multiple()
+                ->searchable(),
+            SelectFilter::make('priority')
+                ->label('Prioridad')
+                ->options([
+                    'BAJA' => 'Baja',
+                    'MEDIA' => 'Media',
+                    'ALTA' => 'Alta',
+                ])
+                ->multiple(),
+            SelectFilter::make('ticket_type')
+                ->label('Tipo')
+                ->options(
+                    collect(HelpdeskTicketType::catalog())
+                        ->mapWithKeys(static fn (array $item, string $key): array => [
+                            $key => $item['title'],
+                        ])
+                        ->all()
+                )
+                ->multiple()
+                ->searchable(),
+            SelectFilter::make('rrhhColaboradores')
+                ->label('Asignado')
+                ->relationship('rrhhColaboradores', 'fullName')
+                ->multiple()
+                ->searchable()
+                ->preload(),
+            SelectFilter::make('created_by')
+                ->label('Creado por')
+                ->options(fn (): array => HelpDesk::query()
+                    ->whereNotNull('created_by')
+                    ->where('created_by', '!=', '')
+                    ->distinct()
+                    ->orderBy('created_by')
+                    ->pluck('created_by', 'created_by')
+                    ->all())
+                ->searchable(),
+        ];
     }
 
     /**
@@ -222,7 +281,7 @@ final class HelpdeskTableConfigurator
      * @param  class-string  $modalActionsClass
      * @return array<int, mixed>
      */
-    private static function columns(bool $includeTeamColumns, string $modalActionsClass): array
+    private static function columns(string $modalActionsClass): array
     {
         $columns = [
             TextColumn::make('id')
@@ -277,10 +336,6 @@ final class HelpdeskTableConfigurator
                 ->searchable(isIndividual: true),
         ];
 
-        if ($includeTeamColumns) {
-            $columns = [...$columns, ...HelpdeskTableTeamColumns::make()];
-        }
-
         $columns = [
             ...$columns,
             TextColumn::make('created_by')
@@ -295,6 +350,13 @@ final class HelpdeskTableConfigurator
                 ->badge()
                 ->color(fn (HelpDesk $record): string => HelpdeskTaskStatusOptions::badgeColor($record->status))
                 ->searchable(isIndividual: true),
+            TextColumn::make('sla_badge')
+                ->label('SLA')
+                ->state(fn (HelpDesk $record): ?string => HelpdeskSla::badgeLabel($record))
+                ->badge()
+                ->color(fn (HelpDesk $record): string => HelpdeskSla::badgeColor($record))
+                ->placeholder('—')
+                ->toggleable(),
             TextColumn::make('created_at')
                 ->label('Fecha de Creación')
                 ->icon('heroicon-m-calendar')

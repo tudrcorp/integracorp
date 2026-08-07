@@ -78,4 +78,10 @@ return [
         ),
     ],
 
+    'integracorp_api' => [
+        'base_url' => env('INTEGRACORP_API_BASE_URL', 'http://127.0.0.1:4000'),
+        'timeout' => (int) env('INTEGRACORP_API_TIMEOUT', 8),
+        'api_key' => env('INTEGRACORP_API_KEY'),
+    ],
+
 ];

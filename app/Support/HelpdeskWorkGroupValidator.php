@@ -9,11 +9,10 @@ final class HelpdeskWorkGroupValidator
     /**
      * @param  array<string, mixed>  $data
      */
-    public static function validate(array $data, bool $requireTicketQuota = true): HelpdeskWorkGroupValidationResult
+    public static function validate(array $data): HelpdeskWorkGroupValidationResult
     {
         $name = trim((string) ($data['name'] ?? ''));
         $status = trim((string) ($data['status'] ?? 'ACTIVO'));
-        $ticketQuota = max(0, (int) ($data['total_tickets_assigned'] ?? 0));
         $teamColaboradorIds = $data['team_colaborador_ids'] ?? [];
 
         if ($name === '') {
@@ -50,17 +49,9 @@ final class HelpdeskWorkGroupValidator
 
         $normalizedStatus = in_array($status, ['ACTIVO', 'INACTIVO'], true) ? $status : 'ACTIVO';
 
-        if ($requireTicketQuota && $ticketQuota < 1) {
-            return HelpdeskWorkGroupValidationResult::failure(
-                'Cuota requerida',
-                'Indique una cuota de tickets mayor a cero para el grupo.',
-            );
-        }
-
         return HelpdeskWorkGroupValidationResult::success(
             name: $name,
             status: $normalizedStatus,
-            ticketQuota: $ticketQuota,
             colaboradorIds: $teamColaboradorIds,
             members: $members,
         );
@@ -71,6 +62,6 @@ final class HelpdeskWorkGroupValidator
      */
     public static function validateForUpdate(array $data): HelpdeskWorkGroupValidationResult
     {
-        return self::validate($data, requireTicketQuota: false);
+        return self::validate($data);
     }
 }

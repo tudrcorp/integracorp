@@ -52,3 +52,32 @@ it('conecta pestañas en listados de afiliaciones', function (): void {
         ->and(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/AffiliationCorporates/Pages/ListAffiliationCorporates.php'))
         ->toContain('AffiliationCorporatesTable::getTabs');
 });
+
+it('muestra totales bajo el título sin widgets de stats en afiliaciones individuales', function (): void {
+    $listPath = dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Affiliations/Pages/ListAffiliations.php';
+    $source = file_get_contents($listPath);
+
+    expect($source)
+        ->toContain('getSubheading')
+        ->toContain('Afiliados activos')
+        ->toContain('Total neto')
+        ->toContain('rounded-2xl')
+        ->toContain('statIcon')
+        ->not->toContain('getHeaderWidgets')
+        ->not->toContain('StatsOverview');
+});
+
+it('muestra totales bajo el título sin widgets de stats en afiliaciones corporativas', function (): void {
+    $listPath = dirname(__DIR__, 2).'/app/Filament/Administration/Resources/AffiliationCorporates/Pages/ListAffiliationCorporates.php';
+    $source = file_get_contents($listPath);
+
+    expect($source)
+        ->toContain('getSubheading')
+        ->toContain('Total corporativos')
+        ->toContain('Afiliados corporativos')
+        ->toContain('Total neto')
+        ->toContain('rounded-2xl')
+        ->toContain('statIcon')
+        ->not->toContain('getHeaderWidgets')
+        ->not->toContain('StatsOverview');
+});

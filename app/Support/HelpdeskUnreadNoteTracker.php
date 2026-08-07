@@ -6,7 +6,6 @@ namespace App\Support;
 
 use App\Models\HelpDesk;
 use App\Models\HelpDeskNoteRead;
-use App\Models\RrhhColaborador;
 use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
@@ -34,21 +33,28 @@ final class HelpdeskUnreadNoteTracker
             return 0;
         }
 
-        $count = 0;
-        $readMap = self::readMapForUser($user);
+        $userId = (int) $user->getAuthIdentifier();
+        $userName = trim((string) $user->name);
 
-        self::visibleTicketsQuery($user)
-            ->select(self::ticketSelectColumns())
-            ->orderByDesc('id')
-            ->chunkById(200, function ($tickets) use ($user, $readMap, &$count): void {
-                foreach ($tickets as $ticket) {
-                    if (self::hasUnreadNotes($ticket, $user, $readMap)) {
-                        $count++;
-                    }
-                }
-            });
-
-        return $count;
+        return (int) HelpdeskTicketVisibility::constrainVisible(HelpDesk::query(), $user)
+            ->whereNotNull('latest_note_at')
+            ->where(function (Builder $query) use ($userId, $userName): void {
+                $query->where(function (Builder $byId) use ($userId): void {
+                    $byId->whereNotNull('latest_note_by_user_id')
+                        ->where('latest_note_by_user_id', '!=', $userId);
+                })->orWhere(function (Builder $byName) use ($userName): void {
+                    $byName->whereNull('latest_note_by_user_id')
+                        ->whereRaw('LOWER(TRIM(COALESCE(latest_note_by, ?))) != ?', ['', mb_strtolower($userName)]);
+                });
+            })
+            ->whereNotExists(function ($sub) use ($userId): void {
+                $sub->selectRaw('1')
+                    ->from('help_desk_note_reads')
+                    ->whereColumn('help_desk_note_reads.help_desk_id', 'help_desks.id')
+                    ->where('help_desk_note_reads.user_id', $userId)
+                    ->whereColumn('help_desk_note_reads.last_read_at', '>=', 'help_desks.latest_note_at');
+            })
+            ->count();
     }
 
     public static function hasUnreadNotes(HelpDesk $ticket, ?User $user, ?array $readMap = null): bool
@@ -62,7 +68,7 @@ final class HelpdeskUnreadNoteTracker
             return false;
         }
 
-        if (self::actorsMatch($latestNote['by'], $user->name)) {
+        if (HelpdeskTicketIdentity::isLatestNoteAuthor($ticket, $user)) {
             return false;
         }
 
@@ -191,21 +197,7 @@ final class HelpdeskUnreadNoteTracker
      */
     private static function visibleTicketsQuery(User $user): Builder
     {
-        $colaborador = RrhhColaborador::query()
-            ->where('user_id', $user->id)
-            ->first();
-
-        return HelpDesk::query()
-            ->where(function (Builder $query) use ($user, $colaborador): void {
-                $query->where('created_by', $user->name);
-
-                if ($colaborador !== null) {
-                    $query->orWhereHas(
-                        'rrhhColaboradores',
-                        fn (Builder $sub): Builder => $sub->where('rrhh_colaboradors.id', $colaborador->id)
-                    );
-                }
-            });
+        return HelpdeskTicketVisibility::constrainVisible(HelpDesk::query(), $user);
     }
 
     public static function actorsMatch(?string $left, ?string $right): bool

@@ -84,6 +84,14 @@ final class HelpdeskTaskStatusOptions
         }
 
         if ($isCreator) {
+            if (in_array($record->status, self::terminalStatuses(), true)) {
+                return [
+                    self::STATUS_PENDING => self::all()[self::STATUS_PENDING],
+                    self::STATUS_IN_PROGRESS => self::all()[self::STATUS_IN_PROGRESS],
+                    ...self::terminalOnlyOptions(),
+                ];
+            }
+
             return self::terminalOnlyOptions();
         }
 
@@ -129,6 +137,12 @@ final class HelpdeskTaskStatusOptions
 
     public static function userIsTicketCreator(HelpDesk $record, ?string $currentUserName): bool
     {
+        $user = auth()->user();
+
+        if ($user instanceof \App\Models\User) {
+            return HelpdeskTicketIdentity::isCreator($record, $user);
+        }
+
         if ($currentUserName === null || trim($currentUserName) === '') {
             return false;
         }

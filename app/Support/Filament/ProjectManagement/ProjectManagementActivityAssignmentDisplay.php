@@ -26,10 +26,7 @@ final class ProjectManagementActivityAssignmentDisplay
         [$groupIds, $collaboratorIds] = self::collectReferenceIds($activities);
 
         /** @var Collection<int, Group> $groups */
-        $groups = Group::query()
-            ->whereIn('id', $groupIds)
-            ->get(['id', 'name', 'collaborator_ids'])
-            ->keyBy('id');
+        $groups = self::groupsByIds($groupIds);
 
         foreach ($groups as $group) {
             $collaboratorIds = array_merge(
@@ -39,12 +36,7 @@ final class ProjectManagementActivityAssignmentDisplay
         }
 
         /** @var Collection<int, RrhhColaborador> $collaborators */
-        $collaborators = RrhhColaborador::query()
-            ->whereIn('id', array_values(array_unique($collaboratorIds)))
-            ->where('fullName', '!=', ProjectManagementCollaboratorSelect::EXCLUDED_COLLABORATOR_NAME)
-            ->orderBy('fullName')
-            ->get(['id', 'fullName', 'avatar'])
-            ->keyBy('id');
+        $collaborators = self::collaboratorsByIds($collaboratorIds);
 
         foreach ($activities as $activity) {
             $activity->setAttribute(
@@ -76,10 +68,7 @@ final class ProjectManagementActivityAssignmentDisplay
 
         [$groupIds, $collaboratorIds] = self::collectReferenceIds(collect([$activity]));
 
-        $groups = Group::query()
-            ->whereIn('id', $groupIds)
-            ->get(['id', 'name', 'collaborator_ids'])
-            ->keyBy('id');
+        $groups = self::groupsByIds($groupIds);
 
         foreach ($groups as $group) {
             $collaboratorIds = array_merge(
@@ -88,14 +77,45 @@ final class ProjectManagementActivityAssignmentDisplay
             );
         }
 
-        $collaborators = RrhhColaborador::query()
-            ->whereIn('id', array_values(array_unique($collaboratorIds)))
+        $collaborators = self::collaboratorsByIds($collaboratorIds);
+
+        return self::resolve($activity, $groups, $collaborators);
+    }
+
+    /**
+     * @param  array<int, int>  $groupIds
+     * @return Collection<int, Group>
+     */
+    private static function groupsByIds(array $groupIds): Collection
+    {
+        if ($groupIds === []) {
+            return collect();
+        }
+
+        return Group::query()
+            ->whereIn('id', $groupIds)
+            ->get(['id', 'name', 'collaborator_ids'])
+            ->keyBy('id');
+    }
+
+    /**
+     * @param  array<int, int>  $collaboratorIds
+     * @return Collection<int, RrhhColaborador>
+     */
+    private static function collaboratorsByIds(array $collaboratorIds): Collection
+    {
+        $collaboratorIds = array_values(array_unique($collaboratorIds));
+
+        if ($collaboratorIds === []) {
+            return collect();
+        }
+
+        return RrhhColaborador::query()
+            ->whereIn('id', $collaboratorIds)
             ->where('fullName', '!=', ProjectManagementCollaboratorSelect::EXCLUDED_COLLABORATOR_NAME)
             ->orderBy('fullName')
             ->get(['id', 'fullName', 'avatar'])
             ->keyBy('id');
-
-        return self::resolve($activity, $groups, $collaborators);
     }
 
     /**

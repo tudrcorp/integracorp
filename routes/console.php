@@ -8,6 +8,7 @@ use App\Jobs\ExpireOperationServiceOrders;
 use App\Jobs\ExportCorporateAffiliations;
 use App\Jobs\ExportIndividualAffiliations;
 use App\Jobs\ExportScheduledEntity;
+use App\Jobs\MarkHelpdeskSlaBreachesJob;
 use App\Jobs\PrepareAffiliationCorporateRenovations;
 use App\Jobs\PrepareAffiliationRenovations;
 use App\Jobs\ReconcileOrphanedMassNotificationEmails;
@@ -130,6 +131,11 @@ Schedule::job(new AnulateAgentQuotes, 'system')
  * Caduca órdenes de servicio no finalizadas dentro de los 10 días posteriores a su aprobación.
  */
 Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('7:30');
+
+/**
+ * Marca tickets helpdesk con SLA vencido.
+ */
+Schedule::job(new MarkHelpdeskSlaBreachesJob, 'system')->hourly();
 
 /**
  * Dispara notificaciones masivas cuya fecha programada ya venció.

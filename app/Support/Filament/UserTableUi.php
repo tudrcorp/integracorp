@@ -16,6 +16,7 @@ final class UserTableUi
             'MARKETING' => 'Marketing',
             'OPERACIONES' => 'Operaciones',
             'PROYECTOS' => 'Proyectos',
+            'METRICAS' => 'Métricas/KPI',
             'SISTEMAS' => 'Sistemas',
             'SUPERADMIN' => 'Superadmin',
             'TELEMEDICINA' => 'Telemedicina',

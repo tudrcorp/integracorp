@@ -32,7 +32,7 @@ final class HelpdeskWorkGroupHeaderAction
             ->slideOver()
             ->modalWidth(Width::ThreeExtraLarge)
             ->modalHeading('Grupos de trabajo')
-            ->modalDescription('Departamento SISTEMAS: defina equipos, cuota de tickets e integrantes. Ampliar la cuota permite que el grupo vuelva a registrar tickets.')
+            ->modalDescription('Departamento SISTEMAS: defina equipos reutilizables e integrantes.')
             ->modalSubmitAction(false)
             ->modalCancelAction(
                 fn (Action $action): Action => $action
@@ -77,7 +77,6 @@ final class HelpdeskWorkGroupHeaderAction
                 HelpdeskGroup::query()->create([
                     'name' => $validation->name,
                     'status' => $validation->status,
-                    'total_tickets_assigned' => $validation->ticketQuota,
                     'team_members' => $validation->members,
                     'created_by' => is_string($userName) ? $userName : null,
                     'updated_by' => is_string($userName) ? $userName : null,
@@ -86,7 +85,7 @@ final class HelpdeskWorkGroupHeaderAction
                 Notification::make()
                     ->success()
                     ->title('Grupo creado')
-                    ->body('El grupo «'.$validation->name.'» quedó registrado con cuota de '.$validation->ticketQuota.' ticket(s) y '.count($validation->members).' integrante(s).')
+                    ->body('El grupo «'.$validation->name.'» quedó registrado con '.count($validation->members).' integrante(s).')
                     ->send();
             });
     }

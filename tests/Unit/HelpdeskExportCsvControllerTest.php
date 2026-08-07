@@ -36,3 +36,10 @@ it('tiene registradas las rutas nombradas de exportacion csv para helpdesk', fun
     expect(route('operations.helpdesks.export-csv', ['token' => 'x']))->toBeString();
     expect(route('marketing.helpdesks.export-csv', ['token' => 'x']))->toBeString();
 });
+
+it('aplica la misma regla de visibilidad al exportar csv de helpdesk', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Http/Controllers/HelpdeskExportCsvController.php';
+
+    expect(file_get_contents($path))
+        ->toContain('HelpdeskTicketVisibility::constrainVisible');
+});

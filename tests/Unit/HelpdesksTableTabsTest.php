@@ -19,3 +19,11 @@ it('define tabs de estatus para helpdesks (business)', function (): void {
         expect($tabs[$key])->toBeInstanceOf(Tab::class);
     }
 });
+
+it('HelpdeskTableConfigurator expone tabs de cola global cuando el usuario puede verla', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Support/HelpdeskTableConfigurator.php';
+
+    expect(file_get_contents($path))
+        ->toContain("\$tabs['mios'] = Tab::make('Míos')")
+        ->toContain("\$tabs['sin_asignar'] = Tab::make('Sin asignar')");
+});

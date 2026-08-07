@@ -15,13 +15,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 /**
- * Accesos directos tipo stepper (Negocios, Administración, Operaciones, Marketing, Proyectos):
+ * Accesos directos tipo stepper (Negocios, Administración, Operaciones, Marketing, Proyectos, Métricas/KPI):
  * crear ticket en el panel actual + accesos a otros módulos según departament y canAccessPanel; SUPERADMIN ve todos.
  */
 final class InternalPanelsQuickNavigation
 {
     /** @var list<string> */
-    private const INTERNAL_HOST_PANEL_IDS = ['business', 'administration', 'operations', 'marketing', 'projects'];
+    private const INTERNAL_HOST_PANEL_IDS = ['business', 'administration', 'operations', 'marketing', 'projects', 'metrics'];
 
     /**
      * @return list<array{kind: string, url: string, label: string, subtitle: string, tone: int, panel_id: ?string, accessible: bool, denied_message: ?string}>
@@ -79,6 +79,11 @@ final class InternalPanelsQuickNavigation
 
             $panel = self::resolvePanel($panelId);
             if ($panel === null) {
+                continue;
+            }
+
+            // Métricas/KPI solo es visible para SUPERADMIN (acceso real vía módulo METRICAS).
+            if ($panelId === 'metrics' && ! $isSuperAdmin) {
                 continue;
             }
 
@@ -148,6 +153,7 @@ final class InternalPanelsQuickNavigation
             ['id' => 'operations', 'department' => 'OPERACIONES', 'route' => 'filament.operations.pages.dashboard', 'label' => 'Operaciones', 'subtitle' => 'Coordinación y logística'],
             ['id' => 'marketing', 'department' => 'MARKETING', 'route' => 'filament.marketing.pages.dashboard', 'label' => 'Marketing', 'subtitle' => 'Campañas y afiliaciones'],
             ['id' => 'projects', 'department' => 'PROYECTOS', 'route' => 'filament.projects.pages.dashboard', 'label' => 'Proyectos', 'subtitle' => 'Gestión de proyectos'],
+            ['id' => 'metrics', 'department' => 'METRICAS', 'route' => 'filament.metrics.pages.dashboard', 'label' => 'Métricas/KPI', 'subtitle' => 'Indicadores y desempeño'],
         ];
     }
 
@@ -174,7 +180,7 @@ final class InternalPanelsQuickNavigation
 
         // El panel projects no tiene HelpdeskResource propio, por lo que
         // delega la creación al módulo de Negocios.
-        if ($hostPanelId === 'projects') {
+        if ($hostPanelId === 'projects' || $hostPanelId === 'metrics') {
             return BusinessHelpdeskResource::getUrl('create', [], false, 'business');
         }
 

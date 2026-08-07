@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\HelpDesk;
 use App\Support\CsvExportStream;
+use App\Support\HelpdeskTicketVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -41,8 +42,9 @@ class HelpdeskExportCsvController extends Controller
         ];
 
         $filename = 'tickets_helpdesk_'.now()->format('Y-m-d_His').'.csv';
+        $user = $request->user();
 
-        return new StreamedResponse(function () use ($ids, $headers): void {
+        return new StreamedResponse(function () use ($ids, $headers, $user): void {
             $handle = CsvExportStream::openOutput();
 
             if ($handle === false) {
@@ -51,8 +53,10 @@ class HelpdeskExportCsvController extends Controller
 
             fputcsv($handle, $headers);
 
-            HelpDesk::query()
-                ->with(['rrhhColaboradores'])
+            HelpdeskTicketVisibility::constrainVisible(
+                HelpDesk::query()->with(['rrhhColaboradores']),
+                $user,
+            )
                 ->whereIn('id', $ids)
                 ->orderBy('id')
                 ->lazyById(100)

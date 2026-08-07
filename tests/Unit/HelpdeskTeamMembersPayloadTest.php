@@ -8,17 +8,15 @@ it('devuelve arreglo vacío cuando no hay ids de colaboradores', function (): vo
     expect(HelpdeskTeamMembersPayload::fromColaboradorIds([]))->toBe([]);
 });
 
-it('expone la sección de equipo en el schema compartido del formulario helpdesk', function (): void {
+it('ya no expone la seccion de equipo de ejecucion en el formulario helpdesk', function (): void {
     $path = dirname(__DIR__, 2).'/app/Support/HelpdeskFormSchema.php';
     $contents = file_get_contents($path);
 
     expect($contents)
         ->toContain("Tabs::make('helpdeskFormTabs')")
-        ->toContain("Tab::make('Equipo de ejecución')")
-        ->toContain("TextInput::make('team')")
-        ->toContain("Select::make('team_colaborador_ids')")
-        ->toContain('->native(false)')
-        ->toContain("'min:2'");
+        ->not->toContain("Tab::make('Equipo de ejecución')")
+        ->not->toContain('executionTeamTabSchema')
+        ->not->toContain("TextInput::make('team')");
 });
 
 it('delega el formulario helpdesk de cada panel al schema compartido', function (string $panel): void {
@@ -37,27 +35,26 @@ it('no recorta los desplegables de select en secciones helpdesk ios', function (
         ->toContain('.fi-helpdesk-ios-section .fi-fo-field:has(.fi-fo-select-trigger:focus-within)');
 });
 
-it('muestra el equipo en las tablas helpdesk de todos los paneles', function (string $panel): void {
+it('no muestra columnas de equipo de ejecucion en tablas helpdesk', function (string $panel): void {
     $path = dirname(__DIR__, 2)."/app/Filament/{$panel}/Resources/Helpdesks/Tables/HelpdesksTable.php";
     $contents = file_get_contents($path);
 
-    expect($contents)->toContain('HelpdeskTableTeamColumns::make()');
+    expect($contents)
+        ->toContain('HelpdeskTableConfigurator::configure')
+        ->not->toContain('HelpdeskTableTeamColumns');
 })->with(['Business', 'Administration', 'Marketing', 'Operations']);
 
-it('formatea integrantes del equipo con teléfono en columnas compartidas', function (): void {
-    $path = dirname(__DIR__, 2).'/app/Support/HelpdeskTableTeamColumns.php';
-    $contents = file_get_contents($path);
-
-    expect($contents)->toContain('telefono_corporativo');
+it('elimina el helper muerto de columnas de equipo', function (): void {
+    expect(file_exists(dirname(__DIR__, 2).'/app/Support/HelpdeskTableTeamColumns.php'))->toBeFalse();
 });
 
-it('prepara el equipo y notifica por whatsapp al crear ticket en todos los paneles', function (string $panel): void {
+it('crea tickets sin preparar equipo de ejecucion en todos los paneles', function (string $panel): void {
     $path = dirname(__DIR__, 2)."/app/Filament/{$panel}/Resources/Helpdesks/Pages/CreateHelpdesk.php";
     $contents = file_get_contents($path);
 
     expect($contents)
-        ->toContain('PreparesHelpdeskTeamOnCreate')
-        ->toContain('prepareHelpdeskTeamForCreate')
+        ->not->toContain('PreparesHelpdeskTeamOnCreate')
+        ->not->toContain('prepareHelpdeskTeamForCreate')
         ->toContain('dispatchHelpdeskCreateNotifications')
         ->toContain('DispatchesHelpdeskCreateNotifications');
 })->with(['Business', 'Administration', 'Marketing', 'Operations']);

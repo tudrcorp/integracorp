@@ -114,6 +114,11 @@ class WelcomeUserLiquidGlassWidget extends Widget
                 'label' => 'Operaciones',
                 'fallback' => 'Panel de Operaciones',
             ],
+            'metrics' => [
+                'department' => 'METRICAS',
+                'label' => 'Métricas/KPI',
+                'fallback' => 'Panel de Métricas/KPI',
+            ],
             default => [
                 'department' => '',
                 'label' => 'Usuario',
