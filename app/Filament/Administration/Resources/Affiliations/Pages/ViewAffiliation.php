@@ -7,6 +7,7 @@ namespace App\Filament\Administration\Resources\Affiliations\Pages;
 use App\Filament\Administration\Resources\Affiliations\Actions\AffiliationFichaPdfActions;
 use App\Filament\Administration\Resources\Affiliations\AffiliationResource;
 use App\Filament\Business\Resources\Affiliations\Concerns\OptimizesAffiliationInfolistPerformance;
+use App\Support\Filament\FilamentIosActionsMenu;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
@@ -24,13 +25,9 @@ class ViewAffiliation extends ViewRecord
 
     private const IOS_BUTTON_BASE = 'shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
-    private const PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary '.self::IOS_BUTTON_BASE;
-
-    private const SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success '.self::IOS_BUTTON_BASE;
-
     private const WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning '.self::IOS_BUTTON_BASE;
 
-    private const INFO_BUTTON_CLASS = 'aviso-btn-ios-info '.self::IOS_BUTTON_BASE;
+    private const SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success '.self::IOS_BUTTON_BASE;
 
     public function getRelationManagers(): array
     {
@@ -43,83 +40,79 @@ class ViewAffiliation extends ViewRecord
             Action::make('back')
                 ->label('Volver')
                 ->icon(Heroicon::OutlinedArrowLeft)
-                ->color(self::WARNING_BUTTON_CLASS)
+                ->color('warning')
                 ->extraAttributes([
                     'class' => self::WARNING_BUTTON_CLASS,
                 ])
                 ->url(AffiliationResource::getUrl()),
-            Action::make('attachDocuments')
-                ->label('Adjuntar documentos')
-                ->icon(Heroicon::OutlinedPaperClip)
-                ->color(self::PRIMARY_BUTTON_CLASS)
-                ->extraAttributes([
-                    'class' => self::PRIMARY_BUTTON_CLASS,
-                ])
-                ->modalHeading('Adjuntar documentos al expediente')
-                ->modalDescription('Puedes cargar uno o varios archivos en PDF o imagen.')
-                ->form([
-                    FileUpload::make('documents')
-                        ->label('Documentos')
-                        ->disk('public')
-                        ->directory('affiliations/expedientes')
-                        ->preserveFilenames()
-                        ->multiple()
-                        ->acceptedFileTypes([
-                            'application/pdf',
-                            'image/jpeg',
-                            'image/png',
-                            'image/webp',
-                        ])
-                        ->maxFiles(15)
-                        ->maxSize(10240)
-                        ->downloadable()
-                        ->openable()
-                        ->required(),
-                ])
-                ->action(function (array $data): void {
-                    $files = collect($data['documents'] ?? [])
-                        ->filter(fn (mixed $path): bool => is_string($path) && $path !== '')
-                        ->values();
+            FilamentIosActionsMenu::make([
+                Action::make('attachDocuments')
+                    ->label('Adjuntar documentos')
+                    ->icon(Heroicon::OutlinedPaperClip)
+                    ->color('primary')
+                    ->modalHeading('Adjuntar documentos al expediente')
+                    ->modalDescription('Puedes cargar uno o varios archivos en PDF o imagen.')
+                    ->form([
+                        FileUpload::make('documents')
+                            ->label('Documentos')
+                            ->disk('public')
+                            ->directory('affiliations/expedientes')
+                            ->preserveFilenames()
+                            ->multiple()
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'image/jpeg',
+                                'image/png',
+                                'image/webp',
+                            ])
+                            ->maxFiles(15)
+                            ->maxSize(10240)
+                            ->downloadable()
+                            ->openable()
+                            ->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $files = collect($data['documents'] ?? [])
+                            ->filter(fn (mixed $path): bool => is_string($path) && $path !== '')
+                            ->values();
 
-                    if ($files->isEmpty()) {
-                        return;
-                    }
+                        if ($files->isEmpty()) {
+                            return;
+                        }
 
-                    $userId = auth()->id();
+                        $userId = auth()->id();
 
-                    $this->record->affiliationDocuments()->createMany(
-                        $files
-                            ->map(function (string $path) use ($userId): array {
-                                return [
-                                    'file_path' => $path,
-                                    'original_name' => basename($path),
-                                    'mime_type' => Storage::disk('public')->mimeType($path) ?: null,
-                                    'file_size' => Storage::disk('public')->size($path) ?: null,
-                                    'uploaded_by' => $userId,
-                                ];
-                            })
-                            ->all(),
-                    );
+                        $this->record->affiliationDocuments()->createMany(
+                            $files
+                                ->map(function (string $path) use ($userId): array {
+                                    return [
+                                        'file_path' => $path,
+                                        'original_name' => basename($path),
+                                        'mime_type' => Storage::disk('public')->mimeType($path) ?: null,
+                                        'file_size' => Storage::disk('public')->size($path) ?: null,
+                                        'uploaded_by' => $userId,
+                                    ];
+                                })
+                                ->all(),
+                        );
 
-                    $this->record->load('affiliationDocuments');
+                        $this->record->load('affiliationDocuments');
 
-                    Notification::make()
-                        ->success()
-                        ->title('Documentos adjuntados')
-                        ->body('El expediente se actualizó correctamente.')
-                        ->send();
-                }),
-            AffiliationFichaPdfActions::printIndividualPdfAction()
-                ->extraAttributes([
-                    'class' => self::SUCCESS_BUTTON_CLASS,
-                ]),
-            EditAction::make()
-                ->label('Compensar Pago')
-                ->icon(Heroicon::OutlinedCreditCard)
-                ->color(self::PRIMARY_BUTTON_CLASS)
-                ->extraAttributes([
-                    'class' => self::SUCCESS_BUTTON_CLASS,
-                ]),
+                        Notification::make()
+                            ->success()
+                            ->title('Documentos adjuntados')
+                            ->body('El expediente se actualizó correctamente.')
+                            ->send();
+                    }),
+                AffiliationFichaPdfActions::printIndividualPdfAction()
+                    ->extraAttributes([
+                        'class' => self::SUCCESS_BUTTON_CLASS,
+                    ]),
+                EditAction::make()
+                    ->label('Compensar Pago')
+                    ->icon(Heroicon::OutlinedCreditCard)
+                    ->color('primary'),
+            ]),
         ];
     }
 

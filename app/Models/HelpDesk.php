@@ -8,6 +8,8 @@ use App\Casts\HelpdeskTeamMembersCast;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class HelpDesk extends Model
@@ -21,14 +23,24 @@ class HelpDesk extends Model
         'priority',
         'status',
         'created_by',
+        'created_by_user_id',
         'updated_by',
         'observation',
         'latest_note_at',
         'latest_note_by',
+        'latest_note_by_user_id',
         'cc_colaboradores',
         'ticket_type',
         'team',
         'team_members',
+        'terms_accepted_at',
+        'first_response_due_at',
+        'resolution_due_at',
+        'first_responded_at',
+        'resolved_at',
+        'cancelled_at',
+        'sla_breached_at',
+        'cancellation_reason',
     ];
 
     protected function casts(): array
@@ -37,6 +49,13 @@ class HelpDesk extends Model
             'cc_colaboradores' => 'array',
             'team_members' => HelpdeskTeamMembersCast::class,
             'latest_note_at' => 'datetime',
+            'terms_accepted_at' => 'datetime',
+            'first_response_due_at' => 'datetime',
+            'resolution_due_at' => 'datetime',
+            'first_responded_at' => 'datetime',
+            'resolved_at' => 'datetime',
+            'cancelled_at' => 'datetime',
+            'sla_breached_at' => 'datetime',
         ];
     }
 
@@ -60,9 +79,24 @@ class HelpDesk extends Model
         return $uid;
     }
 
-    public function help_desk_category(): BelongsTo
+    public function creator(): BelongsTo
     {
-        return $this->belongsTo(HelpDeskCategory::class);
+        return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(HelpDeskEvent::class, 'help_desk_id')->orderByDesc('occurred_at');
+    }
+
+    public function csat(): HasOne
+    {
+        return $this->hasOne(HelpDeskCsat::class, 'help_desk_id');
+    }
+
+    public function noteReads(): HasMany
+    {
+        return $this->hasMany(HelpDeskNoteRead::class, 'help_desk_id');
     }
 
     /**

@@ -44,39 +44,42 @@ it('define la acción manageHelpdeskWorkGroups con visibilidad por departamento'
         ->toContain('HelpdeskUserAccess::hasSystemsDepartment()')
         ->toContain('HelpdeskGroup::query()->create')
         ->toContain('HelpdeskWorkGroupValidator::validate')
-        ->toContain('HelpdeskWorkGroupFormSchema::components()');
+        ->toContain('HelpdeskWorkGroupFormSchema::components()')
+        ->not->toContain('total_tickets_assigned');
 
     expect(file_get_contents($formPath))
-        ->toContain('rrhhColaboradorOptionsForHelpdeskWorkGroups');
+        ->toContain('rrhhColaboradorOptionsForHelpdeskWorkGroups')
+        ->not->toContain('Cuota de tickets');
 
     expect(file_get_contents($listPath))
         ->toContain('HelpdeskWorkGroupHeaderAction::make()')
         ->toContain('ManagesHelpdeskWorkGroupsOnList');
 });
 
-it('registra vista modal de grupos de trabajo', function (): void {
+it('registra vista modal de grupos de trabajo sin cuota', function (): void {
     $viewPath = dirname(__DIR__, 2).'/resources/views/filament/helpdesks/work-groups-modal.blade.php';
 
     expect(file_exists($viewPath))->toBeTrue();
     expect(file_get_contents($viewPath))
         ->toContain('mountDeleteHelpdeskWorkGroup')
         ->toContain('mountEditHelpdeskWorkGroup')
-        ->toContain('mountUpdateHelpdeskWorkGroupQuota')
-        ->toContain('total_tickets_assigned')
-        ->toContain('ticketsCreatedCount');
+        ->not->toContain('mountUpdateHelpdeskWorkGroupQuota')
+        ->not->toContain('total_tickets_assigned')
+        ->not->toContain('ticketsCreatedCount')
+        ->not->toContain('Actualizar cuota');
 });
 
-it('permite definir la cuota de tickets al crear un grupo', function (): void {
+it('permite crear un grupo de trabajo sin cuota de tickets', function (): void {
     $actionPath = dirname(__DIR__, 2).'/app/Support/HelpdeskWorkGroupHeaderAction.php';
     $formPath = dirname(__DIR__, 2).'/app/Support/HelpdeskWorkGroupFormSchema.php';
 
     expect(file_get_contents($actionPath))
         ->toContain('HelpdeskWorkGroupFormSchema::components()')
-        ->toContain("'total_tickets_assigned' => \$validation->ticketQuota");
+        ->not->toContain('ticketQuota')
+        ->toContain("'team_members' => \$validation->members");
 
     expect(file_get_contents($formPath))
-        ->toContain("TextInput::make('total_tickets_assigned')")
-        ->toContain('Cuota de tickets')
+        ->not->toContain("TextInput::make('total_tickets_assigned')")
         ->toContain("Checkbox::make('show_create_form')")
         ->toContain('Nuevo grupo de trabajo')
         ->toContain("Grid::make(['default' => 1, 'sm' => 2])")

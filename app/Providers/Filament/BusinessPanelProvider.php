@@ -7,6 +7,7 @@ use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Http\Middleware\DuplicatedSession;
 use App\Support\Filament\BusinessPanelNavigationGroups;
 use Filament\Actions\Action;
+use Filament\Enums\GlobalSearchPosition;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -37,6 +38,10 @@ class BusinessPanelProvider extends PanelProvider
             ->passwordReset()
             ->profile()
             ->spa()
+            ->globalSearch(position: GlobalSearchPosition::Topbar)
+            ->globalSearchDebounce('300ms')
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
+            ->globalSearchFieldKeyBindingSuffix()
             ->colors([
                 'primary' => '#4c566a',
             ])

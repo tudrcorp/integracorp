@@ -16,7 +16,6 @@ final class HelpdeskWorkGroupValidationResult
         public readonly ?string $errorBody = null,
         public readonly string $name = '',
         public readonly string $status = 'ACTIVO',
-        public readonly int $ticketQuota = 0,
         public readonly array $colaboradorIds = [],
         public readonly array $members = [],
     ) {}
@@ -33,7 +32,6 @@ final class HelpdeskWorkGroupValidationResult
     public static function success(
         string $name,
         string $status,
-        int $ticketQuota,
         array $colaboradorIds,
         array $members,
     ): self {
@@ -41,7 +39,6 @@ final class HelpdeskWorkGroupValidationResult
             valid: true,
             name: $name,
             status: $status,
-            ticketQuota: $ticketQuota,
             colaboradorIds: $colaboradorIds,
             members: $members,
         );

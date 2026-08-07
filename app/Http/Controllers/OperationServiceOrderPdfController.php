@@ -12,6 +12,8 @@ class OperationServiceOrderPdfController extends Controller
 {
     public function download(OperationServiceOrder $operationServiceOrder): Response
     {
+        OperationServiceOrderPdfService::ensurePersisted($operationServiceOrder);
+
         $pdf = OperationServiceOrderPdfService::make($operationServiceOrder);
 
         return $pdf->download(OperationServiceOrderPdfService::filename($operationServiceOrder));
@@ -19,6 +21,8 @@ class OperationServiceOrderPdfController extends Controller
 
     public function preview(OperationServiceOrder $operationServiceOrder): Response
     {
+        OperationServiceOrderPdfService::ensurePersisted($operationServiceOrder);
+
         $pdf = OperationServiceOrderPdfService::make($operationServiceOrder);
 
         return $pdf->stream(OperationServiceOrderPdfService::filename($operationServiceOrder));

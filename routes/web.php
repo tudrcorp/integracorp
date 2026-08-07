@@ -32,6 +32,7 @@ use App\Http\Controllers\ScrumPresentationController;
 use App\Http\Controllers\SupplierFichaPdfController;
 use App\Http\Controllers\SupplierReportPdfController;
 use App\Http\Controllers\TarjetaAfiliacionController;
+use App\Http\Controllers\TechnologyAdvancesPresentationController;
 use App\Http\Controllers\TelemedicineSchemaDocumentationController;
 use App\Http\Controllers\TelemedicineSchemaDocumentationTemporaryLinkController;
 use App\Http\Controllers\UtilsController;
@@ -2077,6 +2078,7 @@ Route::get('/ldi/{transaction_id}', [UtilsController::class, 'show'])
 Route::get('/cierre-mes', CierreMesController::class);
 
 Route::get('/scrum-desarrollo-apps', ScrumPresentationController::class);
+Route::get('/avances-tecnologicos', TechnologyAdvancesPresentationController::class);
 
 Route::get('/carta-bienvenida-agencia', function () {
     // Doc en PDF

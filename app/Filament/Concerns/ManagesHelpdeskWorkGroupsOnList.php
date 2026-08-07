@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace App\Filament\Concerns;
 
 use App\Models\HelpdeskGroup;
-use App\Support\HelpdeskBusinessTicketCreationGate;
 use App\Support\HelpdeskUserAccess;
 use App\Support\HelpdeskWorkGroupFormSchema;
 use App\Support\HelpdeskWorkGroupValidator;
 use Filament\Actions\Action;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Icons\Heroicon;
@@ -21,11 +19,6 @@ trait ManagesHelpdeskWorkGroupsOnList
     public function mountDeleteHelpdeskWorkGroup(int $groupId): void
     {
         $this->replaceMountedAction('deleteHelpdeskWorkGroup', ['groupId' => $groupId]);
-    }
-
-    public function mountUpdateHelpdeskWorkGroupQuota(int $groupId): void
-    {
-        $this->replaceMountedAction('updateHelpdeskWorkGroupQuota', ['groupId' => $groupId]);
     }
 
     public function mountEditHelpdeskWorkGroup(int $groupId): void
@@ -39,7 +32,7 @@ trait ManagesHelpdeskWorkGroupsOnList
             ->label('Editar grupo')
             ->icon(Heroicon::OutlinedPencilSquare)
             ->modalHeading('Editar grupo de trabajo')
-            ->modalDescription('Actualice el nombre, el estado y los integrantes del grupo. La cuota se modifica con «Actualizar cuota».')
+            ->modalDescription('Actualice el nombre, el estado y los integrantes del grupo.')
             ->modalSubmitActionLabel('Guardar cambios')
             ->modalCancelActionLabel('Cancelar')
             ->fillForm(function (Action $action): array {
@@ -113,77 +106,6 @@ trait ManagesHelpdeskWorkGroupsOnList
 
                 $this->replaceMountedAction('manageHelpdeskWorkGroups');
             });
-    }
-
-    protected function updateHelpdeskWorkGroupQuotaAction(): Action
-    {
-        return Action::make('updateHelpdeskWorkGroupQuota')
-            ->label('Actualizar cuota')
-            ->icon(Heroicon::OutlinedTicket)
-            ->modalHeading('Actualizar cuota de tickets')
-            ->modalDescription('Defina cuántos tickets puede registrar el grupo. Los tickets ya creados no se eliminan.')
-            ->modalSubmitActionLabel('Guardar cuota')
-            ->modalCancelActionLabel('Cancelar')
-            ->fillForm(function (Action $action): array {
-                $groupId = (int) ($action->getArguments()['groupId'] ?? 0);
-                $group = HelpdeskGroup::query()->find($groupId);
-
-                return [
-                    'total_tickets_assigned' => $group?->total_tickets_assigned ?? HelpdeskBusinessTicketCreationGate::DEFAULT_GROUP_QUOTA,
-                ];
-            })
-            ->schema([
-                TextInput::make('total_tickets_assigned')
-                    ->label('Cuota de tickets')
-                    ->required()
-                    ->numeric()
-                    ->minValue(0)
-                    ->suffix('tickets')
-                    ->helperText(fn (Action $action): string => $this->helpdeskWorkGroupQuotaHelperText($action)),
-            ])
-            ->action(function (Action $action, array $data): void {
-                if (! $this->ensureHelpdeskWorkGroupSystemsAccess()) {
-                    return;
-                }
-
-                $group = $this->findHelpdeskWorkGroupForAction($action);
-
-                if ($group === null) {
-                    $this->notifyHelpdeskWorkGroupNotFound();
-
-                    return;
-                }
-
-                $quota = max(0, (int) ($data['total_tickets_assigned'] ?? 0));
-                $userName = Auth::user()?->name;
-
-                $group->update([
-                    'total_tickets_assigned' => $quota,
-                    'updated_by' => is_string($userName) ? $userName : null,
-                ]);
-
-                Notification::make()
-                    ->title('Cuota actualizada')
-                    ->body('El grupo «'.$group->name.'» puede registrar hasta '.$quota.' ticket(s). Actualmente tiene '.$group->ticketsCreatedCount().' registrado(s).')
-                    ->success()
-                    ->send();
-
-                $this->replaceMountedAction('manageHelpdeskWorkGroups');
-            });
-    }
-
-    protected function helpdeskWorkGroupQuotaHelperText(Action $action): string
-    {
-        $groupId = (int) ($action->getArguments()['groupId'] ?? 0);
-        $group = HelpdeskGroup::query()->find($groupId);
-
-        if ($group === null) {
-            return 'Indique la cuota máxima permitida para el grupo.';
-        }
-
-        $used = $group->ticketsCreatedCount();
-
-        return 'Tickets registrados por integrantes del grupo: '.$used.'.';
     }
 
     protected function deleteHelpdeskWorkGroupAction(): Action

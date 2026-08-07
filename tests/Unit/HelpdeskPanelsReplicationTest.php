@@ -32,7 +32,7 @@ it('tablas helpdesk de administration, operations y marketing usan configurador 
     }
 });
 
-it('recursos helpdesk de todos los paneles validan creacion por grupo o SUPERADMIN', function (): void {
+it('recursos helpdesk de todos los paneles usan autorizacion de creacion compartida', function (): void {
     foreach (['Business', 'Administration', 'Operations', 'Marketing'] as $panel) {
         $path = dirname(__DIR__, 2)."/app/Filament/{$panel}/Resources/Helpdesks/HelpdeskResource.php";
 
@@ -41,15 +41,18 @@ it('recursos helpdesk de todos los paneles validan creacion por grupo o SUPERADM
 });
 
 it('acciones modales de todos los paneles incluyen nota obligatoria al cambiar estado', function (): void {
-    $panels = ['Administration', 'Business', 'Marketing', 'Operations'];
+    $shared = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Shared/Helpdesks/Actions/HelpdeskTicketModalActions.php');
 
-    foreach ($panels as $panel) {
+    expect($shared)
+        ->toContain('HelpdeskStatusChangeNote::assigneeExplanationEditor')
+        ->toContain('HelpdeskStatusChangeNote::buildObservationHtml');
+
+    foreach (['Administration', 'Business', 'Marketing', 'Operations'] as $panel) {
         $path = dirname(__DIR__, 2)."/app/Filament/{$panel}/Resources/Helpdesks/Actions/HelpdeskTicketModalActions.php";
-        $contents = file_get_contents($path);
 
-        expect($contents)
-            ->toContain('HelpdeskStatusChangeNote::assigneeExplanationEditor')
-            ->toContain('HelpdeskStatusChangeNote::buildObservationHtml');
+        expect(file_get_contents($path))
+            ->toContain('SharedHelpdeskTicketModalActions')
+            ->toContain('makeUpdateStatusAction');
     }
 });
 

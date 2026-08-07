@@ -41,7 +41,7 @@ final class HelpdeskWorkGroupFormSchema
                 ->columnSpanFull(),
 
             Section::make('Nuevo grupo de trabajo')
-                ->description('Identifique el equipo, defina la cuota y seleccione integrantes.')
+                ->description('Identifique el equipo y seleccione integrantes.')
                 ->icon('heroicon-o-user-group')
                 ->iconColor('primary')
                 ->extraAttributes(['class' => self::IOS_SECTION_CLASS])
@@ -68,16 +68,6 @@ final class HelpdeskWorkGroupFormSchema
                                 ])
                                 ->default('ACTIVO')
                                 ->prefixIcon('heroicon-m-signal'),
-
-                            TextInput::make('total_tickets_assigned')
-                                ->label('Cuota de tickets')
-                                ->required()
-                                ->numeric()
-                                ->minValue(0)
-                                ->default(HelpdeskBusinessTicketCreationGate::DEFAULT_GROUP_QUOTA)
-                                ->prefixIcon('heroicon-m-ticket')
-                                ->suffix('tickets')
-                                ->helperText('Máximo de tickets que el grupo puede registrar. Solo Tecnología puede modificar la cuota después.'),
 
                             Select::make('team_colaborador_ids')
                                 ->label('Integrantes del grupo')

@@ -22,7 +22,8 @@ it('HelpdeskUnreadNoteTracker expone conteo, detección y marcado de lectura', f
         ->toContain('markAsRead')
         ->toContain('recordRowClass')
         ->toContain('fi-helpdesk-ta-has-unread-note')
-        ->toContain('trackingIsAvailable');
+        ->toContain('trackingIsAvailable')
+        ->toContain('HelpdeskTicketVisibility::constrainVisible');
 });
 
 it('HelpdeskTableConfigurator resalta filas con notas sin revisar', function (): void {

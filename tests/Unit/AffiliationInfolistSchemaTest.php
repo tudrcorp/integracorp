@@ -12,17 +12,14 @@ it('configura el infolist de afiliación individual sin error', function (): voi
     expect($configured)->toBeInstanceOf(Schema::class);
 });
 
-it('muestra unidad y linea de negocio en afiliados asociados del infolist', function (): void {
+it('no incluye la pestaña de afiliados asociados en el infolist individual', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Schemas/AffiliationInfolist.php');
 
     expect($source)
-        ->toContain("TextEntry::make('businessUnit.definition')")
-        ->toContain("TextEntry::make('businessLine.definition')")
-        ->toContain("TableColumn::make('Unidad de negocio')")
-        ->toContain("TableColumn::make('Línea de servicio')")
-        ->toContain('affiliateBusinessContextColor')
-        ->toContain('ViewRecord $livewire')
-        ->toContain("->weight('semibold')");
+        ->not->toContain("Tab::make('Afiliados asociados')")
+        ->not->toContain("RepeatableEntry::make('affiliates')")
+        ->not->toContain('affiliateBusinessContextColor')
+        ->not->toContain('AffiliationInfolistTab::AFILIADOS');
 });
 
 it('incluye un tab con el documento del titular', function (): void {
@@ -41,20 +38,4 @@ it('muestra una miniatura grande del documento del titular cuando es imagen', fu
         ->toContain("ImageEntry::make('document')")
         ->toContain('->imageHeight(260)')
         ->toContain('documentIsImage');
-});
-
-it('muestra la miniatura del documento de cada afiliado en la tabla', function (): void {
-    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Schemas/AffiliationInfolist.php');
-
-    expect($source)
-        ->toContain("TableColumn::make('Documento')")
-        ->toContain('->imageHeight(56)');
-});
-
-it('muestra la miniatura del documento ILS de cada afiliado en la tabla', function (): void {
-    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Schemas/AffiliationInfolist.php');
-
-    expect($source)
-        ->toContain("TableColumn::make('Documento ILS')")
-        ->toContain("ImageEntry::make('document_ils')");
 });

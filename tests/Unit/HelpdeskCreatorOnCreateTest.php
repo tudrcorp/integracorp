@@ -8,6 +8,9 @@ it('asigna created_by con el usuario de sesión al preparar la creación del tic
 
     expect($src)
         ->toContain("\$data['created_by'] = Auth::user()?->name;")
+        ->toContain("\$data['created_by_user_id'] = Auth::id();")
+        ->toContain("\$data['terms_accepted_at'] = now();")
+        ->toContain("\$data['first_response_due_at']")
         ->and($src)->toContain("\$data['status'] ??= 'PENDIENTE POR INICIAR';");
 });
 

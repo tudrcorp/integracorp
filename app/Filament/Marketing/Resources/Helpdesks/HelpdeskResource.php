@@ -13,6 +13,7 @@ use App\Filament\Marketing\Resources\Helpdesks\Schemas\HelpdeskForm;
 use App\Filament\Marketing\Resources\Helpdesks\Schemas\HelpdeskInfolist;
 use App\Filament\Marketing\Resources\Helpdesks\Tables\HelpdesksTable;
 use App\Models\HelpDesk;
+use App\Support\HelpdeskTicketVisibility;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -54,7 +55,9 @@ class HelpdeskResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['rrhhColaboradores']);
+        return HelpdeskTicketVisibility::constrainVisible(
+            parent::getEloquentQuery()->with(['rrhhColaboradores'])
+        );
     }
 
     public static function canEdit(Model $record): bool

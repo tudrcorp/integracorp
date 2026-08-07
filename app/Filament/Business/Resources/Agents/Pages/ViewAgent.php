@@ -5,6 +5,9 @@ namespace App\Filament\Business\Resources\Agents\Pages;
 use App\Filament\Business\Resources\Agents\AgentResource;
 use App\Filament\Business\Resources\Agents\Concerns\QueuesAgentFichaPdfEmail;
 use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
+use App\Filament\Shared\CommercialStructure\Actions\CommercialStructureIosActionsMenu;
+use App\Filament\Shared\CommercialStructure\Actions\ResetCommercialStructureUserPasswordAction;
+use App\Filament\Shared\CommercialStructure\Actions\UpdateCommercialStructureEmailAction;
 use App\Models\Agent;
 use App\Support\BusinessAgentFichaPdfAccess;
 use App\Support\Filament\FilamentIosButton;
@@ -30,8 +33,6 @@ class ViewAgent extends ViewRecord
     private const IOS_BUTTON_BASE = ' shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
     private const IOS_GRAY_BUTTON_CLASS = 'ticket-btn-ios-gray'.self::IOS_BUTTON_BASE;
-
-    private const IOS_PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary'.self::IOS_BUTTON_BASE;
 
     private const IOS_SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success'.self::IOS_BUTTON_BASE;
 
@@ -60,178 +61,167 @@ class ViewAgent extends ViewRecord
                 ->extraAttributes([
                     'class' => self::IOS_GRAY_BUTTON_CLASS,
                 ]),
-            EditAction::make()
-                ->label('Editar')
-                ->icon('heroicon-o-pencil')
-                ->color('primary')
-                ->extraAttributes([
-                    'class' => self::IOS_PRIMARY_BUTTON_CLASS,
-                ]),
-            Action::make('agentFichaPreview')
-                ->label('Ficha PDF')
-                ->icon('heroicon-o-document-text')
-                ->color('success')
-                ->extraAttributes([
-                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
-                ])
-                ->slideOver()
-                ->formWrapper(false)
-                ->modalWidth(Width::FiveExtraLarge)
-                ->extraModalWindowAttributes([
-                    'class' => 'fi-agency-command-center-window',
-                ])
-                ->modalHeading(fn (): string => 'Ficha de agente · '.($this->getRecord()->name ?? ''))
-                ->modalDescription(fn (): string => 'Vista previa, descarga y envío por correo o WhatsApp.')
-                ->modalContent(fn (): \Illuminate\Contracts\View\View => $this->resolveAgentFichaPanelView())
-                ->modalSubmitAction(false)
-                ->modalCancelAction(
-                    fn (Action $action): Action => $action
-                        ->label('Cerrar')
-                        ->extraAttributes([
-                            'class' => HelpdeskTicketModalActions::IOS_GRAY_BTN,
-                        ]),
-                )
-                ->action(fn (): null => null)
-                ->visible(fn (): bool => BusinessAgentFichaPdfAccess::userCanAccess($this->getRecord())),
-            Action::make('addObservation')
-                ->label('Agregar observación')
-                ->icon('heroicon-o-chat-bubble-left-right')
-                ->color('info')
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('info'),
-                ])
-                ->modalHeading('Registrar observación')
-                ->modalDescription('La observación quedará asociada a este agente y al analista que la registra.')
-                ->modalSubmitActionLabel('Guardar')
-                ->modalCancelActionLabel('Cancelar')
-                ->modalSubmitAction(
-                    fn (Action $action) => $action
-                        ->color('info')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('info'),
-                        ])
-                )
-                ->modalCancelAction(
-                    fn (Action $action) => $action
-                        ->color('gray')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
-                        ])
-                )
-                ->form([
-                    Textarea::make('observation')
-                        ->label('Texto de la observación')
-                        ->placeholder('Escriba la nota o seguimiento administrativo…')
-                        ->required()
-                        ->minLength(2)
-                        ->maxLength(5000)
-                        ->rows(5),
-                ])
-                ->action(function (array $data): void {
-                    $this->record->observationCommercialStructures()->create([
-                        'observation' => $data['observation'],
-                        'created_by' => Auth::user()?->name ?? 'Analista',
-                        'date' => now()->format('d/m/Y H:i'),
-                    ]);
+            CommercialStructureIosActionsMenu::make([
+                EditAction::make()
+                    ->label('Editar')
+                    ->icon('heroicon-o-pencil')
+                    ->color('primary'),
+                UpdateCommercialStructureEmailAction::make('agent', 'business'),
+                ResetCommercialStructureUserPasswordAction::make('agent', 'business'),
+                Action::make('agentFichaPreview')
+                    ->label('Ficha PDF')
+                    ->icon('heroicon-o-document-text')
+                    ->color('success')
+                    ->slideOver()
+                    ->formWrapper(false)
+                    ->modalWidth(Width::FiveExtraLarge)
+                    ->extraModalWindowAttributes([
+                        'class' => 'fi-agency-command-center-window',
+                    ])
+                    ->modalHeading(fn (): string => 'Ficha de agente · '.($this->getRecord()->name ?? ''))
+                    ->modalDescription(fn (): string => 'Vista previa, descarga y envío por correo o WhatsApp.')
+                    ->modalContent(fn (): \Illuminate\Contracts\View\View => $this->resolveAgentFichaPanelView())
+                    ->modalSubmitAction(false)
+                    ->modalCancelAction(
+                        fn (Action $action): Action => $action
+                            ->label('Cerrar')
+                            ->extraAttributes([
+                                'class' => HelpdeskTicketModalActions::IOS_GRAY_BTN,
+                            ]),
+                    )
+                    ->action(fn (): null => null)
+                    ->visible(fn (): bool => BusinessAgentFichaPdfAccess::userCanAccess($this->getRecord())),
+                Action::make('addObservation')
+                    ->label('Agregar observación')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->color('info')
+                    ->modalHeading('Registrar observación')
+                    ->modalDescription('La observación quedará asociada a este agente y al analista que la registra.')
+                    ->modalSubmitActionLabel('Guardar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalSubmitAction(
+                        fn (Action $action) => $action
+                            ->color('info')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                            ])
+                    )
+                    ->modalCancelAction(
+                        fn (Action $action) => $action
+                            ->color('gray')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                            ])
+                    )
+                    ->form([
+                        Textarea::make('observation')
+                            ->label('Texto de la observación')
+                            ->placeholder('Escriba la nota o seguimiento administrativo…')
+                            ->required()
+                            ->minLength(2)
+                            ->maxLength(5000)
+                            ->rows(5),
+                    ])
+                    ->action(function (array $data): void {
+                        $this->record->observationCommercialStructures()->create([
+                            'observation' => $data['observation'],
+                            'created_by' => Auth::user()?->name ?? 'Analista',
+                            'date' => now()->format('d/m/Y H:i'),
+                        ]);
 
-                    $this->record->unsetRelation('observationCommercialStructures');
-                    $this->record->load('observationCommercialStructures');
+                        $this->record->unsetRelation('observationCommercialStructures');
+                        $this->record->load('observationCommercialStructures');
 
-                    Notification::make()
-                        ->success()
-                        ->title('Observación guardada')
-                        ->send();
-                }),
-            Action::make('audit')
-                ->label('Auditoría')
-                ->icon('heroicon-o-shield-check')
-                ->color('warning')
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
-                ])
-                ->visible(fn (): bool => $this->pendingAuditItems() !== [])
-                ->modalHeading('Auditoría del agente de corretaje')
-                ->modalDescription('Seleccione uno o varios puntos auditados. Se registrará una observación automática en la bitácora a nombre de INTEGRACORP-AUDITORIA y los puntos auditados se retirarán de la lista.')
-                ->modalSubmitActionLabel('Registrar auditoría')
-                ->modalCancelActionLabel('Cancelar')
-                ->modalSubmitAction(
-                    fn (Action $action) => $action
-                        ->color('warning')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
-                        ])
-                )
-                ->modalCancelAction(
-                    fn (Action $action) => $action
-                        ->color('gray')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
-                        ])
-                )
-                ->form([
-                    CheckboxList::make('items')
-                        ->label('Puntos a auditar')
-                        ->options(fn (): array => $this->pendingAuditItemOptions())
-                        ->descriptions(fn (): array => $this->pendingAuditItemDescriptions())
-                        ->required()
-                        ->bulkToggleable()
-                        ->columns(1),
-                ])
-                ->action(function (array $data): void {
-                    $this->registerAudit($data['items'] ?? []);
-                }),
-            Action::make('uploadDocuments')
-                ->label('Cargar documentos')
-                ->icon('heroicon-o-arrow-up-tray')
-                ->color('success')
-                ->extraAttributes([
-                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
-                ])
-                ->modalHeading('Cargar documentos del agente')
-                ->modalDescription('Adjunte el Documento de Identidad, el W8/W9 y los Documentos Varios que necesite. Tamaño máximo 2MB por archivo. Formatos: jpg, jpeg, png, pdf, txt, xls, xlsx.')
-                ->modalSubmitActionLabel('Guardar')
-                ->modalCancelActionLabel('Cancelar')
-                ->modalSubmitAction(
-                    fn (Action $action) => $action
-                        ->color('success')
-                        ->extraAttributes([
-                            'class' => self::IOS_SUCCESS_BUTTON_CLASS,
-                        ])
-                )
-                ->modalCancelAction(
-                    fn (Action $action) => $action
-                        ->color('gray')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
-                        ])
-                )
-                ->form([
-                    FileUpload::make('file_ci_rif')
-                        ->label('Documento de Identidad')
-                        ->uploadingMessage('Cargando documento...')
-                        ->directory('agentes/documentos')
-                        ->acceptedFileTypes(self::AGENT_DOCUMENT_MIME_TYPES)
-                        ->maxSize(2048),
-                    FileUpload::make('file_w8_w9')
-                        ->label('W8/W9')
-                        ->uploadingMessage('Cargando documento...')
-                        ->directory('agentes/documentos')
-                        ->acceptedFileTypes(self::AGENT_DOCUMENT_MIME_TYPES)
-                        ->maxSize(2048),
-                    FileUpload::make('documentos_varios')
-                        ->label('Documentos Varios')
-                        ->helperText('Puede adjuntar varios archivos a la vez.')
-                        ->multiple()
-                        ->reorderable()
-                        ->appendFiles()
-                        ->uploadingMessage('Cargando documentos...')
-                        ->directory('agentes/documentos')
-                        ->acceptedFileTypes(self::AGENT_DOCUMENT_MIME_TYPES)
-                        ->maxSize(2048),
-                ])
-                ->action(function (array $data): void {
-                    $this->storeAgentDocuments($data);
-                }),
+                        Notification::make()
+                            ->success()
+                            ->title('Observación guardada')
+                            ->send();
+                    }),
+                Action::make('audit')
+                    ->label('Auditoría')
+                    ->icon('heroicon-o-shield-check')
+                    ->color('warning')
+                    ->visible(fn (): bool => $this->pendingAuditItems() !== [])
+                    ->modalHeading('Auditoría del agente de corretaje')
+                    ->modalDescription('Seleccione uno o varios puntos auditados. Se registrará una observación automática en la bitácora a nombre de INTEGRACORP-AUDITORIA y los puntos auditados se retirarán de la lista.')
+                    ->modalSubmitActionLabel('Registrar auditoría')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalSubmitAction(
+                        fn (Action $action) => $action
+                            ->color('warning')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
+                            ])
+                    )
+                    ->modalCancelAction(
+                        fn (Action $action) => $action
+                            ->color('gray')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                            ])
+                    )
+                    ->form([
+                        CheckboxList::make('items')
+                            ->label('Puntos a auditar')
+                            ->options(fn (): array => $this->pendingAuditItemOptions())
+                            ->descriptions(fn (): array => $this->pendingAuditItemDescriptions())
+                            ->required()
+                            ->bulkToggleable()
+                            ->columns(1),
+                    ])
+                    ->action(function (array $data): void {
+                        $this->registerAudit($data['items'] ?? []);
+                    }),
+                Action::make('uploadDocuments')
+                    ->label('Cargar documentos')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('success')
+                    ->modalHeading('Cargar documentos del agente')
+                    ->modalDescription('Adjunte el Documento de Identidad, el W8/W9 y los Documentos Varios que necesite. Tamaño máximo 2MB por archivo. Formatos: jpg, jpeg, png, pdf, txt, xls, xlsx.')
+                    ->modalSubmitActionLabel('Guardar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalSubmitAction(
+                        fn (Action $action) => $action
+                            ->color('success')
+                            ->extraAttributes([
+                                'class' => self::IOS_SUCCESS_BUTTON_CLASS,
+                            ])
+                    )
+                    ->modalCancelAction(
+                        fn (Action $action) => $action
+                            ->color('gray')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                            ])
+                    )
+                    ->form([
+                        FileUpload::make('file_ci_rif')
+                            ->label('Documento de Identidad')
+                            ->uploadingMessage('Cargando documento...')
+                            ->directory('agentes/documentos')
+                            ->acceptedFileTypes(self::AGENT_DOCUMENT_MIME_TYPES)
+                            ->maxSize(2048),
+                        FileUpload::make('file_w8_w9')
+                            ->label('W8/W9')
+                            ->uploadingMessage('Cargando documento...')
+                            ->directory('agentes/documentos')
+                            ->acceptedFileTypes(self::AGENT_DOCUMENT_MIME_TYPES)
+                            ->maxSize(2048),
+                        FileUpload::make('documentos_varios')
+                            ->label('Documentos Varios')
+                            ->helperText('Puede adjuntar varios archivos a la vez.')
+                            ->multiple()
+                            ->reorderable()
+                            ->appendFiles()
+                            ->uploadingMessage('Cargando documentos...')
+                            ->directory('agentes/documentos')
+                            ->acceptedFileTypes(self::AGENT_DOCUMENT_MIME_TYPES)
+                            ->maxSize(2048),
+                    ])
+                    ->action(function (array $data): void {
+                        $this->storeAgentDocuments($data);
+                    }),
+            ]),
         ];
     }
 

@@ -15,6 +15,7 @@ final class InternalPanelDepartmentMap
         'operations' => 'OPERACIONES',
         'marketing' => 'MARKETING',
         'projects' => 'PROYECTOS',
+        'metrics' => 'METRICAS',
         'telemedicina' => 'TELEMEDICINA',
     ];
 
@@ -27,6 +28,7 @@ final class InternalPanelDepartmentMap
         'App\\Filament\\Operations\\' => 'OPERACIONES',
         'App\\Filament\\Marketing\\' => 'MARKETING',
         'App\\Filament\\Projects\\' => 'PROYECTOS',
+        'App\\Filament\\Metrics\\' => 'METRICAS',
         'App\\Filament\\Telemedicina\\' => 'TELEMEDICINA',
     ];
 

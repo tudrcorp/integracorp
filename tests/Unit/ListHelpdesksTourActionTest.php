@@ -31,16 +31,18 @@ it('ListHelpdesks incluye acción de tutorial de uso en todos los módulos', fun
             expect($contents)->toContain('HelpdeskBusinessCreateTicketHeaderAction::make()');
         } else {
             expect($contents)
-                ->toContain("'id' => 'helpdesk-create-ticket-btn'")
-                ->toContain("'data-tour-shape' => 'pill'");
+                ->toContain('HelpdeskCreateTicketHeaderAction::make(HelpdeskResource::class)');
         }
     }
 
     expect(file_get_contents($createActionPath))
+        ->toContain('HelpdeskCreateTicketHeaderAction::make');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/HelpdeskCreateTicketHeaderAction.php'))
         ->toContain("'id' => 'helpdesk-create-ticket-btn'")
         ->toContain("'data-tour-shape' => 'pill'")
         ->toContain('canSeeCreateTicketButton')
-        ->toContain('HelpdeskBusinessTicketCreationGate::allowsCreation()');
+        ->toContain('HelpdeskTicketCreationGate::allowsCreation');
 
     $theme = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
 

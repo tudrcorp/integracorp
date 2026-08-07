@@ -5,12 +5,14 @@
     .user-perm-module--operaciones { --perm-accent: #16a34a; --perm-accent-soft: #dcfce7; --perm-accent-ring: rgba(34, 197, 94, 0.35); --perm-accent-glow: rgba(22, 163, 74, 0.22); }
     .user-perm-module--marketing { --perm-accent: #d97706; --perm-accent-soft: #fef3c7; --perm-accent-ring: rgba(251, 191, 36, 0.45); --perm-accent-glow: rgba(217, 119, 6, 0.22); }
     .user-perm-module--proyectos { --perm-accent: #3b82f6; --perm-accent-soft: #dbeafe; --perm-accent-ring: rgba(147, 197, 253, 0.35); --perm-accent-glow: rgba(59, 130, 246, 0.22); }
+    .user-perm-module--metricas { --perm-accent: #0f766e; --perm-accent-soft: #ccfbf1; --perm-accent-ring: rgba(45, 212, 191, 0.4); --perm-accent-glow: rgba(15, 118, 110, 0.22); }
 
     .dark .user-perm-module--negocios { --perm-accent: #38bdf8; --perm-accent-soft: rgba(12, 74, 110, 0.35); --perm-accent-ring: rgba(56, 189, 248, 0.28); --perm-accent-glow: rgba(56, 189, 248, 0.18); }
     .dark .user-perm-module--administracion { --perm-accent: #60a5fa; --perm-accent-soft: rgba(37, 99, 235, 0.22); --perm-accent-ring: rgba(96, 165, 250, 0.28); --perm-accent-glow: rgba(37, 99, 235, 0.18); }
     .dark .user-perm-module--operaciones { --perm-accent: #4ade80; --perm-accent-soft: rgba(22, 163, 74, 0.22); --perm-accent-ring: rgba(74, 222, 128, 0.28); --perm-accent-glow: rgba(34, 197, 94, 0.18); }
     .dark .user-perm-module--marketing { --perm-accent: #fbbf24; --perm-accent-soft: rgba(217, 119, 6, 0.22); --perm-accent-ring: rgba(251, 191, 36, 0.28); --perm-accent-glow: rgba(217, 119, 6, 0.18); }
     .dark .user-perm-module--proyectos { --perm-accent: #60a5fa; --perm-accent-soft: rgba(59, 130, 246, 0.22); --perm-accent-ring: rgba(96, 165, 250, 0.28); --perm-accent-glow: rgba(59, 130, 246, 0.18); }
+    .dark .user-perm-module--metricas { --perm-accent: #2dd4bf; --perm-accent-soft: rgba(15, 118, 110, 0.22); --perm-accent-ring: rgba(45, 212, 191, 0.28); --perm-accent-glow: rgba(45, 212, 191, 0.18); }
 
     /* ── Intro callout ── */
     .user-perm-intro {
@@ -151,12 +153,14 @@
     .user-perm-module--operaciones { border-left: 4px solid #16a34a; }
     .user-perm-module--marketing { border-left: 4px solid #d97706; }
     .user-perm-module--proyectos { border-left: 4px solid #3b82f6; }
+    .user-perm-module--metricas { border-left: 4px solid #0f766e; }
 
     .dark .user-perm-module--negocios { border-left-color: #38bdf8; }
     .dark .user-perm-module--administracion { border-left-color: #60a5fa; }
     .dark .user-perm-module--operaciones { border-left-color: #4ade80; }
     .dark .user-perm-module--marketing { border-left-color: #fbbf24; }
     .dark .user-perm-module--proyectos { border-left-color: #60a5fa; }
+    .dark .user-perm-module--metricas { border-left-color: #2dd4bf; }
 
     .user-perm-group-card {
         border-radius: 0.5rem;

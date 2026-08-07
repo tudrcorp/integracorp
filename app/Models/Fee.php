@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Fee extends Model
 {
@@ -18,7 +18,7 @@ class Fee extends Model
         'status',
         'created_by',
         'range',
-        'coverage'
+        'coverage',
     ];
 
     public function ageRange(): BelongsTo
@@ -26,19 +26,24 @@ class Fee extends Model
         return $this->belongsTo(AgeRange::class, 'age_range_id', 'id');
     }
 
-    /**
-     * Get the user associated with the Fee
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
-     */
-    // public function coverage(): HasOne
-    // {
-    //     return $this->hasOne(Coverage::class, 'id', 'coverage_id');
-    // }
+    public function plan(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            Plan::class,
+            AgeRange::class,
+            'id',
+            'id',
+            'age_range_id',
+            'plan_id',
+        );
+    }
 
-    public function coverage(): BelongsTo
+    /**
+     * Named coverageRecord to avoid colliding with the denormalized `coverage` column,
+     * which Filament treats as an attribute and would block Select::relationship('coverage').
+     */
+    public function coverageRecord(): BelongsTo
     {
         return $this->belongsTo(Coverage::class, 'coverage_id', 'id');
     }
-
 }

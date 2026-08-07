@@ -16,8 +16,6 @@ final class AffiliationInfolistTab
 
     public const PLAN = 'plan-pagos';
 
-    public const AFILIADOS = 'afiliados';
-
     public const ALIADO_1 = 'aliado-1';
 
     public const ALIADO_2 = 'aliado-2';

@@ -5,24 +5,18 @@ declare(strict_types=1);
 namespace App\Filament\Concerns;
 
 use App\Support\HelpdeskTicketCreationGate;
+use App\Support\HelpdeskTicketIdentity;
 use Illuminate\Database\Eloquent\Model;
 
 trait AuthorizesHelpdeskTicketCreation
 {
-    public static function helpdeskEnforcesCreationQuota(): bool
-    {
-        return false;
-    }
-
     public static function canSeeCreateTicketButton(): bool
     {
         if (! parent::canCreate()) {
             return false;
         }
 
-        return HelpdeskTicketCreationGate::allowsCreation(
-            enforceGroupQuota: static::helpdeskEnforcesCreationQuota(),
-        )->shouldShowCreateTicketButton();
+        return HelpdeskTicketCreationGate::allowsCreation()->shouldShowCreateTicketButton();
     }
 
     public static function canCreate(): bool
@@ -31,18 +25,15 @@ trait AuthorizesHelpdeskTicketCreation
             return false;
         }
 
-        return HelpdeskTicketCreationGate::allowsCreation(
-            enforceGroupQuota: static::helpdeskEnforcesCreationQuota(),
-        )->allowed;
+        return HelpdeskTicketCreationGate::allowsCreation()->allowed;
     }
 
     public static function currentUserIsHelpdeskTicketCreator(Model $record): bool
     {
-        $user = auth()->user();
-        if ($user === null) {
+        if (! $record instanceof \App\Models\HelpDesk) {
             return false;
         }
 
-        return trim((string) $record->getAttribute('created_by')) === trim((string) $user->name);
+        return HelpdeskTicketIdentity::isCreator($record, auth()->user());
     }
 }

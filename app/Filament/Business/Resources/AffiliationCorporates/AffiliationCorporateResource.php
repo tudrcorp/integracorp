@@ -13,19 +13,24 @@ use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\Statu
 use App\Filament\Business\Resources\AffiliationCorporates\Schemas\AffiliationCorporateForm;
 use App\Filament\Business\Resources\AffiliationCorporates\Schemas\AffiliationCorporateInfolist;
 use App\Filament\Business\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
+use App\Filament\Business\Resources\Concerns\ConfiguresBusinessGlobalSearch;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\AffiliationCorporate;
+use App\Support\Filament\BusinessGlobalSearch;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use UnitEnum;
 
 class AffiliationCorporateResource extends Resource
 {
     use AuthorizesDepartmentNavigation;
+    use ConfiguresBusinessGlobalSearch;
 
     protected static ?string $model = AffiliationCorporate::class;
 
@@ -36,6 +41,81 @@ class AffiliationCorporateResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
 
     protected static string|UnitEnum|null $navigationGroup = 'AFILIACIONES';
+
+    protected static ?string $recordTitleAttribute = 'name_corporate';
+
+    protected static int $globalSearchResultsLimit = 8;
+
+    protected static ?int $globalSearchSort = 40;
+
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchSelectColumns(): array
+    {
+        return [
+            'id',
+            'code',
+            'name_corporate',
+            'rif',
+            'email',
+            'full_name_contact',
+            'nro_identificacion_contact',
+            'status',
+            'code_agency',
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchTextColumns(): array
+    {
+        return ['name_corporate', 'full_name_contact', 'email'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchCodeColumns(): array
+    {
+        return ['code', 'code_agency', 'owner_code'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchDocumentColumns(): array
+    {
+        return ['rif', 'nro_identificacion_contact'];
+    }
+
+    protected static function businessGlobalSearchExtraConstraints(Builder $query, string $term): void
+    {
+        $query->orWhereHas('corporateAffiliates', function (Builder $affiliates) use ($term): void {
+            $affiliates->where(function (Builder $inner) use ($term): void {
+                BusinessGlobalSearch::applyTextOrCodeMatch($inner, ['first_name', 'last_name'], $term);
+                BusinessGlobalSearch::applyNormalizedDocumentMatch($inner, ['nro_identificacion', 'document'], $term);
+            });
+        });
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        if (! $record instanceof AffiliationCorporate) {
+            return [];
+        }
+
+        return [
+            'Código' => filled($record->code) ? (string) $record->code : '—',
+            'RIF' => filled($record->rif) ? (string) $record->rif : '—',
+            'Agencia' => filled($record->code_agency) ? (string) $record->code_agency : '—',
+            'Estatus' => filled($record->status) ? (string) $record->status : '—',
+        ];
+    }
 
     /**
      * Muestra un badge con la palabra NEW y el conteo de afiliados

@@ -2089,6 +2089,11 @@
     background-color: rgb(74 222 128);
   }
 
+  .fi-ta-row.fi-helpdesk-ta-sla-breached,
+  .fi-ta-record.fi-helpdesk-ta-sla-breached {
+    box-shadow: inset 0 0 0 1px rgb(239 68 68 / 0.35);
+  }
+
   /* Helpdesk: pestaña tipo de ticket */
   .fi-helpdesk-ticket-type-intro {
     border-radius: 1rem;
@@ -10076,3 +10081,11 @@
 }
 
 
+
+/* Menú Acciones iOS — estructura comercial / afiliaciones */
+@layer components {
+  .fi-commercial-structure-ios-actions-trigger,
+  .fi-ios-actions-menu-trigger {
+    border-radius: 9999px !important;
+  }
+}

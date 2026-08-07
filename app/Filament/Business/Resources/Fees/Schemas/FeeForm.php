@@ -2,23 +2,23 @@
 
 namespace App\Filament\Business\Resources\Fees\Schemas;
 
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Schema;
-use App\Models\Fee;
 use App\Models\AgeRange;
 use App\Models\Coverage;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Fee;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class FeeForm
 {
     public static function configure(Schema $schema): Schema
     {
         return $schema
-        ->components([
+            ->components([
                 Section::make('ESTRUCTURA DE PLANES, EDADES Y COBERTURAS')
                     ->description('Este formulario funciona como un configurar de planes. Puede Crear Rango de edades y Coberturas asociadas a un plan creado previamente. Campo Requerido(*)')
                     ->icon('heroicon-m-book-open')
@@ -33,7 +33,8 @@ class FeeForm
                                     } else {
                                         $parte_entera = Fee::max('id');
                                     }
-                                    return 'TDEC-FA-000' . $parte_entera + 1;
+
+                                    return 'TDEC-FA-000'.$parte_entera + 1;
                                 })
                                 ->required()
                                 ->disabled()
@@ -58,7 +59,8 @@ class FeeForm
                                                     } else {
                                                         $parte_entera = AgeRange::max('id');
                                                     }
-                                                    return 'TDEC-RE-000' . $parte_entera + 1;
+
+                                                    return 'TDEC-RE-000'.$parte_entera + 1;
                                                 })
                                                 ->required()
                                                 ->disabled()
@@ -83,8 +85,8 @@ class FeeForm
                                                 ->numeric()
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
-                                                    'numeric'  => 'Debe ser un número entero',
-                                                    'regex'    => 'Rango de edad inválido',
+                                                    'numeric' => 'Debe ser un número entero',
+                                                    'regex' => 'Rango de edad inválido',
                                                 ])
                                                 ->regex('/^\d{1,3}$/')
                                                 ->prefixIcon('heroicon-m-shield-check')
@@ -97,14 +99,14 @@ class FeeForm
                                                 ->required()
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
-                                                    'numeric'  => 'Debe ser un número entero',
-                                                    'regex'    => 'Rango de edad inválido',
+                                                    'numeric' => 'Debe ser un número entero',
+                                                    'regex' => 'Rango de edad inválido',
                                                 ])
                                                 ->regex('/^\d{1,3}$/')
                                                 ->prefixIcon('heroicon-m-shield-check')
                                                 ->maxLength(255),
                                             Hidden::make('status')->default('ACTIVO'),
-                                            Hidden::make('created_by')->default(Auth::user()->name)
+                                            Hidden::make('created_by')->default(Auth::user()->name),
                                         ])->columnSpanFull(),
                                     ])->columnSpanFull()->columns(3),
                             ])
@@ -113,7 +115,7 @@ class FeeForm
                             ->required(),
                         Select::make('coverage_id')
                             ->label('Covertura')
-                            ->relationship('coverage', 'price')
+                            ->relationship('coverageRecord', 'price')
                             ->preload()
                             ->searchable()
                             ->createOptionForm([
@@ -131,7 +133,8 @@ class FeeForm
                                                     } else {
                                                         $parte_entera = Coverage::max('id');
                                                     }
-                                                    return 'TDEC-CO-000' . $parte_entera + 1;
+
+                                                    return 'TDEC-CO-000'.$parte_entera + 1;
                                                 })
                                                 ->required()
                                                 ->disabled()
@@ -156,10 +159,10 @@ class FeeForm
                                                     'required' => 'Campo requerido',
                                                 ]),
                                             Hidden::make('status')->default('ACTIVO'),
-                                            Hidden::make('created_by')->default(Auth::user()->name)
+                                            Hidden::make('created_by')->default(Auth::user()->name),
                                         ])->columnSpanFull(),
                                         hidden::make('status')->default('ACTIVO'),
-                                        hidden::make('created_by')->default(Auth::user()->name)
+                                        hidden::make('created_by')->default(Auth::user()->name),
                                     ])->columnSpanFull()->columns(3),
                             ]),
 

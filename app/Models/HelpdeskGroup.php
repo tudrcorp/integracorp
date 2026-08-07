@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Support\HelpdeskBusinessTicketCreationGate;
 use Illuminate\Database\Eloquent\Model;
 
 class HelpdeskGroup extends Model
@@ -14,7 +13,6 @@ class HelpdeskGroup extends Model
     protected $fillable = [
         'name',
         'status',
-        'total_tickets_assigned',
         'team_members',
         'created_by',
         'updated_by',
@@ -22,7 +20,6 @@ class HelpdeskGroup extends Model
 
     protected $casts = [
         'team_members' => 'array',
-        'total_tickets_assigned' => 'integer',
     ];
 
     public function isActive(): bool
@@ -47,18 +44,5 @@ class HelpdeskGroup extends Model
             },
             $members
         ), static fn (int $id): bool => $id > 0)));
-    }
-
-    public function ticketsCreatedCount(): int
-    {
-        $creatorNames = HelpdeskBusinessTicketCreationGate::creatorNamesForGroup($this);
-
-        if ($creatorNames === []) {
-            return 0;
-        }
-
-        return HelpDesk::query()
-            ->whereIn('created_by', $creatorNames)
-            ->count();
     }
 }
