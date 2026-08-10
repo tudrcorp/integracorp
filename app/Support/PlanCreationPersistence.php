@@ -14,12 +14,6 @@ use Illuminate\Support\Facades\Auth;
 
 class PlanCreationPersistence
 {
-    private const PACKAGE_QUOTE_AGE_RANGE = '1 a 50';
-
-    private const PACKAGE_QUOTE_AGE_INIT = 1;
-
-    private const PACKAGE_QUOTE_AGE_END = 50;
-
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
@@ -373,50 +367,15 @@ class PlanCreationPersistence
     }
 
     /**
+     * Persiste tarifas planas de paquete (`fees.coverage_id` nulo) sobre los rangos
+     * de edad elegidos en el formulario, asociándolos al plan (p. ej. `plan_id` 0 → id del plan).
+     *
      * @param  list<array<string, mixed>>  $coverageRows
      */
     private static function syncPackageQuoteFees(Plan $plan, array $coverageRows): void
     {
-        $rate = self::resolvePackageQuoteRate($coverageRows);
+        $syncedAgeRangeIds = [];
 
-        if ($rate === null) {
-            return;
-        }
-
-        $ageRange = self::ensurePackageAgeRange($plan);
-
-        $fee = Fee::query()
-            ->where('age_range_id', $ageRange->id)
-            ->whereNull('coverage_id')
-            ->first();
-
-        if ($fee === null) {
-            $fee = new Fee;
-            $fee->age_range_id = $ageRange->id;
-            $fee->coverage_id = null;
-            $fee->code = self::generateFeeCode();
-        }
-
-        $fee->price = $rate;
-        $fee->range = self::PACKAGE_QUOTE_AGE_RANGE;
-        $fee->coverage = null;
-        $fee->status = 'ACTIVO';
-
-        if (blank($fee->created_by)) {
-            $fee->created_by = Auth::user()?->name;
-        }
-
-        $fee->save();
-
-        $ageRange->fee = (string) $rate;
-        $ageRange->save();
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $coverageRows
-     */
-    private static function resolvePackageQuoteRate(array $coverageRows): ?float
-    {
         foreach ($coverageRows as $coverageRow) {
             if (! is_array($coverageRow)) {
                 continue;
@@ -427,40 +386,81 @@ class PlanCreationPersistence
                     continue;
                 }
 
+                $ageRangeId = $ageRateRow['age_range_id'] ?? null;
                 $rate = $ageRateRow['rate'] ?? null;
 
-                if (is_numeric($rate)) {
-                    return (float) $rate;
+                if (blank($ageRangeId) || ! is_numeric($rate)) {
+                    continue;
                 }
+
+                $ageRange = AgeRange::query()->find($ageRangeId);
+
+                if ($ageRange === null) {
+                    continue;
+                }
+
+                $canClaimAgeRange = (int) $ageRange->plan_id === 0
+                    || blank($ageRange->plan_id)
+                    || (int) $ageRange->plan_id === (int) $plan->id;
+
+                if (! $canClaimAgeRange) {
+                    continue;
+                }
+
+                $ageRange->plan_id = $plan->id;
+                $ageRange->fee = (string) $rate;
+                $ageRange->status = 'ACTIVO';
+
+                if (blank($ageRange->code)) {
+                    $ageRange->code = self::generateAgeRangeCode();
+                }
+
+                if (blank($ageRange->created_by)) {
+                    $ageRange->created_by = Auth::user()?->name;
+                }
+
+                $ageRange->save();
+
+                $syncedAgeRangeIds[] = (int) $ageRange->id;
+
+                $fee = Fee::query()
+                    ->where('age_range_id', $ageRange->id)
+                    ->whereNull('coverage_id')
+                    ->first();
+
+                if ($fee === null) {
+                    $fee = new Fee;
+                    $fee->age_range_id = $ageRange->id;
+                    $fee->coverage_id = null;
+                    $fee->code = self::generateFeeCode();
+                }
+
+                $fee->price = $rate;
+                $fee->range = $ageRange->range;
+                $fee->coverage = null;
+                $fee->status = 'ACTIVO';
+
+                if (blank($fee->created_by)) {
+                    $fee->created_by = Auth::user()?->name;
+                }
+
+                $fee->save();
             }
         }
 
-        return null;
-    }
-
-    private static function ensurePackageAgeRange(Plan $plan): AgeRange
-    {
-        $ageRange = AgeRange::query()->firstOrNew([
-            'plan_id' => $plan->id,
-            'range' => self::PACKAGE_QUOTE_AGE_RANGE,
-        ]);
-
-        if (blank($ageRange->code)) {
-            $ageRange->code = self::generateAgeRangeCode();
+        if ($syncedAgeRangeIds === []) {
+            return;
         }
 
-        $ageRange->age_init = self::PACKAGE_QUOTE_AGE_INIT;
-        $ageRange->age_end = self::PACKAGE_QUOTE_AGE_END;
-        $ageRange->coverage_id = null;
-        $ageRange->status = 'ACTIVO';
-
-        if (blank($ageRange->created_by)) {
-            $ageRange->created_by = Auth::user()?->name;
-        }
-
-        $ageRange->save();
-
-        return $ageRange;
+        Fee::query()
+            ->whereNull('coverage_id')
+            ->whereIn('age_range_id', function ($query) use ($plan): void {
+                $query->select('id')
+                    ->from('age_ranges')
+                    ->where('plan_id', $plan->id);
+            })
+            ->whereNotIn('age_range_id', array_values(array_unique($syncedAgeRangeIds)))
+            ->delete();
     }
 
     private static function generateFeeCode(): string

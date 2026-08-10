@@ -17,3 +17,14 @@ it('configura el schema del plan incluyendo coberturas generales', function (): 
 
     expect($configured)->toBeInstanceOf(Schema::class);
 });
+
+it('asigna al select el rango o cobertura creados en modo paquete', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Plans/Schemas/PlanForm.php');
+
+    expect($source)
+        ->toContain("\$set('coverage_id', \$coverage->id)")
+        ->toContain("\$set('age_range_id', \$ageRange->id)")
+        ->toContain("'plan_id' => 0")
+        ->toContain('create_general_plan_age_range')
+        ->toContain('create_general_plan_coverage');
+});
