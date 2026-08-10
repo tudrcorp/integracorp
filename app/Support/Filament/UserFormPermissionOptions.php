@@ -59,6 +59,8 @@ class UserFormPermissionOptions
         'zoneresource' => ['gestion-de-carpetas'],
         'affiliateresource' => ['afiliados-individuales'],
         'affiliatecorporateresource' => ['afiliados-corporativos'],
+        'nuevosnegociosassociateresource' => ['afiliados-nuevos-negocios'],
+        'companyassociateresource' => ['asociados'],
         'operationinventoryresource' => ['inventario-general'],
         'operationinventoryentryresource' => ['entradas-inventario'],
         'operationinventoryoutflowresource' => ['salidas-inventario'],

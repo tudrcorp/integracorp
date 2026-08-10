@@ -32,15 +32,92 @@ it('prepara atributos del plan removiendo campos del formulario', function (): v
     expect($prepared['type'])->toBe('BASICO');
 });
 
-it('persiste tarifa de paquete en fees con cobertura nula y rango 1 a 50', function (): void {
+it('persiste tarifa de paquete en fees con cobertura nula sobre el rango elegido', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Support/PlanCreationPersistence.php');
 
     expect($source)
         ->toContain('syncPackageQuoteFees')
-        ->toContain("PACKAGE_QUOTE_AGE_RANGE = '1 a 50'")
         ->toContain('->whereNull(\'coverage_id\')')
-        ->toContain('createFees: false');
+        ->toContain('createFees: false')
+        ->not->toContain("PACKAGE_QUOTE_AGE_RANGE = '1 a 50'")
+        ->not->toContain('ensurePackageAgeRange');
 });
+
+it('asocia el rango de edad del catalogo al plan en modo paquete', function (): void {
+    $user = \App\Models\User::query()->first();
+
+    if ($user === null) {
+        $this->markTestSkipped('No hay usuarios en la base de datos.');
+    }
+
+    $this->actingAs($user);
+
+    $benefit = \App\Models\Benefit::query()->first();
+
+    if ($benefit === null) {
+        $this->markTestSkipped('No hay beneficios en la base de datos.');
+    }
+
+    $coverage = \App\Models\Coverage::query()->create([
+        'price' => 1000,
+        'plan_id' => null,
+        'status' => 'ACTIVO',
+        'created_by' => $user->name,
+    ]);
+
+    $ageRange = \App\Models\AgeRange::query()->create([
+        'range' => '0 A 99',
+        'age_init' => 0,
+        'age_end' => 99,
+        'plan_id' => 0,
+        'status' => 'ACTIVO',
+        'created_by' => $user->name,
+    ]);
+
+    $plan = \App\Models\Plan::query()->create([
+        'code' => PlanCreationPersistence::generatePlanCode(),
+        'description' => 'Plan test asociacion rango',
+        'type' => 'BASICO',
+        'business_unit_id' => 1,
+        'status' => 'ACTIVO',
+        'created_by' => $user->name,
+    ]);
+
+    PlanCreationPersistence::persistRelations($plan, [
+        'is_package' => true,
+        'package_benefit_ids' => [$benefit->id],
+        'general_coverages' => [
+            [
+                'coverage_id' => $coverage->id,
+                'age_rates' => [
+                    [
+                        'age_range_id' => $ageRange->id,
+                        'rate' => 180,
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    $ageRange->refresh();
+    $coverage->refresh();
+
+    expect((int) $ageRange->plan_id)->toBe((int) $plan->id)
+        ->and((string) $ageRange->fee)->toBe('180')
+        ->and($ageRange->range)->toBe('0 A 99')
+        ->and((int) $coverage->plan_id)->toBe((int) $plan->id);
+
+    expect(\App\Models\AgeRange::query()
+        ->where('plan_id', $plan->id)
+        ->where('range', '1 a 50')
+        ->exists())->toBeFalse();
+
+    expect(\App\Models\Fee::query()
+        ->where('age_range_id', $ageRange->id)
+        ->whereNull('coverage_id')
+        ->where('price', 180)
+        ->exists())->toBeTrue();
+})->group('integration-db');
 
 it('hidrata datos del formulario de edicion para planes en modo paquete', function (): void {
     $plan = \App\Models\Plan::query()

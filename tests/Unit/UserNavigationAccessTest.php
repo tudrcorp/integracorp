@@ -169,6 +169,9 @@ it('expone permisos asignables para operaciones marketing y proyectos', function
             \App\Filament\Operations\Resources\Affiliates\AffiliateResource::class
         ))->toBe(['afiliados-individuales'])
         ->and(DepartmentNavigationPermissionRegistry::slugsFor(
+            \App\Filament\Operations\Resources\CompanyAssociates\NuevosNegociosAssociateResource::class
+        ))->toBe(['afiliados-nuevos-negocios'])
+        ->and(DepartmentNavigationPermissionRegistry::slugsFor(
             \App\Filament\Projects\Resources\ProjectManagement\Projects\ProjectResource::class
         ))->toBe(['proyectos']);
 });

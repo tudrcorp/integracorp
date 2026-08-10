@@ -18,6 +18,7 @@ it('configura búsqueda global en panel operaciones y recursos clave', function 
     $otherPaths = [
         dirname(__DIR__, 2).'/app/Filament/Operations/Resources/Affiliates/AffiliateResource.php',
         dirname(__DIR__, 2).'/app/Filament/Operations/Resources/AffiliateCorporates/AffiliateCorporateResource.php',
+        dirname(__DIR__, 2).'/app/Filament/Operations/Resources/CompanyAssociates/NuevosNegociosAssociateResource.php',
         dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicineCases/TelemedicineCaseResource.php',
     ];
 

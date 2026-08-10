@@ -487,6 +487,7 @@ class PlanForm
                                                                     'range' => $data['range'],
                                                                     'age_init' => $data['age_init'],
                                                                     'age_end' => $data['age_end'],
+                                                                    'plan_id' => 0,
                                                                     'status' => 'ACTIVO',
                                                                     'created_by' => Auth::user()->name,
                                                                 ]);
@@ -560,14 +561,13 @@ class PlanForm
                                                                 Hidden::make('created_by')->default(Auth::user()->name),
                                                             ])->columnSpanFull()->columns(1),
                                                     ])
-                                                    ->action(function (array $data) {
-                                                        $coverage = Coverage::create([
+                                                    ->action(function (array $data, Set $set): void {
+                                                        $coverage = Coverage::query()->create([
                                                             'price' => $data['price'],
                                                             'status' => 'ACTIVO',
                                                             'created_by' => Auth::user()->name,
                                                         ]);
-
-                                                        return $coverage;
+                                                        $set('coverage_id', $coverage->id);
                                                     }),
                                             ]))
                                             ->live()
@@ -617,16 +617,16 @@ class PlanForm
                                                                 Hidden::make('created_by')->default(Auth::user()->name),
                                                             ])->columnSpanFull(),
                                                     ])
-                                                    ->action(function (array $data) {
-                                                        $ageRange = AgeRange::create([
+                                                    ->action(function (array $data, Set $set): void {
+                                                        $ageRange = AgeRange::query()->create([
                                                             'range' => $data['range'],
                                                             'age_init' => $data['age_init'],
                                                             'age_end' => $data['age_end'],
+                                                            'plan_id' => 0,
                                                             'status' => 'ACTIVO',
                                                             'created_by' => Auth::user()->name,
                                                         ]);
-
-                                                        return $ageRange;
+                                                        $set('age_range_id', $ageRange->id);
                                                     }),
 
                                             ]))

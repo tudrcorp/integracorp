@@ -113,6 +113,7 @@ use App\Filament\Operations\Resources\AccountsPayables\AccountsPayableResource;
 use App\Filament\Operations\Resources\AccountsReceivables\AccountsReceivableResource;
 use App\Filament\Operations\Resources\AffiliateCorporates\AffiliateCorporateResource;
 use App\Filament\Operations\Resources\Affiliates\AffiliateResource;
+use App\Filament\Operations\Resources\CompanyAssociates\NuevosNegociosAssociateResource;
 use App\Filament\Operations\Resources\CorporateAllies\CorporateAllyResource;
 use App\Filament\Operations\Resources\DoctorNurses\DoctorNurseResource;
 use App\Filament\Operations\Resources\DownloadZones\DownloadZoneResource as OperationsDownloadZoneResource;
@@ -264,6 +265,7 @@ final class DepartmentNavigationPermissionRegistry
         OperationsCalendariosTdg::class => ['calendarios-tdg'],
         AffiliateResource::class => ['afiliados-individuales'],
         AffiliateCorporateResource::class => ['afiliados-corporativos'],
+        NuevosNegociosAssociateResource::class => ['afiliados-nuevos-negocios'],
         OperationInventoryResource::class => ['inventario-general'],
         OperationInventoryEntryResource::class => ['entradas-inventario'],
         OperationInventoryOutflowResource::class => ['salidas-inventario'],

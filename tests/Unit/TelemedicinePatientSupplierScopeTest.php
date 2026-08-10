@@ -29,6 +29,9 @@ it('asigna supplier_id al asociar afiliados como pacientes', function (): void {
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Services/AssociateAffiliateCorporateWithTelemedicinePatientService.php'))
         ->toContain("'supplier_id' => Auth::user()?->supplier_id");
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Services/AssociateCompanyAssociateWithTelemedicinePatientService.php'))
+        ->toContain("'supplier_id' => Auth::user()?->supplier_id");
 });
 
 it('persiste supplier_id al crear paciente manualmente', function (): void {
