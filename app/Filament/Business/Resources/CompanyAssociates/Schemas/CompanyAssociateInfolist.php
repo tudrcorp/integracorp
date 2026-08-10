@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\CompanyAssociates\Schemas;
 
-use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Grid;
@@ -145,22 +144,29 @@ class CompanyAssociateInfolist
                 Grid::make(1)->extraAttributes(['class' => self::IOS_INNER_CLASS])->schema([
                     Grid::make()->columns(['default' => 1, 'lg' => 3])->schema([
                         TextEntry::make('vaucher_ils')
-                            ->label('Código')
+                            ->label('Código voucher')
                             ->badge()
-                            ->color('info')
-                            ->placeholder('Sin voucher asignado'),
+                            ->color('success')
+                            ->weight('bold')
+                            ->size('lg')
+                            ->copyable()
+                            ->placeholder('Sin voucher asignado')
+                            ->columnSpan(['default' => 1, 'lg' => 3]),
                         TextEntry::make('date_init')
                             ->label('Fecha de inicio')
+                            ->badge()
+                            ->color('info')
+                            ->weight('bold')
+                            ->size('lg')
                             ->placeholder('—'),
                         TextEntry::make('date_end')
                             ->label('Fecha fin')
+                            ->badge()
+                            ->color('warning')
+                            ->weight('bold')
+                            ->size('lg')
                             ->placeholder('—'),
                     ]),
-                    ImageEntry::make('document_ils')
-                        ->label('Imagen del voucher')
-                        ->disk('public')
-                        ->height(320)
-                        ->visible(fn ($record): bool => filled($record->document_ils)),
                 ]),
             ]);
     }

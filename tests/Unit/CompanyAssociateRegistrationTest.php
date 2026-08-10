@@ -167,7 +167,12 @@ it('recurso filament de asociados lista relaciones con empresa y responsable', f
     expect($infolist)
         ->toContain('Tab::make(\'Voucher ILS\')')
         ->toContain('vaucher_ils')
-        ->toContain('document_ils');
+        ->toContain('date_init')
+        ->toContain('date_end')
+        ->toContain("->size('lg')")
+        ->toContain("->weight('bold')")
+        ->not->toContain('document_ils')
+        ->not->toContain('ImageEntry::make');
 });
 
 it('panel de responsables incluye modal de voucher ils', function (): void {
