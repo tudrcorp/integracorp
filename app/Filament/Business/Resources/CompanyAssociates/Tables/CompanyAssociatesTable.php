@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\CompanyAssociates\Tables;
 
+use App\Enums\CompanyAssociateStatus;
 use App\Filament\Business\Resources\CompanyAssociates\Actions\CompanyAssociatesTableActions;
 use App\Models\CompanyAssociate;
 use App\Support\Companies\CompanyAssociatesGroupPalette;
@@ -68,6 +69,13 @@ class CompanyAssociatesTable
                         ->color('gray')
                         ->searchable()
                         ->copyable(),
+                    TextColumn::make('status')
+                        ->label('Estatus')
+                        ->badge()
+                        ->formatStateUsing(fn ($state): string => CompanyAssociateStatus::labelFromMixed($state))
+                        ->color(fn ($state): string => CompanyAssociateStatus::filamentColorFromMixed($state))
+                        ->sortable()
+                        ->searchable(),
                     TextColumn::make('age')
                         ->label('Edad')
                         ->suffix(' años')
@@ -145,6 +153,11 @@ class CompanyAssociatesTable
                         ->icon(Heroicon::OutlinedClock)
                         ->dateTime('d/m/Y H:i:s')
                         ->sortable(),
+                    TextColumn::make('annulment_reason')
+                        ->label('Razón anulación')
+                        ->limit(40)
+                        ->placeholder('—')
+                        ->toggleable(isToggledHiddenByDefault: true),
                     ImageColumn::make('identity_document')
                         ->label('Documento')
                         ->disk('public')
@@ -172,6 +185,10 @@ class CompanyAssociatesTable
                     ->preload()
                     ->native(false)
                     ->hidden($scopedResponsible),
+                SelectFilter::make('status')
+                    ->label('Estatus')
+                    ->options(CompanyAssociateStatus::options())
+                    ->native(false),
                 TernaryFilter::make('has_voucher_ils')
                     ->label('Voucher ILS')
                     ->placeholder('Todos')
@@ -196,6 +213,7 @@ class CompanyAssociatesTable
                     ViewAction::make()
                         ->label('Ver asociado'),
                     CompanyAssociatesTableActions::uploadVoucherIlsAction(),
+                    CompanyAssociatesTableActions::annulAssociateAction(),
                     CompanyAssociatesTableActions::generateCarnetAction(),
                     CompanyAssociatesTableActions::previewInclusionQrAction(),
                     CompanyAssociatesTableActions::openCarnetAction(),
@@ -203,6 +221,7 @@ class CompanyAssociatesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    CompanyAssociatesTableActions::exportCsvBulkAction(),
                     CompanyAssociatesTableActions::sendDocumentsBulkAction(),
                 ]),
             ]);

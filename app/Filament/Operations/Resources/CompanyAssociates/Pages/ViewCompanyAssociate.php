@@ -8,9 +8,11 @@ use App\Filament\Operations\Resources\CompanyAssociates\NuevosNegociosAssociateR
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Models\CompanyAssociate;
 use App\Services\AssociateCompanyAssociateWithTelemedicinePatientService;
+use App\Support\Companies\CompanyAssociatePageHeader;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -117,37 +119,11 @@ class ViewCompanyAssociate extends ViewRecord
         ];
     }
 
-    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
+    public function getTitle(): string|Htmlable
     {
+        /** @var CompanyAssociate $associate */
         $associate = $this->getRecord();
-        $fullName = $associate->full_name ?? 'Sin Nombre';
 
-        return new \Illuminate\Support\HtmlString(
-            '<div style="display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; gap: 2px; padding: 12px 0;">'.
-                '<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">'.
-                'Ficha del Asociado — Nuevos Negocios'.
-                '</span>'.
-                '<span class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">'.
-                e((string) $fullName).
-                '</span>'.
-                '<div style="display: flex; align-items: center; margin-top: 8px;">'.
-                '<span style="'.
-                'background-color: #28cd41; '.
-                'color: #ffffff; '.
-                'padding: 6px 16px; '.
-                'border-radius: 50px; '.
-                'font-size: 0.8rem; '.
-                'font-weight: 700; '.
-                'display: inline-flex; '.
-                'align-items: center; '.
-                'gap: 6px; '.
-                'box-shadow: 0 4px 12px rgba(40, 205, 65, 0.35); '.
-                'border: 1px solid rgba(255, 255, 255, 0.2);'.
-                '">'.
-                '<span style="font-size: 10px;">●</span> ASOCIADO'.
-                '</span>'.
-                '</div>'.
-                '</div>'
-        );
+        return CompanyAssociatePageHeader::make($associate, 'Nuevos Negocios');
     }
 }

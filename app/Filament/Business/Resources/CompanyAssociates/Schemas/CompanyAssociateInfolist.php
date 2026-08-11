@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\CompanyAssociates\Schemas;
 
+use App\Enums\CompanyAssociateStatus;
+use App\Models\CompanyAssociate;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Grid;
@@ -21,11 +23,16 @@ class CompanyAssociateInfolist
 
     private const IOS_INNER_CLASS = 'rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
 
+    private const ANNULMENT_SECTION_CLASS = 'rounded-[1.5rem] border border-rose-200/90 bg-gradient-to-b from-rose-50 to-white shadow-[0_12px_40px_-12px_rgba(190,18,60,0.18)] dark:from-rose-950/40 dark:to-slate-950/95 dark:border-rose-500/30 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+
+    private const ANNULMENT_INNER_CLASS = 'rounded-[1.25rem] border border-rose-200/80 bg-white/90 p-4 shadow-inner dark:border-rose-500/20 dark:bg-rose-950/20 sm:p-5';
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
             ->columns(1)
             ->components([
+                self::annulmentSection(),
                 Tabs::make('companyAssociateInfolistTabs')
                     ->columnSpanFull()
                     ->persistTab()
@@ -53,6 +60,34 @@ class CompanyAssociateInfolist
             ]);
     }
 
+    private static function annulmentSection(): Section
+    {
+        return Section::make('Anulación')
+            ->description('Este asociado fue anulado. El día consumido ya fue devuelto al responsable.')
+            ->icon(Heroicon::OutlinedNoSymbol)
+            ->columnSpanFull()
+            ->extraAttributes(['class' => self::ANNULMENT_SECTION_CLASS])
+            ->visible(fn (?CompanyAssociate $record): bool => $record?->isAnnulled() ?? false)
+            ->schema([
+                Grid::make(1)->extraAttributes(['class' => self::ANNULMENT_INNER_CLASS])->schema([
+                    Grid::make()->columns(['default' => 1, 'lg' => 3])->schema([
+                        TextEntry::make('annulment_reason')
+                            ->label('Razón de la anulación')
+                            ->weight('semibold')
+                            ->color('danger')
+                            ->columnSpan(['default' => 1, 'lg' => 2])
+                            ->placeholder('Sin razón registrada'),
+                        TextEntry::make('annulled_at')
+                            ->label('Anulado el')
+                            ->dateTime('d/m/Y H:i:s')
+                            ->badge()
+                            ->color('danger')
+                            ->placeholder('—'),
+                    ]),
+                ]),
+            ]);
+    }
+
     private static function associateSection(): Section
     {
         return Section::make('Datos del asociado')
@@ -63,6 +98,11 @@ class CompanyAssociateInfolist
                     Grid::make()->columns(['default' => 1, 'lg' => 3])->schema([
                         TextEntry::make('full_name')->label('Nombre y Apellido')->weight('semibold')->columnSpan(['default' => 1, 'lg' => 2]),
                         TextEntry::make('identity_card')->label('Documento de identidad')->badge()->color('gray')->copyable(),
+                        TextEntry::make('status')
+                            ->label('Estatus')
+                            ->badge()
+                            ->formatStateUsing(fn ($state): string => CompanyAssociateStatus::labelFromMixed($state))
+                            ->color(fn ($state): string => CompanyAssociateStatus::filamentColorFromMixed($state)),
                         TextEntry::make('birth_date')->label('Fecha de nacimiento')->date('d/m/Y'),
                         TextEntry::make('age')->label('Edad')->suffix(' años')->badge()->color('info'),
                         TextEntry::make('sex')->label('Sexo')->badge()->color('gray'),
@@ -188,6 +228,16 @@ class CompanyAssociateInfolist
                         TextEntry::make('created_at')
                             ->label('Creado en sistema')
                             ->dateTime('d/m/Y H:i:s'),
+                        TextEntry::make('annulment_reason')
+                            ->label('Razón de anulación')
+                            ->columnSpanFull()
+                            ->placeholder('—')
+                            ->visible(fn (?CompanyAssociate $record): bool => $record?->isAnnulled() ?? false),
+                        TextEntry::make('annulled_at')
+                            ->label('Anulado el')
+                            ->dateTime('d/m/Y H:i:s')
+                            ->placeholder('—')
+                            ->visible(fn (?CompanyAssociate $record): bool => $record?->isAnnulled() ?? false),
                     ]),
                 ]),
             ]);

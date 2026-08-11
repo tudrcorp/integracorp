@@ -11,6 +11,7 @@ use App\Models\CompanyResponsible;
 use App\Models\State;
 use App\Support\Companies\CompanyAssociateRegistrar;
 use App\Support\Companies\CompanyAssociateRegistrationNotifier;
+use App\Support\Companies\CompanyAssociateStatusManager;
 use App\Support\SecurityAudit;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
@@ -243,6 +244,7 @@ class CompanyAssociateRegistration extends Component
                     'identity_documents' => $documentPaths,
                     'registered_at' => $registeredAt,
                     'registration_period_days' => CompanyAssociateRegistrar::DAYS_PER_REGISTRATION,
+                    'status' => CompanyAssociateStatusManager::defaultStatus(),
                 ]);
 
                 $associateId = $associate->getKey();

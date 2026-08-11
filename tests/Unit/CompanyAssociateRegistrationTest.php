@@ -171,6 +171,9 @@ it('recurso filament de asociados lista relaciones con empresa y responsable', f
         ->toContain('date_end')
         ->toContain("->size('lg')")
         ->toContain("->weight('bold')")
+        ->toContain('annulmentSection')
+        ->toContain('annulment_reason')
+        ->toContain('isAnnulled')
         ->not->toContain('document_ils')
         ->not->toContain('ImageEntry::make');
 });
@@ -233,7 +236,7 @@ it('tabla de asociados soporta vista agrupada y filtrada por responsable', funct
     expect($cluster)
         ->toContain('Nuevos Negocios')
         ->toContain('protected static string|UnitEnum|null $navigationGroup = null;')
-        ->toContain('protected static ?int $navigationSort = 4;')
+        ->toContain('protected static ?int $navigationSort = 5;')
         ->toContain('SubNavigationPosition::Top');
 
     expect($provider)->toContain('discoverClusters');
@@ -260,10 +263,14 @@ it('tabla de asociados soporta vista agrupada y filtrada por responsable', funct
         ->toContain('ils_status')
         ->toContain('scopedResponsible')
         ->toContain('CompanyAssociatesTableActions::uploadVoucherIlsAction')
+        ->toContain('CompanyAssociatesTableActions::annulAssociateAction')
         ->toContain('CompanyAssociatesTableActions::generateCarnetAction')
         ->toContain('CompanyAssociatesTableActions::previewInclusionQrAction')
         ->toContain('CompanyAssociatesTableActions::openCarnetAction')
         ->toContain('CompanyAssociatesTableActions::sendDocumentsBulkAction')
+        ->toContain('CompanyAssociatesTableActions::exportCsvBulkAction')
+        ->toContain("TextColumn::make('status')")
+        ->toContain("SelectFilter::make('status')")
         ->toContain('BulkActionGroup::make');
 });
 
@@ -278,7 +285,8 @@ it('soportes de voucher ils y carnet centralizan la logica de negocio', function
         ->toContain('document_ils')
         ->toContain("'image/jpeg'")
         ->toContain("'image/png'")
-        ->toContain("'application/pdf'");
+        ->toContain("'application/pdf'")
+        ->toContain('CompanyAssociateStatusManager::markActiveAfterVoucherIls');
 
     expect($carnet)
         ->toContain('TAR-NB-')
@@ -292,6 +300,7 @@ it('soportes de voucher ils y carnet centralizan la logica de negocio', function
 
     expect($actions)
         ->toContain('uploadVoucherIls')
+        ->toContain('annulAssociate')
         ->toContain('generateCarnet')
         ->toContain('previewInclusionQr')
         ->toContain('openCarnet')

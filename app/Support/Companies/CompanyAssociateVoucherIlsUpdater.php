@@ -89,6 +89,8 @@ final class CompanyAssociateVoucherIlsUpdater
             'date_end' => self::formatDateForStorage($data['dateEnd']),
             'document_ils' => self::resolveDocumentPath($data['document_ils'] ?? null, $associate->document_ils),
         ]);
+
+        CompanyAssociateStatusManager::markActiveAfterVoucherIls($associate->fresh() ?? $associate);
     }
 
     private static function resolveDocumentPath(mixed $uploaded, ?string $existing): ?string
