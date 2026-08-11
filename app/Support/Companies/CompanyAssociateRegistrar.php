@@ -77,7 +77,9 @@ final class CompanyAssociateRegistrar
 
     public static function consumedDaysByResponsible(CompanyResponsible $responsible): int
     {
-        return (int) $responsible->associates()->count() * self::DAYS_PER_REGISTRATION;
+        return (int) $responsible->associates()
+            ->consumesRegistrationDay()
+            ->count() * self::DAYS_PER_REGISTRATION;
     }
 
     public static function availableDaysForResponsible(CompanyResponsible $responsible): int

@@ -255,6 +255,10 @@ Route::get('business/export-business-appointments-csv', App\Http\Controllers\Bus
     ->middleware(['web', 'auth'])
     ->name('business.business-appointments.export-csv');
 
+Route::get('business/export-company-associates-csv', App\Http\Controllers\CompanyAssociateExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.company-associates.export-csv');
+
 Route::get('business/export-corporate-quotes-csv', App\Http\Controllers\CorporateQuoteExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('business.corporate-quotes.export-csv');

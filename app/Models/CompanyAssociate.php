@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\CompanyAssociateStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -33,6 +35,9 @@ class CompanyAssociate extends Model
         'registration_start_date',
         'registration_end_date',
         'registration_period_days',
+        'status',
+        'annulment_reason',
+        'annulled_at',
         'vaucher_ils',
         'date_init',
         'date_end',
@@ -51,9 +56,31 @@ class CompanyAssociate extends Model
             'registration_start_date' => 'date',
             'registration_end_date' => 'date',
             'registration_period_days' => 'integer',
+            'status' => CompanyAssociateStatus::class,
+            'annulled_at' => 'datetime',
             'flight_date' => 'date',
             'identity_documents' => 'array',
         ];
+    }
+
+    /**
+     * @param  Builder<CompanyAssociate>  $query
+     * @return Builder<CompanyAssociate>
+     */
+    public function scopeConsumesRegistrationDay(Builder $query): Builder
+    {
+        return $query->where('status', '!=', CompanyAssociateStatus::Anulado->value);
+    }
+
+    public function isAnnulled(): bool
+    {
+        return $this->status === CompanyAssociateStatus::Anulado;
+    }
+
+    public function canBeAnnulled(): bool
+    {
+        return $this->status instanceof CompanyAssociateStatus
+            && $this->status->canBeAnnulled();
     }
 
     /**
