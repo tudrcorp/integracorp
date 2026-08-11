@@ -25,7 +25,7 @@ it('AssociateAffiliateWithTelemedicinePatientService valida afiliación y estado
     expect($service)
         ->toContain('if ($affiliate->affiliation === null)')
         ->toContain("if (\$affiliate->status !== 'ACTIVO')")
-        ->toContain("TelemedicinePatient::updateOrCreate(['email' => \$emailTitular], \$attributes)")
+        ->toContain('TelemedicinePatientAssociationResolver::upsertByDocument')
         ->toContain("'type_affiliation' => 'INDIVIDUAL'")
         ->toContain("'supplier_id' => Auth::user()?->supplier_id");
 });

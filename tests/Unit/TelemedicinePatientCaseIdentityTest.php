@@ -223,5 +223,6 @@ it('el comando de auditoría detecta inconsistencias históricas', function (): 
         ->toContain('NODA EDUARD')
         ->toContain('TROCONIZ ESTRELLA')
         ->toContain('AUDIT-1')
+        ->toContain('telemedicine:remediate-shared-email-patient-identity')
         ->not->toContain('AUDIT-2');
 });

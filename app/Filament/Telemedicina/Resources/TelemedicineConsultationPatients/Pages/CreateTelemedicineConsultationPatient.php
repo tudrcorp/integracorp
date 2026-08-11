@@ -39,6 +39,7 @@ use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
+use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -49,6 +50,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
 
 class CreateTelemedicineConsultationPatient extends CreateRecord
 {
@@ -82,12 +84,28 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
             return;
         }
 
-        // Refrescar el caso desde BD para asegurar el motivo asignado por el analista.
+        // Refrescar el caso y el paciente desde BD (evita sesión con identidad desfasada).
         $freshCase = TelemedicineCase::query()->find($this->case->id);
         if ($freshCase !== null) {
             $this->case = $freshCase;
             session(['case' => $freshCase]);
         }
+
+        $freshPatient = TelemedicinePatient::query()->find($this->case->telemedicine_patient_id ?? $this->patient->id);
+        if ($freshPatient === null) {
+            Notification::make()
+                ->title('Error: paciente no encontrado.')
+                ->body('No se pudo refrescar el paciente vinculado al caso.')
+                ->danger()
+                ->send();
+
+            $this->redirect($this->getResource()::getUrl('index'));
+
+            return;
+        }
+
+        $this->patient = $freshPatient;
+        session(['patient' => $freshPatient]);
 
         // 2. Llama al mount original de Filament cuando la sesión está lista.
         parent::mount();
@@ -381,6 +399,35 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $casePatientId = (int) ($this->case?->telemedicine_patient_id ?? 0);
+        $formPatientId = (int) ($data['telemedicine_patient_id'] ?? 0);
+        $sessionPatientId = (int) ($this->patient?->id ?? 0);
+
+        if ($casePatientId < 1) {
+            throw ValidationException::withMessages([
+                'telemedicine_patient_id' => ['El caso no tiene un paciente vinculado.'],
+            ]);
+        }
+
+        if (($formPatientId > 0 && $formPatientId !== $casePatientId)
+            || ($sessionPatientId > 0 && $sessionPatientId !== $casePatientId)) {
+            throw ValidationException::withMessages([
+                'telemedicine_patient_id' => ['La identidad de la sesión no coincide con el paciente del caso. Vuelva a abrir la consulta desde el caso.'],
+            ]);
+        }
+
+        $patient = TelemedicinePatient::query()->find($casePatientId);
+
+        if ($patient === null) {
+            throw ValidationException::withMessages([
+                'telemedicine_patient_id' => ['No se encontró el paciente vinculado al caso.'],
+            ]);
+        }
+
+        $this->patient = $patient;
+        session(['patient' => $patient]);
+        $data = TelemedicinePatientIdentity::enforceConsultationIdentity($data, $patient);
+
         if (isset($data['feedbackOne']) && $data['feedbackOne'] == true) {
             $caseId = (int) ($data['telemedicine_case_id'] ?? 0);
             TelemedicineCaseDischargeGuard::assertCanBeDischarged($caseId);
@@ -405,7 +452,6 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         isset($data['consult_specialist']) ? session()->put('consult_specialist', $data['consult_specialist']) : null;
         isset($data['other_specialist']) ? session()->put('other_specialist', $data['other_specialist']) : null;
 
-        // dd($data);
         return $data;
     }
 
