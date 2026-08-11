@@ -58,8 +58,13 @@ class TelemedicinePatientForm
                                     TextInput::make('nro_identificacion')
                                         ->label('Numero de Identificación')
                                         ->prefixIcon('heroicon-m-identification')
-                                        ->helperText('Requerido si el paciente es mayor de 18 años')
-                                        ->required(),
+                                        ->helperText('Requerido si el paciente es mayor de 18 años. No reutilice la ficha de un familiar.')
+                                        ->required()
+                                        ->unique(table: TelemedicinePatient::class, column: 'nro_identificacion', ignoreRecord: true)
+                                        ->validationMessages([
+                                            'required' => 'Campo Requerido',
+                                            'unique' => 'Ya existe un paciente de telemedicina con esta cédula.',
+                                        ]),
                                     DatePicker::make('date_birth')
                                         ->label('Fecha de Nacimiento')
                                         ->prefixIcon('heroicon-m-calendar-days')

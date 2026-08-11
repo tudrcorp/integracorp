@@ -53,7 +53,7 @@ it('AssociateCompanyAssociateWithTelemedicinePatientService valida empresa y usa
         ->toContain('$associate->state?->country_id')
         ->toContain('$associate->state?->region_id')
         ->toContain('ubicación completa')
-        ->toContain("TelemedicinePatient::updateOrCreate(['email' => \$emailKey], \$attributes)")
+        ->toContain('TelemedicinePatientAssociationResolver::upsertByDocument')
         ->toContain("'type_affiliation' => 'NUEVOS NEGOCIOS'")
         ->toContain("'supplier_id' => Auth::user()?->supplier_id")
         ->toContain("'status_affiliation' => 'ACTIVO'")

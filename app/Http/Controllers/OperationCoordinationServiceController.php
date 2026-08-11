@@ -7,6 +7,7 @@ use App\Models\TelemedicineGeneralService;
 use App\Models\TelemedicineServiceList;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Telemedicine\TelemedicineCaseIdentity;
+use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,18 @@ class OperationCoordinationServiceController extends Controller
                 $service = TelemedicineServiceList::find($record['telemedicine_service_list_id']);
                 $identity = TelemedicineCaseIdentity::coordinationIdentity($record, $patient);
                 $generalServiceName = self::resolveGeneralServiceName($record);
+
+                $consultationDocument = TelemedicinePatientIdentity::normalizeDocument($record['nro_identificacion'] ?? null);
+                $patientDocument = TelemedicinePatientIdentity::normalizeDocument($patient['nro_identificacion'] ?? null);
+
+                if ($consultationDocument !== '' && $patientDocument !== '' && $consultationDocument !== $patientDocument) {
+                    Log::warning('OperationCoordinationService: cédula de consulta distinta al paciente FK; se usa el paciente', [
+                        'telemedicine_patient_id' => $patient['id'] ?? null,
+                        'consultation_ci' => $consultationDocument,
+                        'patient_ci' => $patientDocument,
+                        'telemedicine_case_id' => $record['telemedicine_case_id'] ?? null,
+                    ]);
+                }
 
                 $payload = [
 

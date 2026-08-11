@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Affiliate;
-use App\Models\TelemedicinePatient;
+use App\Support\Telemedicine\TelemedicinePatientAssociationResolver;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -15,7 +15,7 @@ final class AssociateAffiliateWithTelemedicinePatientService
     /**
      * Registra o actualiza un paciente de telemedicina a partir de un afiliado individual.
      *
-     * @return array{patient: TelemedicinePatient, was_recently_created: bool}
+     * @return array{patient: \App\Models\TelemedicinePatient, was_recently_created: bool}
      */
     public static function run(Affiliate $affiliate, ?string $createdBy = null): array
     {
@@ -66,13 +66,6 @@ final class AssociateAffiliateWithTelemedicinePatientService
             'supplier_id' => Auth::user()?->supplier_id,
         ];
 
-        $patient = $emailTitular !== ''
-            ? TelemedicinePatient::updateOrCreate(['email' => $emailTitular], $attributes)
-            : TelemedicinePatient::create($attributes);
-
-        return [
-            'patient' => $patient,
-            'was_recently_created' => $patient->wasRecentlyCreated,
-        ];
+        return TelemedicinePatientAssociationResolver::upsertByDocument($attributes);
     }
 }

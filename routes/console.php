@@ -196,6 +196,14 @@ Schedule::job(new SendDailyAuditSummary, 'system')
     ->when($dailyAuditSummaryIsActive);
 
 /**
+ * Auditoría diaria de identidad paciente ↔ caso/consulta/servicio en telemedicina.
+ * No auto-repara: solo detecta divergencias (p. ej. familiar atendido bajo otra ficha).
+ */
+Schedule::command('telemedicine:audit-patient-case-identity')
+    ->dailyAt('6:30')
+    ->name('telemedicine-audit-patient-case-identity');
+
+/**
  * Alerta diaria de stock bajo del inventario Diagnomóvil.
  * Revisa productos activos con existencia total menor o igual al umbral
  * (configurable en Parámetros de Inventario) y notifica por WhatsApp y correo
