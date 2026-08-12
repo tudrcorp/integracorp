@@ -54,8 +54,10 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('infra-layer--database')
         ->toContain('Apps (fila 1) → API (fila 2) → BD (fila 3)')
         ->toContain('@json($slides)')
-        ->not->toContain('color-scheme: dark')
-        ->not->toContain('bg-gray-950');
+        ->toContain('partials.presentation-theme-styles')
+        ->toContain('partials.presentation-theme-script')
+        ->toContain('data-theme')
+        ->toContain('color-scheme');
 
     expect($headerContents)
         ->toContain('id="btn-overview"')
@@ -64,7 +66,8 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('logoNewTDG.png')
         ->toContain('imagotipo.png')
         ->toContain('INTEGRACORP')
-        ->toContain('data-presentation-logout');
+        ->toContain('data-presentation-logout')
+        ->toContain('data-presentation-theme-toggle');
 });
 
 it('define doce diapositivas estructuradas de avances tecnologicos', function (): void {

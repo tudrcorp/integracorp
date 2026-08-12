@@ -12,6 +12,10 @@ class TechnologyAdvancesPresentationController extends Controller
 {
     public function __invoke(): View
     {
+        if (app()->bound('debugbar')) {
+            app('debugbar')->disable();
+        }
+
         return view('technology-advances-presentation', [
             'slides' => TechnologyAdvancesPresentationSlides::all(),
             'access' => PresentationHubGate::access(),

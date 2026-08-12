@@ -6,6 +6,7 @@ use App\Http\Controllers\AffiliationBusinessDocumentsController;
 use App\Http\Controllers\AffiliationCorporateBusinessDocumentsController;
 use App\Http\Controllers\AffiliationCorporateFichaPdfController;
 use App\Http\Controllers\AffiliationFichaPdfController;
+use App\Http\Controllers\AgenciasTdevPresentationController;
 use App\Http\Controllers\ApiBcvController;
 use App\Http\Controllers\Business\CorporateAgendaInvitationResponseController;
 use App\Http\Controllers\Business\MarkHelpdeskTicketInProgressController;
@@ -2100,6 +2101,8 @@ Route::get('/dpto-tecnologia-sistemas/logout', [PresentationHubController::class
 Route::get('/scrum-desarrollo-apps', ScrumPresentationController::class)
     ->middleware(EnsurePresentationHubAccess::class);
 Route::get('/avances-tecnologicos', TechnologyAdvancesPresentationController::class)
+    ->middleware(EnsurePresentationHubAccess::class);
+Route::get('/agencias-tdev', AgenciasTdevPresentationController::class)
     ->middleware(EnsurePresentationHubAccess::class);
 
 Route::get('/carta-bienvenida-agencia', function () {

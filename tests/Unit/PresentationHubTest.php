@@ -61,6 +61,11 @@ it('expone la vista presentation-hub con liquid glass y lista de urls', function
         ->toContain('liquid-glass')
         ->toContain('Panel de Sistemas')
         ->toContain('Departamento de Sistemas')
+        ->toContain('section-meta')
+        ->toContain('width: 100%')
+        ->toContain('list-scroller')
+        ->toContain('scrollList')
+        ->toContain('list-scroll-controls')
         ->toContain('presentaciones-sistemas-bg.png')
         ->toContain('openSection')
         ->toContain('openResource')
@@ -68,7 +73,11 @@ it('expone la vista presentation-hub con liquid glass y lista de urls', function
         ->toContain('theme-toggle__icon')
         ->toContain("data-theme', 'light'")
         ->toContain('position: absolute')
+        ->toContain('position: fixed')
         ->toContain('html[data-theme="dark"] .theme-toggle::after')
+        ->toContain('theme-color')
+        ->toContain('phpdebugbar')
+        ->toContain('backdrop-filter: none')
         ->toContain('visual-copy')
         ->toContain('phoneDisplay')
         ->toContain('telefonoCorporativo');
@@ -76,6 +85,7 @@ it('expone la vista presentation-hub con liquid glass y lista de urls', function
     expect($catalogContents)
         ->toContain('Scrum (desarrollo de apps)')
         ->toContain('Última presentación (avances tecnológicos)')
+        ->toContain('Agencias TDEV (desarrollo)')
         ->toContain('Manuales de Tecnología')
         ->toContain('manualItems');
 });
@@ -85,10 +95,11 @@ it('expone un catalogo escalable con presentaciones y manuales', function (): vo
 
     expect($sections)->toHaveCount(2)
         ->and(collect($sections)->pluck('id')->all())->toBe(['presentaciones', 'manuales'])
-        ->and($sections[0]['items'])->toHaveCount(2)
+        ->and($sections[0]['items'])->toHaveCount(3)
         ->and($sections[1]['items'])->toBeArray()
         ->and(PresentationHubGate::isAllowedPath('/scrum-desarrollo-apps'))->toBeTrue()
         ->and(PresentationHubGate::isAllowedPath('/avances-tecnologicos'))->toBeTrue()
+        ->and(PresentationHubGate::isAllowedPath('/agencias-tdev'))->toBeTrue()
         ->and(PresentationHubGate::isAllowedPath('/manuales/no-existe'))->toBeFalse();
 });
 

@@ -15,6 +15,10 @@ class PresentationHubController extends Controller
 {
     public function index(Request $request): View
     {
+        if (app()->bound('debugbar')) {
+            app('debugbar')->disable();
+        }
+
         $intended = (string) $request->query('intended', '');
 
         if ($intended !== '' && ! PresentationHubGate::isAllowedPath($intended)) {

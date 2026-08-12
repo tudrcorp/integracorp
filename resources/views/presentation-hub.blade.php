@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="#F4F5F7" data-theme-color>
+    <meta name="color-scheme" content="light">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Panel de Sistemas — TUDRGROUP · INTEGRACORP</title>
     <link rel="icon" href="{{ asset('image/imagotipo.png') }}" type="image/png">
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -16,6 +19,13 @@
                 var saved = localStorage.getItem('systems_panel_theme');
                 var theme = (saved === 'dark' || saved === 'light') ? saved : 'light';
                 document.documentElement.setAttribute('data-theme', theme);
+                document.documentElement.style.colorScheme = theme;
+                var metaColor = document.querySelector('meta[data-theme-color]');
+                var metaScheme = document.querySelector('meta[name="color-scheme"]');
+                var metaStatus = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+                if (metaColor) metaColor.setAttribute('content', theme === 'dark' ? '#050505' : '#F4F5F7');
+                if (metaScheme) metaScheme.setAttribute('content', theme);
+                if (metaStatus) metaStatus.setAttribute('content', theme === 'dark' ? 'black-translucent' : 'default');
             } catch (e) {
                 document.documentElement.setAttribute('data-theme', 'light');
             }
@@ -60,32 +70,30 @@
         }
 
         html[data-theme="dark"] {
+            color-scheme: dark;
             --bg-0: #050505;
             --bg-1: #0a0a0c;
             --ink: #F5F5F7;
             --muted: #A1A1A6;
             --line: rgba(255, 255, 255, 0.12);
-            --shell-bg: linear-gradient(145deg, rgba(24, 24, 27, 0.92), rgba(10, 10, 12, 0.96));
-            --shell-border: rgba(255, 255, 255, 0.08);
-            --shell-shadow: 0 40px 100px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-            --content-bg: linear-gradient(180deg, rgba(17, 17, 19, 0.35), rgba(17, 17, 19, 0.05));
-            --glass-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-            --glass-border: rgba(255, 255, 255, 0.14);
-            --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 10px 30px rgba(0, 0, 0, 0.25);
+            --shell-bg: #0c0c0e;
+            --shell-border: rgba(255, 255, 255, 0.06);
+            --shell-shadow: 0 40px 100px rgba(0, 0, 0, 0.72);
+            --content-bg: #0c0c0e;
+            --glass-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+            --glass-border: rgba(255, 255, 255, 0.10);
+            --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
             --ghost-bg: rgba(255, 255, 255, 0.04);
             --ghost-hover: rgba(255, 255, 255, 0.08);
             --field-bg: rgba(0, 0, 0, 0.28);
             --field-text: #fff;
-            --modal-bg: linear-gradient(160deg, rgba(30, 30, 32, 0.92), rgba(14, 14, 16, 0.96));
-            --modal-overlay: rgba(0, 0, 0, 0.62);
+            --modal-bg: linear-gradient(160deg, rgba(22, 22, 24, 0.98), rgba(10, 10, 12, 0.99));
+            --modal-overlay: rgba(0, 0, 0, 0.72);
             --chip-bg: rgba(255, 255, 255, 0.04);
             --arrow-bg: rgba(0, 0, 0, 0.35);
-            --glow: rgba(252, 163, 17, 0.35);
-            --page-bg:
-                radial-gradient(900px 500px at 50% 40%, rgba(252, 163, 17, 0.12), transparent 55%),
-                radial-gradient(700px 420px at 80% 80%, rgba(0, 194, 184, 0.08), transparent 50%),
-                linear-gradient(160deg, #000 0%, #0a0a0c 55%, #050505 100%);
-            --grid-line: rgba(255, 255, 255, 0.03);
+            --glow: rgba(252, 163, 17, 0.10);
+            --page-bg: #050505;
+            --grid-line: rgba(255, 255, 255, 0.025);
             --idle-bg: rgba(251, 113, 133, 0.12);
             --idle-border: rgba(251, 113, 133, 0.45);
             --idle-text: #fecdd3;
@@ -97,6 +105,7 @@
         html, body {
             height: 100%;
             margin: 0;
+            background: var(--page-bg);
         }
 
         body {
@@ -106,6 +115,16 @@
             overflow: hidden;
             -webkit-font-smoothing: antialiased;
             transition: background 0.25s ease, color 0.25s ease;
+        }
+
+        /* Laravel Debugbar: evita el tab blanco sobre el panel oscuro */
+        div.phpdebugbar,
+        .phpdebugbar,
+        .phpdebugbar-openhandler,
+        #phpdebugbar,
+        #phpdebugbar-open {
+            display: none !important;
+            visibility: hidden !important;
         }
 
         [x-cloak] { display: none !important; }
@@ -158,6 +177,10 @@
             filter: blur(8px);
             pointer-events: none;
             z-index: 0;
+        }
+
+        html[data-theme="dark"] .shell::after {
+            opacity: 0.35;
         }
 
         .visual,
@@ -235,8 +258,9 @@
             justify-content: center;
             padding: clamp(18px, 3vw, 42px) clamp(16px, 2.5vw, 36px);
             padding-top: max(clamp(18px, 3vw, 42px), 58px);
-            padding-right: max(clamp(16px, 2.5vw, 36px), 64px);
             background: var(--content-bg);
+            min-width: 0;
+            width: 100%;
         }
 
         .eyebrow {
@@ -274,10 +298,10 @@
         }
 
         .theme-toggle {
-            --glass-orb-size: 46px;
+            --glass-orb-size: 44px;
             position: absolute;
-            top: 14px;
-            right: 14px;
+            top: 10px;
+            right: 10px;
             z-index: 5;
             width: var(--glass-orb-size);
             height: var(--glass-orb-size);
@@ -300,9 +324,11 @@
                 0 2px 6px rgba(20, 33, 61, 0.08);
             backdrop-filter: blur(16px) saturate(150%);
             -webkit-backdrop-filter: blur(16px) saturate(150%);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
             isolation: isolate;
             overflow: hidden;
+            -webkit-appearance: none;
+            appearance: none;
         }
 
         .theme-toggle::before {
@@ -354,39 +380,31 @@
 
         html[data-theme="dark"] .theme-toggle {
             color: #F5F5F7;
-            background:
-                radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.08) 0%, transparent 42%),
-                linear-gradient(145deg, rgba(48, 52, 58, 0.92), rgba(28, 30, 34, 0.96) 55%, rgba(36, 38, 44, 0.94));
-            box-shadow:
-                inset 0 1px 1px rgba(255, 255, 255, 0.08),
-                inset 0 -10px 16px rgba(0, 0, 0, 0.45),
-                inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-                0 12px 26px rgba(0, 0, 0, 0.42),
-                0 2px 8px rgba(0, 0, 0, 0.30);
+            background: #1a1a1e;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
         }
 
-        html[data-theme="dark"] .theme-toggle::before {
-            background: radial-gradient(circle at 72% 78%, rgba(252, 163, 17, 0.14), transparent 46%);
-        }
-
+        html[data-theme="dark"] .theme-toggle::before,
         html[data-theme="dark"] .theme-toggle::after {
+            content: none;
             display: none;
         }
 
         html[data-theme="dark"] .theme-toggle:hover {
-            box-shadow:
-                inset 0 1px 1px rgba(255, 255, 255, 0.12),
-                inset 0 -10px 16px rgba(0, 0, 0, 0.48),
-                inset 0 0 0 1px rgba(255, 255, 255, 0.12),
-                0 14px 28px rgba(0, 0, 0, 0.48),
-                0 4px 10px rgba(0, 0, 0, 0.34);
+            background: #222228;
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.55);
         }
 
         @media (max-width: 900px) {
             .theme-toggle {
-                top: 12px;
-                right: 12px;
-                --glass-orb-size: 42px;
+                position: fixed;
+                top: max(12px, env(safe-area-inset-top, 0px));
+                right: max(12px, env(safe-area-inset-right, 0px));
+                z-index: 1000;
+                --glass-orb-size: 44px;
             }
         }
 
@@ -404,6 +422,106 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .list-scroller-shell {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px;
+            align-items: stretch;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .list-scroller {
+            --list-visible: 3;
+            --list-gap: 12px;
+            --list-card-slot: 5.35rem;
+            display: flex;
+            flex-direction: column;
+            gap: var(--list-gap);
+            width: 100%;
+            min-width: 0;
+            max-height: calc(var(--list-visible) * var(--list-card-slot) + (var(--list-visible) - 1) * var(--list-gap));
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+            scroll-snap-type: y proximity;
+            padding-right: 2px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(252, 163, 17, 0.45) transparent;
+        }
+
+        .list-scroller::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .list-scroller::-webkit-scrollbar-thumb {
+            background: rgba(252, 163, 17, 0.4);
+            border-radius: 999px;
+        }
+
+        .list-scroller > .link-card {
+            flex: 0 0 auto;
+            scroll-snap-align: start;
+            min-height: var(--list-card-slot);
+        }
+
+        .list-scroll-controls {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            gap: 8px;
+            align-self: center;
+        }
+
+        .list-scroll-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: var(--ghost-bg);
+            color: var(--ink);
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+        }
+
+        .list-scroll-btn:hover {
+            background: var(--ghost-hover);
+            border-color: rgba(252, 163, 17, 0.45);
+            transform: translateY(-1px);
+        }
+
+        .list-scroll-btn:disabled {
+            opacity: 0.35;
+            cursor: default;
+            transform: none;
+        }
+
+        @media (min-width: 901px) {
+            .list-scroll-controls {
+                display: flex;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .list-scroller-shell {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .list-scroller {
+                scrollbar-width: none;
+            }
+
+            .list-scroller::-webkit-scrollbar {
+                display: none;
+            }
         }
 
         .liquid-glass {
@@ -416,13 +534,15 @@
 
         .link-card {
             width: 100%;
+            max-width: none;
+            min-width: 0;
             text-align: left;
             border-radius: 18px;
             padding: 16px 16px 16px 18px;
             color: inherit;
             cursor: pointer;
             display: grid;
-            grid-template-columns: auto 1fr auto;
+            grid-template-columns: auto minmax(0, 1fr) auto;
             gap: 14px;
             align-items: center;
             transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
@@ -463,6 +583,11 @@
             font-size: 0.82rem;
         }
 
+        .link-card > div:nth-child(2) {
+            min-width: 0;
+            width: 100%;
+        }
+
         .arrow-pill {
             width: 36px;
             height: 36px;
@@ -482,9 +607,17 @@
 
         .section-meta {
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: column;
+            align-items: stretch;
             gap: 8px;
-            margin-top: 8px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .section-meta .chip {
+            width: 100%;
+            justify-content: center;
+            box-sizing: border-box;
         }
 
         .chip {
@@ -550,9 +683,12 @@
         }
 
         .content-scroll {
-            max-height: min(52vh, 420px);
-            overflow: auto;
-            padding-right: 4px;
+            max-height: none;
+            overflow: visible;
+            padding-right: 0;
+            width: 100%;
+            min-width: 0;
+            align-self: stretch;
         }
 
         .footer-note {
@@ -719,12 +855,24 @@
             .shell {
                 grid-template-columns: 1fr;
                 min-height: auto;
+                overflow: visible;
+                width: 100%;
             }
             .visual {
                 min-height: 260px;
             }
+            .content {
+                width: 100%;
+                padding-left: clamp(14px, 4vw, 20px);
+                padding-right: clamp(14px, 4vw, 20px);
+            }
             .content h1 {
                 max-width: none;
+            }
+            .list,
+            .content-scroll,
+            .link-card {
+                width: 100%;
             }
         }
     </style>
@@ -790,20 +938,6 @@
             @endif
 
             <div class="meta-row">
-                <button
-                    type="button"
-                    class="ghost-btn"
-                    x-show="activeSection"
-                    x-cloak
-                    x-on:click="backToSections()"
-                    aria-label="Volver a categorías"
-                    title="Volver"
-                >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-                </button>
-                <a href="/" class="ghost-btn" x-show="!activeSection" aria-label="Inicio" title="Inicio">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-                </a>
                 <div class="meta-text">
                     @if ($authenticated)
                         Sesión activa
@@ -843,37 +977,68 @@
                 </div>
 
                 @foreach ($sections as $sectionIndex => $section)
-                    <div class="list" x-show="activeSectionId === @js($section['id'])" x-cloak>
+                    <div x-show="activeSectionId === @js($section['id'])" x-cloak>
                         <button type="button" class="panel-back" x-on:click="backToSections()">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
                             Todas las categorías
                         </button>
 
-                        @forelse ($section['items'] as $itemIndex => $item)
-                            <button
-                                type="button"
-                                class="link-card liquid-glass {{ ($item['status'] ?? '') !== 'ready' || empty($item['url']) ? 'is-disabled' : '' }}"
-                                x-on:click="openResource(sections[{{ $sectionIndex }}].items[{{ $itemIndex }}])"
+                        <div class="list-scroller-shell">
+                            <div
+                                class="list list-scroller"
+                                data-list-scroller
+                                x-ref="listScroller{{ $section['id'] }}"
                             >
-                                <div class="link-index">{{ $itemIndex + 1 }}</div>
-                                <div>
-                                    <h3>{{ $item['title'] }}</h3>
-                                    <p>{{ $item['subtitle'] }}</p>
-                                    @if (($item['status'] ?? '') !== 'ready' || empty($item['url']))
-                                        <div class="section-meta">
-                                            <span class="chip">Próximamente</span>
+                                @forelse ($section['items'] as $itemIndex => $item)
+                                    <button
+                                        type="button"
+                                        class="link-card liquid-glass {{ ($item['status'] ?? '') !== 'ready' || empty($item['url']) ? 'is-disabled' : '' }}"
+                                        x-on:click="openResource(sections[{{ $sectionIndex }}].items[{{ $itemIndex }}])"
+                                    >
+                                        <div class="link-index">{{ $itemIndex + 1 }}</div>
+                                        <div>
+                                            <h3>{{ $item['title'] }}</h3>
+                                            <p>{{ $item['subtitle'] }}</p>
+                                            @if (($item['status'] ?? '') !== 'ready' || empty($item['url']))
+                                                <div class="section-meta">
+                                                    <span class="chip">Próximamente</span>
+                                                </div>
+                                            @endif
                                         </div>
-                                    @endif
-                                </div>
-                                <div class="arrow-pill" aria-hidden="true">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-                                </div>
-                            </button>
-                        @empty
-                            <div class="empty-state liquid-glass">
-                                Aún no hay recursos publicados en esta categoría. Cuando se creen, aparecerán aquí automáticamente.
+                                        <div class="arrow-pill" aria-hidden="true">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                                        </div>
+                                    </button>
+                                @empty
+                                    <div class="empty-state liquid-glass">
+                                        Aún no hay recursos publicados en esta categoría. Cuando se creen, aparecerán aquí automáticamente.
+                                    </div>
+                                @endforelse
                             </div>
-                        @endforelse
+
+                            @if (count($section['items']) > 3)
+                                <div class="list-scroll-controls" aria-label="Controles de desplazamiento de la lista">
+                                    <button
+                                        type="button"
+                                        class="list-scroll-btn"
+                                        title="Subir"
+                                        aria-label="Desplazar lista hacia arriba"
+                                        x-on:click="scrollList('listScroller{{ $section['id'] }}', -1)"
+                                    >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="list-scroll-btn"
+                                        title="Bajar"
+                                        aria-label="Desplazar lista hacia abajo"
+                                        x-on:click="scrollList('listScroller{{ $section['id'] }}', 1)"
+                                    >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 @endforeach
             </div>
@@ -989,6 +1154,21 @@ function presentationHub(config) {
         applyTheme(theme) {
             const next = theme === 'dark' ? 'dark' : 'light';
             document.documentElement.setAttribute('data-theme', next);
+            document.documentElement.style.colorScheme = next;
+
+            const metaColor = document.querySelector('meta[data-theme-color]');
+            const metaScheme = document.querySelector('meta[name="color-scheme"]');
+            const metaStatus = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+            if (metaColor) {
+                metaColor.setAttribute('content', next === 'dark' ? '#050505' : '#F4F5F7');
+            }
+            if (metaScheme) {
+                metaScheme.setAttribute('content', next);
+            }
+            if (metaStatus) {
+                metaStatus.setAttribute('content', next === 'dark' ? 'black-translucent' : 'default');
+            }
+
             try {
                 localStorage.setItem('systems_panel_theme', next);
             } catch (e) {
@@ -1041,6 +1221,19 @@ function presentationHub(config) {
         backToSections() {
             this.activeSectionId = null;
             this.error = '';
+        },
+
+        scrollList(refName, direction) {
+            const el = this.$refs[refName];
+            if (! el) {
+                return;
+            }
+
+            const amount = Math.max(el.clientHeight * 0.9, 120);
+            el.scrollBy({
+                top: direction * amount,
+                behavior: 'smooth',
+            });
         },
 
         setMethod(method) {

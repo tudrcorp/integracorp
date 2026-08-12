@@ -1,11 +1,29 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="#F5F5F7" data-theme-color>
+    <meta name="color-scheme" content="light">
     <title>Scrum en el Desarrollo de Apps — INTEGRACORP · TUDRGROUP</title>
+        <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('systems_panel_theme');
+                var theme = (saved === 'dark' || saved === 'light') ? saved : 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+                document.documentElement.style.colorScheme = theme;
+                var metaColor = document.querySelector('meta[data-theme-color]');
+                var metaScheme = document.querySelector('meta[name="color-scheme"]');
+                if (metaColor) metaColor.setAttribute('content', theme === 'dark' ? '#050505' : '#F5F5F7');
+                if (metaScheme) metaScheme.setAttribute('content', theme);
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
     <link rel="icon" href="{{ asset('image/imagotipo.png') }}" type="image/png">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet">
@@ -432,6 +450,7 @@
         }
     </style>
     @include('partials.presentation-app-chrome-styles')
+    @include('partials.presentation-theme-styles')
 </head>
 <body class="min-h-screen select-none">
 
@@ -1194,6 +1213,7 @@
             updateUI();
         })();
     </script>
+    @include('partials.presentation-theme-script')
     @include('partials.presentation-idle-watchdog', [
         'isAuthenticated' => true,
         'idleTimeoutSeconds' => $idleTimeoutSeconds ?? \App\Support\PresentationHubGate::idleTimeoutSeconds(),
