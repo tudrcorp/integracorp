@@ -15,7 +15,9 @@ it('formulario publico de agentes tdev expone livewire, layout y ruta', function
         ->toContain('TdevAgencyRegistrar::registerAgent')
         ->toContain('startNewRegistration')
         ->toContain("'fullName' => ['required', 'string', 'max:255']")
-        ->toContain("layout('layouts.tdev-agent-registration')");
+        ->toContain("layout('layouts.tdev-agent-registration'")
+        ->toContain('faviconUrl')
+        ->toContain('faviconUrl()');
 
     expect($view)
         ->toContain('$agency->logoUrl()')
@@ -36,7 +38,10 @@ it('formulario publico de agentes tdev expone livewire, layout y ruta', function
         ->toContain('--accent: #2299A4')
         ->toContain('backdrop-filter: blur(40px)')
         ->toContain('liquid-orbs')
-        ->toContain('SF Pro Display');
+        ->toContain('SF Pro Display')
+        ->toContain('rel="icon"')
+        ->toContain('faviconUrl')
+        ->toContain('apple-touch-icon');
 
     expect($routes)
         ->toContain('/tdev/{token}')

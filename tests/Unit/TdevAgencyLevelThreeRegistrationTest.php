@@ -25,7 +25,9 @@ it('formulario publico de agencias tdev nivel 3 expone livewire, vista y ruta', 
         ->toContain('countryId')
         ->toContain('stateId')
         ->toContain('cityId')
-        ->toContain("layout('layouts.tdev-agent-registration')");
+        ->toContain("layout('layouts.tdev-agent-registration'")
+        ->toContain('faviconUrl')
+        ->toContain('parentAgency->faviconUrl()');
 
     expect($view)
         ->toContain('$parentAgency->logoUrl()')

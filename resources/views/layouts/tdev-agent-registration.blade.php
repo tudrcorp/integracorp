@@ -4,7 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Agente · Tu Doctor En Viajes</title>
+    <title>{{ $pageTitle ?? 'Tu Doctor En Viajes' }}</title>
+    @php
+        $favicon = $faviconUrl ?? asset('image/logo-tdev.png');
+    @endphp
+    <link rel="icon" href="{{ $favicon }}" type="image/png" sizes="any">
+    <link rel="apple-touch-icon" href="{{ $favicon }}">
     <script>
         (function () {
             const storageKey = 'tdev-agent-theme';

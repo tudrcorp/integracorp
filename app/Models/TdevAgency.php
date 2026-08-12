@@ -152,6 +152,11 @@ class TdevAgency extends Model
         return asset('storage/'.$this->logo);
     }
 
+    public function faviconUrl(): string
+    {
+        return $this->logoUrl() ?? asset('image/logo-tdev.png');
+    }
+
     /**
      * @param  Builder<TdevAgency>  $query
      * @return Builder<TdevAgency>
