@@ -126,6 +126,15 @@ Route::get('/plk/c/{id}', function ($id) {
 Route::get('/nb/{token}', App\Livewire\CompanyAssociateRegistration::class)
     ->name('company-associates.register');
 
+Route::get('/tdev/web/{token}', App\Livewire\TdevAgencyLanding::class)
+    ->name('tdev-agencies.landing');
+
+Route::get('/tdev/agencia/{token}', App\Livewire\TdevAgencyRegistration::class)
+    ->name('tdev-agencies.register');
+
+Route::get('/tdev/{token}', App\Livewire\TdevAgentRegistration::class)
+    ->name('tdev-agents.register');
+
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');

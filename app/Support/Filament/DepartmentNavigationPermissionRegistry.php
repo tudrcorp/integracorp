@@ -69,6 +69,7 @@ use App\Filament\Business\Resources\RenovationCorporates\RenovationCorporateReso
 use App\Filament\Business\Resources\Renovations\RenovationResource;
 use App\Filament\Business\Resources\States\StateResource;
 use App\Filament\Business\Resources\SystemAuditTraces\SystemAuditTraceResource;
+use App\Filament\Business\Resources\TdevAgencies\TdevAgencyResource;
 use App\Filament\Business\Resources\TravelAgencies\TravelAgencyResource;
 use App\Filament\Business\Resources\TravelAgents\TravelAgentResource;
 use App\Filament\Business\Resources\Users\UserResource;
@@ -183,6 +184,7 @@ final class DepartmentNavigationPermissionRegistry
         AgentResource::class => ['agentes-de-corretaje'],
         TravelAgencyResource::class => ['agencias-de-viaje'],
         TravelAgentResource::class => ['agentes-de-viaje'],
+        TdevAgencyResource::class => ['agencias-tdev'],
         WhiteCompanyResource::class => ['empresas-aliadas'],
         ProspectAgentResource::class => ['capacitacion'],
         BusinessAppointmentsResource::class => ['citas'],
