@@ -128,7 +128,8 @@ it('genera tokens y nivel 2 por defecto al crear agencia', function (): void {
         ->toContain('Str::uuid()')
         ->toContain('function agents()')
         ->toContain('function childAgencies()')
-        ->toContain('logoUrl');
+        ->toContain('logoUrl')
+        ->toContain('faviconUrl');
 });
 
 it('construye urls publicas de agentes y agencias nivel 3', function (): void {

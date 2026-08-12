@@ -32,6 +32,9 @@ class TdevAgencyLanding extends Component
     public function render(): View
     {
         return view('livewire.tdev-agency-landing')
-            ->layout('layouts.tdev-agent-registration');
+            ->layout('layouts.tdev-agent-registration', [
+                'faviconUrl' => $this->agency->faviconUrl(),
+                'pageTitle' => $this->agency->name.' · Tu Doctor En Viajes',
+            ]);
     }
 }

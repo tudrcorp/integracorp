@@ -274,6 +274,9 @@ class TdevAgencyRegistration extends Component
     public function render(): View
     {
         return view('livewire.tdev-agency-registration')
-            ->layout('layouts.tdev-agent-registration');
+            ->layout('layouts.tdev-agent-registration', [
+                'faviconUrl' => $this->parentAgency->faviconUrl(),
+                'pageTitle' => 'Registro de agencia · '.$this->parentAgency->name,
+            ]);
     }
 }

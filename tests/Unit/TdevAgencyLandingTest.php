@@ -15,7 +15,9 @@ it('pagina web publica de agencia tdev nivel 2 expone landing, botones y ruta', 
         ->toContain('registration_token')
         ->toContain('publicLevelThreeAgencyRegistrationUrl')
         ->toContain('publicAgentRegistrationUrl')
-        ->toContain("layout('layouts.tdev-agent-registration')");
+        ->toContain("layout('layouts.tdev-agent-registration'")
+        ->toContain('faviconUrl')
+        ->toContain('faviconUrl()');
 
     expect($view)
         ->toContain('h-dvh')
