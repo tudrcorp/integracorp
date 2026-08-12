@@ -18,12 +18,16 @@ use App\Filament\Business\Resources\TdevAgencies\Widgets\TdevAgencyStatsOverview
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\TdevAgency;
 use BackedEnum;
+use Filament\Navigation\NavigationItem;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\HtmlString;
 use UnitEnum;
+
+use function Filament\Support\original_request;
 
 class TdevAgencyResource extends Resource
 {
@@ -38,7 +42,7 @@ class TdevAgencyResource extends Resource
 
     protected static ?string $pluralModelLabel = 'agencias TDEV';
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingStorefront;
+    protected static string|BackedEnum|null $navigationIcon = null;
 
     protected static string|UnitEnum|null $navigationGroup = 'ESTRUCTURA COMERCIAL';
 
@@ -49,6 +53,39 @@ class TdevAgencyResource extends Resource
     protected static int $globalSearchResultsLimit = 8;
 
     protected static ?int $globalSearchSort = 95;
+
+    public static function getNavigationIcon(): string|BackedEnum|Htmlable|null
+    {
+        return new HtmlString(
+            '<img src="'.e(asset('image/IMG_0874.PNG')).'" alt="TDEV" class="fi-icon fi-size-lg h-6 w-6 object-contain" />'
+        );
+    }
+
+    /**
+     * @return array<NavigationItem>
+     */
+    public static function getNavigationItems(): array
+    {
+        if (! static::hasPage('index')) {
+            return [];
+        }
+
+        return [
+            NavigationItem::make(static::getNavigationLabel())
+                ->group(static::getNavigationGroup())
+                ->parentItem(static::getNavigationParentItem())
+                ->icon(static::getNavigationIcon())
+                ->activeIcon(static::getActiveNavigationIcon())
+                ->isActiveWhen(fn (): bool => original_request()->routeIs(static::getNavigationItemActiveRoutePattern()))
+                ->badge(static::getNavigationBadge(), color: static::getNavigationBadgeColor())
+                ->badgeTooltip(static::getNavigationBadgeTooltip())
+                ->sort(static::getNavigationSort())
+                ->url(static::getNavigationUrl())
+                ->extraAttributes([
+                    'class' => 'fi-tdev-agency-nav-item',
+                ]),
+        ];
+    }
 
     /**
      * @return list<string>
