@@ -17,12 +17,15 @@ it('registra la ruta scrum-desarrollo-apps sin nombre de ruta', function (): voi
 
 it('expone la vista scrum-presentation con navegación e interactividad liquid glass', function (): void {
     $viewPath = dirname(__DIR__, 2).'/resources/views/scrum-presentation.blade.php';
+    $headerPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-app-header.blade.php';
     $controllerPath = dirname(__DIR__, 2).'/app/Http/Controllers/ScrumPresentationController.php';
 
     expect(file_exists($viewPath))->toBeTrue()
+        ->and(file_exists($headerPath))->toBeTrue()
         ->and(file_exists($controllerPath))->toBeTrue();
 
     $viewContents = file_get_contents($viewPath);
+    $headerContents = file_get_contents($headerPath);
     $controllerContents = file_get_contents($controllerPath);
 
     expect($controllerContents)
@@ -36,18 +39,26 @@ it('expone la vista scrum-presentation con navegación e interactividad liquid g
         ->toContain('#FCA311')
         ->toContain('#14213D')
         ->toContain('#E5E5E5')
-        ->toContain('INTEGRACORP')
         ->toContain('TUDRGROUP')
-        ->toContain('logoNewTDG.png')
-        ->toContain('imagotipo.png')
         ->toContain('id="btn-next"')
         ->toContain('id="btn-prev"')
-        ->toContain('id="btn-overview"')
+        ->toContain('partials.presentation-app-header')
+        ->toContain('presentation-nav-desktop')
+        ->toContain('presentation-swipe-hint')
         ->toContain('data-play-waterfall')
         ->toContain('data-timeline-next')
         ->toContain('@json($slides)')
         ->not->toContain('color-scheme: dark')
         ->not->toContain('bg-gray-950');
+
+    expect($headerContents)
+        ->toContain('id="btn-overview"')
+        ->toContain('id="btn-fullscreen"')
+        ->toContain('id="slide-counter"')
+        ->toContain('logoNewTDG.png')
+        ->toContain('imagotipo.png')
+        ->toContain('INTEGRACORP')
+        ->toContain('data-presentation-logout');
 });
 
 it('define diez diapositivas estructuradas de la presentación Scrum', function (): void {
@@ -104,12 +115,22 @@ it('incluye el contenido clave de roles, artefactos, ciclo y caso delivery', fun
 });
 
 it('responde la ruta de presentación scrum con la vista liquid glass', function (): void {
-    $this->get('/scrum-desarrollo-apps')
+    $this->withSession([
+        \App\Support\PresentationHubGate::SESSION_KEY => [
+            'colaborador_id' => 1,
+            'full_name' => 'Tester',
+            'authenticated_at' => now()->toIso8601String(),
+        ],
+    ])->get('/scrum-desarrollo-apps')
         ->assertOk()
         ->assertSee('Desarrollo de Aplicaciones con Scrum', false)
         ->assertSee('INTEGRACORP', false)
         ->assertSee('TUDRGROUP', false)
         ->assertSee('liquid-glass', false)
+        ->assertSee('Sesión', false)
+        ->assertSee('Tester', false)
+        ->assertSee('Cerrar sesión', false)
+        ->assertSee('Desliza', false)
         ->assertSee('#FCA311', false)
         ->assertSee('#14213D', false);
 });

@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Scrum en el Desarrollo de Apps — INTEGRACORP · TUDRGROUP</title>
     <link rel="icon" href="{{ asset('image/imagotipo.png') }}" type="image/png">
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -430,6 +431,7 @@
             .phone-mock { width: 9.5rem; height: 18rem; }
         }
     </style>
+    @include('partials.presentation-app-chrome-styles')
 </head>
 <body class="min-h-screen select-none">
 
@@ -442,28 +444,13 @@
          style="bottom: 8%; left: 4%; background: var(--navy);"
          aria-hidden="true"></div>
 
-    <header class="header-glass fixed top-0 inset-x-0 z-50 flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b">
-        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div class="logo-chip logo-chip--mark">
-                <img src="{{ asset('image/imagotipo.png') }}" alt="INTEGRACORP">
-                <span class="text-[var(--navy)]">INTEGRACORP</span>
-            </div>
-            <div class="logo-chip">
-                <img src="{{ asset('image/logoNewTDG.png') }}" alt="TUDRGROUP">
-            </div>
-        </div>
-        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-            <button id="btn-overview" type="button" class="btn-glass px-2.5 py-1.5 text-xs font-medium" title="Vista general (O)">
-                Vista general
-            </button>
-            <button id="btn-fullscreen" type="button" class="btn-glass px-2.5 py-1.5 text-xs font-medium hidden sm:inline-flex" title="Pantalla completa (F)">
-                Pantalla completa
-            </button>
-            <span id="slide-counter" class="text-sm font-semibold tabular-nums text-[var(--navy)]/70">1 / {{ count($slides) }}</span>
-        </div>
-    </header>
+    @include('partials.presentation-app-header', [
+        'brandLabel' => 'TUDRGROUP',
+        'slideCount' => count($slides),
+        'access' => $access ?? null,
+    ])
 
-    <div class="fixed top-[57px] inset-x-0 z-50 h-1 bg-[var(--gray)]/80">
+    <div class="fixed top-[calc(3.35rem+1px)] md:top-[57px] inset-x-0 z-50 h-1 bg-[var(--gray)]/80">
         <div id="progress-bar" class="progress-fill h-full" style="width: {{ round(100 / max(count($slides), 1)) }}%"></div>
     </div>
 
@@ -816,30 +803,40 @@
         </div>
     </main>
 
-    <footer class="footer-glass fixed bottom-0 inset-x-0 z-50 px-4 sm:px-6 py-4 border-t">
-        <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
-            <button id="btn-prev" type="button" class="btn-glass flex items-center gap-2 px-3 sm:px-4 py-2.5 text-sm font-medium" aria-label="Anterior">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                <span class="hidden sm:inline">Anterior</span>
-            </button>
-
-            <div id="dots" class="flex items-center gap-1.5 flex-wrap justify-center max-w-[12rem] sm:max-w-md">
-                @foreach ($slides as $index => $slide)
-                    <button type="button"
-                            class="dot w-2.5 h-2.5 rounded-full {{ $index === 0 ? 'active' : '' }}"
-                            data-goto="{{ $index }}"
-                            aria-label="Ir a la diapositiva {{ $index + 1 }}"
-                            title="{{ $slide['title'] }}">
-                    </button>
-                @endforeach
+    <footer class="footer-glass fixed bottom-0 inset-x-0 z-50 px-4 sm:px-6 py-3 border-t">
+        <div class="max-w-6xl mx-auto">
+            <div class="presentation-footer-mobile">
+                <div id="dots" class="flex items-center gap-1.5 flex-wrap justify-center max-w-[16rem] sm:max-w-md">
+                    @foreach ($slides as $index => $slide)
+                        <button type="button"
+                                class="dot w-2.5 h-2.5 rounded-full {{ $index === 0 ? 'active' : '' }}"
+                                data-goto="{{ $index }}"
+                                aria-label="Ir a la diapositiva {{ $index + 1 }}"
+                                title="{{ $slide['title'] }}">
+                        </button>
+                    @endforeach
+                </div>
+                <p class="presentation-swipe-hint" aria-hidden="true">
+                    <span>Desliza</span>
+                    <span>←</span>
+                    <span>→</span>
+                </p>
             </div>
 
-            <button id="btn-next" type="button" class="btn-accent flex items-center gap-2 px-3 sm:px-4 py-2.5 text-sm" aria-label="Siguiente">
-                <span class="hidden sm:inline">Siguiente</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </button>
+            <div class="presentation-nav-desktop mt-2">
+                <button id="btn-prev" type="button" class="btn-glass flex items-center gap-2 px-3 sm:px-4 py-2.5 text-sm font-medium" aria-label="Anterior">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span>Anterior</span>
+                </button>
+
+                <p class="kb-hint text-center">← → · Espacio · O vista general · F pantalla completa</p>
+
+                <button id="btn-next" type="button" class="btn-accent flex items-center gap-2 px-3 sm:px-4 py-2.5 text-sm" aria-label="Siguiente">
+                    <span>Siguiente</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+            </div>
         </div>
-        <p class="kb-hint text-center mt-2.5">← → &nbsp;·&nbsp; Espacio &nbsp;·&nbsp; O vista general &nbsp;·&nbsp; F pantalla completa &nbsp;·&nbsp; Desliza en móvil</p>
     </footer>
 
     <div id="overview-panel" class="overview-panel" role="dialog" aria-modal="true" aria-label="Vista general de diapositivas">
@@ -1174,22 +1171,32 @@
             });
 
             let touchStartX = 0;
-            document.addEventListener('touchstart', (e) => {
+            let touchStartY = 0;
+            const swipeTarget = document.getElementById('slides-container') || document;
+
+            swipeTarget.addEventListener('touchstart', (e) => {
                 touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
             }, { passive: true });
 
-            document.addEventListener('touchend', (e) => {
+            swipeTarget.addEventListener('touchend', (e) => {
                 if (overviewPanel.classList.contains('is-open')) {
                     return;
                 }
-                const diff = touchStartX - e.changedTouches[0].screenX;
-                if (Math.abs(diff) > 50) {
-                    diff > 0 ? next() : prev();
+                const diffX = touchStartX - e.changedTouches[0].screenX;
+                const diffY = touchStartY - e.changedTouches[0].screenY;
+                if (Math.abs(diffX) < 48 || Math.abs(diffX) < Math.abs(diffY)) {
+                    return;
                 }
+                diffX > 0 ? next() : prev();
             }, { passive: true });
 
             updateUI();
         })();
     </script>
+    @include('partials.presentation-idle-watchdog', [
+        'isAuthenticated' => true,
+        'idleTimeoutSeconds' => $idleTimeoutSeconds ?? \App\Support\PresentationHubGate::idleTimeoutSeconds(),
+    ])
 </body>
 </html>

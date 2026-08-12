@@ -17,12 +17,15 @@ it('registra la ruta de avances tecnologicos sin nombre de ruta', function (): v
 
 it('expone la vista technology-advances-presentation con navegación e interactividad liquid glass', function (): void {
     $viewPath = dirname(__DIR__, 2).'/resources/views/technology-advances-presentation.blade.php';
+    $headerPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-app-header.blade.php';
     $controllerPath = dirname(__DIR__, 2).'/app/Http/Controllers/TechnologyAdvancesPresentationController.php';
 
     expect(file_exists($viewPath))->toBeTrue()
+        ->and(file_exists($headerPath))->toBeTrue()
         ->and(file_exists($controllerPath))->toBeTrue();
 
     $viewContents = file_get_contents($viewPath);
+    $headerContents = file_get_contents($headerPath);
     $controllerContents = file_get_contents($controllerPath);
 
     expect($controllerContents)
@@ -35,13 +38,12 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('liquid-glass')
         ->toContain('#007AFF')
         ->toContain('#14213D')
-        ->toContain('INTEGRACORP')
         ->toContain('tuDrGroup')
-        ->toContain('logoNewTDG.png')
-        ->toContain('imagotipo.png')
         ->toContain('id="btn-next"')
         ->toContain('id="btn-prev"')
-        ->toContain('id="btn-overview"')
+        ->toContain('partials.presentation-app-header')
+        ->toContain('presentation-nav-desktop')
+        ->toContain('presentation-swipe-hint')
         ->toContain('infra-node')
         ->toContain('infra-hierarchy')
         ->toContain('infra-icon--server')
@@ -54,6 +56,15 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('@json($slides)')
         ->not->toContain('color-scheme: dark')
         ->not->toContain('bg-gray-950');
+
+    expect($headerContents)
+        ->toContain('id="btn-overview"')
+        ->toContain('id="btn-fullscreen"')
+        ->toContain('id="slide-counter"')
+        ->toContain('logoNewTDG.png')
+        ->toContain('imagotipo.png')
+        ->toContain('INTEGRACORP')
+        ->toContain('data-presentation-logout');
 });
 
 it('define doce diapositivas estructuradas de avances tecnologicos', function (): void {
@@ -136,12 +147,22 @@ it('incluye el contenido clave de paneles, portal, marketing, api, helpdesk e in
 });
 
 it('responde la ruta de presentacion de avances tecnologicos con la vista liquid glass', function (): void {
-    $this->get('/avances-tecnologicos')
+    $this->withSession([
+        \App\Support\PresentationHubGate::SESSION_KEY => [
+            'colaborador_id' => 1,
+            'full_name' => 'Tester',
+            'authenticated_at' => now()->toIso8601String(),
+        ],
+    ])->get('/avances-tecnologicos')
         ->assertOk()
         ->assertSee('Avances Tecnológicos', false)
         ->assertSee('INTEGRACORP', false)
         ->assertSee('tuDrGroup', false)
         ->assertSee('liquid-glass', false)
+        ->assertSee('Sesión', false)
+        ->assertSee('Tester', false)
+        ->assertSee('Cerrar sesión', false)
+        ->assertSee('Desliza', false)
         ->assertSee('SRV-PROD-INTEGRACORP-API', false)
         ->assertSee('infra-hierarchy', false)
         ->assertSee('infra-icon--server', false)
