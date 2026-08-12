@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Telemedicine;
 
+use App\Models\Affiliate;
 use App\Models\AffiliateCorporate;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineMedicalReport;
 use App\Models\TelemedicinePatient;
+use App\Services\AssociateAffiliateCorporateWithTelemedicinePatientService;
+use App\Services\AssociateAffiliateWithTelemedicinePatientService;
 use App\Support\Telemedicine\TelemedicineCaseIdentity;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Symfony\Component\Console\Command\Command as CommandAlias;
 use Throwable;
 
@@ -71,6 +76,8 @@ class RemediateSharedEmailPatientIdentityCommand extends Command
         $grouped = $mismatchedConsultations->groupBy(
             fn (TelemedicineConsultationPatient $consultation): string => TelemedicinePatientIdentity::normalizeDocument($consultation->nro_identificacion)
         );
+
+        $failures = 0;
 
         foreach ($grouped as $document => $consultations) {
             $sample = $consultations->first();
@@ -145,21 +152,28 @@ class RemediateSharedEmailPatientIdentityCommand extends Command
                     }
                 });
             } catch (Throwable $exception) {
+                $failures++;
                 $this->error("Error remediando CI {$document}: {$exception->getMessage()}");
                 Log::error('RemediateSharedEmailPatientIdentity falló', [
                     'document' => $document,
                     'message' => $exception->getMessage(),
                 ]);
-
-                return CommandAlias::FAILURE;
             }
         }
 
         if (! $apply) {
             $this->comment('Dry-run finalizado. Ejecute con --apply para corregir.');
-        } else {
-            $this->info('Remediación aplicada.');
+
+            return CommandAlias::SUCCESS;
         }
+
+        if ($failures > 0) {
+            $this->warn("Remediación terminada con {$failures} error(es). Revise el log y reintente.");
+
+            return CommandAlias::FAILURE;
+        }
+
+        $this->info('Remediación aplicada.');
 
         return CommandAlias::SUCCESS;
     }
@@ -174,44 +188,59 @@ class RemediateSharedEmailPatientIdentityCommand extends Command
             return $existing;
         }
 
-        $affiliate = null;
-
-        if (\Illuminate\Support\Facades\Schema::hasTable('affiliate_corporates')) {
-            $affiliate = AffiliateCorporate::query()
+        if (Schema::hasTable('affiliate_corporates')) {
+            $corporate = AffiliateCorporate::query()
                 ->where('nro_identificacion', $document)
                 ->first();
+
+            if ($corporate !== null) {
+                return AssociateAffiliateCorporateWithTelemedicinePatientService::run(
+                    $corporate,
+                    'Remediación identidad telemedicina',
+                )['patient'];
+            }
         }
 
-        if ($affiliate !== null) {
-            $result = \App\Services\AssociateAffiliateCorporateWithTelemedicinePatientService::run(
-                $affiliate,
-                'Remediación identidad telemedicina',
-            );
+        if (Schema::hasTable('affiliates')) {
+            $individual = Affiliate::query()
+                ->where('nro_identificacion', $document)
+                ->first();
 
-            return $result['patient'];
+            if ($individual !== null) {
+                return AssociateAffiliateWithTelemedicinePatientService::run(
+                    $individual,
+                    'Remediación identidad telemedicina',
+                )['patient'];
+            }
         }
 
-        $sourcePatient = $sample?->telemedicinePatient;
+        $sourcePatientId = $sample?->telemedicine_patient_id;
+        $sourcePatient = filled($sourcePatientId)
+            ? TelemedicinePatient::query()->find($sourcePatientId)
+            : null;
+
+        $placeholderEmail = 'remediation+'.Str::lower($document).'@telemedicine.local';
 
         return TelemedicinePatient::query()->create([
-            'full_name' => $sample?->full_name ?? 'PACIENTE '.$document,
+            'full_name' => filled($sample?->full_name) ? (string) $sample->full_name : 'PACIENTE '.$document,
             'nro_identificacion' => $document,
-            'birth_date' => $sourcePatient?->birth_date,
-            'sex' => $sample?->sex ?? $sourcePatient?->sex,
-            'age' => $sample?->age ?? $sourcePatient?->age,
-            'phone' => $sample?->phone_ppal ?? $sourcePatient?->phone,
-            'email' => $sourcePatient?->email,
-            'address' => $sample?->address ?? $sourcePatient?->address,
-            'city_id' => $sourcePatient?->city_id,
-            'country_id' => $sourcePatient?->country_id,
-            'region' => $sourcePatient?->region,
-            'state_id' => $sourcePatient?->state_id,
+            'birth_date' => $sourcePatient?->birth_date ?: '01/01/1900',
+            'sex' => $sample?->sex ?: ($sourcePatient?->sex ?: 'NO ESPECIFICADO'),
+            'age' => $sample?->age ?: ($sourcePatient?->age ?: 0),
+            'phone' => $sample?->phone_ppal ?: ($sourcePatient?->phone ?: '0000000000'),
+            'email' => $sourcePatient?->email ?: $placeholderEmail,
+            'address' => $sample?->address ?: ($sourcePatient?->address ?: 'NO ESPECIFICADO'),
+            'city_id' => $sourcePatient?->city_id ?: '1',
+            'country_id' => $sourcePatient?->country_id ?: '189',
+            'region' => $sourcePatient?->region ?: 'NO ESPECIFICADO',
+            'state_id' => $sourcePatient?->state_id ?: '1',
             'plan_id' => $sourcePatient?->plan_id,
             'coverage_id' => $sourcePatient?->coverage_id,
+            'afilliation_id' => $sourcePatient?->afilliation_id,
             'afilliation_corporate_id' => $sourcePatient?->afilliation_corporate_id,
             'code_affiliation' => $sourcePatient?->code_affiliation,
-            'status_affiliation' => $sourcePatient?->status_affiliation ?? 'ACTIVO',
-            'type_affiliation' => $sourcePatient?->type_affiliation,
+            'status_affiliation' => $sourcePatient?->status_affiliation ?: 'ACTIVO',
+            'type_affiliation' => $sourcePatient?->type_affiliation ?: 'CORPORATIVO',
             'name_corporate' => $sourcePatient?->name_corporate,
             'business_unit_id' => $sourcePatient?->business_unit_id,
             'business_line_id' => $sourcePatient?->business_line_id,

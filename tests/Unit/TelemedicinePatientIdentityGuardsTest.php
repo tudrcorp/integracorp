@@ -42,7 +42,9 @@ it('existe comando de remediación por identidad desplazada', function (): void 
     expect($command)->not->toBeFalse()
         ->and($command)->toContain('telemedicine:remediate-shared-email-patient-identity')
         ->and($command)->toContain('--apply')
-        ->and($command)->toContain('resolveOrCreatePatientForDocument');
+        ->and($command)->toContain('resolveOrCreatePatientForDocument')
+        ->and($command)->toContain('AssociateAffiliateWithTelemedicinePatientService::run')
+        ->and($command)->toContain('Affiliate::query()');
 });
 
 it('la auditoría diaria de identidad queda programada', function (): void {
