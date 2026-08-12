@@ -88,11 +88,23 @@ class SendNotificacionWhatsApp implements ShouldQueue
                 throw new \Exception("CURL Error ({$httpCode}): ".($error ?: $response));
             }
 
+            // UltraMsg a veces responde HTTP 200 con {"error":[{"image":"File not exist"}]}
+            if (! \App\Support\MassNotificationWhatsAppSender::apiResponseSucceeded($response, (int) $httpCode)) {
+                $decoded = is_string($response) ? json_decode($response, true) : null;
+                $detail = is_array($decoded) && isset($decoded['error'])
+                    ? json_encode($decoded['error'], JSON_UNESCAPED_UNICODE)
+                    : (is_string($response) ? mb_substr($response, 0, 500) : 'respuesta inválida');
+
+                throw new \Exception('UltraMsg image send failed: '.$detail);
+            }
+
             Log::info('WhatsApp enviado correctamente', [
                 'to' => $this->phone,
                 'status' => $httpCode,
                 'user_id' => $this->user_id,
+                'image' => $params['image'],
                 'audit_context' => $this->auditContext,
+                'response' => is_string($response) ? mb_substr($response, 0, 500) : null,
             ]);
 
             SecurityAudit::log('AUDIT_HELPDESK_WHATSAPP_SENT', $this->resolveAuditRoute(), [

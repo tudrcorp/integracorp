@@ -16,6 +16,7 @@ enum SystemNotificationKey: string
     case TelemedicineCaseReversal = 'telemedicine_case_reversal';
     case BirthdayNotificationWitnessCopy = 'birthday_notification_witness_copy';
     case BirthdayNotificationSummary = 'birthday_notification_summary';
+    case TdevRegistration = 'tdev_registration';
 
     public function label(): string
     {
@@ -30,6 +31,7 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseReversal => 'Reverso de casos de telemedicina',
             self::BirthdayNotificationWitnessCopy => 'Copia testigo cumpleaños',
             self::BirthdayNotificationSummary => 'Resumen cumpleaños',
+            self::TdevRegistration => 'Registros TDEV',
         };
     }
 
@@ -46,6 +48,7 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseReversal => 'Destinatarios de la alerta cuando un médico reversa un caso desde el panel de telemedicina (correo y WhatsApp con la nota del reverso).',
             self::BirthdayNotificationWitnessCopy => 'Copias testigo de cada tarjeta de cumpleaños enviada (WhatsApp duplicado y CC en el correo). No incluye el resumen de la corrida.',
             self::BirthdayNotificationSummary => 'Destinatarios del resumen de ejecución de la tarea diaria de tarjetas de cumpleaños (totales, fallas y configuración). No reciben la copia de cada envío.',
+            self::TdevRegistration => 'Destinatarios de las alertas cuando se registra una agencia nivel 3 o un agente TDEV (freelance de nivel 2 o asociado a nivel 3) desde los formularios públicos.',
         };
     }
 
@@ -62,6 +65,7 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseReversal => 'Alerta de reverso de caso',
             self::BirthdayNotificationWitnessCopy => 'Copia testigo de cada envío',
             self::BirthdayNotificationSummary => 'Resumen de la corrida diaria',
+            self::TdevRegistration => 'Alertas de registros TDEV',
         };
     }
 
@@ -78,6 +82,7 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseReversal => 'Cuando un médico reversa un caso, el sistema elimina el caso para permitir la reasignación y dispara de forma asíncrona un correo y un WhatsApp detallados, resaltando la nota/observación del médico.',
             self::BirthdayNotificationWitnessCopy => 'Por cada tarjeta enviada al cumpleañero, estos contactos reciben una copia: WhatsApp duplicado (con demora) y CC en el correo. Sirve para auditar el contenido enviado, no el resultado de la tarea.',
             self::BirthdayNotificationSummary => 'Al terminar la corrida de las 8:00, estos contactos reciben el resumen operativo (validaciones, envíos encolados, fallas y tarjetas aprobadas). No reciben la tarjeta de cada persona.',
+            self::TdevRegistration => 'Cada registro público de agencia nivel 3, agente de agencia nivel 3 o agente freelance de agencia nivel 2 dispara correo y WhatsApp con el detalle completo y branding TDEV.',
         };
     }
 
@@ -147,6 +152,12 @@ enum SystemNotificationKey: string
                 '3. Armar resumen',
                 '4. Email + WhatsApp',
             ],
+            self::TdevRegistration => [
+                '1. Formulario público TDEV',
+                '2. Cola asíncrona',
+                '3. Email + WhatsApp',
+                '4. Revisar en AGENCIAS TDEV',
+            ],
         };
     }
 
@@ -163,6 +174,7 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseReversal => 'Acción requerida:',
             self::BirthdayNotificationWitnessCopy => 'Copia testigo:',
             self::BirthdayNotificationSummary => 'Resumen de ejecución:',
+            self::TdevRegistration => 'Acción requerida:',
         };
     }
 
@@ -179,6 +191,7 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseReversal => 'al recibir la alerta debe reasignar el paciente desde Operaciones (TDG o proveedor). El caso ya fue eliminado; revise con atención la nota del médico.',
             self::BirthdayNotificationWitnessCopy => 'estos contactos reciben una copia de cada tarjeta enviada (WhatsApp y/o CC en email). El resumen consolidado de la corrida se configura en la pestaña «Resumen cumpleaños».',
             self::BirthdayNotificationSummary => 'estos contactos reciben solo el resumen de la corrida (totales y fallas). Las copias de cada tarjeta se configuran en la pestaña «Copia testigo cumpleaños».',
+            self::TdevRegistration => 'al recibir la alerta revise INTEGRACORP → Estructura comercial → AGENCIAS TDEV para validar el registro (agencia nivel 3 o agente) y dar seguimiento comercial.',
         };
     }
 
@@ -195,6 +208,7 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseReversal => 'heroicon-o-arrow-uturn-left',
             self::BirthdayNotificationWitnessCopy => 'heroicon-o-document-duplicate',
             self::BirthdayNotificationSummary => 'heroicon-o-chart-bar',
+            self::TdevRegistration => 'heroicon-o-building-office-2',
         };
     }
 
@@ -220,6 +234,7 @@ enum SystemNotificationKey: string
                 'solrodriguez@tudrencasa.com',
             ],
             self::BirthdayNotificationSummary => [],
+            self::TdevRegistration => [],
         };
     }
 
@@ -257,6 +272,7 @@ enum SystemNotificationKey: string
                 '04127018390',
                 '04143027250',
             ],
+            self::TdevRegistration => [],
         };
     }
 
@@ -273,6 +289,7 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseReversal => 'Sin destinatarios configurados. El médico podrá reversar el caso, pero no se enviará la alerta por correo ni WhatsApp.',
             self::BirthdayNotificationWitnessCopy => 'Sin copias testigo. Las tarjetas seguirán enviándose a los cumpleañeros, pero no habrá copia WhatsApp ni CC en el correo.',
             self::BirthdayNotificationSummary => 'Sin destinatarios de resumen. Las tarjetas se enviarán igual, pero no se notificará el resultado de la corrida.',
+            self::TdevRegistration => 'Aún no hay destinatarios configurados. Agregue al menos un correo o un teléfono para activar las alertas de registros TDEV.',
         };
     }
 
@@ -311,6 +328,9 @@ enum SystemNotificationKey: string
             self::BirthdayNotificationSummary => $empty
                 ? 'Sin destinatarios. El resumen de la corrida no se enviará.'
                 : 'El resumen de ejecución de tarjetas de cumpleaños se enviará a los contactos configurados.',
+            self::TdevRegistration => $empty
+                ? 'No hay destinatarios activos. Las notificaciones de registros TDEV quedarán en pausa hasta que agregue contactos.'
+                : 'Se notificará por correo y WhatsApp a los contactos configurados cuando haya un registro TDEV público.',
         };
     }
 
@@ -321,6 +341,7 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseReversal,
             self::BirthdayNotificationWitnessCopy,
             self::BirthdayNotificationSummary,
+            self::TdevRegistration,
         ], true);
     }
 
@@ -337,6 +358,7 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseReversal => 'Si está inactiva, el médico podrá reversar el caso, pero no se enviará la alerta por correo ni WhatsApp.',
             self::BirthdayNotificationWitnessCopy => 'Si está inactiva, las tarjetas seguirán enviándose a los cumpleañeros, pero no se enviarán copias testigo.',
             self::BirthdayNotificationSummary => 'Si está inactiva, las tarjetas seguirán enviándose, pero no se enviará el resumen de la corrida.',
+            self::TdevRegistration => 'Si está inactiva, los registros públicos TDEV seguirán guardándose, pero no se enviará correo ni WhatsApp.',
         };
     }
 
@@ -356,6 +378,7 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseReversal,
             self::BirthdayNotificationWitnessCopy,
             self::BirthdayNotificationSummary,
+            self::TdevRegistration,
         ];
     }
 }

@@ -73,7 +73,8 @@ it('el centro de notificaciones gestiona asociados y follow-up por pestañas', f
         ->toContain("case OperationInventoryLowStock = 'operation_inventory_low_stock'")
         ->toContain("case TelemedicineCaseReversal = 'telemedicine_case_reversal'")
         ->toContain("case BirthdayNotificationWitnessCopy = 'birthday_notification_witness_copy'")
-        ->toContain("case BirthdayNotificationSummary = 'birthday_notification_summary'");
+        ->toContain("case BirthdayNotificationSummary = 'birthday_notification_summary'")
+        ->toContain("case TdevRegistration = 'tdev_registration'");
 
     expect(SystemNotificationKey::AgentQuoteAnulation->defaultEmails())
         ->toBe(['cotizaciones@tudrencasa.com']);
@@ -95,7 +96,8 @@ it('el centro de notificaciones gestiona asociados y follow-up por pestañas', f
         ->toContain(SystemNotificationKey::OperationInventoryLowStock)
         ->toContain(SystemNotificationKey::TelemedicineCaseReversal)
         ->toContain(SystemNotificationKey::BirthdayNotificationWitnessCopy)
-        ->toContain(SystemNotificationKey::BirthdayNotificationSummary);
+        ->toContain(SystemNotificationKey::BirthdayNotificationSummary)
+        ->toContain(SystemNotificationKey::TdevRegistration);
 
     expect(SystemNotificationKey::TelemedicineCaseReversal->label())
         ->toBe('Reverso de casos de telemedicina');

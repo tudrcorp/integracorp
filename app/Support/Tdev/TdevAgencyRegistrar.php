@@ -79,7 +79,7 @@ final class TdevAgencyRegistrar
      */
     public static function registerAgent(TdevAgency $agency, array $data, string $source = self::REGISTRATION_SOURCE_PUBLIC): TdevAgent
     {
-        return DB::transaction(function () use ($agency, $data, $source): TdevAgent {
+        $agent = DB::transaction(function () use ($agency, $data, $source): TdevAgent {
             return $agency->agents()->create([
                 'full_name' => Str::upper(trim($data['full_name'])),
                 'position' => filled($data['position'] ?? null) ? Str::upper(trim((string) $data['position'])) : null,
@@ -91,6 +91,12 @@ final class TdevAgencyRegistrar
                 'created_by' => $source === self::REGISTRATION_SOURCE_PUBLIC ? 'Formulario público' : null,
             ]);
         });
+
+        if ($source === self::REGISTRATION_SOURCE_PUBLIC) {
+            TdevRegistrationNotifier::notifyAgent((int) $agent->getKey());
+        }
+
+        return $agent;
     }
 
     /**
@@ -118,7 +124,7 @@ final class TdevAgencyRegistrar
             throw new \InvalidArgumentException('Solo una agencia nivel 2 puede registrar agencias nivel 3.');
         }
 
-        return DB::transaction(function () use ($parentAgency, $data): TdevAgency {
+        $agency = DB::transaction(function () use ($parentAgency, $data): TdevAgency {
             $logoPath = null;
 
             if (($data['logo'] ?? null) instanceof UploadedFile) {
@@ -147,5 +153,9 @@ final class TdevAgencyRegistrar
                 'created_by' => 'Formulario público nivel 3',
             ]);
         });
+
+        TdevRegistrationNotifier::notifyAgency((int) $agency->getKey());
+
+        return $agency;
     }
 }
