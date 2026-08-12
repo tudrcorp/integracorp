@@ -44,7 +44,9 @@ final class ColaboradorDailyActivitiesCounter
      */
     public static function collaboratorOptions(?int $year = null): array
     {
-        $labels = SupplierObservationsChartSeries::collaboratorLabels($year);
+        $labels = IndicadoresDeDesempenoCollaboratorAccess::visibleCollaboratorLabels(
+            SupplierObservationsChartSeries::collaboratorLabels($year),
+        );
         $options = [];
 
         foreach ($labels as $label) {

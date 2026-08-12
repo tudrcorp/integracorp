@@ -10,6 +10,7 @@ class CorporateAlly extends Model
 {
     protected $fillable = [
         'country_id',
+        'country_code',
         'state_id',
         'city_id',
         'supplier_category',
@@ -66,5 +67,10 @@ class CorporateAlly extends Model
     public function corporateAllyObservacions(): HasMany
     {
         return $this->hasMany(CorporateAllyObservacion::class)->orderBy('created_at', 'desc');
+    }
+
+    public function corporateAllyContactPrincipals(): HasMany
+    {
+        return $this->hasMany(CorporateAllyContactPrincipal::class);
     }
 }

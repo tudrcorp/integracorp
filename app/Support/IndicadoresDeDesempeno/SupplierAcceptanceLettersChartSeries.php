@@ -77,6 +77,59 @@ final class SupplierAcceptanceLettersChartSeries
     }
 
     /**
+     * @return array{labels: list<string>, juridicos: list<int>, naturales: list<int>}
+     */
+    public static function groupedByMonth(int $year, ?string $collaborator = null): array
+    {
+        return [
+            'labels' => IndicadoresDeDesempenoTimeBuckets::monthLabels(),
+            'juridicos' => IndicadoresDeDesempenoTimeBuckets::fillMonthlyTotals(
+                self::countsByTimeBucketForTipo(self::TYPE_JURIDICOS, $year, null, $collaborator, 'month'),
+            ),
+            'naturales' => IndicadoresDeDesempenoTimeBuckets::fillMonthlyTotals(
+                self::countsByTimeBucketForTipo(self::TYPE_NATURALES, $year, null, $collaborator, 'month'),
+            ),
+        ];
+    }
+
+    /**
+     * @return array{labels: list<string>, juridicos: list<int>, naturales: list<int>}
+     */
+    public static function groupedByWeek(int $year, int $month, ?string $collaborator = null): array
+    {
+        return [
+            'labels' => IndicadoresDeDesempenoTimeBuckets::weekLabels($year, $month),
+            'juridicos' => IndicadoresDeDesempenoTimeBuckets::fillWeeklyTotals(
+                $year,
+                $month,
+                self::countsByTimeBucketForTipo(self::TYPE_JURIDICOS, $year, $month, $collaborator, 'week'),
+            ),
+            'naturales' => IndicadoresDeDesempenoTimeBuckets::fillWeeklyTotals(
+                $year,
+                $month,
+                self::countsByTimeBucketForTipo(self::TYPE_NATURALES, $year, $month, $collaborator, 'week'),
+            ),
+        ];
+    }
+
+    /**
+     * @return array{labels: list<string>, juridicos: list<int>, naturales: list<int>}
+     */
+    public static function groupedByCollaboratorForWeek(
+        int $year,
+        int $month,
+        int $week,
+        ?string $collaborator = null,
+    ): array {
+        $range = IndicadoresDeDesempenoTimeBuckets::weekDateRange($year, $month, $week);
+
+        return IndicadoresDeDesempenoCollaboratorAccess::filterDualSeriesToCollaborator(
+            self::groupedByCollaborator(from: $range['from'], to: $range['to']),
+            $collaborator,
+        );
+    }
+
+    /**
      * @return array<string, int>
      */
     private static function countsByCollaboratorForTipo(string $tipo, ?int $year, ?string $from = null, ?string $to = null): array
@@ -112,6 +165,71 @@ final class SupplierAcceptanceLettersChartSeries
             }
 
             $counts[$collaborator] = ($counts[$collaborator] ?? 0) + 1;
+        }
+
+        return $counts;
+    }
+
+    /**
+     * @param  'month'|'week'  $bucketMode
+     * @return array<int, int>
+     */
+    private static function countsByTimeBucketForTipo(
+        string $tipo,
+        int $year,
+        ?int $month,
+        ?string $collaborator,
+        string $bucketMode,
+    ): array {
+        $query = Log::query()
+            ->where('action', self::auditActionForTipo($tipo))
+            ->whereYear('created_at', $year);
+
+        if ($month !== null) {
+            $query->whereMonth('created_at', $month);
+        }
+
+        $logs = $query->get(['response', 'route', 'created_at']);
+        $counts = [];
+
+        foreach ($logs as $log) {
+            $payload = json_decode((string) $log->response, true);
+
+            if (! is_array($payload)) {
+                continue;
+            }
+
+            $details = $payload['details'] ?? null;
+
+            if (! is_array($details)) {
+                continue;
+            }
+
+            if (! self::isCartaAcceptanceUpload($details, (string) $log->route)) {
+                continue;
+            }
+
+            $resolved = self::resolveCollaboratorName($details, $payload);
+
+            if ($resolved === null) {
+                continue;
+            }
+
+            if ($collaborator !== null && $resolved !== $collaborator) {
+                continue;
+            }
+
+            $createdAt = $log->created_at;
+
+            if ($createdAt === null) {
+                continue;
+            }
+
+            $bucket = $bucketMode === 'week'
+                ? IndicadoresDeDesempenoTimeBuckets::weekBucketFromDay((int) $createdAt->day)
+                : (int) $createdAt->month;
+
+            $counts = IndicadoresDeDesempenoTimeBuckets::incrementBucket($counts, $bucket);
         }
 
         return $counts;

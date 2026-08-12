@@ -70,6 +70,9 @@ class CorporateQuotesTable
             ->emptyStateHeading('Sin cotizaciones corporativas')
             ->emptyStateDescription('Las propuestas corporativas generadas por los agentes aparecerán aquí. Puede crear una nueva desde el recurso correspondiente.')
             ->emptyStateIcon(Heroicon::OutlinedBuildingOffice2)
+            ->extraAttributes([
+                'id' => 'corporate-quotes-main-table',
+            ])
             ->columns([
                 TextColumn::make('code')
                     ->label('Código')
@@ -216,6 +219,12 @@ class CorporateQuotesTable
 
                         return $indicators;
                     }),
+                SelectFilter::make('agent_id')
+                    ->label('Agente')
+                    ->relationship('agent', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
                 SelectFilter::make('status')
                     ->label('Estatus')
                     ->options([

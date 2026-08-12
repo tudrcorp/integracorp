@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\CorporateQuoteRequests\Tables;
 
+use App\Enums\DressTaylorCompany;
 use App\Http\Controllers\CorporateQuoteRequestExportCsvController;
 use App\Models\Agency;
 use App\Models\CorporateQuoteRequest;
@@ -16,6 +17,7 @@ use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -37,6 +39,9 @@ class CorporateQuoteRequestsTable
             ->defaultSort('id', 'desc')
             ->heading('TABLA DE SOLICITUDES DE COTIZACIONES CORPORATIVAS')
             ->description('Lista de solicitudes de cotizaciones corporativas')
+            ->extraAttributes([
+                'id' => 'corporate-quote-requests-main-table',
+            ])
             ->columns([
                 TextColumn::make('code_agency')
                     ->prefix(function ($record) {
@@ -62,6 +67,13 @@ class CorporateQuoteRequestsTable
                     ->label('Código')
                     ->badge()
                     ->color('warning')
+                    ->searchable(),
+                TextColumn::make('company')
+                    ->label('Empresa')
+                    ->badge()
+                    ->formatStateUsing(fn (?DressTaylorCompany $state): string => $state?->label() ?? '—')
+                    ->color(fn (?DressTaylorCompany $state): string => $state?->filamentColor() ?? 'gray')
+                    ->sortable()
                     ->searchable(),
                 TextColumn::make('accountManager.name')
                     ->label('Account Manager')
@@ -156,7 +168,16 @@ class CorporateQuoteRequestsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('agent_id')
+                    ->label('Agente')
+                    ->relationship('agent', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                SelectFilter::make('company')
+                    ->label('Empresa')
+                    ->options(DressTaylorCompany::options())
+                    ->native(false),
             ])
             ->recordActions([
                 ActionGroup::make([

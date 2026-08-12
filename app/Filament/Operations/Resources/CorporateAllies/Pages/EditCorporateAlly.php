@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\CorporateAllies\Pages;
 
 use App\Filament\Operations\Resources\CorporateAllies\CorporateAllyResource;
 use App\Models\CorporateAlly;
+use App\Models\Country;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
@@ -18,6 +19,19 @@ class EditCorporateAlly extends EditRecord
     private const TICKET_BUTTON_GRAY_CLASS = 'ticket-btn-ios-gray shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
     private const TICKET_BUTTON_DANGER_CLASS = 'aviso-btn-ios-danger shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if (filled($data['country_id'] ?? null) && blank($data['country_code'] ?? null)) {
+            $data['country_code'] = Country::query()->whereKey($data['country_id'])->value('code');
+        }
+
+        return $data;
+    }
 
     protected function getRedirectUrl(): string
     {

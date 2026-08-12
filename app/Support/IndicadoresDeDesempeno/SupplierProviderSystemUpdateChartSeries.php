@@ -240,6 +240,59 @@ final class SupplierProviderSystemUpdateChartSeries
     }
 
     /**
+     * @return array{labels: list<string>, juridicos: list<int>, naturales: list<int>}
+     */
+    public static function groupedByMonth(int $year, ?string $collaborator = null): array
+    {
+        return [
+            'labels' => IndicadoresDeDesempenoTimeBuckets::monthLabels(),
+            'juridicos' => IndicadoresDeDesempenoTimeBuckets::fillMonthlyTotals(
+                self::juridicosCountsByTimeBucket($year, null, $collaborator, 'month'),
+            ),
+            'naturales' => IndicadoresDeDesempenoTimeBuckets::fillMonthlyTotals(
+                self::naturalesCountsByTimeBucket($year, null, $collaborator, 'month'),
+            ),
+        ];
+    }
+
+    /**
+     * @return array{labels: list<string>, juridicos: list<int>, naturales: list<int>}
+     */
+    public static function groupedByWeek(int $year, int $month, ?string $collaborator = null): array
+    {
+        return [
+            'labels' => IndicadoresDeDesempenoTimeBuckets::weekLabels($year, $month),
+            'juridicos' => IndicadoresDeDesempenoTimeBuckets::fillWeeklyTotals(
+                $year,
+                $month,
+                self::juridicosCountsByTimeBucket($year, $month, $collaborator, 'week'),
+            ),
+            'naturales' => IndicadoresDeDesempenoTimeBuckets::fillWeeklyTotals(
+                $year,
+                $month,
+                self::naturalesCountsByTimeBucket($year, $month, $collaborator, 'week'),
+            ),
+        ];
+    }
+
+    /**
+     * @return array{labels: list<string>, juridicos: list<int>, naturales: list<int>}
+     */
+    public static function groupedByCollaboratorForWeek(
+        int $year,
+        int $month,
+        int $week,
+        ?string $collaborator = null,
+    ): array {
+        $range = IndicadoresDeDesempenoTimeBuckets::weekDateRange($year, $month, $week);
+
+        return IndicadoresDeDesempenoCollaboratorAccess::filterDualSeriesToCollaborator(
+            self::groupedByCollaborator(from: $range['from'], to: $range['to']),
+            $collaborator,
+        );
+    }
+
+    /**
      * @return array<string, int>
      */
     private static function juridicosCountsByCollaborator(?int $year, ?string $from = null, ?string $to = null): array
@@ -267,6 +320,52 @@ final class SupplierProviderSystemUpdateChartSeries
             $year,
             $from,
             $to,
+            [self::AUDIT_DOCTOR_NURSE_UPDATED, self::AUDIT_DOCTOR_NURSE_DOCUMENT_UPLOADED],
+            self::DOCTOR_NURSE_RELEVANT_FIELDS,
+        );
+    }
+
+    /**
+     * @param  'month'|'week'  $bucketMode
+     * @return array<int, int>
+     */
+    private static function juridicosCountsByTimeBucket(int $year, ?int $month, ?string $collaborator, string $bucketMode): array
+    {
+        $counts = self::countsFromAuditLogsByTimeBucket(
+            $year,
+            $month,
+            $collaborator,
+            $bucketMode,
+            [self::AUDIT_SUPPLIER_UPDATED, self::AUDIT_SUPPLIER_DOCUMENT_UPLOADED],
+            self::SUPPLIER_RELEVANT_FIELDS,
+        );
+        $counts = self::mergeBucketCounts(
+            $counts,
+            self::countsFromRelatedTableByTimeBucket(SupplierContactPrincipal::query(), $year, $month, $collaborator, $bucketMode),
+        );
+        $counts = self::mergeBucketCounts(
+            $counts,
+            self::countsFromRelatedTableByTimeBucket(SupplierZonaCobertura::query(), $year, $month, $collaborator, $bucketMode),
+        );
+        $counts = self::mergeBucketCounts(
+            $counts,
+            self::countsFromRelatedTableByTimeBucket(SupplierRedGlobal::query(), $year, $month, $collaborator, $bucketMode),
+        );
+
+        return $counts;
+    }
+
+    /**
+     * @param  'month'|'week'  $bucketMode
+     * @return array<int, int>
+     */
+    private static function naturalesCountsByTimeBucket(int $year, ?int $month, ?string $collaborator, string $bucketMode): array
+    {
+        return self::countsFromAuditLogsByTimeBucket(
+            $year,
+            $month,
+            $collaborator,
+            $bucketMode,
             [self::AUDIT_DOCTOR_NURSE_UPDATED, self::AUDIT_DOCTOR_NURSE_DOCUMENT_UPLOADED],
             self::DOCTOR_NURSE_RELEVANT_FIELDS,
         );
@@ -365,6 +464,159 @@ final class SupplierProviderSystemUpdateChartSeries
         }
 
         return $base;
+    }
+
+    /**
+     * @param  list<string>  $actions
+     * @param  list<string>  $relevantFields
+     * @param  'month'|'week'  $bucketMode
+     * @return array<int, int>
+     */
+    private static function countsFromAuditLogsByTimeBucket(
+        int $year,
+        ?int $month,
+        ?string $collaborator,
+        string $bucketMode,
+        array $actions,
+        array $relevantFields,
+    ): array {
+        $query = Log::query()
+            ->whereIn('action', $actions)
+            ->whereYear('created_at', $year);
+
+        if ($month !== null) {
+            $query->whereMonth('created_at', $month);
+        }
+
+        $logs = $query->get(['action', 'response', 'created_at']);
+        $counts = [];
+
+        foreach ($logs as $log) {
+            $payload = json_decode((string) $log->response, true);
+
+            if (! is_array($payload)) {
+                continue;
+            }
+
+            $details = $payload['details'] ?? null;
+
+            if (! is_array($details)) {
+                continue;
+            }
+
+            $resolved = self::resolveCollaboratorName($details, $payload);
+
+            if ($resolved === null) {
+                continue;
+            }
+
+            if ($collaborator !== null && $resolved !== $collaborator) {
+                continue;
+            }
+
+            if ($log->action === self::AUDIT_SUPPLIER_DOCUMENT_UPLOADED
+                || $log->action === self::AUDIT_DOCTOR_NURSE_DOCUMENT_UPLOADED) {
+                $counts = self::bumpTimeBucket($counts, $log->created_at, $bucketMode);
+
+                continue;
+            }
+
+            $changedFields = $details['changed_fields'] ?? [];
+
+            if (! is_array($changedFields) || $changedFields === []) {
+                continue;
+            }
+
+            if (! self::hasRelevantFieldChange($changedFields, $relevantFields)) {
+                continue;
+            }
+
+            $counts = self::bumpTimeBucket($counts, $log->created_at, $bucketMode);
+        }
+
+        return $counts;
+    }
+
+    /**
+     * @param  Builder<SupplierContactPrincipal>|Builder<SupplierRedGlobal>|Builder<SupplierZonaCobertura>  $query
+     * @param  'month'|'week'  $bucketMode
+     * @return array<int, int>
+     */
+    private static function countsFromRelatedTableByTimeBucket(
+        Builder $query,
+        int $year,
+        ?int $month,
+        ?string $collaborator,
+        string $bucketMode,
+    ): array {
+        $builder = $query
+            ->whereColumn('updated_at', '>', 'created_at')
+            ->whereYear('updated_at', $year)
+            ->tap(fn (Builder $inner): Builder => self::applyCollaboratorFilter($inner, 'updated_by'));
+
+        if ($month !== null) {
+            $builder->whereMonth('updated_at', $month);
+        }
+
+        if ($collaborator !== null) {
+            $builder->whereRaw('TRIM(updated_by) = ?', [$collaborator]);
+        }
+
+        if ($bucketMode === 'week') {
+            $aggregates = $builder
+                ->selectRaw('FLOOR((DAY(updated_at) - 1) / 7) + 1 as bucket, COUNT(*) as total')
+                ->groupByRaw('FLOOR((DAY(updated_at) - 1) / 7) + 1')
+                ->get();
+        } else {
+            $aggregates = $builder
+                ->selectRaw('MONTH(updated_at) as bucket, COUNT(*) as total')
+                ->groupByRaw('MONTH(updated_at)')
+                ->get();
+        }
+
+        $counts = [];
+
+        foreach ($aggregates as $row) {
+            $counts[(int) $row->bucket] = (int) $row->total;
+        }
+
+        return $counts;
+    }
+
+    /**
+     * @param  array<int, int>  $base
+     * @param  array<int, int>  $additional
+     * @return array<int, int>
+     */
+    private static function mergeBucketCounts(array $base, array $additional): array
+    {
+        foreach ($additional as $bucket => $total) {
+            $base[$bucket] = ($base[$bucket] ?? 0) + $total;
+        }
+
+        return $base;
+    }
+
+    /**
+     * @param  array<int, int>  $counts
+     * @param  'month'|'week'  $bucketMode
+     * @return array<int, int>
+     */
+    private static function bumpTimeBucket(array $counts, mixed $date, string $bucketMode): array
+    {
+        if ($date === null) {
+            return $counts;
+        }
+
+        $carbon = $date instanceof \Carbon\CarbonInterface
+            ? $date
+            : \Carbon\Carbon::parse((string) $date);
+
+        $bucket = $bucketMode === 'week'
+            ? IndicadoresDeDesempenoTimeBuckets::weekBucketFromDay((int) $carbon->day)
+            : (int) $carbon->month;
+
+        return IndicadoresDeDesempenoTimeBuckets::incrementBucket($counts, $bucket);
     }
 
     /**

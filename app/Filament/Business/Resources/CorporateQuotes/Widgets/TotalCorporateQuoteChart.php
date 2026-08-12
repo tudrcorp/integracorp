@@ -1,16 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Business\Resources\CorporateQuotes\Widgets;
 
-use App\Models\Agency;
-use App\Models\Agent;
 use App\Models\CorporateQuote;
 use Carbon\Carbon;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
-use Illuminate\Support\Facades\DB;
 
 class TotalCorporateQuoteChart extends ChartWidget
 {
@@ -20,17 +19,13 @@ class TotalCorporateQuoteChart extends ChartWidget
 
     protected ?string $heading = 'HISTORIAL DE COTIZACIONES CORPORATIVAS MENSUALES';
 
-    protected ?string $description = 'Histórico mensual de cotizaciones corporativas. Haz clic en un mes para ver el Top 15 de agentes con más cotizaciones en ese periodo.';
+    protected ?string $description = 'Histórico mensual de cotizaciones corporativas.';
 
     protected ?string $maxHeight = '480px';
 
     protected int|string|array $columnSpan = 'full';
 
-    public ?int $selectedMonth = null;
-
     public ?string $filter = null;
-
-    public string $detailView = 'agents';
 
     protected function getFilters(): ?array
     {
@@ -61,6 +56,8 @@ class TotalCorporateQuoteChart extends ChartWidget
             '#06b6d4',
             '#0891b2',
             '#0e7490',
+            '#67e8f9',
+            '#22d3ee',
         ];
     }
 
@@ -81,12 +78,11 @@ class TotalCorporateQuoteChart extends ChartWidget
 
     /**
      * @param  array<int, int|float>  $data
-     * @param  array<string, mixed>  $extra
      * @return array<string, mixed>
      */
-    protected function makeBarDataset(string $label, array $data, array $extra = []): array
+    protected function makeBarDataset(string $label, array $data): array
     {
-        return array_merge([
+        return [
             'label' => $label,
             'data' => $data,
             'backgroundColor' => $this->buildBackgroundColors(count($data)),
@@ -94,51 +90,12 @@ class TotalCorporateQuoteChart extends ChartWidget
             'borderWidth' => 1.25,
             'borderRadius' => 8,
             'borderSkipped' => false,
-        ], $extra);
-    }
-
-    public function openMonthDetail(int $month): void
-    {
-        if ($month < 1 || $month > 12) {
-            return;
-        }
-
-        $this->selectedMonth = $month;
-        $this->detailView = 'agents';
-        $this->updateChartData();
-    }
-
-    public function toggleDetailView(): void
-    {
-        if ($this->selectedMonth === null) {
-            return;
-        }
-
-        $this->detailView = $this->detailView === 'agents' ? 'agencies' : 'agents';
-        $this->updateChartData();
-    }
-
-    public function resetToMonthly(): void
-    {
-        $this->selectedMonth = null;
-        $this->detailView = 'agents';
-        $this->updateChartData();
+        ];
     }
 
     protected function getData(): array
     {
         $year = (int) ($this->filter ?? now()->year);
-
-        if ($this->selectedMonth) {
-            $month = (int) $this->selectedMonth;
-            $monthName = Carbon::create(null, $month)->monthName;
-
-            if ($this->detailView === 'agencies') {
-                return $this->buildTopAgenciesDetailChart($year, $month, $monthName);
-            }
-
-            return $this->buildTopAgentsDetailChart($year, $month, $monthName);
-        }
 
         $dataTrend = Trend::query(
             CorporateQuote::query()->whereYear('created_at', $year)
@@ -161,126 +118,12 @@ class TotalCorporateQuoteChart extends ChartWidget
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    protected function buildTopAgentsDetailChart(int $year, int $month, string $monthName): array
-    {
-        $topAgents = CorporateQuote::query()
-            ->select([
-                'agent_id',
-                DB::raw('count(*) as total'),
-                DB::raw('MAX(created_at) as last_quote_at'),
-            ])
-            ->whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
-            ->whereNotNull('agent_id')
-            ->groupBy('agent_id')
-            ->orderByDesc('total')
-            ->orderByDesc('last_quote_at')
-            ->limit(15)
-            ->get();
-
-        $labels = [];
-        $values = [];
-        $names = [];
-
-        foreach ($topAgents as $row) {
-            $agentId = (int) $row->agent_id;
-            $agentName = Agent::find($agentId)?->name ?? "Agente #{$agentId}";
-
-            $labels[] = $agentName;
-            $names[] = $agentName;
-            $values[] = (int) $row->total;
-        }
-
-        return [
-            'datasets' => [
-                $this->makeBarDataset(
-                    "Top 15 agentes - {$monthName} ({$year})",
-                    $values,
-                    ['names' => $names],
-                ),
-            ],
-            'labels' => $labels,
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function buildTopAgenciesDetailChart(int $year, int $month, string $monthName): array
-    {
-        $topAgencies = CorporateQuote::query()
-            ->select([
-                'code_agency',
-                DB::raw('count(*) as total'),
-                DB::raw('MAX(created_at) as last_quote_at'),
-            ])
-            ->whereNotNull('code_agency')
-            ->whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
-            ->groupBy('code_agency')
-            ->orderByDesc('total')
-            ->orderByDesc('last_quote_at')
-            ->limit(15)
-            ->get();
-
-        $labels = [];
-        $values = [];
-        $names = [];
-
-        foreach ($topAgencies as $row) {
-            $agencyName = Agency::where('code', $row->code_agency)->first()?->name_corporative
-                ?? "Agencia: {$row->code_agency}";
-
-            $labels[] = $agencyName;
-            $names[] = $agencyName;
-            $values[] = (int) $row->total;
-        }
-
-        return [
-            'datasets' => [
-                $this->makeBarDataset(
-                    "Top 15 agencias - {$monthName} ({$year})",
-                    $values,
-                    ['names' => $names],
-                ),
-            ],
-            'labels' => $labels,
-        ];
-    }
-
     protected function getOptions(): RawJs
     {
-        $livewireId = (string) $this->getId();
-
-        if ($this->selectedMonth !== null) {
-            $onClickJs = '() => {}';
-        } else {
-            $onClickJs = <<<JS
-(event, elements) => {
-                if (!elements || !elements.length) {
-                    return;
-                }
-
-                const index = elements[0].index;
-                const month = index + 1;
-                const component = window.Livewire?.find('{$livewireId}');
-                component?.call('openMonthDetail', month);
-            }
-JS;
-        }
-
-        $tooltipFooter = $this->selectedMonth === null
-            ? 'Haz clic para ver detalle'
-            : '';
-
-        return RawJs::make(<<<JS
+        return RawJs::make(<<<'JS'
         {
-            onClick: {$onClickJs},
             onHover: (event, chartElement) => {
-                event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                event.native.target.style.cursor = 'default';
             },
             responsive: true,
             maintainAspectRatio: false,
@@ -346,19 +189,11 @@ JS;
                     multiKeyBackground: 'rgba(255, 255, 255, 0.08)',
                     callbacks: {
                         title: function(context) {
-                            const item = context[0];
-                            const dataset = item.dataset || {};
-
-                            if (dataset.names && dataset.names[item.dataIndex]) {
-                                return dataset.names[item.dataIndex];
-                            }
-
-                            return item.label;
+                            return context[0].label;
                         },
                         label: function(context) {
                             return ' Cotizaciones: ' + context.raw;
-                        },
-                        footer: () => '{$tooltipFooter}'
+                        }
                     }
                 }
             },

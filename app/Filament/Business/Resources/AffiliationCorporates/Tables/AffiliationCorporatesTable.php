@@ -77,6 +77,9 @@ class AffiliationCorporatesTable
             ->description('Contratante, agencia, montos, ILS y estatus. El código resalta en verde estilo iOS cuando la afiliación está ACTIVA y el alta es hoy.')
             ->emptyStateHeading('Sin afiliaciones corporativas')
             ->emptyStateDescription('No hay registros o no coinciden con la búsqueda y los filtros aplicados.')
+            ->extraAttributes([
+                'id' => 'affiliation-corporates-main-table',
+            ])
             ->columns([
                 TextColumn::make('code')
                     ->label('Código')
@@ -391,6 +394,12 @@ class AffiliationCorporatesTable
 
                         return $indicators;
                     }),
+                SelectFilter::make('agent_id')
+                    ->label('Agente')
+                    ->relationship('agent', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
                 SelectFilter::make('payment_frequency')
                     ->label('Frecuencia de pago')
                     ->options([
