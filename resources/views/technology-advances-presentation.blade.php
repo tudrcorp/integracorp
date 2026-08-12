@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Avances Tecnológicos — INTEGRACORP · tuDrGroup</title>
     <link rel="icon" href="{{ asset('image/imagotipo.png') }}" type="image/png">
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -496,6 +497,7 @@
             }
         }
     </style>
+    @include('partials.presentation-app-chrome-styles')
 </head>
 <body class="min-h-screen select-none">
 
@@ -508,28 +510,13 @@
          style="bottom: 8%; left: 4%; background: var(--brand);"
          aria-hidden="true"></div>
 
-    <header class="header-glass fixed top-0 inset-x-0 z-50 flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b">
-        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div class="logo-chip logo-chip--mark">
-                <img src="{{ asset('image/imagotipo.png') }}" alt="INTEGRACORP">
-                <span>INTEGRACORP</span>
-            </div>
-            <div class="logo-chip">
-                <img src="{{ asset('image/logoNewTDG.png') }}" alt="tuDrGroup">
-            </div>
-        </div>
-        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-            <button id="btn-overview" type="button" class="btn-glass px-2.5 py-1.5 text-xs font-medium" title="Vista general (O)">
-                Vista general
-            </button>
-            <button id="btn-fullscreen" type="button" class="btn-glass px-2.5 py-1.5 text-xs font-medium hidden sm:inline-flex" title="Pantalla completa (F)">
-                Pantalla completa
-            </button>
-            <span id="slide-counter" class="text-sm font-semibold tabular-nums text-[var(--navy)]/70">1 / {{ count($slides) }}</span>
-        </div>
-    </header>
+    @include('partials.presentation-app-header', [
+        'brandLabel' => 'tuDrGroup',
+        'slideCount' => count($slides),
+        'access' => $access ?? null,
+    ])
 
-    <div class="fixed top-[57px] inset-x-0 z-50 h-1 bg-black/5">
+    <div class="fixed top-[calc(3.35rem+1px)] md:top-[57px] inset-x-0 z-50 h-1 bg-black/5">
         <div id="progress-bar" class="progress-fill h-full" style="width: {{ round(100 / max(count($slides), 1)) }}%"></div>
     </div>
 
@@ -1000,13 +987,21 @@
     </main>
 
     <footer class="footer-glass fixed bottom-0 inset-x-0 z-50 border-t px-4 sm:px-6 py-3">
-        <div class="max-w-6xl mx-auto flex flex-col gap-2">
-            <div class="flex items-center justify-center gap-1.5 overflow-x-auto py-0.5">
-                @foreach ($slides as $i => $slide)
-                    <button type="button" class="dot w-2 h-2 rounded-full shrink-0 {{ $i === 0 ? 'active' : '' }}" data-goto="{{ $i }}" title="{{ $slide['module'] }}"></button>
-                @endforeach
+        <div class="max-w-6xl mx-auto">
+            <div class="presentation-footer-mobile">
+                <div class="flex items-center justify-center gap-1.5 overflow-x-auto py-0.5 max-w-full">
+                    @foreach ($slides as $i => $slide)
+                        <button type="button" class="dot w-2 h-2 rounded-full shrink-0 {{ $i === 0 ? 'active' : '' }}" data-goto="{{ $i }}" title="{{ $slide['module'] }}"></button>
+                    @endforeach
+                </div>
+                <p class="presentation-swipe-hint" aria-hidden="true">
+                    <span>Desliza</span>
+                    <span>←</span>
+                    <span>→</span>
+                </p>
             </div>
-            <div class="flex items-center justify-between gap-3">
+
+            <div class="presentation-nav-desktop mt-2">
                 <button id="btn-prev" type="button" class="btn-glass px-3 sm:px-4 py-2 text-sm font-medium" disabled>← Anterior</button>
                 <div class="hidden md:flex items-center gap-3 kb-hint">
                     <span>← → navegar</span>
@@ -1214,19 +1209,25 @@
             });
 
             let touchStartX = 0;
-            document.addEventListener('touchstart', (e) => {
+            let touchStartY = 0;
+            const swipeTarget = document.getElementById('slides-container') || document;
+
+            swipeTarget.addEventListener('touchstart', (e) => {
                 touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
             }, { passive: true });
 
-            document.addEventListener('touchend', (e) => {
+            swipeTarget.addEventListener('touchend', (e) => {
                 if (overviewPanel.classList.contains('is-open')) return;
-                const diff = touchStartX - e.changedTouches[0].screenX;
-                if (Math.abs(diff) > 50) {
-                    if (diff > 0) {
-                        if (current < total - 1) next();
-                    } else {
-                        prev();
-                    }
+                const diffX = touchStartX - e.changedTouches[0].screenX;
+                const diffY = touchStartY - e.changedTouches[0].screenY;
+                if (Math.abs(diffX) < 48 || Math.abs(diffX) < Math.abs(diffY)) {
+                    return;
+                }
+                if (diffX > 0) {
+                    if (current < total - 1) next();
+                } else {
+                    prev();
                 }
             }, { passive: true });
 
@@ -1234,5 +1235,9 @@
             updateUI();
         })();
     </script>
+    @include('partials.presentation-idle-watchdog', [
+        'isAuthenticated' => true,
+        'idleTimeoutSeconds' => $idleTimeoutSeconds ?? \App\Support\PresentationHubGate::idleTimeoutSeconds(),
+    ])
 </body>
 </html>

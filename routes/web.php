@@ -27,6 +27,7 @@ use App\Http\Controllers\Operations\OperationCoordinationClinicDocumentDownloadC
 use App\Http\Controllers\Operations\SupplierDocumentAuditController;
 use App\Http\Controllers\OperationServiceOrderPdfController;
 use App\Http\Controllers\PdfController;
+use App\Http\Controllers\PresentationHubController;
 use App\Http\Controllers\PublicChatController;
 use App\Http\Controllers\ScrumPresentationController;
 use App\Http\Controllers\SupplierFichaPdfController;
@@ -36,6 +37,7 @@ use App\Http\Controllers\TechnologyAdvancesPresentationController;
 use App\Http\Controllers\TelemedicineSchemaDocumentationController;
 use App\Http\Controllers\TelemedicineSchemaDocumentationTemporaryLinkController;
 use App\Http\Controllers\UtilsController;
+use App\Http\Middleware\EnsurePresentationHubAccess;
 use App\Mail\NotificationRenewAffiliationMail;
 use App\Models\AgentDocument;
 use App\Models\Benefit;
@@ -2090,8 +2092,15 @@ Route::get('/ldi/{transaction_id}', [UtilsController::class, 'show'])
  */
 Route::get('/cierre-mes', CierreMesController::class);
 
-Route::get('/scrum-desarrollo-apps', ScrumPresentationController::class);
-Route::get('/avances-tecnologicos', TechnologyAdvancesPresentationController::class);
+Route::get('/dpto-tecnologia-sistemas', [PresentationHubController::class, 'index']);
+Route::post('/dpto-tecnologia-sistemas/auth', [PresentationHubController::class, 'authenticate']);
+Route::post('/dpto-tecnologia-sistemas/heartbeat', [PresentationHubController::class, 'heartbeat']);
+Route::get('/dpto-tecnologia-sistemas/logout', [PresentationHubController::class, 'logout']);
+
+Route::get('/scrum-desarrollo-apps', ScrumPresentationController::class)
+    ->middleware(EnsurePresentationHubAccess::class);
+Route::get('/avances-tecnologicos', TechnologyAdvancesPresentationController::class)
+    ->middleware(EnsurePresentationHubAccess::class);
 
 Route::get('/carta-bienvenida-agencia', function () {
     // Doc en PDF
