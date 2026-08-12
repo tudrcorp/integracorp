@@ -74,6 +74,14 @@ final class SystemsKnowledgeCatalog
                 'status' => self::STATUS_READY,
                 'requires_auth' => true,
             ],
+            [
+                'id' => 'agencias-tdev',
+                'title' => 'Agencias TDEV (desarrollo)',
+                'subtitle' => 'Red comercial digital: niveles, landings y registros',
+                'url' => '/agencias-tdev',
+                'status' => self::STATUS_READY,
+                'requires_auth' => true,
+            ],
         ];
     }
 

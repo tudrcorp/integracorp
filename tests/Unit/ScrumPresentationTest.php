@@ -48,8 +48,10 @@ it('expone la vista scrum-presentation con navegación e interactividad liquid g
         ->toContain('data-play-waterfall')
         ->toContain('data-timeline-next')
         ->toContain('@json($slides)')
-        ->not->toContain('color-scheme: dark')
-        ->not->toContain('bg-gray-950');
+        ->toContain('partials.presentation-theme-styles')
+        ->toContain('partials.presentation-theme-script')
+        ->toContain('data-theme')
+        ->toContain('color-scheme');
 
     expect($headerContents)
         ->toContain('id="btn-overview"')
@@ -58,7 +60,8 @@ it('expone la vista scrum-presentation con navegación e interactividad liquid g
         ->toContain('logoNewTDG.png')
         ->toContain('imagotipo.png')
         ->toContain('INTEGRACORP')
-        ->toContain('data-presentation-logout');
+        ->toContain('data-presentation-logout')
+        ->toContain('data-presentation-theme-toggle');
 });
 
 it('define diez diapositivas estructuradas de la presentación Scrum', function (): void {

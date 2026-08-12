@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\AgenciasTdevPresentationSlides;
 use App\Support\PresentationHubGate;
-use App\Support\ScrumPresentationSlides;
 use Illuminate\View\View;
 
-class ScrumPresentationController extends Controller
+class AgenciasTdevPresentationController extends Controller
 {
     public function __invoke(): View
     {
@@ -16,8 +16,8 @@ class ScrumPresentationController extends Controller
             app('debugbar')->disable();
         }
 
-        return view('scrum-presentation', [
-            'slides' => ScrumPresentationSlides::all(),
+        return view('agencias-tdev-presentation', [
+            'slides' => AgenciasTdevPresentationSlides::all(),
             'access' => PresentationHubGate::access(),
             'idleTimeoutSeconds' => PresentationHubGate::idleTimeoutSeconds(),
         ]);

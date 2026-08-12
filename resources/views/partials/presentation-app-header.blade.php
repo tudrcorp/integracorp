@@ -56,6 +56,23 @@
                 </div>
             @endif
 
+            <button
+                type="button"
+                class="btn-glass presentation-app-header__icon-btn presentation-theme-toggle presentation-theme-toggle--header"
+                data-presentation-theme-toggle
+                title="Cambiar tema"
+                aria-label="Cambiar tema claro u oscuro"
+            >
+                <svg data-theme-icon-sun width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4"/>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+                </svg>
+                <svg data-theme-icon-moon width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z"/>
+                </svg>
+                <span class="presentation-app-header__btn-label">Tema</span>
+            </button>
+
             <button id="btn-overview" type="button" class="btn-glass presentation-app-header__icon-btn" title="Vista general (O)" aria-label="Vista general">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <rect x="3" y="3" width="7" height="7" rx="1.5"/>
