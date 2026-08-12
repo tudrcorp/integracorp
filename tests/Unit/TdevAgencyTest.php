@@ -23,7 +23,15 @@ it('registra el recurso AGENCIAS TDEV en estructura comercial', function (): voi
         ->toContain("navigationGroup = 'ESTRUCTURA COMERCIAL'")
         ->toContain('AuthorizesDepartmentNavigation')
         ->toContain('AgentsRelationManager::class')
-        ->toContain('ChildAgenciesRelationManager::class');
+        ->toContain('ChildAgenciesRelationManager::class')
+        ->toContain('fi-tdev-agency-nav-item')
+        ->toContain('IMG_0874.PNG');
+
+    $theme = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
+
+    expect($theme)
+        ->toContain('.fi-tdev-agency-nav-item')
+        ->toContain("url('/image/IMG_0874.PNG')");
 
     expect($form)
         ->toContain('Tabs::make')

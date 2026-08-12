@@ -8153,6 +8153,24 @@
   .fi-helpdesk-nav-item--has-unread-notes .fi-sidebar-item-badge-ctn .fi-badge .fi-badge-label-ctn {
     color: #ffffff !important;
   }
+
+  /* AGENCIAS TDEV: reemplaza el punto del grupo por el imagotipo */
+  .fi-tdev-agency-nav-item > .fi-sidebar-item-btn > .fi-sidebar-item-grouped-border {
+    display: none !important;
+  }
+
+  .fi-tdev-agency-nav-item > .fi-sidebar-item-btn::before {
+    content: '';
+    display: block;
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-image: url('/image/IMG_0874.PNG');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    border-radius: 0.25rem;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
