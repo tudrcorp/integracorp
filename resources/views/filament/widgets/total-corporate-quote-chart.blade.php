@@ -70,43 +70,11 @@
                 wire:poll.{{ $pollingInterval }}="updateChartData"
             @endif
         >
-            @if ($this->selectedMonth)
-                <div
-                    class="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-white"
-                >
-                    <span>
-                        Detalle ·
-                        {{ $this->detailView === 'agencies' ? 'Top 15 agencias' : 'Top 15 agentes' }} ·
-                        {{ ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][$this->selectedMonth - 1] ?? 'Mes' }}
-                        {{ $this->filter ?? now()->year }}
-                    </span>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <x-filament::button
-                            wire:click="toggleDetailView"
-                            wire:loading.attr="disabled"
-                            size="sm"
-                            color="primary"
-                        >
-                            {{ $this->detailView === 'agents' ? 'Agencias' : 'Agentes' }}
-                        </x-filament::button>
-                        <x-filament::button
-                            wire:click="resetToMonthly"
-                            wire:loading.attr="disabled"
-                            size="sm"
-                            color="gray"
-                            icon="heroicon-m-arrow-uturn-left"
-                        >
-                            Volver al histórico mensual
-                        </x-filament::button>
-                    </div>
-                </div>
-            @endif
-
             <div
                 x-load
                 x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('chart', 'filament/widgets') }}"
                 wire:ignore
-                wire:key="cq-total-corporate-quote-{{ $this->filter ?? now()->year }}-{{ $this->selectedMonth ?? 'year' }}-{{ $this->detailView }}"
+                wire:key="cq-total-corporate-quote-{{ $this->filter ?? now()->year }}"
                 data-chart-type="{{ $type }}"
                 x-data="chart({
                             cachedData: @js($this->getCachedData()),

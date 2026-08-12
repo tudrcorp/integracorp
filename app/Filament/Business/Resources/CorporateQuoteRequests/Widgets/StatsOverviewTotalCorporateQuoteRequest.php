@@ -11,6 +11,8 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class StatsOverviewTotalCorporateQuoteRequest extends StatsOverviewWidget
 {
+    protected int|string|array $columnSpan = 'full';
+
     /**
      * @var array{year?: int, month?: int}
      */

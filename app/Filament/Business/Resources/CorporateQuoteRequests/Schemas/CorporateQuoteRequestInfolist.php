@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\CorporateQuoteRequests\Schemas;
 
+use App\Enums\DressTaylorCompany;
 use App\Models\CorporateQuoteRequest;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
@@ -55,6 +56,12 @@ class CorporateQuoteRequestInfolist
                                                             ->label('Código')
                                                             ->badge()
                                                             ->color('primary'),
+                                                        TextEntry::make('company')
+                                                            ->label('Empresa')
+                                                            ->badge()
+                                                            ->formatStateUsing(fn (?DressTaylorCompany $state): string => $state?->label() ?? '—')
+                                                            ->color(fn (?DressTaylorCompany $state): string => $state?->filamentColor() ?? 'gray')
+                                                            ->placeholder('—'),
                                                         TextEntry::make('agent.name')
                                                             ->label('Agente')
                                                             ->icon(Heroicon::OutlinedUser)

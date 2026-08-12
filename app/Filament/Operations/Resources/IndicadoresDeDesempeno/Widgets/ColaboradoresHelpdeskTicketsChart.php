@@ -4,17 +4,20 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets;
 
+use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\Concerns\HasIndicadoresDeDesempenoMonthlyDrillDown;
 use App\Support\IndicadoresDeDesempeno\ColaboradoresHelpdeskTicketsChartSeries;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 
 class ColaboradoresHelpdeskTicketsChart extends ChartWidget
 {
+    use HasIndicadoresDeDesempenoMonthlyDrillDown;
+
     protected string $view = 'filament.operations.indicadores-de-desempeno-chart';
 
-    protected ?string $heading = 'Tickets creados por colaborador';
+    protected ?string $heading = 'Tickets creados por mes';
 
-    protected ?string $description = 'Tickets creados por los mismos responsables del gráfico de observaciones de proveedores.';
+    protected ?string $description = 'Totales mensuales de tickets creados. Haz clic en un mes para ver el desglose semanal, y en una semana para ver el detalle por colaborador.';
 
     protected ?string $maxHeight = '480px';
 
@@ -24,20 +27,30 @@ class ColaboradoresHelpdeskTicketsChart extends ChartWidget
 
     protected function getFilters(): ?array
     {
-        $now = now();
-        $filters = [];
-
-        for ($i = 0; $i < 5; $i++) {
-            $y = $now->year - $i;
-            $filters[(string) $y] = (string) $y;
-        }
-
-        return $filters;
+        return $this->yearFilters();
     }
 
     protected function getData(): array
     {
-        $series = ColaboradoresHelpdeskTicketsChartSeries::totalsByColaborador($this->resolvedYear());
+        $year = $this->resolvedYear();
+        $collaborator = $this->scopedCollaborator();
+
+        if ($this->selectedMonth !== null && $this->selectedWeek !== null) {
+            $series = ColaboradoresHelpdeskTicketsChartSeries::totalsByCollaboratorForWeek(
+                $year,
+                $this->selectedMonth,
+                $this->selectedWeek,
+                $collaborator,
+            );
+            $label = "Tickets · {$this->selectedWeekLabel()} · {$this->selectedMonthLabel()} {$year}";
+        } elseif ($this->selectedMonth !== null) {
+            $series = ColaboradoresHelpdeskTicketsChartSeries::totalsByWeek($year, $this->selectedMonth, $collaborator);
+            $label = "Tickets · {$this->selectedMonthLabel()} {$year}";
+        } else {
+            $series = ColaboradoresHelpdeskTicketsChartSeries::totalsByMonth($year, $collaborator);
+            $label = "Tickets creados ({$year})";
+        }
+
         $labels = $series['labels'];
         $totals = $series['totals'];
         $count = count($labels);
@@ -61,7 +74,7 @@ class ColaboradoresHelpdeskTicketsChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Tickets creados',
+                    'label' => $label,
                     'data' => $totals,
                     'backgroundColor' => $fills,
                     'borderColor' => $strokes,
@@ -82,66 +95,6 @@ class ColaboradoresHelpdeskTicketsChart extends ChartWidget
 
     protected function getOptions(): RawJs
     {
-        return RawJs::make(<<<'JS'
-        {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false,
-                },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: 'rgba(22, 22, 24, 0.56)',
-                    titleColor: '#f5f5f7',
-                    bodyColor: 'rgba(235, 235, 245, 0.88)',
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                    borderWidth: 1,
-                    padding: 10,
-                    cornerRadius: 12,
-                },
-            },
-            scales: {
-                x: {
-                    grid: {
-                        display: false,
-                    },
-                    ticks: {
-                        color: '#000000',
-                        font: {
-                            size: 13,
-                        },
-                    },
-                },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0,
-                        stepSize: 1,
-                        color: '#000000',
-                        font: {
-                            size: 13,
-                        },
-                    },
-                },
-            },
-        }
-        JS);
-    }
-
-    private function resolvedYear(): int
-    {
-        return (int) ($this->filter ?? now()->year);
-    }
-
-    private function brighterGlassFill(string $rgba): string
-    {
-        if (preg_match('/rgba?\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/', $rgba, $matches)) {
-            $alpha = min(0.95, (float) $matches[4] + 0.12);
-
-            return "rgba({$matches[1]}, {$matches[2]}, {$matches[3]}, {$alpha})";
-        }
-
-        return $rgba;
+        return $this->monthlyDrillDownOptions(showLegend: false);
     }
 }

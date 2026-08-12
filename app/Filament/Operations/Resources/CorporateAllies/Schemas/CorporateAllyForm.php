@@ -10,6 +10,7 @@ use App\Models\State;
 use App\Models\SupplierClasificacion;
 use App\Models\SupplierEstatusSistema;
 use App\Models\SupplierStatusConvenio;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
@@ -36,268 +37,6 @@ class CorporateAllyForm
     private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
 
     private const REPEATER_CARD = 'rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
-
-    /**
-     * @var array<string, string>
-     */
-    private const COUNTRY_DIAL_CODES = [
-        'AFG' => '+93',
-        'AGO' => '+244',
-        'ALB' => '+355',
-        'AND' => '+376',
-        'ARE' => '+971',
-        'ARG' => '+54',
-        'ARM' => '+374',
-        'ATG' => '+1',
-        'AUS' => '+61',
-        'AUT' => '+43',
-        'AZE' => '+994',
-        'BDI' => '+257',
-        'BEL' => '+32',
-        'BEN' => '+229',
-        'BFA' => '+226',
-        'BGD' => '+880',
-        'BGR' => '+359',
-        'BHR' => '+973',
-        'BHS' => '+1',
-        'BIH' => '+387',
-        'BLR' => '+375',
-        'BLZ' => '+501',
-        'BOL' => '+591',
-        'BRA' => '+55',
-        'BRB' => '+1',
-        'BRN' => '+673',
-        'BTN' => '+975',
-        'BWA' => '+267',
-        'CAF' => '+236',
-        'CAN' => '+1',
-        'CHE' => '+41',
-        'CHL' => '+56',
-        'CHN' => '+86',
-        'CMR' => '+237',
-        'COD' => '+243',
-        'COG' => '+242',
-        'COL' => '+57',
-        'COM' => '+269',
-        'CPV' => '+238',
-        'CRI' => '+506',
-        'CUB' => '+53',
-        'CYP' => '+357',
-        'CZE' => '+420',
-        'DEU' => '+49',
-        'DJI' => '+253',
-        'DMA' => '+1',
-        'DNK' => '+45',
-        'DOM' => '+1',
-        'DZA' => '+213',
-        'ECU' => '+593',
-        'EGY' => '+20',
-        'ERI' => '+291',
-        'ESP' => '+34',
-        'EST' => '+372',
-        'ETH' => '+251',
-        'FIN' => '+358',
-        'FJI' => '+679',
-        'FRA' => '+33',
-        'FSM' => '+691',
-        'GAB' => '+241',
-        'GBR' => '+44',
-        'GEO' => '+995',
-        'GHA' => '+233',
-        'GIN' => '+224',
-        'GMB' => '+220',
-        'GNB' => '+245',
-        'GNQ' => '+240',
-        'GRC' => '+30',
-        'GRD' => '+1',
-        'GTM' => '+502',
-        'GUY' => '+592',
-        'HND' => '+504',
-        'HRV' => '+385',
-        'HTI' => '+509',
-        'HUN' => '+36',
-        'IDN' => '+62',
-        'IND' => '+91',
-        'IRL' => '+353',
-        'IRN' => '+98',
-        'IRQ' => '+964',
-        'ISL' => '+354',
-        'ISR' => '+972',
-        'ITA' => '+39',
-        'JAM' => '+1',
-        'JOR' => '+962',
-        'JPN' => '+81',
-        'KAZ' => '+7',
-        'KEN' => '+254',
-        'KGZ' => '+996',
-        'KHM' => '+855',
-        'KIR' => '+686',
-        'KNA' => '+1',
-        'KOR' => '+82',
-        'KWT' => '+965',
-        'LAO' => '+856',
-        'LBN' => '+961',
-        'LBR' => '+231',
-        'LBY' => '+218',
-        'LCA' => '+1',
-        'LIE' => '+423',
-        'LKA' => '+94',
-        'LSO' => '+266',
-        'LTU' => '+370',
-        'LUX' => '+352',
-        'LVA' => '+371',
-        'MAR' => '+212',
-        'MCO' => '+377',
-        'MDA' => '+373',
-        'MDG' => '+261',
-        'MDV' => '+960',
-        'MEX' => '+52',
-        'MHL' => '+692',
-        'MKD' => '+389',
-        'MLI' => '+223',
-        'MLT' => '+356',
-        'MMR' => '+95',
-        'MNE' => '+382',
-        'MNG' => '+976',
-        'MOZ' => '+258',
-        'MRT' => '+222',
-        'MUS' => '+230',
-        'MWI' => '+265',
-        'MYS' => '+60',
-        'NAM' => '+264',
-        'NER' => '+227',
-        'NGA' => '+234',
-        'NIC' => '+505',
-        'NOR' => '+47',
-        'NPL' => '+977',
-        'NRU' => '+674',
-        'NZL' => '+64',
-        'OMN' => '+968',
-        'PAK' => '+92',
-        'PAN' => '+507',
-        'PER' => '+51',
-        'PHL' => '+63',
-        'PLW' => '+680',
-        'PNG' => '+675',
-        'POL' => '+48',
-        'PRK' => '+850',
-        'PRT' => '+351',
-        'PRY' => '+595',
-        'PSE' => '+970',
-        'QAT' => '+974',
-        'ROU' => '+40',
-        'RUS' => '+7',
-        'RWA' => '+250',
-        'SAU' => '+966',
-        'SDN' => '+249',
-        'SEN' => '+221',
-        'SGP' => '+65',
-        'SLB' => '+677',
-        'SLE' => '+232',
-        'SLV' => '+503',
-        'SMR' => '+378',
-        'SOM' => '+252',
-        'SRB' => '+381',
-        'SSD' => '+211',
-        'STP' => '+239',
-        'SUR' => '+597',
-        'SVK' => '+421',
-        'SVN' => '+386',
-        'SWE' => '+46',
-        'SWZ' => '+268',
-        'SYC' => '+248',
-        'SYR' => '+963',
-        'TCD' => '+235',
-        'TGO' => '+228',
-        'THA' => '+66',
-        'TJK' => '+992',
-        'TKM' => '+993',
-        'TLS' => '+670',
-        'TON' => '+676',
-        'TTO' => '+1',
-        'TUN' => '+216',
-        'TUR' => '+90',
-        'TUV' => '+688',
-        'TZA' => '+255',
-        'UGA' => '+256',
-        'UKR' => '+380',
-        'URY' => '+598',
-        'USA' => '+1',
-        'UZB' => '+998',
-        'VAT' => '+379',
-        'VCT' => '+1',
-        'VEN' => '+58',
-        'VNM' => '+84',
-        'VUT' => '+678',
-        'WSM' => '+685',
-        'YEM' => '+967',
-        'ZAF' => '+27',
-        'ZMB' => '+260',
-        'ZWE' => '+263',
-    ];
-
-    private static function phoneField(string $name, string $label): TextInput
-    {
-        return TextInput::make($name)
-            ->label($label)
-            ->prefix(fn (Get $get): string => self::resolveCountryDialCode($get('country_id')) ?? '')
-            ->placeholder('Ej: +584141234567')
-            ->helperText('Se sugiere el código internacional según el país seleccionado.')
-            ->tel()
-            ->live(onBlur: true)
-            ->afterStateUpdated(function (?string $state, Set $set, Get $get) use ($name): void {
-                $dialCode = self::resolveCountryDialCode($get('country_id'));
-
-                if (blank($dialCode) || blank($state)) {
-                    return;
-                }
-
-                $set($name, self::formatPhoneWithDialCode($state, $dialCode));
-            })
-            ->maxLength(255)
-            ->rules(['nullable', 'regex:/^\+?\d{8,15}$/'])
-            ->validationMessages([
-                'regex' => 'Debe tener entre 8 y 15 dígitos, con o sin prefijo +.',
-            ]);
-    }
-
-    private static function resolveCountryDialCode(mixed $countryId): ?string
-    {
-        if (blank($countryId)) {
-            return null;
-        }
-
-        $countryCode = Country::query()
-            ->whereKey($countryId)
-            ->value('code');
-
-        if (blank($countryCode)) {
-            return null;
-        }
-
-        return self::COUNTRY_DIAL_CODES[strtoupper((string) $countryCode)] ?? null;
-    }
-
-    private static function formatPhoneWithDialCode(string $phone, string $dialCode): string
-    {
-        if (str_starts_with($phone, '+')) {
-            return $phone;
-        }
-
-        $digits = preg_replace('/\D+/', '', $phone) ?? '';
-        $digits = ltrim($digits, '0');
-        $dialDigits = ltrim($dialCode, '+');
-
-        if (blank($digits)) {
-            return $dialCode;
-        }
-
-        if (str_starts_with($digits, $dialDigits)) {
-            return '+'.$digits;
-        }
-
-        return $dialCode.$digits;
-    }
 
     /**
      * @return array<string, string>
@@ -496,28 +235,24 @@ class CorporateAllyForm
                                                     ->label('País')
                                                     ->options(fn (): array => Country::query()->orderBy('name')->pluck('name', 'id')->all())
                                                     ->live()
-                                                    ->afterStateUpdated(function (Set $set, Get $get): void {
+                                                    ->afterStateUpdated(function (Set $set, mixed $state): void {
                                                         $set('state_id', null);
                                                         $set('city_id', null);
-
-                                                        $dialCode = self::resolveCountryDialCode($get('country_id'));
-
-                                                        if (blank($dialCode)) {
-                                                            return;
-                                                        }
-
-                                                        if (blank($get('phone'))) {
-                                                            $set('phone', $dialCode);
-                                                        }
-
-                                                        if (blank($get('people_contact'))) {
-                                                            $set('people_contact', $dialCode);
-                                                        }
+                                                        $set(
+                                                            'country_code',
+                                                            filled($state)
+                                                                ? (Country::query()->whereKey($state)->value('code') ?? null)
+                                                                : null,
+                                                        );
                                                     })
                                                     ->searchable()
                                                     ->preload()
+                                                    ->required()
                                                     ->placeholder('Seleccione un país')
                                                     ->columnSpan(['default' => 1, 'lg' => 2]),
+                                                Hidden::make('country_code')
+                                                    ->required()
+                                                    ->dehydrated(),
                                                 Select::make('state_id')
                                                     ->label('Estado')
                                                     ->options(fn (Get $get): array => State::query()
@@ -529,8 +264,10 @@ class CorporateAllyForm
                                                     ->afterStateUpdated(fn (Set $set): mixed => $set('city_id', null))
                                                     ->searchable()
                                                     ->preload()
+                                                    ->required()
                                                     ->placeholder('Seleccione un estado')
-                                                    ->disabled(fn (Get $get): bool => blank($get('country_id'))),
+                                                    ->disabled(fn (Get $get): bool => blank($get('country_id')))
+                                                    ->dehydrated(),
                                                 Select::make('city_id')
                                                     ->label('Ciudad')
                                                     ->options(fn (Get $get): array => City::query()
@@ -544,8 +281,10 @@ class CorporateAllyForm
                                                         ->all())
                                                     ->searchable()
                                                     ->preload()
+                                                    ->required()
                                                     ->placeholder('Seleccione una ciudad')
-                                                    ->disabled(fn (Get $get): bool => blank($get('country_id')) || blank($get('state_id'))),
+                                                    ->disabled(fn (Get $get): bool => blank($get('country_id')) || blank($get('state_id')))
+                                                    ->dehydrated(),
                                                 Textarea::make('address')
                                                     ->label('Dirección')
                                                     ->placeholder('Av., urbanización, punto de referencia')
@@ -560,40 +299,108 @@ class CorporateAllyForm
                             ]),
 
                         Tab::make('Contacto')
-                            ->icon('heroicon-o-phone')
+                            ->icon('heroicon-o-user-group')
                             ->schema([
                                 Placeholder::make('corporate_ally_contact_intro')
                                     ->hiddenLabel()
                                     ->content(new HtmlString(
                                         '<p class="text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
                                         .'<span class="font-semibold text-gray-900 dark:text-white">Paso 3 — Contacto.</span> '
-                                        .'Teléfonos, correo y redes del aliado corporativo.'
+                                        .'Personas de contacto y redes sociales del aliado corporativo.'
                                         .'</p>'
                                     ))
                                     ->columnSpanFull(),
 
-                                Section::make('Datos de contacto')
-                                    ->description('Teléfonos, correo y redes del aliado corporativo.')
-                                    ->icon('heroicon-o-user-group')
+                                Section::make('Contactos principales')
+                                    ->description('Personas de contacto registradas para este aliado corporativo.')
+                                    ->icon('heroicon-o-users')
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
-                                        Grid::make(['default' => 1, 'lg' => 2])
-                                            ->extraAttributes(['class' => self::INNER_CARD])
+                                        Repeater::make('corporateAllyContactPrincipals')
+                                            ->label('Contactos principales')
+                                            ->relationship()
+                                            ->extraAttributes([
+                                                'class' => self::REPEATER_CARD,
+                                            ])
+                                            ->table([
+                                                TableColumn::make('Departamento'),
+                                                TableColumn::make('Cargo'),
+                                                TableColumn::make('Nombre y apellido'),
+                                                TableColumn::make('Correo'),
+                                                TableColumn::make('Celular'),
+                                                TableColumn::make('Teléfono local'),
+                                                TableColumn::make('Extensión'),
+                                            ])
                                             ->schema([
-                                                self::phoneField('phone', 'Teléfono principal'),
-                                                self::phoneField('people_contact', 'Teléfono secundario'),
+                                                TextInput::make('departament')
+                                                    ->label('Departamento')
+                                                    ->placeholder('Ej: FACTURACIÓN')
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('departament', $state.toUpperCase());
+                                                    JS),
+                                                TextInput::make('position')
+                                                    ->label('Cargo')
+                                                    ->placeholder('Ej: COORDINADOR')
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('position', $state.toUpperCase());
+                                                    JS),
+                                                TextInput::make('name')
+                                                    ->label('Nombre y apellido')
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('name', $state.toUpperCase());
+                                                    JS),
                                                 TextInput::make('email')
-                                                    ->label('Correo electrónico')
-                                                    ->placeholder('contacto@empresa.com')
-                                                    ->email()
+                                                    ->label('Correo')
+                                                    ->email(),
+                                                TextInput::make('personal_phone')
+                                                    ->label('Teléfono celular')
+                                                    ->placeholder('04141234567')
+                                                    ->helperText('11 dígitos, sin espacios ni guiones.')
+                                                    ->mask('99999999999')
+                                                    ->tel()
                                                     ->maxLength(255)
-                                                    ->columnSpan(['default' => 1, 'lg' => 2]),
-                                                Textarea::make('social_networks')
-                                                    ->label('Redes sociales')
-                                                    ->placeholder('Instagram, LinkedIn, sitio web…')
-                                                    ->rows(3)
-                                                    ->columnSpan(['default' => 1, 'lg' => 2]),
-                                            ]),
+                                                    ->rules(['nullable', 'regex:/^\d{11}$/'])
+                                                    ->validationMessages([
+                                                        'regex' => 'Debe tener exactamente 11 dígitos, sin espacios ni guiones.',
+                                                    ]),
+                                                TextInput::make('local_phone')
+                                                    ->label('Teléfono local')
+                                                    ->placeholder('02121234567')
+                                                    ->helperText('11 dígitos, sin espacios ni guiones.')
+                                                    ->mask('99999999999')
+                                                    ->tel()
+                                                    ->maxLength(255)
+                                                    ->rules(['nullable', 'regex:/^\d{11}$/'])
+                                                    ->validationMessages([
+                                                        'regex' => 'Debe tener exactamente 11 dígitos, sin espacios ni guiones.',
+                                                    ]),
+                                                TextInput::make('extensions')
+                                                    ->label('Extensión(es)')
+                                                    ->placeholder('Ej: 101, 102'),
+                                                Hidden::make('created_by')->default(fn (): string => Auth::user()?->name ?? ''),
+                                                Hidden::make('updated_by')
+                                                    ->default(fn (): string => Auth::user()?->name ?? '')
+                                                    ->hiddenOn('create'),
+                                            ])
+                                            ->addActionLabel('Agregar contacto')
+                                            ->columnSpanFull()
+                                            ->defaultItems(0)
+                                            ->collapsed()
+                                            ->reorderable(),
+                                    ])
+                                    ->collapsible(),
+
+                                Section::make('Redes sociales')
+                                    ->description('Perfiles y enlaces públicos del aliado corporativo.')
+                                    ->icon('heroicon-o-share')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Textarea::make('social_networks')
+                                            ->label('Redes sociales')
+                                            ->placeholder('Instagram, LinkedIn, sitio web…')
+                                            ->rows(3)
+                                            ->extraAttributes(['class' => self::INNER_CARD])
+                                            ->columnSpanFull(),
                                     ])
                                     ->collapsible(),
                             ]),

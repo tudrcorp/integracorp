@@ -23,16 +23,24 @@ it('consolida las queries de widgets del listado de afiliaciones corporativas', 
 
     expect($statsOverview)
         ->toContain("selectRaw('COUNT(*) as total_count')")
+        ->toContain("selectRaw('COUNT(DISTINCT code_agency) as agencies_count')")
+        ->toContain("selectRaw('COUNT(DISTINCT agent_id) as agents_count')")
+        ->toContain('Grupos Activos')
         ->toContain('transition-[transform,box-shadow,border-color]')
         ->not->toContain('transition-all')
         ->not->toContain('[&_*]:transition-all');
 
     expect($statsPlan)
+        ->toContain('AffiliateCorporate::query()')
+        ->toContain("->where('status', 'ACTIVO')")
         ->toContain("->groupBy('plan_id')")
+        ->toContain('PLAN ESCOLAR AP 1K')
+        ->toContain('PLAN ESCOLAR AP 3K')
+        ->toContain('TOTAL ACTIVOS')
         ->toContain('transition-[transform,box-shadow,border-color]')
         ->not->toContain('transition-all')
         ->not->toContain('[&_*]:transition-all')
-        ->not->toContain('$planStatsMes = AfilliationCorporatePlan::select');
+        ->not->toContain('AfilliationCorporatePlan::query()');
 
     expect($estadoChart)
         ->toContain('City::query()')

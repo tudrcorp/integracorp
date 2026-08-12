@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\IndicadoresDeDesempeno\IndicadoresDeDesempenoTimeBuckets;
 use App\Support\IndicadoresDeDesempeno\SupplierAcceptanceLettersChartSeries;
 use App\Support\IndicadoresDeDesempeno\SupplierNewProviderCreationChartSeries;
 use App\Support\IndicadoresDeDesempeno\SupplierObservationsChartSeries;
@@ -67,24 +68,43 @@ it('define indicadores de desempeño como resource en operations con widget de t
         ->and(file_exists($supplierSeriesPath))->toBeTrue()
         ->and(file_exists(dirname(__DIR__, 2).'/resources/views/filament/widgets/supplier-observations-chart.blade.php'))->toBeFalse();
 
-    expect(file_get_contents($supplierWidgetPath))->toContain('SupplierObservationsChartSeries::groupedByCollaborator')
+    expect(file_get_contents($supplierWidgetPath))->toContain('SupplierObservationsChartSeries::groupedByMonth')
+        ->toContain('SupplierObservationsChartSeries::groupedByWeek')
+        ->toContain('SupplierObservationsChartSeries::groupedByCollaboratorForWeek')
         ->toContain('SupplierObservationsChartSeries::LABEL_JURIDICOS')
         ->toContain('SupplierObservationsChartSeries::LABEL_NATURALES')
-        ->not->toContain('openSupplierTypeDetail')
-        ->not->toContain('resetToOverview');
+        ->toContain('HasIndicadoresDeDesempenoMonthlyDrillDown');
+
+    $drillDownTraitPath = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/IndicadoresDeDesempeno/Widgets/Concerns/HasIndicadoresDeDesempenoMonthlyDrillDown.php';
+    expect(file_get_contents($drillDownTraitPath))->toContain('openMonthDetail')
+        ->toContain('openWeekDetail')
+        ->toContain('resetToWeekly')
+        ->toContain('resetToMonthly')
+        ->toContain('selectedWeek');
 
     expect(file_get_contents($supplierSeriesPath))->toContain('SupplierObservacion::query()')
         ->toContain('DoctorNurseObservacion::query()')
         ->toContain('groupedByCollaborator')
+        ->toContain('groupedByCollaboratorForWeek')
+        ->toContain('groupedByMonth')
+        ->toContain('groupedByWeek')
         ->toContain('applyCollaboratorFilter')
         ->toContain("NULLIF(TRIM(created_by), '') IS NOT NULL");
 
-    expect($widgetContents)->toContain('ColaboradoresHelpdeskTicketsChartSeries::totalsByColaborador')
-        ->toContain("protected ?string \$heading = 'Tickets creados por colaborador';")
+    expect($widgetContents)->toContain('ColaboradoresHelpdeskTicketsChartSeries::totalsByMonth')
+        ->toContain('ColaboradoresHelpdeskTicketsChartSeries::totalsByWeek')
+        ->toContain('ColaboradoresHelpdeskTicketsChartSeries::totalsByCollaboratorForWeek')
+        ->toContain("protected ?string \$heading = 'Tickets creados por mes';")
         ->toContain("protected string \$view = 'filament.operations.indicadores-de-desempeno-chart';")
+        ->toContain('HasIndicadoresDeDesempenoMonthlyDrillDown')
         ->toContain('protected ?string $maxHeight');
 
     expect(file_exists(dirname(__DIR__, 2).'/resources/views/filament/operations/indicadores-de-desempeno-chart.blade.php'))->toBeTrue();
+    expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/operations/indicadores-de-desempeno-chart.blade.php'))
+        ->toContain('resetToMonthly')
+        ->toContain('resetToWeekly')
+        ->toContain('Detalle semanal')
+        ->toContain('Detalle por colaborador');
 
     $appServiceProviderContents = file_get_contents($appServiceProviderPath);
 
@@ -110,6 +130,9 @@ it('usa la misma lista de responsables que el gráfico de observaciones de prove
 
     expect(file_get_contents($helpdeskSeriesPath))->toContain('SupplierObservationsChartSeries::collaboratorLabels')
         ->toContain("HelpDesk::query()->where('created_by', \$collaboratorName)")
+        ->toContain('totalsByMonth')
+        ->toContain('totalsByWeek')
+        ->toContain('totalsByCollaboratorForWeek')
         ->not->toContain('COLABORADOR_IDS')
         ->not->toContain('RrhhColaborador::query()');
 });
@@ -125,6 +148,9 @@ it('agrupa observaciones jurídicas y naturales por colaborador en un gráfico d
         ->toContain("'juridicos' => \$juridicosData")
         ->toContain("'naturales' => \$naturalesData")
         ->toContain('TYPE_NATURALES => DoctorNurseObservacion::query()')
+        ->toContain('groupedByMonth')
+        ->toContain('groupedByWeek')
+        ->toContain('groupedByCollaboratorForWeek')
         ->not->toContain('Sin colaborador');
 });
 
@@ -135,7 +161,9 @@ it('agrupa actualizaciones de proveedores jurídicos y naturales por colaborador
     expect(file_exists($widgetPath))->toBeTrue()
         ->and(file_exists($seriesPath))->toBeTrue();
 
-    expect(file_get_contents($widgetPath))->toContain('SupplierProviderSystemUpdateChartSeries::groupedByCollaborator')
+    expect(file_get_contents($widgetPath))->toContain('SupplierProviderSystemUpdateChartSeries::groupedByMonth')
+        ->toContain('SupplierProviderSystemUpdateChartSeries::groupedByWeek')
+        ->toContain('SupplierProviderSystemUpdateChartSeries::groupedByCollaboratorForWeek')
         ->toContain("protected ?string \$heading = 'Actualización del proveedor en el sistema';");
 
     $seriesContents = file_get_contents($seriesPath);
@@ -149,6 +177,9 @@ it('agrupa actualizaciones de proveedores jurídicos y naturales por colaborador
         ->toContain('DOCTOR_NURSE_RELEVANT_FIELDS')
         ->toContain('SUPPLIER_RELEVANT_FIELDS')
         ->toContain('countsFromAuditLogs')
+        ->toContain('groupedByMonth')
+        ->toContain('groupedByWeek')
+        ->toContain('groupedByCollaboratorForWeek')
         ->not->toContain('DoctorNurse::query()')
         ->toContain("'juridicos' => \$juridicosData")
         ->toContain("'naturales' => \$naturalesData");
@@ -164,9 +195,11 @@ it('agrupa creaciones de proveedores jurídicos y naturales con correo por colab
     expect(file_exists($widgetPath))->toBeTrue()
         ->and(file_exists($seriesPath))->toBeTrue();
 
-    expect(file_get_contents($widgetPath))->toContain('SupplierNewProviderCreationChartSeries::groupedByCollaborator')
+    expect(file_get_contents($widgetPath))->toContain('SupplierNewProviderCreationChartSeries::groupedByMonth')
+        ->toContain('SupplierNewProviderCreationChartSeries::groupedByWeek')
+        ->toContain('SupplierNewProviderCreationChartSeries::groupedByCollaboratorForWeek')
         ->toContain("protected ?string \$heading = 'Creación de un nuevo proveedor';")
-        ->toContain('envío de kit por correo');
+        ->toContain('envío de kit');
 
     $seriesContents = file_get_contents($seriesPath);
 
@@ -175,6 +208,9 @@ it('agrupa creaciones de proveedores jurídicos y naturales con correo por colab
         ->toContain('applyEmailFilter')
         ->toContain('correo_principal')
         ->toContain('applyCollaboratorFilter')
+        ->toContain('groupedByMonth')
+        ->toContain('groupedByWeek')
+        ->toContain('groupedByCollaboratorForWeek')
         ->toContain("'juridicos' => \$juridicosData")
         ->toContain("'naturales' => \$naturalesData");
 
@@ -189,9 +225,10 @@ it('agrupa cartas de aceptación logradas por colaborador en jurídicos y natura
     expect(file_exists($widgetPath))->toBeTrue()
         ->and(file_exists($seriesPath))->toBeTrue();
 
-    expect(file_get_contents($widgetPath))->toContain('SupplierAcceptanceLettersChartSeries::groupedByCollaborator')
-        ->toContain("protected ?string \$heading = 'Cartas de aceptación logradas';")
-        ->toContain('carta-acceptance.upload');
+    expect(file_get_contents($widgetPath))->toContain('SupplierAcceptanceLettersChartSeries::groupedByMonth')
+        ->toContain('SupplierAcceptanceLettersChartSeries::groupedByWeek')
+        ->toContain('SupplierAcceptanceLettersChartSeries::groupedByCollaboratorForWeek')
+        ->toContain("protected ?string \$heading = 'Cartas de aceptación logradas';");
 
     $seriesContents = file_get_contents($seriesPath);
 
@@ -201,9 +238,82 @@ it('agrupa cartas de aceptación logradas por colaborador en jurídicos y natura
         ->toContain('carta-acceptance.upload')
         ->toContain('isCartaAcceptanceUpload')
         ->toContain('resolveCollaboratorName')
+        ->toContain('groupedByMonth')
+        ->toContain('groupedByWeek')
+        ->toContain('groupedByCollaboratorForWeek')
         ->toContain("'juridicos' => \$juridicosData")
         ->toContain("'naturales' => \$naturalesData");
 
     expect(SupplierAcceptanceLettersChartSeries::LABEL_JURIDICOS)->toBe('Proveedores jurídicos')
         ->and(SupplierAcceptanceLettersChartSeries::LABEL_NATURALES)->toBe('Proveedores naturales');
+});
+
+it('restringe la lista de colaboradores al usuario logueado salvo super admin', function () {
+    $accessPath = dirname(__DIR__, 2).'/app/Support/IndicadoresDeDesempeno/IndicadoresDeDesempenoCollaboratorAccess.php';
+    $counterPath = dirname(__DIR__, 2).'/app/Support/IndicadoresDeDesempeno/ColaboradorDailyActivitiesCounter.php';
+    $speedometerPath = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/IndicadoresDeDesempeno/Widgets/ColaboradorActivitiesSpeedometerWidget.php';
+    $speedometerView = dirname(__DIR__, 2).'/resources/views/filament/operations/colaborador-activities-speedometer.blade.php';
+
+    expect(file_exists($accessPath))->toBeTrue();
+
+    expect(file_get_contents($accessPath))->toContain('OperationsSuperAdmin::check()')
+        ->toContain('visibleCollaboratorLabels')
+        ->toContain('restrictToCollaborator')
+        ->toContain('filterDualSeriesToCollaborator');
+
+    expect(file_get_contents($counterPath))->toContain('IndicadoresDeDesempenoCollaboratorAccess::visibleCollaboratorLabels');
+
+    expect(file_get_contents($speedometerPath))->toContain('canSelectCollaborator')
+        ->toContain('IndicadoresDeDesempenoCollaboratorAccess::isSuperAdmin');
+
+    expect(file_get_contents($speedometerView))->toContain('canSelectCollaborator()');
+});
+
+it('define buckets mensuales y semanales para los gráficos de indicadores', function () {
+    expect(IndicadoresDeDesempenoTimeBuckets::monthLabels())->toHaveCount(12)
+        ->and(IndicadoresDeDesempenoTimeBuckets::monthLabel(8))->toBe('Ago')
+        ->and(IndicadoresDeDesempenoTimeBuckets::weeksInMonth(2026, 2))->toBe(4)
+        ->and(IndicadoresDeDesempenoTimeBuckets::weeksInMonth(2026, 8))->toBe(5)
+        ->and(IndicadoresDeDesempenoTimeBuckets::weekBucketFromDay(1))->toBe(1)
+        ->and(IndicadoresDeDesempenoTimeBuckets::weekBucketFromDay(8))->toBe(2)
+        ->and(IndicadoresDeDesempenoTimeBuckets::weekBucketFromDay(31))->toBe(5)
+        ->and(IndicadoresDeDesempenoTimeBuckets::fillMonthlyTotals([3 => 7]))->toBe([0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        ->and(IndicadoresDeDesempenoTimeBuckets::weekLabels(2026, 8))->toBe([
+            'Semana 1',
+            'Semana 2',
+            'Semana 3',
+            'Semana 4',
+            'Semana 5',
+        ])
+        ->and(IndicadoresDeDesempenoTimeBuckets::weekDateRange(2026, 5, 1))->toBe([
+            'from' => '2026-05-01',
+            'to' => '2026-05-07',
+        ])
+        ->and(IndicadoresDeDesempenoTimeBuckets::weekDateRange(2026, 5, 5))->toBe([
+            'from' => '2026-05-29',
+            'to' => '2026-05-31',
+        ]);
+});
+
+it('filtra series duales al colaborador restringido', function () {
+    $series = [
+        'labels' => ['Ana', 'Bruno', 'Carla'],
+        'juridicos' => [3, 1, 5],
+        'naturales' => [2, 4, 0],
+    ];
+
+    expect(\App\Support\IndicadoresDeDesempeno\IndicadoresDeDesempenoCollaboratorAccess::filterDualSeriesToCollaborator($series, null))
+        ->toBe($series)
+        ->and(\App\Support\IndicadoresDeDesempeno\IndicadoresDeDesempenoCollaboratorAccess::filterDualSeriesToCollaborator($series, 'Bruno'))
+        ->toBe([
+            'labels' => ['Bruno'],
+            'juridicos' => [1],
+            'naturales' => [4],
+        ])
+        ->and(\App\Support\IndicadoresDeDesempeno\IndicadoresDeDesempenoCollaboratorAccess::filterDualSeriesToCollaborator($series, 'Desconocido'))
+        ->toBe([
+            'labels' => ['Desconocido'],
+            'juridicos' => [0],
+            'naturales' => [0],
+        ]);
 });

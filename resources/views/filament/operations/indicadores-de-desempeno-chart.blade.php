@@ -9,6 +9,7 @@
     $isCollapsible = $this->isCollapsible();
     $type = $this->getType();
     $maxHeight = $this->getMaxHeight() ?? '800px';
+    $year = $this->resolvedYear();
 @endphp
 
 <x-filament-widgets::widget class="fi-wi-chart fi-agency-registrations-chart-like-suppliers fi-indicadores-de-desempeno-chart">
@@ -45,11 +46,43 @@
                 wire:poll.{{ $pollingInterval }}="updateChartData"
             @endif
         >
+            @if ($this->selectedWeek && $this->selectedMonth)
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                    <span>
+                        Detalle por colaborador · {{ $this->selectedWeekLabel() }} · {{ $this->selectedMonthLabel() }} {{ $year }}
+                    </span>
+                    <x-filament::button
+                        wire:click="resetToWeekly"
+                        wire:loading.attr="disabled"
+                        size="sm"
+                        color="gray"
+                        icon="heroicon-m-arrow-uturn-left"
+                    >
+                        Volver a semanales
+                    </x-filament::button>
+                </div>
+            @elseif ($this->selectedMonth)
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                    <span>
+                        Detalle semanal · {{ $this->selectedMonthLabel() }} {{ $year }}
+                    </span>
+                    <x-filament::button
+                        wire:click="resetToMonthly"
+                        wire:loading.attr="disabled"
+                        size="sm"
+                        color="gray"
+                        icon="heroicon-m-arrow-uturn-left"
+                    >
+                        Volver a mensuales
+                    </x-filament::button>
+                </div>
+            @endif
+
             <div
                 x-load
                 x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('chart', 'filament/widgets') }}"
                 wire:ignore
-                wire:key="indicadores-de-desempeno-chart-{{ $this->getId() }}"
+                wire:key="indicadores-de-desempeno-chart-{{ $this->getId() }}-{{ $this->chartKey }}-{{ $this->selectedMonth ?? 'year' }}-{{ $this->selectedWeek ?? 'month' }}-{{ $year }}"
                 data-chart-type="{{ $type }}"
                 x-data="chart({
                             cachedData: @js($this->getCachedData()),

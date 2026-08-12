@@ -2,8 +2,7 @@
 
 namespace App\Filament\Business\Resources\CorporateQuoteRequests\Widgets;
 
-use App\Models\Agency;
-use App\Models\Agent;
+use App\Enums\DressTaylorCompany;
 use App\Models\CorporateQuoteRequest;
 use Carbon\Carbon;
 use Filament\Support\RawJs;
@@ -20,17 +19,13 @@ class CorporateQuoteRequestChannelChart extends ChartWidget
 
     protected ?string $heading = 'SOLICITUDES POR AGENTE O AGENCIA';
 
-    protected ?string $description = 'Histórico mensual de solicitudes Dress Taylor. Haz clic en un mes para ver el Top 15 de agentes o agencias asociadas.';
+    protected ?string $description = 'Histórico mensual de solicitudes Dress Taylor. Pasa el cursor sobre un mes para ver el desglose TDEC / TDEV.';
 
     protected ?string $maxHeight = '480px';
 
     protected int|string|array $columnSpan = 'full';
 
-    public ?int $selectedMonth = null;
-
     public ?string $filter = null;
-
-    public string $detailView = 'agents';
 
     protected function getFilters(): ?array
     {
@@ -97,48 +92,9 @@ class CorporateQuoteRequestChannelChart extends ChartWidget
         ], $extra);
     }
 
-    public function openMonthDetail(int $month): void
-    {
-        if ($month < 1 || $month > 12) {
-            return;
-        }
-
-        $this->selectedMonth = $month;
-        $this->detailView = 'agents';
-        $this->updateChartData();
-    }
-
-    public function toggleDetailView(): void
-    {
-        if ($this->selectedMonth === null) {
-            return;
-        }
-
-        $this->detailView = $this->detailView === 'agents' ? 'agencies' : 'agents';
-        $this->updateChartData();
-    }
-
-    public function resetToMonthly(): void
-    {
-        $this->selectedMonth = null;
-        $this->detailView = 'agents';
-        $this->updateChartData();
-    }
-
     protected function getData(): array
     {
         $year = (int) ($this->filter ?? now()->year);
-
-        if ($this->selectedMonth) {
-            $month = (int) $this->selectedMonth;
-            $monthName = Carbon::create(null, $month)->monthName;
-
-            if ($this->detailView === 'agencies') {
-                return $this->buildTopAgenciesDetailChart($year, $month, $monthName);
-            }
-
-            return $this->buildTopAgentsDetailChart($year, $month, $monthName);
-        }
 
         $dataTrend = Trend::query(
             CorporateQuoteRequest::query()->whereYear('created_at', $year)
@@ -152,54 +108,17 @@ class CorporateQuoteRequestChannelChart extends ChartWidget
 
         $labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
         $values = $dataTrend->map(fn (TrendValue $value) => (int) $value->aggregate)->toArray();
-
-        return [
-            'datasets' => [
-                $this->makeBarDataset("Solicitudes Dress Taylor ({$year})", $values),
-            ],
-            'labels' => $labels,
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function buildTopAgentsDetailChart(int $year, int $month, string $monthName): array
-    {
-        $topAgents = CorporateQuoteRequest::query()
-            ->select([
-                'agent_id',
-                DB::raw('count(*) as total'),
-                DB::raw('MAX(created_at) as last_request_at'),
-            ])
-            ->whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
-            ->whereNotNull('agent_id')
-            ->groupBy('agent_id')
-            ->orderByDesc('total')
-            ->orderByDesc('last_request_at')
-            ->limit(15)
-            ->get();
-
-        $labels = [];
-        $values = [];
-        $names = [];
-
-        foreach ($topAgents as $row) {
-            $agentId = (int) $row->agent_id;
-            $agentName = Agent::find($agentId)?->name ?? "Agente #{$agentId}";
-
-            $labels[] = $agentName;
-            $names[] = $agentName;
-            $values[] = (int) $row->total;
-        }
+        $companyCounts = $this->monthlyCompanyCounts($year);
 
         return [
             'datasets' => [
                 $this->makeBarDataset(
-                    "Top 15 agentes - {$monthName} ({$year})",
+                    "Solicitudes Dress Taylor ({$year})",
                     $values,
-                    ['names' => $names],
+                    [
+                        'tdecCounts' => $companyCounts['tdec'],
+                        'tdevCounts' => $companyCounts['tdev'],
+                    ],
                 ),
             ],
             'labels' => $labels,
@@ -207,80 +126,62 @@ class CorporateQuoteRequestChannelChart extends ChartWidget
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array{tdec: array<int, int>, tdev: array<int, int>}
      */
-    protected function buildTopAgenciesDetailChart(int $year, int $month, string $monthName): array
+    protected function monthlyCompanyCounts(int $year): array
     {
-        $topAgencies = CorporateQuoteRequest::query()
+        $rows = CorporateQuoteRequest::query()
             ->select([
-                'code_agency',
-                DB::raw('count(*) as total'),
-                DB::raw('MAX(created_at) as last_request_at'),
+                DB::raw('MONTH(created_at) as month_number'),
+                'company',
+                DB::raw('COUNT(*) as total'),
             ])
-            ->whereNotNull('code_agency')
             ->whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
-            ->groupBy('code_agency')
-            ->orderByDesc('total')
-            ->orderByDesc('last_request_at')
-            ->limit(15)
+            ->whereNotNull('company')
+            ->groupBy(DB::raw('MONTH(created_at)'), 'company')
             ->get();
 
-        $labels = [];
-        $values = [];
-        $names = [];
+        $tdec = array_fill(0, 12, 0);
+        $tdev = array_fill(0, 12, 0);
 
-        foreach ($topAgencies as $row) {
-            $agencyName = Agency::where('code', $row->code_agency)->first()?->name_corporative
-                ?? "Agencia: {$row->code_agency}";
+        foreach ($rows as $row) {
+            $index = max(0, min(11, ((int) $row->month_number) - 1));
+            $company = $this->normalizeCompany($row->company);
 
-            $labels[] = $agencyName;
-            $names[] = $agencyName;
-            $values[] = (int) $row->total;
+            if ($company === DressTaylorCompany::Tdec->value) {
+                $tdec[$index] = (int) $row->total;
+            }
+
+            if ($company === DressTaylorCompany::Tdev->value) {
+                $tdev[$index] = (int) $row->total;
+            }
         }
 
         return [
-            'datasets' => [
-                $this->makeBarDataset(
-                    "Top 15 agencias - {$monthName} ({$year})",
-                    $values,
-                    ['names' => $names],
-                ),
-            ],
-            'labels' => $labels,
+            'tdec' => $tdec,
+            'tdev' => $tdev,
         ];
+    }
+
+    protected function normalizeCompany(mixed $company): ?string
+    {
+        if ($company instanceof DressTaylorCompany) {
+            return $company->value;
+        }
+
+        if (is_string($company) && $company !== '') {
+            return strtoupper($company);
+        }
+
+        return null;
     }
 
     protected function getOptions(): RawJs
     {
-        $livewireId = (string) $this->getId();
-
-        if ($this->selectedMonth !== null) {
-            $onClickJs = '() => {}';
-        } else {
-            $onClickJs = <<<JS
-(event, elements) => {
-                if (!elements || !elements.length) {
-                    return;
-                }
-
-                const index = elements[0].index;
-                const month = index + 1;
-                const component = window.Livewire?.find('{$livewireId}');
-                component?.call('openMonthDetail', month);
-            }
-JS;
-        }
-
-        $tooltipFooter = $this->selectedMonth === null
-            ? 'Haz clic para ver detalle'
-            : '';
-
-        return RawJs::make(<<<JS
+        return RawJs::make(<<<'JS'
         {
-            onClick: {$onClickJs},
             onHover: (event, chartElement) => {
-                event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                event.native.target.style.cursor = chartElement[0] ? 'default' : 'default';
             },
             responsive: true,
             maintainAspectRatio: false,
@@ -346,19 +247,23 @@ JS;
                     multiKeyBackground: 'rgba(255, 255, 255, 0.08)',
                     callbacks: {
                         title: function(context) {
-                            const item = context[0];
-                            const dataset = item.dataset || {};
-
-                            if (dataset.names && dataset.names[item.dataIndex]) {
-                                return dataset.names[item.dataIndex];
-                            }
-
-                            return item.label;
+                            return context[0].label;
                         },
                         label: function(context) {
-                            return ' Solicitudes: ' + context.raw;
-                        },
-                        footer: () => '{$tooltipFooter}'
+                            const dataset = context.dataset || {};
+                            const index = context.dataIndex;
+                            const lines = [' Solicitudes: ' + context.raw];
+
+                            if (Array.isArray(dataset.tdecCounts)) {
+                                lines.push(' TDEC: ' + (dataset.tdecCounts[index] ?? 0));
+                            }
+
+                            if (Array.isArray(dataset.tdevCounts)) {
+                                lines.push(' TDEV: ' + (dataset.tdevCounts[index] ?? 0));
+                            }
+
+                            return lines;
+                        }
                     }
                 }
             },
