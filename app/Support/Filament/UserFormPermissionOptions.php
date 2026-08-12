@@ -55,6 +55,7 @@ class UserFormPermissionOptions
         'stateresource' => ['estados'],
         'travelagencyresource' => ['agencias-de-viaje'],
         'travelagentresource' => ['agentes-de-viaje'],
+        'tdevagencyresource' => ['agencias-tdev'],
         'whitecompanyresource' => ['empresas-aliadas'],
         'zoneresource' => ['gestion-de-carpetas'],
         'affiliateresource' => ['afiliados-individuales'],
