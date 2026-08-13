@@ -808,6 +808,21 @@ class AgentForm
                                             ]),
                                     ])
                                     ->collapsible(),
+                                Section::make('Crédito asignado')
+                                    ->description('Cupo de crédito del agente. Los movimientos se registran en Conciliación de crédito al cancelar cuotas.')
+                                    ->icon('heroicon-o-banknotes')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        TextInput::make('assigned_credit')
+                                            ->label('Crédito asignado')
+                                            ->numeric()
+                                            ->prefix('US$')
+                                            ->step(0.01)
+                                            ->minValue(0)
+                                            ->default(0)
+                                            ->helperText('Monto máximo otorgado al agente.'),
+                                    ])
+                                    ->collapsible(),
                             ]),
 
                         Tab::make('Observaciones')

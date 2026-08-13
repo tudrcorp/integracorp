@@ -27,6 +27,21 @@ it('CreateTelemedicineConsultationPatient fuerza identidad del paciente del caso
         ->and($page)->toContain('La identidad de la sesión no coincide con el paciente del caso');
 });
 
+it('CreateTelemedicineConsultationPatient rehidrata caso y paciente entre requests Livewire', function (): void {
+    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Pages/CreateTelemedicineConsultationPatient.php');
+
+    expect($page)->not->toBeFalse()
+        ->and($page)->toContain('#[Locked]')
+        ->and($page)->toContain('public ?int $telemedicineCaseId')
+        ->and($page)->toContain('public ?int $telemedicinePatientId')
+        ->and($page)->toContain('function hydrate(): void')
+        ->and($page)->toContain('function resolveConsultationContext(): void')
+        ->and($page)->toContain('function rememberConsultationContextIds(): void')
+        ->and($page)->toContain('function failConsultationIdentity(string $message): never')
+        ->and($page)->toContain('$this->resolveConsultationContext()')
+        ->and($page)->toContain('No se pudo registrar la consulta');
+});
+
 it('el observer bloquea cédulas duplicadas al guardar', function (): void {
     $observer = file_get_contents(dirname(__DIR__, 2).'/app/Observers/TelemedicinePatientObserver.php');
 

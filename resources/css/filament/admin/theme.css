@@ -2042,6 +2042,37 @@
       inset 0 1px 0 rgb(255 255 255 / 0.08);
   }
 
+  /* Afiliaciones de empresa aliada: gana a .fi-striped y se lee en dark */
+  .fi-ta-row.fi-affiliation-white-company {
+    border-left-width: 4px !important;
+    border-left-color: rgb(124 58 237) !important;
+  }
+
+  .fi-ta-row.fi-affiliation-white-company > .fi-ta-cell {
+    background-color: rgb(237 233 254) !important;
+  }
+
+  .fi-ta-row.fi-affiliation-white-company .fi-ta-text-item:not(.fi-color),
+  .fi-ta-row.fi-affiliation-white-company .fi-ta-text-item.fi-color-gray {
+    color: rgb(24 24 27) !important;
+  }
+
+  .dark .fi-ta-row.fi-affiliation-white-company {
+    border-left-color: rgb(196 181 253) !important;
+  }
+
+  .dark .fi-ta-row.fi-affiliation-white-company > .fi-ta-cell,
+  .dark .fi-ta-row.fi-affiliation-white-company.fi-striped > .fi-ta-cell,
+  .dark .fi-ta-row.fi-affiliation-white-company.fi-clickable:hover > .fi-ta-cell {
+    background-color: rgb(91 33 182 / 0.72) !important;
+  }
+
+  .dark .fi-ta-row.fi-affiliation-white-company .fi-ta-text-item:not(.fi-color),
+  .dark .fi-ta-row.fi-affiliation-white-company .fi-ta-text-item.fi-color-gray,
+  .dark .fi-ta-row.fi-affiliation-white-company .fi-ta-text-description {
+    color: rgb(250 245 255) !important;
+  }
+
   /* Helpdesk — filas por prioridad (vista tabla = .fi-ta-row; vista tarjetas = .fi-ta-record) */
   .fi-ta-row.fi-helpdesk-ta-priority--alta > .fi-ta-cell,
   .fi-ta-record.fi-helpdesk-ta-priority--alta {

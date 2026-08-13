@@ -90,6 +90,7 @@ class Agency extends Model
         'type_chart',
         'account_manager_id',
         'address_complement',
+        'assigned_credit',
 
     ];
 
@@ -100,6 +101,7 @@ class Agency extends Model
     {
         return [
             'audit_items' => 'array',
+            'assigned_credit' => 'decimal:2',
         ];
     }
 

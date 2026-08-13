@@ -18,7 +18,8 @@ it('aplica eager load y deferLoading en la tabla de afiliaciones individuales', 
         ->toContain("'businessLine'")
         ->toContain("'city'")
         ->toContain("'state'")
-        ->toContain("'country'");
+        ->toContain("'country'")
+        ->toContain("'whiteCompanyUser'");
 });
 
 it('consolida las queries de widgets del listado de afiliaciones individuales', function (): void {

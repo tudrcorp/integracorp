@@ -102,6 +102,7 @@ class Agent extends Model
         'postal_code_other_country',
         'address_other_country',
         'audit_items',
+        'assigned_credit',
     ];
 
     /**
@@ -111,6 +112,7 @@ class Agent extends Model
     {
         return [
             'audit_items' => 'array',
+            'assigned_credit' => 'decimal:2',
         ];
     }
 

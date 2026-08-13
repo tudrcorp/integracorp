@@ -57,6 +57,7 @@ class UserFormPermissionOptions
         'travelagentresource' => ['agentes-de-viaje'],
         'tdevagencyresource' => ['agencias-tdev'],
         'whitecompanyresource' => ['empresas-aliadas'],
+        'creditreconciliationresource' => ['conciliacion-de-credito'],
         'zoneresource' => ['gestion-de-carpetas'],
         'affiliateresource' => ['afiliados-individuales'],
         'affiliatecorporateresource' => ['afiliados-corporativos'],

@@ -13,6 +13,7 @@ use App\Models\Affiliation;
 use App\Models\User;
 use App\Support\AffiliationPaymentBcvRateCalculator;
 use App\Support\AffiliationPaymentTotalAdjustment;
+use App\Support\AffiliationWhiteCompany;
 use App\Support\BcvOfficialRate;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
@@ -89,6 +90,7 @@ class AffiliationsTable
                     'city',
                     'state',
                     'country',
+                    'whiteCompanyUser',
                 ]);
 
                 if (Auth::user()->is_accountManagers) {
@@ -100,7 +102,7 @@ class AffiliationsTable
             ->defaultSort('created_at', 'desc')
             ->paginationPageOptions([10, 25, 50, 100])
             ->heading('Afiliaciones individuales')
-            ->description('Plan, titular, montos y estatus. Las emitidas hoy en ACTIVA se resaltan en verde. Use pestañas y filtros para priorizar gestión.')
+            ->description('Plan, titular, montos y estatus. Las emitidas hoy en ACTIVA se resaltan en verde. Las de empresas aliadas, en violeta. Use pestañas y filtros para priorizar gestión.')
             ->striped()
             ->deferFilters(false)
             ->filtersFormColumns(2)
@@ -394,7 +396,10 @@ class AffiliationsTable
                 ])
                     ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
             ])
-            ->recordClasses(fn (Affiliation $record): array => self::recordRowClasses($record))
+            ->recordClasses(fn (Affiliation $record): array => AffiliationWhiteCompany::recordRowClasses(
+                $record,
+                self::recordRowClasses($record),
+            ))
             ->filters([
                 SelectFilter::make('status')
                     ->label('Estatus')
@@ -444,6 +449,7 @@ class AffiliationsTable
                         'TRIMESTRAL' => 'TRIMESTRAL',
                         'SEMESTRAL' => 'SEMESTRAL',
                     ]),
+                AffiliationWhiteCompany::tableFilter(),
             ])
             ->filtersTriggerAction(
                 fn (Action $action) => $action
