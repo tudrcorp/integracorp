@@ -2,24 +2,23 @@
 
 namespace App\Filament\Administration\Resources\Affiliations\RelationManagers;
 
-use Filament\Actions\CreateAction;
-use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables\Table;
-
-use BackedEnum;
-use App\Models\User;
-use App\Models\Collection;
+use App\Http\Controllers\PaidMembershipController;
 use App\Models\Affiliation;
-use Filament\Actions\Action;
+use App\Models\Collection;
 use App\Models\PaidMembership;
+use App\Support\PaidMembershipDocumentUrl;
+use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Alignment;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Utilities\Get;
-use App\Http\Controllers\PaidMembershipController;
+use Filament\Tables\Table;
 
 class PaidMembershipsRelationManager extends RelationManager
 {
@@ -63,7 +62,7 @@ class PaidMembershipsRelationManager extends RelationManager
                     ->label('Pago multiple')
                     ->prefix('US$: ')
                     ->description(function ($record) {
-                        return $record->payment_method_ves != 'N/A' ? 'VES: ' . $record->payment_method_ves : 'VES: N/A';
+                        return $record->payment_method_ves != 'N/A' ? 'VES: '.$record->payment_method_ves : 'VES: N/A';
                     })
                     ->searchable(),
                 TextColumn::make('bank_usd')
@@ -76,7 +75,7 @@ class PaidMembershipsRelationManager extends RelationManager
                     ->label('Referencia de pago')
                     ->prefix('Ref(Zelle): ')
                     ->description(function ($record) {
-                        return $record->reference_payment_ves != 'N/A' ?  'Ref(VES): ' . $record->reference_payment_ves : 'Ref(VES): N/A';
+                        return $record->reference_payment_ves != 'N/A' ? 'Ref(VES): '.$record->reference_payment_ves : 'Ref(VES): N/A';
                     })
                     ->searchable(),
                 IconColumn::make('document_ves')
@@ -96,7 +95,7 @@ class PaidMembershipsRelationManager extends RelationManager
                             : 'danger'; // Rojo si no existe
                     })
                     ->url(function ($record) {
-                        return asset('storage/' . $record->document_ves);
+                        return PaidMembershipDocumentUrl::from($record->document_ves);
                     })
                     ->openUrlInNewTab(),
                 IconColumn::make('document_usd')
@@ -116,14 +115,14 @@ class PaidMembershipsRelationManager extends RelationManager
                             : 'danger'; // Rojo si no existe
                     })
                     ->url(function ($record) {
-                        return asset('storage/' . $record->document_usd);
+                        return PaidMembershipDocumentUrl::from($record->document_usd);
                     })
                     ->openUrlInNewTab(),
                 TextColumn::make('pay_amount_usd')
                     ->label('Pago registrado')
                     ->suffix(' US$')
                     ->description(function ($record) {
-                        return $record->pay_amount_ves != 'N/A' ? $record->pay_amount_ves . ' VES' : 'N/A';
+                        return $record->pay_amount_ves != 'N/A' ? $record->pay_amount_ves.' VES' : 'N/A';
                     }),
                 TextColumn::make('tasa_bcv')
                     ->label('Tasa BCV')
@@ -189,8 +188,9 @@ class PaidMembershipsRelationManager extends RelationManager
                                 if ($count == 0) {
                                     return true;
                                 }
+
                                 return false;
-                            })
+                            }),
 
                     ])
                     ->action(function (PaidMembership $record, array $data) {

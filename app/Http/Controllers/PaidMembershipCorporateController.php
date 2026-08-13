@@ -10,6 +10,7 @@ use App\Models\Collection;
 use App\Models\Commission;
 use App\Models\Sale;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
+use App\Support\CreditReconciliations\WhiteCompanyCreditMovementRecorder;
 use App\Support\PaidMemberships\AgencyTypeForCommission;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
@@ -432,6 +433,8 @@ class PaidMembershipCorporateController extends Controller
                     'type' => 'AFILIACION CORPORATIVA',
                 ]);
 
+                WhiteCompanyCreditMovementRecorder::recordCorporateInstallment($record);
+
                 dispatch(new ReciboDePagoCorporativo($array_data));
 
                 /**
@@ -734,6 +737,8 @@ class PaidMembershipCorporateController extends Controller
                     $collection->status = 'PAGADO';
                     $collection->save();
                 }
+
+                WhiteCompanyCreditMovementRecorder::recordCorporateCollections($record, $data['collections']);
 
                 /**Ejecutamos el Job para enviar el reporte de pago */
                 $array_data = [

@@ -156,6 +156,13 @@ class Affiliation extends Model
         return $this->belongsTo(Agency::class, 'code_agency', 'code');
     }
 
+    public function whiteCompanyUser(): HasOne
+    {
+        return $this->hasOne(User::class, 'code_agency', 'code_agency')
+            ->whereNotNull('white_company_id')
+            ->oldest('id');
+    }
+
     public function plan()
     {
         return $this->belongsTo(Plan::class);

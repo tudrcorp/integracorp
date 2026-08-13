@@ -292,6 +292,22 @@ class WhiteCompanyForm
                                     ])
                                     ->columns(1)
                                     ->columnSpanFull(),
+
+                                Section::make('Crédito asignado')
+                                    ->description('Cupo de crédito de la empresa aliada. Los movimientos se registran en Conciliación de crédito al cancelar cuotas de afiliación.')
+                                    ->icon('heroicon-o-banknotes')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        TextInput::make('assigned_credit')
+                                            ->label('Crédito asignado')
+                                            ->numeric()
+                                            ->prefix('US$')
+                                            ->step(0.01)
+                                            ->minValue(0)
+                                            ->default(0)
+                                            ->helperText('Monto máximo otorgado a la empresa aliada para conciliar afiliaciones.'),
+                                    ])
+                                    ->columnSpanFull(),
                             ]),
 
                         Tab::make('Comisiones')

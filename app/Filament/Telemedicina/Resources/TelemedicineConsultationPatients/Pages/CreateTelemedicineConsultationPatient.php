@@ -51,6 +51,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 
 class CreateTelemedicineConsultationPatient extends CreateRecord
 {
@@ -60,11 +61,17 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
     protected static string $resource = TelemedicineConsultationPatientResource::class;
 
     /**
-     * El paciente se obtiene de la sesión (como se vio en errores anteriores).
+     * IDs persistidos por Livewire entre requests (las props protegidas no sobreviven al submit).
      */
-    protected $patient;
+    #[Locked]
+    public ?int $telemedicineCaseId = null;
 
-    protected $case;
+    #[Locked]
+    public ?int $telemedicinePatientId = null;
+
+    protected ?TelemedicinePatient $patient = null;
+
+    protected ?TelemedicineCase $case = null;
 
     public function mount(): void
     {
@@ -72,7 +79,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         $this->patient = session()->get('patient');
         $this->case = session()->get('case');
 
-        if (! $this->patient || ! $this->case) {
+        if (! $this->patient instanceof TelemedicinePatient || ! $this->case instanceof TelemedicineCase) {
             Notification::make()
                 ->title('Error: información de sesión incompleta.')
                 ->body('No se encontró el paciente o el caso para crear la consulta.')
@@ -106,6 +113,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
         $this->patient = $freshPatient;
         session(['patient' => $freshPatient]);
+        $this->rememberConsultationContextIds();
 
         // 2. Llama al mount original de Filament cuando la sesión está lista.
         parent::mount();
@@ -397,35 +405,105 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         return [];
     }
 
+    public function hydrate(): void
+    {
+        $this->resolveConsultationContext();
+    }
+
+    protected function rememberConsultationContextIds(): void
+    {
+        $this->telemedicineCaseId = $this->case instanceof TelemedicineCase
+            ? (int) $this->case->id
+            : null;
+        $this->telemedicinePatientId = $this->patient instanceof TelemedicinePatient
+            ? (int) $this->patient->id
+            : null;
+    }
+
+    /**
+     * Rehidrata caso/paciente en cada request Livewire (props protected no persisten).
+     */
+    protected function resolveConsultationContext(): void
+    {
+        $caseId = $this->telemedicineCaseId;
+        if ($caseId === null) {
+            $sessionCase = session()->get('case');
+            if ($sessionCase instanceof TelemedicineCase) {
+                $caseId = (int) $sessionCase->id;
+            } elseif (is_object($sessionCase) && isset($sessionCase->id)) {
+                $caseId = (int) $sessionCase->id;
+            }
+        }
+
+        if ($caseId !== null && $caseId > 0) {
+            $this->case = TelemedicineCase::query()->find($caseId);
+            if ($this->case instanceof TelemedicineCase) {
+                $this->telemedicineCaseId = (int) $this->case->id;
+                session(['case' => $this->case]);
+            }
+        }
+
+        $patientId = $this->telemedicinePatientId
+            ?? (int) ($this->case?->telemedicine_patient_id ?? 0);
+
+        if ($patientId < 1) {
+            $sessionPatient = session()->get('patient');
+            if ($sessionPatient instanceof TelemedicinePatient) {
+                $patientId = (int) $sessionPatient->id;
+            } elseif (is_object($sessionPatient) && isset($sessionPatient->id)) {
+                $patientId = (int) $sessionPatient->id;
+            }
+        }
+
+        if ($patientId > 0) {
+            $this->patient = TelemedicinePatient::query()->find($patientId);
+            if ($this->patient instanceof TelemedicinePatient) {
+                $this->telemedicinePatientId = (int) $this->patient->id;
+                session(['patient' => $this->patient]);
+            }
+        }
+    }
+
+    protected function failConsultationIdentity(string $message): never
+    {
+        Notification::make()
+            ->title('No se pudo registrar la consulta')
+            ->body($message)
+            ->danger()
+            ->persistent()
+            ->send();
+
+        throw ValidationException::withMessages([
+            'data.telemedicine_patient_id' => [$message],
+        ]);
+    }
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $this->resolveConsultationContext();
+
         $casePatientId = (int) ($this->case?->telemedicine_patient_id ?? 0);
         $formPatientId = (int) ($data['telemedicine_patient_id'] ?? 0);
         $sessionPatientId = (int) ($this->patient?->id ?? 0);
 
         if ($casePatientId < 1) {
-            throw ValidationException::withMessages([
-                'telemedicine_patient_id' => ['El caso no tiene un paciente vinculado.'],
-            ]);
+            $this->failConsultationIdentity('El caso no tiene un paciente vinculado. Vuelva a abrir la consulta desde el caso.');
         }
 
         if (($formPatientId > 0 && $formPatientId !== $casePatientId)
             || ($sessionPatientId > 0 && $sessionPatientId !== $casePatientId)) {
-            throw ValidationException::withMessages([
-                'telemedicine_patient_id' => ['La identidad de la sesión no coincide con el paciente del caso. Vuelva a abrir la consulta desde el caso.'],
-            ]);
+            $this->failConsultationIdentity('La identidad de la sesión no coincide con el paciente del caso. Vuelva a abrir la consulta desde el caso.');
         }
 
         $patient = TelemedicinePatient::query()->find($casePatientId);
 
         if ($patient === null) {
-            throw ValidationException::withMessages([
-                'telemedicine_patient_id' => ['No se encontró el paciente vinculado al caso.'],
-            ]);
+            $this->failConsultationIdentity('No se encontró el paciente vinculado al caso. Vuelva a abrir la consulta desde el caso.');
         }
 
         $this->patient = $patient;
         session(['patient' => $patient]);
+        $this->rememberConsultationContextIds();
         $data = TelemedicinePatientIdentity::enforceConsultationIdentity($data, $patient);
 
         if (isset($data['feedbackOne']) && $data['feedbackOne'] == true) {

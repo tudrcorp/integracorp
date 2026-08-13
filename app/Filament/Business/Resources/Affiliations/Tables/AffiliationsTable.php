@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\AffiliationBusinessDocumentsService;
 use App\Support\AffiliationPaymentBcvRateCalculator;
 use App\Support\AffiliationPaymentTotalAdjustment;
+use App\Support\AffiliationWhiteCompany;
 use App\Support\BcvOfficialRate;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
@@ -81,11 +82,12 @@ class AffiliationsTable
                 'city',
                 'state',
                 'country',
+                'whiteCompanyUser',
             ]))
             ->deferLoading()
             ->defaultSort('created_at', 'desc')
             ->heading('Afiliaciones individuales')
-            ->description('Listado completo: plan, titular, tomador, montos y estatus. Las filas con emisión hoy se resaltan en verde.')
+            ->description('Listado completo: plan, titular, tomador, montos y estatus. Las filas con emisión hoy se resaltan en verde. Las de empresas aliadas, en violeta.')
             ->emptyStateHeading('Sin afiliaciones')
             ->emptyStateDescription('No hay registros o no coinciden con la búsqueda y los filtros aplicados.')
             ->columns([
@@ -408,6 +410,7 @@ class AffiliationsTable
                         'TRIMESTRAL' => 'TRIMESTRAL',
                         'SEMESTRAL' => 'SEMESTRAL',
                     ]),
+                AffiliationWhiteCompany::tableFilter(),
             ])
             ->filtersTriggerAction(
                 fn (Action $action) => $action
@@ -2306,7 +2309,10 @@ class AffiliationsTable
                         }),
                 ]),
             ])
-            ->recordClasses(fn (Affiliation $record): array => self::rowClassesForAffiliationActivatedToday($record))
+            ->recordClasses(fn (Affiliation $record): array => AffiliationWhiteCompany::recordRowClasses(
+                $record,
+                self::rowClassesForAffiliationActivatedToday($record),
+            ))
             ->striped();
     }
 

@@ -82,6 +82,12 @@ class WhiteCompaniesTable
                     ->placeholder('—')
                     ->toggleable(),
 
+                TextColumn::make('assigned_credit')
+                    ->label('Crédito asignado')
+                    ->money('USD')
+                    ->sortable()
+                    ->toggleable(),
+
                 TextColumn::make('country.name')
                     ->label('País')
                     ->badge()

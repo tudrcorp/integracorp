@@ -126,3 +126,19 @@ it('las acciones del header de crear consulta usan clases iOS alineadas al color
         ->and($form)->toContain("FilamentIosButton::extraClassForFilamentColor('gray')")
         ->and($form)->toContain("FilamentIosButton::extraClassForFilamentColor('primary')");
 });
+
+it('el botón Registrar consulta muestra spinner mientras se crea el registro', function (): void {
+    $form = file_get_contents(
+        dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Schemas/TelemedicineConsultationPatientForm.php'
+    );
+
+    expect($form)
+        ->toContain('wire:target="create,save"')
+        ->toContain('wire:loading.attr="disabled"')
+        ->toContain('wire:loading.remove')
+        ->toContain('wire:loading.flex')
+        ->toContain('class="hidden items-center justify-center gap-2"')
+        ->toContain('animate-spin')
+        ->toContain('Registrando…')
+        ->toContain('Registrar consulta');
+});

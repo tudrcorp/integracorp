@@ -190,22 +190,22 @@ class AgencyForm
                                                     ->label('RIF')
                                                     ->prefix('J-')
                                                     ->numeric(),
-                                                    // ->required()
-                                                    // ->unique(
-                                                    //     table: Agency::class,
-                                                    //     column: 'rif'
-                                                    // )
-                                                    // ->validationMessages([
-                                                    //     'required' => 'Campo requerido',
-                                                    //     'numeric' => 'El campo es numerico',
-                                                    //     'unique' => 'El rif ya se encuentra registrado en la tabla de agencias. Por favor intente con otro',
-                                                    // ]),
-                                                    Select::make('country_code')
+                                                // ->required()
+                                                // ->unique(
+                                                //     table: Agency::class,
+                                                //     column: 'rif'
+                                                // )
+                                                // ->validationMessages([
+                                                //     'required' => 'Campo requerido',
+                                                //     'numeric' => 'El campo es numerico',
+                                                //     'unique' => 'El rif ya se encuentra registrado en la tabla de agencias. Por favor intente con otro',
+                                                // ]),
+                                                Select::make('country_code')
                                                     ->label('Código de país')
-                                                    // ->required()
-                                                    // ->validationMessages([
-                                                    //     'required' => 'Campo requerido',
-                                                    // ])
+                                                // ->required()
+                                                // ->validationMessages([
+                                                //     'required' => 'Campo requerido',
+                                                // ])
                                                     ->options([
                                                         '+1' => '🇺🇸 +1 (Estados Unidos)',
                                                         '+44' => '🇬🇧 +44 (Reino Unido)',
@@ -349,24 +349,24 @@ class AgencyForm
                                                     ->label('Cédula del representante')
                                                     ->prefix('V-')
                                                     ->numeric(),
-                                                    // ->required()
-                                                    // ->unique(
-                                                    //     ignoreRecord: true,
-                                                    //     table: 'agencies',
-                                                    //     column: 'ci_responsable',
-                                                    // )
-                                                    // ->validationMessages([
-                                                    //     'unique' => 'La cedula del responsable ya se encuentra registrado.',
-                                                    //     'required' => 'Campo requerido',
-                                                    //     'numeric' => 'El campo es numerico',
-                                                    // ]),
+                                                // ->required()
+                                                // ->unique(
+                                                //     ignoreRecord: true,
+                                                //     table: 'agencies',
+                                                //     column: 'ci_responsable',
+                                                // )
+                                                // ->validationMessages([
+                                                //     'unique' => 'La cedula del responsable ya se encuentra registrado.',
+                                                //     'required' => 'Campo requerido',
+                                                //     'numeric' => 'El campo es numerico',
+                                                // ]),
                                                 DatePicker::make('brithday_date')
                                                     ->label('Fecha de nacimiento del representante')
                                                     ->format('d/m/Y'),
-                                                    // ->required()
-                                                    // ->validationMessages([
-                                                    //     'required' => 'Campo Requerido',
-                                                    // ]),
+                                                // ->required()
+                                                // ->validationMessages([
+                                                //     'required' => 'Campo Requerido',
+                                                // ]),
                                                 DatePicker::make('anniversary_date')
                                                     ->label('Fecha de aniversario de la agencia')
                                                     ->format('d/m/Y')
@@ -913,6 +913,21 @@ class AgencyForm
                                                         'numeric' => 'Campo tipo numerico.',
                                                     ]),
                                             ]),
+                                    ])
+                                    ->collapsible(),
+                                Section::make('Crédito asignado')
+                                    ->description('Cupo de crédito de la agencia. Los movimientos se registran en Conciliación de crédito al cancelar cuotas.')
+                                    ->icon('heroicon-o-banknotes')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        TextInput::make('assigned_credit')
+                                            ->label('Crédito asignado')
+                                            ->numeric()
+                                            ->prefix('US$')
+                                            ->step(0.01)
+                                            ->minValue(0)
+                                            ->default(0)
+                                            ->helperText('Monto máximo otorgado a la agencia.'),
                                     ])
                                     ->collapsible(),
                             ]),

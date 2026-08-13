@@ -18,6 +18,7 @@ use App\Filament\Administration\Resources\Collections\CollectionResource;
 use App\Filament\Administration\Resources\CommissionPayrolls\CommissionPayrollResource;
 use App\Filament\Administration\Resources\Commissions\CommissionResource;
 use App\Filament\Administration\Resources\CompanyPaidMemberships\CompanyPaidMembershipResource;
+use App\Filament\Administration\Resources\CreditReconciliations\CreditReconciliationResource as AdministrationCreditReconciliationResource;
 use App\Filament\Administration\Resources\DownloadZones\DownloadZoneResource as AdministrationDownloadZoneResource;
 use App\Filament\Administration\Resources\Helpdesks\HelpdeskResource as AdministrationHelpdeskResource;
 use App\Filament\Administration\Resources\RenovationCorporates\RenovationCorporateResource as AdministrationRenovationCorporateResource;
@@ -54,6 +55,7 @@ use App\Filament\Business\Resources\ConfigCostoBenefits\ConfigCostoBenefitResour
 use App\Filament\Business\Resources\CorporateQuoteRequests\CorporateQuoteRequestResource;
 use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
 use App\Filament\Business\Resources\Coverages\CoverageResource;
+use App\Filament\Business\Resources\CreditReconciliations\CreditReconciliationResource;
 use App\Filament\Business\Resources\DownloadZones\DownloadZoneResource;
 use App\Filament\Business\Resources\DressTylorQuotes\DressTylorQuoteResource;
 use App\Filament\Business\Resources\Fees\FeeResource;
@@ -186,6 +188,7 @@ final class DepartmentNavigationPermissionRegistry
         TravelAgentResource::class => ['agentes-de-viaje'],
         TdevAgencyResource::class => ['agencias-tdev'],
         WhiteCompanyResource::class => ['empresas-aliadas'],
+        CreditReconciliationResource::class => ['conciliacion-de-credito'],
         ProspectAgentResource::class => ['capacitacion'],
         BusinessAppointmentsResource::class => ['citas'],
         PlanGeneratorResource::class => ['generador-de-planes'],
@@ -226,6 +229,7 @@ final class DepartmentNavigationPermissionRegistry
         SaleResource::class => ['ventas'],
         CompanyPaidMembershipResource::class => ['ventas', 'comprobantes-nuevos-negocios'],
         CollectionResource::class => ['gestion-de-cobranza'],
+        AdministrationCreditReconciliationResource::class => ['conciliacion-de-credito'],
         AnnualCollectionResource::class => ['cobranza-por-mes'],
         CommissionResource::class => ['detallado-de-comisiones'],
         CommissionPayrollResource::class => ['reporte-de-comisiones'],
