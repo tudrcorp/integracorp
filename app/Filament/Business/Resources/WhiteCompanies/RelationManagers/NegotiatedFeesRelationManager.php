@@ -4,19 +4,26 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\WhiteCompanies\RelationManagers;
 
-use App\Models\Fee;
+use App\Models\WhiteCompany;
+use App\Models\WhiteCompanyFee;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\WhiteCompanies\WhiteCompanyCatalogFeeOptions;
+use App\Support\WhiteCompanies\WhiteCompanyNegotiatedFeesBulkCreator;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -24,6 +31,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Unique;
+use Illuminate\Validation\ValidationException;
 
 class NegotiatedFeesRelationManager extends RelationManager
 {
@@ -46,24 +54,7 @@ class NegotiatedFeesRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                Select::make('fee_id')
-                    ->label('Tarifa del catálogo')
-                    ->helperText('Plan, cobertura (si aplica) y rango de edad sobre los que se pacta venta y neta.')
-                    ->options(fn (): array => self::feeOptions())
-                    ->searchable()
-                    ->preload()
-                    ->required()
-                    ->unique(
-                        table: 'white_company_fees',
-                        column: 'fee_id',
-                        ignoreRecord: true,
-                        modifyRuleUsing: fn (Unique $rule): Unique => $rule
-                            ->where('white_company_id', $this->getOwnerRecord()->getKey()),
-                    )
-                    ->validationMessages([
-                        'required' => 'Debe seleccionar la tarifa del catálogo.',
-                        'unique' => 'Esta tarifa ya tiene neta pactada para la empresa aliada.',
-                    ]),
+                $this->catalogFeeSelect(),
                 TextInput::make('sale_price')
                     ->label('Precio de venta US$')
                     ->helperText('Monto anual que la empresa aliada vende al cliente.')
@@ -137,16 +128,85 @@ class NegotiatedFeesRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
-                    ->label('Agregar neta')
+                    ->label('Agregar netas')
+                    ->modalHeading('Cargar matriz de negociación')
+                    ->modalDescription('Agregue una o varias tarifas del catálogo con precio de venta y neta. Puede cargar todo el plan de una sola vez.')
+                    ->modalSubmitActionLabel('Guardar tarifas')
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->createAnother(false)
                     ->icon(Heroicon::OutlinedPlusCircle)
                     ->color('success')
                     ->extraAttributes([
                         'class' => FilamentIosButton::extraClassForFilamentColor('success'),
-                    ]),
+                    ])
+                    ->form([
+                        Repeater::make('items')
+                            ->label('Tarifas a pactar')
+                            ->helperText('Una fila por plan, cobertura y rango de edad. Use “Añadir tarifa” o duplique una fila para cargar más.')
+                            ->addActionLabel('Añadir tarifa')
+                            ->defaultItems(1)
+                            ->minItems(1)
+                            ->cloneable()
+                            ->reorderable(false)
+                            ->columnSpanFull()
+                            ->compact()
+                            ->table([
+                                TableColumn::make('Tarifa del catálogo'),
+                                TableColumn::make('Precio de venta US$'),
+                                TableColumn::make('Neta US$'),
+                            ])
+                            ->schema([
+                                $this->catalogFeeSelect(forRepeater: true),
+                                TextInput::make('sale_price')
+                                    ->label('Precio de venta US$')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->required()
+                                    ->prefix('$')
+                                    ->validationMessages([
+                                        'required' => 'Debe indicar el precio de venta.',
+                                    ]),
+                                TextInput::make('neta')
+                                    ->label('Neta US$')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->required()
+                                    ->prefix('$')
+                                    ->lte('sale_price')
+                                    ->validationMessages([
+                                        'required' => 'Debe indicar la neta.',
+                                        'lte' => 'La neta no puede ser mayor que el precio de venta.',
+                                    ]),
+                            ]),
+                    ])
+                    ->using(function (array $data): WhiteCompanyFee {
+                        $created = WhiteCompanyNegotiatedFeesBulkCreator::createForCompany(
+                            $this->ownerCompany(),
+                            is_array($data['items'] ?? null) ? $data['items'] : [],
+                            Auth::user()?->name,
+                        );
+
+                        $first = $created[0] ?? null;
+
+                        if (! $first instanceof WhiteCompanyFee) {
+                            throw ValidationException::withMessages([
+                                'items' => 'Debe agregar al menos una tarifa.',
+                            ]);
+                        }
+
+                        return $first;
+                    })
+                    ->successNotification(function (): Notification {
+                        return Notification::make()
+                            ->success()
+                            ->title('Tarifas pactadas')
+                            ->body('Las tarifas se guardaron en la matriz de negociación.');
+                    }),
             ])
             ->recordActions([
                 EditAction::make()
-                    ->label('Editar'),
+                    ->label('Editar')
+                    ->modalHeading('Editar neta pactada'),
                 DeleteAction::make()
                     ->label('Eliminar')
                     ->requiresConfirmation(),
@@ -156,26 +216,82 @@ class NegotiatedFeesRelationManager extends RelationManager
             ]);
     }
 
-    /**
-     * @return array<int, string>
-     */
-    private static function feeOptions(): array
+    private function catalogFeeSelect(bool $forRepeater = false): Select
     {
-        return Fee::query()
-            ->with(['ageRange.plan', 'coverageRecord'])
-            ->orderBy('id')
-            ->get()
-            ->mapWithKeys(function (Fee $fee): array {
-                $plan = $fee->ageRange?->plan?->description ?: 'Plan';
-                $range = filled($fee->ageRange?->range) ? $fee->ageRange->range.' años' : 'sin rango';
-                $coverage = filled($fee->coverage)
-                    ? number_format((float) $fee->coverage, 0, ',', '.').' UD$'
-                    : 'sin cobertura';
+        $select = Select::make('fee_id')
+            ->label('Tarifa del catálogo')
+            ->options(fn (): array => WhiteCompanyCatalogFeeOptions::forCompany(
+                $this->ownerCompany(),
+                $this->mountedNegotiatedFeeId(),
+            ))
+            ->getSearchResultsUsing(function (string $search): array {
+                $fees = WhiteCompanyCatalogFeeOptions::catalogFees();
+                $options = WhiteCompanyCatalogFeeOptions::forCompany(
+                    $this->ownerCompany(),
+                    $this->mountedNegotiatedFeeId(),
+                );
 
-                return [
-                    $fee->id => $plan.' · '.$coverage.' · '.$range,
-                ];
+                return WhiteCompanyCatalogFeeOptions::matching($options, $search, $fees);
             })
-            ->all();
+            ->getOptionLabelUsing(function (mixed $value): ?string {
+                if (blank($value)) {
+                    return null;
+                }
+
+                $options = WhiteCompanyCatalogFeeOptions::forCompany($this->ownerCompany(), (int) $value);
+
+                return $options[(int) $value] ?? null;
+            })
+            ->searchable()
+            ->preload()
+            ->required()
+            ->unique(
+                table: 'white_company_fees',
+                column: 'fee_id',
+                ignoreRecord: true,
+                modifyRuleUsing: fn (Unique $rule): Unique => $rule
+                    ->where('white_company_id', $this->getOwnerRecord()->getKey()),
+            )
+            ->validationMessages([
+                'required' => 'Debe seleccionar la tarifa del catálogo.',
+                'unique' => 'Esta tarifa ya tiene neta pactada para la empresa aliada.',
+                'distinct' => 'No puede repetir la misma tarifa del catálogo en esta carga.',
+            ]);
+
+        if (! $forRepeater) {
+            $select->helperText('Plan, cobertura (si aplica) y rango de edad sobre los que se pacta venta y neta.');
+        }
+
+        if ($forRepeater) {
+            $select
+                ->distinct()
+                ->disableOptionsWhenSelectedInSiblingRepeaterItems();
+        }
+
+        return $select;
+    }
+
+    private function mountedNegotiatedFeeId(): ?int
+    {
+        $record = $this->getMountedTableActionRecord();
+
+        if (! $record instanceof WhiteCompanyFee) {
+            return null;
+        }
+
+        return (int) $record->fee_id;
+    }
+
+    private function ownerCompany(): WhiteCompany
+    {
+        $owner = $this->getOwnerRecord();
+
+        if (! $owner instanceof WhiteCompany) {
+            throw ValidationException::withMessages([
+                'items' => 'No se pudo identificar la empresa aliada.',
+            ]);
+        }
+
+        return $owner;
     }
 }
