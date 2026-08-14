@@ -84,4 +84,18 @@ return [
         'api_key' => env('INTEGRACORP_API_KEY'),
     ],
 
+    /*
+     * Webhook de documentos hacia ViVEplus.
+     * Token y secreto los provee ViVEplus por canal seguro; no se hardcodean.
+     */
+    'viveplus_documents' => [
+        'webhook_url' => env('VIVEPLUS_DOCUMENTS_WEBHOOK_URL', 'https://vivepluss.com/api/documents/webhook'),
+        'token' => env('VIVEPLUS_DOCUMENTS_WEBHOOK_TOKEN'),
+        'signing_secret' => env('VIVEPLUS_DOCUMENTS_WEBHOOK_SECRET'),
+        'timeout' => (int) env('VIVEPLUS_DOCUMENTS_WEBHOOK_TIMEOUT', 15),
+        'max_file_bytes' => (int) env('VIVEPLUS_DOCUMENTS_WEBHOOK_MAX_FILE_BYTES', 10485760),
+        'later_retry_delay_seconds' => (int) env('VIVEPLUS_DOCUMENTS_WEBHOOK_LATER_RETRY_DELAY', 120),
+        'max_later_retries' => (int) env('VIVEPLUS_DOCUMENTS_WEBHOOK_MAX_LATER_RETRIES', 5),
+    ],
+
 ];

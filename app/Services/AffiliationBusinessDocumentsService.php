@@ -6,8 +6,14 @@ use App\Http\Controllers\AffiliationController;
 use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
+use App\Support\AffiliateCard\AffiliateCardPageLayout;
+use App\Support\TarjetaAfiliacionQrPlanCatalog;
+use App\Support\Viveplus\ViveplusDocumentWebhookDispatcher;
+use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Throwable;
 
 class AffiliationBusinessDocumentsService
 {
@@ -58,9 +64,9 @@ class AffiliationBusinessDocumentsService
         return ! $titularEnAfiliados;
     }
 
-    public static function condicionadoAbsolutePathForAffiliation(Affiliation $record): ?string
+    public static function condicionadoAbsolutePathForPlanId(?int $planId): ?string
     {
-        $basename = self::condicionadoBasenameForPlanId($record->plan_id);
+        $basename = self::condicionadoBasenameForPlanId($planId);
         if ($basename === null) {
             return null;
         }
@@ -68,6 +74,12 @@ class AffiliationBusinessDocumentsService
         $path = storage_path('app/public/condicionados/'.$basename);
 
         return is_file($path) ? $path : null;
+    }
+
+    public static function condicionadoAbsolutePathForAffiliation(Affiliation $record): ?string
+    {
+        return WhiteCompanyDocumentBrand::forAffiliation($record)
+            ->condicionadoAbsolutePath($record->plan_id !== null ? (int) $record->plan_id : null);
     }
 
     /**
@@ -140,13 +152,65 @@ class AffiliationBusinessDocumentsService
         return null;
     }
 
+    /**
+     * Carnets individuales existentes, uno por persona, con la cédula exacta de `affiliates`.
+     *
+     * @return array<int, array{path: string, identification: string}>
+     */
+    public static function resolveAffiliateCarnetDocuments(Affiliation $record): array
+    {
+        $record->loadMissing('affiliates');
+
+        $directory = public_path('storage/tarjeta-afiliacion/');
+        $documents = [];
+        $seen = [];
+
+        foreach ($record->affiliates as $affiliate) {
+            $identification = (string) $affiliate->nro_identificacion;
+            if (trim($identification) === '') {
+                continue;
+            }
+
+            $path = $directory.'TAR-'.$record->code.'-'.$affiliate->id.'.pdf';
+            if (! is_file($path)) {
+                continue;
+            }
+
+            if (isset($seen[$identification])) {
+                continue;
+            }
+
+            $seen[$identification] = true;
+            $documents[] = [
+                'path' => $path,
+                'identification' => $identification,
+            ];
+        }
+
+        if (self::shouldGenerateLegacyTitularTarjeta($record)) {
+            $identification = (string) $record->nro_identificacion_ti;
+            $path = $directory.'TAR-'.$record->code.'.pdf';
+
+            if (trim($identification) !== '' && is_file($path) && ! isset($seen[$identification])) {
+                $documents[] = [
+                    'path' => $path,
+                    'identification' => $identification,
+                ];
+            }
+        }
+
+        return $documents;
+    }
+
     public static function regenerateCertificateAndTarjetas(
         Affiliation $record,
         ?int $userId,
         bool $notifyCertificate = false,
         bool $useIndividualAffiliateCardLayout = false,
     ): array {
-        $record->loadMissing(['affiliates', 'plan.benefitPlans', 'coverage', 'agent', 'agency']);
+        $record->loadMissing(['affiliates', 'plan.benefitPlans', 'coverage', 'agent', 'agency', 'whiteCompanyUser']);
+
+        $brand = WhiteCompanyDocumentBrand::forAffiliation($record);
 
         self::purgeExistingGeneratedDocuments($record);
 
@@ -189,7 +253,8 @@ class AffiliationBusinessDocumentsService
 
         $desde = $record->effective_date ?? '';
         $hasta = self::vigenciaHasta($record->effective_date);
-        $planDesc = $record->plan?->description ?? '';
+        $planId = $record->plan_id !== null ? (int) $record->plan_id : null;
+        $planDesc = $brand->planDisplayName($planId, $record->plan?->description ?? '');
         $cobertura = $record->coverage?->price ?? '';
         $frecuencia = $record->payment_frequency;
         $totalTarjetasForLayout = $affiliateCount + $legacyTarjetaCount;
@@ -208,6 +273,7 @@ class AffiliationBusinessDocumentsService
                     desde: $desde,
                     hasta: $hasta,
                     useIndividualAffiliateCardLayout: true,
+                    brand: $brand,
                 );
             }
 
@@ -222,6 +288,7 @@ class AffiliationBusinessDocumentsService
                     desde: $desde,
                     hasta: $hasta,
                     useIndividualAffiliateCardLayout: true,
+                    brand: $brand,
                 );
             }
 
@@ -243,6 +310,18 @@ class AffiliationBusinessDocumentsService
                 'filename' => $combinedFilename,
                 'preview_url' => asset('storage/tarjeta-afiliacion/'.$combinedFilename).'?t='.$version,
             ];
+
+            self::writeIndividualTarjetas(
+                $record,
+                $planDesc,
+                $frecuencia,
+                $cobertura,
+                $desde,
+                $hasta,
+                $useIndividualAffiliateCardLayout,
+                $brand,
+                $legacyTarjetaCount,
+            );
         } else {
             foreach ($record->affiliates as $affiliate) {
                 $data = self::tarjetaPayload(
@@ -256,6 +335,7 @@ class AffiliationBusinessDocumentsService
                     hasta: $hasta,
                     outputFilename: 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf',
                     useIndividualAffiliateCardLayout: $useIndividualAffiliateCardLayout,
+                    brand: $brand,
                 );
 
                 $ok = TarjetaAfiliacionController::generateTarjetaAfiliacion(
@@ -289,6 +369,7 @@ class AffiliationBusinessDocumentsService
                     hasta: $hasta,
                     outputFilename: 'TAR-'.$record->code.'.pdf',
                     useIndividualAffiliateCardLayout: $useIndividualAffiliateCardLayout,
+                    brand: $brand,
                 );
                 $legacy = TarjetaAfiliacionController::generateTarjetaAfiliacion(
                     $dataLegacy,
@@ -312,15 +393,93 @@ class AffiliationBusinessDocumentsService
         $condicionadoPath = self::condicionadoAbsolutePathForAffiliation($record);
         if ($condicionadoPath !== null) {
             $condBasename = basename($condicionadoPath);
+            $relative = self::publicStorageRelativePath($condicionadoPath) ?? $condBasename;
             $documents[] = [
                 'label' => 'Condiciones del plan',
                 'kind' => 'condicionado',
                 'filename' => $condBasename,
-                'preview_url' => asset('storage/condicionados/'.$condBasename).'?t='.$version,
+                'preview_url' => asset('storage/'.$relative).'?t='.$version,
             ];
         }
 
+        try {
+            ViveplusDocumentWebhookDispatcher::dispatchForIndividual($record, $userId);
+        } catch (Throwable $exception) {
+            Log::error('AffiliationBusinessDocumentsService: no se pudo encolar el webhook de ViVEplus', [
+                'affiliation_code' => $record->code,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
         return ['documents' => $documents];
+    }
+
+    /**
+     * Escribe un PDF de carnet por persona para el webhook (además del combinado de vista previa).
+     */
+    private static function writeIndividualTarjetas(
+        Affiliation $record,
+        string $planDesc,
+        mixed $frecuencia,
+        mixed $cobertura,
+        string $desde,
+        string $hasta,
+        bool $useIndividualAffiliateCardLayout,
+        ?WhiteCompanyDocumentBrand $brand,
+        int $legacyTarjetaCount,
+    ): void {
+        foreach ($record->affiliates as $affiliate) {
+            $data = self::tarjetaPayload(
+                record: $record,
+                name: (string) $affiliate->full_name,
+                ci: (string) $affiliate->nro_identificacion,
+                planDesc: $planDesc,
+                frecuencia: $frecuencia,
+                cobertura: $cobertura,
+                desde: $desde,
+                hasta: $hasta,
+                outputFilename: 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf',
+                useIndividualAffiliateCardLayout: $useIndividualAffiliateCardLayout,
+                brand: $brand,
+            );
+
+            $ok = TarjetaAfiliacionController::generateTarjetaAfiliacion(
+                $data,
+                silent: true,
+                ensureOutputDirectory: false,
+                applyResourceLimits: false,
+            );
+            if ($ok !== true) {
+                throw new RuntimeException(is_string($ok) ? $ok : 'Error al generar tarjeta de afiliación.');
+            }
+        }
+
+        if ($legacyTarjetaCount !== 1) {
+            return;
+        }
+
+        $dataLegacy = self::tarjetaPayload(
+            record: $record,
+            name: (string) $record->full_name_ti,
+            ci: (string) $record->nro_identificacion_ti,
+            planDesc: $planDesc,
+            frecuencia: $frecuencia,
+            cobertura: $cobertura,
+            desde: $desde,
+            hasta: $hasta,
+            outputFilename: 'TAR-'.$record->code.'.pdf',
+            useIndividualAffiliateCardLayout: $useIndividualAffiliateCardLayout,
+            brand: $brand,
+        );
+        $legacy = TarjetaAfiliacionController::generateTarjetaAfiliacion(
+            $dataLegacy,
+            silent: true,
+            ensureOutputDirectory: false,
+            applyResourceLimits: false,
+        );
+        if ($legacy !== true) {
+            throw new RuntimeException(is_string($legacy) ? $legacy : 'Error al generar tarjeta estándar.');
+        }
     }
 
     /**
@@ -337,13 +496,18 @@ class AffiliationBusinessDocumentsService
         string $hasta,
         string $outputFilename = '',
         bool $useIndividualAffiliateCardLayout = false,
+        ?WhiteCompanyDocumentBrand $brand = null,
     ): array {
+        $planId = $record->plan_id !== null ? (int) $record->plan_id : null;
+        $tdecTag = TarjetaAfiliacionQrPlanCatalog::displayTagForPlan($planId, $planDesc);
+
         $payload = [
             'name' => $name,
             'ci' => $ci,
             'code' => $record->code,
             'plan' => $planDesc,
-            'plan_id' => $record->plan_id !== null ? (int) $record->plan_id : null,
+            'plan_id' => $planId,
+            'plan_tarjeta_etiqueta' => $brand?->planShortLabel($planId, $tdecTag) ?? $tdecTag,
             'frecuencia' => $frecuencia,
             'cobertura' => $cobertura,
             'desde' => $desde,
@@ -359,7 +523,31 @@ class AffiliationBusinessDocumentsService
             $payload['template_key'] = 'individual-affiliation';
         }
 
+        $templatePath = $brand?->carnetCompiledPdfAbsolutePath;
+        if (is_string($templatePath) && $templatePath !== '') {
+            $payload['template_path'] = $templatePath;
+            $payload['template_key'] = AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED;
+            $payload['card_layout'] = AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION;
+        }
+
         return $payload;
+    }
+
+    private static function publicStorageRelativePath(string $absolutePath): ?string
+    {
+        $candidates = [
+            realpath(storage_path('app/public')) ?: storage_path('app/public'),
+            realpath(public_path('storage')) ?: public_path('storage'),
+        ];
+        $normalized = realpath($absolutePath) ?: $absolutePath;
+
+        foreach ($candidates as $root) {
+            if (str_starts_with($normalized, $root)) {
+                return str_replace('\\', '/', ltrim(substr($normalized, strlen($root)), DIRECTORY_SEPARATOR));
+            }
+        }
+
+        return basename($absolutePath);
     }
 
     private static function purgeExistingGeneratedDocuments(Affiliation $record): void

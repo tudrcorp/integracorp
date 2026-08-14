@@ -35,4 +35,14 @@ it('rutas y controlador de ficha individual registran auditoría esperada', func
         ->and($editContents)->not->toContain('getFormContentComponent');
 
     expect($viewContents)->toContain('AffiliationFichaPdfActions::printIndividualPdfAction');
+
+    $posAttach = strpos($viewContents, "Action::make('attachDocuments')");
+    $posCompensate = strpos($viewContents, "->label('Compensar Pago')");
+    $posFicha = strpos($viewContents, 'AffiliationFichaPdfActions::printIndividualPdfAction');
+
+    expect($posAttach)->toBeInt()
+        ->and($posCompensate)->toBeInt()
+        ->and($posFicha)->toBeInt()
+        ->and($posAttach)->toBeLessThan($posCompensate)
+        ->and($posCompensate)->toBeLessThan($posFicha);
 });

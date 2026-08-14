@@ -15,5 +15,6 @@ it('incluye el campo de credito asignado en el formulario de empresas aliadas', 
         ->toContain("Section::make('Crédito asignado')")
         ->toContain("TextInput::make('assigned_credit')")
         ->toContain("label('Crédito asignado')")
-        ->toContain('cancelar cuotas');
+        ->toContain('cancelar cuotas')
+        ->toContain("Tab::make('Documentos de marca')");
 });

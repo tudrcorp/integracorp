@@ -78,6 +78,9 @@ class Affiliation extends Model
         'document',
         'observations_payment',
         'fee_anual',
+        'white_company_sale_price',
+        'white_company_neta',
+        'white_company_fee_id',
 
         // despues de afiliar el poago
         'payment_frequency',
@@ -124,6 +127,8 @@ class Affiliation extends Model
         'upload_documents' => 'array',
         'service_providers' => 'array',
         'audit_items' => 'array',
+        'white_company_sale_price' => 'decimal:2',
+        'white_company_neta' => 'decimal:2',
     ];
 
     public function city()

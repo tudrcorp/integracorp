@@ -8,6 +8,8 @@ use App\Models\Country;
 use App\Models\Region;
 use App\Models\State;
 use App\Models\WhiteCompany;
+use App\Support\Filament\BusinessFilamentActionAccess;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -309,6 +311,13 @@ class WhiteCompanyForm
                                     ])
                                     ->columnSpanFull(),
                             ]),
+
+                        Tab::make('Documentos de marca')
+                            ->icon('heroicon-o-swatch')
+                            ->visible(fn (): bool => BusinessFilamentActionAccess::userCan(
+                                BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_DOCUMENT_BRAND,
+                            ))
+                            ->schema(WhiteCompanyDocumentBrandForm::components()),
 
                         Tab::make('Comisiones')
                             ->icon('heroicon-o-chart-pie')

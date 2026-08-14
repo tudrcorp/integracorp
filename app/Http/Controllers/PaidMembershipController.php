@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\AgencyNotFoundForCommissionException;
+use App\Exceptions\WhiteCompanyNegotiatedRateMissingException;
 use App\Jobs\CreateAvisoDeCobro;
 use App\Jobs\ReciboDePagoIndividual;
 use App\Mail\SendMailKitBienvenida;
@@ -16,6 +17,8 @@ use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use App\Support\CreditReconciliations\WhiteCompanyCreditMovementRecorder;
 use App\Support\PaidMemberships\AgencyTypeForCommission;
 use App\Support\SecurityAudit;
+use App\Support\WhiteCompanies\WhiteCompanyNegotiatedRateResolver;
+use App\Support\WhiteCompanies\WhiteCompanyPaymentSettlement;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
@@ -44,6 +47,12 @@ class PaidMembershipController extends Controller
                 }
 
             }
+
+            $alliedSettlement = (new WhiteCompanyNegotiatedRateResolver)
+                ->settlementForAffiliation($record->affiliation);
+            $settledAmount = $alliedSettlement instanceof WhiteCompanyPaymentSettlement
+                ? $alliedSettlement->installmentNeta()
+                : $record->total_amount;
 
             /**
              * LOGICA PARA LA CARGA Y GESTION DEL PRIMER PAGO O LA PRIMERA CUOTA
@@ -97,7 +106,7 @@ class PaidMembershipController extends Controller
                 $sales->affiliate_email = $record->affiliation->email_ti;
                 $sales->service = 'servicio';
                 $sales->persons = $record->affiliation->family_members;
-                $sales->total_amount = $record->total_amount;
+                $sales->total_amount = $settledAmount;
                 $sales->type = 'AFILIACION INDIVIDUAL';
                 $sales->payment_method = $record->payment_method;
                 $sales->payment_frequency = $record->affiliation->payment_frequency;
@@ -163,7 +172,7 @@ class PaidMembershipController extends Controller
                     $collections->type = 'AFILIACION INDIVIDUAL';
                     $collections->service = 'servicio';
                     $collections->persons = $record->affiliation->family_members;
-                    $collections->total_amount = $record->total_amount;
+                    $collections->total_amount = $settledAmount;
                     $collections->payment_method = $record->payment_method;
                     $collections->pay_amount_usd = 0.00;
                     $collections->pay_amount_ves = 0.00;
@@ -192,7 +201,7 @@ class PaidMembershipController extends Controller
                         'address_ti' => $record->affiliation->adress_ti,
                         'phone_ti' => $sales->affiliate_phone,
                         'email_ti' => $sales->affiliate_email,
-                        'total_amount' => $record->total_amount,
+                        'total_amount' => $settledAmount,
                         'plan' => $record->plan->description,
                         'coverage' => $record->coverage->price ?? null,
                         'frequency' => $record->affiliation->payment_frequency,
@@ -239,7 +248,7 @@ class PaidMembershipController extends Controller
                         $collections->type = 'AFILIACION INDIVIDUAL';
                         $collections->service = 'servicio';
                         $collections->persons = $record->affiliation->family_members;
-                        $collections->total_amount = $record->total_amount;
+                        $collections->total_amount = $settledAmount;
                         $collections->payment_method = $record->payment_method;
 
                         $collections->pay_amount_usd = 0.00;
@@ -269,7 +278,7 @@ class PaidMembershipController extends Controller
                             'address_ti' => $record->affiliation->adress_ti,
                             'phone_ti' => $sales->affiliate_phone,
                             'email_ti' => $sales->affiliate_email,
-                            'total_amount' => $record->total_amount,
+                            'total_amount' => $settledAmount,
                             'plan' => $record->plan->description,
                             'coverage' => $record->coverage->price ?? null,
                             'frequency' => $record->affiliation->payment_frequency,
@@ -313,7 +322,7 @@ class PaidMembershipController extends Controller
                     $collections->type = 'AFILIACION INDIVIDUAL';
                     $collections->service = 'servicio';
                     $collections->persons = $record->affiliation->family_members;
-                    $collections->total_amount = $record->total_amount;
+                    $collections->total_amount = $settledAmount;
                     $collections->payment_method = $record->payment_method;
 
                     $collections->pay_amount_usd = 0.00;
@@ -347,7 +356,7 @@ class PaidMembershipController extends Controller
                         'address_ti' => $record->affiliation->adress_ti,
                         'phone_ti' => $sales->affiliate_phone,
                         'email_ti' => $sales->affiliate_email,
-                        'total_amount' => $record->total_amount,
+                        'total_amount' => $settledAmount,
                         'plan' => $record->plan->description,
                         'coverage' => $record->coverage->price ?? null,
                         'frequency' => $record->affiliation->payment_frequency,
@@ -386,7 +395,7 @@ class PaidMembershipController extends Controller
                         $collections->type = 'AFILIACION INDIVIDUAL';
                         $collections->service = 'servicio';
                         $collections->persons = $record->affiliation->family_members;
-                        $collections->total_amount = $record->total_amount;
+                        $collections->total_amount = $settledAmount;
                         $collections->payment_method = $record->payment_method;
 
                         $collections->pay_amount_usd = 0.00;
@@ -415,7 +424,7 @@ class PaidMembershipController extends Controller
                             'address_ti' => $record->affiliation->adress_ti,
                             'phone_ti' => $sales->affiliate_phone,
                             'email_ti' => $sales->affiliate_email,
-                            'total_amount' => $record->total_amount,
+                            'total_amount' => $settledAmount,
                             'plan' => $record->plan->description,
                             'coverage' => $record->coverage->price ?? null,
                             'frequency' => $record->affiliation->payment_frequency,
@@ -443,7 +452,7 @@ class PaidMembershipController extends Controller
                     'address_ti' => $record->affiliation->adress_ti,
                     'phone_ti' => $sales->affiliate_phone,
                     'email_ti' => $sales->affiliate_email,
-                    'total_amount' => $record->total_amount,
+                    'total_amount' => $settledAmount,
                     'currency' => $record->currency,
                     'plan' => $record->plan->description,
                     'coverage' => $record->coverage->price ?? null,
@@ -464,7 +473,13 @@ class PaidMembershipController extends Controller
                     'approved_by' => $record->aproved_by,
                 ]);
 
-                WhiteCompanyCreditMovementRecorder::recordIndividualInstallment($record);
+                WhiteCompanyCreditMovementRecorder::recordIndividualInstallment(
+                    $record,
+                    null,
+                    $alliedSettlement instanceof WhiteCompanyPaymentSettlement
+                        ? $alliedSettlement->installmentNeta()
+                        : null,
+                );
 
                 dispatch(new ReciboDePagoIndividual($array_data));
 
@@ -476,227 +491,233 @@ class PaidMembershipController extends Controller
                  */
                 $data_afiliaciones = $record->affiliation->toArray();
 
-                $comisionAgent = 0;
-                $comisionSubAgent = 0;
-                $comisionAgencyMaster = 0;
-                $comisionAgencyGeneral = 0;
+                if ($alliedSettlement instanceof WhiteCompanyPaymentSettlement) {
+                    $alliedSettlement->storeCommission($sales, $record);
+                } else {
 
-                $agent_type = Agent::where('id', $data_afiliaciones['agent_id'])->first();
+                    $comisionAgent = 0;
+                    $comisionSubAgent = 0;
+                    $comisionAgencyMaster = 0;
+                    $comisionAgencyGeneral = 0;
 
-                // 1.- Validamos que la venta sea hecha por un sub-agente
-                if ($data_afiliaciones['agent_id'] != null && $agent_type->agent_type_id == 3) {
+                    $agent_type = Agent::where('id', $data_afiliaciones['agent_id'])->first();
 
-                    $comisionSubAgent = CommissionController::calculateCommissionSubAgente($data_afiliaciones['agent_id'], $record);
-                    Log::info('venta de sub-agente');
+                    // 1.- Validamos que la venta sea hecha por un sub-agente
+                    if ($data_afiliaciones['agent_id'] != null && $agent_type->agent_type_id == 3) {
 
-                    // Guardamos el calculo en la tabla de comisiones
-                    $commission = new Commission;
-                    /**Datos principales de la tabla commission */
-                    $commission->code = $sales->invoice_number;
-                    $commission->sale_id = $sales->id;
-                    $commission->plan_id = $record->plan_id;
-                    $commission->coverage_id = $record->coverage_id;
-                    $commission->agent_id = $record->agent_id;
-                    $commission->code_agency = $record->code_agency;
-                    $commission->payment_frequency = $record->payment_frequency;
-                    $commission->affiliate_full_name = $record->affiliation->full_name_ti;
-                    $commission->pay_amount_usd = $record->pay_amount_usd;
-                    $commission->pay_amount_ves = $record->pay_amount_ves;
-                    $commission->amount = $record->total_amount;
+                        $comisionSubAgent = CommissionController::calculateCommissionSubAgente($data_afiliaciones['agent_id'], $record);
+                        Log::info('venta de sub-agente');
 
-                    $commission->porcent_sub_agente = $comisionSubAgent['porcent_sub_agente'];
-                    $commission->commission_sub_agent_usd = $comisionSubAgent['porcentaje_sub_agente_usd'];
-                    $commission->commission_sub_agent_ves = $comisionSubAgent['porcentaje_sub_agente_ves'];
+                        // Guardamos el calculo en la tabla de comisiones
+                        $commission = new Commission;
+                        /**Datos principales de la tabla commission */
+                        $commission->code = $sales->invoice_number;
+                        $commission->sale_id = $sales->id;
+                        $commission->plan_id = $record->plan_id;
+                        $commission->coverage_id = $record->coverage_id;
+                        $commission->agent_id = $record->agent_id;
+                        $commission->code_agency = $record->code_agency;
+                        $commission->payment_frequency = $record->payment_frequency;
+                        $commission->affiliate_full_name = $record->affiliation->full_name_ti;
+                        $commission->pay_amount_usd = $record->pay_amount_usd;
+                        $commission->pay_amount_ves = $record->pay_amount_ves;
+                        $commission->amount = $record->total_amount;
 
-                    $commission->porcent_agente = $comisionSubAgent['porcent_agente_superior'];
-                    $commission->commission_agent_usd = $comisionSubAgent['porcentaje_agente_superior_usd'];
-                    $commission->commission_agent_ves = $comisionSubAgent['porcentaje_agente_superior_ves'];
+                        $commission->porcent_sub_agente = $comisionSubAgent['porcent_sub_agente'];
+                        $commission->commission_sub_agent_usd = $comisionSubAgent['porcentaje_sub_agente_usd'];
+                        $commission->commission_sub_agent_ves = $comisionSubAgent['porcentaje_sub_agente_ves'];
 
-                    $commission->porcent_agency_general = $comisionSubAgent['porcent_agencia_general'];
-                    $commission->commission_agency_general_usd = $comisionSubAgent['porcentaje_agencia_general_usd'];
-                    $commission->commission_agency_general_ves = $comisionSubAgent['porcentaje_agencia_general_ves'];
+                        $commission->porcent_agente = $comisionSubAgent['porcent_agente_superior'];
+                        $commission->commission_agent_usd = $comisionSubAgent['porcentaje_agente_superior_usd'];
+                        $commission->commission_agent_ves = $comisionSubAgent['porcentaje_agente_superior_ves'];
 
-                    $commission->porcent_agency_master = $comisionSubAgent['porcent_agencia_master'];
-                    $commission->commission_agency_master_usd = $comisionSubAgent['porcentaje_agencia_master_usd'];
-                    $commission->commission_agency_master_ves = $comisionSubAgent['porcentaje_agencia_master_ves'];
+                        $commission->porcent_agency_general = $comisionSubAgent['porcent_agencia_general'];
+                        $commission->commission_agency_general_usd = $comisionSubAgent['porcentaje_agencia_general_usd'];
+                        $commission->commission_agency_general_ves = $comisionSubAgent['porcentaje_agencia_general_ves'];
 
-                    // dd($commission);
-                    $commission->payment_method = $sales->payment_method;
+                        $commission->porcent_agency_master = $comisionSubAgent['porcent_agencia_master'];
+                        $commission->commission_agency_master_usd = $comisionSubAgent['porcentaje_agencia_master_usd'];
+                        $commission->commission_agency_master_ves = $comisionSubAgent['porcentaje_agencia_master_ves'];
 
-                    $commission->affiliation_code = $sales->affiliation_code;
-                    $commission->created_by = Auth::user()->name;
-                    $commission->save();
-                }
+                        // dd($commission);
+                        $commission->payment_method = $sales->payment_method;
 
-                // 1.- Validamos que la venta sea hecha por un agente
-                if ($data_afiliaciones['agent_id'] != null && $agent_type->agent_type_id == 2) {
-
-                    $comisionAgent = CommissionController::calculateCommissionAgente($data_afiliaciones['agent_id'], $record);
-                    Log::info('venta de agente');
-                    $comision_agente = $comisionAgent['porcentaje_agente'];
-                    Log::info("total a pagar: {$comisionAgent['porcentaje_agente']}");
-                    Log::info("porcentaje: {$comisionAgent['porcent_agent']}");
-
-                    // Si el codgio de la agencia es diferente a TDG-100 es directo, es decir, el agente pertenece a nosotros
-                    if ($data_afiliaciones['code_agency'] != 'TDG-100') {
-                        // 2.- Validamos el tipo de agencia
-                        $tipo_agencia = AgencyTypeForCommission::resolveOrFail(
-                            (string) $data_afiliaciones['code_agency'],
-                            isset($data_afiliaciones['code']) ? (string) $data_afiliaciones['code'] : null,
-                            $record->id,
-                        );
-
-                        if ($tipo_agencia->agency_type_id == 3) {
-                            // Agencia tipo GENERAL
-                            $comisionAgencyGeneral = CommissionController::calculateCommissionGeneral($data_afiliaciones['code_agency'], $record, $comisionAgent['porcent_agent']);
-                            Log::info('comisiona agencia general');
-                            Log::info("total a pagar: {$comisionAgencyGeneral['porcentaje_agencia_general']}");
-                            Log::info("porcentaje: {$comisionAgencyGeneral['porcent_gral']}");
-                        }
-
-                        if ($tipo_agencia->agency_type_id == 1) {
-                            // Agencia tipo MASTER
-                            // Calculo de la comision restando la comision del agente de la comision total de la agencia master
-                            $comisionAgencyMaster = CommissionController::calculateCommissionMaster($data_afiliaciones['code_agency'], $record, $comisionAgent['porcent_agent']);
-                            Log::info('comisiona agencia master');
-                            Log::info("total a pagar: {$comisionAgencyMaster['porcentaje_agencia_master']}");
-                            Log::info("porcentaje: {$comisionAgencyMaster['porcent_master']}");
-                        }
-
-                        // CommissionController::calculateDirectCommissionAgency($data_afiliacion, $sales);
+                        $commission->affiliation_code = $sales->affiliation_code;
+                        $commission->created_by = Auth::user()->name;
+                        $commission->save();
                     }
 
-                    // Guardamos el calculo en la tabla de comisiones
-                    $commission = new Commission;
-                    /**Datos principales de la tabla commission */
-                    $commission->code = $sales->invoice_number;
-                    $commission->sale_id = $sales->id;
-                    $commission->plan_id = $record->plan_id;
-                    $commission->coverage_id = $record->coverage_id;
-                    $commission->agent_id = $record->agent_id;
-                    $commission->code_agency = $record->code_agency;
-                    $commission->payment_frequency = $record->payment_frequency;
-                    $commission->affiliate_full_name = $record->affiliation->full_name_ti;
-                    $commission->pay_amount_usd = $record->pay_amount_usd;
-                    $commission->pay_amount_ves = $record->pay_amount_ves;
-                    $commission->amount = $record->total_amount;
-                    $commission->commission_agent_usd = isset($comisionAgent['money']) && $comisionAgent['money'] == 'usd' ? $comision_agente : 0.00;
-                    $commission->commission_agent_ves = isset($comisionAgent['money']) && $comisionAgent['money'] == 'ves' ? $comision_agente : 0.00;
+                    // 1.- Validamos que la venta sea hecha por un agente
+                    if ($data_afiliaciones['agent_id'] != null && $agent_type->agent_type_id == 2) {
 
-                    if (isset($tipo_agencia)) {
+                        $comisionAgent = CommissionController::calculateCommissionAgente($data_afiliaciones['agent_id'], $record);
+                        Log::info('venta de agente');
+                        $comision_agente = $comisionAgent['porcentaje_agente'];
+                        Log::info("total a pagar: {$comisionAgent['porcentaje_agente']}");
+                        Log::info("porcentaje: {$comisionAgent['porcent_agent']}");
+
+                        // Si el codgio de la agencia es diferente a TDG-100 es directo, es decir, el agente pertenece a nosotros
+                        if ($data_afiliaciones['code_agency'] != 'TDG-100') {
+                            // 2.- Validamos el tipo de agencia
+                            $tipo_agencia = AgencyTypeForCommission::resolveOrFail(
+                                (string) $data_afiliaciones['code_agency'],
+                                isset($data_afiliaciones['code']) ? (string) $data_afiliaciones['code'] : null,
+                                $record->id,
+                            );
+
+                            if ($tipo_agencia->agency_type_id == 3) {
+                                // Agencia tipo GENERAL
+                                $comisionAgencyGeneral = CommissionController::calculateCommissionGeneral($data_afiliaciones['code_agency'], $record, $comisionAgent['porcent_agent']);
+                                Log::info('comisiona agencia general');
+                                Log::info("total a pagar: {$comisionAgencyGeneral['porcentaje_agencia_general']}");
+                                Log::info("porcentaje: {$comisionAgencyGeneral['porcent_gral']}");
+                            }
+
+                            if ($tipo_agencia->agency_type_id == 1) {
+                                // Agencia tipo MASTER
+                                // Calculo de la comision restando la comision del agente de la comision total de la agencia master
+                                $comisionAgencyMaster = CommissionController::calculateCommissionMaster($data_afiliaciones['code_agency'], $record, $comisionAgent['porcent_agent']);
+                                Log::info('comisiona agencia master');
+                                Log::info("total a pagar: {$comisionAgencyMaster['porcentaje_agencia_master']}");
+                                Log::info("porcentaje: {$comisionAgencyMaster['porcent_master']}");
+                            }
+
+                            // CommissionController::calculateDirectCommissionAgency($data_afiliacion, $sales);
+                        }
+
+                        // Guardamos el calculo en la tabla de comisiones
+                        $commission = new Commission;
+                        /**Datos principales de la tabla commission */
+                        $commission->code = $sales->invoice_number;
+                        $commission->sale_id = $sales->id;
+                        $commission->plan_id = $record->plan_id;
+                        $commission->coverage_id = $record->coverage_id;
+                        $commission->agent_id = $record->agent_id;
+                        $commission->code_agency = $record->code_agency;
+                        $commission->payment_frequency = $record->payment_frequency;
+                        $commission->affiliate_full_name = $record->affiliation->full_name_ti;
+                        $commission->pay_amount_usd = $record->pay_amount_usd;
+                        $commission->pay_amount_ves = $record->pay_amount_ves;
+                        $commission->amount = $record->total_amount;
+                        $commission->commission_agent_usd = isset($comisionAgent['money']) && $comisionAgent['money'] == 'usd' ? $comision_agente : 0.00;
+                        $commission->commission_agent_ves = isset($comisionAgent['money']) && $comisionAgent['money'] == 'ves' ? $comision_agente : 0.00;
+
+                        if (isset($tipo_agencia)) {
+                            if ($tipo_agencia->agency_type_id == 1 && isset($comisionAgencyMaster['money']) && $comisionAgencyMaster['money'] == 'usd') {
+                                $commission->commission_agency_master_usd = $comisionAgencyMaster['porcentaje_agencia_master'];
+                                $commission->porcent_agency_master = $comisionAgencyMaster['porcent_master'];
+                            }
+                            if ($tipo_agencia->agency_type_id == 1 && isset($comisionAgencyMaster['money']) && $comisionAgencyMaster['money'] == 'ves') {
+                                $commission->commission_agency_master_ves = $comisionAgencyMaster['porcentaje_agencia_master'];
+                                $commission->porcent_agency_master = $comisionAgencyMaster['porcent_master'];
+                            }
+
+                            if ($tipo_agencia->agency_type_id == 3 && isset($comisionAgencyGeneral['money']) && $comisionAgencyGeneral['money'] == 'usd') {
+                                $commission->commission_agency_general_usd = $comisionAgencyGeneral['porcentaje_agencia_general'];
+                                $commission->commission_agency_master_usd = $comisionAgencyGeneral['porcentaje_agencia_master'];
+                                $commission->porcent_agency_general = $comisionAgencyGeneral['porcent_gral'];
+                                $commission->porcent_agency_master = $comisionAgencyGeneral['porcent_master'];
+                            }
+                            if ($tipo_agencia->agency_type_id == 3 && isset($comisionAgencyGeneral['money']) && $comisionAgencyGeneral['money'] == 'ves') {
+                                $commission->commission_agency_general_ves = $comisionAgencyGeneral['porcentaje_agencia_general'];
+                                $commission->commission_agency_master_ves = $comisionAgencyGeneral['porcentaje_agencia_master'];
+                                $commission->porcent_agency_general = $comisionAgencyGeneral['porcent_gral'];
+                                $commission->porcent_agency_master = $comisionAgencyGeneral['porcent_master'];
+                            }
+                        } else {
+                            $commission->commission_agency_master_usd = 0.00;
+                            $commission->commission_agency_master_ves = 0.00;
+                            $commission->commission_agency_general_usd = 0.00;
+                            $commission->commission_agency_general_ves = 0.00;
+                        }
+
+                        // dd($commission);
+                        $commission->payment_method = $sales->payment_method;
+                        $commission->porcent_agente = $comisionAgent['porcent_agent'];
+                        $commission->affiliation_code = $sales->affiliation_code;
+                        $commission->created_by = Auth::user()->name;
+                        $commission->save();
+                    }
+
+                    // 1.- Validamos que la venta sea hecha por una agencia general o una agencia master
+                    if ($data_afiliaciones['agent_id'] == null) {
+
+                        // Si el codgio de la agencia es diferente a TDG-100 es directo, es decir, el agente pertenece a nosotros
+                        if ($data_afiliaciones['code_agency'] != 'TDG-100') {
+                            // 2.- Validamos el tipo de agencia
+                            $tipo_agencia = AgencyTypeForCommission::resolveOrFail(
+                                (string) $data_afiliaciones['code_agency'],
+                                isset($data_afiliaciones['code']) ? (string) $data_afiliaciones['code'] : null,
+                                $record->id,
+                            );
+
+                            if ($tipo_agencia->agency_type_id == 1) {
+                                // Agencia tipo MASTER
+                                $comisionAgencyMaster = CommissionController::calculateCommissionMaster($data_afiliaciones['code_agency'], $record, 0);
+                                Log::info(' master ');
+                                Log::info($comisionAgencyMaster);
+                            }
+
+                            if ($tipo_agencia->agency_type_id == 3) {
+                                // Agencia tipo GENERAL
+                                $comisionAgencyGeneral = CommissionController::calculateCommissionGeneral($data_afiliaciones['code_agency'], $record, 0);
+                                Log::info(' general ');
+                                Log::info($comisionAgencyGeneral);
+                            }
+
+                            // CommissionController::calculateDirectCommissionAgency($data_afiliacion, $sales);
+                        }
+
+                        // Guardamos el calculo en la tabla de comisiones
+                        $commission = new Commission;
+                        /**Datos principales de la tabla commission */
+                        $commission->code = $sales->invoice_number;
+                        $commission->sale_id = $sales->id;
+                        $commission->plan_id = $record->plan_id;
+                        $commission->coverage_id = $record->coverage_id;
+                        $commission->agent_id = $record->agent_id;
+                        $commission->code_agency = $record->code_agency;
+                        $commission->payment_frequency = $record->payment_frequency;
+                        $commission->affiliate_full_name = $record->affiliation->full_name_ti;
+                        $commission->pay_amount_usd = $record->pay_amount_usd;
+                        $commission->pay_amount_ves = $record->pay_amount_ves;
+                        $commission->amount = $record->total_amount;
+                        $commission->commission_agent_usd = 0.00;
+                        $commission->commission_agent_ves = 0.00;
+
                         if ($tipo_agencia->agency_type_id == 1 && isset($comisionAgencyMaster['money']) && $comisionAgencyMaster['money'] == 'usd') {
+
                             $commission->commission_agency_master_usd = $comisionAgencyMaster['porcentaje_agencia_master'];
                             $commission->porcent_agency_master = $comisionAgencyMaster['porcent_master'];
                         }
                         if ($tipo_agencia->agency_type_id == 1 && isset($comisionAgencyMaster['money']) && $comisionAgencyMaster['money'] == 'ves') {
+
                             $commission->commission_agency_master_ves = $comisionAgencyMaster['porcentaje_agencia_master'];
                             $commission->porcent_agency_master = $comisionAgencyMaster['porcent_master'];
                         }
 
                         if ($tipo_agencia->agency_type_id == 3 && isset($comisionAgencyGeneral['money']) && $comisionAgencyGeneral['money'] == 'usd') {
+
                             $commission->commission_agency_general_usd = $comisionAgencyGeneral['porcentaje_agencia_general'];
                             $commission->commission_agency_master_usd = $comisionAgencyGeneral['porcentaje_agencia_master'];
                             $commission->porcent_agency_general = $comisionAgencyGeneral['porcent_gral'];
                             $commission->porcent_agency_master = $comisionAgencyGeneral['porcent_master'];
                         }
                         if ($tipo_agencia->agency_type_id == 3 && isset($comisionAgencyGeneral['money']) && $comisionAgencyGeneral['money'] == 'ves') {
+
                             $commission->commission_agency_general_ves = $comisionAgencyGeneral['porcentaje_agencia_general'];
                             $commission->commission_agency_master_ves = $comisionAgencyGeneral['porcentaje_agencia_master'];
                             $commission->porcent_agency_general = $comisionAgencyGeneral['porcent_gral'];
                             $commission->porcent_agency_master = $comisionAgencyGeneral['porcent_master'];
                         }
-                    } else {
-                        $commission->commission_agency_master_usd = 0.00;
-                        $commission->commission_agency_master_ves = 0.00;
-                        $commission->commission_agency_general_usd = 0.00;
-                        $commission->commission_agency_general_ves = 0.00;
+
+                        // dd($commission);
+                        $commission->payment_method = $sales->payment_method;
+                        $commission->affiliation_code = $sales->affiliation_code;
+                        $commission->created_by = Auth::user()->name;
+                        $commission->save();
+
                     }
-
-                    // dd($commission);
-                    $commission->payment_method = $sales->payment_method;
-                    $commission->porcent_agente = $comisionAgent['porcent_agent'];
-                    $commission->affiliation_code = $sales->affiliation_code;
-                    $commission->created_by = Auth::user()->name;
-                    $commission->save();
-                }
-
-                // 1.- Validamos que la venta sea hecha por una agencia general o una agencia master
-                if ($data_afiliaciones['agent_id'] == null) {
-
-                    // Si el codgio de la agencia es diferente a TDG-100 es directo, es decir, el agente pertenece a nosotros
-                    if ($data_afiliaciones['code_agency'] != 'TDG-100') {
-                        // 2.- Validamos el tipo de agencia
-                        $tipo_agencia = AgencyTypeForCommission::resolveOrFail(
-                            (string) $data_afiliaciones['code_agency'],
-                            isset($data_afiliaciones['code']) ? (string) $data_afiliaciones['code'] : null,
-                            $record->id,
-                        );
-
-                        if ($tipo_agencia->agency_type_id == 1) {
-                            // Agencia tipo MASTER
-                            $comisionAgencyMaster = CommissionController::calculateCommissionMaster($data_afiliaciones['code_agency'], $record, 0);
-                            Log::info(' master ');
-                            Log::info($comisionAgencyMaster);
-                        }
-
-                        if ($tipo_agencia->agency_type_id == 3) {
-                            // Agencia tipo GENERAL
-                            $comisionAgencyGeneral = CommissionController::calculateCommissionGeneral($data_afiliaciones['code_agency'], $record, 0);
-                            Log::info(' general ');
-                            Log::info($comisionAgencyGeneral);
-                        }
-
-                        // CommissionController::calculateDirectCommissionAgency($data_afiliacion, $sales);
-                    }
-
-                    // Guardamos el calculo en la tabla de comisiones
-                    $commission = new Commission;
-                    /**Datos principales de la tabla commission */
-                    $commission->code = $sales->invoice_number;
-                    $commission->sale_id = $sales->id;
-                    $commission->plan_id = $record->plan_id;
-                    $commission->coverage_id = $record->coverage_id;
-                    $commission->agent_id = $record->agent_id;
-                    $commission->code_agency = $record->code_agency;
-                    $commission->payment_frequency = $record->payment_frequency;
-                    $commission->affiliate_full_name = $record->affiliation->full_name_ti;
-                    $commission->pay_amount_usd = $record->pay_amount_usd;
-                    $commission->pay_amount_ves = $record->pay_amount_ves;
-                    $commission->amount = $record->total_amount;
-                    $commission->commission_agent_usd = 0.00;
-                    $commission->commission_agent_ves = 0.00;
-
-                    if ($tipo_agencia->agency_type_id == 1 && isset($comisionAgencyMaster['money']) && $comisionAgencyMaster['money'] == 'usd') {
-
-                        $commission->commission_agency_master_usd = $comisionAgencyMaster['porcentaje_agencia_master'];
-                        $commission->porcent_agency_master = $comisionAgencyMaster['porcent_master'];
-                    }
-                    if ($tipo_agencia->agency_type_id == 1 && isset($comisionAgencyMaster['money']) && $comisionAgencyMaster['money'] == 'ves') {
-
-                        $commission->commission_agency_master_ves = $comisionAgencyMaster['porcentaje_agencia_master'];
-                        $commission->porcent_agency_master = $comisionAgencyMaster['porcent_master'];
-                    }
-
-                    if ($tipo_agencia->agency_type_id == 3 && isset($comisionAgencyGeneral['money']) && $comisionAgencyGeneral['money'] == 'usd') {
-
-                        $commission->commission_agency_general_usd = $comisionAgencyGeneral['porcentaje_agencia_general'];
-                        $commission->commission_agency_master_usd = $comisionAgencyGeneral['porcentaje_agencia_master'];
-                        $commission->porcent_agency_general = $comisionAgencyGeneral['porcent_gral'];
-                        $commission->porcent_agency_master = $comisionAgencyGeneral['porcent_master'];
-                    }
-                    if ($tipo_agencia->agency_type_id == 3 && isset($comisionAgencyGeneral['money']) && $comisionAgencyGeneral['money'] == 'ves') {
-
-                        $commission->commission_agency_general_ves = $comisionAgencyGeneral['porcentaje_agencia_general'];
-                        $commission->commission_agency_master_ves = $comisionAgencyGeneral['porcentaje_agencia_master'];
-                        $commission->porcent_agency_general = $comisionAgencyGeneral['porcent_gral'];
-                        $commission->porcent_agency_master = $comisionAgencyGeneral['porcent_master'];
-                    }
-
-                    // dd($commission);
-                    $commission->payment_method = $sales->payment_method;
-                    $commission->affiliation_code = $sales->affiliation_code;
-                    $commission->created_by = Auth::user()->name;
-                    $commission->save();
 
                 }
 
@@ -784,7 +805,7 @@ class PaidMembershipController extends Controller
                 $sales->affiliate_email = $record->affiliation->email_ti;
                 $sales->service = 'servicio';
                 $sales->persons = $record->affiliation->family_members;
-                $sales->total_amount = $record->total_amount;
+                $sales->total_amount = $settledAmount;
                 $sales->type = 'AFILIACION INDIVIDUAL';
                 $sales->payment_method = $record->payment_method;
                 $sales->payment_frequency = $record->affiliation->payment_frequency;
@@ -854,7 +875,7 @@ class PaidMembershipController extends Controller
                     'address_ti' => $record->affiliation->adress_ti,
                     'phone_ti' => $sales->affiliate_phone,
                     'email_ti' => $sales->affiliate_email,
-                    'total_amount' => $record->total_amount,
+                    'total_amount' => $settledAmount,
                     'currency' => $record->currency,
                     'plan' => $record->plan->description,
                     'coverage' => $record->coverage->price ?? null,
@@ -882,196 +903,202 @@ class PaidMembershipController extends Controller
                  */
                 $data_afiliaciones = $record->affiliation->toArray();
 
-                $comisionAgent = 0;
-                $comisionAgencyMaster = 0;
-                $comisionAgencyGeneral = 0;
+                if ($alliedSettlement instanceof WhiteCompanyPaymentSettlement) {
+                    $alliedSettlement->storeCommission($sales, $record);
+                } else {
 
-                // 1.- Validamos que la venta sea hecha por un agente
-                if ($data_afiliaciones['agent_id'] != null) {
+                    $comisionAgent = 0;
+                    $comisionAgencyMaster = 0;
+                    $comisionAgencyGeneral = 0;
 
-                    $comisionAgent = CommissionController::calculateCommissionAgente($data_afiliaciones['agent_id'], $record);
-                    Log::info('venta de agente');
-                    $comision_agente = $comisionAgent['porcentaje_agente'];
-                    Log::info("total a pagar: {$comisionAgent['porcentaje_agente']}");
-                    Log::info("porcentaje: {$comisionAgent['porcent_agent']}");
+                    // 1.- Validamos que la venta sea hecha por un agente
+                    if ($data_afiliaciones['agent_id'] != null) {
 
-                    // Si el codgio de la agencia es diferente a TDG-100 es directo, es decir, el agente pertenece a nosotros
-                    if ($data_afiliaciones['code_agency'] != 'TDG-100') {
-                        // 2.- Validamos el tipo de agencia
-                        $tipo_agencia = AgencyTypeForCommission::resolveOrFail(
-                            (string) $data_afiliaciones['code_agency'],
-                            isset($data_afiliaciones['code']) ? (string) $data_afiliaciones['code'] : null,
-                            $record->id,
-                        );
+                        $comisionAgent = CommissionController::calculateCommissionAgente($data_afiliaciones['agent_id'], $record);
+                        Log::info('venta de agente');
+                        $comision_agente = $comisionAgent['porcentaje_agente'];
+                        Log::info("total a pagar: {$comisionAgent['porcentaje_agente']}");
+                        Log::info("porcentaje: {$comisionAgent['porcent_agent']}");
 
-                        if ($tipo_agencia->agency_type_id == 3) {
-                            // Agencia tipo GENERAL
-                            $comisionAgencyGeneral = CommissionController::calculateCommissionGeneral($data_afiliaciones['code_agency'], $record, $comisionAgent['porcent_agent']);
-                            Log::info('comisiona agencia general');
-                            Log::info("total a pagar: {$comisionAgencyGeneral['porcentaje_agencia_general']}");
-                            Log::info("porcentaje: {$comisionAgencyGeneral['porcent_gral']}");
+                        // Si el codgio de la agencia es diferente a TDG-100 es directo, es decir, el agente pertenece a nosotros
+                        if ($data_afiliaciones['code_agency'] != 'TDG-100') {
+                            // 2.- Validamos el tipo de agencia
+                            $tipo_agencia = AgencyTypeForCommission::resolveOrFail(
+                                (string) $data_afiliaciones['code_agency'],
+                                isset($data_afiliaciones['code']) ? (string) $data_afiliaciones['code'] : null,
+                                $record->id,
+                            );
+
+                            if ($tipo_agencia->agency_type_id == 3) {
+                                // Agencia tipo GENERAL
+                                $comisionAgencyGeneral = CommissionController::calculateCommissionGeneral($data_afiliaciones['code_agency'], $record, $comisionAgent['porcent_agent']);
+                                Log::info('comisiona agencia general');
+                                Log::info("total a pagar: {$comisionAgencyGeneral['porcentaje_agencia_general']}");
+                                Log::info("porcentaje: {$comisionAgencyGeneral['porcent_gral']}");
+                            }
+
+                            if ($tipo_agencia->agency_type_id == 1) {
+                                // Agencia tipo MASTER
+                                // Calculo de la comision restando la comision del agente de la comision total de la agencia master
+                                $comisionAgencyMaster = CommissionController::calculateCommissionMaster($data_afiliaciones['code_agency'], $record, $comisionAgent['porcent_agent']);
+                                Log::info('comisiona agencia master');
+                                Log::info("total a pagar: {$comisionAgencyMaster['porcentaje_agencia_master']}");
+                                Log::info("porcentaje: {$comisionAgencyMaster['porcent_master']}");
+                            }
+
+                            // CommissionController::calculateDirectCommissionAgency($data_afiliacion, $sales);
                         }
 
-                        if ($tipo_agencia->agency_type_id == 1) {
-                            // Agencia tipo MASTER
-                            // Calculo de la comision restando la comision del agente de la comision total de la agencia master
-                            $comisionAgencyMaster = CommissionController::calculateCommissionMaster($data_afiliaciones['code_agency'], $record, $comisionAgent['porcent_agent']);
-                            Log::info('comisiona agencia master');
-                            Log::info("total a pagar: {$comisionAgencyMaster['porcentaje_agencia_master']}");
-                            Log::info("porcentaje: {$comisionAgencyMaster['porcent_master']}");
+                        // Guardamos el calculo en la tabla de comisiones
+                        $commission = new Commission;
+                        /**Datos principales de la tabla commission */
+                        $commission->code = $sales->invoice_number;
+                        $commission->sale_id = $sales->id;
+                        $commission->plan_id = $record->plan_id;
+                        $commission->coverage_id = $record->coverage_id;
+                        $commission->agent_id = $record->agent_id;
+                        $commission->code_agency = $record->code_agency;
+                        $commission->payment_frequency = $record->payment_frequency;
+                        $commission->affiliate_full_name = $record->affiliation->full_name_ti;
+                        $commission->pay_amount_usd = $record->pay_amount_usd;
+                        $commission->pay_amount_ves = $record->pay_amount_ves;
+                        $commission->amount = $record->total_amount;
+                        $commission->commission_agent_usd = isset($comisionAgent['money']) && $comisionAgent['money'] == 'usd' ? $comision_agente : 0.00;
+                        $commission->commission_agent_ves = isset($comisionAgent['money']) && $comisionAgent['money'] == 'ves' ? $comision_agente : 0.00;
+
+                        if (isset($tipo_agencia)) {
+                            if ($tipo_agencia->agency_type_id == 1 && isset($comisionAgencyMaster['money']) && $comisionAgencyMaster['money'] == 'usd') {
+                                $commission->commission_agency_master_usd = $comisionAgencyMaster['porcentaje_agencia_master'];
+                                $commission->porcent_agency_master = $comisionAgencyMaster['porcent_master'];
+                            }
+                            if ($tipo_agencia->agency_type_id == 1 && isset($comisionAgencyMaster['money']) && $comisionAgencyMaster['money'] == 'ves') {
+                                $commission->commission_agency_master_ves = $comisionAgencyMaster['porcentaje_agencia_master'];
+                                $commission->porcent_agency_master = $comisionAgencyMaster['porcent_master'];
+                            }
+
+                            if ($tipo_agencia->agency_type_id == 3 && isset($comisionAgencyGeneral['money']) && $comisionAgencyGeneral['money'] == 'usd') {
+                                $commission->commission_agency_general_usd = $comisionAgencyGeneral['porcentaje_agencia_general'];
+                                $commission->commission_agency_master_usd = $comisionAgencyGeneral['porcentaje_agencia_master'];
+                                $commission->porcent_agency_general = $comisionAgencyGeneral['porcent_gral'];
+                                $commission->porcent_agency_master = $comisionAgencyGeneral['porcent_master'];
+                            }
+                            if ($tipo_agencia->agency_type_id == 3 && isset($comisionAgencyGeneral['money']) && $comisionAgencyGeneral['money'] == 'ves') {
+                                $commission->commission_agency_general_ves = $comisionAgencyGeneral['porcentaje_agencia_general'];
+                                $commission->commission_agency_master_ves = $comisionAgencyGeneral['porcentaje_agencia_master'];
+                                $commission->porcent_agency_general = $comisionAgencyGeneral['porcent_gral'];
+                                $commission->porcent_agency_master = $comisionAgencyGeneral['porcent_master'];
+                            }
+                        } else {
+                            $commission->commission_agency_master_usd = 0.00;
+                            $commission->commission_agency_master_ves = 0.00;
+                            $commission->commission_agency_general_usd = 0.00;
+                            $commission->commission_agency_general_ves = 0.00;
                         }
 
-                        // CommissionController::calculateDirectCommissionAgency($data_afiliacion, $sales);
+                        // dd($commission);
+                        $commission->payment_method = $sales->payment_method;
+                        $commission->porcent_agente = $comisionAgent['porcent_agent'];
+                        $commission->affiliation_code = $sales->affiliation_code;
+                        $commission->created_by = Auth::user()->name;
+                        $commission->save();
+
+                        // Notificación de éxito
+                        Notification::make()
+                            ->title('Pago Aprobado')
+                            ->body('El pago y sus registros asociados se procesaron correctamente.')
+                            ->success()
+                            ->send();
                     }
 
-                    // Guardamos el calculo en la tabla de comisiones
-                    $commission = new Commission;
-                    /**Datos principales de la tabla commission */
-                    $commission->code = $sales->invoice_number;
-                    $commission->sale_id = $sales->id;
-                    $commission->plan_id = $record->plan_id;
-                    $commission->coverage_id = $record->coverage_id;
-                    $commission->agent_id = $record->agent_id;
-                    $commission->code_agency = $record->code_agency;
-                    $commission->payment_frequency = $record->payment_frequency;
-                    $commission->affiliate_full_name = $record->affiliation->full_name_ti;
-                    $commission->pay_amount_usd = $record->pay_amount_usd;
-                    $commission->pay_amount_ves = $record->pay_amount_ves;
-                    $commission->amount = $record->total_amount;
-                    $commission->commission_agent_usd = isset($comisionAgent['money']) && $comisionAgent['money'] == 'usd' ? $comision_agente : 0.00;
-                    $commission->commission_agent_ves = isset($comisionAgent['money']) && $comisionAgent['money'] == 'ves' ? $comision_agente : 0.00;
+                    // 1.- Validamos que la venta sea hecha por una agencia general o una agencia master
+                    if ($data_afiliaciones['agent_id'] == null) {
 
-                    if (isset($tipo_agencia)) {
+                        // Si el codgio de la agencia es diferente a TDG-100 es directo, es decir, el agente pertenece a nosotros
+                        if ($data_afiliaciones['code_agency'] != 'TDG-100') {
+                            // 2.- Validamos el tipo de agencia
+                            $tipo_agencia = AgencyTypeForCommission::resolveOrFail(
+                                (string) $data_afiliaciones['code_agency'],
+                                isset($data_afiliaciones['code']) ? (string) $data_afiliaciones['code'] : null,
+                                $record->id,
+                            );
+
+                            if ($tipo_agencia->agency_type_id == 1) {
+                                // Agencia tipo MASTER
+                                $comisionAgencyMaster = CommissionController::calculateCommissionMaster($data_afiliaciones['code_agency'], $record, 0);
+                                Log::info(' master ');
+                                Log::info($comisionAgencyMaster);
+                            }
+
+                            if ($tipo_agencia->agency_type_id == 3) {
+                                // Agencia tipo GENERAL
+                                $comisionAgencyGeneral = CommissionController::calculateCommissionGeneral($data_afiliaciones['code_agency'], $record, 0);
+                                Log::info(' general ');
+                                Log::info($comisionAgencyGeneral);
+                            }
+
+                            // CommissionController::calculateDirectCommissionAgency($data_afiliacion, $sales);
+                        }
+
+                        // Guardamos el calculo en la tabla de comisiones
+                        $commission = new Commission;
+                        /**Datos principales de la tabla commission */
+                        $commission->code = $sales->invoice_number;
+                        $commission->sale_id = $sales->id;
+                        $commission->plan_id = $record->plan_id;
+                        $commission->coverage_id = $record->coverage_id;
+                        $commission->agent_id = $record->agent_id;
+                        $commission->code_agency = $record->code_agency;
+                        $commission->payment_frequency = $record->payment_frequency;
+                        $commission->affiliate_full_name = $record->affiliation->full_name_ti;
+                        $commission->pay_amount_usd = $record->pay_amount_usd;
+                        $commission->pay_amount_ves = $record->pay_amount_ves;
+                        $commission->amount = $record->total_amount;
+                        $commission->commission_agent_usd = 0.00;
+                        $commission->commission_agent_ves = 0.00;
+
                         if ($tipo_agencia->agency_type_id == 1 && isset($comisionAgencyMaster['money']) && $comisionAgencyMaster['money'] == 'usd') {
+
                             $commission->commission_agency_master_usd = $comisionAgencyMaster['porcentaje_agencia_master'];
                             $commission->porcent_agency_master = $comisionAgencyMaster['porcent_master'];
                         }
                         if ($tipo_agencia->agency_type_id == 1 && isset($comisionAgencyMaster['money']) && $comisionAgencyMaster['money'] == 'ves') {
+
                             $commission->commission_agency_master_ves = $comisionAgencyMaster['porcentaje_agencia_master'];
                             $commission->porcent_agency_master = $comisionAgencyMaster['porcent_master'];
                         }
 
                         if ($tipo_agencia->agency_type_id == 3 && isset($comisionAgencyGeneral['money']) && $comisionAgencyGeneral['money'] == 'usd') {
+
                             $commission->commission_agency_general_usd = $comisionAgencyGeneral['porcentaje_agencia_general'];
                             $commission->commission_agency_master_usd = $comisionAgencyGeneral['porcentaje_agencia_master'];
                             $commission->porcent_agency_general = $comisionAgencyGeneral['porcent_gral'];
                             $commission->porcent_agency_master = $comisionAgencyGeneral['porcent_master'];
                         }
                         if ($tipo_agencia->agency_type_id == 3 && isset($comisionAgencyGeneral['money']) && $comisionAgencyGeneral['money'] == 'ves') {
+
                             $commission->commission_agency_general_ves = $comisionAgencyGeneral['porcentaje_agencia_general'];
                             $commission->commission_agency_master_ves = $comisionAgencyGeneral['porcentaje_agencia_master'];
                             $commission->porcent_agency_general = $comisionAgencyGeneral['porcent_gral'];
                             $commission->porcent_agency_master = $comisionAgencyGeneral['porcent_master'];
                         }
-                    } else {
-                        $commission->commission_agency_master_usd = 0.00;
-                        $commission->commission_agency_master_ves = 0.00;
-                        $commission->commission_agency_general_usd = 0.00;
-                        $commission->commission_agency_general_ves = 0.00;
+
+                        // dd($commission);
+                        $commission->payment_method = $sales->payment_method;
+                        $commission->affiliation_code = $sales->affiliation_code;
+                        $commission->created_by = Auth::user()->name;
+                        $commission->save();
+
+                        // Todo correcto: Confirmamos cambios en la DB
+                        DB::commit();
+
+                        // Notificación de éxito
+                        Notification::make()
+                            ->title('Pago Aprobado')
+                            ->body('El pago y sus registros asociados se procesaron correctamente.')
+                            ->success()
+                            ->send();
                     }
 
-                    // dd($commission);
-                    $commission->payment_method = $sales->payment_method;
-                    $commission->porcent_agente = $comisionAgent['porcent_agent'];
-                    $commission->affiliation_code = $sales->affiliation_code;
-                    $commission->created_by = Auth::user()->name;
-                    $commission->save();
-
-                    // Notificación de éxito
-                    Notification::make()
-                        ->title('Pago Aprobado')
-                        ->body('El pago y sus registros asociados se procesaron correctamente.')
-                        ->success()
-                        ->send();
-                }
-
-                // 1.- Validamos que la venta sea hecha por una agencia general o una agencia master
-                if ($data_afiliaciones['agent_id'] == null) {
-
-                    // Si el codgio de la agencia es diferente a TDG-100 es directo, es decir, el agente pertenece a nosotros
-                    if ($data_afiliaciones['code_agency'] != 'TDG-100') {
-                        // 2.- Validamos el tipo de agencia
-                        $tipo_agencia = AgencyTypeForCommission::resolveOrFail(
-                            (string) $data_afiliaciones['code_agency'],
-                            isset($data_afiliaciones['code']) ? (string) $data_afiliaciones['code'] : null,
-                            $record->id,
-                        );
-
-                        if ($tipo_agencia->agency_type_id == 1) {
-                            // Agencia tipo MASTER
-                            $comisionAgencyMaster = CommissionController::calculateCommissionMaster($data_afiliaciones['code_agency'], $record, 0);
-                            Log::info(' master ');
-                            Log::info($comisionAgencyMaster);
-                        }
-
-                        if ($tipo_agencia->agency_type_id == 3) {
-                            // Agencia tipo GENERAL
-                            $comisionAgencyGeneral = CommissionController::calculateCommissionGeneral($data_afiliaciones['code_agency'], $record, 0);
-                            Log::info(' general ');
-                            Log::info($comisionAgencyGeneral);
-                        }
-
-                        // CommissionController::calculateDirectCommissionAgency($data_afiliacion, $sales);
-                    }
-
-                    // Guardamos el calculo en la tabla de comisiones
-                    $commission = new Commission;
-                    /**Datos principales de la tabla commission */
-                    $commission->code = $sales->invoice_number;
-                    $commission->sale_id = $sales->id;
-                    $commission->plan_id = $record->plan_id;
-                    $commission->coverage_id = $record->coverage_id;
-                    $commission->agent_id = $record->agent_id;
-                    $commission->code_agency = $record->code_agency;
-                    $commission->payment_frequency = $record->payment_frequency;
-                    $commission->affiliate_full_name = $record->affiliation->full_name_ti;
-                    $commission->pay_amount_usd = $record->pay_amount_usd;
-                    $commission->pay_amount_ves = $record->pay_amount_ves;
-                    $commission->amount = $record->total_amount;
-                    $commission->commission_agent_usd = 0.00;
-                    $commission->commission_agent_ves = 0.00;
-
-                    if ($tipo_agencia->agency_type_id == 1 && isset($comisionAgencyMaster['money']) && $comisionAgencyMaster['money'] == 'usd') {
-
-                        $commission->commission_agency_master_usd = $comisionAgencyMaster['porcentaje_agencia_master'];
-                        $commission->porcent_agency_master = $comisionAgencyMaster['porcent_master'];
-                    }
-                    if ($tipo_agencia->agency_type_id == 1 && isset($comisionAgencyMaster['money']) && $comisionAgencyMaster['money'] == 'ves') {
-
-                        $commission->commission_agency_master_ves = $comisionAgencyMaster['porcentaje_agencia_master'];
-                        $commission->porcent_agency_master = $comisionAgencyMaster['porcent_master'];
-                    }
-
-                    if ($tipo_agencia->agency_type_id == 3 && isset($comisionAgencyGeneral['money']) && $comisionAgencyGeneral['money'] == 'usd') {
-
-                        $commission->commission_agency_general_usd = $comisionAgencyGeneral['porcentaje_agencia_general'];
-                        $commission->commission_agency_master_usd = $comisionAgencyGeneral['porcentaje_agencia_master'];
-                        $commission->porcent_agency_general = $comisionAgencyGeneral['porcent_gral'];
-                        $commission->porcent_agency_master = $comisionAgencyGeneral['porcent_master'];
-                    }
-                    if ($tipo_agencia->agency_type_id == 3 && isset($comisionAgencyGeneral['money']) && $comisionAgencyGeneral['money'] == 'ves') {
-
-                        $commission->commission_agency_general_ves = $comisionAgencyGeneral['porcentaje_agencia_general'];
-                        $commission->commission_agency_master_ves = $comisionAgencyGeneral['porcentaje_agencia_master'];
-                        $commission->porcent_agency_general = $comisionAgencyGeneral['porcent_gral'];
-                        $commission->porcent_agency_master = $comisionAgencyGeneral['porcent_master'];
-                    }
-
-                    // dd($commission);
-                    $commission->payment_method = $sales->payment_method;
-                    $commission->affiliation_code = $sales->affiliation_code;
-                    $commission->created_by = Auth::user()->name;
-                    $commission->save();
-
-                    // Todo correcto: Confirmamos cambios en la DB
-                    DB::commit();
-
-                    // Notificación de éxito
-                    Notification::make()
-                        ->title('Pago Aprobado')
-                        ->body('El pago y sus registros asociados se procesaron correctamente.')
-                        ->success()
-                        ->send();
                 }
 
                 // Todo correcto: Confirmamos cambios en la DB
@@ -1103,6 +1130,13 @@ class PaidMembershipController extends Controller
             if ($th instanceof AgencyNotFoundForCommissionException) {
                 Notification::make()
                     ->title('Compensación detenida: agencia inválida')
+                    ->body($th->getMessage())
+                    ->danger()
+                    ->persistent()
+                    ->send();
+            } elseif ($th instanceof WhiteCompanyNegotiatedRateMissingException) {
+                Notification::make()
+                    ->title('Compensación detenida: neta no pactada')
                     ->body($th->getMessage())
                     ->danger()
                     ->persistent()

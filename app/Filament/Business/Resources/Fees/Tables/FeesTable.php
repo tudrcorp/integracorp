@@ -82,6 +82,13 @@ class FeesTable
                     ->sortable()
                     ->searchable()
                     ->action(self::editPriceAction()),
+                TextColumn::make('neta')
+                    ->label('Neta')
+                    ->money('USD')
+                    ->alignEnd()
+                    ->placeholder('—')
+                    ->sortable()
+                    ->searchable(),
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()

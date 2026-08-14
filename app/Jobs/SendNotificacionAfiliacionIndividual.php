@@ -4,8 +4,10 @@ namespace App\Jobs;
 
 use App\Http\Controllers\AffiliationController;
 use App\Mail\SendMailPropuestaPlanInicial;
+use App\Models\Affiliation;
 use App\Models\User;
 use App\Support\DomPdfBatchRenderOptions;
+use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -76,9 +78,14 @@ class SendNotificacionAfiliacionIndividual implements ShouldQueue
         Log::info($name_pdf);
         Log::info($afiliates);
 
+        $affiliation = Affiliation::query()->where('code', $pagador['code'] ?? null)->first();
+        $brand = $affiliation instanceof Affiliation
+            ? WhiteCompanyDocumentBrand::forAffiliation($affiliation)
+            : WhiteCompanyDocumentBrand::tdec();
+
         $pdf = Pdf::loadView(
             'documents.certificate',
-            AffiliationController::dataForCertificatePdfView($pagador, $beneficios_table, $afiliates),
+            AffiliationController::dataForCertificatePdfView($pagador, $beneficios_table, $afiliates, $brand),
         );
         DomPdfBatchRenderOptions::apply($pdf);
         $pdf->save(public_path('storage/certificados-doc/'.$name_pdf));

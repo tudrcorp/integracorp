@@ -98,3 +98,71 @@ it('expone la accion de crear afiliado corporativo segun el usuario autenticado'
         BusinessFilamentActionPermissionRegistry::CREATE_CORPORATE_AFFILIATE,
     ))->toBeTrue();
 });
+
+it('resuelve el grupo de navegacion del permiso de matriz de negociacion', function (): void {
+    $permission = new Permission;
+    $permission->forceFill([
+        'slug' => BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_NEGOTIATED_FEES,
+        'module' => 'NEGOCIOS',
+        'name' => 'Matriz de negociación',
+    ]);
+
+    expect(PermissionNavigationGroupResolver::groupForPermission($permission))->toBe('ESTRUCTURA COMERCIAL');
+});
+
+it('permite la matriz de negociacion con el subpermiso asignado', function (): void {
+    $user = makeActionUser(
+        ['NEGOCIOS'],
+        [BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_NEGOTIATED_FEES],
+    );
+
+    expect(UserNavigationAccess::canPerformModuleAction(
+        $user,
+        'NEGOCIOS',
+        BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_NEGOTIATED_FEES,
+    ))->toBeTrue();
+});
+
+it('niega la matriz de negociacion sin el subpermiso aunque tenga empresas aliadas', function (): void {
+    $user = makeActionUser(['NEGOCIOS'], ['empresas-aliadas']);
+
+    expect(UserNavigationAccess::canPerformModuleAction(
+        $user,
+        'NEGOCIOS',
+        BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_NEGOTIATED_FEES,
+    ))->toBeFalse();
+});
+
+it('resuelve el grupo de navegacion del permiso de documentos de marca', function (): void {
+    $permission = new Permission;
+    $permission->forceFill([
+        'slug' => BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_DOCUMENT_BRAND,
+        'module' => 'NEGOCIOS',
+        'name' => 'Documentos de marca',
+    ]);
+
+    expect(PermissionNavigationGroupResolver::groupForPermission($permission))->toBe('ESTRUCTURA COMERCIAL');
+});
+
+it('permite documentos de marca con el subpermiso asignado', function (): void {
+    $user = makeActionUser(
+        ['NEGOCIOS'],
+        [BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_DOCUMENT_BRAND],
+    );
+
+    expect(UserNavigationAccess::canPerformModuleAction(
+        $user,
+        'NEGOCIOS',
+        BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_DOCUMENT_BRAND,
+    ))->toBeTrue();
+});
+
+it('niega documentos de marca sin el subpermiso aunque tenga empresas aliadas', function (): void {
+    $user = makeActionUser(['NEGOCIOS'], ['empresas-aliadas']);
+
+    expect(UserNavigationAccess::canPerformModuleAction(
+        $user,
+        'NEGOCIOS',
+        BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_DOCUMENT_BRAND,
+    ))->toBeFalse();
+});

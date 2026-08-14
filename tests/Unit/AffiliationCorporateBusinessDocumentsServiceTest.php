@@ -142,7 +142,10 @@ it('ejecuta lotes de tarjetas en conexion sync para no depender del worker', fun
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationCorporateBusinessDocumentsService.php');
 
     expect($source)->toContain("->onConnection('sync')")
-        ->and($source)->toContain('normalizeTarjetaPayloads');
+        ->and($source)->toContain('normalizeTarjetaPayloads')
+        ->and($source)->toContain('queueViveplusDocuments')
+        ->and($source)->toContain('ViveplusDocumentWebhookDispatcher::dispatchForCorporate')
+        ->and($source)->toContain('resolveAffiliateCarnetDocuments');
 });
 
 it('define affiliationCode y usa affiliateCount al regenerar documentos corporativos', function (): void {
@@ -152,7 +155,7 @@ it('define affiliationCode y usa affiliateCount al regenerar documentos corporat
         ->toContain('$affiliationCode = (string) $record->code;')
         ->toContain('self::recommendedChunkSize($affiliateCount)')
         ->toContain('self::generateCorporateCertificate($record)')
-        ->toContain('use ($record, $taskId, $activeTaskCacheKey, $affiliationCode)')
+        ->toContain('use ($record, $taskId, $userId, $activeTaskCacheKey, $affiliationCode)')
         ->toContain('public static function generateTarjetasChunk(array $chunk): void')
         ->not->toContain('recommendedChunkSize($affiliatesCount)');
 });

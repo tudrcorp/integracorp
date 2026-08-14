@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Fee extends Model
@@ -15,11 +16,22 @@ class Fee extends Model
         'age_range_id',
         'coverage_id',
         'price',
+        'neta',
         'status',
         'created_by',
         'range',
         'coverage',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'neta' => 'decimal:2',
+        ];
+    }
 
     public function ageRange(): BelongsTo
     {
@@ -45,5 +57,13 @@ class Fee extends Model
     public function coverageRecord(): BelongsTo
     {
         return $this->belongsTo(Coverage::class, 'coverage_id', 'id');
+    }
+
+    /**
+     * @return HasMany<WhiteCompanyFee, $this>
+     */
+    public function whiteCompanyFees(): HasMany
+    {
+        return $this->hasMany(WhiteCompanyFee::class);
     }
 }

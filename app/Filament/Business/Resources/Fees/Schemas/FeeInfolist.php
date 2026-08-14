@@ -20,6 +20,10 @@ class FeeInfolist
                     ->placeholder('-'),
                 TextEntry::make('price')
                     ->money(),
+                TextEntry::make('neta')
+                    ->label('Neta')
+                    ->money()
+                    ->placeholder('-'),
                 TextEntry::make('status'),
                 TextEntry::make('range')
                     ->placeholder('-'),

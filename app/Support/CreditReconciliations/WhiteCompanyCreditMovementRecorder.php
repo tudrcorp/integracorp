@@ -16,8 +16,11 @@ use Illuminate\Support\Facades\Auth;
 
 final class WhiteCompanyCreditMovementRecorder
 {
-    public static function recordIndividualInstallment(PaidMembership $membership, ?Collection $collection = null): ?CreditReconciliation
-    {
+    public static function recordIndividualInstallment(
+        PaidMembership $membership,
+        ?Collection $collection = null,
+        ?float $totalToPay = null,
+    ): ?CreditReconciliation {
         $affiliation = $membership->affiliation;
 
         if (! $affiliation instanceof Affiliation) {
@@ -41,7 +44,7 @@ final class WhiteCompanyCreditMovementRecorder
         return self::store(
             $company,
             $snapshot,
-            (float) ($collection?->total_amount ?? $membership->total_amount ?? 0),
+            $totalToPay ?? (float) ($collection?->total_amount ?? $membership->total_amount ?? 0),
             $collection?->collection_invoice_number,
             $membership->id,
             null,

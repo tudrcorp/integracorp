@@ -146,9 +146,31 @@
 
 </head>
 <body>
+    @php
+        $brandColor = $brandColor ?? '#26b2ca';
+        $logoDataUri = $logoDataUri ?? '';
+        $signatureDataUri = $signatureDataUri ?? '';
+        $isAlliedCertificate = $isAlliedCertificate ?? false;
+        $companyName = $companyName ?? '';
+    @endphp
     
-    <!-- Primera página: Imagen de fondo -->
-    <div class="cover" style="background-image: url('{{ public_path('storage/certificados/fondo-certificado.png') }}'); ">
+    <div
+        class="cover"
+        @if ($isAlliedCertificate)
+            style="background-color: #ffffff;"
+        @else
+            style="background-image: url('{{ public_path('storage/certificados/fondo-certificado.png') }}'); "
+        @endif
+    >
+        @if ($isAlliedCertificate)
+            @if ($logoDataUri !== '')
+                <img src="{{ $logoDataUri }}" alt="{{ $companyName }}" style="position: absolute; top: 24px; right: 40px; max-width: 170px; max-height: 90px;">
+            @elseif ($companyName !== '')
+                <div style="position: absolute; top: 32px; right: 40px; font-family: Helvetica, sans-serif; font-size: 16px; font-weight: bold; color: {{ $brandColor }}; text-transform: uppercase;">
+                    {{ $companyName }}
+                </div>
+            @endif
+        @endif
 
         <!-- TITULO 1 -->
         <div style="position: absolute; top: 60px; left: 60px; margin-top: 0px; padding: 0px; margin-left: 0px">
@@ -156,7 +178,7 @@
             <p style="font-size: 30px;">
                 <span style="
                         font-weight: bold;
-                        color: #26b2ca;
+                        color: {{ $brandColor }};
                         font-size: 16px; 
                         font-style: sans-serif; 
                         font-family: 'Helvetica', Century, sans-serif; 
@@ -217,7 +239,7 @@
 
                 <span style="
                         font-weight: bold;
-                        color: #26b2ca;
+                        color: {{ $brandColor }};
                         font-size: 16px; 
                         font-style: sans-serif; 
                         font-family: 'Helvetica', Century, sans-serif; 
@@ -303,7 +325,7 @@
             <p class="sin-margen" style="font-size: 30px; margin-bottom: 5px;">
                 <span style="
                     font-weight: bold;
-                    color: #26b2ca;
+                    color: {{ $brandColor }};
                     font-size: 16px;
                     font-style: sans-serif; 
                     font-family: 'Helvetica', Century, sans-serif; 
@@ -346,7 +368,7 @@
                                         font-weight: bold;
                                     ">
                                 @if ($row['show_cobertura'])
-                                    <span style="font-size: 14px; font-weight: bold;">US$ {{ $coberturaFormatted }}</span>
+                                    <span style="font-size: 14px; font-weight: bold; color: {{ $isAlliedCertificate ? $brandColor : '#000000' }};">US$ {{ $coberturaFormatted }}</span>
                                 @else
                                     <img src="{{ public_path('storage/certificados/check-beneficios.png') }}" style="width: 12px; height: 12px;" alt="">
                                 @endif
@@ -373,9 +395,17 @@
 
 
 
-        <div style="position: absolute; top: 930px; left: 60px; margin-top: 0px; padding: 0px; margin-left: 0px">
-            <img src="{{ public_path('storage/certificados/firmaHC-Certificados.png') }}" style="width: 180px; height: 70px;" alt="">
-        </div>
+        @if ($isAlliedCertificate)
+            @if ($signatureDataUri !== '')
+                <div style="position: absolute; bottom: 28px; left: 0; right: 0; text-align: center;">
+                    <img src="{{ $signatureDataUri }}" alt="Firma {{ $companyName }}" style="max-width: 260px; max-height: 90px;">
+                </div>
+            @endif
+        @else
+            <div style="position: absolute; top: 930px; left: 60px; margin-top: 0px; padding: 0px; margin-left: 0px">
+                <img src="{{ public_path('storage/certificados/firmaHC-Certificados.png') }}" style="width: 180px; height: 70px;" alt="">
+            </div>
+        @endif
 
 
         <!-- Firma Humberto Sanchez -->

@@ -6,6 +6,7 @@ use App\Filament\Business\Resources\Concerns\ConfiguresBusinessGlobalSearch;
 use App\Filament\Business\Resources\WhiteCompanies\Pages\CreateWhiteCompany;
 use App\Filament\Business\Resources\WhiteCompanies\Pages\EditWhiteCompany;
 use App\Filament\Business\Resources\WhiteCompanies\Pages\ListWhiteCompanies;
+use App\Filament\Business\Resources\WhiteCompanies\RelationManagers\NegotiatedFeesRelationManager;
 use App\Filament\Business\Resources\WhiteCompanies\Schemas\WhiteCompanyForm;
 use App\Filament\Business\Resources\WhiteCompanies\Tables\WhiteCompaniesTable;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
@@ -98,7 +99,7 @@ class WhiteCompanyResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            NegotiatedFeesRelationManager::class,
         ];
     }
 

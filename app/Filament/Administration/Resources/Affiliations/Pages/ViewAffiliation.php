@@ -104,14 +104,14 @@ class ViewAffiliation extends ViewRecord
                             ->body('El expediente se actualizó correctamente.')
                             ->send();
                     }),
-                AffiliationFichaPdfActions::printIndividualPdfAction()
-                    ->extraAttributes([
-                        'class' => self::SUCCESS_BUTTON_CLASS,
-                    ]),
                 EditAction::make()
                     ->label('Compensar Pago')
                     ->icon(Heroicon::OutlinedCreditCard)
                     ->color('primary'),
+                AffiliationFichaPdfActions::printIndividualPdfAction()
+                    // ->extraAttributes([
+                    //     'class' => self::SUCCESS_BUTTON_CLASS,
+                    // ]),
             ]),
         ];
     }

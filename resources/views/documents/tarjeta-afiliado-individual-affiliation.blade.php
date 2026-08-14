@@ -36,7 +36,7 @@
         <div class="cover">
             <img
                 class="cover-template-image"
-                src="{{ public_path('storage/certificados/tarjeta-afiliado-individual-cropped.png') }}"
+                src="{{ $data['template_image_absolute_path'] ?? public_path('storage/certificados/tarjeta-afiliado-individual-cropped.png') }}"
                 alt=""
             >
         </div>
