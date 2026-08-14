@@ -2,10 +2,14 @@
 
 namespace App\Filament\Business\Resources\WhiteCompanies\Pages;
 
+use App\Filament\Business\Resources\WhiteCompanies\Schemas\WhiteCompanyDocumentBrandForm;
 use App\Filament\Business\Resources\WhiteCompanies\WhiteCompanyResource;
 use App\Models\Agency;
 use App\Models\Configuration;
 use App\Models\User;
+use App\Models\WhiteCompany;
+use App\Support\Filament\BusinessFilamentActionAccess;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -16,6 +20,22 @@ class CreateWhiteCompany extends CreateRecord
     protected static string $resource = WhiteCompanyResource::class;
 
     protected static ?string $title = 'Formulario de Registro de Empresas Aliadas';
+
+    /**
+     * @var array<string, mixed>
+     */
+    private array $documentBrandUploads = [];
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $this->documentBrandUploads = $data;
+
+        return WhiteCompanyDocumentBrandForm::stripVirtualFields($data);
+    }
 
     protected function afterCreate(): void
     {
@@ -64,6 +84,16 @@ class CreateWhiteCompany extends CreateRecord
             $new_white_company_config->email = $this->data['email'];
             $new_white_company_config->rif = $this->data['rif'];
             $new_white_company_config->save();
+
+            $createdCompany = $this->getRecord();
+            if (
+                $createdCompany instanceof WhiteCompany
+                && BusinessFilamentActionAccess::userCan(
+                    BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_DOCUMENT_BRAND,
+                )
+            ) {
+                WhiteCompanyDocumentBrandForm::syncPlanDocumentsFromState($createdCompany, $this->documentBrandUploads);
+            }
 
             self::audit('AUDIT_BUSINESS_WHITE_COMPANY_CREATED', 'business.white-companies.create', [
                 'white_company_id' => $this->getRecord()->id,

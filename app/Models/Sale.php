@@ -55,6 +55,11 @@ class Sale extends Model
         return $this->belongsTo(Affiliation::class);
     }
 
+    public function affiliationByCode(): BelongsTo
+    {
+        return $this->belongsTo(Affiliation::class, 'affiliation_code', 'code');
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);

@@ -2,12 +2,17 @@
 
 namespace App\Filament\Business\Resources\WhiteCompanies\Tables;
 
+use App\Filament\Business\Resources\WhiteCompanies\Schemas\WhiteCompanyDocumentBrandForm;
 use App\Models\Country;
 use App\Models\WhiteCompany;
+use App\Support\Filament\BusinessFilamentActionAccess;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\SecurityAudit;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -149,6 +154,31 @@ class WhiteCompaniesTable
                     ->indicator('Logo'),
             ])
             ->recordActions([
+                Action::make('documentBrand')
+                    ->label('Documentos de marca')
+                    ->icon(Heroicon::OutlinedSwatch)
+                    ->color('info')
+                    ->modalHeading('Documentos de marca')
+                    ->modalDescription('Carnet, color del certificado y condicionados de esta empresa aliada. No regenera afiliaciones ya emitidas.')
+                    ->modalWidth(Width::FiveExtraLarge)
+                    ->visible(fn (): bool => BusinessFilamentActionAccess::userCan(
+                        BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_DOCUMENT_BRAND,
+                    ))
+                    ->authorize(fn (): bool => BusinessFilamentActionAccess::userCan(
+                        BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_DOCUMENT_BRAND,
+                    ))
+                    ->fillForm(fn (WhiteCompany $record): array => WhiteCompanyDocumentBrandForm::formStateFromRecord($record))
+                    ->form(WhiteCompanyDocumentBrandForm::components())
+                    ->action(function (WhiteCompany $record, array $data): void {
+                        WhiteCompanyDocumentBrandForm::persist($record, $data);
+
+                        self::audit('AUDIT_BUSINESS_WHITE_COMPANY_DOCUMENT_BRAND_UPDATED', 'business.white-companies.document-brand', [
+                            'white_company_id' => $record->id,
+                            'name' => $record->name,
+                            'has_carnet_image' => filled($record->fresh()?->carnet_template_image),
+                            'brand_primary_color' => $record->fresh()?->brand_primary_color,
+                        ]);
+                    }),
                 EditAction::make()
                     ->label('Editar')
                     ->icon(Heroicon::OutlinedPencilSquare)

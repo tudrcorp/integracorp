@@ -25,7 +25,7 @@ final class AffiliateCardStampedPdfGenerator
             throw new RuntimeException('No hay plantilla de estampado para este carnet.');
         }
 
-        $templatePath = AffiliateCardTemplateBuilder::templatePathForKey($templateKey);
+        $templatePath = self::resolveTemplatePath($data, $templateKey);
 
         if (! is_file($templatePath)) {
             throw new RuntimeException("No se encontró la plantilla PDF: {$templatePath}");
@@ -35,7 +35,7 @@ final class AffiliateCardStampedPdfGenerator
 
         $prepared = self::prepareViewData($data);
 
-        if ($templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION) {
+        if (AffiliateCardPageLayout::isIndividualAffiliationFamily($templateKey)) {
             self::stampIndividualAffiliationCard(
                 $data,
                 $prepared,
@@ -80,8 +80,9 @@ final class AffiliateCardStampedPdfGenerator
             throw new RuntimeException('La generación por estampado está deshabilitada.');
         }
 
-        $templateKey = AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION;
-        $templatePath = AffiliateCardTemplateBuilder::templatePathForKey($templateKey);
+        $templateKey = self::resolveTemplateKey($cards[0])
+            ?? AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION;
+        $templatePath = self::resolveTemplatePath($cards[0], $templateKey);
 
         if (! is_file($templatePath)) {
             throw new RuntimeException("No se encontró la plantilla PDF: {$templatePath}");
@@ -143,7 +144,8 @@ final class AffiliateCardStampedPdfGenerator
         int $sheetSlot,
         bool $singleAffiliate,
     ): void {
-        $templateKey = AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION;
+        $templateKey = self::resolveTemplateKey($data)
+            ?? AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION;
         $origin = AffiliateCardPageLayout::sheetCardOrigin($sheetSlot, $singleAffiliate);
         $unit = AffiliateCardPageLayout::individualAffiliationUnitDimensions($singleAffiliate);
         $sheet = AffiliateCardPageLayout::sheetDimensions();
@@ -190,7 +192,7 @@ final class AffiliateCardStampedPdfGenerator
         float $offsetYmm = 0.0,
         bool $singleAffiliate = false,
     ): void {
-        $scale = $templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION
+        $scale = AffiliateCardPageLayout::isIndividualAffiliationFamily($templateKey)
             ? AffiliateCardPageLayout::individualAffiliationStampScale($singleAffiliate)
             : 1.0;
 
@@ -202,7 +204,7 @@ final class AffiliateCardStampedPdfGenerator
             AffiliateCardPageLayout::fontSizePt($templateKey, $singleAffiliate),
         );
 
-        if ($templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION) {
+        if (AffiliateCardPageLayout::isIndividualAffiliationFamily($templateKey)) {
             $pdf->SetTextColor(0, 51, 102);
         } else {
             $pdf->SetTextColor(0, 0, 0);
@@ -210,9 +212,8 @@ final class AffiliateCardStampedPdfGenerator
 
         self::writeField($pdf, $templateKey, 'code', self::upper((string) ($prepared['code'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
 
-        if ($templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION) {
-            self::writeField($pdf, $templateKey, 'name_first_part', self::upper((string) ($prepared['name_first_part'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
-            self::writeField($pdf, $templateKey, 'name_second_part', self::upper((string) ($prepared['name_second_part'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
+        if ($templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED) {
+            self::writeField($pdf, $templateKey, 'name', self::upper((string) ($prepared['name'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
         } else {
             self::writeField($pdf, $templateKey, 'name_first_part', self::upper((string) ($prepared['name_first_part'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
             self::writeField($pdf, $templateKey, 'name_second_part', self::upper((string) ($prepared['name_second_part'] ?? '')), $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
@@ -237,8 +238,27 @@ final class AffiliateCardStampedPdfGenerator
 
         $templateKey = self::resolveTemplateKey($data);
 
-        return $templateKey !== null
-            && AffiliateCardTemplateBuilder::templateExists($templateKey);
+        if ($templateKey === null) {
+            return false;
+        }
+
+        $templatePath = self::resolveTemplatePath($data, $templateKey);
+
+        return is_file($templatePath);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private static function resolveTemplatePath(array $data, string $templateKey): string
+    {
+        $custom = $data['template_path'] ?? null;
+
+        if (is_string($custom) && $custom !== '' && is_file($custom)) {
+            return $custom;
+        }
+
+        return AffiliateCardTemplateBuilder::templatePathForKey($templateKey);
     }
 
     /**
@@ -260,6 +280,10 @@ final class AffiliateCardStampedPdfGenerator
     {
         if (isset($data['template_key']) && is_string($data['template_key']) && $data['template_key'] !== '') {
             return $data['template_key'];
+        }
+
+        if (($data['card_layout'] ?? null) === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED) {
+            return AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED;
         }
 
         if (($data['card_layout'] ?? null) === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION) {
@@ -363,7 +387,7 @@ final class AffiliateCardStampedPdfGenerator
         $position = AffiliateCardPageLayout::fieldPosition($field, $templateKey, $offsetXmm, $offsetYmm, $scale, $singleAffiliate);
         $encoded = self::toPdfEncoding($value);
 
-        if ($templateKey === AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION) {
+        if (AffiliateCardPageLayout::isIndividualAffiliationFamily($templateKey)) {
             $pdf->SetFont(
                 AffiliateCardPageLayout::FONT_FAMILY,
                 AffiliateCardPageLayout::FONT_STYLE,

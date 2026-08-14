@@ -142,5 +142,8 @@ it('ejecuta lotes de tarjetas en conexion sync para no depender del worker', fun
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationCorporateBusinessDocumentsService.php');
 
     expect($source)->toContain("->onConnection('sync')")
-        ->and($source)->toContain('normalizeTarjetaPayloads');
+        ->and($source)->toContain('normalizeTarjetaPayloads')
+        ->and($source)->toContain('queueViveplusDocuments')
+        ->and($source)->toContain('ViveplusDocumentWebhookDispatcher::dispatchForCorporate')
+        ->and($source)->toContain('resolveAffiliateCarnetDocuments');
 });

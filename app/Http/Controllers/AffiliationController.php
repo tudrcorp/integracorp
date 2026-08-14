@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Mail\SendMailKitBienvenida;
 use App\Models\Affiliate;
+use App\Models\Affiliation;
 use App\Models\User;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\SecurityAudit;
+use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -1002,7 +1004,14 @@ class AffiliationController extends Controller
 
             $pdf = Pdf::loadView(
                 'documents.certificate',
-                self::dataForCertificatePdfView($pagador, $beneficios_table, $afiliates),
+                self::dataForCertificatePdfView(
+                    $pagador,
+                    $beneficios_table,
+                    $afiliates,
+                    $record instanceof Affiliation
+                        ? WhiteCompanyDocumentBrand::forAffiliation($record)
+                        : WhiteCompanyDocumentBrand::tdec(),
+                ),
             );
             DomPdfBatchRenderOptions::apply($pdf);
             $pdf->save(public_path('storage/certificados-doc/'.$name_pdf));
@@ -1178,17 +1187,29 @@ class AffiliationController extends Controller
      * @param  array<string, mixed>  $pagador
      * @param  list<string>  $beneficios_table
      * @param  iterable<mixed>  $afiliates
-     * @return array{pagador: array<string, mixed>, affiliateTableRows: list<array<string, mixed>>, coberturaFormatted: string, beneficiosRows: list<array{text: string, show_cobertura: bool}>}
+     * @return array<string, mixed>
      */
-    public static function dataForCertificatePdfView(array $pagador, array $beneficios_table, iterable $afiliates): array
-    {
+    public static function dataForCertificatePdfView(
+        array $pagador,
+        array $beneficios_table,
+        iterable $afiliates,
+        ?WhiteCompanyDocumentBrand $brand = null,
+    ): array {
         $pagador['periodo_facturado_hasta'] = self::certificatePeriodoFacturadoHasta($pagador);
+        $brand ??= WhiteCompanyDocumentBrand::tdec();
+        $planId = isset($pagador['plan_id']) ? (int) $pagador['plan_id'] : null;
+        $pagador['plan'] = $brand->planDisplayName($planId, (string) ($pagador['plan'] ?? ''));
 
         return [
             'pagador' => $pagador,
             'affiliateTableRows' => self::certificateAffiliateTableRows($afiliates),
             'coberturaFormatted' => number_format((float) ($pagador['cobertura'] ?? 0), 2, ',', '.'),
             'beneficiosRows' => self::certificateBeneficiosRows($beneficios_table),
+            'brandColor' => $brand->primaryColor,
+            'logoDataUri' => $brand->logoDataUri(),
+            'signatureDataUri' => $brand->signatureDataUri(),
+            'isAlliedCertificate' => $brand->isAllied(),
+            'companyName' => $brand->companyName(),
         ];
     }
 

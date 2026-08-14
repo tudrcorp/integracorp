@@ -63,6 +63,7 @@ it('layout usa posiciones calibradas contra tarjeta-afiliado blade', function ()
         ->toContain("'left_px' => 267")
         ->toContain('TEMPLATE_INDIVIDUAL')
         ->toContain('TEMPLATE_INDIVIDUAL_AFFILIATION')
+        ->toContain('TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED')
         ->toContain('INDIVIDUAL_AFFILIATION_SHEET_UNIT_WIDTH_MM')
         ->toContain('sheetCardOrigin')
         ->toContain("'cobertura'")
@@ -135,6 +136,55 @@ it('usa coordenadas recalibradas para campos individual-affiliation', function (
         ->and($qrSingle['size_mm'])->toEqualWithDelta(25.81, 0.01);
 });
 
+it('usa mapa VivePlus para carnet de empresa aliada sin tocar TDEC', function (): void {
+    $layout = App\Support\AffiliateCard\AffiliateCardPageLayout::class;
+
+    $tdecName = $layout::fieldPosition('name_first_part', 'individual-affiliation');
+    $alliedName = $layout::fieldPosition('name', 'individual-affiliation-allied');
+    $alliedCi = $layout::fieldPosition('ci', 'individual-affiliation-allied');
+    $alliedPlan = $layout::fieldPosition('plan', 'individual-affiliation-allied');
+    $alliedFrecuencia = $layout::fieldPosition('frecuencia', 'individual-affiliation-allied');
+    $alliedCobertura = $layout::fieldPosition('cobertura', 'individual-affiliation-allied');
+    $alliedDesde = $layout::fieldPosition('desde', 'individual-affiliation-allied');
+    $alliedHasta = $layout::fieldPosition('hasta', 'individual-affiliation-allied');
+    $alliedQr = $layout::qrPosition('individual-affiliation-allied');
+    $tdecQr = $layout::qrPosition('individual-affiliation');
+
+    expect($layout::isIndividualAffiliationFamily('individual-affiliation-allied'))->toBeTrue()
+        ->and($alliedName['x'])->toBe(3.97)
+        ->and($alliedName['y'])->toBe(15.35)
+        ->and($alliedCi['x'])->toBe(6.88)
+        ->and($alliedCi['y'])->toBe(18.92)
+        ->and($alliedPlan['x'])->toBe(8.73)
+        ->and($alliedPlan['y'])->toBe(21.7)
+        ->and($alliedFrecuencia['x'])->toBe(21.7)
+        ->and($alliedFrecuencia['y'])->toBe(24.87)
+        ->and($alliedFrecuencia['x'])->toBeGreaterThan($alliedPlan['x'])
+        ->and($alliedCobertura['x'])->toBe(13.76)
+        ->and($alliedCobertura['y'])->toBe(27.25)
+        ->and($alliedDesde['x'])->toBe(53.45)
+        ->and($alliedDesde['y'])->toBe(21.7)
+        ->and($alliedHasta['x'])->toBe(53.18)
+        ->and($alliedHasta['y'])->toBe(24.47)
+        ->and($alliedQr['size_mm'])->toBe(9.53)
+        ->and($alliedQr['x_mm'])->toBe(81.23)
+        ->and($alliedQr['y_mm'])->toBe(15.88)
+        ->and($alliedQr['size_mm'])->toBeLessThan($tdecQr['size_mm'])
+        ->and($tdecName['x'])->toBe(6.61)
+        ->and($layout::fieldPosition('code', 'individual-affiliation')['x'])->toBe(26.46)
+        ->and($layout::fontSizePtForField('individual-affiliation-allied', 'name', true))->toBe(8.5)
+        ->and($layout::fontSizePtForField('individual-affiliation', 'ci', true))->toBe(10.5);
+});
+
+it('estampa el nombre en una sola linea en el carnet aliado', function (): void {
+    $generator = file_get_contents(dirname(__DIR__, 2).'/app/Support/AffiliateCard/AffiliateCardStampedPdfGenerator.php');
+
+    expect($generator)
+        ->toContain('TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED')
+        ->toContain("writeField(\$pdf, \$templateKey, 'name'")
+        ->toContain('isIndividualAffiliationFamily');
+});
+
 it('usa fuente reducida solo para codigo en carnet individual-affiliation unico', function (): void {
     $layout = App\Support\AffiliateCard\AffiliateCardPageLayout::class;
 
@@ -193,6 +243,47 @@ it('genera lote de carnets individual-affiliation con 8 por hoja', function (): 
         ->and(filesize($outputPath))->toBeGreaterThan(10_000);
 
     @unlink($outputPath);
+});
+
+it('genera carnet VivePlus con mapa allied y plantilla propia', function (): void {
+    $image = storage_path('app/public/white-companies/carnets/01KZY74KN0M7PWJNRBPDMHZFTN.png');
+
+    if (! is_file($image)) {
+        $this->markTestSkipped('No existe la imagen de carnet VivePlus.');
+    }
+
+    $templatePath = sys_get_temp_dir().'/carnet-viveplus-template-'.uniqid('', true).'.pdf';
+    AffiliateCardTemplateBuilder::buildForTemplateKey('individual-affiliation', $templatePath, $image);
+
+    $outputPath = sys_get_temp_dir().'/carnet-viveplus-stamped-'.uniqid('', true).'.pdf';
+    $qrPath = public_path('storage/tarjeta-afiliacion/planes/qr-plan-especial.png');
+
+    $payload = [
+        'name' => 'Roanna Kennedy',
+        'ci' => '464624',
+        'code' => 'TDEC-IND-000393',
+        'plan' => 'ESPECIAL',
+        'plan_id' => 3,
+        'template_key' => 'individual-affiliation-allied',
+        'card_layout' => 'individual-affiliation',
+        'template_path' => $templatePath,
+        'plan_qr_filename' => 'qr-plan-especial.png',
+        'plan_qr_absolute_path' => is_file($qrPath) ? $qrPath : null,
+        'frecuencia' => 'TRIMESTRAL',
+        'cobertura' => '5.000,00 US$',
+        'desde' => '13/08/2027',
+        'hasta' => '13/08/2028',
+    ];
+
+    expect(AffiliateCardStampedPdfGenerator::canGenerate($payload))->toBeTrue();
+
+    AffiliateCardStampedPdfGenerator::generate($payload, $outputPath);
+
+    expect(is_file($outputPath))->toBeTrue()
+        ->and(filesize($outputPath))->toBeGreaterThan(10_000);
+
+    @unlink($outputPath);
+    @unlink($templatePath);
 });
 
 it('genera carnet individual-affiliation por estampado FPDI con plantilla cropped', function (): void {

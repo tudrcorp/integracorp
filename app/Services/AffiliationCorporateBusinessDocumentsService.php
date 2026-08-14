@@ -9,14 +9,17 @@ use App\Jobs\GenerateCorporateCertificateJob;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
 use App\Support\DomPdfBatchRenderOptions;
+use App\Support\Viveplus\ViveplusDocumentWebhookDispatcher;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Throwable;
 
 class AffiliationCorporateBusinessDocumentsService
 {
@@ -50,6 +53,8 @@ class AffiliationCorporateBusinessDocumentsService
             );
             self::generateTarjetasChunk($record, $tarjetaPayloads);
 
+            self::queueViveplusDocuments($record, $userId);
+
             return [
                 'queued' => false,
                 'documents' => self::documentsForAffiliation($record),
@@ -72,7 +77,7 @@ class AffiliationCorporateBusinessDocumentsService
         $batch = Bus::batch($jobs)
             ->onConnection('sync')
             ->name('corporate-documents-'.$record->code)
-            ->then(function (Batch $batch) use ($record, $taskId): void {
+            ->then(function (Batch $batch) use ($record, $taskId, $userId): void {
                 if ($batch->cancelled()) {
                     Cache::forget($activeTaskCacheKey);
 
@@ -94,6 +99,7 @@ class AffiliationCorporateBusinessDocumentsService
                     'documents' => self::documentsForAffiliation($record),
                 ]);
                 Cache::forget($activeTaskCacheKey);
+                self::queueViveplusDocuments($record, $userId);
             })
             ->catch(function (Batch $batch, \Throwable $throwable) use ($taskId, $activeTaskCacheKey): void {
                 $payload = self::status($taskId);
@@ -293,6 +299,38 @@ class AffiliationCorporateBusinessDocumentsService
     }
 
     /**
+     * @return array<int, array{path: string, identification: string}>
+     */
+    public static function resolveAffiliateCarnetDocuments(AffiliationCorporate $record): array
+    {
+        $record->loadMissing('corporateAffiliates');
+
+        $directory = public_path('storage/tarjeta-afiliacion/');
+        $documents = [];
+        $seen = [];
+
+        foreach ($record->corporateAffiliates as $affiliate) {
+            $identification = (string) $affiliate->nro_identificacion;
+            if (trim($identification) === '') {
+                continue;
+            }
+
+            $path = $directory.'TAR-'.$record->code.'-'.$affiliate->id.'.pdf';
+            if (! is_file($path) || isset($seen[$identification])) {
+                continue;
+            }
+
+            $seen[$identification] = true;
+            $documents[] = [
+                'path' => $path,
+                'identification' => $identification,
+            ];
+        }
+
+        return $documents;
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function absolutePdfPathsForAffiliation(AffiliationCorporate $record): array
@@ -442,6 +480,18 @@ class AffiliationCorporateBusinessDocumentsService
 
         if (! is_file($certificatePath)) {
             throw new RuntimeException('No se pudo guardar el certificado corporativo en disco.');
+        }
+    }
+
+    private static function queueViveplusDocuments(AffiliationCorporate $record, ?int $userId): void
+    {
+        try {
+            ViveplusDocumentWebhookDispatcher::dispatchForCorporate($record, $userId);
+        } catch (Throwable $exception) {
+            Log::error('AffiliationCorporateBusinessDocumentsService: no se pudo encolar el webhook de ViVEplus', [
+                'affiliation_code' => $record->code,
+                'error' => $exception->getMessage(),
+            ]);
         }
     }
 

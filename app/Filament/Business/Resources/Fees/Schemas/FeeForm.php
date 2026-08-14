@@ -172,6 +172,13 @@ class FeeForm
                             ->required()
                             ->numeric()
                             ->prefix('$'),
+                        TextInput::make('neta')
+                            ->label('Neta US$')
+                            ->helperText('Prima neta en dólares estadounidenses. Carga manual. Utilice separador decimal(.)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->prefix('$')
+                            ->nullable(),
                         TextInput::make('status')
                             ->label('Estatus')
                             ->prefixIcon('heroicon-m-shield-check')

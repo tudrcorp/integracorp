@@ -46,6 +46,7 @@ it('conserva las clases de fila cuando no hay empresa aliada', function (): void
 it('expone filtro y resaltado de empresas aliadas en tablas de afiliaciones', function (): void {
     $business = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Tables/AffiliationsTable.php');
     $administration = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Affiliations/Tables/AffiliationsTable.php');
+    $sales = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Sales/Tables/SalesTable.php');
     $helper = file_get_contents(dirname(__DIR__, 2).'/app/Support/AffiliationWhiteCompany.php');
 
     expect($business)
@@ -59,6 +60,9 @@ it('expone filtro y resaltado de empresas aliadas en tablas de afiliaciones', fu
         ->toContain('AffiliationWhiteCompany::tableFilter()')
         ->toContain('AffiliationWhiteCompany::recordRowClasses')
         ->not->toContain('AffiliationWhiteCompany::applySelect');
+
+    expect($sales)
+        ->toContain('AffiliationWhiteCompany::tableFilter()');
 
     expect($helper)
         ->not->toContain('addSelect')

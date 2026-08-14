@@ -46,6 +46,7 @@ final class AffiliateCardTemplateBuilder
     public static function buildForTemplateKey(
         string $templateKey,
         ?string $outputPath = null,
+        ?string $templateImageAbsolutePath = null,
     ): string {
         $outputPath ??= self::templatePathForKey($templateKey);
         self::ensureDirectory(dirname($outputPath));
@@ -70,6 +71,10 @@ final class AffiliateCardTemplateBuilder
         ]);
 
         $data = self::withoutStampedFields($data);
+
+        if (is_string($templateImageAbsolutePath) && $templateImageAbsolutePath !== '' && is_file($templateImageAbsolutePath)) {
+            $data['template_image_absolute_path'] = $templateImageAbsolutePath;
+        }
 
         if (in_array($templateKey, [
             AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL,

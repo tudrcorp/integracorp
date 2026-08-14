@@ -1,0 +1,113 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Jobs;
+
+use App\Enums\ViveplusAffiliationType;
+use App\Enums\ViveplusDocumentType;
+use App\Exceptions\ViveplusDocumentWebhookPermanentException;
+use App\Support\Viveplus\ViveplusDocumentWebhookAnalystNotifier;
+use App\Support\Viveplus\ViveplusDocumentWebhookClient;
+use App\Support\Viveplus\ViveplusDocumentWebhookPayload;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
+class PushAffiliationDocumentToViveplusJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable;
+
+    public int $tries = 3;
+
+    public int $timeout = 30;
+
+    /**
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [5, 30, 120];
+    }
+
+    public function __construct(
+        public string $affiliationType,
+        public string $affiliationCode,
+        public string $documentType,
+        public string $absolutePath,
+        public string $generatedAt,
+        public string $idempotencyKey,
+        public ?int $notifiedUserId = null,
+        public int $laterRetryRound = 0,
+        public string $affiliateIdentification = '',
+    ) {
+        $this->onQueue((string) config('affiliate-card.documents_queue', 'documents'));
+    }
+
+    public function handle(ViveplusDocumentWebhookClient $client): void
+    {
+        try {
+            $client->send($this->payload());
+        } catch (ViveplusDocumentWebhookPermanentException $exception) {
+            $this->fail($exception);
+        }
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        $notifier = app(ViveplusDocumentWebhookAnalystNotifier::class);
+        $reason = $exception instanceof Throwable
+            ? $notifier->reasonFromException($exception)
+            : 'Error desconocido al entregar el documento a ViVEplus.';
+
+        $notifier->notifyDeliveryFailed(
+            $this->notifiedUserId,
+            $this->affiliationCode,
+            $this->documentType,
+            $reason,
+        );
+
+        if ($exception instanceof ViveplusDocumentWebhookPermanentException) {
+            return;
+        }
+
+        if ($this->laterRetryRound >= ViveplusDocumentWebhookClient::maxLaterRetries()) {
+            Log::error('Viveplus document webhook: se agotaron los reintentos posteriores', [
+                'affiliation_code' => $this->affiliationCode,
+                'document_type' => $this->documentType,
+                'idempotency_key' => $this->idempotencyKey,
+                'later_retry_round' => $this->laterRetryRound,
+            ]);
+
+            return;
+        }
+
+        self::dispatch(
+            $this->affiliationType,
+            $this->affiliationCode,
+            $this->documentType,
+            $this->absolutePath,
+            $this->generatedAt,
+            $this->idempotencyKey,
+            $this->notifiedUserId,
+            $this->laterRetryRound + 1,
+            $this->affiliateIdentification,
+        )->delay(now()->addSeconds(ViveplusDocumentWebhookClient::laterRetryDelaySeconds()));
+    }
+
+    public function payload(): ViveplusDocumentWebhookPayload
+    {
+        return new ViveplusDocumentWebhookPayload(
+            affiliationType: ViveplusAffiliationType::from($this->affiliationType),
+            affiliationCode: $this->affiliationCode,
+            documentType: ViveplusDocumentType::from($this->documentType),
+            absolutePath: $this->absolutePath,
+            generatedAt: $this->generatedAt,
+            idempotencyKey: $this->idempotencyKey,
+            affiliateIdentification: $this->affiliateIdentification,
+        );
+    }
+}

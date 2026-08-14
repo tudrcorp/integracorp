@@ -18,6 +18,10 @@ class FeeInfolist
                     ->numeric(),
                 TextEntry::make('price')
                     ->money(),
+                TextEntry::make('neta')
+                    ->label('Neta')
+                    ->money()
+                    ->placeholder('-'),
                 TextEntry::make('status'),
                 TextEntry::make('range'),
                 TextEntry::make('coverage'),

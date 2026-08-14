@@ -56,7 +56,48 @@ describe('AffiliationBusinessDocumentsService', function () {
             ->toContain('useIndividualAffiliateCardLayout')
             ->toContain("\$payload['card_layout'] = 'individual-affiliation'")
             ->toContain("\$payload['template_key'] = 'individual-affiliation'")
+            ->toContain('TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED')
             ->toContain('generateTarjetaAfiliacionBatch')
-            ->toContain('-carnets.pdf');
+            ->toContain('planDisplayName')
+            ->toContain('plan_tarjeta_etiqueta')
+            ->toContain('-carnets.pdf')
+            ->toContain('WhiteCompanyDocumentBrand')
+            ->toContain('template_path')
+            ->toContain('ViveplusDocumentWebhookDispatcher::dispatchForIndividual')
+            ->toContain('writeIndividualTarjetas')
+            ->toContain('resolveAffiliateCarnetDocuments');
+    });
+
+    it('resuelve un carnet por afiliado con la cédula exacta', function (): void {
+        $affiliation = new Affiliation([
+            'code' => 'TDEC-IND-000226',
+            'nro_identificacion_ti' => '13991020',
+        ]);
+        $titular = new Affiliate(['nro_identificacion' => '13991020']);
+        $titular->id = 10;
+        $dependiente = new Affiliate(['nro_identificacion' => '22111000']);
+        $dependiente->id = 11;
+        $affiliation->setRelation('affiliates', collect([$titular, $dependiente]));
+
+        $directory = public_path('storage/tarjeta-afiliacion');
+        if (! is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
+        $titularPath = $directory.'/TAR-TDEC-IND-000226-10.pdf';
+        $dependientePath = $directory.'/TAR-TDEC-IND-000226-11.pdf';
+        file_put_contents($titularPath, '%PDF-1.4 titular');
+        file_put_contents($dependientePath, '%PDF-1.4 dependiente');
+
+        try {
+            expect(AffiliationBusinessDocumentsService::resolveAffiliateCarnetDocuments($affiliation))
+                ->toBe([
+                    ['path' => $titularPath, 'identification' => '13991020'],
+                    ['path' => $dependientePath, 'identification' => '22111000'],
+                ]);
+        } finally {
+            @unlink($titularPath);
+            @unlink($dependientePath);
+        }
     });
 });

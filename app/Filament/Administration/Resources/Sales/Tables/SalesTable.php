@@ -10,10 +10,12 @@ use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\Sale;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
+use App\Support\AffiliationWhiteCompany;
 use App\Support\Filament\Administration\SaleReciboPagoEmailRecipients;
 use App\Support\Filament\Administration\SaleReciboPagoTestDeliveryForm;
 use App\Support\Filament\Administration\SaleReciboPagoWhatsAppRecipients;
 use App\Support\SecurityAudit;
+use App\Support\WhiteCompanies\WhiteCompanySaleAmountLegend;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -49,6 +51,7 @@ class SalesTable
             ->heading('VENTAS')
             ->description('Registro de pagos(ventas) de afiliaciones activas')
             ->defaultSort('created_at', 'desc')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('affiliationByCode'))
             ->recordUrl(fn (Sale $record): string => SaleResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('created_at')
@@ -236,6 +239,7 @@ class SalesTable
                     ->sortable()
                     ->label('Monto Total')
                     ->money('USD')
+                    ->description(fn (Sale $record): ?string => WhiteCompanySaleAmountLegend::forSale($record))
                     ->summarize(Sum::make()
                         ->label(('Total de Venta'))
                         ->money('USD'))
@@ -323,6 +327,8 @@ class SalesTable
                         'BANCO DE VENEZUELA - VES' => 'BANCO DE VENEZUELA - VES',
                     ])
                     ->label('Banco'),
+                AffiliationWhiteCompany::tableFilter()
+                    ->native(false),
 
             ])
             ->recordActions([

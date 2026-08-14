@@ -2,16 +2,16 @@
 
 namespace App\Filament\Resources\Fees\Schemas;
 
-use App\Models\Fee;
 use App\Models\AgeRange;
 use App\Models\Coverage;
-use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Fee;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class FeeForm
 {
@@ -33,7 +33,8 @@ class FeeForm
                                     } else {
                                         $parte_entera = Fee::max('id');
                                     }
-                                    return 'TDEC-FA-000' . $parte_entera + 1;
+
+                                    return 'TDEC-FA-000'.$parte_entera + 1;
                                 })
                                 ->required()
                                 ->disabled()
@@ -58,7 +59,8 @@ class FeeForm
                                                     } else {
                                                         $parte_entera = AgeRange::max('id');
                                                     }
-                                                    return 'TDEC-RE-000' . $parte_entera + 1;
+
+                                                    return 'TDEC-RE-000'.$parte_entera + 1;
                                                 })
                                                 ->required()
                                                 ->disabled()
@@ -83,8 +85,8 @@ class FeeForm
                                                 ->numeric()
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
-                                                    'numeric'  => 'Debe ser un número entero',
-                                                    'regex'    => 'Rango de edad inválido',
+                                                    'numeric' => 'Debe ser un número entero',
+                                                    'regex' => 'Rango de edad inválido',
                                                 ])
                                                 ->regex('/^\d{1,3}$/')
                                                 ->prefixIcon('heroicon-m-shield-check')
@@ -97,14 +99,14 @@ class FeeForm
                                                 ->required()
                                                 ->validationMessages([
                                                     'required' => 'Campo requerido',
-                                                    'numeric'  => 'Debe ser un número entero',
-                                                    'regex'    => 'Rango de edad inválido',
+                                                    'numeric' => 'Debe ser un número entero',
+                                                    'regex' => 'Rango de edad inválido',
                                                 ])
                                                 ->regex('/^\d{1,3}$/')
                                                 ->prefixIcon('heroicon-m-shield-check')
                                                 ->maxLength(255),
-                                                Hidden::make('status')->default('ACTIVO'),
-                                                Hidden::make('created_by')->default(Auth::user()->name)
+                                            Hidden::make('status')->default('ACTIVO'),
+                                            Hidden::make('created_by')->default(Auth::user()->name),
                                         ])->columnSpanFull(),
                                     ])->columnSpanFull()->columns(3),
                             ])
@@ -131,7 +133,8 @@ class FeeForm
                                                     } else {
                                                         $parte_entera = Coverage::max('id');
                                                     }
-                                                    return 'TDEC-CO-000' . $parte_entera + 1;
+
+                                                    return 'TDEC-CO-000'.$parte_entera + 1;
                                                 })
                                                 ->required()
                                                 ->disabled()
@@ -148,7 +151,7 @@ class FeeForm
                                                 ]),
                                         ])->columnSpanFull(),
                                         hidden::make('status')->default('ACTIVO'),
-                                        hidden::make('created_by')->default(Auth::user()->name)
+                                        hidden::make('created_by')->default(Auth::user()->name),
                                     ])->columnSpanFull()->columns(3),
                             ]),
 
@@ -158,6 +161,13 @@ class FeeForm
                             ->required()
                             ->numeric()
                             ->prefix('$'),
+                        TextInput::make('neta')
+                            ->label('Neta US$')
+                            ->helperText('Prima neta en dólares estadounidenses. Carga manual. Utilice separador decimal(.)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->prefix('$')
+                            ->nullable(),
                         TextInput::make('status')
                             ->label('Estatus')
                             ->prefixIcon('heroicon-m-shield-check')

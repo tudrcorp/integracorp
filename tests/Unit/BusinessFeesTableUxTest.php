@@ -12,6 +12,8 @@ it('declara la relación plan vía age range en el modelo Fee', function (): voi
         ->toContain("'age_range_id'")
         ->toContain("'plan_id'")
         ->toContain('function coverageRecord(): BelongsTo')
+        ->toContain("'neta'")
+        ->toContain("'neta' => 'decimal:2'")
         ->not->toContain('function coverage(): BelongsTo');
 });
 
@@ -21,6 +23,23 @@ it('usa coverageRecord en el formulario de tarifas para evitar choque con la col
     expect($source)
         ->toContain("->relationship('coverageRecord', 'price')")
         ->not->toContain("->relationship('coverage', 'price')");
+});
+
+it('permite cargar neta de forma manual en el formulario de tarifas', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Fees/Schemas/FeeForm.php');
+
+    expect($source)
+        ->toContain("TextInput::make('neta')")
+        ->toContain("->label('Neta US$')")
+        ->toContain('Carga manual');
+});
+
+it('muestra neta en la ficha de tarifa', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Fees/Schemas/FeeInfolist.php');
+
+    expect($source)
+        ->toContain("TextEntry::make('neta')")
+        ->toContain("->label('Neta')");
 });
 
 it('muestra el plan en la tabla de tarifas del panel business', function (): void {
@@ -34,6 +53,8 @@ it('muestra el plan en la tabla de tarifas del panel business', function (): voi
         ->toContain("SelectFilter::make('status')")
         ->toContain("SelectFilter::make('age_range_id')")
         ->toContain("TextColumn::make('price')")
+        ->toContain("TextColumn::make('neta')")
+        ->toContain("->label('Neta')")
         ->toContain("->money('USD')")
         ->toContain('ViewAction::make()')
         ->toContain('EditAction::make()')

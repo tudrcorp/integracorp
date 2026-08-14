@@ -15,6 +15,8 @@ final class AffiliateCardPageLayout
 
     public const TEMPLATE_INDIVIDUAL_AFFILIATION = 'individual-affiliation';
 
+    public const TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED = 'individual-affiliation-allied';
+
     public const WIDTH_MM = 210.0;
 
     public const HEIGHT_MM = 297.0;
@@ -61,6 +63,14 @@ final class AffiliateCardPageLayout
 
     public const INDIVIDUAL_AFFILIATION_SINGLE_CODE_FONT_SIZE_PT = 9.0;
 
+    public const INDIVIDUAL_AFFILIATION_ALLIED_SHEET_FONT_SIZE_PT = 5.5;
+
+    public const INDIVIDUAL_AFFILIATION_ALLIED_SINGLE_FONT_SIZE_PT = 8.0;
+
+    public const INDIVIDUAL_AFFILIATION_ALLIED_SINGLE_CODE_FONT_SIZE_PT = 7.0;
+
+    public const INDIVIDUAL_AFFILIATION_ALLIED_SINGLE_NAME_FONT_SIZE_PT = 8.5;
+
     /**
      * @var array<string, array<string, array{
      *     left_px?: float,
@@ -104,6 +114,16 @@ final class AffiliateCardPageLayout
             'desde' => ['left_px' => 213, 'top_px' => 84.5, 'left_px_sheet' => 211, 'top_px_sheet' => 85, 'width_mm' => 20, 'align' => 'L'],
             'hasta' => ['left_px' => 213, 'top_px' => 96, 'left_px_sheet' => 211, 'top_px_sheet' => 96, 'width_mm' => 20, 'align' => 'L'],
         ],
+        self::TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED => [
+            'code' => ['left_px' => 50, 'left_px_sheet' => 50, 'top_px' => 34, 'width_mm' => 40, 'align' => 'L'],
+            'name' => ['left_px' => 15, 'top_px' => 58, 'left_px_sheet' => 15, 'top_px_sheet' => 58, 'width_mm' => 155, 'align' => 'L'],
+            'ci' => ['left_px' => 26, 'top_px' => 71.5, 'left_px_sheet' => 26, 'top_px_sheet' => 71.5, 'width_mm' => 50, 'align' => 'L'],
+            'plan' => ['left_px' => 33, 'top_px' => 82, 'left_px_sheet' => 33, 'top_px_sheet' => 82, 'width_mm' => 50, 'align' => 'L'],
+            'frecuencia' => ['left_px' => 82, 'top_px' => 94, 'left_px_sheet' => 82, 'top_px_sheet' => 94, 'width_mm' => 50, 'align' => 'L'],
+            'cobertura' => ['left_px' => 52, 'top_px' => 103, 'left_px_sheet' => 52, 'top_px_sheet' => 103, 'width_mm' => 55, 'align' => 'L'],
+            'desde' => ['left_px' => 202, 'top_px' => 82, 'left_px_sheet' => 202, 'top_px_sheet' => 82, 'width_mm' => 22, 'align' => 'L'],
+            'hasta' => ['left_px' => 201, 'top_px' => 92.5, 'left_px_sheet' => 201, 'top_px_sheet' => 92.5, 'width_mm' => 22, 'align' => 'L'],
+        ],
     ];
 
     /**
@@ -120,6 +140,11 @@ final class AffiliateCardPageLayout
             'right_px' => 23,
             'size_px' => 55,
         ],
+        self::TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED => [
+            'top_px' => 60,
+            'right_px' => 8,
+            'size_px' => 36,
+        ],
     ];
 
     /**
@@ -127,7 +152,7 @@ final class AffiliateCardPageLayout
      */
     public static function pageDimensions(string $templateKey): array
     {
-        if ($templateKey === self::TEMPLATE_INDIVIDUAL_AFFILIATION) {
+        if (self::isIndividualAffiliationFamily($templateKey)) {
             return [
                 'width_mm' => self::INDIVIDUAL_AFFILIATION_SHEET_UNIT_WIDTH_MM,
                 'height_mm' => self::INDIVIDUAL_AFFILIATION_SHEET_UNIT_HEIGHT_MM,
@@ -205,13 +230,27 @@ final class AffiliateCardPageLayout
 
     public static function canvasWidthPx(string $templateKey): float
     {
-        return $templateKey === self::TEMPLATE_INDIVIDUAL_AFFILIATION
+        return self::isIndividualAffiliationFamily($templateKey)
             ? self::INDIVIDUAL_AFFILIATION_SHEET_CANVAS_WIDTH_PX
             : self::CANVAS_WIDTH_PX;
     }
 
+    public static function isIndividualAffiliationFamily(string $templateKey): bool
+    {
+        return in_array($templateKey, [
+            self::TEMPLATE_INDIVIDUAL_AFFILIATION,
+            self::TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED,
+        ], true);
+    }
+
     public static function fontSizePt(string $templateKey, bool $singleAffiliate = false): float
     {
+        if ($templateKey === self::TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED) {
+            return $singleAffiliate
+                ? self::INDIVIDUAL_AFFILIATION_ALLIED_SINGLE_FONT_SIZE_PT
+                : self::INDIVIDUAL_AFFILIATION_ALLIED_SHEET_FONT_SIZE_PT;
+        }
+
         if ($templateKey === self::TEMPLATE_INDIVIDUAL_AFFILIATION) {
             return $singleAffiliate
                 ? self::INDIVIDUAL_AFFILIATION_SINGLE_FONT_SIZE_PT
@@ -223,6 +262,14 @@ final class AffiliateCardPageLayout
 
     public static function fontSizePtForField(string $templateKey, string $field, bool $singleAffiliate = false): float
     {
+        if ($templateKey === self::TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED && $singleAffiliate) {
+            return match ($field) {
+                'code' => self::INDIVIDUAL_AFFILIATION_ALLIED_SINGLE_CODE_FONT_SIZE_PT,
+                'name' => self::INDIVIDUAL_AFFILIATION_ALLIED_SINGLE_NAME_FONT_SIZE_PT,
+                default => self::INDIVIDUAL_AFFILIATION_ALLIED_SINGLE_FONT_SIZE_PT,
+            };
+        }
+
         if ($templateKey === self::TEMPLATE_INDIVIDUAL_AFFILIATION
             && $field === 'code'
             && $singleAffiliate) {
