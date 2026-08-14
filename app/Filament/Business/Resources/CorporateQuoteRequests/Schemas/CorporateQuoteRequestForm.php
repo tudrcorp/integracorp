@@ -2,17 +2,12 @@
 
 namespace App\Filament\Business\Resources\CorporateQuoteRequests\Schemas;
 
+use App\Enums\DressTaylorCompany;
 use App\Http\Controllers\UtilsController;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\CorporateQuoteRequest;
-use App\Models\Plan;
-use App\Models\Region;
-use App\Models\State;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -24,7 +19,6 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\HtmlString;
@@ -53,15 +47,25 @@ class CorporateQuoteRequestForm
                                                     } else {
                                                         $parte_entera = CorporateQuoteRequest::max('id');
                                                     }
-                                                    return 'SOL-CORP-000' . $parte_entera + 1;
+
+                                                    return 'SOL-CORP-000'.$parte_entera + 1;
                                                 })
                                                 ->disabled()
                                                 ->dehydrated()
                                                 ->maxLength(255),
+                                            Select::make('company')
+                                                ->label('Empresa')
+                                                ->options(DressTaylorCompany::options())
+                                                ->required()
+                                                ->native(false)
+                                                ->prefixIcon('heroicon-m-building-office-2')
+                                                ->validationMessages([
+                                                    'required' => 'Campo requerido',
+                                                ]),
                                             TextInput::make('poblation')
                                                 ->label('Población / Nro de personas')
                                                 ->numeric()
-                                                ->prefixIcon('heroicon-m-user')
+                                                ->prefixIcon('heroicon-m-user'),
                                         ])->columnSpanFull(),
                                     Grid::make(4)
                                         ->schema([
@@ -84,7 +88,7 @@ class CorporateQuoteRequestForm
                                                 ->default('+58')
                                                 ->live(onBlur: true)
                                                 ->validationMessages([
-                                                    'required'  => 'Campo Requerido',
+                                                    'required' => 'Campo Requerido',
                                                 ])
                                                 ->hiddenOn('edit'),
                                             TextInput::make('phone')
@@ -92,14 +96,14 @@ class CorporateQuoteRequestForm
                                                 ->tel()
                                                 ->label('Número de teléfono')
                                                 ->validationMessages([
-                                                    'required'  => 'Campo Requerido',
+                                                    'required' => 'Campo Requerido',
                                                 ])
                                                 ->live(onBlur: true)
                                                 ->afterStateUpdated(function ($state, callable $set, Get $get) {
                                                     $countryCode = $get('country_code');
                                                     if ($countryCode) {
                                                         $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                        $set('phone', $countryCode . $cleanNumber);
+                                                        $set('phone', $countryCode.$cleanNumber);
                                                     }
                                                 }),
                                             TextInput::make('email')
@@ -118,7 +122,7 @@ class CorporateQuoteRequestForm
                                                 ->label('Especificaciones de la cotización')
                                                 ->helperText('Por favor, describa las especificaciones de la cotización de forma detallada del tipo de plan, beneficios, coberturas y rango de edades que debe estar asociados a la solicitud.')
                                                 ->required()
-                                                ->autosize()
+                                                ->autosize(),
                                         ])->columnSpanFull(),
                                     Fieldset::make('Asociar Agencia y/o Agente')
                                         ->schema([
@@ -135,6 +139,7 @@ class CorporateQuoteRequestForm
                                                     if ($get('code_agency') == null) {
                                                         return Agent::where('owner_code', 'TDG-100')->pluck('name', 'id');
                                                     }
+
                                                     return Agent::where('owner_code', $get('code_agency'))->pluck('name', 'id');
                                                 })
                                                 ->searchable()
@@ -145,10 +150,10 @@ class CorporateQuoteRequestForm
                                     Hidden::make('status')->default('PRE-APROBADA'),
                                 ])
                                 ->columns(3)
-                                ->columnSpanFull()
+                                ->columnSpanFull(),
                         ]),
                 ])
-                    ->submitAction(new HtmlString(Blade::render(<<<BLADE
+                    ->submitAction(new HtmlString(Blade::render(<<<'BLADE'
                     <x-filament::button
                         type="submit"
                         size="sm"

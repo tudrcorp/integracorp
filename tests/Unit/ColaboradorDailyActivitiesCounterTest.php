@@ -37,15 +37,18 @@ it('registra el widget de velocímetro interactivo en indicadores de desempeño'
     expect(file_get_contents($widgetPath))->toContain('ColaboradorDailyActivitiesCounter::breakdownForCollaboratorOnDate')
         ->toContain("protected string \$view = 'filament.operations.colaborador-activities-speedometer';")
         ->toContain('public ?string $selectedCollaborator = null')
-        ->toContain('public ?string $activityDate = null');
+        ->toContain('public ?string $activityDate = null')
+        ->toContain('canSelectCollaborator');
 
     expect(file_get_contents($pagePath))->toContain('ColaboradorActivitiesSpeedometerWidget::class');
 
-    expect(file_get_contents($viewPath))->toContain('wire:model.live="selectedCollaborator"')
+    expect(file_get_contents($viewPath))->toContain('canSelectCollaborator()')
         ->toContain('wire:model.live="activityDate"')
         ->toContain('displayRotation')
         ->toContain(':transform="`rotate(${displayRotation})`"')
         ->toContain('wire:loading.class="opacity-60"')
         ->toContain('entre 10 y 20 actividades')
         ->not->toContain('#ff9500');
+
+    expect(file_get_contents($counterPath))->toContain('IndicadoresDeDesempenoCollaboratorAccess::visibleCollaboratorLabels');
 });

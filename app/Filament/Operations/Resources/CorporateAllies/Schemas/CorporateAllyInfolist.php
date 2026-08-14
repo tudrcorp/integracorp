@@ -159,36 +159,50 @@ class CorporateAllyInfolist
                                     ->columnSpanFull(),
                             ]),
                         Tab::make('Contacto')
-                            ->icon('heroicon-o-phone')
+                            ->icon('heroicon-o-users')
                             ->schema([
-                                Section::make('Contacto')
-                                    ->description('Teléfonos, correo y redes sociales.')
-                                    ->icon(Heroicon::OutlinedPhone)
+                                Section::make('Contactos principales')
+                                    ->description('Personas de contacto registradas para este aliado corporativo.')
+                                    ->icon(Heroicon::OutlinedUsers)
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
-                                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                                        RepeatableEntry::make('corporateAllyContactPrincipals')
+                                            ->placeholder('No posee contactos principales.')
+                                            ->label('Listado')
+                                            ->extraAttributes([
+                                                'class' => self::IOS_TABLE_WRAP_CLASS,
+                                            ])
+                                            ->table([
+                                                TableColumn::make('Departamento'),
+                                                TableColumn::make('Cargo'),
+                                                TableColumn::make('Nombre y apellido'),
+                                                TableColumn::make('Correo electrónico'),
+                                                TableColumn::make('Teléfono celular'),
+                                                TableColumn::make('Teléfono local'),
+                                                TableColumn::make('Extensión(es)'),
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('departament'),
+                                                TextEntry::make('position'),
+                                                TextEntry::make('name'),
+                                                TextEntry::make('email'),
+                                                TextEntry::make('personal_phone'),
+                                                TextEntry::make('local_phone'),
+                                                TextEntry::make('extensions'),
+                                            ]),
+                                    ])
+                                    ->columnSpanFull(),
+                                Section::make('Redes sociales')
+                                    ->description('Perfiles y enlaces públicos del aliado corporativo.')
+                                    ->icon(Heroicon::OutlinedShare)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Grid::make(1)
                                             ->extraAttributes(['class' => self::IOS_INNER_CLASS])
                                             ->schema([
-                                                TextEntry::make('phone')
-                                                    ->label('Teléfono principal')
-                                                    ->icon(Heroicon::OutlinedPhone)
-                                                    ->copyable()
-                                                    ->placeholder('—'),
-                                                TextEntry::make('people_contact')
-                                                    ->label('Teléfono secundario')
-                                                    ->icon(Heroicon::OutlinedDevicePhoneMobile)
-                                                    ->copyable()
-                                                    ->placeholder('—'),
-                                                TextEntry::make('email')
-                                                    ->label('Correo electrónico')
-                                                    ->icon(Heroicon::OutlinedEnvelope)
-                                                    ->copyable()
-                                                    ->wrap()
-                                                    ->placeholder('—'),
                                                 TextEntry::make('social_networks')
                                                     ->label('Redes sociales')
                                                     ->icon(Heroicon::OutlinedShare)
-                                                    ->columnSpan(['default' => 1, 'sm' => 2, 'lg' => 3])
                                                     ->wrap()
                                                     ->placeholder('—'),
                                             ]),

@@ -147,3 +147,24 @@ it('ejecuta lotes de tarjetas en conexion sync para no depender del worker', fun
         ->and($source)->toContain('ViveplusDocumentWebhookDispatcher::dispatchForCorporate')
         ->and($source)->toContain('resolveAffiliateCarnetDocuments');
 });
+
+it('define affiliationCode y usa affiliateCount al regenerar documentos corporativos', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationCorporateBusinessDocumentsService.php');
+
+    expect($source)
+        ->toContain('$affiliationCode = (string) $record->code;')
+        ->toContain('self::recommendedChunkSize($affiliateCount)')
+        ->toContain('self::generateCorporateCertificate($record)')
+        ->toContain('use ($record, $taskId, $userId, $activeTaskCacheKey, $affiliationCode)')
+        ->toContain('public static function generateTarjetasChunk(array $chunk): void')
+        ->not->toContain('recommendedChunkSize($affiliatesCount)');
+});
+
+it('recomienda tamano de lote segun cantidad de afiliados', function (): void {
+    expect(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(3))->toBe(5)
+        ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(20))->toBe(5)
+        ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(21))->toBe(10)
+        ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(80))->toBe(10)
+        ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(81))->toBe(20)
+        ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(251))->toBe(30);
+});

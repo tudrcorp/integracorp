@@ -23,13 +23,19 @@
     >
         <x-slot name="afterHeader">
             <div class="flex flex-wrap items-center gap-2">
-                <x-filament::input.wrapper class="fi-wi-chart-filter min-w-[14rem]">
-                    <x-filament::input.select wire:model.live="selectedCollaborator">
-                        @foreach ($collaboratorOptions as $value => $label)
-                            <option value="{{ $value }}">{{ $label }}</option>
-                        @endforeach
-                    </x-filament::input.select>
-                </x-filament::input.wrapper>
+                @if ($this->canSelectCollaborator())
+                    <x-filament::input.wrapper class="fi-wi-chart-filter min-w-[14rem]">
+                        <x-filament::input.select wire:model.live="selectedCollaborator">
+                            @foreach ($collaboratorOptions as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
+                @elseif ($selectedCollaborator)
+                    <div class="rounded-lg bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 dark:bg-white/5 dark:text-white">
+                        {{ $selectedCollaborator }}
+                    </div>
+                @endif
 
                 <x-filament::input.wrapper class="fi-wi-chart-filter">
                     <x-filament::input type="date" wire:model.live="activityDate" />

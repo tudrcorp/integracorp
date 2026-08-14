@@ -2,12 +2,11 @@
 
 namespace App\Models;
 
-use App\Models\Agent;
-use Illuminate\Support\Facades\Auth;
+use App\Enums\DressTaylorCompany;
 use App\Http\Controllers\LogController;
-use Illuminate\Database\Eloquent\Model;
-use App\Models\DetailsCorporateQuoteRequest;
 use App\Jobs\SendNotificacionSolicitudCotizacion;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class CorporateQuoteRequest extends Model
 {
@@ -17,6 +16,7 @@ class CorporateQuoteRequest extends Model
         'code',
         'owner_code',
         'code_agency',
+        'company',
         'agent_id',
         'full_name',
         'rif',
@@ -32,8 +32,18 @@ class CorporateQuoteRequest extends Model
         'poblation',
         'ownerAccountManagers',
         'document_file',
-        'date_asignation'
+        'date_asignation',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'company' => DressTaylorCompany::class,
+        ];
+    }
 
     /**
      * Get the user that owns the Agent
@@ -60,7 +70,6 @@ class CorporateQuoteRequest extends Model
         return $this->belongsTo(Agency::class, 'code_agency', 'code');
     }
 
-
     public function state()
     {
         return $this->belongsTo(State::class);
@@ -86,17 +95,16 @@ class CorporateQuoteRequest extends Model
         return $this->hasMany(CorporateQuoteRequestData::class);
     }
 
-
     /**
      * JOB
      * Este Job se ejecuta para enviar una notificacion al correo de administrador
      * despues de crear la cotizacion
-     * 
+     *
      * @author Gustavo Camacho
+     *
      * @version 1.0
-     * 
+     *
      * @see SendNotificacionSolicitudCotizacion
-     * 
      */
     public function sendNotification($record)
     {

@@ -4,11 +4,16 @@ namespace App\Providers;
 
 use App\Filament\Administration\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart as AdministrationHelpdeskStatusWeeklyChart;
 use App\Filament\Administration\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk as AdministrationStatsOverviewHelpdesk;
+use App\Filament\Business\Resources\AffiliationCorporates\Widgets\AffiliationCorporatesByAgencyTable;
+use App\Filament\Business\Resources\AffiliationCorporates\Widgets\AffiliationCorporatesByAgentTable;
 use App\Filament\Business\Resources\Agencies\Widgets\ControlActividadInteraccion as AgenciesControlActividadInteraccion;
 use App\Filament\Business\Resources\Agents\Widgets\ControlActividadInteraccion;
 use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\CorporateQuoteRequestChannelChart;
-use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\CorporateQuoteRequestCreatorsChart;
+use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\CorporateQuoteRequestsByAgencyTable;
+use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\CorporateQuoteRequestsByAgentTable;
 use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\StatsOverviewTotalCorporateQuoteRequest;
+use App\Filament\Business\Resources\CorporateQuotes\Widgets\CorporateQuotesByAgencyTable;
+use App\Filament\Business\Resources\CorporateQuotes\Widgets\CorporateQuotesByAgentTable;
 use App\Filament\Business\Resources\Helpdesks\Widgets\HelpdeskStatusWeeklyChart;
 use App\Filament\Business\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\ProspectAgentTasksByUserChart;
@@ -78,9 +83,14 @@ class AppServiceProvider extends ServiceProvider
         // Registro explícito para evitar fallos de auto-descubrimiento en Livewire (widgets fuera de rutas discoverWidgets).
         Livewire::component('app.filament.business.resources.agents.widgets.control-actividad-interaccion', ControlActividadInteraccion::class);
         Livewire::component('app.filament.business.resources.agencies.widgets.control-actividad-interaccion', AgenciesControlActividadInteraccion::class);
+        Livewire::component('app.filament.business.resources.affiliation-corporates.widgets.affiliation-corporates-by-agency-table', AffiliationCorporatesByAgencyTable::class);
+        Livewire::component('app.filament.business.resources.affiliation-corporates.widgets.affiliation-corporates-by-agent-table', AffiliationCorporatesByAgentTable::class);
+        Livewire::component('app.filament.business.resources.corporate-quotes.widgets.corporate-quotes-by-agency-table', CorporateQuotesByAgencyTable::class);
+        Livewire::component('app.filament.business.resources.corporate-quotes.widgets.corporate-quotes-by-agent-table', CorporateQuotesByAgentTable::class);
         Livewire::component('app.filament.business.resources.prospect-agents.widgets.prospect-agent-tasks-by-user-chart', ProspectAgentTasksByUserChart::class);
         Livewire::component('app.filament.business.resources.corporate-quote-requests.widgets.stats-overview-total-corporate-quote-request', StatsOverviewTotalCorporateQuoteRequest::class);
-        Livewire::component('app.filament.business.resources.corporate-quote-requests.widgets.corporate-quote-request-creators-chart', CorporateQuoteRequestCreatorsChart::class);
+        Livewire::component('app.filament.business.resources.corporate-quote-requests.widgets.corporate-quote-requests-by-agency-table', CorporateQuoteRequestsByAgencyTable::class);
+        Livewire::component('app.filament.business.resources.corporate-quote-requests.widgets.corporate-quote-requests-by-agent-table', CorporateQuoteRequestsByAgentTable::class);
         Livewire::component('app.filament.business.resources.corporate-quote-requests.widgets.corporate-quote-request-channel-chart', CorporateQuoteRequestChannelChart::class);
 
         Livewire::component('app.filament.business.resources.helpdesks.widgets.helpdesk-status-weekly-chart', HelpdeskStatusWeeklyChart::class);

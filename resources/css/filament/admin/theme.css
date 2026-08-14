@@ -1892,6 +1892,82 @@
       inset 0 -2px 5px rgba(0, 0, 0, 0.22) !important;
   }
 
+  /*
+   * Menú Acciones (ficha proveedor natural / jurídico): panel flotante con
+   * ítems tipo píldora iOS conservando colores de Editar / Ficha / Carta / Documentos.
+   */
+  .fi-doctor-nurse-actions-menu .fi-dropdown-panel,
+  .fi-supplier-actions-menu .fi-dropdown-panel {
+    border-radius: 1.35rem !important;
+    border: 1px solid rgb(0 0 0 / 0.06) !important;
+    background:
+      linear-gradient(
+        165deg,
+        rgb(255 255 255 / 0.96) 0%,
+        rgb(248 250 252 / 0.92) 100%
+      ) !important;
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 12px 40px rgb(0 0 0 / 0.12),
+      0 28px 64px rgb(45 137 202 / 0.08),
+      inset 0 1px 0 rgb(255 255 255 / 0.9) !important;
+    padding: 0.45rem !important;
+    overflow: visible !important;
+    backdrop-filter: blur(14px);
+    width: min(100vw - 2rem, 17.5rem) !important;
+    max-width: 17.5rem !important;
+  }
+
+  .dark .fi-doctor-nurse-actions-menu .fi-dropdown-panel,
+  .dark .fi-supplier-actions-menu .fi-dropdown-panel {
+    border-color: rgb(255 255 255 / 0.08) !important;
+    background:
+      linear-gradient(
+        165deg,
+        rgb(24 24 27 / 0.94) 0%,
+        rgb(39 39 42 / 0.9) 100%
+      ) !important;
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.4),
+      0 14px 42px rgb(0 0 0 / 0.55),
+      inset 0 1px 0 rgb(255 255 255 / 0.08) !important;
+  }
+
+  .fi-doctor-nurse-actions-menu .fi-dropdown-list,
+  .fi-supplier-actions-menu .fi-dropdown-list {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.4rem !important;
+    padding: 0.1rem !important;
+    background: transparent !important;
+  }
+
+  .fi-doctor-nurse-actions-menu .fi-dropdown-list-item.fi-ac-grouped-action,
+  .fi-supplier-actions-menu .fi-dropdown-list-item.fi-ac-grouped-action {
+    min-height: 2.45rem;
+    justify-content: center !important;
+    text-align: center !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.01em;
+  }
+
+  .fi-doctor-nurse-actions-menu .fi-dropdown-list-item.fi-ac-grouped-action .fi-dropdown-list-item-label,
+  .fi-supplier-actions-menu .fi-dropdown-list-item.fi-ac-grouped-action .fi-dropdown-list-item-label {
+    flex: 0 1 auto !important;
+    text-align: center !important;
+  }
+
+  .fi-doctor-nurse-actions-menu .fi-dropdown-list-item.fi-ac-grouped-action .fi-dropdown-list-item-label,
+  .fi-doctor-nurse-actions-menu .fi-dropdown-list-item.fi-ac-grouped-action .fi-icon,
+  .fi-doctor-nurse-actions-menu .fi-dropdown-list-item.fi-ac-grouped-action svg,
+  .fi-supplier-actions-menu .fi-dropdown-list-item.fi-ac-grouped-action .fi-dropdown-list-item-label,
+  .fi-supplier-actions-menu .fi-dropdown-list-item.fi-ac-grouped-action .fi-icon,
+  .fi-supplier-actions-menu .fi-dropdown-list-item.fi-ac-grouped-action svg {
+    color: #fff !important;
+    stroke: currentColor !important;
+  }
+
   /* Helpdesk (Business): secciones tipo tarjeta iOS */
   .fi-helpdesk-ios-section.fi-sc-section {
     margin-bottom: 1.25rem;
@@ -3730,6 +3806,30 @@
       inset 0 1px 0 color-mix(in oklch, white 72%, transparent),
       0 4px 28px color-mix(in oklch, #0ea5e9 14%, transparent),
       0 8px 32px -10px color-mix(in oklch, black 12%, transparent);
+  }
+
+  .iq-ranking-table-shell--agency {
+    @apply relative;
+  }
+
+  .ac-ranking-agency-header {
+    @apply flex flex-wrap items-center justify-between gap-2 px-2.5 pt-2.5 pb-1 sm:px-3;
+  }
+
+  .ac-ranking-agency-header__title {
+    @apply m-0 text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50;
+  }
+
+  .ac-ranking-period-filters {
+    @apply flex flex-wrap items-center justify-end gap-2;
+  }
+
+  .fi-iq-ranking-table-widget--agency .individual-quotes-ranking-table-ios .fi-ta-header-ctn {
+    @apply hidden;
+  }
+
+  .ac-ranking-period-filters .fi-wi-chart-filter {
+    @apply min-w-[8rem];
   }
 
   .fi-iq-ranking-table-widget--agent {

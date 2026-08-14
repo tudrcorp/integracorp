@@ -43,15 +43,17 @@ class AffiliationCorporateBusinessDocumentsService
 
         $affiliates = $record->corporateAffiliates;
         $affiliateCount = $affiliates->count();
+        $affiliationCode = (string) $record->code;
         $memoryMb = min(1024, 384 + (48 * max(1, $affiliateCount + 1)));
         ini_set('memory_limit', $memoryMb.'M');
         set_time_limit(min(900, 120 + (45 * max(1, $affiliateCount + 1))));
 
         if ($affiliateCount <= 3) {
+            self::generateCorporateCertificate($record);
             $tarjetaPayloads = self::normalizeTarjetaPayloads(
                 self::toTarjetaPayloadChunk($record, $affiliates),
             );
-            self::generateTarjetasChunk($record, $tarjetaPayloads);
+            self::generateTarjetasChunk($tarjetaPayloads);
 
             self::queueViveplusDocuments($record, $userId);
 
@@ -62,13 +64,12 @@ class AffiliationCorporateBusinessDocumentsService
         }
 
         $taskId = (string) Str::uuid();
-        $chunks = self::toTarjetaPayloadChunk($record, $affiliates, self::recommendedChunkSize($affiliatesCount));
+        $chunks = self::toTarjetaPayloadChunk($record, $affiliates, self::recommendedChunkSize($affiliateCount));
         $jobs = [];
         $jobs[] = new GenerateCorporateCertificateJob($affiliationCode);
 
         foreach ($chunks as $chunk) {
             $jobs[] = new GenerateCorporateAffiliateTarjetasChunkJob(
-                $record->code,
                 self::normalizeTarjetaPayloads($chunk),
             );
         }
@@ -76,8 +77,8 @@ class AffiliationCorporateBusinessDocumentsService
         $activeTaskCacheKey = self::activeTaskCacheKey($affiliationCode);
         $batch = Bus::batch($jobs)
             ->onConnection('sync')
-            ->name('corporate-documents-'.$record->code)
-            ->then(function (Batch $batch) use ($record, $taskId, $userId): void {
+            ->name('corporate-documents-'.$affiliationCode)
+            ->then(function (Batch $batch) use ($record, $taskId, $userId, $activeTaskCacheKey, $affiliationCode): void {
                 if ($batch->cancelled()) {
                     Cache::forget($activeTaskCacheKey);
 
@@ -422,7 +423,7 @@ class AffiliationCorporateBusinessDocumentsService
     /**
      * @param  array<int, array<string, mixed>|array<int, array<string, mixed>>>  $chunk
      */
-    public static function generateTarjetasChunk(AffiliationCorporate $record, array $chunk): void
+    public static function generateTarjetasChunk(array $chunk): void
     {
         self::ensureDirectories();
 

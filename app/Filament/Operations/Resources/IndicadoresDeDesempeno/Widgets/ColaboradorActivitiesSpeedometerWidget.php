@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets;
 
 use App\Support\IndicadoresDeDesempeno\ColaboradorDailyActivitiesCounter;
+use App\Support\IndicadoresDeDesempeno\IndicadoresDeDesempenoCollaboratorAccess;
 use Filament\Widgets\Widget;
 
 class ColaboradorActivitiesSpeedometerWidget extends Widget
@@ -26,6 +27,11 @@ class ColaboradorActivitiesSpeedometerWidget extends Widget
     public function updatedSelectedCollaborator(): void
     {
         $this->ensureCollaboratorSelection();
+    }
+
+    public function canSelectCollaborator(): bool
+    {
+        return IndicadoresDeDesempenoCollaboratorAccess::isSuperAdmin();
     }
 
     /**
@@ -84,6 +90,12 @@ class ColaboradorActivitiesSpeedometerWidget extends Widget
 
     private function resolvedCollaborator(): ?string
     {
+        $restricted = IndicadoresDeDesempenoCollaboratorAccess::restrictToCollaborator();
+
+        if ($restricted !== null) {
+            return $restricted;
+        }
+
         $collaborator = trim((string) $this->selectedCollaborator);
 
         return $collaborator !== '' ? $collaborator : null;
@@ -99,7 +111,15 @@ class ColaboradorActivitiesSpeedometerWidget extends Widget
             return;
         }
 
-        if ($this->resolvedCollaborator() === null || ! array_key_exists($this->selectedCollaborator, $options)) {
+        $restricted = IndicadoresDeDesempenoCollaboratorAccess::restrictToCollaborator();
+
+        if ($restricted !== null) {
+            $this->selectedCollaborator = $restricted;
+
+            return;
+        }
+
+        if ($this->selectedCollaborator === null || ! array_key_exists($this->selectedCollaborator, $options)) {
             $this->selectedCollaborator = array_key_first($options);
         }
     }

@@ -4,17 +4,20 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets;
 
+use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\Concerns\HasIndicadoresDeDesempenoMonthlyDrillDown;
 use App\Support\IndicadoresDeDesempeno\SupplierProviderSystemUpdateChartSeries;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 
 class SupplierProviderSystemUpdateChart extends ChartWidget
 {
+    use HasIndicadoresDeDesempenoMonthlyDrillDown;
+
     protected string $view = 'filament.operations.indicadores-de-desempeno-chart';
 
     protected ?string $heading = 'Actualización del proveedor en el sistema';
 
-    protected ?string $description = 'Proveedores actualizados por responsable. Incluye contactos, correos, baremos (zonas de servicio), documentos y certificación de infraestructura.';
+    protected ?string $description = 'Actualizaciones mensuales de proveedores. Haz clic en un mes para ver el desglose semanal, y en una semana para ver el detalle por colaborador.';
 
     protected ?string $maxHeight = '480px';
 
@@ -24,20 +27,26 @@ class SupplierProviderSystemUpdateChart extends ChartWidget
 
     protected function getFilters(): ?array
     {
-        $now = now();
-        $filters = [];
-
-        for ($i = 0; $i < 5; $i++) {
-            $y = $now->year - $i;
-            $filters[(string) $y] = (string) $y;
-        }
-
-        return $filters;
+        return $this->yearFilters();
     }
 
     protected function getData(): array
     {
-        $series = SupplierProviderSystemUpdateChartSeries::groupedByCollaborator($this->resolvedYear());
+        $year = $this->resolvedYear();
+        $collaborator = $this->scopedCollaborator();
+
+        if ($this->selectedMonth !== null && $this->selectedWeek !== null) {
+            $series = SupplierProviderSystemUpdateChartSeries::groupedByCollaboratorForWeek(
+                $year,
+                $this->selectedMonth,
+                $this->selectedWeek,
+                $collaborator,
+            );
+        } elseif ($this->selectedMonth !== null) {
+            $series = SupplierProviderSystemUpdateChartSeries::groupedByWeek($year, $this->selectedMonth, $collaborator);
+        } else {
+            $series = SupplierProviderSystemUpdateChartSeries::groupedByMonth($year, $collaborator);
+        }
 
         $juridicosFill = 'rgba(88, 86, 214, 0.88)';
         $juridicosStroke = 'rgba(255, 255, 255, 0.82)';
@@ -78,83 +87,6 @@ class SupplierProviderSystemUpdateChart extends ChartWidget
 
     protected function getOptions(): RawJs
     {
-        return RawJs::make(<<<'JS'
-        {
-            responsive: true,
-            maintainAspectRatio: false,
-            datasets: {
-                bar: {
-                    categoryPercentage: 0.82,
-                    barPercentage: 0.92,
-                },
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        color: '#000000',
-                        boxWidth: 12,
-                        boxHeight: 12,
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                        font: {
-                            size: 13,
-                        },
-                    },
-                },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: 'rgba(22, 22, 24, 0.56)',
-                    titleColor: '#f5f5f7',
-                    bodyColor: 'rgba(235, 235, 245, 0.88)',
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                    borderWidth: 1,
-                    padding: 10,
-                    cornerRadius: 12,
-                },
-            },
-            scales: {
-                x: {
-                    grid: {
-                        display: false,
-                    },
-                    ticks: {
-                        color: '#000000',
-                        font: {
-                            size: 13,
-                        },
-                    },
-                },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0,
-                        stepSize: 1,
-                        color: '#000000',
-                        font: {
-                            size: 13,
-                        },
-                    },
-                },
-            },
-        }
-        JS);
-    }
-
-    private function resolvedYear(): int
-    {
-        return (int) ($this->filter ?? now()->year);
-    }
-
-    private function brighterGlassFill(string $rgba): string
-    {
-        if (preg_match('/rgba?\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/', $rgba, $matches)) {
-            $alpha = min(0.95, (float) $matches[4] + 0.12);
-
-            return "rgba({$matches[1]}, {$matches[2]}, {$matches[3]}, {$alpha})";
-        }
-
-        return $rgba;
+        return $this->monthlyDrillDownOptions(showLegend: true);
     }
 }

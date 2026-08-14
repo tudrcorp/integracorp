@@ -70,6 +70,59 @@ final class SupplierNewProviderCreationChartSeries
     }
 
     /**
+     * @return array{labels: list<string>, juridicos: list<int>, naturales: list<int>}
+     */
+    public static function groupedByMonth(int $year, ?string $collaborator = null): array
+    {
+        return [
+            'labels' => IndicadoresDeDesempenoTimeBuckets::monthLabels(),
+            'juridicos' => IndicadoresDeDesempenoTimeBuckets::fillMonthlyTotals(
+                self::countsByMonthForTipo(self::TYPE_JURIDICOS, $year, $collaborator),
+            ),
+            'naturales' => IndicadoresDeDesempenoTimeBuckets::fillMonthlyTotals(
+                self::countsByMonthForTipo(self::TYPE_NATURALES, $year, $collaborator),
+            ),
+        ];
+    }
+
+    /**
+     * @return array{labels: list<string>, juridicos: list<int>, naturales: list<int>}
+     */
+    public static function groupedByWeek(int $year, int $month, ?string $collaborator = null): array
+    {
+        return [
+            'labels' => IndicadoresDeDesempenoTimeBuckets::weekLabels($year, $month),
+            'juridicos' => IndicadoresDeDesempenoTimeBuckets::fillWeeklyTotals(
+                $year,
+                $month,
+                self::countsByWeekForTipo(self::TYPE_JURIDICOS, $year, $month, $collaborator),
+            ),
+            'naturales' => IndicadoresDeDesempenoTimeBuckets::fillWeeklyTotals(
+                $year,
+                $month,
+                self::countsByWeekForTipo(self::TYPE_NATURALES, $year, $month, $collaborator),
+            ),
+        ];
+    }
+
+    /**
+     * @return array{labels: list<string>, juridicos: list<int>, naturales: list<int>}
+     */
+    public static function groupedByCollaboratorForWeek(
+        int $year,
+        int $month,
+        int $week,
+        ?string $collaborator = null,
+    ): array {
+        $range = IndicadoresDeDesempenoTimeBuckets::weekDateRange($year, $month, $week);
+
+        return IndicadoresDeDesempenoCollaboratorAccess::filterDualSeriesToCollaborator(
+            self::groupedByCollaborator(from: $range['from'], to: $range['to']),
+            $collaborator,
+        );
+    }
+
+    /**
      * @return array<string, int>
      */
     private static function countsByCollaboratorForTipo(string $tipo, ?int $year, ?string $from = null, ?string $to = null): array
@@ -91,6 +144,63 @@ final class SupplierNewProviderCreationChartSeries
         }
 
         return $counts;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private static function countsByMonthForTipo(string $tipo, int $year, ?string $collaborator): array
+    {
+        $aggregates = self::scopedQueryForTipo($tipo, $collaborator)
+            ->whereYear('created_at', $year)
+            ->selectRaw('MONTH(created_at) as bucket, COUNT(*) as total')
+            ->groupByRaw('MONTH(created_at)')
+            ->get();
+
+        $counts = [];
+
+        foreach ($aggregates as $row) {
+            $counts[(int) $row->bucket] = (int) $row->total;
+        }
+
+        return $counts;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private static function countsByWeekForTipo(string $tipo, int $year, int $month, ?string $collaborator): array
+    {
+        $aggregates = self::scopedQueryForTipo($tipo, $collaborator)
+            ->whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->selectRaw('FLOOR((DAY(created_at) - 1) / 7) + 1 as bucket, COUNT(*) as total')
+            ->groupByRaw('FLOOR((DAY(created_at) - 1) / 7) + 1')
+            ->get();
+
+        $counts = [];
+
+        foreach ($aggregates as $row) {
+            $counts[(int) $row->bucket] = (int) $row->total;
+        }
+
+        return $counts;
+    }
+
+    /**
+     * @return Builder<Supplier>|Builder<DoctorNurse>
+     */
+    private static function scopedQueryForTipo(string $tipo, ?string $collaborator): Builder
+    {
+        $query = self::queryForTipo($tipo)
+            ->tap(fn (Builder $builder): Builder => self::applyCollaboratorFilter($builder))
+            ->tap(fn (Builder $builder): Builder => self::applyEmailFilter($builder));
+
+        if ($collaborator !== null) {
+            $query->whereRaw('TRIM(created_by) = ?', [$collaborator]);
+        }
+
+        return $query;
     }
 
     /**
