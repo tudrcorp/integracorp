@@ -113,6 +113,7 @@ it('incluye una pestaña de jerarquía para resolver general, master y TUDRENCAS
         ->toContain('tdg-hierarchy-slider')
         ->toContain('hierarchySliderAlpineData')
         ->toContain('initSlider')
+        ->toContain('getSlideOffset')
         ->toContain('scrollToSlide')
         ->toContain('scrollToHighlighted')
         ->toContain('getHighlightedSlideIndex')

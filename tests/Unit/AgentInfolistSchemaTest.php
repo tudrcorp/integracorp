@@ -109,6 +109,7 @@ it('incluye una pestaña de jerarquía comercial con diagrama visual', function 
         ->toContain('tdg-hierarchy-slider')
         ->toContain('hierarchySliderAlpineData')
         ->toContain('initSlider')
+        ->toContain('getSlideOffset')
         ->toContain('scrollToSlide')
         ->toContain('scrollToHighlighted')
         ->toContain('data-hierarchy-highlighted')
