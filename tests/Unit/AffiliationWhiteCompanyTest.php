@@ -39,8 +39,43 @@ it('conserva las clases de fila cuando no hay empresa aliada', function (): void
     $record->setRelation('whiteCompanyUser', null);
 
     expect(AffiliationWhiteCompany::belongsToWhiteCompany($record))->toBeFalse()
+        ->and(AffiliationWhiteCompany::belongsToAlliedCompany($record))->toBeFalse()
         ->and(AffiliationWhiteCompany::recordRowClasses($record, ['border-l-4 border-emerald-400/80']))
         ->toBe(['border-l-4 border-emerald-400/80']);
+});
+
+it('reconoce empresa aliada para el webhook cuando el usuario de agencia tiene white_company_id', function (): void {
+    $record = (new Affiliation)->forceFill([
+        'code' => 'TDEC-IND-000391',
+        'code_agency' => 'VP-1',
+    ]);
+    $record->setRelation('whiteCompanyUser', (new User)->forceFill([
+        'code_agency' => 'VP-1',
+        'white_company_id' => 21,
+    ]));
+
+    expect(AffiliationWhiteCompany::belongsToAlliedCompany($record))->toBeTrue();
+});
+
+it('reconoce empresa aliada por white_company_id si la relación no está cargada', function (): void {
+    $record = (new Affiliation)->forceFill([
+        'code' => 'TDEC-IND-000391',
+        'white_company_id' => 21,
+        'code_agency' => '',
+    ]);
+
+    expect(AffiliationWhiteCompany::belongsToAlliedCompany($record))->toBeTrue();
+});
+
+it('no consulta agencia cuando ya se cargó que no hay empresa aliada', function (): void {
+    $record = (new Affiliation)->forceFill([
+        'code' => 'TDEC-IND-000394',
+        'code_agency' => 'TDG-1',
+        'white_company_id' => 21,
+    ]);
+    $record->setRelation('whiteCompanyUser', null);
+
+    expect(AffiliationWhiteCompany::belongsToAlliedCompany($record))->toBeFalse();
 });
 
 it('expone filtro y resaltado de empresas aliadas en tablas de afiliaciones', function (): void {
@@ -66,7 +101,8 @@ it('expone filtro y resaltado de empresas aliadas en tablas de afiliaciones', fu
 
     expect($helper)
         ->not->toContain('addSelect')
-        ->toContain('fi-affiliation-white-company');
+        ->toContain('fi-affiliation-white-company')
+        ->toContain('belongsToAlliedCompany');
 
     expect(file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css'))
         ->toContain('.fi-ta-row.fi-affiliation-white-company')

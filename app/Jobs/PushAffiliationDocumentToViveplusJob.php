@@ -7,6 +7,8 @@ namespace App\Jobs;
 use App\Enums\ViveplusAffiliationType;
 use App\Enums\ViveplusDocumentType;
 use App\Exceptions\ViveplusDocumentWebhookPermanentException;
+use App\Models\Affiliation;
+use App\Support\AffiliationWhiteCompany;
 use App\Support\Viveplus\ViveplusDocumentWebhookAnalystNotifier;
 use App\Support\Viveplus\ViveplusDocumentWebhookClient;
 use App\Support\Viveplus\ViveplusDocumentWebhookPayload;
@@ -49,11 +51,38 @@ class PushAffiliationDocumentToViveplusJob implements ShouldQueue
 
     public function handle(ViveplusDocumentWebhookClient $client): void
     {
+        if ($this->shouldSkipBecauseAffiliationIsNotAllied()) {
+            Log::info('Viveplus document webhook: omitido; la afiliación individual no pertenece a una empresa aliada', [
+                'affiliation_code' => $this->affiliationCode,
+                'document_type' => $this->documentType,
+            ]);
+
+            return;
+        }
+
         try {
             $client->send($this->payload());
         } catch (ViveplusDocumentWebhookPermanentException $exception) {
             $this->fail($exception);
         }
+    }
+
+    private function shouldSkipBecauseAffiliationIsNotAllied(): bool
+    {
+        if ($this->affiliationType !== ViveplusAffiliationType::Individual->value) {
+            return false;
+        }
+
+        $affiliation = Affiliation::query()
+            ->with('whiteCompanyUser')
+            ->where('code', $this->affiliationCode)
+            ->first();
+
+        if ($affiliation === null) {
+            return false;
+        }
+
+        return ! AffiliationWhiteCompany::belongsToAlliedCompany($affiliation);
     }
 
     public function failed(?Throwable $exception): void

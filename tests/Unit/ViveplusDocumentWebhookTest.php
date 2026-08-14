@@ -9,6 +9,7 @@ use App\Exceptions\ViveplusDocumentWebhookTransientException;
 use App\Jobs\PushAffiliationDocumentToViveplusJob;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
+use App\Models\User;
 use App\Support\Viveplus\ViveplusDocumentWebhookAnalystNotifier;
 use App\Support\Viveplus\ViveplusDocumentWebhookClient;
 use App\Support\Viveplus\ViveplusDocumentWebhookDispatcher;
@@ -239,7 +240,7 @@ it('no reintenta un 401 y lo marca como error permanente', function (): void {
 
     $job = (new PushAffiliationDocumentToViveplusJob(
         affiliationType: 'individual',
-        affiliationCode: 'TDEC-IND-0001',
+        affiliationCode: 'TDEC-IND-WEBHOOK-UNIT-TEST',
         documentType: 'certificado',
         absolutePath: $this->pdfPath,
         generatedAt: '2026-08-13T20:00:00+00:00',
@@ -304,7 +305,7 @@ it('reutiliza la misma idempotency_key entre reintentos de la misma ejecución',
 
     $job = new PushAffiliationDocumentToViveplusJob(
         affiliationType: 'individual',
-        affiliationCode: 'TDEC-IND-0001',
+        affiliationCode: 'TDEC-IND-WEBHOOK-UNIT-TEST',
         documentType: 'certificado',
         absolutePath: $this->pdfPath,
         generatedAt: '2026-08-13T20:00:00+00:00',
@@ -423,7 +424,12 @@ it('encola un webhook de carnet por cada persona de la afiliación individual', 
     $affiliation = new Affiliation([
         'code' => 'TDEC-IND-000226',
         'nro_identificacion_ti' => '13991020',
+        'code_agency' => 'VP-1',
     ]);
+    $affiliation->setRelation('whiteCompanyUser', (new User)->forceFill([
+        'code_agency' => 'VP-1',
+        'white_company_id' => 21,
+    ]));
     $titular = new Affiliate(['nro_identificacion' => '13991020']);
     $titular->id = 10;
     $dependiente = new Affiliate(['nro_identificacion' => '22111000']);
@@ -471,6 +477,34 @@ it('encola un webhook de carnet por cada persona de la afiliación individual', 
         @unlink($titularPath);
         @unlink($dependientePath);
     }
+});
+
+it('no encola webhook de ViVEplus cuando la afiliación individual no es de empresa aliada', function (): void {
+    Bus::fake();
+
+    $affiliation = new Affiliation([
+        'code' => 'TDEC-IND-000394',
+        'nro_identificacion_ti' => '123',
+        'code_agency' => 'TDG-1',
+    ]);
+    $affiliation->setRelation('whiteCompanyUser', null);
+    $affiliation->setRelation('affiliates', collect());
+
+    ViveplusDocumentWebhookDispatcher::dispatchForIndividual($affiliation, 2);
+
+    Bus::assertNothingDispatched();
+});
+
+it('omite en el job el envío a ViVEplus de afiliaciones individuales que no son de empresa aliada', function (): void {
+    $job = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/PushAffiliationDocumentToViveplusJob.php');
+    $dispatcher = file_get_contents(dirname(__DIR__, 2).'/app/Support/Viveplus/ViveplusDocumentWebhookDispatcher.php');
+
+    expect($dispatcher)
+        ->toContain('AffiliationWhiteCompany::belongsToAlliedCompany')
+        ->toContain('dispatchForIndividual')
+        ->and($job)
+        ->toContain('AffiliationWhiteCompany::belongsToAlliedCompany')
+        ->toContain('ViveplusAffiliationType::Individual');
 });
 
 it('no elimina el PDF local después de enviarlo o fallar', function (): void {
