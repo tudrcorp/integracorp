@@ -64,6 +64,7 @@ describe('AffiliationBusinessDocumentsService', function () {
             ->toContain('WhiteCompanyDocumentBrand')
             ->toContain('template_path')
             ->toContain('ViveplusDocumentWebhookDispatcher::dispatchForIndividual')
+            ->toContain("loadMissing(['affiliates', 'plan.benefitPlans', 'coverage', 'agent', 'agency', 'whiteCompanyUser'])")
             ->toContain('writeIndividualTarjetas')
             ->toContain('resolveAffiliateCarnetDocuments');
     });

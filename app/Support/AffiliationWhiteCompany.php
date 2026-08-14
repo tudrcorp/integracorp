@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Models\Affiliation;
 use App\Models\User;
 use App\Models\WhiteCompany;
+use App\Support\CreditReconciliations\CreditReconciliationAffiliationSnapshot;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +26,19 @@ final class AffiliationWhiteCompany
         }
 
         return filled($record->getAttribute('white_company_id'));
+    }
+
+    public static function belongsToAlliedCompany(Affiliation $affiliation): bool
+    {
+        if ($affiliation->relationLoaded('whiteCompanyUser')) {
+            return filled($affiliation->whiteCompanyUser?->white_company_id);
+        }
+
+        if (filled($affiliation->getAttribute('white_company_id'))) {
+            return true;
+        }
+
+        return CreditReconciliationAffiliationSnapshot::whiteCompanyForAgencyCode($affiliation->code_agency) !== null;
     }
 
     /**

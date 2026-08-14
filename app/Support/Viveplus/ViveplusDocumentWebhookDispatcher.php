@@ -11,6 +11,7 @@ use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Services\AffiliationBusinessDocumentsService;
 use App\Services\AffiliationCorporateBusinessDocumentsService;
+use App\Support\AffiliationWhiteCompany;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -18,6 +19,14 @@ final class ViveplusDocumentWebhookDispatcher
 {
     public static function dispatchForIndividual(Affiliation $affiliation, ?int $notifiedUserId = null): void
     {
+        if (! AffiliationWhiteCompany::belongsToAlliedCompany($affiliation)) {
+            Log::info('Viveplus document webhook: omitido; la afiliación individual no pertenece a una empresa aliada', [
+                'affiliation_code' => $affiliation->code,
+            ]);
+
+            return;
+        }
+
         $documents = [];
 
         $certificatePath = AffiliationBusinessDocumentsService::resolveCertificateAbsolutePath($affiliation);
