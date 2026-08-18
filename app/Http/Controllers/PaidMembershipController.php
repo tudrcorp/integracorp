@@ -51,7 +51,7 @@ class PaidMembershipController extends Controller
             $alliedSettlement = (new WhiteCompanyNegotiatedRateResolver)
                 ->settlementForAffiliation($record->affiliation);
             $settledAmount = $alliedSettlement instanceof WhiteCompanyPaymentSettlement
-                ? $alliedSettlement->installmentNeta()
+                ? $alliedSettlement->installmentSalePrice()
                 : $record->total_amount;
 
             /**
@@ -491,9 +491,7 @@ class PaidMembershipController extends Controller
                  */
                 $data_afiliaciones = $record->affiliation->toArray();
 
-                if ($alliedSettlement instanceof WhiteCompanyPaymentSettlement) {
-                    $alliedSettlement->storeCommission($sales, $record);
-                } else {
+                if (! ($alliedSettlement instanceof WhiteCompanyPaymentSettlement)) {
 
                     $comisionAgent = 0;
                     $comisionSubAgent = 0;
@@ -903,9 +901,7 @@ class PaidMembershipController extends Controller
                  */
                 $data_afiliaciones = $record->affiliation->toArray();
 
-                if ($alliedSettlement instanceof WhiteCompanyPaymentSettlement) {
-                    $alliedSettlement->storeCommission($sales, $record);
-                } else {
+                if (! ($alliedSettlement instanceof WhiteCompanyPaymentSettlement)) {
 
                     $comisionAgent = 0;
                     $comisionAgencyMaster = 0;
