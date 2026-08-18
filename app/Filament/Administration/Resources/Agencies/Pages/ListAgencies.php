@@ -104,7 +104,7 @@ class ListAgencies extends ListRecords
     private function agencyReportModalItems(): array
     {
         $descriptions = [
-            AdministrationAgencyReportsExportService::REPORT_COMMISSION_PERCENTAGES => 'Listado con porcentajes TDEC/TDEV, renovaciones, estatus y datos bancarios nacionales e internacionales por agencia.',
+            AdministrationAgencyReportsExportService::REPORT_COMMISSION_PERCENTAGES => 'Listado con porcentajes TDEC/TDEV, renovaciones, correo, teléfono, estatus y datos bancarios nacionales e internacionales por agencia.',
             AdministrationAgencyReportsExportService::REPORT_COMMISSION_HIERARCHY => 'Jerarquía lineal por agencia (casa matriz, master, general) con agentes/subagentes y % TDEC/TDEV de cada integrante.',
             AdministrationAgencyReportsExportService::REPORT_GEO_SUMMARY => 'Totales agrupados por estado, región y ciudad.',
             AdministrationAgencyReportsExportService::REPORT_AGENCY_TYPES => 'Conteo de agencias según su tipo comercial.',
