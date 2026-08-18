@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Support\WhiteCompanies\WhiteCompanyPaymentSettlement;
 
-it('prorratea neta y comision master segun la frecuencia de pago', function (string $frequency, int $periods, float $neta, float $commission): void {
+it('prorratea neta y precio de venta segun la frecuencia de pago', function (string $frequency, int $periods, float $neta, float $salePrice): void {
     $settlement = new WhiteCompanyPaymentSettlement(
         annualSalePrice: 180,
         annualNeta: 96,
@@ -16,13 +16,12 @@ it('prorratea neta y comision master segun la frecuencia de pago', function (str
     expect($settlement->periods())->toBe($periods)
         ->and(WhiteCompanyPaymentSettlement::periodsForFrequency($frequency))->toBe($periods)
         ->and($settlement->installmentNeta())->toBe($neta)
-        ->and($settlement->installmentMasterCommission())->toBe($commission)
-        ->and($settlement->annualMargin())->toBe(84.0);
+        ->and($settlement->installmentSalePrice())->toBe($salePrice);
 })->with([
-    'anual' => ['ANUAL', 1, 96.0, 84.0],
-    'semestral' => ['SEMESTRAL', 2, 48.0, 42.0],
-    'trimestral' => ['TRIMESTRAL', 4, 24.0, 21.0],
-    'mensual' => ['MENSUAL', 12, 8.0, 7.0],
+    'anual' => ['ANUAL', 1, 96.0, 180.0],
+    'semestral' => ['SEMESTRAL', 2, 48.0, 90.0],
+    'trimestral' => ['TRIMESTRAL', 4, 24.0, 45.0],
+    'mensual' => ['MENSUAL', 12, 8.0, 15.0],
 ]);
 
 it('suma la neta de cada persona del plan inicial y la divide por la frecuencia', function (): void {
@@ -37,9 +36,8 @@ it('suma la neta de cada persona del plan inicial y la divide por la frecuencia'
 
     expect($settlement->annualSalePrice)->toBe(360.0)
         ->and($settlement->annualNeta)->toBe(192.0)
-        ->and($settlement->annualMargin())->toBe(168.0)
         ->and($settlement->installmentNeta())->toBe(48.0)
-        ->and($settlement->installmentMasterCommission())->toBe(42.0)
+        ->and($settlement->installmentSalePrice())->toBe(90.0)
         ->and($settlement->feeId)->toBe(1);
 });
 
@@ -55,8 +53,16 @@ it('suma netas distintas por cobertura y rango de edad', function (): void {
 
     expect($settlement->annualSalePrice)->toBe(439.0)
         ->and($settlement->annualNeta)->toBe(203.0)
-        ->and($settlement->annualMargin())->toBe(236.0)
         ->and($settlement->installmentNeta())->toBe(50.75)
-        ->and($settlement->installmentMasterCommission())->toBe(59.0)
+        ->and($settlement->installmentSalePrice())->toBe(109.75)
         ->and($settlement->feeId)->toBeNull();
+});
+
+it('no persiste comisiones en la liquidacion de empresa aliada', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Support/WhiteCompanies/WhiteCompanyPaymentSettlement.php');
+
+    expect($source)
+        ->toContain('function installmentSalePrice')
+        ->not->toContain('function storeCommission')
+        ->not->toContain('new Commission');
 });
