@@ -105,7 +105,7 @@ class ListAgents extends ListRecords
     {
         $descriptions = [
             AdministrationAgentReportsExportService::REPORT_GEO_SUMMARY => 'Totales agrupados por estado, región y ciudad.',
-            AdministrationAgentReportsExportService::REPORT_COMMISSION_PERCENTAGES => 'Listado con porcentajes TDEC/TDEV, renovaciones, estatus y datos bancarios nacionales e internacionales por agente.',
+            AdministrationAgentReportsExportService::REPORT_COMMISSION_PERCENTAGES => 'Listado con porcentajes TDEC/TDEV, renovaciones, correo, teléfono, estatus y datos bancarios nacionales e internacionales por agente.',
             AdministrationAgentReportsExportService::REPORT_COMMISSION_HIERARCHY => 'Jerarquía lineal por agente (casa matriz, agencias, superiores) con % TDEC y TDEV de cada integrante.',
             AdministrationAgentReportsExportService::REPORT_AGENT_STATUS => 'Distribución de agentes por estatus operativo.',
         ];
