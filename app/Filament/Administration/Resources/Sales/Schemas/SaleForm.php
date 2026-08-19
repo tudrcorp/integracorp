@@ -2,8 +2,8 @@
 
 namespace App\Filament\Administration\Resources\Sales\Schemas;
 
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
 class SaleForm
@@ -42,6 +42,9 @@ class SaleForm
                 TextInput::make('total_amount')
                     ->numeric()
                     ->default(0.0),
+                TextInput::make('white_company_neta')
+                    ->numeric()
+                    ->label('Neta aliada'),
                 TextInput::make('type'),
                 TextInput::make('payment_method'),
                 TextInput::make('payment_frequency'),
