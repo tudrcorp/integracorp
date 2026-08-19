@@ -9,6 +9,7 @@ use App\Models\PaidMembership;
 use App\Models\PaidMembershipCorporate;
 use App\Models\Sale;
 use App\Support\FilamentDateDisplay;
+use App\Support\WhiteCompanies\WhiteCompanySaleAmountLegend;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
@@ -103,6 +104,12 @@ class SaleInfolist
                                     ->size('lg')
                                     ->weight('bold')
                                     ->color('success'),
+                                TextEntry::make('white_company_neta')
+                                    ->label('Neta aliada')
+                                    ->formatStateUsing(fn (mixed $state): string => $state === null || $state === '' ? '—' : self::formatUsd($state))
+                                    ->placeholder('—')
+                                    ->size('lg')
+                                    ->helperText(fn (Sale $record): ?string => WhiteCompanySaleAmountLegend::forSale($record)),
                                 TextEntry::make('payment_frequency')
                                     ->label('Frecuencia')
                                     ->badge()

@@ -31,19 +31,21 @@ it('resuelve agencia con mensaje accionable al compensar pago corporativo', func
         ->not->toContain("Agency::select('code', 'agency_type_id')->where('code', \$data_afiliaciones['code_agency'])->first()");
 });
 
-it('liquida venta de empresa aliada con el precio de venta y sin comision', function (): void {
+it('liquida venta de empresa aliada con el monto de venta y neta en columna aparte', function (): void {
     $controllerContent = file_get_contents(dirname(__DIR__, 2).'/app/Http/Controllers/PaidMembershipController.php');
 
     expect($controllerContent)
         ->toContain('WhiteCompanyNegotiatedRateResolver')
         ->toContain('WhiteCompanyPaymentSettlement')
+        ->toContain('WhiteCompanySaleAmounts::fromApproval')
         ->toContain('settlementForAffiliation')
-        ->toContain('installmentSalePrice()')
         ->toContain('installmentNeta()')
         ->toContain('if (! ($alliedSettlement instanceof WhiteCompanyPaymentSettlement))')
         ->not->toContain('storeCommission')
+        ->not->toContain('installmentSalePrice()')
         ->toContain('WhiteCompanyNegotiatedRateMissingException')
         ->toContain('Compensación detenida: neta no pactada')
-        ->toContain('$sales->total_amount = $settledAmount')
-        ->toContain('$collections->total_amount = $settledAmount');
+        ->toContain('$sales->total_amount = $saleAmount')
+        ->toContain('$sales->white_company_neta = $alliedNeta')
+        ->toContain('$collections->total_amount = $saleAmount');
 });
