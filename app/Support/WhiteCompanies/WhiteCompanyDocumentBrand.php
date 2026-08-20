@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\WhiteCompanies;
 
 use App\Models\Affiliation;
+use App\Models\AffiliationCorporate;
 use App\Models\WhiteCompany;
 use App\Models\WhiteCompanyPlanLabel;
 use App\Services\AffiliationBusinessDocumentsService;
@@ -60,6 +61,14 @@ final class WhiteCompanyDocumentBrand
             carnetTemplateImageAbsolutePath: $company->carnetTemplateImageAbsolutePath(),
             carnetCompiledPdfAbsolutePath: WhiteCompanyCarnetTemplateCompiler::resolveOrCompile($company),
         );
+    }
+
+    public static function forCorporate(AffiliationCorporate $record): self
+    {
+        $company = CreditReconciliationAffiliationSnapshot::whiteCompanyForAgencyCode($record->code_agency);
+        $company?->loadMissing(['planDocuments', 'planLabels']);
+
+        return self::fromCompany($company);
     }
 
     public static function forAffiliation(Affiliation $record): self

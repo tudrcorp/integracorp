@@ -6,12 +6,17 @@ use App\Http\Controllers\AffiliationController;
 use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Jobs\GenerateCorporateAffiliateTarjetasChunkJob;
 use App\Jobs\GenerateCorporateCertificateJob;
+use App\Jobs\GenerateCorporateCombinedCardsJob;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
+use App\Models\User;
+use App\Support\AffiliateCard\AffiliateCardPageLayout;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\Viveplus\ViveplusDocumentWebhookDispatcher;
+use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Filament\Notifications\Notification;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
@@ -23,12 +28,49 @@ use Throwable;
 
 class AffiliationCorporateBusinessDocumentsService
 {
-    private const DOCUMENTS_QUEUE = 'documents';
+    /**
+     * Máximo de afiliados que se generan dentro del request HTTP. Por encima de
+     * este número el trabajo se despacha a la cola de documentos.
+     */
+    public const INLINE_AFFILIATE_THRESHOLD = 10;
+
+    /**
+     * Ventana de vida del estado en cache. Una corporativa de miles de afiliados
+     * puede tardar bastante más que los 20 minutos que se usaban antes.
+     */
+    private const TASK_TTL_MINUTES = 180;
+
+    private static function documentsQueue(): string
+    {
+        return (string) config('affiliate-card.documents_queue', 'documents');
+    }
+
+    /**
+     * Sin worker (entorno de pruebas o `QUEUE_CONNECTION=sync`) no tiene sentido
+     * encolar: el batch nunca se procesaría y el usuario esperaría para siempre.
+     */
+    private static function shouldRunInline(int $affiliateCount): bool
+    {
+        return $affiliateCount <= self::INLINE_AFFILIATE_THRESHOLD
+            || config('queue.default') === 'sync';
+    }
+
+    public static function combinedCardsFilename(AffiliationCorporate $record): string
+    {
+        return 'TAR-'.$record->code.'-carnets.pdf';
+    }
+
+    public static function combinedCardsAbsolutePath(AffiliationCorporate $record): string
+    {
+        return public_path('storage/tarjeta-afiliacion/'.self::combinedCardsFilename($record));
+    }
 
     /**
      * @return array{
      *   queued: bool,
      *   task_id?: string,
+     *   reused?: bool,
+     *   affiliates_count?: int,
      *   progress_percentage?: int,
      *   eta_seconds?: int|null,
      *   documents?: array<int, array{label: string, kind: string, filename: string, preview_url: string}>
@@ -38,35 +80,58 @@ class AffiliationCorporateBusinessDocumentsService
     {
         $record->loadMissing(['corporateAffiliates.plan', 'corporateAffiliates.coverage', 'plan.benefitPlans', 'coverage', 'agent', 'agency']);
 
+        $affiliationCode = (string) $record->code;
+
+        $activeTask = self::activeTaskFor($affiliationCode);
+
+        if ($activeTask !== null) {
+            return [
+                'queued' => true,
+                'task_id' => $activeTask['task_id'],
+                'reused' => true,
+                'affiliates_count' => $record->corporateAffiliates->count(),
+                'progress_percentage' => (int) ($activeTask['payload']['progress_percentage'] ?? 0),
+                'eta_seconds' => $activeTask['payload']['eta_seconds'] ?? null,
+            ];
+        }
+
         self::purgeExistingGeneratedDocuments($record);
         self::ensureDirectories();
 
         $affiliates = $record->corporateAffiliates;
         $affiliateCount = $affiliates->count();
-        $affiliationCode = (string) $record->code;
-        $memoryMb = min(1024, 384 + (48 * max(1, $affiliateCount + 1)));
-        ini_set('memory_limit', $memoryMb.'M');
-        set_time_limit(min(900, 120 + (45 * max(1, $affiliateCount + 1))));
 
-        if ($affiliateCount <= 3) {
+        if (self::shouldRunInline($affiliateCount)) {
+            $memoryMb = min(1024, 384 + (48 * max(1, $affiliateCount + 1)));
+            ini_set('memory_limit', $memoryMb.'M');
+            set_time_limit(min(900, 120 + (45 * max(1, $affiliateCount + 1))));
+
             self::generateCorporateCertificate($record);
-            $tarjetaPayloads = self::normalizeTarjetaPayloads(
-                self::toTarjetaPayloadChunk($record, $affiliates),
+            self::generateCombinedCards($record, $affiliates);
+            self::generateTarjetasChunk(
+                self::normalizeTarjetaPayloads(self::toTarjetaPayloadChunk($record, $affiliates)),
             );
-            self::generateTarjetasChunk($tarjetaPayloads);
 
             self::queueViveplusDocuments($record, $userId);
 
             return [
                 'queued' => false,
-                'documents' => self::documentsForAffiliation($record),
+                'affiliates_count' => $affiliateCount,
+                'documents' => self::previewDocumentsForAffiliation($record),
             ];
         }
 
         $taskId = (string) Str::uuid();
         $chunks = self::toTarjetaPayloadChunk($record, $affiliates, self::recommendedChunkSize($affiliateCount));
-        $jobs = [];
-        $jobs[] = new GenerateCorporateCertificateJob($affiliationCode);
+
+        /**
+         * El certificado y el PDF único de carnets van primero para que la vista
+         * previa esté lista mucho antes de que terminen los carnets uno a uno.
+         */
+        $jobs = [
+            new GenerateCorporateCertificateJob($affiliationCode),
+            new GenerateCorporateCombinedCardsJob($affiliationCode),
+        ];
 
         foreach ($chunks as $chunk) {
             $jobs[] = new GenerateCorporateAffiliateTarjetasChunkJob(
@@ -75,70 +140,170 @@ class AffiliationCorporateBusinessDocumentsService
         }
 
         $activeTaskCacheKey = self::activeTaskCacheKey($affiliationCode);
-        $batch = Bus::batch($jobs)
-            ->onConnection('sync')
-            ->name('corporate-documents-'.$affiliationCode)
-            ->then(function (Batch $batch) use ($record, $taskId, $userId, $activeTaskCacheKey, $affiliationCode): void {
-                if ($batch->cancelled()) {
-                    Cache::forget($activeTaskCacheKey);
 
-                    return;
-                }
-
-                $existingPayload = self::status($taskId);
-                $record->refresh()->loadMissing('corporateAffiliates');
-                self::cacheStatus($taskId, [
-                    'status' => 'completed',
-                    'message' => 'Documentos generados correctamente.',
-                    'affiliation_code' => $affiliationCode,
-                    'batch_id' => $batch->id,
-                    'started_at' => $existingPayload['started_at'] ?? time(),
-                    'total_jobs' => $batch->totalJobs,
-                    'processed_jobs' => $batch->totalJobs,
-                    'progress_percentage' => 100,
-                    'eta_seconds' => 0,
-                    'documents' => self::documentsForAffiliation($record),
-                ]);
-                Cache::forget($activeTaskCacheKey);
-                self::queueViveplusDocuments($record, $userId);
-            })
-            ->catch(function (Batch $batch, \Throwable $throwable) use ($taskId, $activeTaskCacheKey): void {
-                $payload = self::status($taskId);
-                self::cacheStatus($taskId, [
-                    'status' => 'failed',
-                    'message' => $throwable->getMessage(),
-                    'batch_id' => $batch->id,
-                    'started_at' => $payload['started_at'] ?? time(),
-                    'total_jobs' => $batch->totalJobs,
-                    'processed_jobs' => max(0, $batch->totalJobs - $batch->pendingJobs),
-                    'progress_percentage' => (int) $batch->progress(),
-                    'eta_seconds' => null,
-                    'documents' => [],
-                ]);
-                Cache::forget($activeTaskCacheKey);
-            })
-            ->dispatch();
-
+        /**
+         * El estado se cachea ANTES de despachar: con cola real el worker puede
+         * terminar antes de que vuelva el `dispatch()` y pisaríamos el resultado.
+         */
         self::cacheStatus($taskId, [
             'status' => 'processing',
-            'message' => 'Generando certificado y tarjetas por lotes. Esto puede tardar unos segundos.',
+            'message' => 'Generando certificado y carnets. Puede cerrar esta ventana: el proceso continúa.',
             'affiliation_code' => $affiliationCode,
-            'batch_id' => $batch->id,
+            'batch_id' => null,
             'started_at' => time(),
             'total_jobs' => count($jobs),
             'processed_jobs' => 0,
             'progress_percentage' => 0,
             'eta_seconds' => null,
+            'affiliates_count' => $affiliateCount,
             'documents' => [],
         ]);
-        Cache::put($activeTaskCacheKey, $taskId, now()->addMinutes(20));
+        Cache::put($activeTaskCacheKey, $taskId, now()->addMinutes(self::TASK_TTL_MINUTES));
+
+        try {
+            $batch = Bus::batch($jobs)
+                ->name('corporate-documents-'.$affiliationCode)
+                ->onQueue(self::documentsQueue())
+                ->then(function (Batch $batch) use ($taskId, $userId, $activeTaskCacheKey, $affiliationCode): void {
+                    if ($batch->cancelled()) {
+                        Cache::forget($activeTaskCacheKey);
+
+                        return;
+                    }
+
+                    $record = self::findByCode($affiliationCode);
+
+                    self::mergeStatus($taskId, [
+                        'status' => 'completed',
+                        'message' => 'Documentos generados correctamente.',
+                        'batch_id' => $batch->id,
+                        'total_jobs' => $batch->totalJobs,
+                        'processed_jobs' => $batch->totalJobs,
+                        'progress_percentage' => 100,
+                        'eta_seconds' => 0,
+                        'documents' => $record !== null ? self::previewDocumentsForAffiliation($record) : [],
+                    ]);
+                    Cache::forget($activeTaskCacheKey);
+
+                    if ($record !== null) {
+                        self::queueViveplusDocuments($record, $userId);
+                    }
+
+                    self::notifyUser(
+                        $userId,
+                        'Documentos corporativos listos',
+                        'Ya están disponibles el certificado y los carnets de '.$affiliationCode.'.',
+                        'success',
+                    );
+                })
+                ->catch(function (Batch $batch, Throwable $throwable) use ($taskId, $activeTaskCacheKey, $affiliationCode, $userId): void {
+                    self::mergeStatus($taskId, [
+                        'status' => 'failed',
+                        'message' => $throwable->getMessage(),
+                        'batch_id' => $batch->id,
+                        'total_jobs' => $batch->totalJobs,
+                        'processed_jobs' => max(0, $batch->totalJobs - $batch->pendingJobs),
+                        'progress_percentage' => (int) $batch->progress(),
+                        'eta_seconds' => null,
+                    ]);
+                    Cache::forget($activeTaskCacheKey);
+
+                    self::notifyUser(
+                        $userId,
+                        'Falló la generación de documentos',
+                        'No se pudieron generar todos los documentos de '.$affiliationCode.'. Intente regenerarlos nuevamente.',
+                        'danger',
+                    );
+                })
+                ->dispatch();
+        } catch (Throwable $exception) {
+            Cache::forget($activeTaskCacheKey);
+            Cache::forget(self::cacheKey($taskId));
+
+            throw $exception;
+        }
+
+        self::mergeStatus($taskId, ['batch_id' => $batch->id]);
 
         return [
             'queued' => true,
             'task_id' => $taskId,
+            'affiliates_count' => $affiliateCount,
             'progress_percentage' => 0,
             'eta_seconds' => null,
         ];
+    }
+
+    /**
+     * Tarea de generación viva para esa afiliación, si la hay. Evita que dos
+     * clics disparen dos veces la generación completa sobre los mismos archivos.
+     *
+     * @return array{task_id: string, payload: array<string, mixed>}|null
+     */
+    private static function activeTaskFor(string $affiliationCode): ?array
+    {
+        $taskId = Cache::get(self::activeTaskCacheKey($affiliationCode));
+
+        if (! is_string($taskId) || $taskId === '') {
+            return null;
+        }
+
+        $payload = self::status($taskId);
+
+        if (($payload['status'] ?? '') !== 'processing') {
+            Cache::forget(self::activeTaskCacheKey($affiliationCode));
+
+            return null;
+        }
+
+        return ['task_id' => $taskId, 'payload' => $payload];
+    }
+
+    /**
+     * Aviso en la campana del panel: el usuario puede cerrar el modal y enterarse
+     * igual de que terminó (o falló) la generación.
+     */
+    private static function notifyUser(?int $userId, string $title, string $body, string $status): void
+    {
+        if ($userId === null) {
+            return;
+        }
+
+        try {
+            $user = User::query()->find($userId);
+
+            if ($user === null) {
+                return;
+            }
+
+            Notification::make()
+                ->title($title)
+                ->body($body)
+                ->{$status}()
+                ->sendToDatabase($user);
+        } catch (Throwable $exception) {
+            Log::warning('AffiliationCorporateBusinessDocumentsService: no se pudo notificar al usuario', [
+                'user_id' => $userId,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private static function findByCode(string $affiliationCode): ?AffiliationCorporate
+    {
+        try {
+            return AffiliationCorporate::query()
+                ->where('code', $affiliationCode)
+                ->with(['corporateAffiliates', 'plan'])
+                ->first();
+        } catch (Throwable $exception) {
+            Log::warning('AffiliationCorporateBusinessDocumentsService: no se pudo recuperar la afiliación corporativa', [
+                'affiliation_code' => $affiliationCode,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     public static function recommendedChunkSize(int $affiliatesCount): int
@@ -152,10 +317,14 @@ class AffiliationCorporateBusinessDocumentsService
         }
 
         if ($affiliatesCount <= 250) {
-            return 20;
+            return 25;
         }
 
-        return 30;
+        if ($affiliatesCount <= 1000) {
+            return 50;
+        }
+
+        return 100;
     }
 
     /**
@@ -188,6 +357,7 @@ class AffiliationCorporateBusinessDocumentsService
         }
 
         $payload['started_at'] ??= time();
+        $affiliationCode = (string) ($payload['affiliation_code'] ?? '');
 
         if (($payload['status'] ?? '') === 'processing' && filled($payload['batch_id'] ?? null)) {
             $batch = Bus::findBatch((string) $payload['batch_id']);
@@ -198,7 +368,7 @@ class AffiliationCorporateBusinessDocumentsService
                 $payload['total_jobs'] = $batch->totalJobs;
                 $payload['processed_jobs'] = $processedJobs;
                 $payload['progress_percentage'] = $progress;
-                $payload['message'] = "Procesando lotes de tarjetas: {$processedJobs}/{$batch->totalJobs}";
+                $payload['message'] = "Generando carnets: lote {$processedJobs} de {$batch->totalJobs}";
                 $payload['eta_seconds'] = self::estimateEtaSeconds(
                     processedJobs: $processedJobs,
                     totalJobs: $batch->totalJobs,
@@ -216,24 +386,33 @@ class AffiliationCorporateBusinessDocumentsService
                         $payload['processed_jobs'] = $batch->totalJobs;
                         $payload['message'] = 'Documentos generados correctamente.';
                         $payload['eta_seconds'] = 0;
-
-                        $affiliationCode = (string) ($payload['affiliation_code'] ?? '');
-                        if ($affiliationCode !== '') {
-                            $record = AffiliationCorporate::query()
-                                ->where('code', $affiliationCode)
-                                ->with('corporateAffiliates')
-                                ->first();
-
-                            if ($record !== null) {
-                                $payload['documents'] = self::documentsForAffiliation($record);
-                            }
-                        }
                     }
                 }
-
-                self::cacheStatus($taskId, $payload);
             }
         }
+
+        /**
+         * La vista previa no espera al lote completo: en cuanto el certificado y
+         * el PDF de carnets están en disco, el usuario ya puede verlos mientras
+         * los carnets individuales que exige ViVEplus se siguen generando.
+         */
+        if ($affiliationCode !== '' && in_array($payload['status'] ?? '', ['processing', 'completed'], true)) {
+            $record = self::findByCode($affiliationCode);
+
+            if ($record !== null) {
+                $documents = self::previewDocumentsForAffiliation($record);
+
+                if ($documents !== []) {
+                    $payload['documents'] = $documents;
+                }
+
+                $payload['affiliates_count'] = $record->corporateAffiliates->count();
+            }
+        }
+
+        $payload['preview_ready'] = ($payload['documents'] ?? []) !== [];
+
+        self::cacheStatus($taskId, $payload);
 
         return $payload;
     }
@@ -342,8 +521,24 @@ class AffiliationCorporateBusinessDocumentsService
             public_path('storage/certificados-doc/CER-'.$record->code.'.pdf'),
         ];
 
-        foreach ($record->corporateAffiliates as $affiliate) {
-            $paths[] = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'-'.$affiliate->id.'.pdf');
+        $combinedPath = self::combinedCardsAbsolutePath($record);
+
+        /**
+         * Con el PDF combinado basta un adjunto: una corporativa grande generaría
+         * miles de adjuntos y ningún servidor de correo lo aceptaría.
+         */
+        if (is_file($combinedPath)) {
+            $paths[] = $combinedPath;
+        } else {
+            foreach ($record->corporateAffiliates as $affiliate) {
+                $paths[] = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'-'.$affiliate->id.'.pdf');
+            }
+        }
+
+        $condicionado = self::condicionadoAbsolutePathForAffiliation($record);
+
+        if ($condicionado !== null) {
+            $paths[] = $condicionado;
         }
 
         return array_values(array_filter($paths, fn (string $path): bool => is_file($path)));
@@ -359,22 +554,35 @@ class AffiliationCorporateBusinessDocumentsService
     ): array {
         $hasta = self::vigenciaHasta($record->effective_date);
         $desde = (string) ($record->effective_date ?? '');
+        $brand = WhiteCompanyDocumentBrand::forCorporate($record);
+        $alliedTemplatePath = $brand->carnetCompiledPdfAbsolutePath;
 
-        $payload = $affiliates->map(function ($affiliate) use ($record, $desde, $hasta): array {
+        $payload = $affiliates->map(function ($affiliate) use ($record, $desde, $hasta, $brand, $alliedTemplatePath): array {
             $planId = $affiliate->plan_id !== null ? (int) $affiliate->plan_id : null;
+            $planDescription = $brand->planDisplayName($planId, self::affiliatePlanDescription($affiliate));
 
-            return [
+            $data = [
                 'name' => trim((string) $affiliate->first_name.' '.(string) $affiliate->last_name),
                 'ci' => (string) $affiliate->nro_identificacion,
                 'code' => (string) $record->code,
                 'plan_id' => $planId,
-                'plan' => self::affiliatePlanDescription($affiliate),
+                'plan' => $planDescription,
+                'plan_tarjeta_etiqueta' => $brand->planShortLabel($planId, $planDescription),
                 'frecuencia' => (string) ($affiliate->payment_frequency ?? $record->payment_frequency ?? ''),
                 'cobertura' => self::affiliateCoveragePrice($affiliate, $record),
                 'desde' => $desde,
                 'hasta' => $hasta,
                 'output_filename' => 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf',
+                'card_layout' => AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION,
+                'template_key' => AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION,
             ];
+
+            if (is_string($alliedTemplatePath) && $alliedTemplatePath !== '') {
+                $data['template_path'] = $alliedTemplatePath;
+                $data['template_key'] = AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED;
+            }
+
+            return $data;
         })->values();
 
         if ($chunkSize <= 0) {
@@ -511,48 +719,196 @@ class AffiliationCorporateBusinessDocumentsService
     }
 
     /**
+     * PDF único con todos los carnets corporativos (8 por hoja A4), igual que en
+     * afiliaciones individuales. Es lo que se muestra y se envía por correo; los
+     * carnets uno a uno se siguen escribiendo aparte porque ViVEplus los exige.
+     *
+     * Devuelve el nombre del archivo generado, o null si no hay plantilla de
+     * estampado disponible (en ese caso la regeneración continúa sin combinado).
+     */
+    public static function generateCombinedCards(AffiliationCorporate $record, ?Collection $affiliates = null): ?string
+    {
+        $affiliates ??= $record->loadMissing('corporateAffiliates')->corporateAffiliates;
+
+        if ($affiliates->isEmpty()) {
+            return null;
+        }
+
+        self::ensureDirectories();
+
+        $cards = self::normalizeTarjetaPayloads(self::toTarjetaPayloadChunk($record, $affiliates));
+
+        if ($cards === []) {
+            return null;
+        }
+
+        $filename = self::combinedCardsFilename($record);
+
+        $result = TarjetaAfiliacionController::generateTarjetaAfiliacionBatch(
+            $cards,
+            $filename,
+            silent: true,
+            ensureOutputDirectory: false,
+        );
+
+        if ($result !== true) {
+            Log::warning('AffiliationCorporateBusinessDocumentsService: no se pudo generar el PDF combinado de carnets', [
+                'affiliation_code' => $record->code,
+                'error' => is_string($result) ? $result : 'desconocido',
+            ]);
+
+            return null;
+        }
+
+        return $filename;
+    }
+
+    /**
+     * Documentos de cabecera del modal: certificado, PDF combinado de carnets y
+     * condicionado. Nunca incluye las tarjetas una por una — una corporativa de
+     * miles de afiliados haría inmanejable el JSON y el navegador.
+     *
      * @return array<int, array{label: string, kind: string, filename: string, preview_url: string}>
      */
-    private static function documentsForAffiliation(AffiliationCorporate $record): array
+    public static function previewDocumentsForAffiliation(AffiliationCorporate $record): array
     {
         $record->loadMissing('corporateAffiliates');
         $version = (string) time();
-        $documents = [
-            [
+        $documents = [];
+
+        $certificateFilename = 'CER-'.$record->code.'.pdf';
+
+        if (is_file(public_path('storage/certificados-doc/'.$certificateFilename))) {
+            $documents[] = [
                 'label' => 'Certificado de afiliación corporativa',
                 'kind' => 'certificate',
-                'filename' => 'CER-'.$record->code.'.pdf',
-                'preview_url' => asset('storage/certificados-doc/CER-'.$record->code.'.pdf').'?t='.$version,
-            ],
-        ];
-
-        foreach ($record->corporateAffiliates as $affiliate) {
-            $fullName = trim((string) $affiliate->first_name.' '.(string) $affiliate->last_name);
-            $filename = 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf';
-            $absolutePath = public_path('storage/tarjeta-afiliacion/'.$filename);
-
-            if (! is_file($absolutePath)) {
-                continue;
-            }
-
-            $documents[] = [
-                'label' => 'Tarjeta — '.($fullName !== '' ? $fullName : 'Afiliado corporativo'),
-                'kind' => 'tarjeta',
-                'filename' => $filename,
-                'preview_url' => asset('storage/tarjeta-afiliacion/'.$filename).'?t='.$version,
+                'filename' => $certificateFilename,
+                'preview_url' => asset('storage/certificados-doc/'.$certificateFilename).'?t='.$version,
             ];
         }
 
-        $certificatePath = public_path('storage/certificados-doc/CER-'.$record->code.'.pdf');
+        if (is_file(self::combinedCardsAbsolutePath($record))) {
+            $affiliatesCount = $record->corporateAffiliates->count();
 
-        if (! is_file($certificatePath)) {
-            return array_values(array_filter(
-                $documents,
-                fn (array $document): bool => ($document['kind'] ?? '') !== 'certificate',
-            ));
+            $documents[] = [
+                'label' => 'Carnets de afiliación ('.$affiliatesCount.' '.($affiliatesCount === 1 ? 'afiliado' : 'afiliados').')',
+                'kind' => 'tarjeta',
+                'filename' => self::combinedCardsFilename($record),
+                'preview_url' => asset('storage/tarjeta-afiliacion/'.self::combinedCardsFilename($record)).'?t='.$version,
+            ];
+        }
+
+        $condicionadoPath = self::condicionadoAbsolutePathForAffiliation($record);
+
+        if ($condicionadoPath !== null) {
+            $documents[] = [
+                'label' => 'Condiciones del plan',
+                'kind' => 'condicionado',
+                'filename' => basename($condicionadoPath),
+                'preview_url' => asset('storage/condicionados/'.basename($condicionadoPath)).'?t='.$version,
+            ];
         }
 
         return $documents;
+    }
+
+    public static function condicionadoAbsolutePathForAffiliation(AffiliationCorporate $record): ?string
+    {
+        return WhiteCompanyDocumentBrand::forCorporate($record)
+            ->condicionadoAbsolutePath(self::resolvePlanId($record));
+    }
+
+    /**
+     * `affiliation_corporates` no tiene `plan_id`: el plan vive en cada afiliado.
+     * Se usa el plan predominante de la población para elegir el condicionado.
+     */
+    public static function resolvePlanId(AffiliationCorporate $record): ?int
+    {
+        if ($record->plan_id !== null) {
+            return (int) $record->plan_id;
+        }
+
+        $record->loadMissing('corporateAffiliates');
+
+        $planId = $record->corporateAffiliates
+            ->pluck('plan_id')
+            ->filter(fn ($value): bool => filled($value))
+            ->countBy()
+            ->sortDesc()
+            ->keys()
+            ->first();
+
+        return $planId !== null ? (int) $planId : null;
+    }
+
+    /**
+     * Carnets individuales para el buscador del modal, paginados en servidor.
+     *
+     * @return array{
+     *   documents: array<int, array{label: string, kind: string, filename: string, preview_url: string}>,
+     *   total: int,
+     *   page: int,
+     *   per_page: int,
+     *   last_page: int
+     * }
+     */
+    public static function paginatedTarjetaDocuments(
+        AffiliationCorporate $record,
+        string $search = '',
+        int $page = 1,
+        int $perPage = 20,
+    ): array {
+        $perPage = max(1, min(50, $perPage));
+        $page = max(1, $page);
+        $search = trim($search);
+
+        $query = AffiliateCorporate::query()
+            ->where('affiliation_corporate_id', $record->getKey())
+            ->orderBy('id');
+
+        if ($search !== '') {
+            $term = '%'.$search.'%';
+            $query->where(function ($builder) use ($term): void {
+                $builder->where('first_name', 'like', $term)
+                    ->orWhere('last_name', 'like', $term)
+                    ->orWhere('nro_identificacion', 'like', $term);
+            });
+        }
+
+        $total = (clone $query)->count();
+        $version = (string) time();
+
+        $documents = $query
+            ->forPage($page, $perPage)
+            ->get(['id', 'first_name', 'last_name', 'nro_identificacion'])
+            ->map(function (AffiliateCorporate $affiliate) use ($record, $version): ?array {
+                $filename = 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf';
+
+                if (! is_file(public_path('storage/tarjeta-afiliacion/'.$filename))) {
+                    return null;
+                }
+
+                $fullName = trim((string) $affiliate->first_name.' '.(string) $affiliate->last_name);
+
+                return [
+                    'label' => 'Carnet — '.($fullName !== '' ? $fullName : 'Afiliado corporativo'),
+                    'kind' => 'tarjeta',
+                    'filename' => $filename,
+                    'identification' => (string) $affiliate->nro_identificacion,
+                    'preview_url' => asset('storage/tarjeta-afiliacion/'.$filename).'?t='.$version,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'documents' => $documents,
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
+            'last_page' => (int) max(1, ceil($total / $perPage)),
+        ];
     }
 
     private static function purgeExistingGeneratedDocuments(AffiliationCorporate $record): void
@@ -609,11 +965,44 @@ class AffiliationCorporateBusinessDocumentsService
     }
 
     /**
-     * @param  array{status: string, message: string, batch_id?: string|null, affiliation_code?: string, started_at?: int, total_jobs?: int, processed_jobs?: int, progress_percentage?: int, eta_seconds?: int|null, documents: array<int, array{label: string, kind: string, filename: string, preview_url: string}>}  $payload
+     * @param  array<string, mixed>  $payload
      */
     private static function cacheStatus(string $taskId, array $payload): void
     {
-        Cache::put(self::cacheKey($taskId), $payload, now()->addMinutes(20));
+        Cache::put(self::cacheKey($taskId), $payload, now()->addMinutes(self::TASK_TTL_MINUTES));
+    }
+
+    /**
+     * Actualiza solo las claves indicadas sobre el estado ya cacheado.
+     *
+     * Se usa desde los callbacks del batch: escribir el payload completo pisaría
+     * lo que haya escrito el polling o el propio worker en paralelo.
+     *
+     * @param  array<string, mixed>  $patch
+     */
+    private static function mergeStatus(string $taskId, array $patch): void
+    {
+        $key = self::cacheKey($taskId);
+        $lock = Cache::lock($key.'.lock', 5);
+
+        try {
+            $lock->block(3);
+
+            $payload = Cache::get($key);
+
+            if (! is_array($payload)) {
+                return;
+            }
+
+            Cache::put($key, array_replace($payload, $patch), now()->addMinutes(self::TASK_TTL_MINUTES));
+        } catch (Throwable $exception) {
+            Log::warning('AffiliationCorporateBusinessDocumentsService: no se pudo actualizar el estado de la tarea', [
+                'task_id' => $taskId,
+                'error' => $exception->getMessage(),
+            ]);
+        } finally {
+            optional($lock)->release();
+        }
     }
 
     private static function cacheKey(string $taskId): string

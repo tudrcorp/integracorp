@@ -13,7 +13,7 @@ class GenerateCorporateAffiliateTarjetasChunkJob implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 240;
+    public int $timeout = 600;
 
     /**
      * @param  array<int, array<string, mixed>>  $chunk
@@ -21,13 +21,13 @@ class GenerateCorporateAffiliateTarjetasChunkJob implements ShouldQueue
     public function __construct(
         public array $chunk,
     ) {
-        $this->onQueue('documents');
+        $this->onQueue((string) config('affiliate-card.documents_queue', 'documents'));
     }
 
     public function handle(): void
     {
-        ini_set('memory_limit', '512M');
-        set_time_limit(180);
+        ini_set('memory_limit', '1024M');
+        set_time_limit(540);
         AffiliationCorporateBusinessDocumentsService::generateTarjetasChunk($this->chunk);
     }
 }

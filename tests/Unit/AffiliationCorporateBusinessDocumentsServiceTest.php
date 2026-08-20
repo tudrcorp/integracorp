@@ -7,6 +7,7 @@ use App\Models\AffiliationCorporate;
 use App\Models\Coverage;
 use App\Models\Plan;
 use App\Services\AffiliationCorporateBusinessDocumentsService;
+use App\Support\AffiliateCard\AffiliateCardPageLayout;
 
 it('incluye plan_id y plan de cada afiliado corporativo en el payload de tarjeta', function (): void {
     $affiliationCorporate = new AffiliationCorporate([
@@ -138,14 +139,26 @@ it('aplaniza el lote anidado devuelto por toTarjetaPayloadChunk sin tamano', fun
         ->and($flat[1]['output_filename'])->toBe('TAR-CORP-099-2.pdf');
 });
 
-it('ejecuta lotes de tarjetas en conexion sync para no depender del worker', function (): void {
+it('despacha los lotes de carnets a la cola de documentos y no en el request', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationCorporateBusinessDocumentsService.php');
 
-    expect($source)->toContain("->onConnection('sync')")
+    expect($source)->toContain('->onQueue(self::documentsQueue())')
+        ->and($source)->not->toContain("->onConnection('sync')")
         ->and($source)->toContain('normalizeTarjetaPayloads')
         ->and($source)->toContain('queueViveplusDocuments')
         ->and($source)->toContain('ViveplusDocumentWebhookDispatcher::dispatchForCorporate')
         ->and($source)->toContain('resolveAffiliateCarnetDocuments');
+});
+
+it('cachea el estado antes de despachar el lote para no perder el resultado del worker', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationCorporateBusinessDocumentsService.php');
+
+    $cachePosition = strpos($source, 'Cache::put($activeTaskCacheKey, $taskId');
+    $dispatchPosition = strpos($source, '->dispatch();');
+
+    expect($cachePosition)->not->toBeFalse()
+        ->and($dispatchPosition)->not->toBeFalse()
+        ->and($cachePosition)->toBeLessThan($dispatchPosition);
 });
 
 it('define affiliationCode y usa affiliateCount al regenerar documentos corporativos', function (): void {
@@ -155,9 +168,81 @@ it('define affiliationCode y usa affiliateCount al regenerar documentos corporat
         ->toContain('$affiliationCode = (string) $record->code;')
         ->toContain('self::recommendedChunkSize($affiliateCount)')
         ->toContain('self::generateCorporateCertificate($record)')
-        ->toContain('use ($record, $taskId, $userId, $activeTaskCacheKey, $affiliationCode)')
+        ->toContain('use ($taskId, $userId, $activeTaskCacheKey, $affiliationCode)')
         ->toContain('public static function generateTarjetasChunk(array $chunk): void')
         ->not->toContain('recommendedChunkSize($affiliatesCount)');
+});
+
+it('usa el layout de carnet individual y la marca de empresa aliada en las tarjetas corporativas', function (): void {
+    $affiliationCorporate = new AffiliationCorporate([
+        'code' => 'TDEC-COR-00099',
+        'effective_date' => '01/01/2026',
+        'payment_frequency' => 'ANUAL',
+    ]);
+
+    $affiliate = new AffiliateCorporate([
+        'first_name' => 'Ana',
+        'last_name' => 'Suarez',
+        'nro_identificacion' => 'V-9',
+        'plan_id' => 2,
+    ]);
+    $affiliate->id = 7;
+    $affiliate->setRelation('plan', new Plan(['id' => 2, 'description' => 'PLAN IDEAL']));
+    $affiliate->setRelation('coverage', new Coverage(['price' => 5000]));
+
+    $chunks = AffiliationCorporateBusinessDocumentsService::toTarjetaPayloadChunk(
+        $affiliationCorporate,
+        collect([$affiliate]),
+    );
+
+    expect($chunks[0][0])
+        ->toMatchArray([
+            'card_layout' => AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION,
+            'template_key' => AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION,
+            'output_filename' => 'TAR-TDEC-COR-00099-7.pdf',
+        ])
+        ->and($chunks[0][0]['plan_tarjeta_etiqueta'])->toBeString();
+});
+
+it('nombra el PDF combinado de carnets igual que en afiliaciones individuales', function (): void {
+    $affiliationCorporate = new AffiliationCorporate(['code' => 'TDEC-COR-00054']);
+
+    expect(AffiliationCorporateBusinessDocumentsService::combinedCardsFilename($affiliationCorporate))
+        ->toBe('TAR-TDEC-COR-00054-carnets.pdf');
+});
+
+it('genera dentro del request solo poblaciones pequenas', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationCorporateBusinessDocumentsService.php');
+
+    expect(AffiliationCorporateBusinessDocumentsService::INLINE_AFFILIATE_THRESHOLD)->toBe(10)
+        ->and($source)->toContain('self::shouldRunInline($affiliateCount)')
+        ->and($source)->toContain("config('queue.default') === 'sync'");
+});
+
+it('expone la vista previa sin listar las tarjetas una por una', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationCorporateBusinessDocumentsService.php');
+
+    expect($source)
+        ->toContain('public static function previewDocumentsForAffiliation(AffiliationCorporate $record): array')
+        ->toContain('public static function paginatedTarjetaDocuments(')
+        ->toContain("'kind' => 'condicionado'")
+        ->and($source)->not->toContain('private static function documentsForAffiliation');
+});
+
+it('reutiliza la tarea activa en vez de regenerar dos veces la misma afiliacion', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationCorporateBusinessDocumentsService.php');
+
+    expect($source)
+        ->toContain('private static function activeTaskFor(string $affiliationCode): ?array')
+        ->toContain("'reused' => true");
+});
+
+it('adjunta el PDF combinado al correo en vez de miles de carnets sueltos', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationCorporateBusinessDocumentsService.php');
+
+    expect($source)
+        ->toContain('$combinedPath = self::combinedCardsAbsolutePath($record);')
+        ->toContain('self::condicionadoAbsolutePathForAffiliation($record)');
 });
 
 it('recomienda tamano de lote segun cantidad de afiliados', function (): void {
@@ -165,6 +250,7 @@ it('recomienda tamano de lote segun cantidad de afiliados', function (): void {
         ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(20))->toBe(5)
         ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(21))->toBe(10)
         ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(80))->toBe(10)
-        ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(81))->toBe(20)
-        ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(251))->toBe(30);
+        ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(81))->toBe(25)
+        ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(251))->toBe(50)
+        ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(2681))->toBe(100);
 });

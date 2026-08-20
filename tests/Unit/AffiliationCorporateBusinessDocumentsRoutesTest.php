@@ -11,6 +11,7 @@ it('registra rutas de documentos de afiliación corporativa en business', functi
     expect($contents)
         ->toContain('business.affiliation-corporate-documents.regenerate-async')
         ->toContain('business.affiliation-corporate-documents.status')
+        ->toContain('business.affiliation-corporate-documents.tarjetas')
         ->toContain('business.affiliation-corporate-documents.send-email')
         ->toContain('business.affiliation-corporate-tarjeta-qr.associate-plan');
 });
@@ -23,7 +24,21 @@ it('renderiza la vista modal de documentos de afiliación corporativa', function
         ->toContain('affiliationDocumentsPanel')
         ->toContain('regenerate()')
         ->toContain('statusUrlTemplate')
+        ->toContain('tarjetasUrl')
+        ->toContain('searchTarjetas()')
+        ->toContain('backgroundWorking')
         ->toContain('regenerate-async');
+});
+
+it('el panel compartido conserva la vista previa abierta mientras hace polling', function (): void {
+    $scriptPath = dirname(__DIR__, 2).'/resources/views/filament/business/partials/affiliation-documents-panel-script.blade.php';
+    $script = file_get_contents($scriptPath);
+
+    expect($script)
+        ->toContain('previewUrl: existing ||')
+        ->toContain('loadTarjetas()')
+        ->toContain('goToTarjetaPage(')
+        ->toContain('this.backgroundWorking = this.regenerated;');
 });
 
 it('el servicio corporativo normaliza lotes anidados de tarjetas', function (): void {
