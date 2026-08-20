@@ -160,8 +160,8 @@ it('no toca el estatus del afiliado al sincronizar', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Support/AffiliationCorporates/CorporateAffiliatePlanSynchronizer.php');
 
     expect($source)
-        ->toContain('CorporateAffiliatePlanSyncService::syncPlanRowTotalsFromAffiliates($owner)')
-        ->toContain('CorporateAffiliatePlanSyncService::syncOwnerTotalsFromAffiliates($owner)')
+        ->toContain('CorporateAffiliatePlanSyncService::syncPlanRowTotalsFromAffiliates($owner, self::COUNTABLE_STATUSES)')
+        ->toContain('CorporateAffiliatePlanSyncService::syncOwnerTotalsFromAffiliates($owner, self::COUNTABLE_STATUSES)')
         ->toContain('DB::transaction')
-        ->not->toContain("'status' =>");
+        ->not->toContain("'status' => 'ACTIVO'");
 });

@@ -23,6 +23,13 @@ use Illuminate\Support\Facades\Mail;
 class PaidMembershipCorporateController extends Controller
 {
     /**
+     * Estados de afiliado que no se reactivan al aprobar el primer pago.
+     *
+     * @var list<string>
+     */
+    private const UNRECOVERABLE_AFFILIATE_STATUSES = ['INACTIVO', 'EXCLUIDO'];
+
+    /**
      * Aprueba el pago de una afiliación corporativa.
      * Implementa DB::transaction para asegurar que no haya cambios parciales ante fallos.
      *
@@ -57,6 +64,22 @@ class PaidMembershipCorporateController extends Controller
                     $record->affiliation_corporate->effective_date = Carbon::createFromFormat('d/m/Y', now()->format('d/m/Y'))->addYear()->format('d/m/Y');
                     $record->affiliation_corporate->status = 'ACTIVA';
                     $record->affiliation_corporate->save();
+
+                    /**
+                     * Actualizo a todos los afiliados asociados a la afiliacion, igual
+                     * que en las afiliaciones individuales. Se respetan los que ya
+                     * estaban dados de baja: activar la empresa no los reincorpora.
+                     */
+                    $activatedAffiliates = $record->affiliation_corporate
+                        ->corporateAffiliates()
+                        ->whereNotIn('status', self::UNRECOVERABLE_AFFILIATE_STATUSES)
+                        ->update(['status' => 'ACTIVO']);
+
+                    SecurityAudit::log('AUDIT_AFFILIATION_CORPORATE_AFFILIATES_ACTIVATED', 'paid-membership-corporate.approve-payment', [
+                        'affiliation_corporate_id' => $record->affiliation_corporate->id,
+                        'affiliation_code' => $record->affiliation_corporate->code,
+                        'activated_affiliates' => $activatedAffiliates,
+                    ]);
                 }
 
                 /**
