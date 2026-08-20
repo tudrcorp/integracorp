@@ -288,6 +288,7 @@ class PlanCreationPersistence
                     'coverage_id' => $coverage->id,
                 ]);
 
+                $fee->plan_id = $plan->id;
                 $fee->price = $rate;
                 $fee->range = $ageRange->range;
                 $fee->coverage = $coverage->price;
@@ -435,6 +436,7 @@ class PlanCreationPersistence
                     $fee->code = self::generateFeeCode();
                 }
 
+                $fee->plan_id = $plan->id;
                 $fee->price = $rate;
                 $fee->range = $ageRange->range;
                 $fee->coverage = null;
