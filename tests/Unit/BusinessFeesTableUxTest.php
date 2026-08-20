@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-it('declara la relación plan vía age range en el modelo Fee', function (): void {
+it('declara la relación plan directa sobre fees.plan_id en el modelo Fee', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Models/Fee.php');
 
     expect($source)
-        ->toContain('function plan(): HasOneThrough')
-        ->toContain('Plan::class')
-        ->toContain('AgeRange::class')
-        ->toContain("'age_range_id'")
+        ->toContain('function plan(): BelongsTo')
+        ->toContain("belongsTo(Plan::class, 'plan_id', 'id')")
         ->toContain("'plan_id'")
+        ->toContain("'age_range_id'")
         ->toContain('function coverageRecord(): BelongsTo')
         ->toContain("'neta'")
         ->toContain("'neta' => 'decimal:2'")
+        ->not->toContain('HasOneThrough')
         ->not->toContain('function coverage(): BelongsTo');
 });
 
@@ -46,7 +46,7 @@ it('muestra el plan en la tabla de tarifas del panel business', function (): voi
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Fees/Tables/FeesTable.php');
 
     expect($source)
-        ->toContain("TextColumn::make('ageRange.plan.description')")
+        ->toContain("TextColumn::make('plan.description')")
         ->toContain("->label('Plan')")
         ->toContain("Filter::make('plan_and_coverage')")
         ->toContain("Select::make('coverage_id')")
@@ -58,7 +58,7 @@ it('muestra el plan en la tabla de tarifas del panel business', function (): voi
         ->toContain("->money('USD')")
         ->toContain('ViewAction::make()')
         ->toContain('EditAction::make()')
-        ->toContain("'ageRange.plan'")
+        ->toContain("'plan'")
         ->toContain('Creado desde')
         ->toContain('Creado hasta')
         ->not->toContain('TextInputColumn')

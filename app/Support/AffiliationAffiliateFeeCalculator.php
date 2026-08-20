@@ -168,7 +168,13 @@ final class AffiliationAffiliateFeeCalculator
         int $affiliateAge,
         bool $isInitialPlanWithoutCoverage = false,
     ): ?Fee {
-        $query = Fee::query()->with('ageRange');
+        // El plan se filtra en SQL contra `fees.plan_id`, la columna canónica del
+        // catálogo. Antes se traían todas las tarifas de la cobertura y se
+        // descartaban en PHP mirando `age_ranges.plan_id`, que además dejaba
+        // pasar cualquier plan cuando el rango de edad no existía.
+        $query = Fee::query()
+            ->with('ageRange')
+            ->forPlan($planId);
 
         if ($isInitialPlanWithoutCoverage || $planId === self::INITIAL_PLAN_ID) {
             $query->where('age_range_id', 1);
@@ -509,23 +515,28 @@ final class AffiliationAffiliateFeeCalculator
         return $query->get();
     }
 
+    /**
+     * Una tarifa sirve para un plan solo si `fees.plan_id` lo dice. Se comprueba
+     * igual que en SQL para que el método siga siendo correcto cuando se lo
+     * llama sobre tarifas que no vinieron de resolveFeeForPlanCoverageAndAge().
+     *
+     * Antes esto miraba `$fee->ageRange->plan_id` y devolvía true cuando el
+     * rango de edad no existía, con lo cual una tarifa huérfana entraba en
+     * cualquier plan que compartiera su cobertura y podía cobrarse el precio
+     * equivocado. Sin plan_id la tarifa ahora no participa de ningún cálculo.
+     */
+    public function feeBelongsToPlan(Fee $fee, int $planId): bool
+    {
+        return $fee->plan_id !== null && (int) $fee->plan_id === $planId;
+    }
+
     private function feeMatchesAffiliateAgeForPlan(int $affiliateAge, Fee $fee, int $planId): bool
     {
-        if (! $this->affiliateAgeMatchesFeeRange($affiliateAge, $fee)) {
+        if (! $this->feeBelongsToPlan($fee, $planId)) {
             return false;
         }
 
-        if ($planId === self::INITIAL_PLAN_ID) {
-            return true;
-        }
-
-        $ageRange = $fee->ageRange;
-
-        if ($ageRange === null) {
-            return true;
-        }
-
-        return (int) $ageRange->plan_id === $planId;
+        return $this->affiliateAgeMatchesFeeRange($affiliateAge, $fee);
     }
 
     private function affiliateAgeMatchesFeeRange(int $affiliateAge, Fee $fee): bool

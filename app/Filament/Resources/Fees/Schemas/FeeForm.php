@@ -41,6 +41,20 @@ class FeeForm
                                 ->dehydrated()
                                 ->maxLength(255),
                         ])->columnSpanFull()->columns(4),
+                        // `fees.plan_id` es la columna con la que el catálogo resuelve
+                        // el plan de una tarifa; sin ella la tarifa no entra en ningún
+                        // cálculo. Se deja explícito acá además del respaldo que aplica
+                        // Fee::booted() al guardar.
+                        Select::make('plan_id')
+                            ->label('Plan')
+                            ->relationship('plan', 'description')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->helperText('Plan al que pertenece esta tarifa. Determina en qué cotizaciones y afiliaciones se ofrece.')
+                            ->validationMessages([
+                                'required' => 'Campo requerido',
+                            ]),
                         Select::make('age_range_id')
                             ->label('Rango de edad')
                             ->relationship('ageRange', 'range')

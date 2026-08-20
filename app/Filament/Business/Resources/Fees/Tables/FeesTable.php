@@ -39,7 +39,8 @@ class FeesTable
             ->heading('TARIFAS')
             ->description('Lista de tarifas calculadas registradas en el sistema')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'ageRange.plan',
+                'plan',
+                'ageRange',
             ]))
             ->columns([
                 TextColumn::make('id')
@@ -48,7 +49,7 @@ class FeesTable
                     ->sortable()
                     ->toggleable()
                     ->searchable(),
-                TextColumn::make('ageRange.plan.description')
+                TextColumn::make('plan.description')
                     ->label('Plan')
                     ->badge()
                     ->color('success')
