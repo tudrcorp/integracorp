@@ -32,6 +32,8 @@ use App\Filament\Administration\Resources\RrhhNominas\RrhhNominaResource;
 use App\Filament\Administration\Resources\RrhhPrestamos\RrhhPrestamoResource;
 use App\Filament\Administration\Resources\Sales\SaleResource;
 use App\Filament\Administration\Resources\TdevReports\TdevReportResource;
+use App\Filament\Administration\Resources\TravelAgencies\TravelAgencyResource as AdministrationTravelAgencyResource;
+use App\Filament\Administration\Resources\WhiteCompanies\WhiteCompanyResource as AdministrationWhiteCompanyResource;
 use App\Filament\Business\Clusters\NuevosNegocios\NuevosNegociosCluster;
 use App\Filament\Business\Pages\AgendaCorporativa;
 use App\Filament\Business\Pages\CalendariosTdg;
@@ -226,6 +228,8 @@ final class DepartmentNavigationPermissionRegistry
         AdministrationAffiliationCorporateRenovationHistoryResource::class => ['historico-renovaciones-corporativas'],
         AdministrationAgencyResource::class => ['agencias-de-corretaje'],
         AdministrationAgentResource::class => ['agentes-de-corretaje'],
+        AdministrationTravelAgencyResource::class => ['agencias-de-viaje'],
+        AdministrationWhiteCompanyResource::class => ['empresas-aliadas'],
         SaleResource::class => ['ventas'],
         CompanyPaidMembershipResource::class => ['ventas', 'comprobantes-nuevos-negocios'],
         CollectionResource::class => ['gestion-de-cobranza'],

@@ -19,8 +19,10 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\View;
 
 class WhiteCompaniesTable
 {
@@ -154,6 +156,28 @@ class WhiteCompaniesTable
                     ->indicator('Logo'),
             ])
             ->recordActions([
+                Action::make('salesReport')
+                    ->label('Reporte de ventas')
+                    ->icon(Heroicon::OutlinedDocumentChartBar)
+                    ->color('success')
+                    ->modalHeading('Reporte de ventas de la empresa aliada')
+                    ->modalDescription('Genere la vista previa, revísela y decida si se envía y a quién. Nada sale hasta que lo confirme.')
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->modalIcon(Heroicon::OutlinedDocumentChartBar)
+                    ->visible(fn (): bool => BusinessFilamentActionAccess::userCan(
+                        BusinessFilamentActionPermissionRegistry::WHITE_COMPANY_SALES_REPORT,
+                    ))
+                    ->authorize(fn (): bool => BusinessFilamentActionAccess::userCan(
+                        BusinessFilamentActionPermissionRegistry::WHITE_COMPANY_SALES_REPORT,
+                    ))
+                    ->modalContent(fn (WhiteCompany $record): ViewContract => View::make(
+                        'filament.administration.white-companies.sales-report-modal',
+                        ['whiteCompany' => $record],
+                    ))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->action(fn () => null),
+
                 Action::make('documentBrand')
                     ->label('Documentos de marca')
                     ->icon(Heroicon::OutlinedSwatch)

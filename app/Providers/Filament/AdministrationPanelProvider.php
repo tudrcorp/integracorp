@@ -117,6 +117,10 @@ class AdministrationPanelProvider extends PanelProvider
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
+                fn (): string => view('filament.administration.partials.white-company-sales-report-panel-script')->render(),
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
                 fn (): string => view('filament.administration.partials.recibo-pago-panel-script')->render(),
             )
             ->renderHook(

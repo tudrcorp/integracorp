@@ -629,6 +629,23 @@ Route::get('business/affiliation-corporates/documents/status/{affiliationCorpora
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-corporate-documents.status');
 
+Route::get('reporte-aliada/verificar/{key?}', \App\Http\Controllers\WhiteCompanySalesReportVerificationController::class)
+    ->name('white-company-sales-report.verify');
+
+Route::post('administration/white-companies/{whiteCompany}/sales-report/preview', [
+    \App\Http\Controllers\WhiteCompanySalesReportController::class,
+    'preview',
+])
+    ->middleware(['web', 'auth'])
+    ->name('administration.white-companies.sales-report.preview');
+
+Route::post('administration/white-companies/{whiteCompany}/sales-report/send', [
+    \App\Http\Controllers\WhiteCompanySalesReportController::class,
+    'send',
+])
+    ->middleware(['web', 'auth'])
+    ->name('administration.white-companies.sales-report.send');
+
 Route::get('business/affiliation-corporates/documents/tarjetas/{affiliationCorporate}', [
     AffiliationCorporateBusinessDocumentsController::class,
     'tarjetas',
