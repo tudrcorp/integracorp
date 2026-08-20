@@ -6,12 +6,14 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers
 
 use App\Http\Controllers\AffiliateCorporateController;
 use App\Models\AffiliateCorporate;
+use App\Models\AffiliationCorporate;
 use App\Models\AfilliationCorporatePlan;
 use App\Models\AgeRange;
 use App\Models\BusinessLine;
 use App\Models\BusinessUnit;
 use App\Models\Plan;
 use App\Support\AffiliateVaucherIlsRemainingDays;
+use App\Support\AffiliationCorporates\CorporateAffiliatePlanSynchronizer;
 use App\Support\AffiliationCorporates\CorporateAffiliateVoucherIlsUpdater;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
@@ -392,15 +394,13 @@ class CorporateAffiliatesRelationManager extends RelationManager
                 IconColumn::make('sync_status')
                     ->label('Sync')
                     ->alignment(Alignment::Center)
-                    ->getStateUsing(fn (AffiliateCorporate $record): bool => $this->affiliateBusinessContextIsSynced($record))
+                    ->getStateUsing(fn (AffiliateCorporate $record): bool => $this->affiliateIsFullySynced($record))
                     ->boolean()
                     ->trueIcon('heroicon-o-check-circle')
                     ->falseIcon('heroicon-o-exclamation-triangle')
                     ->trueColor('success')
                     ->falseColor('warning')
-                    ->tooltip(fn (AffiliateCorporate $record): string => $this->affiliateBusinessContextIsSynced($record)
-                        ? 'Unidad y línea coinciden con la afiliación'
-                        : 'Pendiente de sincronizar con la afiliación'),
+                    ->tooltip(fn (AffiliateCorporate $record): string => $this->syncPendingSummary($record)),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
                     ->numeric(decimalPlaces: 2)
@@ -567,7 +567,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         Select::make('value')
                             ->label('Estado')
                             ->options([
-                                'synced' => 'Sincronizado con afiliación',
+                                'synced' => 'Unidad y línea sincronizadas',
                                 'pending' => 'Pendiente de sincronizar',
                             ])
                             ->native(false),
@@ -597,8 +597,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     })
                     ->indicateUsing(function (array $data): array {
                         return match ($data['value'] ?? null) {
-                            'synced' => ['synced' => 'Sincronizado con afiliación'],
-                            'pending' => ['pending' => 'Pendiente de sincronizar'],
+                            'synced' => ['synced' => 'Unidad y línea sincronizadas'],
+                            'pending' => ['pending' => 'Unidad o línea pendientes'],
                             default => [],
                         };
                     }),
@@ -651,6 +651,19 @@ class CorporateAffiliatesRelationManager extends RelationManager
             ])
             ->recordActions([
                 ActionGroup::make([
+                    Action::make('sync_with_affiliation')
+                        ->label('Sincronizar con la afiliación')
+                        ->icon(Heroicon::ArrowPathRoundedSquare)
+                        ->color('info')
+                        ->requiresConfirmation()
+                        ->modalWidth(Width::TwoExtraLarge)
+                        ->modalIcon(Heroicon::ArrowPathRoundedSquare)
+                        ->modalHeading('Sincronizar afiliado con la afiliación')
+                        ->modalDescription(fn (AffiliateCorporate $record): string => self::syncPreviewMessage($this->getOwnerRecord(), $record))
+                        ->modalSubmitActionLabel('Sincronizar')
+                        ->action(function (AffiliateCorporate $record): void {
+                            $this->runAffiliateSync([$record]);
+                        }),
                     EditAction::make()
                         ->label('Editar')
                         ->color('warning')
@@ -835,6 +848,20 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->send();
                             }
                         }),
+                    BulkAction::make('sync_with_affiliation_bulk')
+                        ->label('Sincronizar con la afiliación')
+                        ->icon(Heroicon::ArrowPathRoundedSquare)
+                        ->color('info')
+                        ->requiresConfirmation()
+                        ->modalWidth(Width::TwoExtraLarge)
+                        ->modalIcon(Heroicon::ArrowPathRoundedSquare)
+                        ->modalHeading('Sincronizar afiliados con la afiliación')
+                        ->modalDescription('A cada afiliado se le asigna el plan contratado por la empresa según su edad, con la cobertura y la tarifa de ese rango, más la unidad de negocio y la línea de servicio de la afiliación. No cambia el estatus de nadie.')
+                        ->modalSubmitActionLabel('Sincronizar')
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records): void {
+                            $this->runAffiliateSync($records);
+                        }),
                     BulkAction::make('reassign_plan')
                         ->label('Reasignar plan')
                         ->color('info')
@@ -850,7 +877,6 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 ->options(function () {
                                     // Log::info($this->getOwnerRecord()->affiliationCorporatePlans);
                                     $plans = $this->getOwnerRecord()->affiliationCorporatePlans->pluck('plan_id')->toArray();
-                                    Log::info($plans);
 
                                     return Plan::query()->whereIn('id', $plans)->orderBy('description')->pluck('description', 'id');
                                 })
@@ -872,7 +898,16 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 ->where('plan_id', $data['plan_id'])
                                 ->where('age_range_id', $data['age_range_id'])
                                 ->first();
-                            dd($plans);
+
+                            if (! $plans instanceof AfilliationCorporatePlan) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Error')
+                                    ->body('La afiliación no tiene contratado ese plan para el rango de edad seleccionado.')
+                                    ->send();
+
+                                return;
+                            }
 
                             // 1. En la tabla de rango de edades busco los valores enteros del rango de edad seleccionado
                             $ageRange = AgeRange::query()->where('id', $data['age_range_id'])->first();
@@ -887,21 +922,35 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 return;
                             }
 
-                            for ($i = 0; $i < count($records); $i++) {
+                            $reassigned = 0;
+                            $outOfRange = [];
+
+                            foreach ($records as $record) {
                                 // 2. Comparo el rango de edad del afiliado con el rango de edad seleccionado
-                                if ($records[$i]->age >= $ageRange->age_init && $records[$i]->age <= $ageRange->age_end) {
-                                    $records[$i]->update([
+                                if ((int) $record->age >= (int) $ageRange->age_init && (int) $record->age <= (int) $ageRange->age_end) {
+                                    $record->update([
                                         'plan_id' => $data['plan_id'],
                                         'coverage_id' => $plans->coverage_id,
                                         'fee' => $plans->fee,
                                     ]);
+                                    $reassigned++;
+
+                                    continue;
                                 }
+
+                                $outOfRange[] = CorporateAffiliatePlanSynchronizer::labelFor($record);
+                            }
+
+                            $body = $reassigned.' '.($reassigned === 1 ? 'afiliado reasignado' : 'afiliados reasignados').'.';
+
+                            if ($outOfRange !== []) {
+                                $body .= ' Fuera del rango de edad seleccionado: '.implode(', ', $outOfRange).'.';
                             }
 
                             Notification::make()
-                                ->success()
+                                ->{$outOfRange === [] ? 'success' : 'warning'}()
                                 ->title('Plan reasignado')
-                                ->body('Se reasignó el plan a los afiliados seleccionados.')
+                                ->body($body)
                                 ->send();
 
                         }),
@@ -920,6 +969,131 @@ class CorporateAffiliatesRelationManager extends RelationManager
     private function affiliateHasVoucherIls(AffiliateCorporate $record): bool
     {
         return filled($record->vaucherIls) || filled($record->document_ils);
+    }
+
+    /**
+     * @param  iterable<int, AffiliateCorporate>  $affiliates
+     */
+    private function runAffiliateSync(iterable $affiliates): void
+    {
+        $owner = $this->getOwnerRecord();
+
+        try {
+            $result = CorporateAffiliatePlanSynchronizer::sync($owner, $affiliates);
+        } catch (\Throwable $throwable) {
+            Log::error('NEGOCIOS-AFILIACIONES-CORPORATIVAS: Error al sincronizar afiliados con la afiliación.', [
+                'affiliation_corporate_id' => $owner->getKey(),
+                'error' => $throwable->getMessage(),
+            ]);
+
+            Notification::make()
+                ->danger()
+                ->title('No se pudo sincronizar')
+                ->body($throwable->getMessage())
+                ->send();
+
+            return;
+        }
+
+        $body = [];
+
+        if ($result['updated'] > 0) {
+            $body[] = $result['updated'].' '.($result['updated'] === 1 ? 'afiliado actualizado' : 'afiliados actualizados').'.';
+        }
+
+        if ($result['unchanged'] > 0) {
+            $body[] = $result['unchanged'].' ya '.($result['unchanged'] === 1 ? 'estaba' : 'estaban').' al día.';
+        }
+
+        foreach ($result['skipped'] as $skipped) {
+            $body[] = $skipped['name'].': '.CorporateAffiliatePlanSynchronizer::reasonLabel($skipped['reason']).'.';
+        }
+
+        $notification = Notification::make()
+            ->title($result['updated'] > 0 ? 'Afiliados sincronizados' : 'Sin cambios que aplicar')
+            ->body(implode(' ', $body) !== '' ? implode(' ', $body) : 'No hubo afiliados que sincronizar.');
+
+        $result['skipped'] === [] && $result['updated'] > 0
+            ? $notification->success()
+            : ($result['skipped'] !== [] ? $notification->warning() : $notification->info());
+
+        $notification->send();
+    }
+
+    private static function syncPreviewMessage(AffiliationCorporate $owner, AffiliateCorporate $record): string
+    {
+        $resolution = CorporateAffiliatePlanSynchronizer::resolvePlanRowForAffiliate($owner, $record);
+        $planRow = $resolution['row'];
+
+        if ($planRow === null) {
+            return 'No se puede sincronizar a '.CorporateAffiliatePlanSynchronizer::labelFor($record).': '
+                .CorporateAffiliatePlanSynchronizer::reasonLabel((string) $resolution['reason']).'.';
+        }
+
+        $planRow->loadMissing(['plan', 'ageRange', 'coverage']);
+
+        $plan = (string) ($planRow->plan?->description ?? 'Plan de la afiliación');
+        $rango = (string) ($planRow->ageRange?->range ?? '');
+        $cobertura = $planRow->coverage?->price !== null
+            ? number_format((float) $planRow->coverage->price, 2, ',', '.').' US$'
+            : 'sin cobertura';
+
+        return 'Se asignará el plan «'.$plan.'»'
+            .($rango !== '' ? ' (rango '.$rango.' años)' : '')
+            .', cobertura '.$cobertura
+            .' y tarifa anual '.number_format((float) $planRow->fee, 2, ',', '.').' US$'
+            .', junto con la unidad de negocio y la línea de servicio de la afiliación. El estatus del afiliado no cambia.';
+    }
+
+    private function affiliateIsFullySynced(AffiliateCorporate $record): bool
+    {
+        $owner = $this->getOwnerRecord()->fresh();
+
+        if ($owner === null) {
+            return false;
+        }
+
+        return CorporateAffiliatePlanSynchronizer::isSynced($owner, $record);
+    }
+
+    private function syncPendingSummary(AffiliateCorporate $record): string
+    {
+        $owner = $this->getOwnerRecord()->fresh();
+
+        if ($owner === null) {
+            return 'Pendiente de sincronizar con la afiliación';
+        }
+
+        $pending = [];
+
+        if (! CorporateAffiliatePlanSynchronizer::businessContextIsSynced($owner, $record)) {
+            $pending[] = 'unidad y línea';
+        }
+
+        $resolution = CorporateAffiliatePlanSynchronizer::resolvePlanRowForAffiliate($owner, $record);
+        $planRow = $resolution['row'];
+
+        if ($planRow === null) {
+            $pending[] = CorporateAffiliatePlanSynchronizer::reasonLabel((string) $resolution['reason']);
+        } elseif (! CorporateAffiliatePlanSynchronizer::isSynced($owner, $record, $planRow)) {
+            if ((int) $record->plan_id !== (int) $planRow->plan_id) {
+                $pending[] = 'plan';
+            }
+
+            if ((int) $record->coverage_id !== (int) $planRow->coverage_id) {
+                $pending[] = 'cobertura';
+            }
+
+            if (abs((float) $record->fee - (float) $planRow->fee) >= 0.01) {
+                $pending[] = 'tarifa';
+            }
+        }
+
+        $pending = array_values(array_unique($pending));
+
+        return $pending === []
+            ? 'Plan, cobertura, tarifa, unidad y línea coinciden con la afiliación'
+            : 'Pendiente de sincronizar: '.implode(', ', $pending);
     }
 
     private function affiliateBusinessContextIsSynced(AffiliateCorporate $record): bool

@@ -426,23 +426,51 @@ class AffiliationCorporatesTable
             )
             ->recordActions([
                 ActionGroup::make([
+                    /**REGENERAR CERTIFICADO Y CARNETS */
                     Action::make('regenerate')
                         ->label('Regenerar Documentos')
                         ->icon('heroicon-o-arrow-path')
                         ->color('info')
-                        ->modalHeading('Certificado y tarjetas corporativas')
+                        ->modalHeading('Certificado y carnets corporativos')
                         ->modalWidth(Width::SevenExtraLarge)
                         ->modalIcon('heroicon-o-arrow-path')
-                        ->modalDescription('Se genera el certificado corporativo con la lista de afiliados y una tarjeta por afiliado. Si hay más de 3 afiliados, el proceso se divide por lotes para mantener el rendimiento.')
+                        ->modalDescription('Se genera el certificado corporativo con la lista de afiliados y un PDF con todos los carnets. En poblaciones grandes el proceso continúa en segundo plano y puede cerrar la ventana.')
                         ->modalContent(function (AffiliationCorporate $record): ViewContract {
+                            try {
+                                Log::info('NEGOCIOS-AFILIACIONES-CORPORATIVAS: Modal de regeneración de documentos abierto.', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'agent_id' => $record->agent_id,
+                                    'status' => $record->status,
+                                ]);
+
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_DOCUMENTS_REGENERATE_OPENED', 'business.affiliation-corporates.regenerate-documents', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'agent_id' => $record->agent_id,
+                                    'status' => $record->status,
+                                ]);
+                            } catch (\Throwable $th) {
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_DOCUMENTS_REGENERATE_OPEN_FAILED', 'business.affiliation-corporates.regenerate-documents', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'error' => $th->getMessage(),
+                                ]);
+
+                                Log::error('NEGOCIOS-AFILIACIONES-CORPORATIVAS: Error al abrir modal de regeneración de documentos.', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_code' => $record->code,
+                                    'error' => $th->getMessage(),
+                                ]);
+                            }
+
                             return View::make('filament.business.affiliation-corporates.affiliation-corporate-documents-preview-modal', [
                                 'affiliationCorporate' => $record,
                             ]);
                         })
                         ->modalSubmitAction(false)
                         ->modalCancelActionLabel('Cerrar')
-                        ->action(fn () => null)
-                        ->hidden(fn () => ! in_array('SUPERADMIN', (array) (Auth::user()?->departament ?? []))),
+                        ->action(fn () => null),
 
                     Action::make('download')
                         ->label('Descargar Certificado')

@@ -13,11 +13,25 @@ use Illuminate\Database\Eloquent\Builder;
 final class CorporateAffiliatePlanSyncService
 {
     /**
-     * Recalcula total_persons y subtotales de cada fila de plan según afiliados ACTIVOS que coinciden
-     * en plan, cobertura y edad dentro del rango de la fila.
+     * Estados que cuentan como población al recalcular totales.
+     *
+     * Es el comportamiento histórico y se mantiene como valor por defecto para no
+     * alterar los flujos que ya activan al afiliado antes de recalcular.
+     *
+     * @var list<string>
      */
-    public static function syncPlanRowTotalsFromAffiliates(AffiliationCorporate $owner): void
+    public const DEFAULT_STATUSES = ['ACTIVO'];
+
+    /**
+     * Recalcula total_persons y subtotales de cada fila de plan según los afiliados que coinciden
+     * en plan, cobertura y edad dentro del rango de la fila.
+     *
+     * @param  list<string>|null  $statuses  Estados a contabilizar; por defecto solo ACTIVO.
+     */
+    public static function syncPlanRowTotalsFromAffiliates(AffiliationCorporate $owner, ?array $statuses = null): void
     {
+        $statuses = self::normalizeStatuses($statuses);
+
         $rows = AfilliationCorporatePlan::query()
             ->where('affiliation_corporate_id', $owner->getKey())
             ->with('ageRange')
@@ -32,7 +46,7 @@ final class CorporateAffiliatePlanSyncService
             $countQuery = AffiliateCorporate::query()
                 ->where('affiliation_corporate_id', $owner->getKey())
                 ->where('plan_id', $row->plan_id)
-                ->where('status', 'ACTIVO')
+                ->whereIn('status', $statuses)
                 ->whereNotNull('age')
                 ->whereBetween('age', [(int) $ageRange->age_init, (int) $ageRange->age_end]);
 
@@ -47,18 +61,22 @@ final class CorporateAffiliatePlanSyncService
     }
 
     /**
-     * Sincroniza poblation, fee_anual y total_amount de la afiliación con la suma de afiliados activos.
+     * Sincroniza poblation, fee_anual y total_amount de la afiliación con la suma de sus afiliados.
+     *
+     * @param  list<string>|null  $statuses  Estados a contabilizar; por defecto solo ACTIVO.
      */
-    public static function syncOwnerTotalsFromAffiliates(AffiliationCorporate $owner): void
+    public static function syncOwnerTotalsFromAffiliates(AffiliationCorporate $owner, ?array $statuses = null): void
     {
+        $statuses = self::normalizeStatuses($statuses);
+
         $sumFee = (float) AffiliateCorporate::query()
             ->where('affiliation_corporate_id', $owner->getKey())
-            ->where('status', 'ACTIVO')
+            ->whereIn('status', $statuses)
             ->sum('fee');
 
         $count = (int) AffiliateCorporate::query()
             ->where('affiliation_corporate_id', $owner->getKey())
-            ->where('status', 'ACTIVO')
+            ->whereIn('status', $statuses)
             ->count();
 
         $owner->fee_anual = $sumFee;
@@ -68,6 +86,20 @@ final class CorporateAffiliatePlanSyncService
             $owner->payment_frequency
         );
         $owner->save();
+    }
+
+    /**
+     * @param  list<string>|null  $statuses
+     * @return list<string>
+     */
+    private static function normalizeStatuses(?array $statuses): array
+    {
+        $statuses = array_values(array_filter(
+            array_map(static fn (mixed $status): string => trim((string) $status), $statuses ?? []),
+            static fn (string $status): bool => $status !== '',
+        ));
+
+        return $statuses === [] ? self::DEFAULT_STATUSES : $statuses;
     }
 
     /**

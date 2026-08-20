@@ -629,6 +629,13 @@ Route::get('business/affiliation-corporates/documents/status/{affiliationCorpora
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-corporate-documents.status');
 
+Route::get('business/affiliation-corporates/documents/tarjetas/{affiliationCorporate}', [
+    AffiliationCorporateBusinessDocumentsController::class,
+    'tarjetas',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporate-documents.tarjetas');
+
 Route::post('business/affiliation-corporates/documents/send-email/{affiliationCorporate}', [
     AffiliationCorporateBusinessDocumentsController::class,
     'sendEmail',

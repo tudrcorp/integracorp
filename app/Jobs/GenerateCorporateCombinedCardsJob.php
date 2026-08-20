@@ -8,13 +8,19 @@ use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
-class GenerateCorporateCertificateJob implements ShouldQueue
+/**
+ * Genera el PDF único con todos los carnets corporativos (8 por hoja A4).
+ *
+ * Va primero en el lote para que la vista previa esté disponible en segundos,
+ * mientras los carnets individuales que exige ViVEplus se siguen generando.
+ */
+class GenerateCorporateCombinedCardsJob implements ShouldQueue
 {
     use Batchable, Queueable;
 
     public int $tries = 1;
 
-    public int $timeout = 600;
+    public int $timeout = 900;
 
     public function __construct(
         public string $affiliationCode,
@@ -25,13 +31,13 @@ class GenerateCorporateCertificateJob implements ShouldQueue
     public function handle(): void
     {
         ini_set('memory_limit', '1024M');
-        set_time_limit(540);
+        set_time_limit(900);
 
         $record = AffiliationCorporate::query()
             ->where('code', $this->affiliationCode)
-            ->with(['corporateAffiliates', 'plan.benefitPlans', 'coverage', 'agent', 'agency'])
+            ->with(['corporateAffiliates.plan', 'corporateAffiliates.coverage', 'plan', 'coverage'])
             ->firstOrFail();
 
-        AffiliationCorporateBusinessDocumentsService::generateCorporateCertificate($record);
+        AffiliationCorporateBusinessDocumentsService::generateCombinedCards($record);
     }
 }
