@@ -107,21 +107,23 @@ class SyncFilamentNavigationPermissionsCommand extends Command
         $updated = 0;
 
         foreach (BusinessFilamentActionPermissionRegistry::all() as $slug => $definition) {
-            $permission = Permission::query()->firstOrNew([
-                'slug' => $slug,
-                'module' => 'NEGOCIOS',
-            ]);
+            foreach ($definition['modules'] as $module) {
+                $permission = Permission::query()->firstOrNew([
+                    'slug' => $slug,
+                    'module' => $module,
+                ]);
 
-            $isNew = ! $permission->exists;
-            $permission->name = $definition['name'];
-            $permission->created_by ??= 'system';
-            $permission->updated_by = 'system';
-            $permission->save();
+                $isNew = ! $permission->exists;
+                $permission->name = $definition['name'];
+                $permission->created_by ??= 'system';
+                $permission->updated_by = 'system';
+                $permission->save();
 
-            if ($isNew) {
-                $created++;
-            } else {
-                $updated++;
+                if ($isNew) {
+                    $created++;
+                } else {
+                    $updated++;
+                }
             }
         }
 
