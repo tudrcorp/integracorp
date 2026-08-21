@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Auth;
 
 uses(WithFaker::class, Tests\TestCase::class);
 
-function makeActionUser(array $departments, array $permissionSlugs = []): User
+function makeActionUser(array $departments, array $permissionSlugs = [], string $permissionModule = 'NEGOCIOS'): User
 {
     $user = new User;
     $user->forceFill([
@@ -32,7 +32,7 @@ function makeActionUser(array $departments, array $permissionSlugs = []): User
                 'id' => fake()->unique()->randomNumber(5),
                 'name' => $slug,
                 'slug' => $slug,
-                'module' => 'NEGOCIOS',
+                'module' => $permissionModule,
             ]))
         );
     }
@@ -164,5 +164,43 @@ it('niega documentos de marca sin el subpermiso aunque tenga empresas aliadas', 
         $user,
         'NEGOCIOS',
         BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_DOCUMENT_BRAND,
+    ))->toBeFalse();
+});
+
+it('fuera de un panel concede el reporte de ventas al analista de administracion', function (): void {
+    $user = makeActionUser(
+        ['ADMINISTRACION'],
+        [BusinessFilamentActionPermissionRegistry::WHITE_COMPANY_SALES_REPORT],
+        'ADMINISTRACION',
+    );
+
+    Auth::login($user);
+
+    expect(BusinessFilamentActionAccess::userCan(
+        BusinessFilamentActionPermissionRegistry::WHITE_COMPANY_SALES_REPORT,
+    ))->toBeTrue();
+});
+
+it('fuera de un panel niega el reporte de ventas a quien solo es de negocios', function (): void {
+    $user = makeActionUser(
+        ['NEGOCIOS'],
+        [BusinessFilamentActionPermissionRegistry::WHITE_COMPANY_SALES_REPORT],
+        'ADMINISTRACION',
+    );
+
+    Auth::login($user);
+
+    expect(BusinessFilamentActionAccess::userCan(
+        BusinessFilamentActionPermissionRegistry::WHITE_COMPANY_SALES_REPORT,
+    ))->toBeFalse();
+});
+
+it('fuera de un panel niega el reporte de ventas sin el subpermiso aunque vea empresas aliadas', function (): void {
+    $user = makeActionUser(['ADMINISTRACION'], ['empresas-aliadas'], 'ADMINISTRACION');
+
+    Auth::login($user);
+
+    expect(BusinessFilamentActionAccess::userCan(
+        BusinessFilamentActionPermissionRegistry::WHITE_COMPANY_SALES_REPORT,
     ))->toBeFalse();
 });
