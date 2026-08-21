@@ -4,9 +4,24 @@ declare(strict_types=1);
 
 use App\Support\IndividualQuotePdfLayout;
 use App\Support\PlanCreationPersistence;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 uses(TestCase::class);
+
+/**
+ * Los tests marcados `integration-db` escriben en la base. Corren dentro de una
+ * transacción que siempre se revierte: sin esto, cada corrida dejaba un plan
+ * «Plan test asociacion rango» con su cobertura, su rango y su tarifa en la
+ * base de desarrollo, porque tests/Unit no usa RefreshDatabase.
+ */
+beforeEach(function (): void {
+    DB::beginTransaction();
+});
+
+afterEach(function (): void {
+    DB::rollBack();
+});
 
 it('genera codigo de plan con formato esperado', function (): void {
     expect(PlanCreationPersistence::generatePlanCode())->toMatch('/^TDEC-PL-\d{4}$/');

@@ -10,7 +10,10 @@ use Tests\TestCase;
 uses(TestCase::class);
 
 it('configura el schema del plan incluyendo coberturas generales', function (): void {
-    $this->actingAs(User::factory()->create());
+    // make() y no create(): el schema solo necesita un usuario autenticado, y
+    // este test corre contra la base de desarrollo (tests/Unit no usa
+    // RefreshDatabase), así que persistirlo dejaba un usuario huérfano por corrida.
+    $this->actingAs(User::factory()->make());
 
     $schema = Schema::make();
     $configured = PlanForm::configure($schema);

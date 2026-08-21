@@ -51,14 +51,11 @@
                                         $cell = (array) data_get($row, "cells.{$columnKey}", []);
                                         $isSelected = (bool) ($cell['is_selected'] ?? false);
                                         $coverage = $cell['coverage_amount'] ?? null;
-                                        $coverageLabel = is_numeric($coverage)
-                                            ? PlanGeneratorPreviewBuilder::formatCoverageAmount((float) $coverage)
-                                            : '';
                                     @endphp
                                     <td class="border border-slate-200 px-2 py-2.5 text-center align-top dark:border-white/10">
                                         @include('filament.business.plan-generators.partials.benefit-cell-status-preview', [
                                             'isSelected' => $isSelected,
-                                            'coverageLabel' => $coverageLabel,
+                                            'coverageAmount' => $coverage,
                                         ])
                                     </td>
                                 @endforeach
