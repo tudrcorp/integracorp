@@ -36,18 +36,33 @@ Está **prohibido** ejecutar, sugerir o encadenar cualquier comando, script, tra
 
 **Sí se permite:**
 
-- `php artisan migrate` (solo migraciones pendientes; nunca fresh/refresh/wipe)
+- `php artisan migrate --path=...` sobre un archivo concreto (nunca fresh/refresh/wipe)
 - Tests filtrados: `php artisan test tests/Unit/Archivo.php` o `--filter=nombre`
-- El entorno de `phpunit.xml` (SQLite `:memory:`). Eso **no** toca la base de desarrollo.
+- Tests que **solo leen**, o que escriben dentro de una transacción revertida (ver abajo: `phpunit.xml` **no** basta para aislarlos).
 - Lecturas (`SELECT`) y cambios puntuales de datos que el usuario pida de forma explícita
 
 Si un test “necesita” recrear la base real, **no se recrea**. Se adapta el test (SQLite en memoria, fakes, factories aisladas) o se informa al usuario.
 
 **Red de seguridad ya implementada (no desactivarla ni “simplificarla”):**
 
-- `tests/TestCase.php` intercepta `refreshApplication()`: si la clase de test usa `RefreshDatabase`, `LazilyRefreshDatabase`, `DatabaseMigrations` o `DatabaseTruncation`, fuerza sqlite `:memory:` (más session/cache array y queue sync) **antes** de que el trait corra `migrate:fresh`, y lanza `RuntimeException` si aun así la conexión no es sqlite en memoria. Esto existe porque una config cacheada (`bootstrap/cache/config.php`) ignora los `env()` de `phpunit.xml` y dejaría la conexión apuntando a la base de desarrollo.
-- `phpunit.xml` declara `DB_CONNECTION`, `DB_DATABASE`, `CACHE_STORE`, `MAIL_MAILER`, `QUEUE_CONNECTION` y `SESSION_DRIVER` con `force="true"`, para pisar cualquier valor del `.env`.
+- `tests/TestCase.php` intercepta `refreshApplication()`: si la clase de test usa `RefreshDatabase`, `LazilyRefreshDatabase`, `DatabaseMigrations` o `DatabaseTruncation`, fuerza sqlite `:memory:` (más session/cache array y queue sync) **antes** de que el trait corra `migrate:fresh`, y lanza `RuntimeException` si aun así la conexión no es sqlite en memoria.
+- `phpunit.xml` declara `DB_CONNECTION`, `DB_DATABASE`, `CACHE_STORE`, `MAIL_MAILER`, `QUEUE_CONNECTION` y `SESSION_DRIVER` con `force="true"`.
 - `ensureSqliteInMemoryDatabaseOrSkip()` (`tests/Pest.php`) salta el test si la conexión no es sqlite en memoria: usarlo en cualquier test unitario que **escriba** en DB sin traits destructivos.
+
+**Pero esa red solo cubre los traits destructivos. Hoy los tests de `tests/Unit` que arrancan la aplicación escriben en la base MySQL de desarrollo real.**
+
+`bootstrap/cache/config.php` existe y está cacheado con `database.default = mysql` → `operaciones`. Una config cacheada ignora los `env()`, así que los `force="true"` de `phpunit.xml` **no se aplican**. Como `TestCase` solo redirige a sqlite cuando detecta un trait destructivo, un test unitario que haga `uses(Tests\TestCase::class)` y escriba deja basura en la base del usuario. Ya pasó (`PlanFormSchemaTest`, `PlanAndQuoteSupportTest`).
+
+Todo test unitario que **escriba** debe envolverse en una transacción que siempre se revierte — patrón ya establecido en `tests/Unit/PlanStructurePersistenceTest.php`:
+
+```php
+uses(Tests\TestCase::class);
+
+beforeEach(fn () => DB::beginTransaction());
+afterEach(fn () => DB::rollBack());
+```
+
+Si solo hace falta un usuario autenticado, `User::factory()->make()`, nunca `create()`. Después de correr tests, verificar conteos en la base.
 
 ### 0.3 Robustez 200 %, integridad y rendimiento
 
@@ -178,9 +193,19 @@ El sitio **siempre** está servido por Herd en `https://www.integracorp.test` (`
 | Un archivo de test | `php artisan test tests/Unit/NombreTest.php` |
 | Un test concreto | `php artisan test --filter=nombreDelTest` |
 | Suite completa (**solo si el usuario lo pide**) | `php artisan test` / `./vendor/bin/pest` |
-| Migrar (solo pendientes, nunca fresh/refresh/wipe) | `php artisan migrate` |
+| Migrar | **`php artisan migrate --path=database/migrations/<archivo>.php`** (una por una; `migrate` a secas siempre falla, ver abajo) |
 | Sincronizar permisos de menú Filament | `php artisan permissions:sync-navigation --panel=business` |
 | Crear archivos Filament | `php artisan make:filament-resource ... --no-interaction` (ver `list-artisan-commands` de Boost) |
+
+**`php artisan migrate` a secas siempre falla.** Hay ~380 archivos de migración en disco y solo ~157 registrados en la tabla `migrations`: el esquema se construyó importando un dump, no ejecutando las migraciones. Por eso `migrate` arranca por `0001_01_01_000000_create_users_table` y muere con *«Table 'users' already exists»*. No hay daño (aborta en el primer `CREATE TABLE`), pero se pierde tiempo diagnosticando. Escribir las migraciones nuevas idempotentes (`Schema::hasTable`, `Schema::hasColumn`) y aplicarlas una por una:
+
+```
+php artisan migrate --path=database/migrations/2026_08_20_180000_add_pricing_mode_to_plans_table.php
+```
+
+Verificar el resultado con una consulta a `information_schema`, no asumiendo que corrió.
+
+**La config está cacheada** (`bootstrap/cache/config.php`). Eso significa que un cambio en `.env` o en `config/*.php` no se ve hasta correr `php artisan config:clear`, y que los `env()` de `phpunit.xml` se ignoran (§0.2).
 
 `vite.config.js` solo compila cuatro temas Filament: `admin`, `agents`, `general`, `telemedicina`. Un tema nuevo en `resources/css/filament/` **no** se compila hasta agregarlo al array `input`.
 
@@ -254,6 +279,17 @@ Al registrar, jobs envían WhatsApp/email de bienvenida y notifican analistas (`
 - **PlanGenerator**: matriz de cotización corporativa (celdas, rates, imágenes, PDF). Lógica en `app/Support/PlanGenerators/` y `PlanGeneratorPdfService`.
 - **WhiteCompany**: tarifas negociadas, planes asignados (`WhiteCompanyPlan` + `WhiteCompanyPlanAssignment`), documentos de marca, liquidaciones (`WhiteCompanyPaymentSettlement`).
 - **Reporte de ventas de empresa aliada**: `WhiteCompanySalesReportService` arma el reporte por rango de fechas desde la **neta congelada en cada afiliación** (`white_company_neta` / `white_company_sale_price`), no desde la matriz de negociación vigente — así un reporte ya emitido sigue cuadrando aunque mañana se renegocien tarifas. Preview y envío por `WhiteCompanySalesReportController` (rutas `administration/white-companies/{whiteCompany}/sales-report/{preview,send}`), entrega en cola (`SendWhiteCompanySalesReportJob`, `SendWhiteCompanySalesReportWhatsAppJob`, `WhiteCompanySalesReportMail`) y verificación pública del documento en `/reporte-aliada/verificar/{key?}` con clave de `WhiteCompanySalesReportKey`.
+
+### 4.2.1 Plantillas PDF (DomPDF) — reglas que ya costaron romper el documento
+
+Cuatro restricciones del motor, aprendidas rompiendo la propuesta económica. Partir de `resources/views/livewire/planes-cotizacion-estructura.blade.php`, que ya las aplica y las tiene fijadas en `tests/Unit/QuotePdfStructurePageRenderTest.php`.
+
+1. **Márgenes con `padding` en celdas de tabla, no en `<div>`.** Un `<div>` al 100 % con `padding` desborda a la derecha aunque haya `box-sizing: border-box`: recorta el logo y la última columna. `@page { margin }` tampoco sirve cuando la plantilla se embebe en otro documento que ya declara el suyo.
+2. **Un bloque por fila de tabla, no todo en una celda.** DomPDF no parte una celda entre páginas: un plan con muchos beneficios empuja la hoja entera y deja la primera en blanco. Varias filas (`page-cell-first`, `page-cell`, `page-cell-last`) permiten paginar entre bloques.
+3. **`table-layout: fixed` con anchos explícitos.** Sin eso un nombre de beneficio largo estira la tabla y expulsa las últimas columnas.
+4. **La fuente del glifo `✓` va en línea.** Solo `DejaVu Sans` lo trae; con Arial o Helvetica DomPDF imprime `?`. Declararla en el `<style>` de la plantilla no basta si el documento envolvente declara otra.
+
+**Verificar un PDF por su pipeline real, no renderizando el componente aislado.** Una plantilla no es autónoma: la herencia de estilos del documento envolvente cambia el resultado y ninguna aserción sobre strings del HTML lo revela. Generar con `Pdf::loadHTML(view('documents.propuesta-economica', ...)->render())`, guardar en el scratchpad y **mirar la imagen**: `sips -s format png --out salida.png archivo.pdf` (macOS; `pdftoppm` no está instalado, y `sips` solo convierte la primera página).
 
 Cualquier cambio de precio debe pasar por los updaters existentes (`FeePriceUpdater`, calculadoras de afiliación) para no desincronizar cotizaciones, afiliaciones y renovaciones.
 
@@ -399,7 +435,7 @@ app/
   Jobs/                        # ~95 jobs: WhatsApp, PDF, mail, exports, renovaciones
   Livewire/                    # Flujos públicos de cotización/afiliación/registro
   Mail/  Notifications/
-  Models/                      # ~280 modelos. ProjectManagement/ anidado
+  Models/                      # ~264 modelos. ProjectManagement/ anidado
   Observers/
   Listeners/                   # Solo LogFilamentImportActivity
   Policies/                    # Casi vacío a propósito (ver §6): solo TelemedicineCaseMessagePolicy
@@ -559,12 +595,13 @@ Pantallas nuevas de **producto interno** van en Filament del panel correspondien
 
 ## 11. Testing
 
-- Pest 3. Unit en `tests/Unit`, Feature en `tests/Feature`.
-- La proporción del repo es deliberada: ~820 archivos en `tests/Unit` contra ~18 en `tests/Feature`. **El estilo dominante es el test unitario que lee el código fuente** (assertions sobre strings de Resources, Schemas, Tables y registries) sin tocar base de datos. Copiar ese patrón antes de montar un test con DB.
-- `phpunit.xml`: SQLite `:memory:`, cache/session/mail array, queue sync, todo con `force="true"`. **No reconfigurar a MySQL de desarrollo ni quitar los `force`.**
-- `tests/TestCase.php` es la guarda dura descrita en §0.2: fuerza sqlite en memoria y aborta con `RuntimeException` a cualquier test que use un trait que recree el esquema contra otra conexión. Si un test nuevo falla ahí, el problema es el test, no la guarda.
-- `tests/Pest.php` aplica `RefreshDatabase` automáticamente a **todo** `tests/Feature` (`pest()->extend(...)->use(RefreshDatabase::class)->in('Feature')`). Es seguro **solo** porque PHPUnit apunta a memoria; si un test se ejecuta con otra conexión, se destruiría data real.
-- Helpers globales de `tests/Pest.php`: `ensureSqliteInMemoryDatabaseOrSkip()` (salta el test si la conexión no es sqlite en memoria — usarlo en cualquier test unitario que escriba en DB) e `insertPublicAiAgentTestAgency()` (siembra una agencia mínima para el chat público).
+- Pest 3. Unit en `tests/Unit` (~810 archivos), Feature en `tests/Feature` (10 archivos).
+- La proporción es deliberada: **el estilo dominante es el test unitario que lee el código fuente** — assertions sobre strings de Resources, Schemas, Tables y registries, sin tocar base de datos ni contenedor. Copiar ese patrón antes de montar un test con DB.
+- **`tests/Unit` no arranca la aplicación por defecto.** `tests/Pest.php` hace `pest()->extend(Tests\TestCase::class)` solo `->in('Feature')`. Un test de Unit es PHPUnit puro: `config()`, `app()` y las facades **no resuelven** (fallan con `Target class [config] does not exist`). Para tener contenedor hay que declarar `uses(Tests\TestCase::class);` — lo hacen ~226 de los 810 archivos.
+- **En cuanto un test de Unit arranca la aplicación, la conexión es la MySQL de desarrollo** (§0.2). Escribir sin transacción revertida ensucia la base del usuario.
+- **`tests/Feature` está roto y no sirve como alternativa.** `tests/Pest.php` le aplica `RefreshDatabase`, `TestCase` lo redirige a sqlite `:memory:` (correcto, protege la base), pero el esquema no se puede construir desde cero: hay tablas sin migración de creación y revienta en `2025_07_14_145024_add_configuration_menu_to_agents.php` con `no such table: agents`. **Los 37 tests del suite fallan hoy.** No montar tests nuevos ahí esperando que pasen.
+- Helpers globales de `tests/Pest.php`: `ensureSqliteInMemoryDatabaseOrSkip()` e `insertPublicAiAgentTestAgency()` (siembra una agencia mínima para el chat público).
+- **Fallos preexistentes**, ajenos a cualquier cambio nuevo — no perseguirlos ni "arreglarlos" borrando aserciones: `QuotePdfCoverageTableTest` (falla por `Target class [config] does not exist`, le falta el `uses`), `PlanCodeGeneratorTest` (2 tests con aserciones sobre strings que nunca existieron) y `PlanGeneratorTest` (exige un `canView` que `PlanGeneratorResource.php` nunca tuvo). Ante una corrida en rojo, confirmar con `git stash` antes de atribuírselo a lo propio.
 - Nombrar tests en español está aceptado en el repo (`it('...', ...)`).
 - Cubrir: autorización (403), validación, cálculo de tarifas, no regresión de navegación, jobs (fake Mail/Queue/Storage).
 - Correr el mínimo: `php artisan test --filter=NombreDelTest`.
@@ -597,7 +634,7 @@ Antes de dar por cerrado un cambio, verificar:
 3. Implementar de forma aditiva, con autorización, validación y UX completa.
 4. Escribir o actualizar tests Pest. Ejecutar solo esos tests.
 5. `vendor/bin/pint --dirty`.
-6. No `migrate:fresh`. Solo `migrate` si hay migración nueva **pendiente** y el usuario está de acuerdo.
+6. No `migrate:fresh`. Migración nueva: idempotente y aplicada con `--path` (§2.1), con el usuario de acuerdo.
 7. Responder siempre en español: qué cambió, por qué, riesgos, cómo probar en UI (panel + URL de Herd).
 
 URLs para el usuario: usar el tool `get-absolute-url` de Boost (esquema/host/puerto correctos de Herd). No inventar `localhost:8000`.
@@ -641,7 +678,7 @@ Frontend que “no se ve”: pedir `npm run dev` / `npm run build` / `composer r
 | `app/Services/PublicAiAgent/AgentOrchestrator.php` | Chat / guía pública |
 | `tests/TestCase.php` | Guarda dura: fuerza sqlite `:memory:` en tests que recrean el esquema |
 | `tests/Pest.php` | Helpers globales (`ensureSqliteInMemoryDatabaseOrSkip`) y `RefreshDatabase` en Feature |
-| `phpunit.xml` | Confirma que los tests van a sqlite `:memory:` |
+| `phpunit.xml` | Declara sqlite `:memory:`… que la config cacheada ignora (§0.2) |
 | `vite.config.js` | Qué temas Filament se compilan |
 | `.cursor/rules/agent-no-refresh-database.mdc` | Misma prohibición de wipe a nivel Cursor |
 | `.cursor/rules/integracorp-agente.mdc` | Resumen de los mandatos del §0 para Cursor |

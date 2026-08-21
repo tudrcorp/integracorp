@@ -14,6 +14,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 final class CompanyAssociateVoucherIlsUpdater
 {
@@ -79,18 +80,42 @@ final class CompanyAssociateVoucherIlsUpdater
     }
 
     /**
+     * El guardado del voucher y el cambio de estatus a ACTIVO son una sola unidad:
+     * un asociado con voucher pero sin activar quedaría fuera de cobertura.
+     *
      * @param  array<string, mixed>  $data
      */
     public static function save(CompanyAssociate $associate, array $data): void
     {
-        $associate->update([
-            'vaucher_ils' => $data['vaucherIls'],
-            'date_init' => self::formatDateForStorage($data['dateInit']),
-            'date_end' => self::formatDateForStorage($data['dateEnd']),
-            'document_ils' => self::resolveDocumentPath($data['document_ils'] ?? null, $associate->document_ils),
-        ]);
+        DB::transaction(function () use ($associate, $data): void {
+            $associate->update([
+                'vaucher_ils' => $data['vaucherIls'],
+                'date_init' => self::formatDateForStorage($data['dateInit']),
+                'date_end' => self::formatDateForStorage($data['dateEnd']),
+                'document_ils' => self::resolveDocumentPath($data['document_ils'] ?? null, $associate->document_ils),
+            ]);
 
-        CompanyAssociateStatusManager::markActiveAfterVoucherIls($associate->fresh() ?? $associate);
+            CompanyAssociateStatusManager::markActiveAfterVoucherIls($associate->fresh() ?? $associate);
+        });
+    }
+
+    /**
+     * Normaliza los datos ya validados del formulario para poder viajar como
+     * argumentos de la acción de confirmación, que los recibe serializados.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{vaucherIls: string, dateInit: string, dateEnd: string, document_ils: string|null}
+     */
+    public static function argumentsForConfirmation(array $data): array
+    {
+        $document = self::resolveDocumentPath($data['document_ils'] ?? null, null);
+
+        return [
+            'vaucherIls' => (string) ($data['vaucherIls'] ?? ''),
+            'dateInit' => self::formatDateForStorage($data['dateInit'] ?? null),
+            'dateEnd' => self::formatDateForStorage($data['dateEnd'] ?? null),
+            'document_ils' => $document,
+        ];
     }
 
     private static function resolveDocumentPath(mixed $uploaded, ?string $existing): ?string

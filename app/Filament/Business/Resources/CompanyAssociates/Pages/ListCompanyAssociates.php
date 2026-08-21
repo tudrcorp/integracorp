@@ -6,14 +6,18 @@ namespace App\Filament\Business\Resources\CompanyAssociates\Pages;
 
 use App\Filament\Business\Resources\CompanyAssociates\CompanyAssociateResource;
 use App\Filament\Business\Resources\CompanyAssociates\Tables\CompanyAssociatesTable;
+use App\Jobs\NotifyCompanyAssociateIlsCoverageConfirmedJob;
 use App\Models\CompanyAssociate;
 use App\Models\CompanyResponsible;
 use App\Support\Companies\CompanyAssociateDocumentsManualSender;
 use App\Support\Companies\CompanyAssociatesTableContext;
+use App\Support\Companies\CompanyAssociateVoucherIlsUpdater;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
@@ -23,6 +27,8 @@ use Throwable;
 
 class ListCompanyAssociates extends ListRecords
 {
+    public const CONFIRM_ILS_COVERAGE_ACTION = 'confirmCompanyAssociateIlsCoverage';
+
     protected static string $resource = CompanyAssociateResource::class;
 
     #[Url(as: 'contextCompany')]
@@ -73,6 +79,113 @@ class ListCompanyAssociates extends ListRecords
             'scopedResponsible' => $this->isScopedToResponsible(),
             'scopedCompany' => filled($this->contextCompany),
         ]);
+    }
+
+    /**
+     * Segundo paso de la carga del voucher ILS. La acción de la tabla ya validó el
+     * formulario y, en lugar de guardar, remonta esta confirmación con los datos
+     * como argumentos. Solo aquí se persiste y se notifica: la declaración del
+     * analista es la que autoriza el aviso de cobertura.
+     */
+    protected function confirmCompanyAssociateIlsCoverageAction(): Action
+    {
+        return Action::make(self::CONFIRM_ILS_COVERAGE_ACTION)
+            ->requiresConfirmation()
+            ->modalIcon(Heroicon::OutlinedShieldCheck)
+            ->modalIconColor('warning')
+            ->modalHeading('Confirmar cobertura del cliente')
+            ->modalDescription(fn (array $arguments): string => self::confirmIlsCoverageDescription($arguments))
+            ->modalWidth(Width::Large)
+            ->modalSubmitActionLabel('Sí, el cliente está cubierto')
+            ->modalCancelActionLabel('Volver')
+            ->closeModalByClickingAway(false)
+            ->modalSubmitAction(fn (Action $action): Action => $action->color('success'))
+            ->action(function (Action $action): void {
+                $this->handleIlsCoverageConfirmation($action->getArguments());
+            });
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    private static function confirmIlsCoverageDescription(array $arguments): string
+    {
+        $voucher = is_array($arguments['voucher'] ?? null) ? $arguments['voucher'] : [];
+
+        $code = filled($voucher['vaucherIls'] ?? null) ? (string) $voucher['vaucherIls'] : '—';
+        $dateInit = filled($voucher['dateInit'] ?? null) ? (string) $voucher['dateInit'] : '—';
+        $dateEnd = filled($voucher['dateEnd'] ?? null) ? (string) $voucher['dateEnd'] : '—';
+
+        return '¿Está seguro de haber realizado toda la gestión que garantiza que el cliente está cubierto? '
+            .'Al confirmar se guardará el voucher '.$code.' con vigencia del '.$dateInit.' al '.$dateEnd
+            .', y se notificará por correo y WhatsApp, con el voucher adjunto, a los destinatarios del centro de notificaciones. '
+            .'Su confirmación queda registrada en las trazas de seguridad.';
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    private function handleIlsCoverageConfirmation(array $arguments): void
+    {
+        $associateId = (int) ($arguments['associateId'] ?? 0);
+        $voucher = is_array($arguments['voucher'] ?? null) ? $arguments['voucher'] : [];
+
+        $associate = $associateId > 0
+            ? CompanyAssociate::query()->find($associateId)
+            : null;
+
+        if ($associate === null) {
+            Notification::make()
+                ->warning()
+                ->title('No se encontró el asociado')
+                ->body('El registro ya no existe. Vuelva a intentarlo desde la tabla.')
+                ->send();
+
+            return;
+        }
+
+        if ($voucher === []) {
+            Notification::make()
+                ->danger()
+                ->title('No se pudo guardar el voucher')
+                ->body('Se perdieron los datos del formulario. Vuelva a abrir «Voucher ILS» y cárguelos de nuevo.')
+                ->send();
+
+            return;
+        }
+
+        try {
+            CompanyAssociateVoucherIlsUpdater::save($associate, $voucher);
+        } catch (Throwable $throwable) {
+            report($throwable);
+
+            Notification::make()
+                ->danger()
+                ->title('No se pudo guardar el voucher')
+                ->body($throwable->getMessage())
+                ->send();
+
+            return;
+        }
+
+        SecurityAudit::log('AUDIT_BUSINESS_COMPANY_ASSOCIATE_ILS_COVERAGE_CONFIRMED', 'company-associates.voucher-ils.coverage-confirmed', [
+            'associate_id' => $associate->getKey(),
+            'company_id' => $associate->company_id,
+            'vaucher_ils' => $voucher['vaucherIls'] ?? null,
+            'date_init' => $voucher['dateInit'] ?? null,
+            'date_end' => $voucher['dateEnd'] ?? null,
+        ]);
+
+        // Los paneles corren la acción dentro de una transacción: sin `afterCommit()`
+        // un worker podría tomar el job antes de que el voucher esté confirmado en la base.
+        NotifyCompanyAssociateIlsCoverageConfirmedJob::dispatch((int) $associate->getKey())
+            ->afterCommit();
+
+        Notification::make()
+            ->success()
+            ->title('Cobertura confirmada')
+            ->body('El voucher de '.$associate->full_name.' se registró y el estatus pasó a ACTIVO. La notificación con el voucher adjunto va en camino.')
+            ->send();
     }
 
     /**
