@@ -45,7 +45,7 @@ final class RenovationManualAcceptancePricing
             'annual_fee' => $annualFee,
             'period_amount' => $this->calculator->totalAmountForPaymentFrequency($annualFee, $paymentFrequency),
             'age_range_id' => $ageRangeId,
-            'coverage_id' => $planId === AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID
+            'coverage_id' => $this->calculator->planHasNoCoverages($planId)
                 ? null
                 : $coverageId,
         ];
@@ -238,8 +238,11 @@ final class RenovationManualAcceptancePricing
     {
         $query = Fee::query()->where('age_range_id', $ageRangeId);
 
-        if ($planId === AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID) {
-            return $query->first();
+        if ($this->calculator->planHasNoCoverages($planId)) {
+            // La tarifa de un paquete de beneficios se guarda sin cobertura.
+            // Acotarlo evita que un plan con varios rangos tome por error una
+            // tarifa por cobertura que comparta el mismo rango de edad.
+            return $query->whereNull('coverage_id')->first();
         }
 
         if ($coverageId === null) {
@@ -257,7 +260,7 @@ final class RenovationManualAcceptancePricing
     ): Affiliation {
         $snapshot = $affiliation->replicate();
         $snapshot->plan_id = $planId;
-        $snapshot->coverage_id = $planId === AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID
+        $snapshot->coverage_id = $this->calculator->planHasNoCoverages($planId)
             ? null
             : $coverageId;
         $snapshot->payment_frequency = $paymentFrequency;

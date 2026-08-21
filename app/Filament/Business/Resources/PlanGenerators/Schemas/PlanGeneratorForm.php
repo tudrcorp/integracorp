@@ -6,12 +6,16 @@ namespace App\Filament\Business\Resources\PlanGenerators\Schemas;
 
 use App\Enums\PlanGeneratorPopulationUnit;
 use App\Models\Benefit;
+use App\Models\Plan;
 use App\Support\PlanGenerators\PlanGeneratorBrandColor;
 use App\Support\PlanGenerators\PlanGeneratorImageGallery;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorPopulationValidator;
 use App\Support\PlanGenerators\PlanGeneratorQuotationState;
 use App\Support\PlanGenerators\PlanGeneratorQuotationValidator;
+use App\Support\PlanGenerators\PlanGeneratorStructureImporter;
+use Filament\Actions\Action;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -22,6 +26,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -43,6 +48,111 @@ class PlanGeneratorForm
     private const IOS_INNER_CLASS = 'rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
 
     private const MONTHLY_TOGGLE_CARD_CLASS = 'rounded-[1rem] border border-slate-200/90 bg-gradient-to-r from-white via-slate-50/90 to-white px-4 py-3.5 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.15)] ring-1 ring-slate-200/50 transition dark:border-white/10 dark:from-slate-900/90 dark:via-slate-950/95 dark:to-slate-900/90 dark:ring-white/10';
+
+    /**
+     * Planes que se pueden volcar en una cotización: los que tienen algo que
+     * volcar. Un plan sin tarifas produciría una matriz vacía.
+     *
+     * @return array<int, string>
+     */
+    private static function catalogPlanOptions(): array
+    {
+        return Plan::query()
+            ->where('status', 'ACTIVO')
+            ->whereExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('fees')
+                    ->whereColumn('fees.plan_id', 'plans.id');
+            })
+            ->orderBy('description')
+            ->pluck('description', 'id')
+            ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function planCoverageOptions(mixed $planId): array
+    {
+        if (blank($planId)) {
+            return [];
+        }
+
+        $plan = Plan::query()->find($planId);
+
+        return $plan === null ? [] : PlanGeneratorStructureImporter::coverageOptions($plan);
+    }
+
+    /**
+     * Vuelca la estructura del plan sobre el estado del formulario.
+     *
+     * Reemplaza columnas, beneficios y tarifas; deja intactas las imágenes de
+     * la cotización y los datos comerciales, que no salen del plan. La
+     * población de cada rango queda vacía a propósito: es un dato del cliente.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private static function importPlanStructure(array $data, Set $schemaSet): void
+    {
+        $plan = Plan::query()->find($data['plan_id'] ?? null);
+
+        if ($plan === null) {
+            Notification::make()
+                ->title('Plan no encontrado')
+                ->body('El plan seleccionado ya no existe en el catálogo.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $selected = array_values(array_filter(
+            (array) ($data['coverage_ids'] ?? []),
+            static fn (mixed $id): bool => filled($id),
+        ));
+
+        // Sin selección explícita no se importa nada: `build()` interpreta el
+        // arreglo vacío como "todas las coberturas", y volcar el plan completo
+        // cuando el analista no eligió ninguna sería una sorpresa desagradable.
+        if ($selected === []) {
+            Notification::make()
+                ->title('Seleccione al menos una cobertura')
+                ->body('Indique qué coberturas del plan entrarán en esta cotización.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $structure = PlanGeneratorStructureImporter::build($plan, $selected);
+
+        if ($structure['columns'] === []) {
+            Notification::make()
+                ->title('No se cargó nada')
+                ->body('El plan no tiene coberturas seleccionables para armar la matriz.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $schemaSet('columns', $structure['columns']);
+        $schemaSet('rows', $structure['rows']);
+        $schemaSet('rate_rows', $structure['rate_rows']);
+
+        Notification::make()
+            ->title('Estructura cargada')
+            ->body(sprintf(
+                'Se cargaron %d cobertura(s), %d beneficio(s) y %d rango(s) de edad desde «%s». Falta indicar la población de cada rango y cargar las imágenes de la cotización.',
+                $structure['summary']['columns'],
+                $structure['summary']['benefits'],
+                $structure['summary']['age_ranges'],
+                (string) $plan->description,
+            ))
+            ->success()
+            ->persistent()
+            ->send();
+    }
 
     public static function configure(Schema $schema): Schema
     {
@@ -94,6 +204,61 @@ class PlanGeneratorForm
                                                             ->required()
                                                             ->native(false),
                                                     ]),
+                                            ]),
+                                    ]),
+
+                                Section::make('Estructura desde un plan del catálogo')
+                                    ->icon(Heroicon::OutlinedSquares2x2)
+                                    ->description('Cargue las columnas, los beneficios, los costos límite y las tarifas desde un plan ya creado. Después solo tendrá que cargar las imágenes de la cotización y la población del cliente.')
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                Select::make('plan_id')
+                                                    ->label('Plan del catálogo')
+                                                    ->placeholder('Sin plan de origen (matriz manual)')
+                                                    ->options(fn (): array => self::catalogPlanOptions())
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->native(false)
+                                                    ->live()
+                                                    ->helperText('La cotización guarda su propia copia: editar el plan más adelante no altera una cotización ya emitida.')
+                                                    ->belowContent(
+                                                        Action::make('import_plan_structure')
+                                                            ->label('Cargar estructura del plan')
+                                                            ->icon(Heroicon::OutlinedArrowDownTray)
+                                                            ->color('success')
+                                                            ->button()
+                                                            ->disabled(fn (Get $schemaGet): bool => blank($schemaGet('plan_id')))
+                                                            ->modalHeading('Cargar estructura del plan')
+                                                            ->modalDescription('Elija qué coberturas del plan entrarán en esta cotización. Se reemplazarán las columnas, los beneficios y las tarifas cargadas hasta ahora; las imágenes y los datos comerciales no se tocan.')
+                                                            ->modalSubmitActionLabel('Cargar estructura')
+                                                            // El plan viaja dentro del estado del modal: adentro, `Get`
+                                                            // resuelve contra el schema del modal y no contra el formulario.
+                                                            ->fillForm(fn (Get $schemaGet): array => [
+                                                                'plan_id' => $schemaGet('plan_id'),
+                                                                'coverage_ids' => array_keys(self::planCoverageOptions($schemaGet('plan_id'))),
+                                                            ])
+                                                            ->schema([
+                                                                Hidden::make('plan_id'),
+                                                                CheckboxList::make('coverage_ids')
+                                                                    ->label('Coberturas a cotizar')
+                                                                    ->options(fn (Get $get): array => self::planCoverageOptions($get('plan_id')))
+                                                                    ->bulkToggleable()
+                                                                    ->required()
+                                                                    ->columns(2)
+                                                                    ->helperText('Un mismo plan suele cotizarse con solo algunas de sus coberturas.'),
+                                                            ])
+                                                            ->action(function (array $data, Set $schemaSet): void {
+                                                                self::importPlanStructure($data, $schemaSet);
+                                                            }),
+                                                    )
+                                                    ->columnSpanFull(),
                                             ]),
                                     ]),
                             ]),

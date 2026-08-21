@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PlanPricingMode;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,7 +19,48 @@ class Plan extends Model
         'created_by',
         'type',
         'agencies',
+        'pricing_mode',
+        'structure_version',
     ];
+
+    /** Planes armados con el asistente de Negocios. */
+    public const STRUCTURE_VERSION_WIZARD = 2;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'pricing_mode' => PlanPricingMode::class,
+            'structure_version' => 'integer',
+        ];
+    }
+
+    public function pricingMode(): PlanPricingMode
+    {
+        return $this->pricing_mode instanceof PlanPricingMode
+            ? $this->pricing_mode
+            : (PlanPricingMode::fromStored($this->pricing_mode) ?? PlanPricingMode::Coberturas);
+    }
+
+    /**
+     * Un paquete de beneficios no tiene coberturas: la tarifa depende solo del
+     * rango de edad.
+     */
+    public function isBenefitPackage(): bool
+    {
+        return $this->pricingMode() === PlanPricingMode::Paquete;
+    }
+
+    /**
+     * Los planes históricos se siguen editando con el formulario anterior: su
+     * estructura alimenta cotizaciones y afiliaciones ya emitidas.
+     */
+    public function usesStructureWizard(): bool
+    {
+        return (int) ($this->structure_version ?? 1) >= self::STRUCTURE_VERSION_WIZARD;
+    }
 
     /**
      * Get all of the comments for the Plan

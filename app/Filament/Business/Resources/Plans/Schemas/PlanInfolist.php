@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Plans\Schemas;
 
+use App\Enums\PlanPricingMode;
 use App\Models\AgeRange;
 use App\Models\Coverage;
 use App\Models\Fee;
+use App\Models\Plan;
+use App\Support\Plans\PlanStructureSummary;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 
 class PlanInfolist
@@ -99,6 +103,16 @@ class PlanInfolist
             ->all();
     }
 
+    private static function usesCoverages(mixed $record): bool
+    {
+        return $record instanceof Plan && $record->pricingMode()->usesCoverages();
+    }
+
+    private static function isBenefitPackage(mixed $record): bool
+    {
+        return $record instanceof Plan && $record->isBenefitPackage();
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -131,6 +145,12 @@ class PlanInfolist
                                             ->label('Tipo')
                                             ->badge()
                                             ->color('gray')
+                                            ->placeholder('—'),
+                                        TextEntry::make('pricing_mode')
+                                            ->label('Forma de armado')
+                                            ->badge()
+                                            ->formatStateUsing(fn (mixed $state): string => PlanPricingMode::labelFromMixed($state))
+                                            ->color(fn (mixed $state): string => PlanPricingMode::filamentColorFromMixed($state))
                                             ->placeholder('—'),
                                         TextEntry::make('status')
                                             ->label('Estatus')
@@ -182,9 +202,92 @@ class PlanInfolist
                     ])
                     ->columnSpanFull(),
 
-                Section::make('Coberturas y tarifas anuales')
-                    ->description('Cada cobertura con sus rangos de edad y prima anual configurada.')
+                // Las dos matrices del asistente, en el mismo orden en que el
+                // analista las llenó: primero qué cubre y hasta cuánto, después
+                // cuánto cuesta según la edad.
+                Section::make('Costos límite por beneficio y cobertura')
+                    ->description('Hasta cuánto responde cada beneficio en cada cobertura del plan.')
+                    ->icon('heroicon-o-scale')
+                    ->visible(fn (mixed $record): bool => self::usesCoverages($record))
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
+                    ->schema([
+                        View::make('filament.business.plans.structure-matrix')
+                            ->viewData(fn (mixed $record): array => [
+                                ...($record instanceof Plan
+                                    ? PlanStructureSummary::limitsMatrix($record)
+                                    : ['columns' => [], 'rows' => []]),
+                                'rowHeader' => 'Beneficio',
+                                'emptyMessage' => 'Este plan todavía no tiene beneficios con costo límite configurado.',
+                                'emptyCellLabel' => 'Sin límite',
+                            ])
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Tarifas por rango de edad y cobertura')
+                    ->description('La prima anual que paga un afiliado según su edad y la cobertura contratada.')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->visible(fn (mixed $record): bool => self::usesCoverages($record))
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
+                    ->schema([
+                        View::make('filament.business.plans.structure-matrix')
+                            ->viewData(fn (mixed $record): array => [
+                                ...($record instanceof Plan
+                                    ? PlanStructureSummary::ratesMatrix($record)
+                                    : ['columns' => [], 'rows' => []]),
+                                'rowHeader' => 'Rango de edad',
+                                'emptyMessage' => 'Este plan todavía no tiene rangos de edad con tarifa configurada.',
+                                'emptyCellLabel' => 'Sin tarifa',
+                            ])
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
+
+                // Un paquete no tiene coberturas: sus tarifas quedarían
+                // invisibles en las secciones de arriba.
+                Section::make('Tarifas del paquete por rango de edad')
+                    ->description('El paquete se cobra como un todo: una sola tarifa anual por rango de edad.')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->visible(fn (mixed $record): bool => self::isBenefitPackage($record))
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ])
+                    ->schema([
+                        RepeatableEntry::make('plan_flat_rates')
+                            ->label('')
+                            ->placeholder('Este paquete todavía no tiene rangos de edad con tarifa configurada.')
+                            ->state(fn (mixed $record): array => $record instanceof Plan
+                                ? PlanStructureSummary::flatRates($record)
+                                : [])
+                            ->extraEntryWrapperAttributes([
+                                'class' => 'rounded-2xl border border-slate-200/70 bg-white/70 px-3 py-3 dark:border-white/10 dark:bg-white/5 sm:px-4 sm:py-4',
+                            ])
+                            ->table([
+                                TableColumn::make('Rango de edad'),
+                                TableColumn::make('Tarifa anual'),
+                            ])
+                            ->schema([
+                                TextEntry::make('range')
+                                    ->label('Rango de edad')
+                                    ->weight('medium')
+                                    ->placeholder('—'),
+                                TextEntry::make('rate')
+                                    ->label('Tarifa anual')
+                                    ->placeholder('Sin tarifa'),
+                            ])
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Detalle por cobertura')
+                    ->description('Cada cobertura del plan con sus rangos de edad y prima anual.')
                     ->icon('heroicon-o-shield-check')
+                    ->collapsed()
+                    ->visible(fn (mixed $record): bool => self::usesCoverages($record))
                     ->extraAttributes([
                         'class' => self::IOS_SECTION_CLASS,
                     ])

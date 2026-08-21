@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PlanGenerator extends Model
 {
     protected $fillable = [
         'name',
+        'plan_id',
         'control_number',
         'client_data',
         'issued_at',
@@ -31,11 +33,22 @@ class PlanGenerator extends Model
     protected function casts(): array
     {
         return [
+            'plan_id' => 'integer',
             'issued_at' => 'date',
             'quotation_page_count' => 'integer',
             'plan_page_number' => 'integer',
             'include_monthly_total' => 'boolean',
         ];
+    }
+
+    /**
+     * Plan del catálogo que originó la matriz. Es trazabilidad, no un vínculo
+     * vivo: la cotización conserva su propia copia de columnas, beneficios y
+     * tarifas, así que editar el plan no la modifica.
+     */
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class, 'plan_id', 'id');
     }
 
     public function columns(): HasMany

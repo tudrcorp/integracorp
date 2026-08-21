@@ -131,7 +131,7 @@ final class AcceptRenovationActionForm
                                         return [];
                                     }
 
-                                    if ((int) $get('plan_id') === AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID) {
+                                    if (self::planHasNoCoverages($get('plan_id'))) {
                                         return [];
                                     }
 
@@ -155,8 +155,8 @@ final class AcceptRenovationActionForm
                                 ->native(false)
                                 ->live()
                                 ->required(fn (Get $get): bool => (bool) $get('manual_commercial_config')
-                                    && (int) ($get('plan_id') ?? 0) !== AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID)
-                                ->visible(fn (Get $get): bool => (int) ($get('plan_id') ?? 0) !== AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID),
+                                    && ! self::planHasNoCoverages($get('plan_id')))
+                                ->visible(fn (Get $get): bool => ! self::planHasNoCoverages($get('plan_id'))),
                             Select::make('payment_frequency')
                                 ->label('Frecuencia de pago')
                                 ->options([
@@ -182,6 +182,19 @@ final class AcceptRenovationActionForm
     /**
      * @param  Collection<int, Renovation|RenovationCorporate>  $records
      */
+    /**
+     * Un paquete de beneficios no tiene coberturas, así que el selector de
+     * cobertura no aplica. Antes esto se decidía comparando contra el plan 1.
+     */
+    private static function planHasNoCoverages(mixed $planId): bool
+    {
+        if (blank($planId) || (int) $planId <= 0) {
+            return false;
+        }
+
+        return app(AffiliationAffiliateFeeCalculator::class)->planHasNoCoverages((int) $planId);
+    }
+
     private static function selectionSummaryHtml(
         Collection $records,
         ?Model $reference,
@@ -270,7 +283,7 @@ final class AcceptRenovationActionForm
             return new HtmlString('<p class="text-sm text-slate-500 dark:text-slate-400">Complete plan, rango de edad y frecuencia para ver el cálculo.</p>');
         }
 
-        if ($planId !== AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID && $coverageId === null) {
+        if (! self::planHasNoCoverages($planId) && $coverageId === null) {
             return new HtmlString('<p class="text-sm text-amber-600 dark:text-amber-400">Seleccione la cobertura para calcular el costo.</p>');
         }
 
