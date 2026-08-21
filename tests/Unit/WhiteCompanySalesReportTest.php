@@ -2,7 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\WhiteCompanySalesReportController;
+use App\Models\Permission;
+use App\Models\User;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\WhiteCompanies\WhiteCompanySalesReportKey;
+use Illuminate\Support\Facades\Auth;
 
 uses(Tests\TestCase::class);
 
@@ -156,7 +161,10 @@ it('separa generar de enviar en dos endpoints y ambos exigen el permiso', functi
         ->toContain('public function preview(')
         ->toContain('public function send(')
         ->toContain('private function userCanIssueReport(): bool')
-        ->toContain('BusinessFilamentActionPermissionRegistry::WHITE_COMPANY_SALES_REPORT');
+        ->toContain('BusinessFilamentActionPermissionRegistry::WHITE_COMPANY_SALES_REPORT')
+        ->toContain('UserNavigationAccess::canPerformModuleAction')
+        ->toContain("'ADMINISTRACION'")
+        ->not->toContain('BusinessFilamentActionAccess::userCan');
 
     /** La vista previa nunca despacha el envío. */
     $previewBody = substr(
@@ -166,6 +174,31 @@ it('separa generar de enviar en dos endpoints y ambos exigen el permiso', functi
     );
 
     expect($previewBody)->not->toContain('SendWhiteCompanySalesReportJob::dispatch');
+});
+
+it('autoriza el preview contra administracion aunque no haya panel filament', function (): void {
+    $user = new User;
+    $user->forceFill([
+        'id' => 91001,
+        'name' => 'Analista Admin',
+        'email' => 'admin.reporte@tudrencasa.com',
+        'departament' => ['ADMINISTRACION'],
+        'status' => 'ACTIVO',
+    ]);
+    $permission = new Permission;
+    $permission->forceFill([
+        'id' => 91002,
+        'name' => 'Reporte de ventas de empresa aliada',
+        'slug' => BusinessFilamentActionPermissionRegistry::WHITE_COMPANY_SALES_REPORT,
+        'module' => 'ADMINISTRACION',
+    ]);
+    $user->setRelation('permissions', collect([$permission]));
+
+    Auth::login($user);
+
+    $method = new ReflectionMethod(WhiteCompanySalesReportController::class, 'userCanIssueReport');
+
+    expect($method->invoke(new WhiteCompanySalesReportController))->toBeTrue();
 });
 
 it('valida destinatarios de correo y de whatsapp', function (): void {

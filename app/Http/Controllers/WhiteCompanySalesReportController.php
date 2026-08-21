@@ -8,8 +8,8 @@ use App\Jobs\SendWhiteCompanySalesReportJob;
 use App\Jobs\SendWhiteCompanySalesReportWhatsAppJob;
 use App\Models\WhiteCompany;
 use App\Services\WhiteCompanySalesReportService;
-use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
+use App\Support\Filament\UserNavigationAccess;
 use App\Support\SecurityAudit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -219,9 +219,21 @@ class WhiteCompanySalesReportController extends Controller
         return 'Estado de cuenta enviado a '.implode(' y ', $parts).'.';
     }
 
+    /**
+     * Las rutas de preview/envío no pasan por un panel Filament.
+     * El permiso es exclusivo de ADMINISTRACION: no debe evaluarse contra NEGOCIOS.
+     */
     private function userCanIssueReport(): bool
     {
-        return BusinessFilamentActionAccess::userCan(
+        $user = Auth::user();
+
+        if ($user === null) {
+            return false;
+        }
+
+        return UserNavigationAccess::canPerformModuleAction(
+            $user,
+            'ADMINISTRACION',
             BusinessFilamentActionPermissionRegistry::WHITE_COMPANY_SALES_REPORT,
         );
     }

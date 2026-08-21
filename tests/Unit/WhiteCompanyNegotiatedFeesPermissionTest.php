@@ -63,7 +63,8 @@ it('evalua la accion contra el modulo del panel activo con respaldo en negocios'
         ->toContain('Filament::getCurrentPanel()?->getId()')
         ->toContain('InternalPanelDepartmentMap::moduleForPanel($panelId)')
         ->toContain('BusinessFilamentActionPermissionRegistry::slugIsAvailableInModule($actionSlug, $module)')
-        ->toContain('BusinessFilamentActionPermissionRegistry::OWNER_MODULE');
+        ->toContain('BusinessFilamentActionPermissionRegistry::OWNER_MODULE')
+        ->toContain('fallbackModule');
 });
 
 it('el comando sincroniza la accion en cada modulo habilitado', function (): void {
