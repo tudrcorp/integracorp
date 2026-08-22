@@ -98,8 +98,36 @@ it('usa la neta congelada en la afiliacion y no la matriz vigente', function ():
     expect($source)
         ->toContain('$affiliation->white_company_sale_price')
         ->toContain('$affiliation->white_company_neta')
-        ->toContain('round($salePrice - $netaTdg, 2)')
+        ->toContain('installmentAmountsForAffiliation')
+        ->toContain('WhiteCompanyPaymentSettlement::fromFrozenAffiliationRates')
         ->not->toContain('WhiteCompanyFee');
+});
+
+it('prorratea la cuota del reporte segun la frecuencia de pago', function (string $frequency, array $expected): void {
+    expect(App\Services\WhiteCompanySalesReportService::installmentAmounts(180, 96, $frequency))
+        ->toBe($expected);
+})->with([
+    'anual' => ['ANUAL', ['sale_price' => 180.0, 'neta_tdg' => 96.0, 'neta_partner' => 84.0]],
+    'semestral' => ['SEMESTRAL', ['sale_price' => 90.0, 'neta_tdg' => 48.0, 'neta_partner' => 42.0]],
+    'trimestral de la afiliacion 400' => ['TRIMESTRAL', ['sale_price' => 45.0, 'neta_tdg' => 24.0, 'neta_partner' => 21.0]],
+    'mensual' => ['MENSUAL', ['sale_price' => 15.0, 'neta_tdg' => 8.0, 'neta_partner' => 7.0]],
+    'frecuencia vacia se trata como anual' => ['', ['sale_price' => 180.0, 'neta_tdg' => 96.0, 'neta_partner' => 84.0]],
+]);
+
+it('toma los anuales congelados de la afiliacion para calcular la cuota', function (): void {
+    $affiliation = new App\Models\Affiliation;
+    $affiliation->forceFill([
+        'white_company_sale_price' => 180,
+        'white_company_neta' => 96,
+        'payment_frequency' => 'TRIMESTRAL',
+    ]);
+
+    expect(App\Services\WhiteCompanySalesReportService::installmentAmountsForAffiliation($affiliation))
+        ->toBe([
+            'sale_price' => 45.0,
+            'neta_tdg' => 24.0,
+            'neta_partner' => 21.0,
+        ]);
 });
 
 it('lleva los dos logos y la llave al pie del pdf', function (): void {
@@ -110,7 +138,9 @@ it('lleva los dos logos y la llave al pie del pdf', function (): void {
         ->toContain('$partnerLogo')
         ->toContain("\$report['security_key']")
         ->toContain('$verificationUrl')
-        ->toContain('Neta TDG');
+        ->toContain('Neta TDG')
+        ->toContain('Recibido en cuenta')
+        ->not->toContain('Monto a pagar');
 });
 
 it('envia el reporte en cola y no en el request', function (): void {

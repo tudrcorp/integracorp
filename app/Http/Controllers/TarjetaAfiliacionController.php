@@ -255,7 +255,7 @@ class TarjetaAfiliacionController extends Controller
     }
 
     /**
-     * Genera un PDF con varios carnets individual-affiliation (8 por hoja A4).
+     * Genera un PDF con varios carnets individual-affiliation (4 por hoja A4).
      *
      * @param  list<array<string, mixed>>  $cards
      * @return bool|string true si OK, string con mensaje de error si falla

@@ -105,7 +105,7 @@
                         <th style="width: 9%;" class="num">Cobertura</th>
                         <th style="width: 8%;" class="center">Frecuencia</th>
                         <th style="width: 5%;" class="center">Afil.</th>
-                        <th style="width: 8%;" class="num">Monto a pagar</th>
+                        <th style="width: 8%;" class="num">Recibido en cuenta</th>
                         <th style="width: 8%;" class="num">Neta TDG</th>
                         <th style="width: 8%;" class="num">Neta {{ $company->name }}</th>
                     </tr>

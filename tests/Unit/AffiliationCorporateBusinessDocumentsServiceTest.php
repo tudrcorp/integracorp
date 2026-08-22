@@ -211,6 +211,21 @@ it('nombra el PDF combinado de carnets igual que en afiliaciones individuales', 
         ->toBe('TAR-TDEC-COR-00054-carnets.pdf');
 });
 
+it('el PDF combinado corporativo usa la misma columna de 4 carnets que individuales', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationCorporateBusinessDocumentsService.php');
+    $job = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/GenerateCorporateCombinedCardsJob.php');
+    $layout = AffiliateCardPageLayout::class;
+
+    expect($source)
+        ->toContain('TarjetaAfiliacionController::generateTarjetaAfiliacionBatch')
+        ->toContain('self::generateCombinedCards($record')
+        ->and($job)->toContain('AffiliationCorporateBusinessDocumentsService::generateCombinedCards')
+        ->and($layout::CARDS_PER_SHEET)->toBe(4)
+        ->and($layout::SHEET_COLUMNS)->toBe(1)
+        ->and($layout::SHEET_ROWS)->toBe(4)
+        ->and($layout::individualAffiliationUnitDimensions(false)['width_mm'])->toBe(150.0);
+});
+
 it('genera dentro del request solo poblaciones pequenas', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationCorporateBusinessDocumentsService.php');
 

@@ -70,4 +70,37 @@ final readonly class WhiteCompanyPaymentSettlement
     {
         return round($this->annualNeta / $this->periods(), 2);
     }
+
+    public function installmentPartner(): float
+    {
+        return round(($this->annualSalePrice - $this->annualNeta) / $this->periods(), 2);
+    }
+
+    /**
+     * @return array{sale_price: float, neta_tdg: float, neta_partner: float}
+     */
+    public function installmentReportAmounts(): array
+    {
+        return [
+            'sale_price' => $this->installmentSalePrice(),
+            'neta_tdg' => $this->installmentNeta(),
+            'neta_partner' => $this->installmentPartner(),
+        ];
+    }
+
+    public static function fromFrozenAffiliationRates(
+        mixed $annualSalePrice,
+        mixed $annualNeta,
+        ?string $paymentFrequency,
+        int $whiteCompanyId = 0,
+    ): self {
+        return new self(
+            annualSalePrice: (float) $annualSalePrice,
+            annualNeta: (float) $annualNeta,
+            paymentFrequency: is_string($paymentFrequency) && trim($paymentFrequency) !== ''
+                ? $paymentFrequency
+                : 'ANUAL',
+            whiteCompanyId: $whiteCompanyId,
+        );
+    }
 }

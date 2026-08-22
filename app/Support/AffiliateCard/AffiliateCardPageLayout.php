@@ -27,7 +27,7 @@ final class AffiliateCardPageLayout
 
     public const INDIVIDUAL_AFFILIATION_SOURCE_HEIGHT_PX = 672.0;
 
-    /** Carnet en hoja con varios afiliados (cuadrícula 2×4, 8 por página). */
+    /** Tamaño nativo de la plantilla PDF (DomPDF / blade). */
     public const INDIVIDUAL_AFFILIATION_SHEET_UNIT_WIDTH_MM = 93.0;
 
     public const INDIVIDUAL_AFFILIATION_SHEET_UNIT_HEIGHT_MM = 33.25;
@@ -36,18 +36,23 @@ final class AffiliateCardPageLayout
 
     public const INDIVIDUAL_AFFILIATION_SHEET_CANVAS_HEIGHT_PX = 125.0;
 
+    /** Carnet en hoja con varios afiliados (columna de 4, uno debajo del otro). */
+    public const INDIVIDUAL_AFFILIATION_SHEET_PLACEMENT_WIDTH_MM = 150.0;
+
+    public const INDIVIDUAL_AFFILIATION_SHEET_PLACEMENT_HEIGHT_MM = 53.63;
+
     /** Carnet único centrado en hoja vertical. */
     public const INDIVIDUAL_AFFILIATION_SINGLE_UNIT_WIDTH_MM = 165.0;
 
     public const INDIVIDUAL_AFFILIATION_SINGLE_UNIT_HEIGHT_MM = 59.0;
 
-    public const SHEET_GRID_GAP_MM = 4.0;
+    public const SHEET_GRID_GAP_MM = 8.0;
 
-    public const SHEET_COLUMNS = 2;
+    public const SHEET_COLUMNS = 1;
 
     public const SHEET_ROWS = 4;
 
-    public const CARDS_PER_SHEET = 8;
+    public const CARDS_PER_SHEET = 4;
 
     public const PX_TO_MM = 25.4 / 96;
 
@@ -57,13 +62,13 @@ final class AffiliateCardPageLayout
 
     public const FONT_SIZE_PT = 9;
 
-    public const INDIVIDUAL_AFFILIATION_SHEET_FONT_SIZE_PT = 6.5;
+    public const INDIVIDUAL_AFFILIATION_SHEET_FONT_SIZE_PT = 9.5;
 
     public const INDIVIDUAL_AFFILIATION_SINGLE_FONT_SIZE_PT = 10.5;
 
     public const INDIVIDUAL_AFFILIATION_SINGLE_CODE_FONT_SIZE_PT = 9.0;
 
-    public const INDIVIDUAL_AFFILIATION_ALLIED_SHEET_FONT_SIZE_PT = 5.5;
+    public const INDIVIDUAL_AFFILIATION_ALLIED_SHEET_FONT_SIZE_PT = 8.0;
 
     public const INDIVIDUAL_AFFILIATION_ALLIED_SINGLE_FONT_SIZE_PT = 8.0;
 
@@ -192,8 +197,8 @@ final class AffiliateCardPageLayout
         }
 
         return [
-            'width_mm' => self::INDIVIDUAL_AFFILIATION_SHEET_UNIT_WIDTH_MM,
-            'height_mm' => self::INDIVIDUAL_AFFILIATION_SHEET_UNIT_HEIGHT_MM,
+            'width_mm' => self::INDIVIDUAL_AFFILIATION_SHEET_PLACEMENT_WIDTH_MM,
+            'height_mm' => self::INDIVIDUAL_AFFILIATION_SHEET_PLACEMENT_HEIGHT_MM,
         ];
     }
 
@@ -282,7 +287,7 @@ final class AffiliateCardPageLayout
     public static function individualAffiliationStampScale(bool $singleAffiliate): float
     {
         if (! $singleAffiliate) {
-            return 1.0;
+            return self::INDIVIDUAL_AFFILIATION_SHEET_PLACEMENT_WIDTH_MM / self::INDIVIDUAL_AFFILIATION_SHEET_UNIT_WIDTH_MM;
         }
 
         return self::INDIVIDUAL_AFFILIATION_SINGLE_UNIT_WIDTH_MM / self::INDIVIDUAL_AFFILIATION_SHEET_UNIT_WIDTH_MM;

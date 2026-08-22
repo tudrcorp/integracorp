@@ -66,7 +66,7 @@ final class AffiliateCardStampedPdfGenerator
     }
 
     /**
-     * Genera un PDF con varios carnets (8 por hoja A4 vertical).
+     * Genera un PDF con varios carnets (4 por hoja A4 vertical).
      *
      * @param  list<array<string, mixed>>  $cards
      */

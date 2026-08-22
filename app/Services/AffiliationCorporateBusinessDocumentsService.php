@@ -719,9 +719,10 @@ class AffiliationCorporateBusinessDocumentsService
     }
 
     /**
-     * PDF único con todos los carnets corporativos (8 por hoja A4), igual que en
-     * afiliaciones individuales. Es lo que se muestra y se envía por correo; los
-     * carnets uno a uno se siguen escribiendo aparte porque ViVEplus los exige.
+     * PDF único con todos los carnets corporativos (columna de 4, uno debajo
+     * del otro, mismo layout que afiliaciones individuales). Es lo que se
+     * muestra y se envía por correo; los carnets uno a uno se siguen escribiendo
+     * aparte porque ViVEplus los exige.
      *
      * Devuelve el nombre del archivo generado, o null si no hay plantilla de
      * estampado disponible (en ese caso la regeneración continúa sin combinado).

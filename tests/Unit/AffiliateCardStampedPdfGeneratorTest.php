@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\AffiliateCard\AffiliateCardPageLayout;
 use App\Support\AffiliateCard\AffiliateCardStampedPdfGenerator;
 use App\Support\AffiliateCard\AffiliateCardTemplateBuilder;
 
@@ -65,6 +66,7 @@ it('layout usa posiciones calibradas contra tarjeta-afiliado blade', function ()
         ->toContain('TEMPLATE_INDIVIDUAL_AFFILIATION')
         ->toContain('TEMPLATE_INDIVIDUAL_AFFILIATION_ALLIED')
         ->toContain('INDIVIDUAL_AFFILIATION_SHEET_UNIT_WIDTH_MM')
+        ->toContain('INDIVIDUAL_AFFILIATION_SHEET_PLACEMENT_WIDTH_MM')
         ->toContain('sheetCardOrigin')
         ->toContain("'cobertura'")
         ->toContain("'frecuencia'");
@@ -190,23 +192,29 @@ it('usa fuente reducida solo para codigo en carnet individual-affiliation unico'
 
     expect($layout::fontSizePtForField('individual-affiliation', 'code', true))->toBe(9.0)
         ->and($layout::fontSizePtForField('individual-affiliation', 'ci', true))->toBe(10.5)
-        ->and($layout::fontSizePtForField('individual-affiliation', 'code', false))->toBe(6.5);
+        ->and($layout::fontSizePtForField('individual-affiliation', 'code', false))->toBe(9.5);
 });
 
-it('coloca carnet individual-affiliation en cuadrícula 2x4 con varios afiliados', function (): void {
+it('coloca carnet individual-affiliation en columna de 4 con varios afiliados', function (): void {
     $layout = App\Support\AffiliateCard\AffiliateCardPageLayout::class;
 
-    expect($layout::sheetCardOrigin(0, false))->toBe(['x_mm' => 10.0, 'y_mm' => 76.0])
-        ->and($layout::sheetCardOrigin(1, false))->toBe(['x_mm' => 107.0, 'y_mm' => 76.0])
-        ->and($layout::sheetCardOrigin(2, false))->toBe(['x_mm' => 10.0, 'y_mm' => 113.25])
-        ->and($layout::sheetCardOrigin(3, false))->toBe(['x_mm' => 107.0, 'y_mm' => 113.25])
-        ->and($layout::sheetCardOrigin(4, false))->toBe(['x_mm' => 10.0, 'y_mm' => 150.5])
-        ->and($layout::sheetCardOrigin(5, false))->toBe(['x_mm' => 107.0, 'y_mm' => 150.5])
-        ->and($layout::sheetCardOrigin(6, false))->toBe(['x_mm' => 10.0, 'y_mm' => 187.75])
-        ->and($layout::sheetCardOrigin(7, false))->toBe(['x_mm' => 107.0, 'y_mm' => 187.75]);
+    $unit = $layout::individualAffiliationUnitDimensions(false);
+
+    expect($layout::CARDS_PER_SHEET)->toBe(4)
+        ->and($layout::SHEET_COLUMNS)->toBe(1)
+        ->and($layout::SHEET_ROWS)->toBe(4)
+        ->and($unit['width_mm'])->toBe(150.0)
+        ->and($unit['height_mm'])->toBe(53.63)
+        ->and($unit['width_mm'])->toBeGreaterThan($layout::INDIVIDUAL_AFFILIATION_SHEET_UNIT_WIDTH_MM)
+        ->and($layout::individualAffiliationStampScale(false))->toBeGreaterThan(1.0)
+        ->and($layout::sheetCardOrigin(0, false))->toBe(['x_mm' => 30.0, 'y_mm' => 29.24])
+        ->and($layout::sheetCardOrigin(1, false))->toBe(['x_mm' => 30.0, 'y_mm' => 90.87])
+        ->and($layout::sheetCardOrigin(2, false))->toBe(['x_mm' => 30.0, 'y_mm' => 152.5])
+        ->and($layout::sheetCardOrigin(3, false))->toBe(['x_mm' => 30.0, 'y_mm' => 214.13])
+        ->and($layout::sheetCardOrigin(4, false))->toBe($layout::sheetCardOrigin(0, false));
 });
 
-it('genera lote de carnets individual-affiliation con 8 por hoja', function (): void {
+it('genera lote de carnets individual-affiliation con 4 por hoja', function (): void {
     if (! AffiliateCardTemplateBuilder::templateExists('individual-affiliation')) {
         AffiliateCardTemplateBuilder::buildForTemplateKey('individual-affiliation');
     }
@@ -236,6 +244,50 @@ it('genera lote de carnets individual-affiliation con 8 por hoja', function (): 
     );
 
     expect(AffiliateCardStampedPdfGenerator::canGenerateBatch($prepared))->toBeTrue();
+
+    AffiliateCardStampedPdfGenerator::generateIndividualAffiliationBatch($prepared, $outputPath);
+
+    expect(is_file($outputPath))->toBeTrue()
+        ->and(filesize($outputPath))->toBeGreaterThan(10_000);
+
+    @unlink($outputPath);
+});
+
+it('genera el PDF combinado corporativo con 4 carnets apilados por hoja', function (): void {
+    if (! AffiliateCardTemplateBuilder::templateExists('individual-affiliation')) {
+        AffiliateCardTemplateBuilder::buildForTemplateKey('individual-affiliation');
+    }
+
+    $outputPath = sys_get_temp_dir().'/carnet-corp-batch-'.uniqid('', true).'.pdf';
+    $qrPath = public_path('storage/tarjeta-afiliacion/planes/qr-plan-ideal.png');
+
+    $card = [
+        'name' => 'ANA SUAREZ',
+        'ci' => 'V-98765432',
+        'code' => 'TDEC-COR-00099',
+        'plan' => 'PLAN IDEAL',
+        'plan_id' => 2,
+        'template_key' => AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION,
+        'card_layout' => AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION,
+        'plan_qr_filename' => 'qr-plan-ideal.png',
+        'plan_qr_absolute_path' => is_file($qrPath) ? $qrPath : null,
+        'frecuencia' => 'ANUAL',
+        'cobertura' => '10000',
+        'desde' => '01/01/2026',
+        'hasta' => '01/01/2027',
+    ];
+
+    $prepared = array_map(
+        fn (int $index): array => array_merge($card, [
+            'name' => 'ANA SUAREZ '.$index,
+            'ci' => 'V-9876543'.$index,
+        ]),
+        range(0, 4),
+    );
+
+    expect(AffiliateCardStampedPdfGenerator::canGenerateBatch($prepared))->toBeTrue()
+        ->and(AffiliateCardPageLayout::CARDS_PER_SHEET)->toBe(4)
+        ->and(AffiliateCardPageLayout::SHEET_COLUMNS)->toBe(1);
 
     AffiliateCardStampedPdfGenerator::generateIndividualAffiliationBatch($prepared, $outputPath);
 

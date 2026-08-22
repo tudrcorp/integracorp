@@ -5,11 +5,13 @@
 @php
     $regenerateAsyncUrl = $affiliationCorporate ? route('business.affiliation-corporate-documents.regenerate-async', $affiliationCorporate) : '';
     $sendEmailUrl = $affiliationCorporate ? route('business.affiliation-corporate-documents.send-email', $affiliationCorporate) : '';
+    $sendCarnetEmailsUrl = $affiliationCorporate ? route('business.affiliation-corporate-documents.send-carnet-emails', $affiliationCorporate) : '';
     $statusUrlTemplate = $affiliationCorporate ? route('business.affiliation-corporate-documents.status', ['affiliationCorporate' => $affiliationCorporate, 'taskId' => '__TASK_ID__']) : '';
     $tarjetasUrl = $affiliationCorporate ? route('business.affiliation-corporate-documents.tarjetas', $affiliationCorporate) : '';
     $panelConfig = \Illuminate\Support\Js::from([
         'regenerateUrl' => $regenerateAsyncUrl,
         'sendEmailUrl' => $sendEmailUrl,
+        'sendCarnetEmailsUrl' => $sendCarnetEmailsUrl,
         'statusUrlTemplate' => $statusUrlTemplate,
         'tarjetasUrl' => $tarjetasUrl,
     ]);
@@ -279,6 +281,75 @@
                     x-cloak
                     class="border-t border-gray-200/80 px-4 py-3 text-sm text-emerald-600 dark:border-white/10 dark:text-emerald-400"
                     x-text="emailMessage"
+                ></p>
+            </article>
+
+            <article
+                class="overflow-hidden rounded-3xl border border-gray-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-gray-900/70"
+            >
+                <div class="border-b border-gray-200/80 px-4 py-3 dark:border-white/10">
+                    <p class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                        Envio a afiliados
+                    </p>
+                    <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                        Carnet a cada afiliado
+                    </p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        El envío sale en segundo plano para que pueda seguir trabajando. Cada afiliado recibe su carnet y el condicionado; el aviso llega a la campanita cuando termine.
+                    </p>
+                </div>
+                <div class="flex flex-col gap-3 bg-gray-50/80 p-4 dark:bg-gray-950/60 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                        No incluye el certificado. Solo carnet y condicionado, un correo por persona. Puede cerrar esta ventana apenas pulse enviar.
+                    </p>
+                    <button
+                        type="button"
+                        @click="sendCarnetEmails()"
+                        :disabled="sendingCarnetEmails || carnetEmailsQueued"
+                        class="aviso-btn-ios-primary inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98] disabled:opacity-60"
+                    >
+                        <svg
+                            x-show="! sendingCarnetEmails"
+                            class="size-5 shrink-0"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            aria-hidden="true"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+                            />
+                        </svg>
+                        <svg
+                            x-show="sendingCarnetEmails"
+                            x-cloak
+                            class="size-5 shrink-0 animate-spin"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                        >
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                        </svg>
+                        <span x-show="! sendingCarnetEmails && ! carnetEmailsQueued">Enviar carnets a afiliados</span>
+                        <span x-show="sendingCarnetEmails" x-cloak>Encolando...</span>
+                        <span x-show="carnetEmailsQueued && ! sendingCarnetEmails" x-cloak>Enviado a segundo plano</span>
+                    </button>
+                </div>
+                <p
+                    x-show="carnetEmailMessage"
+                    x-cloak
+                    class="border-t border-gray-200/80 px-4 py-3 text-sm text-emerald-600 dark:border-white/10 dark:text-emerald-400"
+                    x-text="carnetEmailMessage"
                 ></p>
             </article>
         </div>

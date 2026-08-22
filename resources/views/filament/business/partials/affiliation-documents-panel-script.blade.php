@@ -8,15 +8,19 @@
             totalJobs: null,
             etaSeconds: null,
             sendingEmail: false,
+            sendingCarnetEmails: false,
+            carnetEmailsQueued: false,
             regenerated: false,
             backgroundWorking: false,
             error: null,
             emailMessage: null,
+            carnetEmailMessage: null,
             documents: [],
             activeDoc: null,
             optionalEmail: '',
             regenerateUrl: config.regenerateUrl,
             sendEmailUrl: config.sendEmailUrl,
+            sendCarnetEmailsUrl: config.sendCarnetEmailsUrl || null,
             useIndividualAffiliateCardLayout: config.useIndividualAffiliateCardLayout === true,
             statusUrlTemplate: config.statusUrlTemplate || null,
             tarjetasUrl: config.tarjetasUrl || null,
@@ -241,6 +245,7 @@
                 this.loading = true;
                 this.error = null;
                 this.emailMessage = null;
+                this.carnetEmailMessage = null;
                 this.documents = [];
                 this.tarjetaDocuments = [];
                 this.tarjetaPage = 1;
@@ -327,6 +332,59 @@
                 } finally {
                     this.sendingEmail = false;
                 }
+            },
+            async sendCarnetEmails() {
+                if (! this.sendCarnetEmailsUrl) {
+                    this.error = 'No se encontró la URL para enviar carnets a los afiliados.';
+
+                    return;
+                }
+
+                this.sendingCarnetEmails = true;
+                this.error = null;
+                this.carnetEmailMessage = null;
+
+                try {
+                    const res = await fetch(this.sendCarnetEmailsUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': this.csrf(),
+                            Accept: 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify({}),
+                    });
+                    const data = await res.json().catch(() => ({}));
+
+                    if (!res.ok || !data.ok) {
+                        throw new Error(data.message || 'No se pudieron encolar los correos.');
+                    }
+
+                    this.carnetEmailsQueued = true;
+                    this.carnetEmailMessage = data.message
+                        || 'Los carnets se envían en segundo plano. Puede cerrar esta ventana y seguir trabajando. Le avisaremos en la campanita cuando termine.';
+                    this.notifyAnalystToast(
+                        'Envío de carnets en segundo plano',
+                        this.carnetEmailMessage,
+                    );
+                } catch (e) {
+                    this.error = e.message || 'Error al encolar los correos.';
+                } finally {
+                    this.sendingCarnetEmails = false;
+                }
+            },
+            notifyAnalystToast(title, body) {
+                if (typeof FilamentNotification === 'undefined') {
+                    return;
+                }
+
+                new FilamentNotification()
+                    .title(title)
+                    .body(body)
+                    .success()
+                    .duration(8000)
+                    .send();
             },
         };
     };

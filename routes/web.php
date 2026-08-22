@@ -590,6 +590,13 @@ Route::post('business/affiliations/documents/send-email/{affiliation}', [
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-documents.send-email');
 
+Route::post('business/affiliations/documents/send-carnet-emails/{affiliation}', [
+    AffiliationBusinessDocumentsController::class,
+    'sendCarnetEmails',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-documents.send-carnet-emails');
+
 Route::post('business/affiliations/tarjeta-qr/associate-plan', [
     TarjetaAfiliacionController::class,
     'associatePlanQr',
@@ -659,6 +666,13 @@ Route::post('business/affiliation-corporates/documents/send-email/{affiliationCo
 ])
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-corporate-documents.send-email');
+
+Route::post('business/affiliation-corporates/documents/send-carnet-emails/{affiliationCorporate}', [
+    AffiliationCorporateBusinessDocumentsController::class,
+    'sendCarnetEmails',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporate-documents.send-carnet-emails');
 
 Route::post('business/helpdesk-tickets/{helpDesk}/mark-in-progress', MarkHelpdeskTicketInProgressController::class)
     ->middleware(['web', 'auth'])
