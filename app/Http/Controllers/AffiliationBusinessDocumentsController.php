@@ -6,8 +6,10 @@ use App\Http\Requests\SendAffiliationDocumentsEmailRequest;
 use App\Mail\AffiliationDocumentsGeneratedMail;
 use App\Models\Affiliation;
 use App\Services\AffiliationBusinessDocumentsService;
+use App\Support\AffiliateCard\AffiliateCarnetEmailDispatchService;
 use App\Support\SecurityAudit;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 
 class AffiliationBusinessDocumentsController extends Controller
@@ -130,6 +132,48 @@ class AffiliationBusinessDocumentsController extends Controller
         return response()->json([
             'ok' => true,
             'message' => 'Listo. Enviamos los documentos al correo indicado (copia a afiliaciones@tudrencasa.com; copia oculta a solrodriguez@tudrencasa.com).',
+        ]);
+    }
+
+    public function sendCarnetEmails(Affiliation $affiliation): JsonResponse
+    {
+        $userId = Auth::id();
+
+        if ($userId === null) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Debe iniciar sesión para enviar los carnets.',
+            ], 401);
+        }
+
+        $result = AffiliateCarnetEmailDispatchService::queueForIndividual($affiliation, (int) $userId);
+
+        if (! $result['ok']) {
+            SecurityAudit::log('AUDIT_AFFILIATION_CARNET_EMAILS_FAILED', 'business.affiliation-documents.send-carnet-emails', [
+                'affiliation_id' => $affiliation->id,
+                'affiliation_code' => $affiliation->code,
+                'skipped' => $result['skipped'],
+                'reason' => $result['message'],
+            ]);
+
+            return response()->json([
+                'ok' => false,
+                'message' => $result['message'],
+            ], 422);
+        }
+
+        SecurityAudit::log('AUDIT_AFFILIATION_CARNET_EMAILS_QUEUED', 'business.affiliation-documents.send-carnet-emails', [
+            'affiliation_id' => $affiliation->id,
+            'affiliation_code' => $affiliation->code,
+            'queued' => $result['queued'],
+            'skipped' => $result['skipped'],
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => $result['message'],
+            'queued' => $result['queued'],
+            'skipped' => $result['skipped'],
         ]);
     }
 }

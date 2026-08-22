@@ -9,7 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * Genera el PDF único con todos los carnets corporativos (8 por hoja A4).
+ * Genera el PDF único con todos los carnets corporativos (columna de 4).
  *
  * Va primero en el lote para que la vista previa esté disponible en segundos,
  * mientras los carnets individuales que exige ViVEplus se siguen generando.

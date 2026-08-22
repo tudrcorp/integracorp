@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\WhiteCompany;
 use App\Support\SecurityAudit;
 use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
+use App\Support\WhiteCompanies\WhiteCompanyPaymentSettlement;
 use App\Support\WhiteCompanies\WhiteCompanySalesReportKey;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -20,6 +21,10 @@ use Illuminate\Support\Facades\Auth;
  * Toma la neta congelada en cada afiliación (`white_company_neta`), no la matriz
  * de negociación vigente: si mañana se renegocian tarifas, los reportes ya
  * emitidos siguen cuadrando.
+ *
+ * Esos importes congelados son anuales. El reporte muestra la cuota según la
+ * frecuencia de pago (igual que la tabla de ventas): anual / 1, semestral / 2,
+ * trimestral / 4, mensual / 12.
  */
 final class WhiteCompanySalesReportService
 {
@@ -44,9 +49,10 @@ final class WhiteCompanySalesReportService
         $totals = ['sale_price' => 0.0, 'neta_tdg' => 0.0, 'neta_partner' => 0.0, 'affiliates' => 0];
 
         foreach ($affiliations as $affiliation) {
-            $salePrice = (float) ($affiliation->white_company_sale_price ?? 0);
-            $netaTdg = (float) ($affiliation->white_company_neta ?? 0);
-            $netaPartner = round($salePrice - $netaTdg, 2);
+            $amounts = self::installmentAmountsForAffiliation($affiliation);
+            $salePrice = $amounts['sale_price'];
+            $netaTdg = $amounts['neta_tdg'];
+            $netaPartner = $amounts['neta_partner'];
             $planId = $affiliation->plan_id !== null ? (int) $affiliation->plan_id : null;
             $affiliatesCount = $affiliation->affiliates->count();
 
@@ -102,6 +108,33 @@ final class WhiteCompanySalesReportService
             'generated_at' => now()->format('d/m/Y H:i'),
             'generated_by' => (string) (Auth::user()?->name ?? 'Sistema'),
         ];
+    }
+
+    /**
+     * Cuota de la afiliación según su frecuencia. La neta y el precio congelados
+     * en la ficha son anuales; la venta registra solo lo pagado en esa cuota.
+     *
+     * @return array{sale_price: float, neta_tdg: float, neta_partner: float}
+     */
+    public static function installmentAmountsForAffiliation(Affiliation $affiliation): array
+    {
+        return self::installmentAmounts(
+            $affiliation->white_company_sale_price,
+            $affiliation->white_company_neta,
+            $affiliation->payment_frequency,
+        );
+    }
+
+    /**
+     * @return array{sale_price: float, neta_tdg: float, neta_partner: float}
+     */
+    public static function installmentAmounts(mixed $annualSalePrice, mixed $annualNeta, mixed $paymentFrequency): array
+    {
+        return WhiteCompanyPaymentSettlement::fromFrozenAffiliationRates(
+            $annualSalePrice ?? 0,
+            $annualNeta ?? 0,
+            is_string($paymentFrequency) ? $paymentFrequency : null,
+        )->installmentReportAmounts();
     }
 
     /**

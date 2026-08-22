@@ -6,6 +6,7 @@ use App\Http\Requests\SendAffiliationDocumentsEmailRequest;
 use App\Mail\AffiliationDocumentsGeneratedMail;
 use App\Models\AffiliationCorporate;
 use App\Services\AffiliationCorporateBusinessDocumentsService;
+use App\Support\AffiliateCard\AffiliateCarnetEmailDispatchService;
 use App\Support\SecurityAudit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -167,6 +168,48 @@ class AffiliationCorporateBusinessDocumentsController extends Controller
         return response()->json([
             'ok' => true,
             'message' => 'Listo. Enviamos los documentos al correo indicado (copia a afiliaciones@tudrencasa.com; copia oculta a solrodriguez@tudrencasa.com).',
+        ]);
+    }
+
+    public function sendCarnetEmails(AffiliationCorporate $affiliationCorporate): JsonResponse
+    {
+        $userId = Auth::id();
+
+        if ($userId === null) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Debe iniciar sesión para enviar los carnets.',
+            ], 401);
+        }
+
+        $result = AffiliateCarnetEmailDispatchService::queueForCorporate($affiliationCorporate, (int) $userId);
+
+        if (! $result['ok']) {
+            SecurityAudit::log('AUDIT_AFFILIATION_CORPORATE_CARNET_EMAILS_FAILED', 'business.affiliation-corporate-documents.send-carnet-emails', [
+                'affiliation_corporate_id' => $affiliationCorporate->id,
+                'affiliation_code' => $affiliationCorporate->code,
+                'skipped' => $result['skipped'],
+                'reason' => $result['message'],
+            ]);
+
+            return response()->json([
+                'ok' => false,
+                'message' => $result['message'],
+            ], 422);
+        }
+
+        SecurityAudit::log('AUDIT_AFFILIATION_CORPORATE_CARNET_EMAILS_QUEUED', 'business.affiliation-corporate-documents.send-carnet-emails', [
+            'affiliation_corporate_id' => $affiliationCorporate->id,
+            'affiliation_code' => $affiliationCorporate->code,
+            'queued' => $result['queued'],
+            'skipped' => $result['skipped'],
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => $result['message'],
+            'queued' => $result['queued'],
+            'skipped' => $result['skipped'],
         ]);
     }
 }
