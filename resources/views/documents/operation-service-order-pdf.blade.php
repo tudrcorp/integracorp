@@ -2,6 +2,7 @@
     /** @var \App\Models\OperationServiceOrder $order */
     $coord = $order->operationCoordinationService;
     $brandCyan = '#00ADEF';
+    $providerAddress = \App\Support\Operations\OperationServiceOrderProviderSummary::addressOrDash($order);
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -91,7 +92,7 @@
         }
         .logo-cell img.header-logo,
         img.header-logo {
-            max-width: 74px;
+            max-width: 110px;
             height: auto;
             display: block;
         }
@@ -143,7 +144,7 @@
             margin-top: 0;
         }
         .section-title--block {
-            margin-top: 7px;
+            margin-top: 12px;
         }
         .grid {
             width: 100%;
@@ -212,6 +213,12 @@
         table.items tr:nth-child(even) td {
             background: #fafafa;
         }
+        table.items th.item-cat,
+        table.items td.item-cat {
+            white-space: nowrap;
+            word-wrap: normal;
+            overflow-wrap: normal;
+        }
         .items-empty {
             font-size: 7.25pt;
             color: #6b7280;
@@ -244,7 +251,7 @@
             color: {{ $brandCyan }};
         }
         .two-col-section {
-            margin-bottom: 0;
+            margin-bottom: 10px;
         }
         .doc-content {
             position: relative;
@@ -275,52 +282,13 @@
                 <p class="doc-title">Orden de servicio</p>
                 <p class="doc-sub">N° <strong>{{ $order->order_number }}</strong></p>
                 <p class="doc-sub">Fecha: <strong>{{ $order->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</strong></p>
-                @if(filled($order->status))
-                    <span class="badge">Estado: {{ $order->status }}</span>
-                @endif
             </td>
         </tr>
     </table>
 
-    <div class="two-col-section">
-        <div class="section-title">Datos de la orden</div>
-        <table class="grid">
-            <tr>
-                <td>
-                    <div class="label">Tipo de servicio</div>
-                    <div class="value">{{ $order->service_type ?? '—' }}</div>
-                </td>
-                <td>
-                    <div class="label">Prioridad</div>
-                    <div class="value">{{ $order->telemedicinePriority?->name ?? '—' }}</div>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <div class="label">Ubicación despacho</div>
-                    <div class="value-muted">{{ $order->operationInventoryUbication?->name ?? '—' }}</div>
-                </td>
-                <td>
-                    <div class="label">ID coordinación</div>
-                    <div class="value-muted">{{ $order->operation_coordination_service_id }}</div>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <div class="label">Ítems / unidades</div>
-                    <div class="value-muted">{{ $order->total_items ?? 0 }} / {{ $order->total_items_unit ?? 0 }}</div>
-                </td>
-                <td>
-                    <div class="label">Moneda</div>
-                    <div class="value-muted">{{ $order->currency ?? '—' }}</div>
-                </td>
-            </tr>
-        </table>
-    </div>
-
     @if($coord)
         <div class="two-col-section">
-            <div class="section-title">Coordinación y paciente</div>
+            <div class="section-title">Datos de paciente</div>
             <table class="grid">
                 <tr>
                     <td>
@@ -370,18 +338,16 @@
     @endif
 
     <div class="two-col-section">
-        <div class="section-title">Proveedor y descripción</div>
+        <div class="section-title">Servicio complementario</div>
         <table class="grid">
             <tr>
                 <td>
-                    <div class="label">Proveedor natural</div>
-                    <div class="value">{{ $order->doctorNurse?->name ?? '—' }}</div>
-                    <div class="label">Proveedor jurídico</div>
-                    <div class="value-muted">{{ $order->supplier?->name ?? '—' }}</div>
+                    <div class="label">Tipo de servicio</div>
+                    <div class="value">{{ $order->service_type ?? '—' }}</div>
                 </td>
                 <td>
-                    <div class="label">Proveedor No Convenido</div>
-                    <div class="value-muted">{{ $order->supplier_external ?? '—' }}</div>
+                    <div class="label">Dirección</div>
+                    <div class="value-muted">{{ $providerAddress }}</div>
                 </td>
             </tr>
             <tr>
@@ -401,50 +367,6 @@
         </table>
     </div>
 
-    <div class="two-col-section">
-        <div class="section-title">Montos y pago</div>
-        <table class="grid">
-            <tr>
-                <td>
-                    <div class="label">Método de pago</div>
-                    <div class="value-muted">{{ $order->payment_method ?? '—' }}</div>
-                </td>
-                <td>
-                    <div class="label">Tasa BCV</div>
-                    <div class="value-muted">
-                        @if($order->tasa_bcv !== null)
-                            {{ number_format((float) $order->tasa_bcv, 2, ',', '.') }}
-                        @else
-                            —
-                        @endif
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <div class="label">Total USD</div>
-                    <div class="value-muted">
-                        @if($order->total_amount_usd !== null)
-                            USD {{ number_format((float) $order->total_amount_usd, 2, ',', '.') }}
-                        @else
-                            —
-                        @endif
-                    </div>
-                </td>
-                <td>
-                    <div class="label">Total VES</div>
-                    <div class="value-muted">
-                        @if($order->total_amount_ves !== null)
-                            VES {{ number_format((float) $order->total_amount_ves, 2, ',', '.') }}
-                        @else
-                            —
-                        @endif
-                    </div>
-                </td>
-            </tr>
-        </table>
-    </div>
-
     <div class="section-title section-title--block">Ítems de la orden</div>
     @if($order->operationServiceOrderItems->isEmpty())
         <p class="items-empty">Sin ítems registrados.</p>
@@ -453,29 +375,19 @@
             <thead>
                 <tr>
                     <th style="width:19%">Ítem</th>
-                    <th style="width:10%">Cat.</th>
+                    <th class="item-cat" style="width:16%">Categoría</th>
                     <th style="width:7%">Und.</th>
                     <th style="width:6%">Cant.</th>
-                    <th style="width:10%">Monto</th>
-                    <th style="width:7%">Mon.</th>
-                    <th style="width:41%">Indic.</th>
+                    <th style="width:45%">Indicaciones</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($order->operationServiceOrderItems as $item)
                     <tr>
                         <td>{{ $item->item_name }}</td>
-                        <td>{{ $item->category }}</td>
+                        <td class="item-cat">{{ $item->category }}</td>
                         <td>{{ $item->item_unit ?? '—' }}</td>
                         <td>{{ $item->quantity ?? 0 }}</td>
-                        <td>
-                            @if($item->amount !== null)
-                                {{ number_format((float) $item->amount, 2, ',', '.') }}
-                            @else
-                                —
-                            @endif
-                        </td>
-                        <td>{{ $item->currency ?? '—' }}</td>
                         <td>{{ $item->dosage_instruction ?? '—' }}</td>
                     </tr>
                 @endforeach

@@ -37,7 +37,7 @@ it('operation quote generator pdf blade renders without errors', function (): vo
         'observations' => 'Entrega en 48 horas. Requiere ayuno de 8 horas.',
         'status' => OperationQuoteGenerator::STATUS_PENDING,
         'costo_dolares' => 20,
-        'costo_bolivares' => 2000,
+        'costo_bolivares' => 2200,
         'porcentaje_ganancia' => 10,
         'subtotal' => 20,
         'total' => 22,
@@ -47,6 +47,8 @@ it('operation quote generator pdf blade renders without errors', function (): vo
                 'label' => 'Hemograma',
                 'detail' => 'Completo',
                 'coverage_label' => 'No cubierto',
+                'unit_price_usd' => 10,
+                'unit_price_ves' => 1000,
             ],
         ],
     ]);
@@ -63,11 +65,22 @@ it('operation quote generator pdf blade renders without errors', function (): vo
     expect($html)
         ->toContain('Cotización de servicios')
         ->toContain('Hemograma')
-        ->toContain('Tasa BCV aplicada')
         ->toContain('Proveedor')
         ->toContain('Av. Principal, Caracas')
         ->toContain('Observaciones')
-        ->toContain('Entrega en 48 horas');
+        ->toContain('section-title--observations')
+        ->toContain('Resumen de cotización')
+        ->toContain('width: 110px')
+        ->toContain('font-size: 8pt')
+        ->toContain('Entrega en 48 horas')
+        ->toContain('US$ 22,00')
+        ->toContain('US$ 11,00')
+        ->and($html)->not->toContain('Ganancia aplicada')
+        ->and($html)->not->toContain('Tasa BCV aplicada')
+        ->and($html)->not->toContain('P. unit. (Bs.)')
+        ->and($html)->not->toContain('Total (Bs.)')
+        ->and($html)->not->toContain('US$ 20,00')
+        ->and($html)->not->toContain('US$ 10,00');
 });
 
 it('migration agrega quote_pdf_path a operation_quote_generators', function (): void {

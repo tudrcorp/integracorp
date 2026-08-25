@@ -63,13 +63,9 @@
             </td>
         </tr>
         <tr>
-            <td colspan="2">
+            <td colspan="3">
                 <div class="label">Proveedor</div>
                 <div class="value">{{ $quoteMeta['supplier_name'] ?? '—' }}</div>
-            </td>
-            <td>
-                <div class="label">Tasa BCV</div>
-                <div class="value">{{ number_format((float) ($quoteMeta['bcv_rate'] ?? 0), 2, ',', '.') }} Bs./US$</div>
             </td>
         </tr>
     </table>
@@ -98,11 +94,10 @@
 
     <div class="summary">
         <div class="summary-row"><strong>Total USD:</strong> US$ {{ number_format((float) ($quoteMeta['total_amount_usd'] ?? 0), 2, ',', '.') }}</div>
-        <div class="summary-row"><strong>Total Bs.:</strong> Bs. {{ number_format((float) ($quoteMeta['total_amount_ves'] ?? 0), 2, ',', '.') }}</div>
     </div>
 
     <div class="footer">
-        Documento generado automáticamente por el módulo de operaciones.
+        Cotización generada automáticamente desde Sistema IntegraCorp. Coordinación de Servicios Médicos.
     </div>
 </body>
 </html>

@@ -103,8 +103,6 @@
 
     <div class="summary">
         <div><strong>Precio cotizado (USD):</strong> US$ {{ number_format((float) ($quoteData['price_usd'] ?? 0), 2, ',', '.') }}</div>
-        <div><strong>Tasa BCV aplicada:</strong> {{ number_format((float) ($quoteData['bcv_rate'] ?? 0), 2, ',', '.') }} Bs./US$</div>
-        <div><strong>Precio cotizado (Bs.):</strong> Bs. {{ number_format((float) ($quoteData['price_ves'] ?? 0), 2, ',', '.') }}</div>
     </div>
 
     <div class="footer">

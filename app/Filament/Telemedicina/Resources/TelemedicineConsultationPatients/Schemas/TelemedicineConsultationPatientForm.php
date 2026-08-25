@@ -14,6 +14,7 @@ use App\Models\TelemedicineServiceList;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
+use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicationInventoryOptions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
@@ -520,6 +521,32 @@ class TelemedicineConsultationPatientForm
                             return false;
                         })
                         ->schema([
+                            Fieldset::make('Diagnóstico principal')
+                                ->schema([
+                                    Textarea::make(TelemedicineInitialDiagnosisUpdater::FORM_FIELD)
+                                        ->label('Diagnóstico principal de la consulta inicial')
+                                        ->helperText('Actualice el diagnóstico registrado en la consulta inicial si evolucionó. El cambio queda en la bitácora del caso.')
+                                        ->autosize()
+                                        ->required(function () use ($countCase): bool {
+                                            $action = session()->get('action') ?? null;
+
+                                            if ($countCase < 1) {
+                                                return false;
+                                            }
+
+                                            if (isset($action) && $action == 'edit' && session()->get('status') == 'CONSULTA INICIAL') {
+                                                return false;
+                                            }
+
+                                            return true;
+                                        })
+                                        ->default(fn (): string => filled($caseId)
+                                            ? TelemedicineInitialDiagnosisUpdater::currentDiagnosis((int) $caseId)
+                                            : '')
+                                        ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('initial_diagnostic_impression', $state.toUpperCase());
+                                                JS),
+                                ])->columnSpanFull(),
                             // ...Preguntas
                             Fieldset::make('Preguntas de Seguimiento')
                                 ->schema([
