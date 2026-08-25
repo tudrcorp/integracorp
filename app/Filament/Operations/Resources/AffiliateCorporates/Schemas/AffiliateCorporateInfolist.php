@@ -6,6 +6,7 @@ namespace App\Filament\Operations\Resources\AffiliateCorporates\Schemas;
 
 use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\AffiliateCorporate;
+use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\Operations\OperationsMapSearchAddress;
 use Carbon\Carbon;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -153,6 +154,12 @@ class AffiliateCorporateInfolist
                                                             ->label('Sexo')
                                                             ->badge()
                                                             ->color('gray'),
+                                                        TextEntry::make('relationship')
+                                                            ->label('Parentesco')
+                                                            ->badge()
+                                                            ->color('info')
+                                                            ->formatStateUsing(fn (?string $state): ?string => CorporateAffiliateRelationship::label($state))
+                                                            ->placeholder('—'),
                                                         TextEntry::make('phone')
                                                             ->label('Teléfono')
                                                             ->icon(Heroicon::OutlinedPhone)

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Filament;
 
+use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\FilamentDateDisplay;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -30,6 +31,12 @@ final class CorporateAffiliatesTableDisplay
                 ->searchable()
                 ->copyable()
                 ->copyMessage('Copiado'),
+            TextColumn::make('relationship')
+                ->label('Parentesco')
+                ->badge()
+                ->formatStateUsing(fn (?string $state): ?string => CorporateAffiliateRelationship::label($state))
+                ->placeholder('—')
+                ->searchable(),
             TextColumn::make('birth_date')
                 ->label('Fecha de nacimiento')
                 ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))

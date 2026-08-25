@@ -18,6 +18,7 @@ class AffiliateCorporate extends Model
         'birth_date',
         'age',
         'sex',
+        'relationship',
         'phone',
         'email',
         'condition_medical',

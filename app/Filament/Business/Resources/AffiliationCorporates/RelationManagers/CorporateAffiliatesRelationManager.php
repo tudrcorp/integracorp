@@ -14,6 +14,7 @@ use App\Models\BusinessUnit;
 use App\Models\Plan;
 use App\Support\AffiliateVaucherIlsRemainingDays;
 use App\Support\AffiliationCorporates\CorporateAffiliatePlanSynchronizer;
+use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\AffiliationCorporates\CorporateAffiliateVoucherIlsUpdater;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
@@ -72,7 +73,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
         return $schema
             ->components([
                 Section::make('Datos personales')
-                    ->description('Identificación y datos básicos del familiar o colaborador.')
+                    ->description('Identificación, parentesco y datos básicos del familiar o colaborador.')
                     ->icon(Heroicon::User)
                     ->schema([
                         Grid::make(12)
@@ -125,7 +126,18 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->numeric()
                                     ->disabled()
                                     ->dehydrated()
-                                    ->columnSpan(['default' => 12, 'lg' => 3]),
+                                    ->columnSpan(['default' => 12, 'lg' => 6]),
+                                Select::make('relationship')
+                                    ->label('Parentesco')
+                                    ->required()
+                                    ->native(false)
+                                    ->options(CorporateAffiliateRelationship::options())
+                                    ->default(CorporateAffiliateRelationship::DEFAULT)
+                                    ->placeholder('Seleccione el parentesco')
+                                    ->validationMessages([
+                                        'required' => 'Campo obligatorio',
+                                    ])
+                                    ->columnSpan(['default' => 12, 'lg' => 6]),
                             ]),
                     ])
                     ->compact()
@@ -343,6 +355,14 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->label('Sexo')
                     ->badge()
                     ->color('gray')
+                    ->toggleable(),
+                TextColumn::make('relationship')
+                    ->label('Parentesco')
+                    ->badge()
+                    ->color('gray')
+                    ->formatStateUsing(fn (?string $state): ?string => CorporateAffiliateRelationship::label($state))
+                    ->placeholder('—')
+                    ->searchable()
                     ->toggleable(),
                 TextColumn::make('plan.description')
                     ->label('Plan')
