@@ -22,13 +22,17 @@ use App\Models\TelemedicinePatientLab;
 use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
+use App\Models\User;
 use App\Services\TelemedicineMedicationInventoryDeductor;
+use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class EditTelemedicineConsultationPatient extends EditRecord
 {
@@ -50,6 +54,61 @@ class EditTelemedicineConsultationPatient extends EditRecord
         return [
             'open-medicamentos-step-info-modal' => 'openMedicamentosStepInfoModal',
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $caseId = (int) ($data['telemedicine_case_id'] ?? $this->getRecord()->telemedicine_case_id ?? 0);
+        $status = (string) ($data['status'] ?? $this->getRecord()->status ?? '');
+
+        if ($caseId > 0 && $status !== TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS) {
+            $data = array_merge($data, TelemedicineInitialDiagnosisUpdater::formStateForCase($caseId));
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return TelemedicineInitialDiagnosisUpdater::mergeIntoConsultationFormData($data);
+    }
+
+    protected function afterSave(): void
+    {
+        $record = $this->getRecord();
+
+        if ((string) $record->status === TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS) {
+            return;
+        }
+
+        try {
+            TelemedicineInitialDiagnosisUpdater::syncFromFollowUp(
+                (int) $record->telemedicine_case_id,
+                (string) ($record->diagnostic_impression ?? $this->data[TelemedicineInitialDiagnosisUpdater::FORM_FIELD] ?? ''),
+                Auth::user() instanceof User ? Auth::user() : null,
+                filled($record->code_reference) ? (string) $record->code_reference : null,
+            );
+        } catch (\Throwable $diagnosisException) {
+            Log::error('Error al actualizar el diagnóstico principal de la consulta inicial: '.$diagnosisException->getMessage(), [
+                'telemedicine_case_id' => $record->telemedicine_case_id,
+                'telemedicine_consultation_id' => $record->id,
+                'exception' => $diagnosisException,
+            ]);
+
+            Notification::make()
+                ->title('No se pudo actualizar el diagnóstico principal')
+                ->body('La consulta se guardó, pero el diagnóstico de la consulta inicial no se actualizó. Revise la bitácora e intente de nuevo.')
+                ->danger()
+                ->send();
+        }
     }
 
     /**

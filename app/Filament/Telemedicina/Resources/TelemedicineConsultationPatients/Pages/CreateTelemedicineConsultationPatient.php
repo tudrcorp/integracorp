@@ -29,6 +29,7 @@ use App\Models\TelemedicinePatientLab;
 use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
+use App\Models\User;
 use App\Services\NotificationTelemedicinaService;
 use App\Services\TelemedicineMedicationInventoryDeductor;
 use App\Support\Filament\FilamentIosButton;
@@ -37,6 +38,7 @@ use App\Support\Telemedicine\TelemedicineAmdFileRegistrar;
 use App\Support\Telemedicine\TelemedicineAmdInformRegistrar;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
+use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
@@ -139,6 +141,13 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                 $formState = array_merge(
                     $formState,
                     ConsultationCreateWizardDefaults::formStatePrefillFromLastConsultation($lastConsultation),
+                );
+            }
+
+            if ($countCase >= 1) {
+                $formState = array_merge(
+                    $formState,
+                    TelemedicineInitialDiagnosisUpdater::formStateForCase((int) $this->case->id),
                 );
             }
 
@@ -530,7 +539,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         isset($data['consult_specialist']) ? session()->put('consult_specialist', $data['consult_specialist']) : null;
         isset($data['other_specialist']) ? session()->put('other_specialist', $data['other_specialist']) : null;
 
-        return $data;
+        return TelemedicineInitialDiagnosisUpdater::mergeIntoConsultationFormData($data);
     }
 
     /**
@@ -551,6 +560,29 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         try {
 
             $record = $this->getRecord()->toArray();
+
+            if (($record['status'] ?? '') !== TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS) {
+                try {
+                    TelemedicineInitialDiagnosisUpdater::syncFromFollowUp(
+                        (int) ($record['telemedicine_case_id'] ?? 0),
+                        (string) ($record['diagnostic_impression'] ?? $this->data[TelemedicineInitialDiagnosisUpdater::FORM_FIELD] ?? ''),
+                        Auth::user() instanceof User ? Auth::user() : null,
+                        isset($record['code_reference']) ? (string) $record['code_reference'] : null,
+                    );
+                } catch (\Throwable $diagnosisException) {
+                    Log::error('Error al actualizar el diagnóstico principal de la consulta inicial: '.$diagnosisException->getMessage(), [
+                        'telemedicine_case_id' => $record['telemedicine_case_id'] ?? null,
+                        'telemedicine_consultation_id' => $record['id'] ?? null,
+                        'exception' => $diagnosisException,
+                    ]);
+
+                    Notification::make()
+                        ->title('No se pudo actualizar el diagnóstico principal')
+                        ->body('La consulta de seguimiento se guardó, pero el diagnóstico de la consulta inicial no se actualizó. Revise la bitácora e intente de nuevo.')
+                        ->danger()
+                        ->send();
+                }
+            }
 
             if ((int) ($record['telemedicine_service_list_id'] ?? 0) === TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID) {
                 $consultation = TelemedicineConsultationPatient::query()->find($record['id']);
