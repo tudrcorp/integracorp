@@ -11,6 +11,8 @@ use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
 use App\Models\User;
 use App\Support\AffiliateCard\AffiliateCardPageLayout;
+use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
+use App\Support\AffiliationCorporates\CorporateAffiliationContractedPlan;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\Viveplus\ViveplusDocumentWebhookDispatcher;
 use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
@@ -78,7 +80,15 @@ class AffiliationCorporateBusinessDocumentsService
      */
     public static function regenerateCertificateAndTarjetas(AffiliationCorporate $record, ?int $userId): array
     {
-        $record->loadMissing(['corporateAffiliates.plan', 'corporateAffiliates.coverage', 'plan.benefitPlans', 'coverage', 'agent', 'agency']);
+        $record->loadMissing([
+            'corporateAffiliates.plan',
+            'corporateAffiliates.coverage',
+            'affiliationCorporatePlans.plan.benefitPlans',
+            'plan.benefitPlans',
+            'coverage',
+            'agent',
+            'agency',
+        ]);
 
         $affiliationCode = (string) $record->code;
 
@@ -653,12 +663,14 @@ class AffiliationCorporateBusinessDocumentsService
     {
         $effectiveDate = (string) ($record->effective_date ?? '');
 
+        $certificatePlan = CorporateAffiliationContractedPlan::certificateFields($record);
+
         $pagador = [
             'name' => (string) $record->name_corporate,
             'code' => (string) $record->code,
             'tarifa_anual' => (float) ($record->fee_anual ?? 0),
-            'plan' => (string) ($record->plan?->description ?? 'Plan Estándar'),
-            'plan_id' => $record->plan_id,
+            'plan' => $certificatePlan['plan'],
+            'plan_id' => $certificatePlan['plan_id'],
             'frecuencia_pago' => (string) ($record->payment_frequency ?? ''),
             'cobertura' => (float) ($record->coverage?->price ?? 0),
             'fecha_afiliacion' => (string) ($record->activated_at ?? ''),
@@ -668,13 +680,13 @@ class AffiliationCorporateBusinessDocumentsService
             'agente_agencia' => (string) ($record->agent?->name ?? $record->agency?->name_corporative ?? 'TuDrEnCasa'),
         ];
 
-        $beneficios = $record->plan?->benefitPlans?->pluck('description')->filter()->values()->all() ?? [];
+        $beneficios = CorporateAffiliationContractedPlan::benefitDescriptions($record);
         $affiliates = $record->corporateAffiliates->map(function ($affiliate): array {
             return [
                 'full_name' => trim((string) $affiliate->first_name.' '.(string) $affiliate->last_name),
                 'nro_identificacion' => (string) $affiliate->nro_identificacion,
                 'birth_date' => (string) ($affiliate->birth_date ?? ''),
-                'relationship' => (string) ($affiliate->position_company ?? 'COLABORADOR'),
+                'relationship' => CorporateAffiliateRelationship::forCertificate($affiliate->relationship),
             ];
         });
 
@@ -820,11 +832,17 @@ class AffiliationCorporateBusinessDocumentsService
     }
 
     /**
-     * `affiliation_corporates` no tiene `plan_id`: el plan vive en cada afiliado.
-     * Se usa el plan predominante de la población para elegir el condicionado.
+     * El plan contratado vive en `afilliation_corporate_plans`. Si esa tabla
+     * no tiene filas, se usa `plan_id` de cabecera o el predominante de la población.
      */
     public static function resolvePlanId(AffiliationCorporate $record): ?int
     {
+        $contractedPlanId = CorporateAffiliationContractedPlan::planId($record);
+
+        if ($contractedPlanId !== null) {
+            return $contractedPlanId;
+        }
+
         if ($record->plan_id !== null) {
             return (int) $record->plan_id;
         }

@@ -2,44 +2,40 @@
 
 namespace App\Filament\Administration\Resources\AffiliationCorporates\RelationManagers;
 
+use App\Http\Controllers\AffiliateCorporateController;
+use App\Models\AffiliateCorporate;
+use App\Models\AgeRange;
+use App\Models\Plan;
+use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use BackedEnum;
 use Carbon\Carbon;
-use App\Models\Fee;
-use App\Models\Plan;
-
-use App\Models\AgeRange;
-use Filament\Tables\Table;
 use Filament\Actions\Action;
-use Filament\Schemas\Schema;
 use Filament\Actions\ActionGroup;
-use Filament\Support\Enums\Width;
-use App\Models\AffiliateCorporate;
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Illuminate\Support\Facades\Log;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Filament\Support\Enums\Alignment;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
-use App\Models\AfilliationCorporatePlan;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Tables\Columns\TextInputColumn;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use App\Http\Controllers\AffiliateCorporateController;
-use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class CorporateAffiliatesRelationManager extends RelationManager
 {
@@ -71,45 +67,55 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 'MASCULINO' => 'MASCULINO',
                                 'FEMENINO' => 'FEMENINO',
                             ]),
-                            TextInput::make('phone')
-                                ->label('Telefono'),
-                            TextInput::make('email')
-                                ->label('Email address')
-                                ->required()
-                                ->email(),
-                            DatePicker::make('birth_date')
-                                ->label('Fecha de Nacimiento')
-                                ->required()
-                                ->live()
-                                ->format('d/m/Y')
-                                ->afterStateUpdated(function (Set $set, $state) {
-                                    $set('age', intval(Carbon::createFromFormat('d/m/Y', $state)->diffInYears(now())));
-                                }),
-                            TextInput::make('age')
-                                ->label('Edad')
-                                ->required()
-                                ->live()
-                                ->numeric()
-                                ->disabled()
-                                ->dehydrated(),
-                            TextInput::make('condition_medical')
-                                ->label('Condicion Medica'),
-                            DatePicker::make('initial_date')
-                                ->label('Fecha de Ingreso a la Empresa')
-                                ->format('d/m/Y'),
-                            TextInput::make('position_company')
-                                ->label('Condicion Medica'),
-                            TextInput::make('full_name_emergency')
-                                ->label('Contacto de Emergencia'),
-                            TextInput::make('phone_emergency')
-                                ->label('Telefono de Emergencia'),
-                            Textarea::make('address')
-                                ->label('Direccion')
-                                ->columnSpanFull()
-                                ->required()
-                                ->autosize(),
-                
-                            Fieldset::make('Plan de afiliación')
+                        TextInput::make('phone')
+                            ->label('Telefono'),
+                        TextInput::make('email')
+                            ->label('Email address')
+                            ->required()
+                            ->email(),
+                        DatePicker::make('birth_date')
+                            ->label('Fecha de Nacimiento')
+                            ->required()
+                            ->live()
+                            ->format('d/m/Y')
+                            ->afterStateUpdated(function (Set $set, $state) {
+                                $set('age', intval(Carbon::createFromFormat('d/m/Y', $state)->diffInYears(now())));
+                            }),
+                        TextInput::make('age')
+                            ->label('Edad')
+                            ->required()
+                            ->live()
+                            ->numeric()
+                            ->disabled()
+                            ->dehydrated(),
+                        Select::make('relationship')
+                            ->label('Parentesco')
+                            ->required()
+                            ->native(false)
+                            ->options(CorporateAffiliateRelationship::options())
+                            ->default(CorporateAffiliateRelationship::DEFAULT)
+                            ->placeholder('Seleccione el parentesco')
+                            ->validationMessages([
+                                'required' => 'Campo obligatorio',
+                            ]),
+                        TextInput::make('condition_medical')
+                            ->label('Condicion Medica'),
+                        DatePicker::make('initial_date')
+                            ->label('Fecha de Ingreso a la Empresa')
+                            ->format('d/m/Y'),
+                        TextInput::make('position_company')
+                            ->label('Condicion Medica'),
+                        TextInput::make('full_name_emergency')
+                            ->label('Contacto de Emergencia'),
+                        TextInput::make('phone_emergency')
+                            ->label('Telefono de Emergencia'),
+                        Textarea::make('address')
+                            ->label('Direccion')
+                            ->columnSpanFull()
+                            ->required()
+                            ->autosize(),
+
+                        Fieldset::make('Plan de afiliación')
                             ->schema([
                                 Select::make('plan_id')
                                     ->options(function ($record) {
@@ -117,9 +123,9 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     })
                                     ->label('Planes')
                                     ->required()
-                                    ->live()  
+                                    ->live()
                                     ->validationMessages([
-                                        'required'  => 'Campo Obligatorio',
+                                        'required' => 'Campo Obligatorio',
                                     ])
                                     ->preload()
                                     ->placeholder('Seleccione plan(es)'),
@@ -128,12 +134,13 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->label('Rango de edad')
                                     ->options(function (Get $get, $state) {
                                         Log::info($get('plan_id'));
+
                                         return AgeRange::where('plan_id', intval($get('plan_id')))->get()->pluck('range', 'id');
                                     })
                                     ->searchable()
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Obligatorio',
+                                        'required' => 'Campo Obligatorio',
                                     ])
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->preload(),
@@ -141,10 +148,11 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 Select::make('coverage_id')
                                     ->label('Cobertura')
                                     ->options(function (get $get) {
-                                        if ($get('age_range_id') == 1 || $get('age_range_id') == NULL) {
+                                        if ($get('age_range_id') == 1 || $get('age_range_id') == null) {
                                             return [];
                                         }
                                         $arrayFee = AgeRange::where('plan_id', $get('plan_id'))->where('id', $get('age_range_id'))->with('fees')->get()->toArray();
+
                                         return collect($arrayFee[0]['fees'])->pluck('coverage', 'coverage_id');
                                     })
                                     ->searchable()
@@ -155,7 +163,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->live(onBlur: true)
                                     ->required()
                                     ->validationMessages([
-                                        'required'  => 'Campo Obligatorio',
+                                        'required' => 'Campo Obligatorio',
                                     ])
                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
                                 TextInput::make('payment_frequency')
@@ -163,7 +171,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->live()
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->disabled()
-                                    ->dehydrated()   
+                                    ->dehydrated()
                                     ->default(function () {
                                         return $this->getOwnerRecord()->payment_frequency;
                                     }),
@@ -241,11 +249,11 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'PRE-AFILIADO'  => 'warning',
-                            'ACTIVO'        => 'success',
-                            'EXCLUIDO'      => 'danger',
-                            'INACTIVO'      => 'danger',
-                            default         => 'azul',
+                            'PRE-AFILIADO' => 'warning',
+                            'ACTIVO' => 'success',
+                            'EXCLUIDO' => 'danger',
+                            'INACTIVO' => 'danger',
+                            default => 'azul',
                         };
                     }),
                 TextColumn::make('vaucherIls')
@@ -259,20 +267,20 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->badge()
                     ->color('warning')
                     ->searchable()
-                    ->default(fn($record) => $record->dateInit == null ? '--/--/---' : $record->dateInit),
+                    ->default(fn ($record) => $record->dateInit == null ? '--/--/---' : $record->dateInit),
                 TextColumn::make('dateEnd')
                     ->label('Fecha Fin')
                     ->badge()
                     ->color('warning')
                     ->searchable()
-                    ->default(fn($record) => $record->DateEnd == null ? '--/--/---' : $record->DateEnd),
+                    ->default(fn ($record) => $record->DateEnd == null ? '--/--/---' : $record->DateEnd),
                 TextColumn::make('numberDays')
                     ->label('Dias Cobertura')
                     ->suffix(' Dias Restantes')
                     ->badge()
                     ->color('warning')
                     ->searchable()
-                    ->default(fn($record) => $record->numberDays == null ? '0 ' : $record->numberDays),
+                    ->default(fn ($record) => $record->numberDays == null ? '0 ' : $record->numberDays),
                 IconColumn::make('document_ils')
                     ->alignment(Alignment::Center)
                     ->label('Comprobante')
@@ -290,7 +298,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                             : 'danger'; // Rojo si no existe
                     })
                     ->url(function ($record) {
-                        return asset('storage/' . $record->document_ils);
+                        return asset('storage/'.$record->document_ils);
                     })
                     ->openUrlInNewTab(),
 
@@ -303,19 +311,19 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->icon(Heroicon::Plus)
                     ->before(function (array $data, CreateAction $action) {
                         $plans = $this->getOwnerRecord()->affiliationCorporatePlans->pluck('plan_id')->toArray();
-                        if (!in_array($data['plan_id'], $plans)) {
+                        if (! in_array($data['plan_id'], $plans)) {
                             Notification::make()
                                 ->title('Error')
                                 ->danger()
                                 ->icon(Heroicon::ExclamationCircle)
                                 ->body('El plan seleccionado no se encuentra en la lista de planes afiliados. Por favor, seleccione un plan que pertenece a la afiliación corporativa')
                                 ->send();
-                                
+
                             $action->halt();
                         }
                     })
                     ->using(function (array $data) {
-                        
+
                         $addAffiliate = AffiliateCorporateController::addAffiliate($data, $this->getOwnerRecord());
 
                         if ($addAffiliate) {
@@ -371,17 +379,17 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                             ->label('Documento/Comprobante ILS')
                                             ->directory('vauches')
                                             ->required(),
-                                    ])
-                                ])
+                                    ]),
+                                ]),
                         ])
                         ->action(function (AffiliateCorporate $record, array $data): void {
 
                             $record->update([
-                                'vaucherIls'    => $data['vaucherIls'],
-                                'dateInit'      => $data['dateInit'],
-                                'dateEnd'       => $data['dateEnd'],
-                                'numberDays'    => 180,
-                                'document_ils'  => $data['document_ils']
+                                'vaucherIls' => $data['vaucherIls'],
+                                'dateInit' => $data['dateInit'],
+                                'dateEnd' => $data['dateEnd'],
+                                'numberDays' => 180,
+                                'document_ils' => $data['document_ils'],
                             ]);
 
                             Notification::make()
@@ -393,6 +401,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                             if ($record->vaucherIls != null) {
                                 return true;
                             }
+
                             return false;
                         }),
                     Action::make('changet_status')
@@ -402,27 +411,26 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->requiresConfirmation()
                         ->action(function (AffiliateCorporate $record): void {
 
-                            //... Actualizo la afiliacion
+                            // ... Actualizo la afiliacion
                             $owner = $this->getOwnerRecord();
                             $owner->fee_anual = $owner->fee_anual - $record->fee;
                             $owner->total_amount = $owner->total_amount - $record->total_amount;
                             $owner->family_members = $owner->family_members - 1;
                             $owner->save();
 
-                            //... Actualizo el familiar
+                            // ... Actualizo el familiar
                             $record->update([
-                                'status' => 'INACTIVO'
+                                'status' => 'INACTIVO',
                             ]);
 
                             Notification::make()
                                 ->success()
                                 ->title('Afiliacion de Baja')
                                 ->send();
-                        })
+                        }),
                 ])->hidden(fn ($record) => $record->status == 'INACTIVO' || $record->status == 'EXCLUIDO'),
-                
 
-        ])
+            ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()

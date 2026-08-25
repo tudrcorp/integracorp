@@ -29,7 +29,14 @@ class GenerateCorporateCertificateJob implements ShouldQueue
 
         $record = AffiliationCorporate::query()
             ->where('code', $this->affiliationCode)
-            ->with(['corporateAffiliates', 'plan.benefitPlans', 'coverage', 'agent', 'agency'])
+            ->with([
+                'corporateAffiliates',
+                'affiliationCorporatePlans.plan.benefitPlans',
+                'plan.benefitPlans',
+                'coverage',
+                'agent',
+                'agency',
+            ])
             ->firstOrFail();
 
         AffiliationCorporateBusinessDocumentsService::generateCorporateCertificate($record);

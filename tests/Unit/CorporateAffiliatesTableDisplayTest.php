@@ -8,7 +8,7 @@ use Filament\Tables\Columns\TextColumn;
 it('expone las columnas de afiliados corporativos para consulta comercial', function (): void {
     $columns = CorporateAffiliatesTableDisplay::columns();
 
-    expect($columns)->toHaveCount(9)
+    expect($columns)->toHaveCount(10)
         ->and($columns[0])->toBeInstanceOf(TextColumn::class);
 });
 
@@ -19,6 +19,7 @@ it('incluye los datos clave solicitados para afiliados corporativos', function (
         ->toContain("TextColumn::make('first_name')")
         ->toContain("TextColumn::make('last_name')")
         ->toContain("TextColumn::make('nro_identificacion')")
+        ->toContain("TextColumn::make('relationship')")
         ->toContain("TextColumn::make('birth_date')")
         ->toContain("TextColumn::make('email')")
         ->toContain("TextColumn::make('phone')")

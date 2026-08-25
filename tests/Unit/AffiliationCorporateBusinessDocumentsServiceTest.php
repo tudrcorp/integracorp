@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
+use App\Models\AfilliationCorporatePlan;
 use App\Models\Coverage;
 use App\Models\Plan;
 use App\Services\AffiliationCorporateBusinessDocumentsService;
@@ -168,9 +169,14 @@ it('define affiliationCode y usa affiliateCount al regenerar documentos corporat
         ->toContain('$affiliationCode = (string) $record->code;')
         ->toContain('self::recommendedChunkSize($affiliateCount)')
         ->toContain('self::generateCorporateCertificate($record)')
+        ->toContain('CorporateAffiliationContractedPlan::certificateFields($record)')
+        ->toContain('CorporateAffiliationContractedPlan::benefitDescriptions($record)')
+        ->toContain('CorporateAffiliationContractedPlan::planId($record)')
+        ->toContain('CorporateAffiliateRelationship::forCertificate($affiliate->relationship)')
         ->toContain('use ($taskId, $userId, $activeTaskCacheKey, $affiliationCode)')
         ->toContain('public static function generateTarjetasChunk(array $chunk): void')
-        ->not->toContain('recommendedChunkSize($affiliatesCount)');
+        ->not->toContain('recommendedChunkSize($affiliatesCount)')
+        ->not->toContain("'Plan Estándar'");
 });
 
 it('usa el layout de carnet individual y la marca de empresa aliada en las tarjetas corporativas', function (): void {
@@ -268,4 +274,27 @@ it('recomienda tamano de lote segun cantidad de afiliados', function (): void {
         ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(81))->toBe(25)
         ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(251))->toBe(50)
         ->and(AffiliationCorporateBusinessDocumentsService::recommendedChunkSize(2681))->toBe(100);
+});
+
+it('resuelve el plan_id de documentos corporativos desde afilliation_corporate_plans', function (): void {
+    $affiliation = new AffiliationCorporate([
+        'code' => 'TDEC-COR-00055',
+        'plan_id' => 1,
+    ]);
+
+    $especial = new Plan(['description' => 'PLAN ESPECIAL']);
+    $especial->id = 3;
+    $especial->setRelation('benefitPlans', collect());
+
+    $row = new AfilliationCorporatePlan(['plan_id' => 3]);
+    $row->setRelation('plan', $especial);
+
+    $affiliation->setRelation('affiliationCorporatePlans', collect([
+        $row,
+        tap(new AfilliationCorporatePlan(['plan_id' => 3]), fn (AfilliationCorporatePlan $planRow): AfilliationCorporatePlan => $planRow->setRelation('plan', $especial)),
+        tap(new AfilliationCorporatePlan(['plan_id' => 3]), fn (AfilliationCorporatePlan $planRow): AfilliationCorporatePlan => $planRow->setRelation('plan', $especial)),
+    ]));
+    $affiliation->setRelation('corporateAffiliates', collect());
+
+    expect(AffiliationCorporateBusinessDocumentsService::resolvePlanId($affiliation))->toBe(3);
 });

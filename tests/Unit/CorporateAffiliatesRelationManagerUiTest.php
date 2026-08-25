@@ -8,6 +8,11 @@ it('estructura el formulario de afiliados corporativos en secciones sin eliminar
 
     expect($contents)
         ->toContain("Section::make('Datos personales')")
+        ->toContain('Identificación, parentesco y datos básicos del familiar o colaborador.')
+        ->toContain("Select::make('relationship')")
+        ->toContain("->label('Parentesco')")
+        ->toContain('CorporateAffiliateRelationship::options()')
+        ->toContain("TextColumn::make('relationship')")
         ->toContain("Section::make('Contacto')")
         ->toContain("Section::make('Salud y empresa')")
         ->toContain("Section::make('Emergencia y dirección')")
