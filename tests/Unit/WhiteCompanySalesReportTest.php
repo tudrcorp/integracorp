@@ -92,7 +92,7 @@ it('filtra por activated_at con STR_TO_DATE y solo afiliaciones individuales', f
         ->not->toContain('AffiliationCorporate');
 });
 
-it('usa la neta congelada en la afiliacion y no la matriz vigente', function (): void {
+it('usa la neta congelada en la afiliacion y el monto del comprobante', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/WhiteCompanySalesReportService.php');
 
     expect($source)
@@ -100,6 +100,9 @@ it('usa la neta congelada en la afiliacion y no la matriz vigente', function ():
         ->toContain('$affiliation->white_company_neta')
         ->toContain('installmentAmountsForAffiliation')
         ->toContain('WhiteCompanyPaymentSettlement::fromFrozenAffiliationRates')
+        ->toContain('declaredVoucherAmount')
+        ->toContain("->where('status', 'APROBADO')")
+        ->toContain('reportAmountsUsingDeclaredVoucher')
         ->not->toContain('WhiteCompanyFee');
 });
 
@@ -127,6 +130,39 @@ it('toma los anuales congelados de la afiliacion para calcular la cuota', functi
             'sale_price' => 45.0,
             'neta_tdg' => 24.0,
             'neta_partner' => 21.0,
+        ]);
+});
+
+it('usa el monto declarado del comprobante como recibido en cuenta', function (): void {
+    $affiliation = new App\Models\Affiliation;
+    $affiliation->forceFill([
+        'white_company_sale_price' => 405,
+        'white_company_neta' => 224,
+        'payment_frequency' => 'TRIMESTRAL',
+    ]);
+
+    $voucher = new App\Models\PaidMembership;
+    $voucher->forceFill([
+        'id' => 1,
+        'total_amount' => 103,
+        'status' => 'APROBADO',
+    ]);
+
+    $pending = new App\Models\PaidMembership;
+    $pending->forceFill([
+        'id' => 2,
+        'total_amount' => 999,
+        'status' => 'PENDIENTE',
+    ]);
+
+    $affiliation->setRelation('paid_memberships', collect([$pending, $voucher]));
+
+    expect(App\Services\WhiteCompanySalesReportService::declaredVoucherAmount($affiliation))->toBe(103.0)
+        ->and(App\Services\WhiteCompanySalesReportService::installmentAmountsForAffiliation($affiliation))
+        ->toBe([
+            'sale_price' => 103.0,
+            'neta_tdg' => 56.0,
+            'neta_partner' => 47.0,
         ]);
 });
 

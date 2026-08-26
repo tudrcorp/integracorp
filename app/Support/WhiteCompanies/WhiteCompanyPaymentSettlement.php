@@ -88,6 +88,28 @@ final readonly class WhiteCompanyPaymentSettlement
         ];
     }
 
+    /**
+     * Recibido en cuenta = monto declarado en el comprobante. La neta TDG sigue
+     * siendo la cuota congelada; la neta de la aliada es el residual.
+     *
+     * @return array{sale_price: float, neta_tdg: float, neta_partner: float}
+     */
+    public function reportAmountsUsingDeclaredVoucher(mixed $declaredAmount): array
+    {
+        $theoretical = $this->installmentReportAmounts();
+        $declared = round((float) $declaredAmount, 2);
+
+        if ($declared <= 0) {
+            return $theoretical;
+        }
+
+        return [
+            'sale_price' => $declared,
+            'neta_tdg' => $theoretical['neta_tdg'],
+            'neta_partner' => round($declared - $theoretical['neta_tdg'], 2),
+        ];
+    }
+
     public static function fromFrozenAffiliationRates(
         mixed $annualSalePrice,
         mixed $annualNeta,
