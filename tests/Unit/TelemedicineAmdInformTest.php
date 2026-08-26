@@ -72,6 +72,7 @@ it('TelemedicineInformeLargoPdfGenerator guarda el PDF en telemedicina-doc', fun
 
     expect($contents)
         ->toContain('informe-medico-largo')
+        ->toContain("setPaper('a4', 'portrait')")
         ->toContain('telemedicina-doc')
         ->toContain('fileExists');
 });

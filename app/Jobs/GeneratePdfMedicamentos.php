@@ -78,7 +78,8 @@ class GeneratePdfMedicamentos implements ShouldQueue
 
         $data['medicationsArr'] = TelemedicineMedicationsPdfRows::normalize($data['medicationsArr'] ?? []);
 
-        $pdf = Pdf::loadView('documents.medicamentos', compact('data'));
+        $pdf = Pdf::loadView('documents.medicamentos', compact('data'))
+            ->setPaper('a4', 'landscape');
         $name_pdf = $data['ci_patiente'].'-'.$data['code_reference'].'-'.$this->type_document.'.pdf';
         $pdf->save(public_path('storage/telemedicina-doc/'.$name_pdf));
 
