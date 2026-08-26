@@ -7,7 +7,9 @@ use App\Filament\Operations\Resources\AffiliateCorporates\AffiliateCorporateReso
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Models\AffiliateCorporate;
 use App\Services\AssociateAffiliateCorporateWithTelemedicinePatientService;
+use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Contracts\View\View as ViewContract;
@@ -86,12 +88,35 @@ class ViewAffiliateCorporate extends ViewRecord
                 })
                 ->modalSubmitActionLabel('Sí, asociar')
                 ->modalCancelActionLabel('Cancelar')
-                ->action(function (): void {
+                ->form(function (): array {
+                    /** @var AffiliateCorporate $member */
+                    $member = $this->getRecord();
+
+                    if (! TelemedicinePatientIdentity::needsSexPrompt($member->sex)) {
+                        return [];
+                    }
+
+                    return [
+                        Select::make('sex')
+                            ->label('Sexo')
+                            ->helperText('Este afiliado no tiene sexo registrado. Indíquelo para crear el paciente de telemedicina.')
+                            ->options(TelemedicinePatientIdentity::canonicalSexOptions())
+                            ->required()
+                            ->native(false)
+                            ->validationMessages([
+                                'required' => 'Debe indicar el sexo del afiliado para asociarlo como paciente.',
+                            ]),
+                    ];
+                })
+                ->action(function (array $data): void {
                     /** @var AffiliateCorporate $member */
                     $member = $this->getRecord();
 
                     try {
-                        $result = AssociateAffiliateCorporateWithTelemedicinePatientService::run($member);
+                        $result = AssociateAffiliateCorporateWithTelemedicinePatientService::run(
+                            $member,
+                            sexOverride: $data['sex'] ?? null,
+                        );
                     } catch (ValidationException $exception) {
                         Notification::make()
                             ->title('No se pudo asociar el afiliado')
