@@ -55,7 +55,7 @@ it('jobs de generacion de PDF de telemedicina usan el trait Batchable', function
 
         expect($contents)
             ->toContain('use Illuminate\Bus\Batchable;')
-            ->toContain('use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;');
+            ->toContain('use Batchable, Dispatchable, InteractsWithQueue, LogsTelemedicineJobFailures, Queueable, SerializesModels;');
     }
 });
 

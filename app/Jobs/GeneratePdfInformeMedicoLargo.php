@@ -5,10 +5,11 @@ namespace App\Jobs;
 use App\Mail\SendMailPropuestaPlanInicial;
 use App\Models\OperationDocumentList;
 use App\Models\TelemedicineConsultationPatient;
-use App\Models\User;
+use App\Support\Telemedicine\Concerns\LogsTelemedicineJobFailures;
 use App\Support\Telemedicine\TelemedicineCaseDocumentReadyNotification;
 use App\Support\Telemedicine\TelemedicineConsultationUploadedDocuments;
 use App\Support\Telemedicine\TelemedicineInformeLargoPdfGenerator;
+use App\Support\Telemedicine\TelemedicineJobFailureLogger;
 use Filament\Notifications\Notification;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,13 +17,12 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 class GeneratePdfInformeMedicoLargo implements ShouldQueue
 {
-    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, LogsTelemedicineJobFailures, Queueable, SerializesModels;
 
     protected $data = [];
 
@@ -65,11 +65,13 @@ class GeneratePdfInformeMedicoLargo implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->generatePDF($this->data);
+        $this->runWithTelemedicineFailureLogging(function (): void {
+            $this->generatePDF($this->data);
 
-        $name_pdf = $this->data['ci_patient'].'-'.$this->data['code_reference'].'-'.$this->type_document.'.pdf';
+            $name_pdf = $this->data['ci_patient'].'-'.$this->data['code_reference'].'-'.$this->type_document.'.pdf';
 
-        TelemedicineCaseDocumentReadyNotification::send($this->user, $this->data, $name_pdf);
+            TelemedicineCaseDocumentReadyNotification::send($this->user, $this->data, $name_pdf);
+        }, $this->telemedicineJobFailureContext());
     }
 
     private function generatePDF($data)
@@ -129,16 +131,24 @@ class GeneratePdfInformeMedicoLargo implements ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
-        Log::info('GeneratePdfInformeMedicoLargo: FAILED');
-        Log::error($exception->getMessage());
+        $this->logTelemedicineJobFailure($exception, $this->telemedicineJobFailureContext());
 
         Notification::make()
             ->title('¡TAREA NO COMPLETADA!')
             ->body('Hubo un error en la creación la Referencia. Por favor, contacte con el administrador del Sistema.')
             ->danger()
             ->sendToDatabase($this->user);
+    }
 
-        // Send user notification of failure, etc...
-
+    /**
+     * @return array<string, mixed>
+     */
+    private function telemedicineJobFailureContext(): array
+    {
+        return TelemedicineJobFailureLogger::documentJobContext(
+            is_array($this->data) ? $this->data : [],
+            $this->user,
+            $this->type_document !== null ? (string) $this->type_document : null,
+        );
     }
 }
