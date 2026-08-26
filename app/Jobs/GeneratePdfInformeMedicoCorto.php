@@ -76,7 +76,8 @@ class GeneratePdfInformeMedicoCorto implements ShouldQueue
     {
         ini_set('memory_limit', '2048M');
 
-        $pdf = Pdf::loadView('documents.informe-medico-corto', compact('data'));
+        $pdf = Pdf::loadView('documents.informe-medico-corto', compact('data'))
+            ->setPaper('a4', 'portrait');
         $name_pdf = $data['ci_patient'].'-'.$data['code_reference'].'-'.$this->type_document.'.pdf';
         $pdf->save(public_path('storage/telemedicina-doc/'.$name_pdf));
 

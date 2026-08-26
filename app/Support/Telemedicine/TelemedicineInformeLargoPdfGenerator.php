@@ -23,7 +23,8 @@ final class TelemedicineInformeLargoPdfGenerator
 
         self::ensureStorageDirectoryExists();
 
-        $pdf = Pdf::loadView('documents.informe-medico-largo', ['data' => $data]);
+        $pdf = Pdf::loadView('documents.informe-medico-largo', ['data' => $data])
+            ->setPaper('a4', 'portrait');
         $pdf->save(public_path('storage/'.$relativePath));
 
         return $fileName;
