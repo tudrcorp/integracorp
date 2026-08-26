@@ -29,6 +29,61 @@ final class TelemedicinePatientIdentity
     }
 
     /**
+     * @return array<string, string>
+     */
+    public static function canonicalSexOptions(): array
+    {
+        return [
+            'MASCULINO' => 'MASCULINO',
+            'FEMENINO' => 'FEMENINO',
+        ];
+    }
+
+    public static function normalizeSex(mixed $sex): ?string
+    {
+        $value = mb_strtoupper(trim((string) $sex));
+
+        if ($value === '') {
+            return null;
+        }
+
+        return match ($value) {
+            'M', 'MASCULINO', 'MALE', 'H', 'HOMBRE', 'VARON', 'VARÓN' => 'MASCULINO',
+            'F', 'FEMENINO', 'FEMALE', 'MUJER' => 'FEMENINO',
+            default => $value,
+        };
+    }
+
+    public static function isCanonicalSex(mixed $sex): bool
+    {
+        return in_array(self::normalizeSex($sex), ['MASCULINO', 'FEMENINO'], true);
+    }
+
+    public static function needsSexPrompt(mixed $sex): bool
+    {
+        return ! self::isCanonicalSex($sex);
+    }
+
+    public static function persistCanonicalSexIfSourceMissing(object $record, ?string $canonicalSex): void
+    {
+        if (! self::isCanonicalSex($canonicalSex)) {
+            return;
+        }
+
+        $current = $record->sex ?? null;
+
+        if (self::isCanonicalSex($current)) {
+            return;
+        }
+
+        if (! method_exists($record, 'forceFill') || ! method_exists($record, 'save')) {
+            return;
+        }
+
+        $record->forceFill(['sex' => $canonicalSex])->save();
+    }
+
+    /**
      * Fuerza los campos de identidad de la consulta a coincidir con el paciente FK.
      *
      * @param  array<string, mixed>  $data

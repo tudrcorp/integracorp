@@ -6,7 +6,9 @@ namespace App\Services;
 
 use App\Models\AffiliateCorporate;
 use App\Support\Telemedicine\TelemedicinePatientAssociationResolver;
+use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -17,7 +19,7 @@ final class AssociateAffiliateCorporateWithTelemedicinePatientService
      *
      * @return array{patient: \App\Models\TelemedicinePatient, was_recently_created: bool}
      */
-    public static function run(AffiliateCorporate $member, ?string $createdBy = null): array
+    public static function run(AffiliateCorporate $member, ?string $createdBy = null, ?string $sexOverride = null): array
     {
         $member->loadMissing('affiliationCorporate');
 
@@ -38,6 +40,8 @@ final class AssociateAffiliateCorporateWithTelemedicinePatientService
         $affiliation = $member->affiliationCorporate;
         $emailKey = Str::lower(trim((string) ($member->email ?? '')));
         $createdByName = $createdBy ?? Auth::user()?->name;
+        $sex = TelemedicinePatientIdentity::normalizeSex($sexOverride)
+            ?? TelemedicinePatientIdentity::normalizeSex($member->sex);
 
         $attributes = [
             'name_corporate' => $affiliation->name_corporate,
@@ -50,7 +54,7 @@ final class AssociateAffiliateCorporateWithTelemedicinePatientService
             'full_name' => $member->first_name,
             'nro_identificacion' => $member->nro_identificacion,
             'birth_date' => $member->birth_date,
-            'sex' => $member->sex,
+            'sex' => $sex,
             'age' => $member->age,
             'phone' => $member->phone,
             'address' => $member->address,
@@ -67,6 +71,10 @@ final class AssociateAffiliateCorporateWithTelemedicinePatientService
             'supplier_id' => Auth::user()?->supplier_id,
         ];
 
-        return TelemedicinePatientAssociationResolver::upsertByDocument($attributes);
+        return DB::transaction(function () use ($member, $sex, $attributes): array {
+            TelemedicinePatientIdentity::persistCanonicalSexIfSourceMissing($member, $sex);
+
+            return TelemedicinePatientAssociationResolver::upsertByDocument($attributes);
+        });
     }
 }

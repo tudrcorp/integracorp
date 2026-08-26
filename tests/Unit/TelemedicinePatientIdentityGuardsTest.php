@@ -59,7 +59,8 @@ it('existe comando de remediación por identidad desplazada', function (): void 
         ->and($command)->toContain('--apply')
         ->and($command)->toContain('resolveOrCreatePatientForDocument')
         ->and($command)->toContain('AssociateAffiliateWithTelemedicinePatientService::run')
-        ->and($command)->toContain('Affiliate::query()');
+        ->and($command)->toContain('Affiliate::query()')
+        ->and($command)->toContain('ValidationException');
 });
 
 it('la auditoría diaria de identidad queda programada', function (): void {
