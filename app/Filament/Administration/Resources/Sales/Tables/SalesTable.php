@@ -11,6 +11,7 @@ use App\Models\AffiliationCorporate;
 use App\Models\Sale;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use App\Support\AffiliationWhiteCompany;
+use App\Support\Filament\Administration\InvoiceDocumentNumber;
 use App\Support\Filament\Administration\SaleReciboPagoEmailRecipients;
 use App\Support\Filament\Administration\SaleReciboPagoTestDeliveryForm;
 use App\Support\Filament\Administration\SaleReciboPagoWhatsAppRecipients;
@@ -1048,53 +1049,47 @@ class SalesTable
         Affiliation|AffiliationCorporate|null $affiliation,
         array $data = [],
     ): array {
-        if ($inNameOf === 'custom') {
-            return [
+        $party = match (true) {
+            $inNameOf === 'custom' => [
                 'full_name_ti' => $data['custom_full_name'] ?? null,
                 'ci_rif_ti' => $data['custom_ci_rif'] ?? null,
                 'address_ti' => $data['custom_address'] ?? null,
                 'phone_ti' => $data['custom_phone'] ?? null,
                 'email_ti' => $data['custom_email'] ?? null,
-            ];
-        }
-
-        if ($affiliation instanceof AffiliationCorporate) {
-            if ($inNameOf === 'tomador') {
-                return [
-                    'full_name_ti' => $affiliation->full_name_contact,
-                    'ci_rif_ti' => $affiliation->nro_identificacion_contact,
-                    'address_ti' => $affiliation->address,
-                    'phone_ti' => $affiliation->phone_contact,
-                    'email_ti' => $affiliation->email_contact,
-                ];
-            }
-
-            return [
+            ],
+            $affiliation instanceof AffiliationCorporate && $inNameOf === 'tomador' => [
+                'full_name_ti' => $affiliation->full_name_contact,
+                'ci_rif_ti' => $affiliation->nro_identificacion_contact,
+                'address_ti' => $affiliation->address,
+                'phone_ti' => $affiliation->phone_contact,
+                'email_ti' => $affiliation->email_contact,
+            ],
+            $affiliation instanceof AffiliationCorporate => [
                 'full_name_ti' => $affiliation->name_corporate,
                 'ci_rif_ti' => $affiliation->rif,
                 'address_ti' => $affiliation->address,
                 'phone_ti' => $affiliation->phone,
                 'email_ti' => $affiliation->email,
-            ];
-        }
-
-        if ($inNameOf === 'tomador') {
-            return [
+            ],
+            $inNameOf === 'tomador' => [
                 'full_name_ti' => $affiliation?->full_name_payer,
                 'ci_rif_ti' => $affiliation?->nro_identificacion_payer,
                 'address_ti' => $affiliation?->adress_ti,
                 'phone_ti' => $affiliation?->phone_payer,
                 'email_ti' => $affiliation?->email_payer,
-            ];
-        }
+            ],
+            default => [
+                'full_name_ti' => $sale->affiliate_full_name ?? $affiliation?->full_name_ti,
+                'ci_rif_ti' => $sale->affiliate_ci_rif ?? $affiliation?->nro_identificacion_ti,
+                'address_ti' => $affiliation?->adress_ti,
+                'phone_ti' => $affiliation?->phone_ti,
+                'email_ti' => $affiliation?->email_ti,
+            ],
+        };
 
-        return [
-            'full_name_ti' => $sale->affiliate_full_name ?? $affiliation?->full_name_ti,
-            'ci_rif_ti' => $sale->affiliate_ci_rif ?? $affiliation?->nro_identificacion_ti,
-            'address_ti' => $affiliation?->adress_ti,
-            'phone_ti' => $affiliation?->phone_ti,
-            'email_ti' => $affiliation?->email_ti,
-        ];
+        $party['ci_rif_ti'] = InvoiceDocumentNumber::digitsOnly($party['ci_rif_ti'] ?? null);
+
+        return $party;
     }
 
     private static function deleteBulkSalesAction(): DeleteBulkAction
