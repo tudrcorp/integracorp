@@ -24,3 +24,11 @@ it('expone la accion masiva de pago multiple en afiliaciones corporativas admini
 
     expect($controller)->toContain('function uploadPaymentMultipleAffiliationCorporates');
 });
+
+it('notifica el fallo de la carga masiva de comprobantes corporativos', function (): void {
+    $table = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/AffiliationCorporates/Tables/AffiliationCorporatesTable.php');
+
+    expect($table)
+        ->toContain('AUDIT_ADMIN_AFFILIATION_CORPORATE_BULK_PAYMENT_VOUCHER_UPLOAD_FAILED')
+        ->toContain('Ningún pago masivo quedó registrado a medias');
+});

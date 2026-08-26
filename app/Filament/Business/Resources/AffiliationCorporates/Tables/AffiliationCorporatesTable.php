@@ -1035,19 +1035,20 @@ class AffiliationCorporatesTable
                                             ])
                                             ->sendToDatabase($user);
                                     }
-                                }
 
-                                /**
-                                 * Ejecutamos el Jobs para enviar la notificacion al
-                                 * correo de administracion
-                                 * ----------------------------------------------------------------------------------
-                                 */
-                                $info = [
-                                    'code' => $record->code,
-                                    'email' => config('parameters.EMAIL_ADMINISTRACION'),
-                                ];
-                                // dd($info);
-                                Mail::to($info['email'])->send(new UploadPayment($info));
+                                    $info = [
+                                        'code' => $record->code,
+                                        'email' => config('parameters.EMAIL_ADMINISTRACION'),
+                                    ];
+                                    Mail::to($info['email'])->send(new UploadPayment($info));
+                                } else {
+                                    Notification::make()
+                                        ->title('No se registró el comprobante')
+                                        ->body('El comprobante no se guardó. Revise el método de pago, la frecuencia y los datos del voucher e intente de nuevo.')
+                                        ->danger()
+                                        ->persistent()
+                                        ->send();
+                                }
 
                                 Log::info('NEGOCIOS-AFILIACIONES-CORP: Comprobante cargado desde tabla de afiliaciones corporativas.', [
                                     'affiliation_corporate_id' => $record->id,
