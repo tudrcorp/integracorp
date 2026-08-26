@@ -78,6 +78,19 @@ it('arma la liquidacion desde los anuales congelados de la afiliacion', function
         ]);
 });
 
+it('calcula neta aliada sobre el monto declarado del comprobante', function (): void {
+    $settlement = WhiteCompanyPaymentSettlement::fromFrozenAffiliationRates(405, 224, 'TRIMESTRAL', 21);
+
+    expect($settlement->reportAmountsUsingDeclaredVoucher(103))
+        ->toBe([
+            'sale_price' => 103.0,
+            'neta_tdg' => 56.0,
+            'neta_partner' => 47.0,
+        ])
+        ->and($settlement->reportAmountsUsingDeclaredVoucher(0))
+        ->toBe($settlement->installmentReportAmounts());
+});
+
 it('no persiste comisiones en la liquidacion de empresa aliada', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Support/WhiteCompanies/WhiteCompanyPaymentSettlement.php');
 

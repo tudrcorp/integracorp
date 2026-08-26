@@ -13,6 +13,7 @@ use App\Support\WhiteCompanies\WhiteCompanyPaymentSettlement;
 use App\Support\WhiteCompanies\WhiteCompanySalesReportKey;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -22,9 +23,9 @@ use Illuminate\Support\Facades\Auth;
  * de negociación vigente: si mañana se renegocian tarifas, los reportes ya
  * emitidos siguen cuadrando.
  *
- * Esos importes congelados son anuales. El reporte muestra la cuota según la
- * frecuencia de pago (igual que la tabla de ventas): anual / 1, semestral / 2,
- * trimestral / 4, mensual / 12.
+ * «Recibido en cuenta» es el monto declarado al cargar el comprobante
+ * (`paid_memberships.total_amount`). Sobre esa base se calcula la neta de la
+ * aliada; la neta TDG sigue siendo la cuota congelada (anual / frecuencia).
  */
 final class WhiteCompanySalesReportService
 {
@@ -111,18 +112,26 @@ final class WhiteCompanySalesReportService
     }
 
     /**
-     * Cuota de la afiliación según su frecuencia. La neta y el precio congelados
-     * en la ficha son anuales; la venta registra solo lo pagado en esa cuota.
+     * Recibido en cuenta = comprobante aprobado. Si no hay voucher, se usa la
+     * cuota teórica del precio anual congelado.
      *
      * @return array{sale_price: float, neta_tdg: float, neta_partner: float}
      */
     public static function installmentAmountsForAffiliation(Affiliation $affiliation): array
     {
-        return self::installmentAmounts(
+        $settlement = WhiteCompanyPaymentSettlement::fromFrozenAffiliationRates(
             $affiliation->white_company_sale_price,
             $affiliation->white_company_neta,
             $affiliation->payment_frequency,
         );
+
+        $declared = self::declaredVoucherAmount($affiliation);
+
+        if ($declared === null) {
+            return $settlement->installmentReportAmounts();
+        }
+
+        return $settlement->reportAmountsUsingDeclaredVoucher($declared);
     }
 
     /**
@@ -135,6 +144,38 @@ final class WhiteCompanySalesReportService
             $annualNeta ?? 0,
             is_string($paymentFrequency) ? $paymentFrequency : null,
         )->installmentReportAmounts();
+    }
+
+    /**
+     * Primer comprobante aprobado. No consulta la base si el modelo no existe.
+     */
+    public static function declaredVoucherAmount(Affiliation $affiliation): ?float
+    {
+        $memberships = match (true) {
+            $affiliation->relationLoaded('paid_memberships') => $affiliation->paid_memberships,
+            $affiliation->exists => $affiliation->paid_memberships()
+                ->where('status', 'APROBADO')
+                ->orderBy('id')
+                ->get(),
+            default => collect(),
+        };
+
+        $voucher = $memberships->first(static function (mixed $membership): bool {
+            if (! is_object($membership)) {
+                return false;
+            }
+
+            $status = (string) ($membership->status ?? '');
+            $amount = round((float) ($membership->total_amount ?? 0), 2);
+
+            return $status === 'APROBADO' && $amount > 0;
+        });
+
+        if ($voucher === null) {
+            return null;
+        }
+
+        return round((float) $voucher->total_amount, 2);
     }
 
     /**
@@ -166,7 +207,14 @@ final class WhiteCompanySalesReportService
                 self::toSqlDate($from),
                 self::toSqlDate($to),
             ])
-            ->with(['plan', 'coverage', 'affiliates'])
+            ->with([
+                'plan',
+                'coverage',
+                'affiliates',
+                'paid_memberships' => static function (HasMany $query): void {
+                    $query->where('status', 'APROBADO')->orderBy('id');
+                },
+            ])
             ->orderByRaw("STR_TO_DATE(activated_at, '%d/%m/%Y')")
             ->orderBy('code')
             ->get();
