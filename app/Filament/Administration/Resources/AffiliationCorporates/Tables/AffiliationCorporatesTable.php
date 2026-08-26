@@ -975,6 +975,13 @@ class AffiliationCorporatesTable
                                     'reason' => 'controller_returned_false',
                                     'uploaded_by' => $authUser?->name,
                                 ], $authUser);
+
+                                Notification::make()
+                                    ->title('No se registró el comprobante')
+                                    ->body('El comprobante no se guardó. Revise el método de pago, la frecuencia y los datos del voucher e intente de nuevo.')
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
                             } catch (\Throwable $th) {
                                 SecurityAudit::log('AUDIT_ADMIN_AFFILIATION_CORPORATE_PAYMENT_VOUCHER_UPLOAD_FAILED', 'administration.affiliation-corporates.upload-payment', [
                                     'panel' => 'administration',
@@ -1778,6 +1785,13 @@ class AffiliationCorporatesTable
                                     'reason' => 'controller_returned_false',
                                     'uploaded_by' => $authUser?->name,
                                 ], $authUser);
+
+                                Notification::make()
+                                    ->title('No se registró el comprobante')
+                                    ->body('El comprobante no se guardó en una o más afiliaciones. Ningún pago masivo quedó registrado a medias.')
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
                             } catch (\Throwable $th) {
                                 SecurityAudit::log('AUDIT_ADMIN_AFFILIATION_CORPORATE_BULK_PAYMENT_VOUCHER_UPLOAD_FAILED', 'administration.affiliation-corporates.bulk-upload-payment', [
                                     'panel' => 'administration',
