@@ -35,6 +35,8 @@ class TelemedicineConsultationPatient extends Model
         'cuestion_3',
         'cuestion_4',
         'cuestion_5',
+        'current_illness_history',
+        'patient_evolution',
         'feedbackOne',
         'duration',
         'priorityMonitoring',

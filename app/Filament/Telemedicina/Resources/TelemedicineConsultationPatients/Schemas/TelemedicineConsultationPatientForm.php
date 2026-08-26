@@ -62,6 +62,25 @@ class TelemedicineConsultationPatientForm
         return (int) $get('telemedicine_service_list_id') === TelemedicineServiceList::CONSULTA_GENERAL_ID;
     }
 
+    /**
+     * El cuestionario de seguimiento aplica cuando el caso ya tiene consulta inicial
+     * y no se está editando esa consulta inicial.
+     */
+    private static function isFollowUpConsultationContext(int $countCase): bool
+    {
+        $action = session()->get('action') ?? null;
+
+        if ($countCase < 1) {
+            return false;
+        }
+
+        if (isset($action) && $action == 'edit' && session()->get('status') == 'CONSULTA INICIAL') {
+            return false;
+        }
+
+        return true;
+    }
+
     private static function generalServiceSelect(): Select
     {
         return Select::make('telemedicine_general_service_id')
@@ -547,12 +566,32 @@ class TelemedicineConsultationPatientForm
                                                     $set('initial_diagnostic_impression', $state.toUpperCase());
                                                 JS),
                                 ])->columnSpanFull(),
+                            Fieldset::make('Historia clínica de seguimiento')
+                                ->schema([
+                                    Textarea::make('current_illness_history')
+                                        ->label('Historia de la enfermedad actual')
+                                        ->helperText('Describa el curso reciente de la enfermedad, síntomas actuales y el contexto clínico de este seguimiento.')
+                                        ->autosize()
+                                        ->columnSpanFull()
+                                        ->required(fn (): bool => self::isFollowUpConsultationContext($countCase))
+                                        ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('current_illness_history', $state.toUpperCase());
+                                                JS),
+                                    Textarea::make('patient_evolution')
+                                        ->label('Evolución del paciente')
+                                        ->helperText('Describa cómo ha evolucionado el paciente desde la consulta previa o el último seguimiento.')
+                                        ->autosize()
+                                        ->columnSpanFull()
+                                        ->required(fn (): bool => self::isFollowUpConsultationContext($countCase))
+                                        ->afterStateUpdatedJs(<<<'JS'
+                                                    $set('patient_evolution', $state.toUpperCase());
+                                                JS),
+                                ])->columnSpanFull(),
                             // ...Preguntas
                             Fieldset::make('Preguntas de Seguimiento')
                                 ->schema([
                                     Textarea::make('cuestion_1')
                                         ->label('1.- ¿COMO SE SIENTE EL DIA DE HOY?')
-                                        ->required()
                                         ->live()
                                         ->autosize()
                                         ->afterStateUpdatedJs(<<<'JS'
@@ -560,28 +599,24 @@ class TelemedicineConsultationPatientForm
                                                 JS),
                                     Textarea::make('cuestion_2')
                                         ->label('2.- ¿COMO HA RESPONDIDO AL TRATAMIENTO INDICADO?')
-                                        ->required()
                                         ->autosize()
                                         ->afterStateUpdatedJs(<<<'JS'
                                                     $set('cuestion_2', $state.toUpperCase());
                                                 JS),
                                     Textarea::make('cuestion_3')
                                         ->label('3. ¿SIENTE QUE HAN MEJORADO LOS SÍNTOMAS?')
-                                        ->required()
                                         ->autosize()
                                         ->afterStateUpdatedJs(<<<'JS'
                                                     $set('cuestion_3', $state.toUpperCase());
                                                 JS),
                                     Textarea::make('cuestion_4')
                                         ->label('4. ¿SE REALIZO LOS ESTUDIOS SOLICITADOS?')
-                                        ->required()
                                         ->autosize()
                                         ->afterStateUpdatedJs(<<<'JS'
                                                     $set('cuestion_4', $state.toUpperCase());
                                                 JS),
                                     Textarea::make('cuestion_5')
                                         ->label('5. EN VISTA DE QUE SUS RESULTADOS DE LABORATORIO ESTÁN ALTERADOS, SE MODIFICAN LAS INDICACIONES MEDICAS.')
-                                        ->required()
                                         ->autosize()
                                         ->afterStateUpdatedJs(<<<'JS'
                                                     $set('cuestion_5', $state.toUpperCase());

@@ -244,6 +244,18 @@ class TelemedicineConsultationPatientInfolist
                                                 'class' => self::IOS_INNER_CLASS,
                                             ])
                                             ->schema([
+                                                TextEntry::make('current_illness_history')
+                                                    ->label('Historia de la enfermedad actual')
+                                                    ->icon(Heroicon::OutlinedDocumentText)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
+                                                TextEntry::make('patient_evolution')
+                                                    ->label('Evolución del paciente')
+                                                    ->icon(Heroicon::OutlinedArrowTrendingUp)
+                                                    ->columnSpanFull()
+                                                    ->wrap()
+                                                    ->placeholder('—'),
                                                 TextEntry::make('cuestion_1')
                                                     ->label('1. ¿Cómo se siente el día de hoy?')
                                                     ->prefix('Respuesta: ')
