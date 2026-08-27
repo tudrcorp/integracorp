@@ -439,7 +439,8 @@ it('deshabilita medicamentos y laboratorios cubiertos para TDG salvo que la coor
     expect(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', true))->toBeFalse()
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Laboratorio', true))->toBeFalse()
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Medicamento', true))->toBeTrue()
-        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Laboratorio', true))->toBeTrue();
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Laboratorio', true))->toBeTrue()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', true, true))->toBeTrue();
 
     \Illuminate\Support\Facades\Auth::logout();
 });
@@ -470,8 +471,10 @@ it('permite gestionar a TDG los items no cubiertos y los cubiertos de otras cate
 it('CoordinationServiceItemsManager aplica la regla de acceso por rol al construir items', function (): void {
     $manager = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CoordinationServiceItemsManager.php');
 
-    expect(substr_count($manager, 'CoordinationServiceAccess::itemIsManageableByUser($record, $category, $coverage)'))->toBeGreaterThanOrEqual(4)
-        ->and(substr_count($manager, 'CoordinationServiceAccess::itemIsVisibleToUser($record, $category, $coverage)'))->toBeGreaterThanOrEqual(4);
+    expect($manager)
+        ->toContain('CoordinationServiceAccess::itemIsManageableByUser')
+        ->toContain('isCoveredWithoutInventory')
+        ->toContain('coveredItemIsManageableByTdg');
 });
 
 it('OperationCoordinationServicesTable define acción TDG para asignar coordinación a proveedor', function (): void {

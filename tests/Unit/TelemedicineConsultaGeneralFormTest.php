@@ -21,6 +21,17 @@ it('muestra el select de servicio general solo cuando el tipo es consulta genera
         ->toContain("->label('Servicio General')");
 });
 
+it('el servicio general es opcional y no bloquea el registro de la consulta', function (): void {
+    $formPath = dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Schemas/TelemedicineConsultationPatientForm.php';
+    $contents = file_get_contents($formPath);
+
+    expect($contents)
+        ->toContain('private static function generalServiceSelect()')
+        ->toContain('->nullable()')
+        ->toContain("->placeholder('Opcional — seleccione si aplica')")
+        ->not->toContain('->required(fn (Get $get): bool => self::isConsultaGeneralSelected($get))');
+});
+
 it('persiste el id de servicio general en el modelo de consulta', function (): void {
     $modelPath = dirname(__DIR__, 2).'/app/Models/TelemedicineConsultationPatient.php';
     $contents = file_get_contents($modelPath);

@@ -7,6 +7,20 @@ use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
 
 uses(Tests\TestCase::class);
 
+it('usa el nombre cubierto sin inventario cuando medicines está vacío', function (): void {
+    $rows = TelemedicineMedicationsPdfRows::normalize([
+        [
+            'medicines' => null,
+            'covered_medicines' => 'AMOXICILINA 500MG',
+            'indications' => '1 CADA 8 HORAS',
+            'duration' => '7',
+            'operation_inventory_id' => null,
+        ],
+    ]);
+
+    expect($rows[0]['medicines'])->toBe('AMOXICILINA 500MG');
+});
+
 it('conserva el nombre manual del medicamento', function (): void {
     $rows = TelemedicineMedicationsPdfRows::normalize([
         [
