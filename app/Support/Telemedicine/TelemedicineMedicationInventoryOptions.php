@@ -44,6 +44,14 @@ final class TelemedicineMedicationInventoryOptions
             }
         }
 
+        if (self::ubicationMatchesWarehouse($belongsTo, self::WAREHOUSE_DIAGNOMOVIL)) {
+            return self::WAREHOUSE_DIAGNOMOVIL;
+        }
+
+        if (self::ubicationMatchesWarehouse($belongsTo, self::WAREHOUSE_3_DE_FEBRERO)) {
+            return self::WAREHOUSE_3_DE_FEBRERO;
+        }
+
         return null;
     }
 
@@ -75,6 +83,40 @@ final class TelemedicineMedicationInventoryOptions
     }
 
     /**
+     * Compara el nombre real del almacén (columna o relación) con la clave canónica.
+     * Acepta variantes como «DIAGNO-MOVIL - MENE GRANDE» o el typo «FERBERO».
+     */
+    public static function ubicationMatchesWarehouse(?string $ubicationName, ?string $warehouseKey): bool
+    {
+        if ($ubicationName === null || $warehouseKey === null) {
+            return false;
+        }
+
+        if (trim($ubicationName) === '' || trim($warehouseKey) === '') {
+            return false;
+        }
+
+        $normalizedUbication = self::normalizeAlphanumeric($ubicationName);
+        $normalizedKey = self::normalizeAlphanumeric($warehouseKey);
+
+        if ($normalizedUbication === '' || $normalizedKey === '') {
+            return false;
+        }
+
+        if ($normalizedUbication === $normalizedKey) {
+            return true;
+        }
+
+        foreach (self::warehouseMatchNeedles($warehouseKey) as $needle) {
+            if ($needle !== '' && str_contains($normalizedUbication, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @return array<int|string, string>
      */
     public static function optionsForCase(?TelemedicineCase $case, ?TelemedicineDoctor $doctor = null): array
@@ -91,6 +133,37 @@ final class TelemedicineMedicationInventoryOptions
     }
 
     /**
+     * @return array<int|string, string>
+     */
+    public static function searchOptionsForCase(
+        ?TelemedicineCase $case,
+        string $search,
+        ?TelemedicineDoctor $doctor = null,
+        int $limit = 80,
+    ): array {
+        $options = self::optionsForCase($case, $doctor);
+        $needle = mb_strtoupper(trim($search));
+
+        if ($needle === '') {
+            return array_slice($options, 0, $limit, preserve_keys: true);
+        }
+
+        $filtered = [];
+
+        foreach ($options as $id => $label) {
+            if (str_contains(mb_strtoupper((string) $label), $needle)) {
+                $filtered[$id] = $label;
+            }
+
+            if (count($filtered) >= $limit) {
+                break;
+            }
+        }
+
+        return $filtered;
+    }
+
+    /**
      * Inventario del almacén TDG: categoría Medicamento y existencia > 0.
      *
      * @return array<int|string, string>
@@ -99,8 +172,8 @@ final class TelemedicineMedicationInventoryOptions
     {
         return self::medicamentoInventoriesQuery()
             ->where('existence', '>', 0)
-            ->whereHas('ubicationRelation', function (Builder $ubication) use ($warehouseName): void {
-                $ubication->whereRaw('UPPER(TRIM(name)) = ?', [mb_strtoupper(trim($warehouseName))]);
+            ->where(function (Builder $query) use ($warehouseName): void {
+                self::constrainInventoryToWarehouse($query, $warehouseName);
             })
             ->orderBy('name')
             ->pluck('name', 'id')
@@ -146,5 +219,115 @@ final class TelemedicineMedicationInventoryOptions
             ->whereHas('product.category', function (Builder $category): void {
                 $category->whereRaw('UPPER(name) LIKE ?', ['MEDICAMENTO%']);
             });
+    }
+
+    /**
+     * @param  Builder<OperationInventory>  $query
+     */
+    public static function constrainInventoryToWarehouse(Builder $query, string $warehouseName): void
+    {
+        $normalized = mb_strtoupper(trim($warehouseName));
+        $likePatterns = self::warehouseSqlLikePatterns($warehouseName);
+
+        $query
+            ->whereRaw('UPPER(TRIM(ubication)) = ?', [$normalized])
+            ->orWhere(function (Builder $likes) use ($likePatterns): void {
+                self::applyLikePatterns($likes, 'ubication', $likePatterns);
+            })
+            ->orWhereHas('ubicationRelation', function (Builder $ubication) use ($normalized, $likePatterns): void {
+                $ubication
+                    ->whereRaw('UPPER(TRIM(name)) = ?', [$normalized])
+                    ->orWhere(function (Builder $likes) use ($likePatterns): void {
+                        self::applyLikePatterns($likes, 'name', $likePatterns);
+                    });
+            });
+    }
+
+    public static function normalizeAlphanumeric(string $value): string
+    {
+        $upper = mb_strtoupper(trim($value));
+        $withoutAccents = strtr($upper, [
+            'Á' => 'A',
+            'É' => 'E',
+            'Í' => 'I',
+            'Ó' => 'O',
+            'Ú' => 'U',
+            'Ü' => 'U',
+            'Ñ' => 'N',
+        ]);
+
+        return (string) preg_replace('/[^A-Z0-9]/', '', $withoutAccents);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function warehouseMatchNeedles(string $warehouseKey): array
+    {
+        $normalized = self::normalizeAlphanumeric($warehouseKey);
+
+        if ($normalized === '') {
+            return [];
+        }
+
+        if (
+            str_contains($normalized, 'DIAGNOMOVIL')
+            || str_contains($normalized, 'MENEGRANDE')
+        ) {
+            return ['DIAGNOMOVIL', 'MENEGRANDE'];
+        }
+
+        if (
+            str_contains($normalized, '3DEFEBRERO')
+            || str_contains($normalized, '3DEFERBERO')
+            || str_contains($normalized, 'DIAGNOCENTER')
+            || (str_contains($normalized, 'FEBRERO') && str_contains($normalized, '3'))
+            || (str_contains($normalized, 'FERBERO') && str_contains($normalized, '3'))
+        ) {
+            return ['3DEFEBRERO', '3DEFERBERO', 'DIAGNOCENTER'];
+        }
+
+        return [$normalized];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function warehouseSqlLikePatterns(string $warehouseKey): array
+    {
+        $needles = self::warehouseMatchNeedles($warehouseKey);
+
+        if (in_array('DIAGNOMOVIL', $needles, true)) {
+            return ['%DIAGNO%MOVIL%', '%DIAGNOMOVIL%', '%MENE GRANDE%'];
+        }
+
+        if (
+            in_array('DIAGNOCENTER', $needles, true)
+            || in_array('3DEFEBRERO', $needles, true)
+        ) {
+            return ['%3 DE FEB%', '%3 DE FERB%', '%DIAGNO%CENTER%', '%DIAGNOCENTER%'];
+        }
+
+        $normalized = mb_strtoupper(trim($warehouseKey));
+
+        return $normalized !== '' ? ['%'.$normalized.'%'] : [];
+    }
+
+    /**
+     * @param  list<string>  $likePatterns
+     */
+    private static function applyLikePatterns(Builder $query, string $column, array $likePatterns): void
+    {
+        $qualifiedColumn = $column === 'name' ? 'name' : 'ubication';
+
+        foreach ($likePatterns as $i => $pattern) {
+            if ($i === 0) {
+                $query->whereRaw("UPPER(TRIM({$qualifiedColumn})) LIKE ?", [$pattern]);
+
+                continue;
+            }
+
+            $query->orWhereRaw("UPPER(TRIM({$qualifiedColumn})) LIKE ?", [$pattern]);
+        }
     }
 }

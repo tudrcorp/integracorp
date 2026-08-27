@@ -4,6 +4,7 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\S
 
 use App\Models\NoPathologicalHistory;
 use App\Models\OperationInventory;
+use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineGeneralService;
 use App\Models\TelemedicineListLaboratory;
@@ -49,6 +50,19 @@ use Livewire\Component;
 class TelemedicineConsultationPatientForm
 {
     private const WIZARD_IOS_CLASS = 'fi-telemedicine-consultation-wizard';
+
+    private static function caseWithDoctor(mixed $case): ?TelemedicineCase
+    {
+        if (! $case instanceof TelemedicineCase) {
+            return null;
+        }
+
+        if (! $case->relationLoaded('telemedicineDoctor')) {
+            $case->loadMissing('telemedicineDoctor');
+        }
+
+        return $case;
+    }
 
     private static function informAmdTrigger(): View
     {
@@ -821,17 +835,33 @@ class TelemedicineConsultationPatientForm
                                 ->schema([
                                     Select::make('operation_inventory_id')
                                         ->options(function () use ($case): array {
-                                            $caseModel = $case;
-                                            if ($caseModel !== null && ! $caseModel->relationLoaded('telemedicineDoctor')) {
-                                                $caseModel->loadMissing('telemedicineDoctor');
-                                            }
+                                            $caseModel = self::caseWithDoctor($case);
 
                                             return TelemedicineMedicationInventoryOptions::optionsForCase(
                                                 $caseModel,
                                                 $caseModel?->telemedicineDoctor,
                                             );
                                         })
+                                        ->getSearchResultsUsing(function (string $search) use ($case): array {
+                                            $caseModel = self::caseWithDoctor($case);
+
+                                            return TelemedicineMedicationInventoryOptions::searchOptionsForCase(
+                                                $caseModel,
+                                                $search,
+                                                $caseModel?->telemedicineDoctor,
+                                            );
+                                        })
+                                        ->getOptionLabelUsing(function ($value): ?string {
+                                            if (! filled($value)) {
+                                                return null;
+                                            }
+
+                                            $name = OperationInventory::query()->whereKey($value)->value('name');
+
+                                            return filled($name) ? (string) $name : null;
+                                        })
                                         ->searchable()
+                                        ->preload()
                                         ->live(onBlur: false)
                                         // ->helperText(function () use ($case): ?string {
                                         //     if ($case === null) {

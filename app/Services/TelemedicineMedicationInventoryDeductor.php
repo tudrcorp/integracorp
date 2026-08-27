@@ -61,11 +61,18 @@ final class TelemedicineMedicationInventoryDeductor
             throw new RuntimeException("Inventario #{$operationInventoryId} no encontrado.");
         }
 
-        $inventoryWarehouse = mb_strtoupper(trim((string) ($inventory->ubicationRelation?->name ?? $inventory->ubication ?? '')));
+        $relationWarehouse = (string) ($inventory->ubicationRelation?->name ?? '');
+        $columnWarehouse = (string) ($inventory->ubication ?? '');
 
-        if ($inventoryWarehouse !== mb_strtoupper(trim($warehouseName))) {
+        if (
+            ! TelemedicineMedicationInventoryOptions::ubicationMatchesWarehouse($relationWarehouse, $warehouseName)
+            && ! TelemedicineMedicationInventoryOptions::ubicationMatchesWarehouse($columnWarehouse, $warehouseName)
+        ) {
+            $shownWarehouse = filled($relationWarehouse) ? $relationWarehouse : $columnWarehouse;
+
             throw new RuntimeException(
-                "El medicamento «{$inventory->name}» no pertenece al almacén {$warehouseName}."
+                "El medicamento «{$inventory->name}» no pertenece al almacén {$warehouseName}".
+                (filled($shownWarehouse) ? " (está en {$shownWarehouse})." : '.')
             );
         }
 
