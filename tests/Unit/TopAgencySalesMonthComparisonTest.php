@@ -101,10 +101,14 @@ it('expone el widget de barras en el panel de administracion', function (): void
         ->toContain('fi-admin-agency-month-filter')
         ->toContain('toggleMonthlyChart')
         ->toContain('monthlyChartExpanded')
-        ->toContain('Siempre visible')
+        ->toContain('toggleYearChart')
+        ->toContain('yearChartExpanded')
+        ->toContain('Colapsado · ábrelo para ver el ranking anual')
+        ->not->toContain('Siempre visible')
         ->and($widget)
         ->toContain('drawOnChartArea: true')
         ->toContain('monthlyChartExpanded = false')
+        ->toContain('yearChartExpanded = false')
         ->and($provider)->toContain("discoverWidgets(in: app_path('Filament/Administration/Widgets')");
 });
 
@@ -115,6 +119,15 @@ it('inicia el grafico mensual colapsado y permite expandirlo', function (): void
         ->assertSet('monthlyChartExpanded', true)
         ->call('toggleMonthlyChart')
         ->assertSet('monthlyChartExpanded', false);
+});
+
+it('inicia el ranking anual colapsado y permite expandirlo', function (): void {
+    Livewire::test(TotalSaleMonthlyNowVsLastAgency::class)
+        ->assertSet('yearChartExpanded', false)
+        ->call('toggleYearChart')
+        ->assertSet('yearChartExpanded', true)
+        ->call('toggleYearChart')
+        ->assertSet('yearChartExpanded', false);
 });
 
 it('toma el top por total anual acumulado', function (): void {

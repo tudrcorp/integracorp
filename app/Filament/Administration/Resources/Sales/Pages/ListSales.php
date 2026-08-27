@@ -4,8 +4,7 @@ namespace App\Filament\Administration\Resources\Sales\Pages;
 
 use App\Filament\Administration\Resources\Agencies\Actions\DownloadAgencySalesReportAction;
 use App\Filament\Administration\Resources\Sales\SaleResource;
-use App\Filament\Administration\Resources\Sales\Widgets\SalePlanChart;
-use App\Filament\Administration\Resources\Sales\Widgets\SaleYearChart;
+use App\Filament\Administration\Resources\Sales\Widgets\CollapsibleSalesChartsWidget;
 use App\Filament\Administration\Resources\Sales\Widgets\StatsOverviewSales;
 use App\Filament\Administration\Resources\Sales\Widgets\StatsOverviewSalesUsdVes;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
@@ -31,8 +30,7 @@ class ListSales extends ListRecords
         return [
             StatsOverviewSalesUsdVes::class,
             StatsOverviewSales::class,
-            SaleYearChart::class,
-            SalePlanChart::class,
+            CollapsibleSalesChartsWidget::class,
         ];
     }
 }

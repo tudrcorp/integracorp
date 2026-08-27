@@ -36,6 +36,7 @@ it('habilita busqueda global optimizada en recursos clave de negocios', function
         'Companies/CompanyResource.php' => ['name', 'rif'],
         'CompanyAssociates/CompanyAssociateResource.php' => ['identity_card', 'full_name'],
         'WhiteCompanies/WhiteCompanyResource.php' => ['name', 'rif'],
+        'Users/UserResource.php' => ['name', 'email', 'identity_card', 'phone'],
     ];
 
     foreach ($resources as $relative => $needles) {
@@ -80,5 +81,10 @@ it('incluye migracion de indices para busqueda global de negocios', function ():
         ->toContain('affiliation_corporates_rif_index')
         ->toContain('corporate_quotes_code_index')
         ->toContain('companies_rif_index')
-        ->toContain('white_companies_name_index');
+        ->toContain('white_companies_name_index')
+        ->and(file_get_contents(
+            dirname(__DIR__, 2).'/database/migrations/2026_08_27_131200_add_users_business_global_search_indexes.php'
+        ))->toContain('users_name_index')
+        ->toContain('users_identity_card_index')
+        ->toContain('users_phone_index');
 });

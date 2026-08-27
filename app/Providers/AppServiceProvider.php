@@ -29,6 +29,8 @@ use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierAcc
 use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierNewProviderCreationChart;
 use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierObservationsChart;
 use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierProviderSystemUpdateChart;
+use App\Filament\Shared\Renovations\Widgets\CorporateRenovationKpisWidget;
+use App\Filament\Shared\Renovations\Widgets\IndividualRenovationKpisWidget;
 use App\Listeners\LogFilamentImportActivity;
 use App\Models\ObservationCommercialStructure;
 use App\Observers\ObservationCommercialStructureObserver;
@@ -109,6 +111,8 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.supplier-provider-system-update-chart', SupplierProviderSystemUpdateChart::class);
         Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.supplier-new-provider-creation-chart', SupplierNewProviderCreationChart::class);
         Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.supplier-acceptance-letters-chart', SupplierAcceptanceLettersChart::class);
+        Livewire::component('app.filament.shared.renovations.widgets.individual-renovation-kpis-widget', IndividualRenovationKpisWidget::class);
+        Livewire::component('app.filament.shared.renovations.widgets.corporate-renovation-kpis-widget', CorporateRenovationKpisWidget::class);
 
         FilamentTimezone::set('America/Caracas');
 

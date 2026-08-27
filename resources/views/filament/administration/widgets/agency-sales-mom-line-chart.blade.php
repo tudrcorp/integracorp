@@ -12,7 +12,7 @@
     $monthsByYear = collect($availableMonths)->groupBy('year');
     $selectedCount = $this->selectedComparisonMonthsCount();
     $monthlyExpanded = $this->monthlyChartExpanded;
-    $yearChartData = $this->getYearToDateChartData();
+    $yearExpanded = $this->yearChartExpanded;
 @endphp
 
 <x-filament-widgets::widget class="fi-wi-chart fi-admin-agency-sales-mom-line-chart">
@@ -180,55 +180,89 @@
                 @endif
             </div>
 
-            <div class="border-t border-gray-200/80 pt-5 dark:border-white/10">
-                <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                            {{ $this->getYearToDateChartHeading() }}
-                        </h3>
-                        <p class="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-                            {{ $this->getYearToDateChartDescription() }}
-                        </p>
-                    </div>
-                    <p class="text-[11px] font-medium text-indigo-600/90 dark:text-indigo-300/90">
-                        Siempre visible
-                    </p>
-                </div>
+            <div
+                class="fi-admin-agency-monthly-panel"
+                wire:key="agency-sales-yearly-block"
+                data-expanded="{{ $yearExpanded ? 'true' : 'false' }}"
+            >
+                <button
+                    type="button"
+                    class="fi-admin-agency-monthly-panel__trigger"
+                    wire:click="toggleYearChart"
+                    aria-expanded="{{ $yearExpanded ? 'true' : 'false' }}"
+                    aria-controls="agency-sales-yearly-panel-body"
+                >
+                    <span class="fi-admin-agency-monthly-panel__trigger-main">
+                        <span
+                            class="fi-admin-agency-monthly-panel__chevron"
+                            aria-hidden="true"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4">
+                                <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        <span class="min-w-0 text-left">
+                            <span class="fi-admin-agency-monthly-panel__title">
+                                {{ $this->getYearToDateChartHeading() }}
+                            </span>
+                            <span class="fi-admin-agency-monthly-panel__subtitle">
+                                {{ $yearExpanded ? $this->getYearToDateChartDescription() : 'Colapsado · ábrelo para ver el ranking anual' }}
+                            </span>
+                        </span>
+                    </span>
 
-                {{-- wire:ignore permanente: el filtro mensual no debe remount ni actualizar este canvas --}}
-                <div wire:ignore wire:key="agency-sales-ytd-chart-static">
+                    <span class="fi-admin-agency-monthly-panel__trigger-meta">
+                        <span class="fi-admin-agency-monthly-panel__badge">
+                            {{ now()->year }}
+                        </span>
+                        <span class="fi-admin-agency-monthly-panel__state">
+                            {{ $yearExpanded ? 'Ocultar' : 'Mostrar' }}
+                        </span>
+                    </span>
+                </button>
+
+                @if ($yearExpanded)
                     <div
-                        x-load
-                        x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('chart', 'filament/widgets') }}"
-                        data-chart-type="bar"
-                        data-chart-scope="yearly"
-                        x-data="chart({
-                                    cachedData: @js($yearChartData),
-                                    maxHeight: @js($maxHeight),
-                                    options: @js($this->getOptions()),
-                                    type: 'bar',
-                                })"
-                        style="height: {{ $maxHeight }}; width: 100%; box-sizing: border-box;"
-                        {{
-                            (new ComponentAttributeBag)
-                                ->color(ChartWidgetComponent::class, 'primary')
-                                ->class([
-                                    'fi-wi-chart-canvas-ctn',
-                                    'fi-wi-chart-canvas-ctn-no-aspect-ratio',
-                                ])
-                        }}
+                        id="agency-sales-yearly-panel-body"
+                        class="fi-admin-agency-monthly-panel__body"
+                        wire:key="agency-sales-yearly-body-open"
                     >
-                        <canvas
-                            x-ref="canvas"
-                            style="height: 100% !important; width: 100% !important; max-height: none;"
-                        ></canvas>
+                        {{-- wire:ignore: el filtro mensual no debe remount ni actualizar este canvas --}}
+                        <div wire:ignore wire:key="agency-sales-ytd-chart-static">
+                            <div
+                                x-load
+                                x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('chart', 'filament/widgets') }}"
+                                data-chart-type="bar"
+                                data-chart-scope="yearly"
+                                x-data="chart({
+                                            cachedData: @js($this->getYearToDateChartData()),
+                                            maxHeight: @js($maxHeight),
+                                            options: @js($this->getOptions()),
+                                            type: 'bar',
+                                        })"
+                                style="height: {{ $maxHeight }}; width: 100%; box-sizing: border-box;"
+                                {{
+                                    (new ComponentAttributeBag)
+                                        ->color(ChartWidgetComponent::class, 'primary')
+                                        ->class([
+                                            'fi-wi-chart-canvas-ctn',
+                                            'fi-wi-chart-canvas-ctn-no-aspect-ratio',
+                                        ])
+                                }}
+                            >
+                                <canvas
+                                    x-ref="canvas"
+                                    style="height: 100% !important; width: 100% !important; max-height: none;"
+                                ></canvas>
 
-                        <span x-ref="backgroundColorElement" class="fi-wi-chart-bg-color"></span>
-                        <span x-ref="borderColorElement" class="fi-wi-chart-border-color"></span>
-                        <span x-ref="gridColorElement" class="fi-wi-chart-grid-color"></span>
-                        <span x-ref="textColorElement" class="fi-wi-chart-text-color"></span>
+                                <span x-ref="backgroundColorElement" class="fi-wi-chart-bg-color"></span>
+                                <span x-ref="borderColorElement" class="fi-wi-chart-border-color"></span>
+                                <span x-ref="gridColorElement" class="fi-wi-chart-grid-color"></span>
+                                <span x-ref="textColorElement" class="fi-wi-chart-text-color"></span>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                @endif
             </div>
         </div>
     </x-filament::section>

@@ -8,6 +8,7 @@ use App\Enums\ViveplusAffiliationType;
 use App\Enums\ViveplusDocumentType;
 use App\Exceptions\ViveplusDocumentWebhookPermanentException;
 use App\Models\Affiliation;
+use App\Support\Affiliations\Concerns\LogsAffiliationJobFailures;
 use App\Support\AffiliationWhiteCompany;
 use App\Support\Viveplus\ViveplusDocumentWebhookAnalystNotifier;
 use App\Support\Viveplus\ViveplusDocumentWebhookClient;
@@ -21,7 +22,7 @@ use Throwable;
 
 class PushAffiliationDocumentToViveplusJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable;
+    use Dispatchable, InteractsWithQueue, LogsAffiliationJobFailures, Queueable;
 
     public int $tries = 3;
 
@@ -51,20 +52,22 @@ class PushAffiliationDocumentToViveplusJob implements ShouldQueue
 
     public function handle(ViveplusDocumentWebhookClient $client): void
     {
-        if ($this->shouldSkipBecauseAffiliationIsNotAllied()) {
-            Log::info('Viveplus document webhook: omitido; la afiliación individual no pertenece a una empresa aliada', [
-                'affiliation_code' => $this->affiliationCode,
-                'document_type' => $this->documentType,
-            ]);
+        $this->runWithAffiliationFailureLogging(function () use ($client): void {
+            if ($this->shouldSkipBecauseAffiliationIsNotAllied()) {
+                Log::info('Viveplus document webhook: omitido; la afiliación individual no pertenece a una empresa aliada', [
+                    'affiliation_code' => $this->affiliationCode,
+                    'document_type' => $this->documentType,
+                ]);
 
-            return;
-        }
+                return;
+            }
 
-        try {
-            $client->send($this->payload());
-        } catch (ViveplusDocumentWebhookPermanentException $exception) {
-            $this->fail($exception);
-        }
+            try {
+                $client->send($this->payload());
+            } catch (ViveplusDocumentWebhookPermanentException $exception) {
+                $this->fail($exception);
+            }
+        }, $this->affiliationJobFailureContext());
     }
 
     private function shouldSkipBecauseAffiliationIsNotAllied(): bool
@@ -87,6 +90,14 @@ class PushAffiliationDocumentToViveplusJob implements ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
+        $willRetryLater = ! ($exception instanceof ViveplusDocumentWebhookPermanentException)
+            && $this->laterRetryRound < ViveplusDocumentWebhookClient::maxLaterRetries();
+
+        $this->logAffiliationJobFailure($exception, array_merge($this->affiliationJobFailureContext(), [
+            'will_retry_later' => $willRetryLater,
+            'later_retries_exhausted' => ! $willRetryLater && ! ($exception instanceof ViveplusDocumentWebhookPermanentException),
+        ]));
+
         $notifier = app(ViveplusDocumentWebhookAnalystNotifier::class);
         $reason = $exception instanceof Throwable
             ? $notifier->reasonFromException($exception)
@@ -104,13 +115,6 @@ class PushAffiliationDocumentToViveplusJob implements ShouldQueue
         }
 
         if ($this->laterRetryRound >= ViveplusDocumentWebhookClient::maxLaterRetries()) {
-            Log::error('Viveplus document webhook: se agotaron los reintentos posteriores', [
-                'affiliation_code' => $this->affiliationCode,
-                'document_type' => $this->documentType,
-                'idempotency_key' => $this->idempotencyKey,
-                'later_retry_round' => $this->laterRetryRound,
-            ]);
-
             return;
         }
 
@@ -125,6 +129,26 @@ class PushAffiliationDocumentToViveplusJob implements ShouldQueue
             $this->laterRetryRound + 1,
             $this->affiliateIdentification,
         )->delay(now()->addSeconds(ViveplusDocumentWebhookClient::laterRetryDelaySeconds()));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function affiliationJobFailureContext(): array
+    {
+        return [
+            'action' => 'viveplus-document-webhook',
+            'affiliation_type' => $this->affiliationType,
+            'affiliation_code' => $this->affiliationCode,
+            'document_type' => $this->documentType,
+            'absolute_path' => $this->absolutePath,
+            'document_exists' => is_file($this->absolutePath),
+            'generated_at' => $this->generatedAt,
+            'idempotency_key' => $this->idempotencyKey,
+            'notified_user_id' => $this->notifiedUserId,
+            'later_retry_round' => $this->laterRetryRound,
+            'affiliate_identification' => $this->affiliateIdentification,
+        ];
     }
 
     public function payload(): ViveplusDocumentWebhookPayload

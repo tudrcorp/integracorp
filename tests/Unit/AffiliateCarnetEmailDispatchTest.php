@@ -26,14 +26,16 @@ it('el correo de carnet explica al afiliado y adjunta carnet y condicionado', fu
         ->and($view)->toContain('Condicionado del plan');
 });
 
-it('el job envia un correo por afiliado en la cola default', function (): void {
+it('el job envia un correo por afiliado en la cola default y registra fallos', function (): void {
     $job = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/SendAffiliateCarnetEmailJob.php');
 
     expect($job)
         ->toContain('Batchable')
         ->toContain("onQueue('default')")
         ->toContain('AffiliateCarnetIssuedMail')
-        ->toContain('Mail::to($this->email)->send');
+        ->toContain('Mail::to($this->email)->send')
+        ->toContain('LogsAffiliationJobFailures')
+        ->toContain('function failed(?Throwable $exception): void');
 });
 
 it('el lote notifica a la campanita al terminar o fallar', function (): void {

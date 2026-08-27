@@ -7,6 +7,7 @@ use App\Mail\AffiliationDocumentsGeneratedMail;
 use App\Models\AffiliationCorporate;
 use App\Services\AffiliationCorporateBusinessDocumentsService;
 use App\Support\AffiliateCard\AffiliateCarnetEmailDispatchService;
+use App\Support\Affiliations\AffiliationJobFailureLogger;
 use App\Support\SecurityAudit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -151,6 +152,14 @@ class AffiliationCorporateBusinessDocumentsController extends Controller
                 'attachments_count' => count($paths),
             ]);
         } catch (\Throwable $exception) {
+            AffiliationJobFailureLogger::dispatchFailed(AffiliationDocumentsGeneratedMail::class, $exception, [
+                'action' => 'send-documents-email',
+                'affiliation_corporate_id' => $affiliationCorporate->id,
+                'affiliation_code' => $affiliationCorporate->code,
+                'recipient_email' => $email,
+                'attachments_count' => count($paths),
+            ]);
+
             SecurityAudit::log('AUDIT_AFFILIATION_CORPORATE_DOCUMENTS_EMAIL_FAILED', 'business.affiliation-corporate-documents.send-email', [
                 'affiliation_corporate_id' => $affiliationCorporate->id,
                 'affiliation_code' => $affiliationCorporate->code,

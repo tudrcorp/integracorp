@@ -4,9 +4,11 @@ namespace App\Jobs;
 
 use App\Models\AffiliationCorporate;
 use App\Services\AffiliationCorporateBusinessDocumentsService;
+use App\Support\Affiliations\Concerns\LogsAffiliationJobFailures;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Throwable;
 
 /**
  * Genera el PDF único con todos los carnets corporativos (columna de 4).
@@ -16,7 +18,7 @@ use Illuminate\Foundation\Queue\Queueable;
  */
 class GenerateCorporateCombinedCardsJob implements ShouldQueue
 {
-    use Batchable, Queueable;
+    use Batchable, LogsAffiliationJobFailures, Queueable;
 
     public int $tries = 1;
 
@@ -30,14 +32,33 @@ class GenerateCorporateCombinedCardsJob implements ShouldQueue
 
     public function handle(): void
     {
-        ini_set('memory_limit', '1024M');
-        set_time_limit(900);
+        $this->runWithAffiliationFailureLogging(function (): void {
+            ini_set('memory_limit', '1024M');
+            set_time_limit(900);
 
-        $record = AffiliationCorporate::query()
-            ->where('code', $this->affiliationCode)
-            ->with(['corporateAffiliates.plan', 'corporateAffiliates.coverage', 'plan', 'coverage'])
-            ->firstOrFail();
+            $record = AffiliationCorporate::query()
+                ->where('code', $this->affiliationCode)
+                ->with(['corporateAffiliates.plan', 'corporateAffiliates.coverage', 'plan', 'coverage'])
+                ->firstOrFail();
 
-        AffiliationCorporateBusinessDocumentsService::generateCombinedCards($record);
+            AffiliationCorporateBusinessDocumentsService::generateCombinedCards($record);
+        }, $this->affiliationJobFailureContext());
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        $this->logAffiliationJobFailure($exception, $this->affiliationJobFailureContext());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function affiliationJobFailureContext(): array
+    {
+        return [
+            'action' => 'regenerate-documents',
+            'document_kind' => 'combined-cards',
+            'affiliation_code' => $this->affiliationCode,
+        ];
     }
 }
