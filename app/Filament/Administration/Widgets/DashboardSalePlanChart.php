@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardSalePlanChart extends ChartWidget
 {
+    protected static bool $isDiscovered = false;
+
     protected static ?int $sort = 2;
 
     protected string $view = 'filament.widgets.sale-plan-chart';

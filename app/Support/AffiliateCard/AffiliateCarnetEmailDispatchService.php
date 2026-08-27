@@ -10,11 +10,11 @@ use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Services\AffiliationBusinessDocumentsService;
 use App\Services\AffiliationCorporateBusinessDocumentsService;
+use App\Support\Affiliations\AffiliationJobFailureLogger;
 use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 final class AffiliateCarnetEmailDispatchService
@@ -191,6 +191,18 @@ final class AffiliateCarnetEmailDispatchService
                     $failed = (int) $batch->failedJobs;
                     $sent = max(0, $queued - $failed);
 
+                    if ($failed > 0) {
+                        AffiliationJobFailureLogger::batch(SendAffiliateCarnetEmailJob::class, null, [
+                            'action' => 'send-carnet-emails',
+                            'affiliation_code' => $affiliationCode,
+                            'batch_id' => $batch->id,
+                            'queued' => $queued,
+                            'failed_jobs' => $failed,
+                            'skipped' => $skipped,
+                            'cause' => 'El lote de carnets de '.$affiliationCode.' terminó con '.$failed.' envío(s) fallido(s) de '.$queued.'. Revise los logs individuales de SendAffiliateCarnetEmailJob.',
+                        ]);
+                    }
+
                     AffiliateCarnetEmailNotifier::notifyCompletion(
                         $userId,
                         $affiliationCode,
@@ -205,9 +217,12 @@ final class AffiliateCarnetEmailDispatchService
         } catch (Throwable $exception) {
             Cache::forget($lockKey);
 
-            Log::error('AffiliateCarnetEmailDispatchService: no se pudo encolar el lote', [
+            AffiliationJobFailureLogger::dispatchFailed(SendAffiliateCarnetEmailJob::class, $exception, [
+                'action' => 'send-carnet-emails',
                 'affiliation_code' => $affiliationCode,
-                'error' => $exception->getMessage(),
+                'queued_attempted' => $queued,
+                'skipped' => $skipped,
+                'lock_key' => $lockKey,
             ]);
 
             AffiliateCarnetEmailNotifier::notifyImmediateFailure(

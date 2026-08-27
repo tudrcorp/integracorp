@@ -3,6 +3,8 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Filament\Shared\Renovations\Widgets\CorporateRenovationKpisWidget;
+use App\Filament\Shared\Renovations\Widgets\IndividualRenovationKpisWidget;
 use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Http\Middleware\DuplicatedSession;
 use App\Support\Filament\AdministrationPanelNavigationGroups;
@@ -54,6 +56,8 @@ class AdministrationPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Administration/Widgets'), for: 'App\Filament\Administration\Widgets')
             ->widgets([
                 WelcomeUserLiquidGlassWidget::class,
+                IndividualRenovationKpisWidget::class,
+                CorporateRenovationKpisWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

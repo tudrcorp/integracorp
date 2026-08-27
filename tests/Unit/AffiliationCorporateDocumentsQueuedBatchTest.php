@@ -121,12 +121,14 @@ it('genera dentro del request cuando la poblacion es pequena', function (): void
     Bus::assertNothingBatched();
 });
 
-it('avisa por la campana del panel al terminar o fallar el lote', function (): void {
+it('avisa por la campana del panel al terminar o fallar el lote y deja el error en el log', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AffiliationCorporateBusinessDocumentsService.php');
 
     expect($source)
         ->toContain('private static function notifyUser(?int $userId, string $title, string $body, string $status): void')
         ->toContain('->sendToDatabase($user)')
         ->toContain("'Documentos corporativos listos'")
-        ->toContain("'Falló la generación de documentos'");
+        ->toContain("'Falló la generación de documentos'")
+        ->toContain('AffiliationJobFailureLogger::batch')
+        ->toContain('AffiliationJobFailureLogger::dispatchFailed');
 });

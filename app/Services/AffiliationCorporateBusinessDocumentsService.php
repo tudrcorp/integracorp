@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Support\AffiliateCard\AffiliateCardPageLayout;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\AffiliationCorporates\CorporateAffiliationContractedPlan;
+use App\Support\Affiliations\AffiliationJobFailureLogger;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\Viveplus\ViveplusDocumentWebhookDispatcher;
 use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
@@ -207,6 +208,19 @@ class AffiliationCorporateBusinessDocumentsService
                     );
                 })
                 ->catch(function (Batch $batch, Throwable $throwable) use ($taskId, $activeTaskCacheKey, $affiliationCode, $userId): void {
+                    AffiliationJobFailureLogger::batch('corporate-documents-batch', $throwable, [
+                        'action' => 'regenerate-documents',
+                        'affiliation_code' => $affiliationCode,
+                        'task_id' => $taskId,
+                        'batch_id' => $batch->id,
+                        'total_jobs' => $batch->totalJobs,
+                        'failed_jobs' => $batch->failedJobs,
+                        'pending_jobs' => $batch->pendingJobs,
+                        'processed_jobs' => max(0, $batch->totalJobs - $batch->pendingJobs),
+                        'progress_percentage' => (int) $batch->progress(),
+                        'cancelled' => $batch->cancelled(),
+                    ]);
+
                     self::mergeStatus($taskId, [
                         'status' => 'failed',
                         'message' => $throwable->getMessage(),
@@ -229,6 +243,14 @@ class AffiliationCorporateBusinessDocumentsService
         } catch (Throwable $exception) {
             Cache::forget($activeTaskCacheKey);
             Cache::forget(self::cacheKey($taskId));
+
+            AffiliationJobFailureLogger::dispatchFailed('corporate-documents-batch', $exception, [
+                'action' => 'regenerate-documents',
+                'affiliation_code' => $affiliationCode,
+                'task_id' => $taskId,
+                'affiliates_count' => $affiliateCount,
+                'jobs_count' => count($jobs),
+            ]);
 
             throw $exception;
         }

@@ -18,6 +18,7 @@ use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Services\OperationQuoteGeneratorPdfService;
+use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;

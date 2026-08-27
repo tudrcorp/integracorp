@@ -10,19 +10,27 @@ it('expone los graficos anuales y por plan en el dashboard de administracion', f
     $sourcePlan = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Sales/Widgets/SalePlanChart.php');
 
     $agenciesChart = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Widgets/TotalSaleMonthlyNowVsLastAgency.php');
+    $wrapper = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Widgets/DashboardCollapsibleSalesChartsWidget.php');
 
     expect($yearChart)
         ->toContain('extends SaleYearChart')
         ->toContain("'lg' => 1")
         ->toContain('$sort = 1')
+        ->toContain('$isDiscovered = false')
         ->and($planChart)
         ->toContain("return 'doughnut';")
         ->toContain('DISTRIBUCIÓN DE VENTAS POR PLAN')
         ->toContain('Sale::query()')
         ->toContain("'lg' => 1")
         ->toContain('$sort = 2')
+        ->toContain('$isDiscovered = false')
         ->and($agenciesChart)
         ->toContain('$sort = 3')
+        ->and($wrapper)
+        ->toContain('HasCollapsibleSalesChartsPanel')
+        ->toContain('DashboardSaleYearChart::class')
+        ->toContain('DashboardSalePlanChart::class')
+        ->toContain('$sort = 1')
         ->and($provider)
         ->toContain("discoverWidgets(in: app_path('Filament/Administration/Widgets')")
         ->not->toContain('FilamentInfoWidget')

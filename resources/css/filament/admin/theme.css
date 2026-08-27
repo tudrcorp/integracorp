@@ -10167,6 +10167,10 @@
     @apply from-white via-amber-50/50 to-orange-100/30 dark:from-white/[0.05] dark:via-amber-500/[0.06] dark:to-orange-400/[0.08];
   }
 
+  .fi-admin-sales-stats-widget--graficos .fi-admin-sales-stats-panel {
+    @apply from-white via-indigo-50/50 to-sky-100/30 dark:from-white/[0.05] dark:via-indigo-500/[0.06] dark:to-sky-400/[0.08];
+  }
+
   .fi-admin-sales-stats-panel__trigger {
     @apply flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors duration-150 hover:bg-black/[0.02] dark:hover:bg-white/[0.03];
   }
@@ -10181,6 +10185,10 @@
 
   .fi-admin-sales-stats-widget--ingresos .fi-admin-sales-stats-panel__icon {
     @apply bg-sky-500/15 text-sky-700 ring-sky-500/25 dark:bg-sky-400/15 dark:text-sky-200 dark:ring-sky-300/25;
+  }
+
+  .fi-admin-sales-stats-widget--graficos .fi-admin-sales-stats-panel__icon {
+    @apply bg-indigo-500/15 text-indigo-700 ring-indigo-500/25 dark:bg-indigo-400/15 dark:text-indigo-200 dark:ring-indigo-300/25;
   }
 
   .fi-admin-sales-stats-panel__icon-svg {
@@ -10213,6 +10221,10 @@
 
   .fi-admin-sales-stats-panel__body {
     @apply border-t border-slate-200/70 px-3 pb-3 pt-3 dark:border-white/10;
+  }
+
+  .fi-admin-sales-charts-grid {
+    @apply grid grid-cols-1 gap-4 lg:grid-cols-2;
   }
 
   .fi-admin-sales-stats-section-body.fi-sc-section,
