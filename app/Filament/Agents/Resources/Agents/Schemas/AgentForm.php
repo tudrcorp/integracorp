@@ -2,6 +2,8 @@
 
 namespace App\Filament\Agents\Resources\Agents\Schemas;
 
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Filament\Shared\CommercialStructure\ReferidorToggle;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\City;
@@ -48,7 +50,7 @@ class AgentForm
 
         if ($ignoreAgentId !== null) {
             $userQuery->where(function ($query) use ($ignoreAgentId): void {
-                $query->where('code_agent', '!=', 'AGT-000' . $ignoreAgentId)
+                $query->where('code_agent', '!=', 'AGT-000'.$ignoreAgentId)
                     ->orWhereNull('code_agent');
             });
         }
@@ -266,7 +268,7 @@ class AgentForm
                                                 $countryCode = $get('country_code');
                                                 if ($countryCode) {
                                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone', $countryCode . $cleanNumber);
+                                                    $set('phone', $countryCode.$cleanNumber);
                                                 }
                                             }),
 
@@ -370,7 +372,7 @@ class AgentForm
                                                         $set('city_id', null);
                                                         $set('region', null);
                                                     })
-                                                    ->options(fn(): array => CountrySelectOptions::exceptVenezuelaInSpanish())
+                                                    ->options(fn (): array => CountrySelectOptions::exceptVenezuelaInSpanish())
                                                     ->searchable()
                                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
                                                 TextInput::make('state_other_country')
@@ -440,6 +442,8 @@ class AgentForm
                                                     ->dehydrated(),
 
                                             ])->columnSpanFull(),
+                                        ReferidorToggle::make(forceReadOnly: true),
+                                        ReferidorPercentageField::make(forceReadOnly: true),
                                         Grid::make(2)
                                             ->schema([
                                                 TextInput::make('commission_tdev')

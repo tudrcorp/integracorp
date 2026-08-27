@@ -3,6 +3,7 @@
 namespace App\Filament\Master\Resources\Agencies\Pages;
 
 use App\Filament\Master\Resources\Agencies\AgencyResource;
+use App\Filament\Shared\CommercialStructure\Concerns\SyncsReferidorAssignments;
 use App\Http\Controllers\NotificationController;
 use App\Models\User;
 use Filament\Notifications\Notification;
@@ -12,12 +13,25 @@ use Illuminate\Support\Facades\Hash;
 
 class CreateAgency extends CreateRecord
 {
+    use SyncsReferidorAssignments;
+
     protected static string $resource = AgencyResource::class;
 
     protected static ?string $title = 'Formulario de Agencia';
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        return $this->captureReferidorAssignments($data);
+    }
+
     protected function afterCreate(): void
     {
+        $this->persistCapturedReferidorAssignments();
+
         try {
 
             $record = $this->getRecord();

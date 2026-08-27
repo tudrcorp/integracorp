@@ -3,10 +3,13 @@
 namespace App\Filament\Resources\Agents\Pages;
 
 use App\Filament\Resources\Agents\AgentResource;
+use App\Filament\Shared\CommercialStructure\Concerns\SyncsReferidorAssignments;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateAgent extends CreateRecord
 {
+    use SyncsReferidorAssignments;
+
     protected static string $resource = AgentResource::class;
 
     protected static ?string $title = 'CREAR AGENTE';
@@ -18,8 +21,15 @@ class CreateAgent extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $data = $this->captureReferidorAssignments($data);
 
         $data['owner_code'] = $data['owner_code'] != null ? $data['owner_code'] : 'TDG-100';
+
         return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $this->persistCapturedReferidorAssignments();
     }
 }

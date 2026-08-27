@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\Affiliations\Pages;
 
 use App\Filament\Business\Resources\Affiliations\AffiliationResource;
 use App\Filament\Business\Resources\Affiliations\Concerns\OptimizesAffiliationInfolistPerformance;
+use App\Filament\Shared\Affiliations\MergeFamilyGroupAction;
 use App\Support\Filament\FilamentIosActionsMenu;
 use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\Action;
@@ -114,6 +115,7 @@ class ViewAffiliation extends ViewRecord
                             ->body('El expediente se actualizó correctamente.')
                             ->send();
                     }),
+                MergeFamilyGroupAction::make(),
                 Action::make('addObservation')
                     ->label('Agregar observación')
                     ->icon(Heroicon::OutlinedChatBubbleLeftRight)

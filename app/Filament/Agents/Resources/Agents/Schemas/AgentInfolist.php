@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Agents\Resources\Agents\Schemas;
 
 use App\Filament\Shared\CommercialStructure\CommercialHierarchyFlowchart;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Models\Agent;
 use App\Support\FilamentDateDisplay;
 use Filament\Infolists\Components\IconEntry;
@@ -232,6 +233,10 @@ class AgentInfolist
                                                         IconEntry::make('tdev')
                                                             ->label('TDEV habilitado')
                                                             ->boolean(),
+                                                        IconEntry::make('is_referidor')
+                                                            ->label('Es Referidor')
+                                                            ->boolean(),
+                                                        ReferidorPercentageField::entry(),
                                                         TextEntry::make('commission_tdec')
                                                             ->label('Comisión TDEC')
                                                             ->suffix(' %')

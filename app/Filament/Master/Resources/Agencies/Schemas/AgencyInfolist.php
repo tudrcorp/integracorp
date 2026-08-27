@@ -2,11 +2,14 @@
 
 namespace App\Filament\Master\Resources\Agencies\Schemas;
 
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Fieldset;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Models\Agency;
+use App\Support\CommercialStructure\ReferidorAssignmentService;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 class AgencyInfolist
 {
@@ -25,10 +28,35 @@ class AgencyInfolist
                                 TextEntry::make('typeAgency.definition')
                                     ->badge()
                                     ->color('success'),
+                                IconEntry::make('is_referidor')
+                                    ->label('Es Referidor')
+                                    ->boolean(),
+                                ReferidorPercentageField::entry(),
                                 TextEntry::make('accountManager.name')
                                     ->badge()
                                     ->color('success'),
-                            ])->columnSpanFull()->columns(5),
+                            ])->columnSpanFull()->columns(6),
+                        Fieldset::make('Red de referidor')
+                            ->schema([
+                                TextEntry::make('referidor')
+                                    ->label('Referidor')
+                                    ->state(fn (Agency $record): ?string => ReferidorAssignmentService::assignedReferrerLabel($record))
+                                    ->visible(fn (Agency $record): bool => ReferidorAssignmentService::hasAssignedReferrer($record))
+                                    ->placeholder('—'),
+                                TextEntry::make('referred_general_agencies_list')
+                                    ->label('Agencias generales referidas')
+                                    ->state(fn (Agency $record): string => ReferidorAssignmentService::referredGeneralAgenciesText($record))
+                                    ->visible(fn (Agency $record): bool => ReferidorAssignmentService::isReferrerAgency($record))
+                                    ->columnSpanFull(),
+                                TextEntry::make('referred_agents_list')
+                                    ->label('Agentes y subagentes referidos')
+                                    ->state(fn (Agency $record): string => ReferidorAssignmentService::referredAgentsText($record))
+                                    ->visible(fn (Agency $record): bool => ReferidorAssignmentService::isReferrerAgency($record))
+                                    ->columnSpanFull(),
+                            ])
+                            ->columnSpanFull()
+                            ->columns(1)
+                            ->visible(fn (Agency $record): bool => ReferidorAssignmentService::hasAssignedReferrer($record) || ReferidorAssignmentService::isReferrerAgency($record)),
 
                         Fieldset::make('Datos Principales de la Agencia')
                             ->schema([

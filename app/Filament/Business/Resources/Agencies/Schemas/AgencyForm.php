@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Agencies\Schemas;
 
+use App\Filament\Shared\CommercialStructure\ReferidorAssignmentFields;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Filament\Shared\CommercialStructure\ReferidorToggle;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use App\Models\Agent;
@@ -89,7 +92,7 @@ class AgencyForm
                             ->icon('heroicon-o-building-office-2')
                             ->schema([
                                 Section::make('Identificación y jerarquía')
-                                    ->description('Código, tipo de agencia, agencia master y account manager.')
+                                    ->description('Código, tipo de agencia, agencia master, account manager y si opera como referidor.')
                                     ->icon('heroicon-o-squares-2x2')
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
@@ -158,11 +161,19 @@ class AgencyForm
                                                     ->options(fn (): array => User::query()->where('is_accountManagers', true)->orderBy('name')->pluck('name', 'id')->all())
                                                     ->searchable()
                                                     ->preload(),
+                                                ReferidorToggle::make('Marca si esta agencia opera como referidor.')
+                                                    ->inline(false)
+                                                    ->onIcon('heroicon-s-check')
+                                                    ->onColor('success'),
+                                                ReferidorPercentageField::make(),
                                                 Hidden::make('owner_code')
                                                     ->live()
                                                     ->default('TDG-100'),
                                             ]),
                                     ])
+                                    ->collapsible(),
+
+                                ReferidorAssignmentFields::section(self::SECTION_CARD)
                                     ->collapsible(),
 
                                 Section::make('Datos corporativos y representante')

@@ -7,7 +7,6 @@ use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
 use Illuminate\Support\Number;
-
 use OpenSpout\Common\Entity\Style\CellAlignment;
 use OpenSpout\Common\Entity\Style\CellVerticalAlignment;
 use OpenSpout\Common\Entity\Style\Color;
@@ -66,15 +65,21 @@ class CommissionExporter extends Exporter
                 ->label('COMISION USD'),
             ExportColumn::make('commission_agent_ves')
                 ->label('COMISION VES'),
+            ExportColumn::make('porcent_referidor')
+                ->label('% REFERIDOR'),
+            ExportColumn::make('commission_referidor_usd')
+                ->label('COMISION REFERIDOR USD'),
+            ExportColumn::make('commission_referidor_ves')
+                ->label('COMISION REFERIDOR VES'),
         ];
     }
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Your commission export has completed and ' . Number::format($export->successful_rows) . ' ' . str('row')->plural($export->successful_rows) . ' exported.';
+        $body = 'Your commission export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to export.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to export.';
         }
 
         return $body;
@@ -82,7 +87,7 @@ class CommissionExporter extends Exporter
 
     public function getXlsxHeaderCellStyle(): ?Style
     {
-        return (new Style())
+        return (new Style)
             ->setFontBold()
             ->setFontItalic()
             ->setFontSize(8)
@@ -95,7 +100,7 @@ class CommissionExporter extends Exporter
 
     public function getXlsxCellStyle(): ?Style
     {
-        return (new Style())
+        return (new Style)
             ->setFontSize(8)
             ->setFontName('Helvetica')
             ->setFontColor(Color::rgb(0, 0, 0))

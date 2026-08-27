@@ -8,6 +8,18 @@ use App\Support\Filament\PermissionNavigationGroupResolver;
 
 uses(Tests\TestCase::class);
 
+it('habilita gestionar referidor en negocios y en administracion', function (): void {
+    $slug = BusinessFilamentActionPermissionRegistry::MANAGE_REFERIDOR;
+    $definition = BusinessFilamentActionPermissionRegistry::all()[$slug];
+
+    expect($definition['name'])->toBe('Asignación de referidor')
+        ->and($definition['group'])->toBe('ESTRUCTURA COMERCIAL')
+        ->and(BusinessFilamentActionPermissionRegistry::modulesForSlug($slug))
+        ->toBe(['NEGOCIOS', 'ADMINISTRACION'])
+        ->and(BusinessFilamentActionPermissionRegistry::slugIsAvailableInModule($slug, 'ADMINISTRACION'))->toBeTrue()
+        ->and(BusinessFilamentActionPermissionRegistry::slugIsAvailableInModule($slug, 'NEGOCIOS'))->toBeTrue();
+});
+
 it('habilita la matriz de negociacion en negocios y en administracion', function (): void {
     $slug = BusinessFilamentActionPermissionRegistry::MANAGE_WHITE_COMPANY_NEGOTIATED_FEES;
 

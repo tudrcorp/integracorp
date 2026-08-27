@@ -8,9 +8,11 @@ use App\Models\Agency;
 use App\Models\AgencyDocument;
 use App\Models\Country;
 use App\Models\ObservationCommercialStructure;
+use App\Support\CommercialStructure\ReferidorAssignmentService;
 use App\Support\CountrySelectOptions;
 use App\Support\Filament\CommercialStructure\AgencyAddressClipboardFormat;
 use App\Support\FilamentDateDisplay;
+use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
@@ -107,6 +109,26 @@ class AgencyInfolist
                                                     ->badge()
                                                     ->color(fn (?string $state): string => self::agencyStatusColor($state))
                                                     ->placeholder('—'),
+                                                IconEntry::make('is_referidor')
+                                                    ->label('Es Referidor')
+                                                    ->boolean(),
+                                                ReferidorPercentageField::entry(),
+                                                TextEntry::make('referidor_display')
+                                                    ->label('Referidor')
+                                                    ->icon('heroicon-m-user-group')
+                                                    ->state(fn (Agency $record): ?string => ReferidorAssignmentService::assignedReferrerLabel($record))
+                                                    ->visible(fn (Agency $record): bool => ReferidorAssignmentService::hasAssignedReferrer($record))
+                                                    ->placeholder('—'),
+                                                TextEntry::make('referred_general_agencies_list')
+                                                    ->label('Agencias generales referidas')
+                                                    ->state(fn (Agency $record): string => ReferidorAssignmentService::referredGeneralAgenciesText($record))
+                                                    ->visible(fn (Agency $record): bool => ReferidorAssignmentService::isReferrerAgency($record))
+                                                    ->columnSpanFull(),
+                                                TextEntry::make('referred_agents_list')
+                                                    ->label('Agentes y subagentes referidos')
+                                                    ->state(fn (Agency $record): string => ReferidorAssignmentService::referredAgentsText($record))
+                                                    ->visible(fn (Agency $record): bool => ReferidorAssignmentService::isReferrerAgency($record))
+                                                    ->columnSpanFull(),
                                                 TextEntry::make('name_corporative')
                                                     ->label('Razón social')
                                                     ->size('lg')
