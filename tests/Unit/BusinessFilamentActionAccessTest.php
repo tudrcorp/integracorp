@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 use App\Models\Permission;
 use App\Models\User;
+use App\Support\CommercialStructure\ReferidorAccess;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\PermissionNavigationGroupResolver;
 use App\Support\Filament\UserNavigationAccess;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Auth;
 
@@ -247,4 +249,17 @@ it('fuera de un panel niega el reporte de ventas sin el subpermiso aunque vea em
     expect(BusinessFilamentActionAccess::userCan(
         BusinessFilamentActionPermissionRegistry::WHITE_COMPANY_SALES_REPORT,
     ))->toBeFalse();
+});
+
+it('permite gestionar referidor al analista de administracion en su panel', function (): void {
+    $user = makeActionUser(
+        ['ADMINISTRACION'],
+        [ReferidorAccess::PERMISSION_SLUG],
+        'ADMINISTRACION',
+    );
+
+    Auth::login($user);
+    Filament::setCurrentPanel(Filament::getPanel('administration'));
+
+    expect(ReferidorAccess::userCanManage())->toBeTrue();
 });
