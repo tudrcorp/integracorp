@@ -250,8 +250,11 @@ it('exige el permiso de gestionar referidor para el check y la red', function ()
     $registry = file_get_contents(referidorAssignmentBasePath('app/Support/Filament/BusinessFilamentActionPermissionRegistry.php'));
 
     expect($access)
-        ->toContain('BusinessFilamentActionPermissionRegistry::MANAGE_REFERIDOR')
-        ->toContain('BusinessFilamentActionAccess::userCan(');
+        ->toContain("PERMISSION_SLUG = 'gestionar-referidor'")
+        ->toContain('defined($constant)')
+        ->toContain('UserNavigationAccess::canPerformModuleAction')
+        ->toContain("'ADMINISTRACION'")
+        ->not->toContain('BusinessFilamentActionPermissionRegistry::MANAGE_REFERIDOR,');
 
     expect($toggle)
         ->toContain('->disabled(fn (): bool => $forceReadOnly || ! ReferidorAccess::userCanManage())')
@@ -267,4 +270,9 @@ it('exige el permiso de gestionar referidor para el check y la red', function ()
         ->toContain("MANAGE_REFERIDOR = 'gestionar-referidor'")
         ->toContain("'name' => 'Asignación de referidor'")
         ->toContain("'group' => 'ESTRUCTURA COMERCIAL'");
+});
+
+it('resuelve el slug de referidor sin reventar si falta la constante', function (): void {
+    expect(\App\Support\CommercialStructure\ReferidorAccess::permissionSlug())->toBe('gestionar-referidor')
+        ->and(\App\Support\CommercialStructure\ReferidorAccess::userCanManage())->toBeFalse();
 });
