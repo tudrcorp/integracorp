@@ -131,6 +131,12 @@ class AgentResource extends Resource
         return parent::getEloquentQuery()
             ->with([
                 'observationCommercialStructures' => fn ($query) => $query->orderByDesc('created_at'),
+                'referidor:id,code,name_corporative',
+                'referidorAgent:id,name,code_agent,status',
+                'referredGeneralAgencies:id,referidor_agent_id,code,name_corporative,status',
+                'referredAgents' => fn ($query) => $query
+                    ->select(['id', 'referidor_agent_id', 'name', 'code_agent', 'agent_type_id', 'status'])
+                    ->with('typeAgent:id,definition'),
             ]);
     }
 

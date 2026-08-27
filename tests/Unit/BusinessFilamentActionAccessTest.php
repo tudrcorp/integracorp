@@ -167,6 +167,50 @@ it('niega documentos de marca sin el subpermiso aunque tenga empresas aliadas', 
     ))->toBeFalse();
 });
 
+it('permite gestionar referidor a superadmin', function (): void {
+    $user = makeActionUser(['SUPERADMIN', 'NEGOCIOS']);
+
+    expect(UserNavigationAccess::canPerformModuleAction(
+        $user,
+        'NEGOCIOS',
+        BusinessFilamentActionPermissionRegistry::MANAGE_REFERIDOR,
+    ))->toBeTrue();
+});
+
+it('permite gestionar referidor con el permiso asignado', function (): void {
+    $user = makeActionUser(
+        ['NEGOCIOS'],
+        [BusinessFilamentActionPermissionRegistry::MANAGE_REFERIDOR],
+    );
+
+    expect(UserNavigationAccess::canPerformModuleAction(
+        $user,
+        'NEGOCIOS',
+        BusinessFilamentActionPermissionRegistry::MANAGE_REFERIDOR,
+    ))->toBeTrue();
+});
+
+it('niega gestionar referidor sin el permiso asignado', function (): void {
+    $user = makeActionUser(['NEGOCIOS'], ['agencias-de-corretaje']);
+
+    expect(UserNavigationAccess::canPerformModuleAction(
+        $user,
+        'NEGOCIOS',
+        BusinessFilamentActionPermissionRegistry::MANAGE_REFERIDOR,
+    ))->toBeFalse();
+});
+
+it('resuelve el grupo de navegacion del permiso de gestionar referidor', function (string $module): void {
+    $permission = new Permission;
+    $permission->forceFill([
+        'slug' => BusinessFilamentActionPermissionRegistry::MANAGE_REFERIDOR,
+        'module' => $module,
+        'name' => 'Asignación de referidor',
+    ]);
+
+    expect(PermissionNavigationGroupResolver::groupForPermission($permission))->toBe('ESTRUCTURA COMERCIAL');
+})->with(['NEGOCIOS', 'ADMINISTRACION']);
+
 it('fuera de un panel concede el reporte de ventas al analista de administracion', function (): void {
     $user = makeActionUser(
         ['ADMINISTRACION'],

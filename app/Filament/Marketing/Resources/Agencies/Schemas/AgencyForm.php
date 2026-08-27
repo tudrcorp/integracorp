@@ -2,9 +2,11 @@
 
 namespace App\Filament\Marketing\Resources\Agencies\Schemas;
 
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Filament\Shared\CommercialStructure\ReferidorToggle;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
@@ -61,6 +63,8 @@ class AgencyForm
                 TextInput::make('extra_beneficiary_address'),
                 Toggle::make('tdec'),
                 Toggle::make('tdev'),
+                ReferidorToggle::make(),
+                ReferidorPercentageField::make(),
                 TextInput::make('commission_tdec')
                     ->numeric()
                     ->default(0.0),

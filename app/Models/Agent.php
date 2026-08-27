@@ -103,6 +103,10 @@ class Agent extends Model
         'address_other_country',
         'audit_items',
         'assigned_credit',
+        'is_referidor',
+        'referidor_percentage',
+        'referidor_id',
+        'referidor_agent_id',
     ];
 
     /**
@@ -113,6 +117,8 @@ class Agent extends Model
         return [
             'audit_items' => 'array',
             'assigned_credit' => 'decimal:2',
+            'is_referidor' => 'boolean',
+            'referidor_percentage' => 'decimal:2',
         ];
     }
 
@@ -227,5 +233,27 @@ class Agent extends Model
     public function observationCommercialStructures(): HasMany
     {
         return $this->hasMany(ObservationCommercialStructure::class)->orderByDesc('created_at');
+    }
+
+    public function referidor(): BelongsTo
+    {
+        return $this->belongsTo(Agency::class, 'referidor_id');
+    }
+
+    public function referidorAgent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'referidor_agent_id');
+    }
+
+    public function referredGeneralAgencies(): HasMany
+    {
+        return $this->hasMany(Agency::class, 'referidor_agent_id')
+            ->where('agency_type_id', '!=', 1)
+            ->orderBy('name_corporative');
+    }
+
+    public function referredAgents(): HasMany
+    {
+        return $this->hasMany(self::class, 'referidor_agent_id')->orderBy('name');
     }
 }

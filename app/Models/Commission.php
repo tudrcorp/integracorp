@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\CommercialStructure\CommissionReferidorCalculator;
+use App\Support\CommercialStructure\CommissionReferidorPercentage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -47,8 +49,30 @@ class Commission extends Model
         'porcent_sub_agente',
         'commission_sub_agent_usd',
         'commission_sub_agent_ves',
+        'porcent_referidor',
+        'commission_referidor_usd',
+        'commission_referidor_ves',
 
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'porcent_referidor' => 'decimal:2',
+            'commission_referidor_usd' => 'decimal:2',
+            'commission_referidor_ves' => 'decimal:2',
+        ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Commission $commission): void {
+            CommissionReferidorCalculator::apply($commission);
+        });
+    }
 
     public function sale(): BelongsTo
     {
@@ -139,6 +163,34 @@ class Commission extends Model
         $name = trim((string) ($agency->name_corporative ?? ''));
 
         return $name !== '' ? $name : '-';
+    }
+
+    public function referidorBeneficiaryLabel(): string
+    {
+        $referrer = CommissionReferidorPercentage::referrerFor($this);
+
+        if ($referrer instanceof Agency) {
+            $name = trim((string) ($referrer->name_corporative ?? ''));
+
+            return $name !== '' ? $name : 'Referidor agencia';
+        }
+
+        if ($referrer instanceof Agent) {
+            $name = trim((string) ($referrer->name ?? ''));
+
+            return $name !== '' ? $name : 'Referidor agente';
+        }
+
+        return 'Sin referidor';
+    }
+
+    public function referidorPercentage(): float
+    {
+        if ($this->porcent_referidor !== null && $this->porcent_referidor !== '') {
+            return round((float) $this->porcent_referidor, 2);
+        }
+
+        return CommissionReferidorPercentage::for($this);
     }
 
     private function formatAgencyDisplayName(Agency $agency): string

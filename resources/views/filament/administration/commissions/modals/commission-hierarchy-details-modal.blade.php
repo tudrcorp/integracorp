@@ -22,6 +22,13 @@
             'usd' => (float) ($commission->commission_agent_usd ?? 0),
             'ves' => (float) ($commission->commission_agent_ves ?? 0),
         ],
+        [
+            'level' => 'Nivel Referidor',
+            'beneficiary' => $commission->referidorBeneficiaryLabel(),
+            'percentage' => (float) ($commission->porcent_referidor ?? 0),
+            'usd' => (float) ($commission->commission_referidor_usd ?? 0),
+            'ves' => (float) ($commission->commission_referidor_ves ?? 0),
+        ],
     ];
 
     $totalHierarchyUsd = collect($hierarchyRows)->sum('usd');

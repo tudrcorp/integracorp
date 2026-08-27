@@ -2,15 +2,16 @@
 
 namespace App\Filament\General\Resources\Agencies\Tables;
 
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Models\Agency;
-use Filament\Tables\Table;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Illuminate\Support\Facades\Auth;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class AgenciesTable
 {
@@ -171,8 +172,6 @@ class AgenciesTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-
-
                 IconColumn::make('tdec')
                     ->label('TDEC')
                     ->boolean()
@@ -181,6 +180,11 @@ class AgenciesTable
                     ->label('TDEV')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: false),
+                IconColumn::make('is_referidor')
+                    ->label('Es Referidor')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                ReferidorPercentageField::column(),
                 TextColumn::make('commission_tdec')
                     ->label('Comisión TDEC %')
                     ->alignCenter()

@@ -2,6 +2,9 @@
 
 namespace App\Filament\Administration\Resources\Agencies\Schemas;
 
+use App\Filament\Shared\CommercialStructure\ReferidorAssignmentFields;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Filament\Shared\CommercialStructure\ReferidorToggle;
 use App\Http\Controllers\UtilsController;
 use App\Models\Agency;
 use App\Models\AgencyType;
@@ -94,8 +97,11 @@ class AgencyForm
                             })
                             ->searchable()
                             ->preload(),
+                        ReferidorToggle::make('Marca si esta agencia opera como referidor.'),
+                        ReferidorPercentageField::make(),
 
                     ])->columnSpanFull()->columns(4),
+                ReferidorAssignmentFields::section(),
                 Section::make('INFORMACION PRINCIPAL')
                     ->description('Fomulario. Campo Requerido(*)')
                     ->collapsed()

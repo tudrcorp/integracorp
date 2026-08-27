@@ -2,6 +2,9 @@
 
 namespace App\Filament\Administration\Resources\Agents\Schemas;
 
+use App\Filament\Shared\CommercialStructure\ReferidorAssignmentFields;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Filament\Shared\CommercialStructure\ReferidorToggle;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use App\Models\City;
@@ -74,7 +77,10 @@ class AgentForm
                             ->searchable()
                             ->preload()
                             ->hidden(fn (Get $get) => Auth::user()->is_accountManagers == true),
+                        ReferidorToggle::make('Marca si este agente opera como referidor.'),
+                        ReferidorPercentageField::make(),
                     ])->columnSpanFull()->columns(4),
+                ReferidorAssignmentFields::section(),
                 Section::make('INFORMACION PRINCIPAL')
                     ->description('Fomulario. Campo Requerido(*)')
                     ->collapsed()

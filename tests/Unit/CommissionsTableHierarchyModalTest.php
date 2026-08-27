@@ -18,6 +18,7 @@ it('muestra modal de detalle jerarquico al hacer click en nro de venta', functio
         ->toContain("->label('Agencia General')")
         ->toContain('masterAgencyDisplayName')
         ->toContain('generalAgencyDisplayName')
+        ->toContain("->label('% Referidor')")
         ->not->toContain("->label('Agencia')");
 
     expect($modalContents)
@@ -25,5 +26,6 @@ it('muestra modal de detalle jerarquico al hacer click en nro de venta', functio
         ->toContain('Nivel Master')
         ->toContain('Nivel General')
         ->toContain('Nivel Agente')
+        ->toContain('Nivel Referidor')
         ->toContain('Contexto de la venta');
 });

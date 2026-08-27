@@ -33,14 +33,14 @@ class StatsOverviewCommissionUsdVes extends StatsOverviewWidget
         $metrics = [
             [
                 'label' => 'COMISIONES TOTALES USD',
-                'columns' => ['commission_agency_master_usd', 'commission_agency_general_usd', 'commission_agent_usd'],
+                'columns' => ['commission_agency_master_usd', 'commission_agency_general_usd', 'commission_agent_usd', 'commission_sub_agent_usd', 'commission_referidor_usd'],
                 'symbol' => 'US$',
                 'icon' => 'heroicon-m-currency-dollar',
                 'color' => 'info',
             ],
             [
                 'label' => 'COMISIONES TOTALES VES',
-                'columns' => ['commission_agency_master_ves', 'commission_agency_general_ves', 'commission_agent_ves'],
+                'columns' => ['commission_agency_master_ves', 'commission_agency_general_ves', 'commission_agent_ves', 'commission_sub_agent_ves', 'commission_referidor_ves'],
                 'symbol' => 'Bs.',
                 'icon' => 'heroicon-m-banknotes',
                 'color' => 'success',

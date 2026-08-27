@@ -2,6 +2,9 @@
 
 namespace App\Filament\General\Resources\Agents\Schemas;
 
+use App\Filament\Shared\CommercialStructure\ReferidorAssignmentFields;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Filament\Shared\CommercialStructure\ReferidorToggle;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\City;
@@ -64,7 +67,7 @@ class AgentForm
                                             ->options(Agent::select('name', 'id', 'status', 'agent_type_id', 'owner_code')->where('agent_type_id', 2)->where('status', 'ACTIVO')->where('owner_code', Auth::user()->code_agency)->pluck('name', 'id'))
                                             ->searchable()
                                             ->live()
-                                            ->hidden(fn(Get $get) => $get('agent_type_id') == 2)
+                                            ->hidden(fn (Get $get) => $get('agent_type_id') == 2)
                                             ->preload()
                                             ->helperText('Esta lista despliega solo los agentes activos'),
                                         Hidden::make('created_by')->default(Auth::user()->name),
@@ -76,8 +79,11 @@ class AgentForm
                                         Hidden::make('code_agency')->default(Auth::user()->code_agency),
                                         Hidden::make('owner_code')->default(Agency::select('code', 'id', 'owner_code')->where('code', Auth::user()->code_agency)->first()->owner_code),
                                         /**-------------------------------------------------------------------------------------------------------------------------------------------------- */
+                                        ReferidorToggle::make(),
+                                        ReferidorPercentageField::make(),
 
                                     ])->columnSpanFull()->columns(4),
+                                ReferidorAssignmentFields::section(self::SECTION_CARD),
                             ]),
                         Tab::make('Información principal')
                             ->icon('heroicon-o-user')
@@ -270,7 +276,7 @@ class AgentForm
                                                 $countryCode = $get('country_code');
                                                 if ($countryCode) {
                                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone', $countryCode . $cleanNumber);
+                                                    $set('phone', $countryCode.$cleanNumber);
                                                 }
                                             }),
                                         TextInput::make('user_instagram')
@@ -352,7 +358,7 @@ class AgentForm
                                                         $set('city_id', null);
                                                         $set('region', null);
                                                     })
-                                                    ->options(fn(): array => CountrySelectOptions::exceptVenezuelaInSpanish())
+                                                    ->options(fn (): array => CountrySelectOptions::exceptVenezuelaInSpanish())
                                                     ->searchable()
                                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
                                                 TextInput::make('state_other_country')

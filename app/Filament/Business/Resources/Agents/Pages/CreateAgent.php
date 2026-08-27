@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\Agents\Pages;
 
 use App\Filament\Business\Resources\Agents\AgentResource;
+use App\Filament\Shared\CommercialStructure\Concerns\SyncsReferidorAssignments;
 use App\Models\Agency;
 use App\Models\User;
 use App\Support\SecurityAudit;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Log;
 
 class CreateAgent extends CreateRecord
 {
+    use SyncsReferidorAssignments;
+
     protected static string $resource = AgentResource::class;
 
     /**
@@ -64,8 +67,19 @@ class CreateAgent extends CreateRecord
 
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        return $this->captureReferidorAssignments($data);
+    }
+
     protected function afterCreate(): void
     {
+        $this->persistCapturedReferidorAssignments();
+
         $record = $this->getRecord();
 
         try {

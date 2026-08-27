@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\Agents\Tables;
 
 use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Http\Controllers\AgencyController;
 use App\Http\Controllers\AgentExportCsvController;
 use App\Http\Controllers\NotificationController;
@@ -34,10 +35,12 @@ use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -224,6 +227,13 @@ class AgentsTable
                     ->searchable()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                IconColumn::make('is_referidor')
+                    ->label('Es Referidor')
+                    ->boolean()
+                    ->alignCenter()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                ReferidorPercentageField::column(),
                 TextColumn::make('created_by')
                     ->label('Creado por')
                     ->searchable()
@@ -286,6 +296,11 @@ class AgentsTable
                         'INACTIVO' => 'INACTIVO',
                         'POR REVISION' => 'POR REVISION',
                     ]),
+                TernaryFilter::make('is_referidor')
+                    ->label('Es Referidor')
+                    ->placeholder('Todos')
+                    ->trueLabel('Sí')
+                    ->falseLabel('No'),
             ])
             ->filtersTriggerAction(
                 fn (Action $action) => $action

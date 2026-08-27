@@ -16,6 +16,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const WHITE_COMPANY_SALES_REPORT = 'reporte-ventas-empresas-aliadas';
 
+    public const MANAGE_REFERIDOR = 'gestionar-referidor';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -56,6 +58,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Reporte de ventas de empresa aliada',
                 'group' => 'ESTRUCTURA COMERCIAL',
                 'modules' => ['ADMINISTRACION'],
+            ],
+            self::MANAGE_REFERIDOR => [
+                'name' => 'Asignación de referidor',
+                'group' => 'ESTRUCTURA COMERCIAL',
+                'modules' => [self::OWNER_MODULE, 'ADMINISTRACION'],
             ],
         ];
     }

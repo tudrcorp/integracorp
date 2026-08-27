@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\Agencies\Tables;
 
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Models\DataNotification;
 use App\Models\MassNotification;
 use Filament\Actions\BulkAction;
@@ -9,6 +10,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Table;
@@ -26,6 +28,12 @@ class AgenciesTable
                     ->badge()
                     ->color('azulOscuro')
                     ->toggleable(isToggledHiddenByDefault: false),
+                IconColumn::make('is_referidor')
+                    ->label('Es Referidor')
+                    ->boolean()
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                ReferidorPercentageField::column(),
                 TextColumn::make('name_corporative')
                     ->label('Razon social')
                     ->searchable()

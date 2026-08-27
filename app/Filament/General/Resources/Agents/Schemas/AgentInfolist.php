@@ -2,6 +2,9 @@
 
 namespace App\Filament\General\Resources\Agents\Schemas;
 
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Models\Agent;
+use App\Support\CommercialStructure\ReferidorAssignmentService;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
@@ -59,6 +62,22 @@ class AgentInfolist
                     ->boolean(),
                 IconEntry::make('tdev')
                     ->boolean(),
+                IconEntry::make('is_referidor')
+                    ->label('Es Referidor')
+                    ->boolean(),
+                ReferidorPercentageField::entry(),
+                TextEntry::make('referidor_display')
+                    ->label('Referidor')
+                    ->state(fn (Agent $record): ?string => ReferidorAssignmentService::assignedReferrerLabel($record))
+                    ->visible(fn (Agent $record): bool => ReferidorAssignmentService::hasAssignedReferrer($record)),
+                TextEntry::make('referred_general_agencies_list')
+                    ->label('Agencias generales referidas')
+                    ->state(fn (Agent $record): string => ReferidorAssignmentService::referredGeneralAgenciesText($record))
+                    ->visible(fn (Agent $record): bool => ReferidorAssignmentService::isReferrerAgent($record)),
+                TextEntry::make('referred_agents_list')
+                    ->label('Agentes y subagentes referidos')
+                    ->state(fn (Agent $record): string => ReferidorAssignmentService::referredAgentsText($record))
+                    ->visible(fn (Agent $record): bool => ReferidorAssignmentService::isReferrerAgent($record)),
                 TextEntry::make('commission_tdec')
                     ->numeric(),
                 TextEntry::make('commission_tdec_renewal')

@@ -10,6 +10,8 @@ it('muestra totales usd y ves bajo el título sin widgets de stats en comisiones
         ->toContain('getSubheading')
         ->toContain('Comisiones totales USD')
         ->toContain('Comisiones totales VES')
+        ->toContain('commission_referidor_usd')
+        ->toContain('commission_referidor_ves')
         ->toContain('rounded-2xl')
         ->toContain('statIcon')
         ->not->toContain('getHeaderWidgets')

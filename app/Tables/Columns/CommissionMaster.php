@@ -10,7 +10,8 @@ class CommissionMaster extends Column
 
     public function getNameCorporative(): string
     {
-        $sum = $this->getRecord()->commission_agency_master_usd + $this->getRecord()->commission_agency_general_usd + $this->getRecord()->commission_agent_usd + $this->getRecord()->commission_sub_agent_usd;
+        $sum = $this->getRecord()->commission_agency_master_usd + $this->getRecord()->commission_agency_general_usd + $this->getRecord()->commission_agent_usd + $this->getRecord()->commission_sub_agent_usd + $this->getRecord()->commission_referidor_usd;
+
         return $sum;
     }
 }

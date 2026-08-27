@@ -7,6 +7,7 @@ namespace App\Filament\Administration\Resources\Affiliations\Pages;
 use App\Filament\Administration\Resources\Affiliations\Actions\AffiliationFichaPdfActions;
 use App\Filament\Administration\Resources\Affiliations\AffiliationResource;
 use App\Filament\Business\Resources\Affiliations\Concerns\OptimizesAffiliationInfolistPerformance;
+use App\Filament\Shared\Affiliations\MergeFamilyGroupAction;
 use App\Support\Filament\FilamentIosActionsMenu;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -104,14 +105,15 @@ class ViewAffiliation extends ViewRecord
                             ->body('El expediente se actualizó correctamente.')
                             ->send();
                     }),
+                MergeFamilyGroupAction::make(),
                 EditAction::make()
                     ->label('Compensar Pago')
                     ->icon(Heroicon::OutlinedCreditCard)
                     ->color('primary'),
-                AffiliationFichaPdfActions::printIndividualPdfAction()
-                    // ->extraAttributes([
-                    //     'class' => self::SUCCESS_BUTTON_CLASS,
-                    // ]),
+                AffiliationFichaPdfActions::printIndividualPdfAction(),
+                // ->extraAttributes([
+                //     'class' => self::SUCCESS_BUTTON_CLASS,
+                // ]),
             ]),
         ];
     }
