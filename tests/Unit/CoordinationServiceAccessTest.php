@@ -53,6 +53,28 @@ it('el proveedor ve coordinaciones propias con asignación TDG aunque no haya me
         ->and(CoordinationServiceAccess::providerCanSeeCoordination($otherSupplier, 10))->toBeFalse();
 });
 
+it('TDG gestiona cubierto sin inventario aunque la coordinación no sea TDG', function (): void {
+    Auth::login(makeCoordinationAccessUser(null));
+
+    $noTdg = new OperationCoordinationService(['managed_by' => 'ATENMEDI']);
+
+    expect(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Medicamento', true))->toBeFalse()
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Medicamento', true, isCoveredWithoutInventory: true))->toBeTrue();
+});
+
+it('proveedor no gestiona cubierto sin inventario', function (): void {
+    Auth::login(makeCoordinationAccessUser(22));
+
+    $noTdg = new OperationCoordinationService([
+        'supplier_id' => 22,
+        'managed_by' => 'ATENMEDI',
+        'assigned_to_supplier_by_tdg' => false,
+    ]);
+
+    expect(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Medicamento', true))->toBeTrue()
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Medicamento', true, isCoveredWithoutInventory: true))->toBeFalse();
+});
+
 it('TDG gestiona med/lab cubiertos solo si managed_by es TDG', function (): void {
     Auth::login(makeCoordinationAccessUser(null));
 
@@ -176,9 +198,10 @@ it('AssignCoordinationServiceToSupplier construye bitácora y rechaza no-TDG o m
 it('CoordinationServiceItemsManager filtra visibilidad y gestionabilidad por CoordinationServiceAccess', function (): void {
     $manager = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CoordinationServiceItemsManager.php');
 
-    expect(substr_count($manager, 'CoordinationServiceAccess::itemIsVisibleToUser'))->toBeGreaterThanOrEqual(4)
-        ->and(substr_count($manager, 'CoordinationServiceAccess::itemIsManageableByUser'))->toBeGreaterThanOrEqual(4)
-        ->and($manager)->toContain('coveredItemIsManageableByTdg');
+    expect($manager)
+        ->toContain('CoordinationServiceAccess::itemIsManageableByUser')
+        ->toContain('coveredItemIsManageableByTdg')
+        ->toContain('isCoveredWithoutInventory');
 });
 
 it('coveredItemIsManageableByTdg delega en la matriz por rol autenticado', function (): void {

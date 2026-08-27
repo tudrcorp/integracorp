@@ -10,7 +10,6 @@ use App\Jobs\GeneratePdfImagenologia;
 use App\Jobs\GeneratePdfLaboratorio;
 use App\Jobs\GeneratePdfMedicamentos;
 use App\Jobs\SendTelemedicinaDocument;
-use App\Models\OperationInventory;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineDoctor;
@@ -171,31 +170,28 @@ class EditTelemedicineConsultationPatient extends EditRecord
                         continue;
                     }
 
-                    $inventoryId = filled($row['operation_inventory_id'] ?? null)
-                        ? (int) $row['operation_inventory_id']
-                        : null;
-                    $manualMedicine = filled($row['medicines'] ?? null) ? (string) $row['medicines'] : null;
-
-                    if ($manualMedicine === null && $inventoryId === null) {
+                    $payload = TelemedicineMedicationCoverage::persistPayloadFromRow($row);
+                    if ($payload === null) {
                         continue;
                     }
 
+                    $inventoryId = $payload['operation_inventory_id'];
                     $medications = new TelemedicinePatientMedications;
                     $medications->telemedicine_consultation_patient_id = $record['id'];
                     $medications->telemedicine_patient_id = $record['telemedicine_patient_id'];
                     $medications->telemedicine_case_id = $record['telemedicine_case_id'];
                     $medications->telemedicine_doctor_id = $record['telemedicine_doctor_id'];
-                    $medications->medicine = $manualMedicine ?? OperationInventory::query()->whereKey($inventoryId)->value('name');
+                    $medications->medicine = $payload['medicine'];
                     $medications->indications = $row['indications'];
                     $medications->duration = $row['duration'];
                     $medications->quantity = TelemedicineMedicationsPdfRows::quantityFromRow($row);
                     $medications->telemedicine_priority_id = $record['telemedicine_priority_id'];
                     $medications->operation_inventory_id = $inventoryId;
-                    $medications->is_covered = TelemedicineMedicationCoverage::coverageForPersist($inventoryId);
+                    $medications->is_covered = $payload['is_covered'];
                     $medications->assigned_by = Auth::user()->id;
                     $medications->save();
 
-                    if ($consultationModel !== null && $inventoryId !== null) {
+                    if ($consultationModel !== null && $payload['should_deduct_inventory'] && $inventoryId !== null) {
                         $inventoryDeductor->deductIfApplicable(
                             $inventoryId,
                             $consultationModel,

@@ -24,7 +24,7 @@ final class TelemedicineMedicationsPdfRows
                 continue;
             }
 
-            if (filled(trim((string) ($row['medicines'] ?? '')))) {
+            if (filled(trim((string) ($row['medicines'] ?? ''))) || filled(trim((string) ($row['covered_medicines'] ?? '')))) {
                 continue;
             }
 
@@ -50,6 +50,10 @@ final class TelemedicineMedicationsPdfRows
             }
 
             $medicines = trim((string) ($row['medicines'] ?? ''));
+
+            if ($medicines === '') {
+                $medicines = trim((string) ($row['covered_medicines'] ?? ''));
+            }
 
             if ($medicines === '' && filled($row['operation_inventory_id'] ?? null)) {
                 $medicines = trim((string) ($namesById[(int) $row['operation_inventory_id']] ?? ''));

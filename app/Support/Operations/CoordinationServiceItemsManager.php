@@ -18,7 +18,6 @@ use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Services\OperationQuoteGeneratorPdfService;
-use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
@@ -42,7 +41,7 @@ final class CoordinationServiceItemsManager
             }
 
             if (! filled($row->operation_inventory_id ?? null)) {
-                return false;
+                return isset($row->is_covered) ? (bool) $row->is_covered : false;
             }
 
             return isset($row->is_covered) ? (bool) $row->is_covered : null;
@@ -83,24 +82,22 @@ final class CoordinationServiceItemsManager
     }
 
     /**
-     * Los medicamentos y laboratorios cubiertos son responsabilidad del proveedor.
-     * El equipo TDG puede verlos, pero solo gestionarlos cuando el analista del
-     * proveedor reasigna el servicio a TDG (managed_by = 'TDG').
+     * Delega en la matriz de acceso por rol. El cubierto sin inventario
+     * lo gestiona el analista TDG; el cubierto de inventario sigue la regla
+     * proveedor / managed_by = TDG.
      */
     public static function coveredItemIsManageableByTdg(
         OperationCoordinationService $record,
         string $category,
-        ?bool $coverage
+        ?bool $coverage,
+        bool $isCoveredWithoutInventory = false,
     ): bool {
-        if ($coverage !== true) {
-            return true;
-        }
-
-        if (! in_array($category, ['Medicamento', 'Laboratorio'], true)) {
-            return true;
-        }
-
-        return self::coordinationIsManagedByTdg($record);
+        return CoordinationServiceAccess::itemIsManageableByUser(
+            $record,
+            $category,
+            $coverage,
+            isCoveredWithoutInventory: $isCoveredWithoutInventory,
+        );
     }
 
     public static function hasManageServiceItems(OperationCoordinationService $record): bool
@@ -146,19 +143,22 @@ final class CoordinationServiceItemsManager
             ->get(['id', 'medicine', 'indications', 'status', 'courtesy_status', 'is_covered', 'operation_inventory_id'])
             ->each(function (TelemedicinePatientMedications $item) use ($items, $record): void {
                 $coverage = self::coverageValue('MEDICAMENTOS', $item);
+                $isCoveredWithoutInventory = TelemedicineMedicationCoverage::isCoveredWithoutInventory($item);
                 $items->push([
                     'key' => 'medication:'.$item->id,
                     'category' => 'Medicamento',
                     'label' => (string) ($item->medicine ?? 'Medicamento sin nombre'),
                     'detail' => (string) ($item->indications ?? '—'),
                     'coverage' => $coverage,
-                    'coverage_label' => self::coverageLabel($coverage),
+                    'coverage_label' => $isCoveredWithoutInventory
+                        ? TelemedicineMedicationCoverage::coverageLabel($item)
+                        : self::coverageLabel($coverage),
                     'status' => (string) ($item->status ?? '—'),
                     'courtesy_status' => CoordinationServiceCourtesy::itemIsCourtesy($item->courtesy_status ?? null)
                         ? CoordinationServiceCourtesy::STATUS
                         : null,
                     'selectable' => self::isManagementItemSelectable((string) ($item->status ?? ''))
-                        && self::coveredItemIsManageableByTdg($record, 'Medicamento', $coverage),
+                        && self::coveredItemIsManageableByTdg($record, 'Medicamento', $coverage, $isCoveredWithoutInventory),
                 ]);
             });
 

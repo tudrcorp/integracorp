@@ -16,6 +16,7 @@ use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
+use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationInventoryOptions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
@@ -105,10 +106,12 @@ class TelemedicineConsultationPatientForm
                 ->orderBy('name')
                 ->pluck('name', 'id'))
             ->searchable()
-            ->required(fn (Get $get): bool => self::isConsultaGeneralSelected($get))
+            ->preload()
+            ->nullable()
+            ->placeholder('Opcional — seleccione si aplica')
             ->visible(fn (Get $get): bool => self::isConsultaGeneralSelected($get))
             ->dehydrated(fn (Get $get): bool => self::isConsultaGeneralSelected($get))
-            ->helperText('Servicios disponibles para Consulta General. Gestionados por analistas TDG.');
+            ->helperText('Opcional. Catálogo de Consulta General, gestionado por analistas TDG. Puede dejarlo vacío.');
     }
 
     /**
@@ -791,7 +794,7 @@ class TelemedicineConsultationPatientForm
                         ]),
 
                     Step::make('Medicamentos e Indicaciones')
-                        ->description('Indica medicamentos desde inventario o manualmente.')
+                        ->description('Inventario TDC, cubierto sin inventario (Operaciones) o no cubierto.')
                         ->icon(Heroicon::OutlinedBeaker)
                         ->hidden(fn (Get $get) => $get('feedbackOne') == true || ! in_array(1, $get('complements')))
                         ->schema([
@@ -802,9 +805,10 @@ class TelemedicineConsultationPatientForm
                                 ->columnSpanFull(),
                             Repeater::make('medications')
                                 ->table([
-                                    TableColumn::make('Inventario TDC')->width('18%'),
-                                    TableColumn::make('Medicamento (Manual)')->width('18%'),
-                                    TableColumn::make('Indicaciones')->width('39%'),
+                                    TableColumn::make('Inventario TDC')->width('16%'),
+                                    TableColumn::make('Cubierto (Operaciones)')->width('16%'),
+                                    TableColumn::make('No cubierto')->width('16%'),
+                                    TableColumn::make('Indicaciones')->width('27%'),
                                     TableColumn::make('Cantidad')->width('12%'),
                                     TableColumn::make('Duración(en días)')->width('13%'),
                                 ])
@@ -817,12 +821,12 @@ class TelemedicineConsultationPatientForm
                                             $rowNumber = 1;
                                             foreach ($value as $row) {
                                                 if (is_array($row)) {
-                                                    $hasInventory = filled($row['operation_inventory_id'] ?? null);
-                                                    $hasManual = filled($row['medicines'] ?? null);
-                                                    if ($hasInventory && $hasManual) {
-                                                        $fail(__('En la fila :n no puede usar inventario TDC y medicamento manual a la vez. Deje uno vacío.', ['n' => $rowNumber]));
+                                                    $exclusiveError = TelemedicineMedicationCoverage::exclusiveSourceError($row, $rowNumber);
+                                                    if ($exclusiveError !== null) {
+                                                        $fail($exclusiveError);
                                                     }
 
+                                                    $hasInventory = TelemedicineMedicationCoverage::rowHasInventory($row);
                                                     if ($hasInventory && (! filled($row['quantity'] ?? null) || (int) $row['quantity'] < 1)) {
                                                         $fail(__('En la fila :n debe indicar la cantidad a entregar (mínimo 1) cuando selecciona inventario TDC.', ['n' => $rowNumber]));
                                                     }
@@ -889,16 +893,30 @@ class TelemedicineConsultationPatientForm
                                         // })
                                         ->afterStateUpdated(function ($state, Set $set): void {
                                             if (filled($state)) {
+                                                $set('covered_medicines', null);
                                                 $set('medicines', null);
                                                 $set('quantity', 1);
                                             }
                                         }),
-                                    TextInput::make('medicines')
-                                        ->placeholder('Nombre del medicamento')
+                                    TextInput::make('covered_medicines')
+                                        ->placeholder('Cubierto, sin inventario')
                                         ->live(onBlur: false)
                                         ->afterStateUpdated(function ($state, Set $set): void {
                                             if (filled($state)) {
                                                 $set('operation_inventory_id', null);
+                                                $set('medicines', null);
+                                            }
+                                        })
+                                        ->afterStateUpdatedJs(<<<'JS'
+                                        $set('covered_medicines', $state.toUpperCase());
+                                    JS),
+                                    TextInput::make('medicines')
+                                        ->placeholder('No cubierto')
+                                        ->live(onBlur: false)
+                                        ->afterStateUpdated(function ($state, Set $set): void {
+                                            if (filled($state)) {
+                                                $set('operation_inventory_id', null);
+                                                $set('covered_medicines', null);
                                             }
                                         })
                                         ->afterStateUpdatedJs(<<<'JS'
