@@ -13,34 +13,26 @@ final class TelemedicineMedicationsPdfRows
      * (el campo manual `medicines` queda vacío) para que el recipe/PDF lo muestre.
      *
      * @param  array<int, mixed>  $medications
-     * @return array<int, array{medicines: string, indications: string, duration: string, quantity: int|null, operation_inventory_id: int|string|null}>
+     * @return array<int, array{medicines: string, indications: string, duration: string, quantity: int|null, operation_inventory_id: int|string|null, covered_medicines: string, coverage: string}>
      */
     public static function normalize(array $medications): array
     {
         $inventoryIds = [];
 
         foreach ($medications as $row) {
-            if (! is_array($row)) {
-                continue;
-            }
-
-            if (filled(trim((string) ($row['medicines'] ?? ''))) || filled(trim((string) ($row['covered_medicines'] ?? '')))) {
-                continue;
-            }
-
-            if (! filled($row['operation_inventory_id'] ?? null)) {
+            if (! is_array($row) || ! filled($row['operation_inventory_id'] ?? null)) {
                 continue;
             }
 
             $inventoryIds[] = (int) $row['operation_inventory_id'];
         }
 
-        $namesById = $inventoryIds === []
-            ? []
+        $inventoriesById = $inventoryIds === []
+            ? null
             : OperationInventory::query()
                 ->whereIn('id', array_values(array_unique($inventoryIds)))
-                ->pluck('name', 'id')
-                ->all();
+                ->get(['id', 'name', 'is_covered'])
+                ->keyBy('id');
 
         $normalized = [];
 
@@ -55,9 +47,16 @@ final class TelemedicineMedicationsPdfRows
                 $medicines = trim((string) ($row['covered_medicines'] ?? ''));
             }
 
-            if ($medicines === '' && filled($row['operation_inventory_id'] ?? null)) {
-                $medicines = trim((string) ($namesById[(int) $row['operation_inventory_id']] ?? ''));
+            $inventoryId = filled($row['operation_inventory_id'] ?? null) ? (int) $row['operation_inventory_id'] : null;
+            $inventory = ($inventoryId !== null && $inventoriesById !== null)
+                ? $inventoriesById->get($inventoryId)
+                : null;
+
+            if ($medicines === '' && $inventory !== null) {
+                $medicines = trim((string) ($inventory->name ?? ''));
             }
+
+            $inventoryIsCovered = $inventory !== null ? (bool) ($inventory->is_covered ?? false) : null;
 
             $normalized[] = [
                 'medicines' => $medicines,
@@ -65,6 +64,8 @@ final class TelemedicineMedicationsPdfRows
                 'duration' => (string) ($row['duration'] ?? ''),
                 'quantity' => self::quantityFromRow($row),
                 'operation_inventory_id' => $row['operation_inventory_id'] ?? null,
+                'covered_medicines' => (string) ($row['covered_medicines'] ?? ''),
+                'coverage' => TelemedicineMedicationCoverage::pdfCoverageLabelFromRow($row, $inventoryIsCovered),
             ];
         }
 

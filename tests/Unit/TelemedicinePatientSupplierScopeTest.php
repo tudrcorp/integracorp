@@ -104,6 +104,7 @@ it('oculta columnas de afiliacion a usuarios que no son analistas TDG', function
 
     expect(file_get_contents($path))
         ->toContain("TextColumn::make('businessUnit.definition')")
+        ->toContain("TextColumn::make('specific_business_unit')")
         ->toContain("TextColumn::make('businessLine.definition')")
         ->toContain("TextColumn::make('type_affiliation')")
         ->toContain('OperationsSupplierScope::authenticatedUserIsTdgAnalyst()');

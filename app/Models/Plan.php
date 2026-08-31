@@ -115,6 +115,11 @@ class Plan extends Model
         return $this->hasMany(Coverage::class, 'plan_id', 'id');
     }
 
+    public function clinicalSettings(): HasMany
+    {
+        return $this->hasMany(PlanBenefitClinicalSetting::class);
+    }
+
     public function businessLine()
     {
         return $this->belongsTo(BusinessLine::class, 'business_line_id', 'id');

@@ -12,6 +12,7 @@ use App\Models\TelemedicineListSpecialist;
 use App\Models\TelemedicineListStudy;
 use App\Models\TelemedicinePriority;
 use App\Models\TelemedicineServiceList;
+use App\Support\ClinicalEntitlements\TelemedicineConsultationClinicalUi;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
@@ -22,6 +23,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\LivewireField;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
@@ -114,12 +116,41 @@ class TelemedicineConsultationPatientForm
             ->helperText('Opcional. Catálogo de Consulta General, gestionado por analistas TDG. Puede dejarlo vacío.');
     }
 
+    private static function complementsCheckboxList(): CheckboxList
+    {
+        return CheckboxList::make('complements')
+            ->label('Complementos')
+            ->columnSpanFull(1)
+            ->live()
+            ->gridDirection(GridDirection::Row)
+            ->options(fn (): array => TelemedicineConsultationClinicalUi::complementOptions())
+            ->descriptions(fn (): array => TelemedicineConsultationClinicalUi::complementOptionDescriptions())
+            ->helperText(fn (Get $get): ?string => TelemedicineConsultationClinicalUi::complementsHelperText($get('complements')))
+            ->hint(fn (Get $get): ?string => TelemedicineConsultationClinicalUi::specialistNotContemplatedHint($get('complements')))
+            ->hintColor('warning')
+            ->hintIcon(fn (Get $get): ?Heroicon => TelemedicineConsultationClinicalUi::specialistNotContemplatedHint($get('complements')) !== null
+                ? Heroicon::OutlinedExclamationTriangle
+                : null)
+            ->afterStateUpdated(function (mixed $state, mixed $old): void {
+                if (! TelemedicineConsultationClinicalUi::shouldNotifySpecialistNotContemplated($state, $old)) {
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Especialista no contemplado en el uso clínico')
+                    ->body(TelemedicineConsultationClinicalUi::SPECIALIST_NOT_CONTEMPLATED_MESSAGE)
+                    ->warning()
+                    ->send();
+            });
+    }
+
     /**
      * @param  mixed  $state
      */
     private static function syncServiceListSideEffects(Set $set, Get $get, $state): void
     {
-        if ((string) $get('telemedicine_service_list_drift_id') === (string) $state) {
+        if ((string) $get('telemedicine_service_list_drift_id') === (string) $state
+            && ! TelemedicineConsultationClinicalUi::isFollowUpServiceListId(filled($state) ? (int) $state : null)) {
             $set('telemedicine_service_list_drift_id', null);
         }
 
@@ -456,60 +487,43 @@ class TelemedicineConsultationPatientForm
                                                         ->default($defaultTelemedicineServiceListId)
                                                         ->disabled($isTelemedicineServiceListIdLocked)
                                                         ->dehydrated(true)
-                                                        ->options(function (Get $get) use ($countCase) {
-                                                            if ($countCase < 1) {
-                                                                return TelemedicineServiceList::where('level', 1)->get()->pluck('name', 'id');
-                                                            }
-
-                                                            return TelemedicineServiceList::all()->pluck('name', 'id');
-                                                        })
+                                                        ->options(fn (): array => TelemedicineConsultationClinicalUi::type1Options())
                                                         ->helperText(function (Get $get) {
+                                                            $banner = TelemedicineConsultationClinicalUi::bannerMessage();
+                                                            if (filled($banner)) {
+                                                                return $banner;
+                                                            }
                                                             $state = $get('telemedicine_service_list_id');
+                                                            $cupo = TelemedicineConsultationClinicalUi::type1Helper(filled($state) ? (int) $state : null);
                                                             if (! filled($state)) {
-                                                                return 'Seleccione un servicio para ver detalles';
+                                                                return $cupo ?? 'Seleccione un servicio incluido en el plan del afiliado.';
                                                             }
                                                             $service = TelemedicineServiceList::find($state);
 
-                                                            return $service?->description ?? '---';
+                                                            return trim(($service?->description ?? '').' · '.($cupo ?? ''));
                                                         })
                                                         ->afterStateUpdated(function (Set $set, $state, Get $get): void {
                                                             self::syncServiceListSideEffects($set, $get, $state);
                                                         })
                                                         ->searchable()
-                                                        ->required(),
+                                                        ->required(fn (): bool => TelemedicineConsultationClinicalUi::type1Options() !== []),
                                                     Select::make('telemedicine_service_list_drift_id')
                                                         ->label('Tipo de Servicio de Deriva')
                                                         ->live()
-                                                        ->options(function (Get $get): \Illuminate\Support\Collection {
-                                                            $query = TelemedicineServiceList::query()->where('level', 1);
-                                                            $mainId = $get('telemedicine_service_list_id');
-                                                            if (filled($mainId)) {
-                                                                $query->where('id', '!=', $mainId);
-                                                            }
-
-                                                            return $query->get()->pluck('name', 'id');
-                                                        })
+                                                        ->options(fn (Get $get): array => TelemedicineConsultationClinicalUi::type1DriftOptions(
+                                                            filled($get('telemedicine_service_list_id')) ? (int) $get('telemedicine_service_list_id') : null
+                                                        ))
+                                                        ->helperText(fn (Get $get): ?string => TelemedicineConsultationClinicalUi::type1DriftOptions(
+                                                            filled($get('telemedicine_service_list_id')) ? (int) $get('telemedicine_service_list_id') : null
+                                                        ) === []
+                                                            ? 'Este plan no tiene otro servicio tipo 1 distinto para derivar.'
+                                                            : 'El seguimiento siempre está disponible: un seguimiento puede derivar a otro seguimiento.')
                                                         ->searchable()
-                                                        ->required()
-                                                        ->different('telemedicine_service_list_id'),
+                                                        ->required(fn (Get $get): bool => TelemedicineConsultationClinicalUi::type1DriftOptions(
+                                                            filled($get('telemedicine_service_list_id')) ? (int) $get('telemedicine_service_list_id') : null
+                                                        ) !== []),
                                                     self::generalServiceSelect(),
-                                                    CheckboxList::make('complements')
-                                                        // ->hidden(function (Get $get) {
-                                                        //     if ($get('telemedicine_service_list_id') == 2) {
-                                                        //         return true;
-                                                        //     }
-
-                                                        //     return false;
-                                                        // })
-                                                        ->label('Complementos')
-                                                        ->columnSpanFull(1)
-                                                        ->live()
-                                                        ->gridDirection(GridDirection::Row)
-                                                        ->options([
-                                                            1 => 'Asignación de Medicamentos',
-                                                            2 => 'Indicación de Laboratorios o Estudios de Imagenología',
-                                                            3 => 'Consulta con Especialista',
-                                                        ]),
+                                                    self::complementsCheckboxList(),
                                                     self::informAmdTrigger(),
                                                 ])->columnSpanFull()->columns(4),
 
@@ -702,62 +716,41 @@ class TelemedicineConsultationPatientForm
                                         ->default($defaultTelemedicineServiceListId)
                                         ->disabled($isTelemedicineServiceListIdLocked)
                                         ->dehydrated(true)
-                                        ->options(function (Get $get) use ($countCase) {
-                                            if ($countCase < 1) {
-                                                return TelemedicineServiceList::where('level', 1)->get()->pluck('name', 'id');
-                                            }
-
-                                            return TelemedicineServiceList::all()->pluck('name', 'id');
-                                        })
+                                        ->options(fn (): array => TelemedicineConsultationClinicalUi::type1Options())
                                         ->helperText(function (Get $get) {
+                                            $banner = TelemedicineConsultationClinicalUi::bannerMessage();
+                                            if (filled($banner)) {
+                                                return $banner;
+                                            }
                                             $state = $get('telemedicine_service_list_id');
+                                            $cupo = TelemedicineConsultationClinicalUi::type1Helper(filled($state) ? (int) $state : null);
                                             if (! filled($state)) {
-                                                return 'Seleccione un servicio para ver detalles';
+                                                return $cupo ?? 'Seleccione un servicio incluido en el plan del afiliado.';
                                             }
                                             $service = TelemedicineServiceList::find($state);
 
-                                            return $service?->description ?? '---';
+                                            return trim(($service?->description ?? '').' · '.($cupo ?? ''));
                                         })
                                         ->afterStateUpdated(function (Set $set, $state, Get $get): void {
                                             self::syncServiceListSideEffects($set, $get, $state);
                                         })
                                         ->searchable()
-                                        ->required(),
+                                        ->required(fn (): bool => TelemedicineConsultationClinicalUi::type1Options() !== []),
                                     Select::make('telemedicine_service_list_drift_id')
                                         ->label('Tipo de Servicio de Deriva')
                                         ->live()
-                                        ->options(function (Get $get) use ($countCase): \Illuminate\Support\Collection {
-                                            $query = $countCase < 1
-                                                ? TelemedicineServiceList::query()->where('level', 1)
-                                                : TelemedicineServiceList::query();
-                                            $mainId = $get('telemedicine_service_list_id');
-                                            if (filled($mainId)) {
-                                                $query->where('id', '!=', $mainId);
-                                            }
-
-                                            return $query->get()->pluck('name', 'id');
-                                        })
+                                        ->options(fn (Get $get): array => TelemedicineConsultationClinicalUi::type1DriftOptions(
+                                            filled($get('telemedicine_service_list_id')) ? (int) $get('telemedicine_service_list_id') : null
+                                        ))
+                                        ->helperText(fn (Get $get): ?string => TelemedicineConsultationClinicalUi::type1DriftOptions(
+                                            filled($get('telemedicine_service_list_id')) ? (int) $get('telemedicine_service_list_id') : null
+                                        ) === []
+                                            ? 'Este plan no tiene otro servicio tipo 1 distinto para derivar.'
+                                            : 'El seguimiento siempre está disponible: un seguimiento puede derivar a otro seguimiento.')
                                         ->nullable()
-                                        ->searchable()
-                                        ->different('telemedicine_service_list_id'),
+                                        ->searchable(),
                                     self::generalServiceSelect(),
-                                    CheckboxList::make('complements')
-                                        // ->hidden(function (Get $get) {
-                                        //     if ($get('telemedicine_service_list_id') == 2) {
-                                        //         return true;
-                                        //     }
-
-                                        //     return false;
-                                        // })
-                                        ->label('Complementos')
-                                        ->columnSpanFull(1)
-                                        ->live()
-                                        ->gridDirection(GridDirection::Row)
-                                        ->options([
-                                            1 => 'Asigancion de Medicamentos',
-                                            2 => 'Indicacion de Laboratorios o Estudios de Imagenologia',
-                                            3 => 'Consulta con Especialista',
-                                        ]),
+                                    self::complementsCheckboxList(),
                                     self::informAmdTrigger(),
                                 ])->columnSpanFull()->columns(3),
 
@@ -1018,7 +1011,7 @@ class TelemedicineConsultationPatientForm
                                                 ->label('Laboratorios (CUBIERTOS)')
                                                 ->options(TelemedicineListLaboratory::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
                                                 ->multiple()
-                                                ->helperText('Seleccione el/los exámenes de Laboratorio que requiera el paciente'),
+                                                ->helperText(fn (): string => TelemedicineConsultationClinicalUi::channelHelper(\App\Enums\ClinicalServiceChannel::Laboratory) ?? 'Seleccione el/los exámenes de Laboratorio que requiera el paciente'),
                                             Select::make('other_labs')
                                                 ->label('Otros Laboratorio (NO CUBIERTOS)')
                                                 ->options(TelemedicineListLaboratory::where('type', 'NO CUBIERTO')->get()->pluck('name', 'name'))
@@ -1032,7 +1025,7 @@ class TelemedicineConsultationPatientForm
                                                 ->live()
                                                 ->options(TelemedicineListStudy::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
                                                 ->multiple()
-                                                ->helperText('Seleccione el/los estudios de Imágenes que requiera el paciente'),
+                                                ->helperText(fn (): string => TelemedicineConsultationClinicalUi::channelHelper(\App\Enums\ClinicalServiceChannel::Imaging) ?? 'Seleccione el/los estudios de Imágenes que requiera el paciente'),
                                             Select::make('other_studies')
                                                 ->label(' Otros Estudios de Imágenes (NO CUBIERTOS)')
                                                 ->live()
@@ -1049,7 +1042,11 @@ class TelemedicineConsultationPatientForm
                         ->icon(Heroicon::OutlinedUserGroup)
                         ->hidden(fn (Get $get) => $get('feedbackOne') == true || ! in_array(3, $get('complements')))
                         ->schema([
-                            // ...
+                            Placeholder::make('specialist_clinical_usage_notice')
+                                ->hiddenLabel()
+                                ->content(TelemedicineConsultationClinicalUi::SPECIALIST_NOT_CONTEMPLATED_MESSAGE)
+                                ->visible(fn (): bool => ! TelemedicineConsultationClinicalUi::specialistIsContemplated())
+                                ->columnSpanFull(),
                             Fieldset::make()
                                 ->schema([
                                     Select::make('consult_specialist')
@@ -1058,7 +1055,7 @@ class TelemedicineConsultationPatientForm
                                         ->multiple(),
                                     Select::make('other_specialist')
                                         ->label('Otros Especialistas') // BVA
-                                        ->options(TelemedicineListSpecialist::where('type_two', 'NO CUBIERTO')->get()->pluck('name', 'name'))
+                                        ->options(fn () => TelemedicineListSpecialist::uncoveredNames())
                                         ->multiple(),
                                 ])->columnSpanFull()->columns(2),
                         ]),

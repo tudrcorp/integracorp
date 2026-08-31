@@ -15,5 +15,7 @@ it('aplica estilo ios y acciones en tabla de pacientes telemedicina', function (
         ->toContain('userIsInAtenmediTelemedicinaContext')
         ->toContain('telemedicine-patient-email-column')
         ->toContain("TextColumn::make('email')")
-        ->toContain('Str::limit((string) $state, 22)');
+        ->toContain('Str::limit((string) $state, 22)')
+        ->toContain("TextColumn::make('specific_business_unit')")
+        ->toContain("->label('Unidad de negocio específica')");
 });

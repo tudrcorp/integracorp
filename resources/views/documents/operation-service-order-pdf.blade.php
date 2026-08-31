@@ -2,7 +2,10 @@
     /** @var \App\Models\OperationServiceOrder $order */
     $coord = $order->operationCoordinationService;
     $brandCyan = '#00ADEF';
+    $providerName = \App\Support\Operations\OperationServiceOrderProviderSummary::nameOrDash($order);
     $providerAddress = \App\Support\Operations\OperationServiceOrderProviderSummary::addressOrDash($order);
+    $providerPhone = \App\Support\Operations\OperationServiceOrderProviderSummary::phoneOrDash($order);
+    $patientName = \App\Support\Telemedicine\TelemedicinePatientDisplayName::forCoordination($coord);
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -293,7 +296,7 @@
                 <tr>
                     <td>
                         <div class="label">Paciente</div>
-                        <div class="value">{{ $coord->patient ?? '—' }}</div>
+                        <div class="value">{{ $patientName }}</div>
                     </td>
                     <td>
                         <div class="label">CI paciente</div>
@@ -346,14 +349,20 @@
                     <div class="value">{{ $order->service_type ?? '—' }}</div>
                 </td>
                 <td>
-                    <div class="label">Dirección</div>
-                    <div class="value-muted">{{ $providerAddress }}</div>
+                    <div class="label">Proveedor</div>
+                    <div class="value">{{ $providerName }}</div>
+                    <div class="label" style="margin-top: 6px">Teléfono</div>
+                    <div class="value-muted">{{ $providerPhone }}</div>
                 </td>
             </tr>
             <tr>
-                <td colspan="2">
+                <td>
                     <div class="label">Descripción</div>
                     <div class="value-muted">{{ $order->description ?? '—' }}</div>
+                </td>
+                <td>
+                    <div class="label">Dirección</div>
+                    <div class="value-muted">{{ $providerAddress }}</div>
                 </td>
             </tr>
             @if(filled($order->observations))

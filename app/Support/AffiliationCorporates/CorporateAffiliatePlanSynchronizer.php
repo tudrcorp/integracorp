@@ -10,6 +10,7 @@ use App\Models\AfilliationCorporatePlan;
 use App\Models\AgeRange;
 use App\Services\CorporateAffiliatePlanSyncService;
 use App\Services\CorporateAffiliateRemovalService;
+use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
 use App\Support\SecurityAudit;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -151,11 +152,26 @@ final class CorporateAffiliatePlanSynchronizer
     public static function businessContextIsSynced(AffiliationCorporate $owner, AffiliateCorporate $affiliate): bool
     {
         if (blank($owner->business_unit_id) || blank($owner->business_line_id)) {
-            return blank($affiliate->business_unit_id) && blank($affiliate->business_line_id);
+            return blank($affiliate->business_unit_id)
+                && blank($affiliate->business_line_id)
+                && self::specificBusinessUnitMatches($owner, $affiliate);
         }
 
         return (int) $affiliate->business_unit_id === (int) $owner->business_unit_id
-            && (int) $affiliate->business_line_id === (int) $owner->business_line_id;
+            && (int) $affiliate->business_line_id === (int) $owner->business_line_id
+            && self::specificBusinessUnitMatches($owner, $affiliate);
+    }
+
+    private static function specificBusinessUnitMatches(AffiliationCorporate $owner, AffiliateCorporate $affiliate): bool
+    {
+        $ownerValue = AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit(
+            $owner->specific_business_unit,
+        );
+        $affiliateValue = AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit(
+            $affiliate->specific_business_unit,
+        );
+
+        return $ownerValue === $affiliateValue;
     }
 
     /**
@@ -253,6 +269,9 @@ final class CorporateAffiliatePlanSynchronizer
             'subtotal_payment_frequency' => CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($fee, $frequency),
             'subtotal_daily' => $fee / 30,
             'business_unit_id' => $owner->business_unit_id,
+            'specific_business_unit' => AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit(
+                $owner->specific_business_unit,
+            ),
             'business_line_id' => $owner->business_line_id,
         ];
     }

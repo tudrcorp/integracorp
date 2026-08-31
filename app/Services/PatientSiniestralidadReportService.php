@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicinePatient;
 use App\Support\CsvExportStream;
+use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as PdfDocument;
 use Illuminate\Support\Collection;
@@ -272,7 +273,7 @@ final class PatientSiniestralidadReportService
         $patientsById = [];
         foreach ($patients as $id => $patient) {
             $patientsById[(int) $id] = [
-                'full_name' => $patient->full_name,
+                'full_name' => TelemedicinePatientDisplayName::fromPatient($patient) ?: $patient->full_name,
                 'nro_identificacion' => $patient->nro_identificacion,
                 'code' => $patient->code,
                 'type_affiliation' => $patient->type_affiliation,

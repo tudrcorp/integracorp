@@ -2,14 +2,11 @@
 
 namespace App\Jobs;
 
-use App\Mail\SendMailPropuestaPlanInicial;
-use App\Models\OperationDocumentList;
-use App\Models\TelemedicineConsultationPatient;
 use App\Support\Telemedicine\Concerns\LogsTelemedicineJobFailures;
 use App\Support\Telemedicine\TelemedicineCaseDocumentReadyNotification;
+use App\Support\Telemedicine\TelemedicineCoverageDocumentSplit;
+use App\Support\Telemedicine\TelemedicineCoverageSplitPdfWriter;
 use App\Support\Telemedicine\TelemedicineJobFailureLogger;
-use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Notifications\Notification;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,7 +14,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 class GeneratePdfMedicamentos implements ShouldQueue
@@ -66,72 +62,30 @@ class GeneratePdfMedicamentos implements ShouldQueue
     public function handle(): void
     {
         $this->runWithTelemedicineFailureLogging(function (): void {
-            $this->generatePDF($this->data);
-
-            $name_pdf = $this->data['ci_patiente'].'-'.$this->data['code_reference'].'-'.$this->type_document.'.pdf';
-
-            TelemedicineCaseDocumentReadyNotification::send($this->user, $this->data, $name_pdf);
+            foreach ($this->generatePDF($this->data) as $name_pdf) {
+                TelemedicineCaseDocumentReadyNotification::send($this->user, $this->data, $name_pdf);
+            }
         }, $this->telemedicineJobFailureContext());
     }
 
-    private function generatePDF($data)
+    /**
+     * @return list<string>
+     */
+    private function generatePDF($data): array
     {
         ini_set('memory_limit', '2048M');
 
-        $data['medicationsArr'] = TelemedicineMedicationsPdfRows::normalize($data['medicationsArr'] ?? []);
+        $payload = is_array($data) ? $data : [];
 
-        $pdf = Pdf::loadView('documents.medicamentos', compact('data'))
-            ->setPaper('a4', 'landscape');
-        $name_pdf = $data['ci_patiente'].'-'.$data['code_reference'].'-'.$this->type_document.'.pdf';
-        $pdf->save(public_path('storage/telemedicina-doc/'.$name_pdf));
-
-        $this->syncConsultationUploadedDocuments($data, $name_pdf);
-
-        /**
-         * Despues de guardar el pdf lo enviamos por email
-         * ----------------------------------------------------------------------------------------------------
-         */
-        // Mail::to($details['email'])->send(new SendMailPropuestaPlanInicial($details['name'], $name_pdf));
-    }
-
-    private function syncConsultationUploadedDocuments(array $data, string $namePdf): void
-    {
-        $consultationId = (int) ($data['telemedicine_consultation_id'] ?? 0);
-
-        if ($consultationId <= 0) {
-            return;
-        }
-
-        $consultation = TelemedicineConsultationPatient::query()->find($consultationId);
-
-        if (! $consultation) {
-            return;
-        }
-
-        $defaultDocumentTypeId = 10;
-        $defaultDocumentTypeName = trim((string) OperationDocumentList::query()
-            ->whereKey($defaultDocumentTypeId)
-            ->value('name'));
-
-        if ($defaultDocumentTypeName === '') {
-            $defaultDocumentTypeName = 'RECIPE DE MEDICAMENTOS';
-        }
-
-        $existingDocuments = is_array($consultation->uploaded_documents)
-            ? $consultation->uploaded_documents
-            : [];
-
-        $newDocument = [
-            'document_name' => $namePdf,
-            'file_path' => 'telemedicina-doc/'.$namePdf,
-            'document_type_ids' => [$defaultDocumentTypeId],
-            'document_types' => [$defaultDocumentTypeName],
-            'uploaded_at' => now()->toDateTimeString(),
-        ];
-
-        $consultation->update([
-            'uploaded_documents' => array_values(array_merge($existingDocuments, [$newDocument])),
-        ]);
+        return TelemedicineCoverageSplitPdfWriter::write(
+            (string) $this->type_document,
+            'documents.medicamentos',
+            'landscape',
+            10,
+            'RECIPE DE MEDICAMENTOS',
+            TelemedicineCoverageDocumentSplit::medicationGroups($payload),
+            $payload,
+        );
     }
 
     /**

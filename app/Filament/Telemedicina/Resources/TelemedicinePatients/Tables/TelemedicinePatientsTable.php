@@ -14,7 +14,6 @@ use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
@@ -190,6 +189,19 @@ class TelemedicinePatientsTable
                     ->extraHeaderAttributes([
                         'class' => 'telemedicine-patient-location-column min-w-[10rem] w-[12rem]',
                     ]),
+                TextColumn::make('specific_business_unit')
+                    ->label('Unidad de negocio específica')
+                    ->icon(Heroicon::OutlinedBuildingOffice2)
+                    ->wrap()
+                    ->limit(28)
+                    ->tooltip(fn (TelemedicinePatient $record): ?string => filled($record->specific_business_unit)
+                        ? (string) $record->specific_business_unit
+                        : null)
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable()
+                    ->visible(fn (): bool => ! TelemedicineCaseFilamentListQuery::userIsInAtenmediTelemedicinaContext(Auth::user()))
+                    ->extraCellAttributes(['class' => 'py-3 min-w-[10rem]']),
                 TextColumn::make('active_case_status')
                     ->label('Estado del caso')
                     ->icon(Heroicon::OutlinedClipboardDocumentList)
@@ -358,11 +370,6 @@ class TelemedicinePatientsTable
                         ->icon(Heroicon::OutlinedEye)
                         ->color('primary')
                         ->url(fn (TelemedicinePatient $record): string => TelemedicinePatientResource::getUrl('view', ['record' => $record])),
-                    EditAction::make()
-                        ->label('Editar')
-                        ->icon(Heroicon::OutlinedPencilSquare)
-                        ->color('gray')
-                        ->url(fn (TelemedicinePatient $record): string => TelemedicinePatientResource::getUrl('edit', ['record' => $record])),
                     Action::make('view_history')
                         ->label('Historia clínica')
                         ->icon('healthicons-f-cardiogram-e')

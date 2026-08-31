@@ -233,6 +233,13 @@ class OperationCoordinationServicesTable
         return '—';
     }
 
+    private static function patientSpecificBusinessUnitLabel(OperationCoordinationService $record): string
+    {
+        $fromPatient = trim((string) ($record->telemedicinePatient?->specific_business_unit ?? ''));
+
+        return $fromPatient !== '' ? $fromPatient : '—';
+    }
+
     public static function configure(Table $table): Table
     {
         $selectTdgDoctorForAmbulanceAction = Action::make('selectTdgDoctorForAmbulanceFollowUp')
@@ -938,6 +945,7 @@ class OperationCoordinationServicesTable
                                     ->icon(Heroicon::OutlinedClipboardDocumentList)
                                     ->visible(fn (Get $get): bool => (bool) $get('create_service_order'))
                                     ->schema([
+                                        ...OperationServiceOrderProviderFormFields::components(),
                                         Grid::make(2)
                                             ->schema([
                                                 TextInput::make('order_number')
@@ -957,10 +965,10 @@ class OperationCoordinationServicesTable
                                                     ->visible(fn (OperationCoordinationService $record): bool => self::serviceOrderType($record) === 'MEDICAMENTOS')
                                                     ->native(false)
                                                     ->columnSpanFull(),
-                                                TextInput::make('service_order_description')
+                                                Textarea::make('service_order_description')
                                                     ->label('Descripción de la orden')
-                                                    ->required()
-                                                    ->maxLength(500)
+                                                    ->rows(4)
+                                                    ->helperText('Opcional. Use este campo para indicar indicaciones o el detalle de la orden.')
                                                     ->columnSpanFull(),
                                                 Textarea::make('service_order_observations')
                                                     ->label('Observaciones de la orden')
@@ -968,7 +976,6 @@ class OperationCoordinationServicesTable
                                                     ->maxLength(2000)
                                                     ->columnSpanFull(),
                                             ]),
-                                        ...OperationServiceOrderProviderFormFields::components(),
                                         ...OperationServiceOrderCoveredPricingFormFields::components(),
                                     ])
                                     ->columnSpanFull(),
@@ -1187,9 +1194,11 @@ class OperationCoordinationServicesTable
             });
 
         return $table
-
-            ->heading('Cuadro de Control')
-            ->description('Lista de servicios medicos coordinados en el sistema')
+            ->extraAttributes([
+                'class' => 'fi-coordination-control-table',
+            ])
+            ->heading('Cuadro de control')
+            ->description('Coordinaciones médicas del sistema: agrupe por caso, revise ítems clínicos y gestione el servicio.')
             ->defaultSort('date_solicitud', 'desc')
             ->modifyQueryUsing(function (Builder $query): Builder {
                 OperationsSupplierScope::applyCoordinationListScope($query);
@@ -1200,7 +1209,7 @@ class OperationCoordinationServicesTable
                     'telemedicineCase',
                     'businessLine:id,definition',
                     'businessUnit:id,definition',
-                    'telemedicinePatient:id,full_name,business_line_id,business_unit_id',
+                    'telemedicinePatient:id,full_name,business_line_id,business_unit_id,specific_business_unit',
                     'telemedicinePatient.businessLine:id,definition',
                     'telemedicinePatient.businessUnit:id,definition',
                     'telemedicinePatientMedications.operationInventory:id,is_covered',
@@ -1265,6 +1274,23 @@ class OperationCoordinationServicesTable
                                 ->whereHas('telemedicinePatient.businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"))
                                 ->orWhereHas('businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"));
                         });
+                    }),
+                TextColumn::make('patient_specific_business_unit')
+                    ->label('Unidad de negocio específica')
+                    ->state(fn (OperationCoordinationService $record): string => self::patientSpecificBusinessUnitLabel($record))
+                    ->badge()
+                    ->color('gray')
+                    ->placeholder('—')
+                    ->wrap()
+                    ->limit(36)
+                    ->tooltip(fn (OperationCoordinationService $record): ?string => ($label = self::patientSpecificBusinessUnitLabel($record)) !== '—'
+                        ? $label
+                        : null)
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas(
+                            'telemedicinePatient',
+                            fn (Builder $patientQuery): Builder => $patientQuery->where('specific_business_unit', 'like', "%{$search}%")
+                        );
                     }),
                 TextColumn::make('clinical_management_items')
                     ->label('Ítems clínicos')

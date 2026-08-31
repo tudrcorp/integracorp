@@ -7,6 +7,7 @@ use App\Models\Country;
 use App\Models\Region;
 use App\Models\State;
 use App\Models\TelemedicinePatient;
+use App\Support\Telemedicine\TelemedicinePatientBirthDate;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -65,17 +66,15 @@ class TelemedicinePatientForm
                                             'required' => 'Campo Requerido',
                                             'unique' => 'Ya existe un paciente de telemedicina con esta cédula.',
                                         ]),
-                                    DatePicker::make('date_birth')
+                                    DatePicker::make('birth_date')
                                         ->label('Fecha de Nacimiento')
                                         ->prefixIcon('heroicon-m-calendar-days')
                                         ->displayFormat('d/m/Y')
                                         ->format('d/m/Y')
                                         ->required()
                                         ->live()
-                                        ->afterStateUpdated(function (Set $set, $state) {
-                                            // calculo de edad
-                                            $edad = \Carbon\Carbon::parse($state)->age;
-                                            $set('age', $edad);
+                                        ->afterStateUpdated(function (Set $set, $state): void {
+                                            $set('age', TelemedicinePatientBirthDate::age($state));
                                         })
                                         ->validationMessages([
                                             'required' => 'Campo Requerido',

@@ -16,7 +16,7 @@ class OperationServiceOrderMedicationQuotePdfService
     public static function make(OperationServiceOrder $order, array $quoteMeta, array $items): PdfDocument
     {
         $order->loadMissing([
-            'operationCoordinationService',
+            'operationCoordinationService.telemedicinePatient',
             'supplier',
             'telemedicinePriority',
         ]);

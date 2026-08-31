@@ -103,6 +103,21 @@ it('permite cancelar la gestión de ítems con observación obligatoria en bitá
 
     expect($contents)
         ->toContain('CoordinationServiceItemCancellation')
-        ->toContain('cancelAssociatedItemSuffixActions')
+        ->toContain('associatedItemSuffixActions')
         ->toContain('can_cancel');
+});
+
+it('muestra el proveedor y la CI/RIF de la gestión en cada ítem asociado', function (): void {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Schemas/OperationCoordinationServiceInfolist.php');
+
+    expect($contents)
+        ->toContain('OperationServiceOrderProviderSummary::managementProvidersByClinicalLookup')
+        ->toContain('OperationServiceOrderProviderSummary::providerForClinicalItem')
+        ->toContain("'provider_name'")
+        ->toContain("'provider_rif'")
+        ->toContain('Proveedor: ')
+        ->toContain('CI/RIF: ')
+        ->toContain('CoordinationServiceAssociatedItemPricePreview::makeAction')
+        ->toContain("'quote_id'")
+        ->toContain("'order_id'");
 });

@@ -42,7 +42,11 @@ class ViewAffiliate extends ViewRecord
     {
         /** @var Affiliate $record */
         $record = parent::resolveRecord($key);
-        $record->loadMissing(['affiliation.billingCollections']);
+        $record->loadMissing([
+            'affiliation.billingCollections',
+            'plan.benefitPlans.limit:id,description',
+            'plan.clinicalSettings',
+        ]);
 
         return $record;
     }

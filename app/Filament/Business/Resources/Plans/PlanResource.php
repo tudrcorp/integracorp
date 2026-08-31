@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\Plans;
 use App\Filament\Business\Resources\Plans\Pages\CreatePlan;
 use App\Filament\Business\Resources\Plans\Pages\EditPlan;
 use App\Filament\Business\Resources\Plans\Pages\ListPlans;
+use App\Filament\Business\Resources\Plans\Pages\ManagePlanClinicalUsage;
 use App\Filament\Business\Resources\Plans\Pages\ViewPlan;
 use App\Filament\Business\Resources\Plans\Schemas\PlanForm;
 use App\Filament\Business\Resources\Plans\Schemas\PlanInfolist;
@@ -22,6 +23,8 @@ class PlanResource extends Resource
     use AuthorizesDepartmentNavigation;
 
     protected static ?string $model = Plan::class;
+
+    protected static ?string $recordTitleAttribute = 'description';
 
     protected static ?string $navigationLabel = 'Planes';
 
@@ -58,6 +61,7 @@ class PlanResource extends Resource
             'create' => CreatePlan::route('/create'),
             'view' => ViewPlan::route('/{record}'),
             'edit' => EditPlan::route('/{record}/edit'),
+            'uso-clinico' => ManagePlanClinicalUsage::route('/{record}/uso-clinico'),
         ];
     }
 }

@@ -30,6 +30,7 @@ it('AssociateAffiliateCorporateWithTelemedicinePatientService valida afiliación
         ->toContain("if (\$member->status !== 'ACTIVO')")
         ->toContain('TelemedicinePatientAssociationResolver::upsertByDocument')
         ->toContain("'type_affiliation' => 'CORPORATIVO'")
+        ->toContain('TelemedicinePatientDisplayName::fromAffiliateCorporate')
         ->toContain("'supplier_id' => Auth::user()?->supplier_id")
         ->toContain('TelemedicinePatientIdentity::normalizeSex')
         ->toContain('persistCanonicalSexIfSourceMissing');

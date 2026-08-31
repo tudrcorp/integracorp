@@ -13,9 +13,11 @@ it('define sincronizacion de items de coordinacion al finalizar orden', function
         ->toContain('final class OperationServiceOrderCoordinationSync')
         ->toContain('function finalizeClinicalItemsForOrder')
         ->toContain('function cancelClinicalItemsForOrder')
+        ->toContain('function releaseClinicalItemsForOrder')
         ->toContain('updateMatchedRecords')
         ->toContain("'FINALIZADO'")
         ->toContain("'CANCELADA'")
+        ->toContain("'PENDIENTE'")
         ->toContain('refreshCoordinationStatus')
         ->toContain('LABORATORIOS')
         ->toContain('TelemedicinePatientLab');

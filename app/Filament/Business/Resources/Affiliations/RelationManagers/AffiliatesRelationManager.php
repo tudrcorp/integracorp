@@ -374,6 +374,17 @@ class AffiliatesRelationManager extends RelationManager
                         return $query->whereHas('businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"));
                     })
                     ->sortable(),
+                TextColumn::make('specific_business_unit')
+                    ->label('Unidad de negocio específica')
+                    ->icon(Heroicon::PencilSquare)
+                    ->wrap()
+                    ->limit(28)
+                    ->tooltip(fn (Affiliate $record): ?string => filled($record->specific_business_unit)
+                        ? (string) $record->specific_business_unit
+                        : null)
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('business_line_id')
                     ->label('Línea de servicio')
                     ->icon(Heroicon::QueueList)
@@ -812,6 +823,14 @@ class AffiliatesRelationManager extends RelationManager
                     ->modalWidth(Width::SevenExtraLarge)
                     ->modalHeading('Nuevo familiar')
                     ->modalDescription('Complete los datos del familiar y el plan. Los totales de la afiliación se actualizarán al guardar.')
+                    ->mutateFormDataUsing(function (array $data): array {
+                        $owner = $this->getOwnerRecord();
+                        $data['business_unit_id'] = $owner->business_unit_id;
+                        $data['business_line_id'] = $owner->business_line_id;
+                        $data['specific_business_unit'] = $owner->specific_business_unit;
+
+                        return $data;
+                    })
                     ->after(function (): void {
                         app(AffiliationAffiliateFeeCalculator::class)
                             ->recalculateAffiliationTotalsFromAffiliates($this->getOwnerRecord());
@@ -842,11 +861,14 @@ class AffiliatesRelationManager extends RelationManager
         }
 
         if (blank($owner->business_unit_id) || blank($owner->business_line_id)) {
-            return blank($record->business_unit_id) && blank($record->business_line_id);
+            return blank($record->business_unit_id)
+                && blank($record->business_line_id)
+                && (string) ($record->specific_business_unit ?? '') === (string) ($owner->specific_business_unit ?? '');
         }
 
         return (int) $record->business_unit_id === (int) $owner->business_unit_id
-            && (int) $record->business_line_id === (int) $owner->business_line_id;
+            && (int) $record->business_line_id === (int) $owner->business_line_id
+            && (string) ($record->specific_business_unit ?? '') === (string) ($owner->specific_business_unit ?? '');
     }
 
     private function businessContextBadgeColor(mixed $affiliateValue, mixed $ownerValue): string

@@ -13,6 +13,7 @@ use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\ManageQuoteSupplierCreator;
 use App\Support\Operations\MedicalAppointmentManager;
 use App\Support\Operations\OperationServiceOrderCoveredPricingFormFields;
+use App\Support\Operations\OperationServiceOrderProviderContacts;
 use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
 use Filament\Forms\Components\CheckboxList;
@@ -215,79 +216,69 @@ final class ManageCoordinationServiceItemsForm
                                 ->icon(Heroicon::OutlinedBuildingStorefront)
                                 ->iconColor('warning')
                                 ->schema([
+                                    ...OperationServiceOrderProviderFormFields::components(
+                                        function (ManageCoordinationServiceItems $livewire, Get $get, Set $set): void {
+                                            CoordinationServiceItemsManager::rebuildManageQuoteLineItems($livewire->getRecord(), $get, $set);
+                                        }
+                                    ),
                                     Grid::make(2)
                                         ->schema([
-                                            TextInput::make('order_number')
-                                                ->label('Número de orden')
-                                                ->required()
-                                                ->prefixIcon(Heroicon::OutlinedHashtag)
-                                                ->helperText('Se genera automáticamente; puede ajustarlo si su proceso lo requiere.')
-                                                ->maxLength(255),
-                                            Select::make('telemedicine_priority_id')
-                                                ->label('Prioridad')
-                                                ->options(TelemedicinePriority::query()->orderBy('name', 'asc')->pluck('name', 'id'))
-                                                ->required()
-                                                ->prefixIcon(Heroicon::OutlinedBolt)
-                                                ->native(false),
-                                            DateTimePicker::make('appointment_at')
-                                                ->label('Fecha y hora de la cita')
-                                                ->seconds(false)
-                                                ->native(false)
-                                                ->required(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
-                                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
-                                                    )
-                                                ))
-                                                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
-                                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
-                                                    )
-                                                ))
-                                                ->helperText('Obligatoria para servicios con asistencia presencial del paciente.')
-                                                ->prefixIcon(Heroicon::OutlinedCalendarDays)
+                                            Grid::make(['default' => 1, 'md' => 3])
+                                                ->schema([
+                                                    TextInput::make('order_number')
+                                                        ->label('Número de orden')
+                                                        ->required()
+                                                        ->prefixIcon(Heroicon::OutlinedHashtag)
+                                                        ->helperText('Se genera automáticamente; puede ajustarlo si su proceso lo requiere.')
+                                                        ->maxLength(255),
+                                                    Select::make('telemedicine_priority_id')
+                                                        ->label('Prioridad')
+                                                        ->options(TelemedicinePriority::query()->orderBy('name', 'asc')->pluck('name', 'id'))
+                                                        ->required()
+                                                        ->prefixIcon(Heroicon::OutlinedBolt)
+                                                        ->native(false),
+                                                    DateTimePicker::make('appointment_at')
+                                                        ->label('Fecha y hora de la cita')
+                                                        ->seconds(false)
+                                                        ->native(false)
+                                                        ->required(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                                            CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
+                                                                CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                            )
+                                                        ))
+                                                        ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                                            CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
+                                                                CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                            )
+                                                        ))
+                                                        ->helperText('Obligatoria para servicios con asistencia presencial del paciente.')
+                                                        ->prefixIcon(Heroicon::OutlinedCalendarDays),
+                                                ])
                                                 ->columnSpanFull(),
                                             TextInput::make('supplier_notify_email')
-                                                ->label('Correo del proveedor (cita)')
+                                                ->label('Correo del proveedor')
                                                 ->email()
                                                 ->maxLength(255)
-                                                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
-                                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
-                                                    )
-                                                ) && MedicalAppointmentManager::supplierNeedsManualNotifyContacts(
-                                                    filled($get('supplier_id')) ? (int) $get('supplier_id') : null,
-                                                    (bool) $get('register_unregistered_provider'),
-                                                ))
-                                                ->required(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
-                                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
-                                                    )
-                                                ) && MedicalAppointmentManager::supplierNeedsManualNotifyContacts(
-                                                    filled($get('supplier_id')) ? (int) $get('supplier_id') : null,
-                                                    (bool) $get('register_unregistered_provider'),
-                                                ))
-                                                ->helperText('Requerido cuando el proveedor no tiene correo en ficha o es no convenido.'),
+                                                ->readOnly()
+                                                ->dehydrated()
+                                                ->visible(fn (Get $get): bool => OperationServiceOrderProviderContacts::hasCatalogSelection($get))
+                                                ->helperText('Se toma de la ficha del proveedor. Si falta, solicítelo al equipo de Proveedores.'),
                                             TextInput::make('supplier_notify_phone')
-                                                ->label('Teléfono WhatsApp del proveedor (cita)')
+                                                ->label('Teléfono del proveedor')
                                                 ->tel()
                                                 ->maxLength(30)
-                                                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
-                                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
-                                                    )
-                                                ) && MedicalAppointmentManager::supplierNeedsManualNotifyContacts(
-                                                    filled($get('supplier_id')) ? (int) $get('supplier_id') : null,
-                                                    (bool) $get('register_unregistered_provider'),
-                                                ))
-                                                ->required(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
-                                                    CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
-                                                    )
-                                                ) && MedicalAppointmentManager::supplierNeedsManualNotifyContacts(
-                                                    filled($get('supplier_id')) ? (int) $get('supplier_id') : null,
-                                                    (bool) $get('register_unregistered_provider'),
-                                                ))
-                                                ->helperText('Requerido para notificar cambios de cita al proveedor.'),
+                                                ->readOnly()
+                                                ->dehydrated()
+                                                ->visible(fn (Get $get): bool => OperationServiceOrderProviderContacts::hasCatalogSelection($get))
+                                                ->helperText('Se toma de la ficha del proveedor. Si falta, solicítelo al equipo de Proveedores.'),
+                                            TextInput::make('supplier_notify_address')
+                                                ->label('Dirección del proveedor')
+                                                ->readOnly()
+                                                ->dehydrated(false)
+                                                ->visible(fn (Get $get): bool => OperationServiceOrderProviderContacts::hasCatalogSelection($get))
+                                                ->helperText('Se toma de la ficha del proveedor. Si falta, solicítelo al equipo de Proveedores.')
+                                                ->prefixIcon(Heroicon::OutlinedMapPin)
+                                                ->columnSpanFull(),
                                             Select::make('operation_inventory_ubication_id')
                                                 ->label('Ubicación inventario (medicamentos)')
                                                 ->options(OperationInventoryUbication::query()->where('is_active', true)->orderBy('name', 'asc')->pluck('name', 'id'))
@@ -299,11 +290,10 @@ final class ManageCoordinationServiceItemsForm
                                                 ) === 'MEDICAMENTOS')
                                                 ->native(false)
                                                 ->columnSpanFull(),
-                                            TextInput::make('service_order_description')
+                                            Textarea::make('service_order_description')
                                                 ->label('Descripción de la orden')
-                                                ->required()
-                                                ->prefixIcon(Heroicon::OutlinedDocumentText)
-                                                ->maxLength(500)
+                                                ->rows(4)
+                                                ->helperText('Opcional. Use este campo para indicar indicaciones o el detalle de la orden.')
                                                 ->columnSpanFull(),
                                             Textarea::make('service_order_observations')
                                                 ->label('Observaciones de la orden')
@@ -311,11 +301,6 @@ final class ManageCoordinationServiceItemsForm
                                                 ->maxLength(2000)
                                                 ->columnSpanFull(),
                                         ]),
-                                    ...OperationServiceOrderProviderFormFields::components(
-                                        function (ManageCoordinationServiceItems $livewire, Get $get, Set $set): void {
-                                            CoordinationServiceItemsManager::rebuildManageQuoteLineItems($livewire->getRecord(), $get, $set);
-                                        }
-                                    ),
                                     ...OperationServiceOrderCoveredPricingFormFields::components(),
                                 ])
                                 ->columnSpanFull(),
@@ -407,15 +392,29 @@ final class ManageCoordinationServiceItemsForm
                                                             'manage_quote_supplier_address',
                                                             CoordinationServiceItemsManager::resolveManageQuoteSupplierAddress($state)
                                                         );
+                                                        $set(
+                                                            'manage_quote_supplier_phone',
+                                                            CoordinationServiceItemsManager::resolveManageQuoteSupplierPhone($state)
+                                                        );
                                                     })
                                                     ->helperText('Seleccione el proveedor que cotiza los ítems no cubiertos. Si no aparece en la lista, créelo con la acción del campo.'),
                                             ),
-                                            TextInput::make('manage_quote_supplier_address')
-                                                ->label('Dirección del proveedor')
-                                                ->readOnly()
-                                                ->dehydrated()
-                                                ->placeholder('Se completa al seleccionar el proveedor')
-                                                ->prefixIcon(Heroicon::OutlinedMapPin),
+                                            Grid::make(['default' => 1, 'md' => 2])
+                                                ->schema([
+                                                    TextInput::make('manage_quote_supplier_address')
+                                                        ->label('Dirección del proveedor')
+                                                        ->readOnly()
+                                                        ->dehydrated()
+                                                        ->placeholder('Se completa al seleccionar el proveedor')
+                                                        ->prefixIcon(Heroicon::OutlinedMapPin),
+                                                    TextInput::make('manage_quote_supplier_phone')
+                                                        ->label('Teléfono del proveedor')
+                                                        ->tel()
+                                                        ->readOnly()
+                                                        ->dehydrated()
+                                                        ->placeholder('Se completa al seleccionar el proveedor')
+                                                        ->prefixIcon(Heroicon::OutlinedPhone),
+                                                ]),
                                         ])
                                         ->columnSpanFull(),
                                     Placeholder::make('manage_quote_unregistered_provider_notice')

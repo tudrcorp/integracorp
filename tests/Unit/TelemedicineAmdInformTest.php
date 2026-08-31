@@ -94,9 +94,11 @@ it('TelemedicineInformeLargoDataBuilder arma los datos del informe largo desde c
 
     expect($contents)
         ->toContain('buildFromContext')
+        ->toContain('TelemedicinePatientDisplayName::fromContext')
         ->toContain("'telemedicine_consultation_id'")
         ->toContain("'pa'")
         ->toContain("'saturacion'")
+        ->toContain("'doctor_name'")
         ->toContain('pdfDocumentName');
 });
 

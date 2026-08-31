@@ -38,21 +38,11 @@
         'especialista' => 'Sin especialistas referidos.',
         default => 'Sin laboratorios indicados.',
     };
-    $rawItems = match ($docType) {
-        'imagenologia' => $data['studies'] ?? ($data['studiesArr'] ?? []),
-        'especialista' => $data['consultSpecialistArr'] ?? [],
-        default => $data['labs'] ?? ($data['labsArr'] ?? []),
-    };
-    $items = [];
-    foreach (is_array($rawItems) ? $rawItems : [] as $item) {
-        $label = is_array($item)
-            ? trim((string) ($item['name'] ?? $item['specialty'] ?? $item['study'] ?? $item['laboratory'] ?? ''))
-            : trim((string) $item);
-
-        if ($label !== '') {
-            $items[] = $label;
-        }
-    }
+    $items = \App\Support\Telemedicine\TelemedicineDocumentOrderItems::forDocument((string) $docType, $data);
+    $stampDataUri = \App\Support\Telemedicine\TelemedicineDoctorStamp::dataUri($data['signature'] ?? null);
+    $stampSize = \App\Support\Telemedicine\TelemedicineDoctorStamp::displaySize($stampDataUri);
+    $doctorName = trim((string) ($data['doctor_name'] ?? ''));
+    $coverageGroup = trim((string) ($data['coverage_group'] ?? ''));
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -167,8 +157,10 @@
             background: #f9fafb;
             border: 1px dashed #d1d5db;
         }
+        .coverage-yes { color: #166534; font-weight: bold; }
+        .coverage-no { color: #b91c1c; font-weight: bold; }
         .keep-together { page-break-inside: avoid; }
-        .doc-content { padding: 0 0 26mm 0; }
+        .doc-content { padding: 0 0 28mm 0; }
         .footer-fixed {
             position: fixed;
             bottom: 18mm;
@@ -180,8 +172,40 @@
             font-size: 6.5pt;
             color: #9ca3af;
             background: #ffffff;
+            z-index: 10;
         }
         .footer-brand { font-weight: bold; color: {{ $brandCyan }}; }
+        .doctor-signature {
+            position: fixed;
+            top: 222mm;
+            left: 20mm;
+            right: 20mm;
+            width: auto;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            overflow: visible;
+            z-index: 11;
+        }
+        .doctor-signature-image {
+            display: block;
+            margin: 0 auto 3px auto;
+            border: 0;
+        }
+        .doctor-signature-name {
+            font-size: 8pt;
+            font-weight: bold;
+            color: #111827;
+            line-height: 1.2;
+            margin: 0 0 1px 0;
+        }
+        .doctor-signature-meta {
+            font-size: 7pt;
+            color: #4b5563;
+            line-height: 1.25;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -204,6 +228,9 @@
                 <p class="doc-sub">Clave del servicio: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
                 <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
                 <span class="badge">Telemedicina</span>
+                @if($coverageGroup !== '')
+                    <span class="badge">{{ $coverageGroup }}</span>
+                @endif
             </td>
         </tr>
         <tr>
@@ -243,36 +270,43 @@
             <table class="items">
                 <thead>
                     <tr>
-                        <th style="width:100%">{{ $columnTitle }}</th>
+                        <th style="width:78%">{{ $columnTitle }}</th>
+                        <th style="width:22%">Cobertura</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($items as $item)
+                        @php
+                            $coverage = (string) ($item['coverage'] ?? 'No cubierto');
+                            $coverageClass = $coverage === 'Cubierto' ? 'coverage-yes' : 'coverage-no';
+                        @endphp
                         <tr>
-                            <td style="width:100%">{{ $val($item) }}</td>
+                            <td>{{ $val($item['label'] ?? '') }}</td>
+                            <td class="{{ $coverageClass }}">{{ $val($coverage) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
         @endif
     </div>
-
-    <div class="keep-together">
-        <div class="section-title">Médico tratante</div>
-        <table class="grid">
-            <tr>
-                <td>
-                    <div class="label">Colegio médico</div>
-                    <div class="value-muted">{{ $val($data['code_cm'] ?? null) }}</div>
-                </td>
-                <td>
-                    <div class="label">MPPS</div>
-                    <div class="value-muted">{{ $val($data['code_mpps'] ?? null) }}</div>
-                </td>
-            </tr>
-        </table>
-    </div>
 </div>
+</div>
+<div class="doctor-signature">
+    @if($stampDataUri !== '')
+        <img
+            class="doctor-signature-image"
+            src="{{ $stampDataUri }}"
+            alt="Firma y sello del médico"
+            @if(is_array($stampSize))
+                width="{{ $stampSize['width'] }}"
+                height="{{ $stampSize['height'] }}"
+            @endif
+        >
+    @endif
+    @if($doctorName !== '')
+        <p class="doctor-signature-name">{{ $val($doctorName) }}</p>
+    @endif
+    <p class="doctor-signature-meta">MPPS: {{ $val($data['code_mpps'] ?? null) }}</p>
 </div>
 <div class="footer-fixed">
     Documento generado por el <span class="footer-brand">departamento de telemedicina de Tu Doctor en Casa</span>.<br>

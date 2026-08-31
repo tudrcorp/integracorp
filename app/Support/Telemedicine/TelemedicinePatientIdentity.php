@@ -94,7 +94,7 @@ final class TelemedicinePatientIdentity
         $normalizedDocument = self::normalizeDocument($patient->nro_identificacion);
 
         $data['telemedicine_patient_id'] = (int) $patient->id;
-        $data['full_name'] = trim((string) $patient->full_name);
+        $data['full_name'] = TelemedicinePatientDisplayName::fromPatient($patient);
         $data['nro_identificacion'] = $normalizedDocument !== ''
             ? $normalizedDocument
             : $patient->nro_identificacion;

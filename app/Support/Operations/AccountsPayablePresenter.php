@@ -7,6 +7,7 @@ namespace App\Support\Operations;
 use App\Models\OperationQuoteGenerator;
 use App\Models\OperationServiceOrder;
 use App\Support\BcvOfficialRate;
+use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 
@@ -19,12 +20,15 @@ final class AccountsPayablePresenter
 
     public static function patientName(OperationQuoteGenerator $quote): string
     {
-        if (filled($quote->telemedicinePatient?->full_name)) {
-            return (string) $quote->telemedicinePatient->full_name;
+        if ($quote->telemedicinePatient !== null) {
+            $name = TelemedicinePatientDisplayName::fromPatient($quote->telemedicinePatient);
+            if ($name !== '') {
+                return $name;
+            }
         }
 
         if (filled($quote->operationCoordinationService?->patient)) {
-            return (string) $quote->operationCoordinationService->patient;
+            return TelemedicinePatientDisplayName::forCoordination($quote->operationCoordinationService);
         }
 
         if (filled($quote->telemedicineCase?->patient_name)) {

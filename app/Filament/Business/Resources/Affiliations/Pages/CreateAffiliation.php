@@ -183,6 +183,9 @@ class CreateAffiliation extends CreateRecord
                         'city_id' => $record->city_id_ti,
                         'region' => $record->region_ti,
                         'status' => 'PRE-APROBADA',
+                        'business_unit_id' => $record->business_unit_id,
+                        'business_line_id' => $record->business_line_id,
+                        'specific_business_unit' => $record->specific_business_unit,
                     ]);
                 }
 
@@ -279,6 +282,9 @@ class CreateAffiliation extends CreateRecord
                     'region' => $record->region_ti,
                     'status' => 'PRE-APROBADA',
                     'relationship' => 'TITULAR',
+                    'business_unit_id' => $record->business_unit_id,
+                    'business_line_id' => $record->business_line_id,
+                    'specific_business_unit' => $record->specific_business_unit,
                 ]);
 
                 if (! $fromPlanGenerator) {

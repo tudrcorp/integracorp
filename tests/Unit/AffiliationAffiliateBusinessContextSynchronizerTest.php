@@ -33,5 +33,7 @@ it('incluye accion de sincronizacion en el fieldset de informacion adicional', f
         ->toContain("Action::make('syncAffiliateBusinessContext')")
         ->toContain('AffiliationAffiliateBusinessContextSynchronizer::class')
         ->toContain('FilamentIosButton::extraClassForFilamentColor')
-        ->toContain('Sincronizar con afiliados');
+        ->toContain('Sincronizar con afiliados')
+        ->toContain("TextInput::make('specific_business_unit')")
+        ->toContain("\$get('specific_business_unit')");
 });

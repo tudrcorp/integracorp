@@ -6541,6 +6541,70 @@
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset;
   }
 
+  .fi-coordination-control-page .fi-header {
+    @apply mb-5 gap-4;
+  }
+
+  .fi-coordination-control-page .fi-header-heading {
+    @apply text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white sm:text-[1.75rem];
+  }
+
+  .fi-coordination-control-page .fi-status-filter-tabs-ios {
+    @apply mt-1;
+  }
+
+  .fi-coordination-control-table.fi-ta {
+    font-family:
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "Segoe UI",
+      system-ui,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .fi-coordination-control-table .fi-ta-header-ctn {
+    @apply gap-3 border-b border-sky-200/70 bg-gradient-to-r from-sky-50/90 via-white to-white px-4 pt-4 pb-3 dark:border-sky-500/20 dark:from-sky-950/40 dark:via-zinc-900/90 dark:to-zinc-900/90 sm:px-5 sm:pt-5;
+  }
+
+  .fi-coordination-control-table .fi-ta-header {
+    @apply flex-col items-stretch gap-1 sm:flex-row sm:items-start sm:justify-between;
+  }
+
+  .fi-coordination-control-table .fi-ta-header-heading {
+    @apply text-lg font-semibold tracking-tight text-zinc-900 dark:text-white;
+  }
+
+  .fi-coordination-control-table .fi-ta-header-description {
+    @apply mt-1 max-w-3xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-300;
+  }
+
+  .fi-coordination-control-table .fi-ta-header-toolbar {
+    @apply border-0 bg-transparent p-0 shadow-none;
+  }
+
+  .fi-coordination-control-table .fi-ta-grouping-settings {
+    @apply mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-sky-200/80 bg-white/80 px-3 py-2 shadow-xs dark:border-sky-500/20 dark:bg-zinc-950/40;
+  }
+
+  .fi-coordination-control-table .fi-ta-grouping-settings-fields {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .fi-coordination-control-table .fi-ta-grouping-settings .fi-input-wrp {
+    @apply min-w-[12rem] rounded-xl border-sky-200/80 bg-white shadow-none dark:border-sky-500/20 dark:bg-zinc-900/80;
+  }
+
+  .fi-coordination-control-table .fi-ta-table thead tr {
+    @apply border-b border-sky-200/70 bg-sky-50/90 dark:border-sky-500/20 dark:bg-sky-950/35;
+  }
+
+  .fi-coordination-control-table .fi-ta-header-cell {
+    @apply px-3 py-3 text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-zinc-600 dark:text-zinc-200;
+  }
+
   .fi-coordination-clinical-items-header,
   .fi-coordination-clinical-items-cell {
     @apply align-top;
@@ -6562,6 +6626,37 @@
     -webkit-line-clamp: unset !important;
     line-clamp: unset !important;
     -webkit-box-orient: unset !important;
+  }
+
+  .fi-coordination-management-providers-header,
+  .fi-coordination-management-providers-cell {
+    @apply align-top;
+    min-width: 12rem;
+    white-space: normal;
+  }
+
+  .fi-coordination-management-providers-cell {
+    max-width: 18rem;
+  }
+
+  .fi-coordination-management-providers-cell .fi-ta-text,
+  .fi-coordination-management-providers-cell .fi-ta-text-item {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    overflow: visible !important;
+    white-space: normal !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+    -webkit-box-orient: unset !important;
+  }
+
+  .fi-coordination-management-providers-list {
+    @apply m-0 flex list-none flex-col gap-1 p-0;
+  }
+
+  .fi-coordination-management-provider {
+    @apply rounded-md border border-gray-200/90 bg-white px-2 py-1.5 text-[11px] font-semibold leading-snug text-gray-800 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-100;
   }
 
   .fi-coordination-clinical-items-compact {

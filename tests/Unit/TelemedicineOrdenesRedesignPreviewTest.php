@@ -19,7 +19,8 @@ function telemedicineOrdenRedesignSampleData(): array
         'age_patiente' => '41',
         'medicationsArr' => [
             [
-                'medicines' => 'Paracetamol 500 mg',
+                'medicines' => null,
+                'covered_medicines' => 'Paracetamol 500 mg',
                 'indications' => '1 tableta vía oral cada 8 horas por 5 días si hay fiebre o dolor.',
             ],
             [
@@ -27,7 +28,8 @@ function telemedicineOrdenRedesignSampleData(): array
                 'indications' => '1 tableta vía oral cada 24 horas por 5 días.',
             ],
             [
-                'medicines' => 'Omeprazol 20 mg',
+                'medicines' => null,
+                'covered_medicines' => 'Omeprazol 20 mg',
                 'indications' => '1 cápsula vía oral en ayunas por 7 días.',
             ],
         ],
@@ -35,18 +37,26 @@ function telemedicineOrdenRedesignSampleData(): array
             'Hematología completa',
             'Proteína C reactiva',
             'Glicemia en ayunas',
+        ],
+        'other_labs' => [
             'Perfil hepático',
         ],
         'studies' => [
             'Radiografía de tórax PA',
+        ],
+        'other_studies' => [
             'Ecografía abdominal',
         ],
         'consultSpecialistArr' => [
             'Otorrinolaringología',
+        ],
+        'other_specialist' => [
             'Medicina interna',
         ],
+        'doctor_name' => 'Dra. Carolina Josefina Pinillo Lameda',
         'code_cm' => 'CM-24581',
         'code_mpps' => 'MPPS-11209',
+        'signature' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
         'telemedicine_case_id' => 418,
         'telemedicine_consultation_id' => 902,
         'telemedicine_patient_id' => 331,
@@ -85,8 +95,8 @@ it('el recipe de medicamentos de producción usa el diseño homologado en horizo
     expect($production)
         ->toContain('documents.partials.telemedicine-recipe-homologado')
         ->and($production)->not->toContain('medicamentos.png')
-        ->and($job)->toContain("loadView('documents.medicamentos'")
-        ->and($job)->toContain("setPaper('a4', 'landscape')");
+        ->and($job)->toContain("'documents.medicamentos'")
+        ->and($job)->toContain("'landscape'");
 
     $html = view('documents.medicamentos', [
         'data' => telemedicineOrdenRedesignSampleData(),
@@ -104,12 +114,51 @@ it('el recipe de medicamentos de producción usa el diseño homologado en horizo
         ->toContain('Paracetamol 500 mg')
         ->toContain('Loratadina 10 mg')
         ->toContain('Omeprazol 20 mg')
-        ->toContain('CM-24581')
+        ->toContain('Indicaciones')
+        ->toContain('1 tableta vía oral cada 8 horas por 5 días si hay fiebre o dolor.')
+        ->toContain('items-original')
+        ->toContain('items-copy')
+        ->toContain('doctor-signature-original')
+        ->toContain('doctor-signature-copy')
+        ->toContain('top: 96mm')
+        ->toContain('Dra. Carolina Josefina Pinillo Lameda')
+        ->toContain('MPPS: MPPS-11209')
+        ->toContain('Firma y sello del médico')
         ->toContain('departamento de telemedicina de Tu Doctor en Casa')
-        ->and($html)->not->toContain('medicamentos.png');
+        ->and($html)->not->toContain('medicamentos.png')
+        ->and($html)->not->toContain('Cobertura')
+        ->and($html)->not->toContain('Cubierto')
+        ->and($html)->not->toContain('No cubierto')
+        ->and($html)->not->toContain('Colegio médico')
+        ->and($html)->not->toContain('Sello digital')
+        ->and($html)->not->toContain('telemedicine-doctor-stamp');
+
+    preg_match('/class="items items-original".*?<\/thead>/s', $html, $originalHead);
+    preg_match('/class="items items-copy".*?<\/thead>/s', $html, $copyHead);
+
+    expect($originalHead[0] ?? '')
+        ->toContain('Medicamento')
+        ->and($originalHead[0] ?? '')->not->toContain('Indicaciones')
+        ->and($originalHead[0] ?? '')->not->toContain('Cobertura');
+
+    expect($copyHead[0] ?? '')
+        ->toContain('Medicamento')
+        ->toContain('Indicaciones')
+        ->and($copyHead[0] ?? '')->not->toContain('Cobertura');
 
     expect($path)->toBeFile()
         ->and(filesize($path))->toBeGreaterThan(8_000);
+});
+
+it('el recipe muestra la etiqueta de cobertura cuando el job parte el documento', function (): void {
+    $data = telemedicineOrdenRedesignSampleData();
+    $data['coverage_group'] = 'Cubiertos';
+
+    $html = view('documents.medicamentos', [
+        'data' => $data,
+    ])->render();
+
+    expect($html)->toContain('Cubiertos');
 });
 
 it('la orden de laboratorios de producción usa el diseño homologado', function (): void {
@@ -120,8 +169,8 @@ it('la orden de laboratorios de producción usa el diseño homologado', function
         ->toContain('documents.partials.telemedicine-orden-homologada')
         ->toContain("'docType' => 'laboratorios'")
         ->and($production)->not->toContain('paraclinicos-laboratorios.png')
-        ->and($job)->toContain("loadView('documents.laboratorios'")
-        ->and($job)->toContain("setPaper('a4', 'portrait')");
+        ->and($job)->toContain("'documents.laboratorios'")
+        ->and($job)->toContain("'portrait'");
 
     $html = view('documents.laboratorios', [
         'data' => telemedicineOrdenRedesignSampleData(),
@@ -134,14 +183,36 @@ it('la orden de laboratorios de producción usa el diseño homologado', function
         ->toContain('header-rule-space')
         ->toContain('Hematología completa')
         ->toContain('Perfil hepático')
+        ->toContain('Cubierto')
+        ->toContain('No cubierto')
+        ->toContain('Cobertura')
+        ->toContain('doctor-signature')
+        ->toContain('top: 222mm')
+        ->toContain('Firma y sello del médico')
+        ->toContain('Dra. Carolina Josefina Pinillo Lameda')
+        ->toContain('MPPS: MPPS-11209')
         ->toContain('A4 portrait')
         ->toContain('departamento de telemedicina de Tu Doctor en Casa')
         ->and($html)->not->toContain('paraclinicos-laboratorios.png')
         ->and($html)->not->toContain('Recipe de medicamentos')
-        ->and($html)->not->toContain('>N°<');
+        ->and($html)->not->toContain('>N°<')
+        ->and($html)->not->toContain('Sello digital')
+        ->and($html)->not->toContain('Colegio médico')
+        ->and($html)->not->toContain('Médico tratante');
 
     expect($path)->toBeFile()
         ->and(filesize($path))->toBeGreaterThan(8_000);
+});
+
+it('la orden de laboratorios muestra la etiqueta de cobertura cuando el job parte el documento', function (): void {
+    $data = telemedicineOrdenRedesignSampleData();
+    $data['coverage_group'] = 'No cubiertos';
+
+    $html = view('documents.laboratorios', [
+        'data' => $data,
+    ])->render();
+
+    expect($html)->toContain('No cubiertos');
 });
 
 it('la orden de estudios e imagenología de producción usa el diseño homologado', function (): void {
@@ -152,8 +223,8 @@ it('la orden de estudios e imagenología de producción usa el diseño homologad
         ->toContain('documents.partials.telemedicine-orden-homologada')
         ->toContain("'docType' => 'imagenologia'")
         ->and($production)->not->toContain('paraclinicos-imagenologia.png')
-        ->and($job)->toContain("loadView('documents.imagenologia'")
-        ->and($job)->toContain("setPaper('a4', 'portrait')");
+        ->and($job)->toContain("'documents.imagenologia'")
+        ->and($job)->toContain("'portrait'");
 
     $html = view('documents.imagenologia', [
         'data' => telemedicineOrdenRedesignSampleData(),
@@ -165,10 +236,20 @@ it('la orden de estudios e imagenología de producción usa el diseño homologad
         ->toContain('header-rule-space')
         ->toContain('Radiografía de tórax PA')
         ->toContain('Ecografía abdominal')
+        ->toContain('Cubierto')
+        ->toContain('No cubierto')
+        ->toContain('doctor-signature')
+        ->toContain('top: 222mm')
+        ->toContain('Firma y sello del médico')
+        ->toContain('Dra. Carolina Josefina Pinillo Lameda')
+        ->toContain('MPPS: MPPS-11209')
         ->toContain('#00ADEF')
         ->and($html)->not->toContain('paraclinicos-imagenologia.png')
         ->and($html)->not->toContain('Hematología completa')
-        ->and($html)->not->toContain('>N°<');
+        ->and($html)->not->toContain('>N°<')
+        ->and($html)->not->toContain('Sello digital')
+        ->and($html)->not->toContain('Colegio médico')
+        ->and($html)->not->toContain('Médico tratante');
 
     expect($path)->toBeFile()
         ->and(filesize($path))->toBeGreaterThan(8_000);
@@ -182,8 +263,8 @@ it('la referencia a especialistas de producción usa el diseño homologado', fun
         ->toContain('documents.partials.telemedicine-orden-homologada')
         ->toContain("'docType' => 'especialista'")
         ->and($production)->not->toContain('especialista.png')
-        ->and($job)->toContain("loadView('documents.especialista'")
-        ->and($job)->toContain("setPaper('a4', 'portrait')");
+        ->and($job)->toContain("'documents.especialista'")
+        ->and($job)->toContain("'portrait'");
 
     $html = view('documents.especialista', [
         'data' => telemedicineOrdenRedesignSampleData(),
@@ -195,11 +276,40 @@ it('la referencia a especialistas de producción usa el diseño homologado', fun
         ->toContain('header-rule-space')
         ->toContain('Otorrinolaringología')
         ->toContain('Medicina interna')
+        ->toContain('Cubierto')
+        ->toContain('No cubierto')
+        ->toContain('doctor-signature')
+        ->toContain('top: 222mm')
+        ->toContain('Firma y sello del médico')
+        ->toContain('Dra. Carolina Josefina Pinillo Lameda')
+        ->toContain('MPPS: MPPS-11209')
         ->toContain('#00ADEF')
         ->and($html)->not->toContain('especialista.png')
         ->and($html)->not->toContain('Radiografía de tórax PA')
-        ->and($html)->not->toContain('>N°<');
+        ->and($html)->not->toContain('>N°<')
+        ->and($html)->not->toContain('Sello digital')
+        ->and($html)->not->toContain('Colegio médico')
+        ->and($html)->not->toContain('Médico tratante');
 
     expect($path)->toBeFile()
         ->and(filesize($path))->toBeGreaterThan(8_000);
+});
+
+it('omite el recuadro del sello cuando el médico no tiene imagen', function (): void {
+    $data = telemedicineOrdenRedesignSampleData();
+    unset($data['signature']);
+
+    $html = view('documents.laboratorios', [
+        'data' => $data,
+    ])->render();
+
+    expect($html)
+        ->toContain('Hematología completa')
+        ->toContain('doctor-signature')
+        ->toContain('Dra. Carolina Josefina Pinillo Lameda')
+        ->toContain('MPPS: MPPS-11209')
+        ->and($html)->not->toContain('Sello digital')
+        ->and($html)->not->toContain('Colegio médico')
+        ->and($html)->not->toContain('Médico tratante')
+        ->and($html)->not->toContain('alt="Firma y sello del médico"');
 });

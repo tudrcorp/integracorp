@@ -2,6 +2,7 @@
     /** @var \App\Models\OperationServiceOrder $order */
     $coord = $order->operationCoordinationService;
     $brandCyan = '#00ADEF';
+    $patientName = \App\Support\Telemedicine\TelemedicinePatientDisplayName::forCoordination($coord);
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -81,7 +82,7 @@
             <tr>
                 <td>
                     <div class="label">Paciente</div>
-                    <div class="value">{{ $coord?->patient ?? '—' }}</div>
+                    <div class="value">{{ $patientName }}</div>
                 </td>
                 <td>
                     <div class="label">Referencia</div>

@@ -104,6 +104,7 @@ class OperationServiceOrderInfolist
                                             ->columns(2),
                                     ])
                                     ->footerActions([
+                                        OperationServiceOrderViewActions::makeVoidForRegenerationAction(),
                                         OperationServiceOrderViewActions::makeCancelAction(),
                                     ])
                                     ->footerActionsAlignment(Alignment::End)
@@ -377,21 +378,7 @@ class OperationServiceOrderInfolist
 
     private static function resolveSupplierName(OperationServiceOrder $record): ?string
     {
-        $record->loadMissing(['supplier', 'doctorNurse']);
-
-        if (filled($record->supplier?->name)) {
-            return (string) $record->supplier->name;
-        }
-
-        if (filled($record->doctorNurse?->name)) {
-            return (string) $record->doctorNurse->name;
-        }
-
-        if (filled($record->supplier_external)) {
-            return (string) $record->supplier_external;
-        }
-
-        return null;
+        return OperationServiceOrderProviderSummary::name($record);
     }
 
     private static function resolveSupplierAddress(OperationServiceOrder $record): ?string

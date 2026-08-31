@@ -26,6 +26,7 @@ use App\Services\TelemedicineMedicationInventoryDeductor;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
+use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
@@ -132,7 +133,12 @@ class EditTelemedicineConsultationPatient extends EditRecord
 
             $doctor = TelemedicineDoctor::where('id', $record['telemedicine_doctor_id'])->first()->toArray();
 
-            $patient = TelemedicinePatient::where('id', $record['telemedicine_patient_id'])->first()->toArray();
+            $patientModelForName = TelemedicinePatient::query()->find($record['telemedicine_patient_id']);
+            $patient = $patientModelForName?->toArray() ?? [];
+            $patientDisplayName = TelemedicinePatientDisplayName::fromPatientOrFallback(
+                $patientModelForName,
+                $record['full_name'] ?? null,
+            );
             // dd($patient);
 
             $feedbackOne = session()->get('feedbackOne');
@@ -218,10 +224,11 @@ class EditTelemedicineConsultationPatient extends EditRecord
                 $data = [
                     'fecha' => now()->format('d/m/Y'),
                     'code_reference' => $record['code_reference'],
-                    'name_patiente' => $record['full_name'],
+                    'name_patiente' => $patientDisplayName,
                     'ci_patiente' => $record['nro_identificacion'],
                     'age_patiente' => $patient['age'],
                     'medicationsArr' => $medicationsArr,
+                    'doctor_name' => $doctor['full_name'] ?? null,
                     'code_cm' => $doctor['code_cm'],
                     'code_mpps' => $doctor['code_mpps'],
                     'signature' => $doctor['signature'],
@@ -264,10 +271,12 @@ class EditTelemedicineConsultationPatient extends EditRecord
                 $data = [
                     'fecha' => now()->format('d/m/Y'),
                     'code_reference' => $record['code_reference'],
-                    'name_patiente' => $record['full_name'],
+                    'name_patiente' => $patientDisplayName,
                     'ci_patiente' => $record['nro_identificacion'],
                     'age_patiente' => $patient['age'],
-                    'labs' => $record['labs'],
+                    'labs' => $labsArr,
+                    'other_labs' => $otherLabsArr,
+                    'doctor_name' => $doctor['full_name'] ?? null,
                     'code_cm' => $doctor['code_cm'],
                     'code_mpps' => $doctor['code_mpps'],
                     'signature' => $doctor['signature'],
@@ -310,10 +319,12 @@ class EditTelemedicineConsultationPatient extends EditRecord
                 $data = [
                     'fecha' => now()->format('d/m/Y'),
                     'code_reference' => $record['code_reference'],
-                    'name_patiente' => $record['full_name'],
+                    'name_patiente' => $patientDisplayName,
                     'ci_patiente' => $record['nro_identificacion'],
                     'age_patiente' => $patient['age'],
-                    'studies' => $record['studies'],
+                    'studies' => $studiesArr,
+                    'other_studies' => $otherStudiesArr,
+                    'doctor_name' => $doctor['full_name'] ?? null,
                     'code_cm' => $doctor['code_cm'],
                     'code_mpps' => $doctor['code_mpps'],
                     'signature' => $doctor['signature'],
@@ -365,10 +376,12 @@ class EditTelemedicineConsultationPatient extends EditRecord
                 $data = [
                     'fecha' => now()->format('d/m/Y'),
                     'code_reference' => $record['code_reference'],
-                    'name_patiente' => $record['full_name'],
+                    'name_patiente' => $patientDisplayName,
                     'ci_patiente' => $record['nro_identificacion'],
                     'age_patiente' => $patient['age'],
                     'consultSpecialistArr' => $consultSpecialistArr,
+                    'other_specialist' => $otherSpecialistArr,
+                    'doctor_name' => $doctor['full_name'] ?? null,
                     'code_cm' => $doctor['code_cm'],
                     'code_mpps' => $doctor['code_mpps'],
                     'signature' => $doctor['signature'],

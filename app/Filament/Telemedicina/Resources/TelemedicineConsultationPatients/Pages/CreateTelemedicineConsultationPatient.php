@@ -2,6 +2,7 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages;
 
+use App\Enums\ClinicalServiceChannel;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasInformAmdModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasMedicamentosStepInfoModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
@@ -15,6 +16,7 @@ use App\Jobs\GeneratePdfInformeMedicoLargo;
 use App\Jobs\GeneratePdfLaboratorio;
 use App\Jobs\GeneratePdfMedicamentos;
 use App\Jobs\SendTelemedicineConsultationDocuments;
+use App\Models\ClinicalServiceOverrideChallenge;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
@@ -31,6 +33,11 @@ use App\Models\TelemedicinePatientStudy;
 use App\Models\User;
 use App\Services\NotificationTelemedicinaService;
 use App\Services\TelemedicineMedicationInventoryDeductor;
+use App\Support\ClinicalEntitlements\AffiliateClinicalEntitlementResolver;
+use App\Support\ClinicalEntitlements\ClinicalConsultationConsumption;
+use App\Support\ClinicalEntitlements\ClinicalEntitlement;
+use App\Support\ClinicalEntitlements\ClinicalEntitlementException;
+use App\Support\ClinicalEntitlements\ClinicalServiceOverrideOtp;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\ConsultationCreateWizardDefaults;
 use App\Support\Telemedicine\TelemedicineAmdFileRegistrar;
@@ -40,11 +47,13 @@ use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
+use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -69,6 +78,15 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
     #[Locked]
     public ?int $telemedicinePatientId = null;
+
+    /**
+     * @var array<string, int>
+     */
+    #[Locked]
+    public array $verifiedClinicalOverrideIds = [];
+
+    #[Locked]
+    public ?string $pendingClinicalOverridePublicId = null;
 
     protected ?TelemedicinePatient $patient = null;
 
@@ -271,6 +289,58 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
     protected function getHeaderActions(): array
     {
         return [
+
+            Action::make('autorizar_fuera_de_limite')
+                ->label('Autorizar servicio extra (OTP)')
+                ->icon('heroicon-o-key')
+                ->color('warning')
+                ->visible(fn (): bool => ClinicalServiceOverrideOtp::userMayOverride(Auth::user() instanceof User ? Auth::user() : null)
+                    && ($this->exhaustedChannelOptions() !== [] || filled($this->pendingClinicalOverridePublicId)))
+                ->modalHeading('Servicio fuera de límite')
+                ->modalDescription('El cupo del plan está cubierto. Se enviará una clave de 6 dígitos (5 minutos) por WhatsApp y correo a los contactos del centro de notificaciones. Ellos se la dictan al médico. Un OTP autoriza un solo servicio extra. Puede reenviar a los 2 minutos.')
+                ->modalSubmitActionLabel(fn (): string => filled($this->pendingClinicalOverridePublicId) ? 'Confirmar clave' : 'Enviar clave')
+                ->closeModalByClickingAway(false)
+                ->form([
+                    \Filament\Forms\Components\Textarea::make('reason')
+                        ->label('Motivo clínico')
+                        ->required()
+                        ->minLength(10)
+                        ->rows(3)
+                        ->helperText('Explique por qué este afiliado necesita un uso adicional (mínimo 10 caracteres).'),
+                    \Filament\Forms\Components\Select::make('benefit_id')
+                        ->label('Servicio a autorizar')
+                        ->options(fn (): array => $this->exhaustedChannelOptions())
+                        ->required()
+                        ->native(false)
+                        ->helperText('Cada beneficio agotado aparece una sola vez. Un OTP cubre ese servicio extra.'),
+                    \Filament\Forms\Components\Placeholder::make('otp_status')
+                        ->label('Estado de la clave')
+                        ->content(fn (): string => $this->clinicalOtpStatusMessage())
+                        ->visible(fn (): bool => filled($this->pendingClinicalOverridePublicId)),
+                    \App\Filament\Forms\Components\OtpBoxesInput::make('otp_code')
+                        ->label('Clave de 6 dígitos')
+                        ->length(6)
+                        ->autofocus()
+                        ->visible(fn (): bool => filled($this->pendingClinicalOverridePublicId))
+                        ->helperText('Un dígito por casilla. Puede pegar la clave completa. Pídala a quien recibió el WhatsApp o el correo.'),
+                ])
+                ->extraModalFooterActions([
+                    Action::make('resendClinicalOtp')
+                        ->label(fn (): string => ($wait = $this->secondsUntilClinicalOtpResend()) > 0
+                            ? 'Reenviar clave ('.$wait.' s)'
+                            : 'Reenviar clave')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('gray')
+                        ->visible(fn (): bool => filled($this->pendingClinicalOverridePublicId))
+                        ->disabled(fn (): bool => $this->secondsUntilClinicalOtpResend() > 0)
+                        ->action(function (Action $action): void {
+                            $this->resendPendingClinicalOverride();
+                            $action->halt();
+                        }),
+                ])
+                ->action(function (array $data, Action $action): void {
+                    $this->handleClinicalOverrideModal($data, $action);
+                }),
 
             Action::make('back_dashboard')
                 ->label('Dashboard')
@@ -538,7 +608,281 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         isset($data['consult_specialist']) ? session()->put('consult_specialist', $data['consult_specialist']) : null;
         isset($data['other_specialist']) ? session()->put('other_specialist', $data['other_specialist']) : null;
 
+        if (! ($data['feedbackOne'] ?? false)) {
+            ClinicalConsultationConsumption::assertCanSave(
+                $patient,
+                $data,
+                $this->case?->id,
+                $this->resolvedClinicalOverrides(),
+            );
+        }
+
         return TelemedicineInitialDiagnosisUpdater::mergeIntoConsultationFormData($data);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function exhaustedChannelOptions(): array
+    {
+        $patient = $this->patient ?? session('patient');
+        if (! $patient instanceof TelemedicinePatient) {
+            return [];
+        }
+
+        $snapshot = AffiliateClinicalEntitlementResolver::forPatient($patient);
+        $out = [];
+        foreach ($snapshot->entitlements as $entitlement) {
+            if (! $entitlement->exhausted) {
+                continue;
+            }
+            $out[(string) $entitlement->benefitId] = $entitlement->benefitLabel.' · '.$entitlement->channel->shortLabel().' · agotado';
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function handleClinicalOverrideModal(array $data, Action $action): void
+    {
+        $patient = $this->patient ?? session('patient');
+        $user = Auth::user();
+        if (! $patient instanceof TelemedicinePatient || ! $user instanceof User) {
+            Notification::make()->title('No hay paciente o médico en sesión.')->danger()->send();
+
+            return;
+        }
+
+        $entitlement = $this->resolveOverrideEntitlement($patient, $data);
+        if ($entitlement === null) {
+            Notification::make()->title('Seleccione un servicio agotado incluido en el plan.')->danger()->send();
+
+            return;
+        }
+
+        $code = preg_replace('/\D+/', '', (string) ($data['otp_code'] ?? '')) ?? '';
+
+        if ($code === '') {
+            $this->sendOrResendClinicalOverride($user, $patient, $entitlement, (string) ($data['reason'] ?? ''));
+            $action->halt();
+
+            return;
+        }
+
+        $challenge = $this->pendingClinicalChallenge($user);
+        if ($challenge === null || ! ClinicalServiceOverrideOtp::verify($challenge, $code, (int) $user->id)) {
+            Notification::make()
+                ->title('Clave incorrecta o vencida')
+                ->body('Revise los 6 dígitos. Tras 3 intentos fallidos debe solicitar una clave nueva.')
+                ->danger()
+                ->send();
+            $action->halt();
+
+            return;
+        }
+
+        $this->verifiedClinicalOverrideIds[$entitlement->channel->value] = (int) $challenge->id;
+        $this->pendingClinicalOverridePublicId = null;
+        Notification::make()
+            ->title('Autorización lista')
+            ->body('Puede guardar la consulta. Esta clave cubre un solo servicio extra ('.$entitlement->channel->shortLabel().').')
+            ->success()
+            ->send();
+    }
+
+    private function resendPendingClinicalOverride(): void
+    {
+        $patient = $this->patient ?? session('patient');
+        $user = Auth::user();
+        if (! $patient instanceof TelemedicinePatient || ! $user instanceof User) {
+            return;
+        }
+
+        $challenge = $this->pendingClinicalChallenge($user);
+        if ($challenge === null) {
+            Notification::make()->title('No hay una clave pendiente para reenviar.')->danger()->send();
+
+            return;
+        }
+
+        $snapshot = AffiliateClinicalEntitlementResolver::forPatient($patient);
+        $entitlement = $snapshot->forBenefit((int) $challenge->benefit_id);
+        if ($entitlement === null) {
+            Notification::make()->title('Ese servicio ya no está en el plan.')->danger()->send();
+
+            return;
+        }
+
+        try {
+            $issued = ClinicalServiceOverrideOtp::resend($challenge, $user, $patient, $entitlement);
+        } catch (ClinicalEntitlementException $exception) {
+            Notification::make()->title('No se pudo reenviar')->body($exception->getMessage())->danger()->send();
+
+            return;
+        }
+
+        $this->pendingClinicalOverridePublicId = $issued['challenge']->public_id;
+        Notification::make()
+            ->title('Clave reenviada')
+            ->body('WhatsApp: '.$issued['phones'].' · Correo: '.$issued['emails'].'. Vence en 5 minutos.')
+            ->success()
+            ->send();
+    }
+
+    private function sendOrResendClinicalOverride(
+        User $user,
+        TelemedicinePatient $patient,
+        ClinicalEntitlement $entitlement,
+        string $reason,
+    ): void {
+        $pending = $this->pendingClinicalChallenge($user);
+        if ($pending instanceof ClinicalServiceOverrideChallenge
+            && (int) $pending->benefit_id === $entitlement->benefitId
+            && $pending->isActive()) {
+            try {
+                $issued = ClinicalServiceOverrideOtp::resend($pending, $user, $patient, $entitlement);
+            } catch (ClinicalEntitlementException $exception) {
+                Notification::make()->title('Clave ya enviada')->body($exception->getMessage())->warning()->send();
+
+                return;
+            }
+
+            $this->pendingClinicalOverridePublicId = $issued['challenge']->public_id;
+            Notification::make()
+                ->title('Clave reenviada')
+                ->body('WhatsApp: '.$issued['phones'].' · Correo: '.$issued['emails'].'. Ingrese los 6 dígitos aquí mismo.')
+                ->success()
+                ->send();
+
+            return;
+        }
+
+        try {
+            $issued = ClinicalServiceOverrideOtp::issue(
+                $user,
+                $patient,
+                $entitlement,
+                $reason,
+                $this->case?->id,
+            );
+        } catch (ClinicalEntitlementException $exception) {
+            Notification::make()->title('No se pudo enviar la clave')->body($exception->getMessage())->danger()->send();
+
+            return;
+        }
+
+        $this->pendingClinicalOverridePublicId = $issued['challenge']->public_id;
+        Notification::make()
+            ->title('Clave enviada')
+            ->body('WhatsApp: '.$issued['phones'].' · Correo: '.$issued['emails'].'. Tiene 5 minutos. Ingrese los 6 dígitos en esta misma ventana.')
+            ->success()
+            ->send();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveOverrideEntitlement(TelemedicinePatient $patient, array $data): ?ClinicalEntitlement
+    {
+        $snapshot = AffiliateClinicalEntitlementResolver::forPatient($patient);
+        $benefitId = (int) ($data['benefit_id'] ?? 0);
+        if ($benefitId > 0) {
+            return $snapshot->forBenefit($benefitId);
+        }
+
+        $channel = ClinicalServiceChannel::fromStored($data['channel'] ?? null);
+        if ($channel === null) {
+            return null;
+        }
+
+        return $channel === ClinicalServiceChannel::Type1
+            ? $snapshot->forType1(filled($this->data['telemedicine_service_list_id'] ?? null) ? (int) $this->data['telemedicine_service_list_id'] : null)
+            : $snapshot->forChannel($channel);
+    }
+
+    private function pendingClinicalChallenge(?User $user): ?ClinicalServiceOverrideChallenge
+    {
+        if ($user === null || ! filled($this->pendingClinicalOverridePublicId)) {
+            return null;
+        }
+
+        return ClinicalServiceOverrideChallenge::query()
+            ->where('public_id', $this->pendingClinicalOverridePublicId)
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->first();
+    }
+
+    private function secondsUntilClinicalOtpResend(): int
+    {
+        $user = Auth::user();
+        $challenge = $this->pendingClinicalChallenge($user instanceof User ? $user : null);
+
+        return $challenge?->secondsUntilResend() ?? 0;
+    }
+
+    private function clinicalOtpStatusMessage(): string
+    {
+        $user = Auth::user();
+        $challenge = $this->pendingClinicalChallenge($user instanceof User ? $user : null);
+        if ($challenge === null) {
+            return 'Aún no hay una clave pendiente.';
+        }
+
+        $wait = $challenge->secondsUntilResend();
+        $expires = $challenge->expires_at?->format('H:i') ?? '—';
+
+        return 'Clave enviada (correo: '.(int) $challenge->emails_sent.' · WhatsApp: '.(int) $challenge->phones_sent.'). Vence a las '.$expires.'.'
+            .($wait > 0 ? ' Reenvío disponible en '.$wait.' segundos.' : ' Ya puede reenviar si no llegó.');
+    }
+
+    /**
+     * @return array<string, ClinicalServiceOverrideChallenge>
+     */
+    private function resolvedClinicalOverrides(): array
+    {
+        if ($this->verifiedClinicalOverrideIds === []) {
+            return [];
+        }
+
+        $rows = ClinicalServiceOverrideChallenge::query()
+            ->whereIn('id', array_values($this->verifiedClinicalOverrideIds))
+            ->get()
+            ->keyBy(fn (ClinicalServiceOverrideChallenge $row): string => $row->channel instanceof ClinicalServiceChannel
+                ? $row->channel->value
+                : (string) $row->channel);
+
+        return $rows->all();
+    }
+
+    protected function handleRecordCreation(array $data): Model
+    {
+        return DB::transaction(function () use ($data): Model {
+            $record = parent::handleRecordCreation($data);
+
+            if (($data['feedbackOne'] ?? false) || ! $this->patient instanceof TelemedicinePatient) {
+                return $record;
+            }
+
+            try {
+                ClinicalConsultationConsumption::record(
+                    $record instanceof TelemedicineConsultationPatient
+                        ? $record
+                        : TelemedicineConsultationPatient::query()->findOrFail($record->getKey()),
+                    $this->patient,
+                    $data,
+                    $this->resolvedClinicalOverrides(),
+                );
+            } catch (ClinicalEntitlementException $exception) {
+                throw ValidationException::withMessages([
+                    'data.telemedicine_service_list_id' => [$exception->getMessage()],
+                ]);
+            }
+
+            return $record;
+        });
     }
 
     /**
@@ -599,10 +943,15 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
             $doctor = TelemedicineDoctor::where('id', $record['telemedicine_doctor_id'])->first()->toArray();
 
-            $patient = TelemedicinePatient::where('id', $record['telemedicine_patient_id'])->first()->toArray();
+            $patientModel = TelemedicinePatient::query()->find($record['telemedicine_patient_id']);
+            $patient = $patientModel?->toArray() ?? [];
+            $patientDisplayName = TelemedicinePatientDisplayName::fromPatientOrFallback(
+                $patientModel,
+                $this->data['full_name'] ?? $record['full_name'] ?? null,
+            );
 
             // Envuelve el codigo en un try catch y una transaccion para que si hay un error se pueda revertir el cambio
-            DB::transaction(function () use ($record, $doctor, $patient) {
+            DB::transaction(function () use ($record, $doctor, $patient, $patientDisplayName) {
 
                 try {
 
@@ -696,10 +1045,11 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                         $dataMedicamentos = [
                             'fecha' => now()->format('d/m/Y'),
                             'code_reference' => $record['code_reference'],
-                            'name_patiente' => $record['full_name'],
+                            'name_patiente' => $patientDisplayName,
                             'ci_patiente' => $record['nro_identificacion'],
                             'age_patiente' => $patient['age'],
                             'medicationsArr' => $medicationsArr,
+                            'doctor_name' => $doctor['full_name'] ?? null,
                             'code_cm' => $doctor['code_cm'],
                             'code_mpps' => $doctor['code_mpps'],
                             'signature' => $doctor['signature'],
@@ -742,10 +1092,12 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                         $dataLaboratorios = [
                             'fecha' => now()->format('d/m/Y'),
                             'code_reference' => $record['code_reference'],
-                            'name_patiente' => $record['full_name'],
+                            'name_patiente' => $patientDisplayName,
                             'ci_patiente' => $record['nro_identificacion'],
                             'age_patiente' => $patient['age'],
-                            'labs' => $record['labs'],
+                            'labs' => $labsArr,
+                            'other_labs' => $otherLabsArr,
+                            'doctor_name' => $doctor['full_name'] ?? null,
                             'code_cm' => $doctor['code_cm'],
                             'code_mpps' => $doctor['code_mpps'],
                             'signature' => $doctor['signature'],
@@ -788,10 +1140,12 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                         $dataEstudios = [
                             'fecha' => now()->format('d/m/Y'),
                             'code_reference' => $record['code_reference'],
-                            'name_patiente' => $record['full_name'],
+                            'name_patiente' => $patientDisplayName,
                             'ci_patiente' => $record['nro_identificacion'],
                             'age_patiente' => $patient['age'],
-                            'studies' => $record['studies'],
+                            'studies' => $studiesArr,
+                            'other_studies' => $otherStudiesArr,
+                            'doctor_name' => $doctor['full_name'] ?? null,
                             'code_cm' => $doctor['code_cm'],
                             'code_mpps' => $doctor['code_mpps'],
                             'signature' => $doctor['signature'],
@@ -844,10 +1198,12 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                         $dataEspecialistas = [
                             'fecha' => now()->format('d/m/Y'),
                             'code_reference' => $record['code_reference'],
-                            'name_patiente' => $record['full_name'],
+                            'name_patiente' => $patientDisplayName,
                             'ci_patiente' => $record['nro_identificacion'],
                             'age_patiente' => $patient['age'],
                             'consultSpecialistArr' => $consultSpecialistArr,
+                            'other_specialist' => $otherSpecialistArr,
+                            'doctor_name' => $doctor['full_name'] ?? null,
                             'code_cm' => $doctor['code_cm'],
                             'code_mpps' => $doctor['code_mpps'],
                             'signature' => $doctor['signature'],
@@ -935,7 +1291,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                         $dataInformeCorteo = [
                             'fecha' => now()->format('d/m/Y'),
                             'code_reference' => $this->data['code_reference'],
-                            'name_patient' => $this->data['full_name'],
+                            'name_patient' => $patientDisplayName,
                             'ci_patient' => $this->data['nro_identificacion'],
                             'age_patient' => $this->data['age'],
                             'reason' => $this->data['reason_consultation'],
@@ -954,19 +1310,13 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                             'otherStudiesArr' => $otherStudiesArr ?? [],
                             'consultSpecialistArr' => $consultSpecialistArr ?? [],
                             'otherSpecialistArr' => $otherSpecialistArr ?? [],
+                            'doctor_name' => $doctor['full_name'] ?? null,
                             'code_cm' => $doctor['code_cm'],
                             'code_mpps' => $doctor['code_mpps'],
                             'signature' => $doctor['signature'],
                             'telemedicine_case_id' => $record['telemedicine_case_id'],
                             'telemedicine_consultation_id' => $record['id'],
                             'telemedicine_patient_id' => $record['telemedicine_patient_id'],
-                            'code_cm' => $doctor['code_cm'],
-                            'code_mpps' => $doctor['code_mpps'],
-                            'signature' => $doctor['signature'],
-                            'telemedicine_case_id' => $record['telemedicine_case_id'],
-                            'telemedicine_consultation_id' => $record['id'],
-                            'telemedicine_patient_id' => $record['telemedicine_patient_id'],
-                            'signature' => $doctor['signature'],
                         ];
 
                         $pdfJobs[] = new GeneratePdfInformeMedicoCorto($dataInformeCorteo, Auth::user(), 'informe-corto');
@@ -974,7 +1324,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                         $dataInformeLargo = [
                             'fecha' => now()->format('d/m/Y'),
                             'code_reference' => $this->data['code_reference'],
-                            'name_patient' => $this->data['full_name'],
+                            'name_patient' => $patientDisplayName,
                             'ci_patient' => $this->data['nro_identificacion'],
                             'age_patient' => $this->data['age'],
                             'reason' => $this->data['reason_consultation'],
@@ -993,19 +1343,13 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                             'otherStudiesArr' => $otherStudiesArr ?? [],
                             'consultSpecialistArr' => $consultSpecialistArr ?? [],
                             'otherSpecialistArr' => $otherSpecialistArr ?? [],
+                            'doctor_name' => $doctor['full_name'] ?? null,
                             'code_cm' => $doctor['code_cm'],
                             'code_mpps' => $doctor['code_mpps'],
                             'signature' => $doctor['signature'],
                             'telemedicine_case_id' => $record['telemedicine_case_id'],
                             'telemedicine_consultation_id' => $record['id'],
                             'telemedicine_patient_id' => $record['telemedicine_patient_id'],
-                            'code_cm' => $doctor['code_cm'],
-                            'code_mpps' => $doctor['code_mpps'],
-                            'signature' => $doctor['signature'],
-                            'telemedicine_case_id' => $record['telemedicine_case_id'],
-                            'telemedicine_consultation_id' => $record['id'],
-                            'telemedicine_patient_id' => $record['telemedicine_patient_id'],
-                            'signature' => $doctor['signature'],
                             'pa' => $this->data['pa'],
                             'fc' => $this->data['fc'],
                             'fr' => $this->data['fr'],

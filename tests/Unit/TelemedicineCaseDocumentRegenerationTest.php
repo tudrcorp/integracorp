@@ -211,5 +211,7 @@ it('la accion filament usa checkbox list y el servicio de regeneracion', functio
         ->toContain('GeneratePdfLaboratorio')
         ->toContain('GeneratePdfImagenologia')
         ->toContain('GeneratePdfEspecialista')
-        ->toContain("->onQueue('telemedicina')");
+        ->toContain("->onQueue('telemedicina')")
+        ->toContain('labsSplitForCase')
+        ->toContain('TelemedicineMedicationCoverage::isCovered');
 });

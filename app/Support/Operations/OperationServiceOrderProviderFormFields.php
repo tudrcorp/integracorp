@@ -56,13 +56,19 @@ final class OperationServiceOrderProviderFormFields
                         ->preload()
                         ->live()
                         ->disabled(fn (Get $get): bool => (bool) $get('register_unregistered_provider'))
-                        ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        ->afterStateUpdated(function (mixed $state, Set $set, Get $get): void {
                             if (! filled($state)) {
+                                if (! filled($get('supplier_id'))) {
+                                    OperationServiceOrderProviderContacts::clearForm($set);
+                                }
+
                                 return;
                             }
 
                             $set('supplier_id', null);
                             $set('register_unregistered_provider', false);
+                            OperationServiceOrderUnregisteredProviderFormFields::clearUnregisteredFields($set);
+                            OperationServiceOrderProviderContacts::applyFromDoctorNurseId((int) $state, $set);
                         })
                         ->prefixIcon(Heroicon::OutlinedUser)
                         ->native(false),
@@ -77,13 +83,19 @@ final class OperationServiceOrderProviderFormFields
                         ->preload()
                         ->live()
                         ->disabled(fn (Get $get): bool => (bool) $get('register_unregistered_provider'))
-                        ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        ->afterStateUpdated(function (mixed $state, Set $set, Get $get): void {
                             if (! filled($state)) {
+                                if (! filled($get('doctor_nurse_id'))) {
+                                    OperationServiceOrderProviderContacts::clearForm($set);
+                                }
+
                                 return;
                             }
 
                             $set('doctor_nurse_id', null);
                             $set('register_unregistered_provider', false);
+                            OperationServiceOrderUnregisteredProviderFormFields::clearUnregisteredFields($set);
+                            OperationServiceOrderProviderContacts::applyFromSupplierId((int) $state, $set);
                         })
                         ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
                         ->native(false),

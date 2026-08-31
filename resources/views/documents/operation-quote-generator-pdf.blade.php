@@ -10,6 +10,12 @@
     $publicCostoUsd = \App\Support\Operations\OperationQuoteGeneratorPublicAmounts::applyProfit($quote->costo_dolares, $profitPercentage);
     $publicSubtotalUsd = \App\Support\Operations\OperationQuoteGeneratorPublicAmounts::applyProfit($quote->subtotal, $profitPercentage);
     $publicTotalUsd = (float) ($quote->total ?? 0);
+    $patientName = \App\Support\Telemedicine\TelemedicinePatientDisplayName::forCoordination($coordination);
+    $providerPhone = \App\Support\Operations\OperationServiceOrderProviderContacts::fromModels(
+        null,
+        $quote->supplier instanceof \App\Models\Supplier ? $quote->supplier : null,
+    )['phone'];
+    $providerPhone = filled($providerPhone) ? $providerPhone : '—';
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -153,7 +159,7 @@
         <tr>
             <td>
                 <div class="label">Paciente</div>
-                <div class="value">{{ $coordination->patient ?? '—' }}</div>
+                <div class="value">{{ $patientName }}</div>
             </td>
             <td>
                 <div class="label">Referencia</div>
@@ -174,6 +180,8 @@
             <td>
                 <div class="label">Proveedor</div>
                 <div class="value">{{ $quote->supplier?->name ?? '—' }}</div>
+                <div class="label" style="margin-top: 6px">Teléfono</div>
+                <div class="value">{{ $providerPhone }}</div>
             </td>
             <td>
                 <div class="label">Dirección del proveedor</div>

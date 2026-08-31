@@ -149,6 +149,16 @@ class AffiliateCorporatesTable
                     ->searchable(query: function (Builder $query, string $search): Builder {
                         return $query->whereHas('affiliationCorporate.businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"));
                     }),
+                TextColumn::make('affiliationCorporate.specific_business_unit')
+                    ->label('Unidad de negocio específica')
+                    ->wrap()
+                    ->limit(36)
+                    ->tooltip(fn ($record): ?string => filled($record->affiliationCorporate?->specific_business_unit)
+                        ? (string) $record->affiliationCorporate->specific_business_unit
+                        : null)
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
                     ->money('USD')

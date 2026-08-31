@@ -52,6 +52,8 @@ test('operation service order pdf blade renders without errors', function () {
         ->and($html)->toContain('Servicio complementario')
         ->and($html)->toContain('Tipo de servicio')
         ->and($html)->toContain('ESPECIALISTA')
+        ->and($html)->toContain('Proveedor')
+        ->and($html)->toContain('Teléfono')
         ->and($html)->toContain('Dirección')
         ->and($html)->not->toContain('Trazabilidad')
         ->and($html)->not->toContain('Datos de la orden')
@@ -99,6 +101,8 @@ test('operation service order pdf muestra datos de paciente y oculta secciones r
         ->and($html)->toContain('Tipo de servicio')
         ->and($html)->toContain('ESPECIALISTA')
         ->and($html)->toContain('Servicio complementario')
+        ->and($html)->toContain('Proveedor')
+        ->and($html)->toContain('Teléfono')
         ->and($html)->toContain('Dirección')
         ->and($html)->not->toContain('Datos de la orden')
         ->and($html)->not->toContain('Coordinación y paciente')
@@ -110,6 +114,7 @@ test('operation service order pdf muestra datos de paciente y oculta secciones r
 test('operation service order pdf incluye la direccion del proveedor', function () {
     $supplier = new Supplier([
         'name' => 'CENTRO PROFESIONAL COLONIAL C.A',
+        'personal_phone' => '04141234567',
         'ubicacion_principal' => 'Av. Bolivar, Calabozo',
     ]);
     $supplier->setRelation('state', null);
@@ -138,7 +143,11 @@ test('operation service order pdf incluye la direccion del proveedor', function 
         'logoDataUri' => '',
     ])->render();
 
-    expect($html)->toContain('Dirección')
+    expect($html)->toContain('Proveedor')
+        ->and($html)->toContain('CENTRO PROFESIONAL COLONIAL C.A')
+        ->and($html)->toContain('Teléfono')
+        ->and($html)->toContain('04141234567')
+        ->and($html)->toContain('Dirección')
         ->and($html)->toContain('Av. Bolivar, Calabozo')
         ->and($html)->not->toContain('Proveedor natural')
         ->and($html)->not->toContain('Proveedor jurídico');
@@ -151,8 +160,13 @@ it('la plantilla de OS no incluye datos de la orden ni montos y pago', function 
         ->toContain('Datos de paciente')
         ->toContain('Servicio complementario')
         ->toContain('Tipo de servicio')
+        ->toContain('Proveedor')
+        ->toContain('Teléfono')
         ->toContain('Dirección')
+        ->toContain('OperationServiceOrderProviderSummary::nameOrDash')
         ->toContain('OperationServiceOrderProviderSummary::addressOrDash')
+        ->toContain('OperationServiceOrderProviderSummary::phoneOrDash')
+        ->toContain('TelemedicinePatientDisplayName::forCoordination')
         ->toContain('class="item-cat"')
         ->toContain('width:16%')
         ->toContain('max-width: 110px')

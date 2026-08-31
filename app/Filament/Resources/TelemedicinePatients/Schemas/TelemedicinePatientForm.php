@@ -9,6 +9,7 @@ use App\Models\Country;
 use App\Models\Region;
 use App\Models\State;
 use App\Models\TelemedicinePatient;
+use App\Support\Telemedicine\TelemedicinePatientBirthDate;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -68,23 +69,8 @@ class TelemedicinePatientForm
                                         ->format('d/m/Y')
                                         ->required()
                                         ->live()
-                                        ->afterStateUpdated(function (Set $set, $state) {
-                                            // --- INICIO DE LA CORRECCIÓN ---
-                                            if ($state) {
-                                                // 1. Usamos createFromFormat('d/m/Y', ...) para que Carbon entienda la entrada.
-                                                // 2. Si la fecha no es válida (ej. incompleta), fallará silenciosamente, por eso validamos si hay $state.
-                                                $carbonDate = \Carbon\Carbon::createFromFormat('d/m/Y', $state);
-
-                                                // 3. Verificamos que la fecha se haya creado correctamente antes de calcular la edad
-                                                if ($carbonDate) {
-                                                    $edad = $carbonDate->age;
-                                                    $set('age', $edad);
-                                                }
-                                            } else {
-                                                // Si el campo está vacío, la edad debe ser vacía.
-                                                $set('age', null);
-                                            }
-                                            // --- FIN DE LA CORRECCIÓN ---
+                                        ->afterStateUpdated(function (Set $set, $state): void {
+                                            $set('age', TelemedicinePatientBirthDate::age($state));
                                         })
                                         ->validationMessages([
                                             'required' => 'Campo Requerido',
@@ -428,6 +414,11 @@ class TelemedicinePatientForm
                                         ->searchable()
                                         ->prefixIcon('heroicon-c-building-library')
                                         ->preload(),
+                                    TextInput::make('specific_business_unit')
+                                        ->label('Unidad de Negocio específica')
+                                        ->placeholder('Escriba la unidad de negocio específica')
+                                        ->maxLength(255)
+                                        ->prefixIcon('heroicon-o-pencil-square'),
                                     Select::make('business_line_id')
                                         ->label('Lineas de Servicio')
                                         ->options(function (Get $get) {

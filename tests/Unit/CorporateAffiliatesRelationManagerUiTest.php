@@ -22,6 +22,7 @@ it('estructura el formulario de afiliados corporativos en secciones sin eliminar
         ->toContain("TextInput::make('position_company')")
         ->toContain("->label('Cargo en la empresa')")
         ->toContain("TextColumn::make('business_unit_id')")
+        ->toContain("TextColumn::make('specific_business_unit')")
         ->toContain("TextColumn::make('business_line_id')")
         ->toContain("IconColumn::make('sync_status')")
         ->toContain('businessLine:id,definition')

@@ -46,6 +46,7 @@ class Affiliate extends Model
         'created_by',
         'payment_frequency',
         'business_unit_id',
+        'specific_business_unit',
         'business_line_id',
     ];
 

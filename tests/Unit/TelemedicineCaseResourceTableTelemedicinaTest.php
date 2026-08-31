@@ -69,6 +69,28 @@ it('widget del escritorio filtra managed_by ATENMEDI con contexto médico ATENME
         ->not->toContain('userDepartmentsIncludeAtenmedi($user)');
 });
 
+it('las acciones de fila de casos en Telemedicina no incluyen editar paciente', function (): void {
+    $root = dirname(__DIR__, 2);
+    $widget = file_get_contents(
+        $root.'/app/Filament/Telemedicina/Widgets/TelemedicineCaseTableDash.php'
+    );
+    $table = file_get_contents(
+        $root.'/app/Filament/Telemedicina/Resources/TelemedicineCases/Tables/TelemedicineCasesTable.php'
+    );
+
+    expect($widget)
+        ->not->toContain('EditTelemedicineCasePatientAction')
+        ->not->toContain('Editar paciente');
+
+    expect($table)
+        ->not->toContain('EditTelemedicineCasePatientAction')
+        ->not->toContain('Editar paciente');
+
+    expect(file_exists(
+        $root.'/app/Filament/Telemedicina/Resources/TelemedicineCases/Actions/EditTelemedicineCasePatientAction.php'
+    ))->toBeFalse();
+});
+
 it('exclusiones por consulta alta y ambulancia solo aplican en contexto ATENMEDI', function (): void {
     $path = dirname(__DIR__, 2).'/app/Support/Telemedicine/TelemedicineCaseFilamentListQuery.php';
     $contents = file_get_contents($path);

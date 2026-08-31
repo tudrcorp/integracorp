@@ -72,7 +72,7 @@ it('oculta las coberturas y la matriz de límites en un paquete de beneficios', 
     expect(fuenteDelAsistenteDePlanes())
         ->toContain('->visible(fn (Get $get): bool => self::usesCoverages($get))')
         ->toContain('->visible(fn (Get $get): bool => ! self::usesCoverages($get))')
-        ->toContain("CheckboxList::make('package_benefit_ids')")
+        ->toContain("Repeater::make('package_benefits')")
         ->toContain("Repeater::make('package_age_ranges')");
 });
 

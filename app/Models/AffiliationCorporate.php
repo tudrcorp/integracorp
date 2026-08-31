@@ -49,6 +49,7 @@ class AffiliationCorporate extends Model
 
         // ...Unidad de Negocio y linea de servicio
         'business_unit_id',
+        'specific_business_unit',
         'business_line_id',
         'ownerAccountManagers',
 
@@ -60,6 +61,7 @@ class AffiliationCorporate extends Model
 
         // Unidades e Negocio y Lineas de Servicio
         'business_unit_id',
+        'specific_business_unit',
         'business_line_id',
     ];
 

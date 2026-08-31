@@ -18,13 +18,24 @@ class ListOperationCoordinationServices extends ListRecords
 {
     protected static string $resource = OperationCoordinationServiceResource::class;
 
-    protected static ?string $title = 'Cuadro de Control de Servicios Medicos';
+    protected static ?string $title = 'Cuadro de Control de Servicios Médicos';
 
     public function mount(): void
     {
         parent::mount();
 
         $this->expandRequestedTableGroup();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getPageClasses(): array
+    {
+        return [
+            ...parent::getPageClasses(),
+            'fi-coordination-control-page',
+        ];
     }
 
     protected function getHeaderActions(): array

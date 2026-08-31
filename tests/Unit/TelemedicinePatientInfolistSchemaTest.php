@@ -50,3 +50,24 @@ it('oculta la pestaña de beneficios del plan para médicos en contexto ATENMEDI
         ->toContain('shouldHidePlanBenefitsTab')
         ->toContain('TelemedicineCaseFilamentListQuery::userIsInAtenmediTelemedicinaContext(Auth::user())');
 });
+
+it('muestra el uso clínico en beneficios del plan del panel operaciones', function (): void {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/Schemas/TelemedicinePatientInfolist.php');
+
+    expect($contents)
+        ->toContain("View::make('filament.operations.affiliates.plan-benefits-clinical')")
+        ->toContain('OperationsAffiliatePlanBenefitsCard::viewDataForPatient')
+        ->not->toContain('OperationsClinicalQuotaCard::viewData')
+        ->not->toContain('benefit_descriptions')
+        ->not->toContain('El saldo de cupo clínico está en Afiliación.');
+});
+
+it('muestra el uso clínico en beneficios del plan del panel telemedicina', function (): void {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicinePatients/Schemas/TelemedicinePatientInfolist.php');
+
+    expect($contents)
+        ->toContain("View::make('filament.operations.affiliates.plan-benefits-clinical')")
+        ->toContain('OperationsAffiliatePlanBenefitsCard::viewDataForPatient')
+        ->not->toContain('benefit_descriptions')
+        ->not->toContain('Resumen de beneficios vinculados al plan del paciente.');
+});
