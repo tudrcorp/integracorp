@@ -13,6 +13,7 @@ use App\Models\Plan;
 use App\Support\AffiliateVaucherIlsRemainingDays;
 use App\Support\AffiliationAffiliateFeeCalculator;
 use App\Support\FilamentDateDisplay;
+use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -686,6 +687,7 @@ class AffiliatesRelationManager extends RelationManager
                                     'total_amount' => $recalculatedTotal,
                                     'payment_frequency' => $frequency,
                                 ]);
+                                TelemedicinePatientPlanBridge::syncFromAffiliate($record);
 
                                 $owner = $this->getOwnerRecord();
                                 $owner->plan_id = (int) $data['plan_id'];

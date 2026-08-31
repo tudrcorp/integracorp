@@ -185,6 +185,7 @@ it('no toca el estatus del afiliado al sincronizar', function (): void {
     expect($source)
         ->toContain('CorporateAffiliatePlanSyncService::syncPlanRowTotalsFromAffiliates($owner, self::COUNTABLE_STATUSES)')
         ->toContain('CorporateAffiliatePlanSyncService::syncOwnerTotalsFromAffiliates($owner, self::COUNTABLE_STATUSES)')
+        ->toContain('TelemedicinePatientPlanBridge::syncFromAffiliateCorporate($affiliate)')
         ->toContain('DB::transaction')
         ->not->toContain("'status' => 'ACTIVO'");
 });

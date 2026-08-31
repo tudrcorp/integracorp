@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
+use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -100,7 +101,7 @@ final class ClinicalServiceOverrideOtp
             'user_id' => $user->id,
             'telemedicine_patient_id' => $patient->id,
             'telemedicine_case_id' => $caseId,
-            'plan_id' => $patient->plan_id,
+            'plan_id' => TelemedicinePatientPlanBridge::planId($patient),
             'benefit_id' => $entitlement->benefitId,
             'channel' => $entitlement->channel->value,
             'telemedicine_service_list_id' => $entitlement->telemedicineServiceListId,

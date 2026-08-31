@@ -12,6 +12,7 @@ use App\Models\AffiliateCorporate;
 use App\Models\Plan;
 use App\Models\PlanBenefitClinicalSetting;
 use App\Models\TelemedicinePatient;
+use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -34,10 +35,10 @@ final class AffiliateClinicalEntitlementResolver
             return self::$byPatientId[$id];
         }
 
-        $patient->loadMissing(['plan', 'afilliation:id,effective_date', 'afilliationCorporate:id,effective_date']);
+        $patient->loadMissing(['afilliation:id,effective_date', 'afilliationCorporate:id,effective_date']);
 
         $snapshot = self::resolveForHolder(
-            plan: $patient->plan,
+            plan: TelemedicinePatientPlanBridge::hydrate($patient),
             nroIdentificacion: trim((string) $patient->nro_identificacion),
             telemedicinePatientId: $id > 0 ? $id : null,
             effectDate: ClinicalEntitlementWindow::effectDate($patient),

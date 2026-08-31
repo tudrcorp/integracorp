@@ -48,7 +48,8 @@ it('oculta la pestaña de beneficios del plan para médicos en contexto ATENMEDI
 
     expect($contents)
         ->toContain('shouldHidePlanBenefitsTab')
-        ->toContain('TelemedicineCaseFilamentListQuery::userIsInAtenmediTelemedicinaContext(Auth::user())');
+        ->toContain('TelemedicineCaseFilamentListQuery::userIsInAtenmediTelemedicinaContext(Auth::user())')
+        ->toContain('TelemedicinePatientPlanBridge::plan($record)');
 });
 
 it('muestra el uso clínico en beneficios del plan del panel operaciones', function (): void {

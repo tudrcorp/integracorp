@@ -19,6 +19,7 @@ use App\Support\AffiliationCorporates\CorporateAffiliateVoucherIlsUpdater;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\FilamentDateDisplay;
+use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -964,6 +965,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                         'coverage_id' => $plans->coverage_id,
                                         'fee' => $plans->fee,
                                     ]);
+                                    TelemedicinePatientPlanBridge::syncFromAffiliateCorporate($record);
                                     $reassigned++;
 
                                     continue;

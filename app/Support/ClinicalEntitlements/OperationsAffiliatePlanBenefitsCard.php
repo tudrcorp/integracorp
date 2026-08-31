@@ -10,6 +10,7 @@ use App\Models\Benefit;
 use App\Models\Limit;
 use App\Models\Plan;
 use App\Models\TelemedicinePatient;
+use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 use Illuminate\Support\Collection;
 use Throwable;
 
@@ -70,6 +71,10 @@ final class OperationsAffiliatePlanBenefitsCard
 
         try {
             $record->loadMissing(['plan.benefitPlans.limit:id,description']);
+            $plan = TelemedicinePatientPlanBridge::hydrate($record);
+            if ($plan instanceof Plan) {
+                $plan->loadMissing(['benefitPlans.limit:id,description']);
+            }
             $snapshot = AffiliateClinicalEntitlementResolver::forPatient($record);
         } catch (Throwable $exception) {
             report($exception);
@@ -77,7 +82,7 @@ final class OperationsAffiliatePlanBenefitsCard
             return self::state('danger', 'No se pudo calcular el uso clínico. Revise la vigencia o el mapa del plan.');
         }
 
-        $plan = $record->plan;
+        $plan ??= $record->plan;
         $benefits = $plan instanceof Plan
             ? $plan->benefitPlans
             : collect();
