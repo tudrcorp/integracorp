@@ -12,6 +12,7 @@ use App\Services\CorporateAffiliatePlanSyncService;
 use App\Services\CorporateAffiliateRemovalService;
 use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
 use App\Support\SecurityAudit;
+use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -217,11 +218,13 @@ final class CorporateAffiliatePlanSynchronizer
 
                 if ($changes === []) {
                     $unchanged++;
+                    TelemedicinePatientPlanBridge::syncFromAffiliateCorporate($affiliate);
 
                     continue;
                 }
 
                 $affiliate->update($attributes);
+                TelemedicinePatientPlanBridge::syncFromAffiliateCorporate($affiliate);
                 $updated++;
             }
 

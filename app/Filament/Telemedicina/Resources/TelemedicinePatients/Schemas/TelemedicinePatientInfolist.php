@@ -8,6 +8,7 @@ use App\Models\TelemedicinePatient;
 use App\Support\ClinicalEntitlements\OperationsAffiliatePlanBenefitsCard;
 use App\Support\FilamentDateDisplay;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
+use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -47,7 +48,7 @@ class TelemedicinePatientInfolist
             return true;
         }
 
-        return $record->plan_id === null;
+        return TelemedicinePatientPlanBridge::plan($record) === null;
     }
 
     public static function configure(Schema $schema): Schema
