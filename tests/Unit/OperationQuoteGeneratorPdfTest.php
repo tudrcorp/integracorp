@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\OperationCoordinationService;
 use App\Models\OperationQuoteGenerator;
+use App\Models\Supplier;
 use App\Services\OperationQuoteGeneratorPdfService;
 
 uses(Tests\TestCase::class);
@@ -54,6 +55,10 @@ it('operation quote generator pdf blade renders without errors', function (): vo
     ]);
     $quote->id = 5;
     $quote->setAttribute('created_at', now());
+    $quote->setRelation('supplier', new Supplier([
+        'name' => 'Laboratorio Central',
+        'personal_phone' => '04141234567',
+    ]));
 
     $html = view('documents.operation-quote-generator-pdf', [
         'quote' => $quote,
@@ -66,6 +71,9 @@ it('operation quote generator pdf blade renders without errors', function (): vo
         ->toContain('Cotización de servicios')
         ->toContain('Hemograma')
         ->toContain('Proveedor')
+        ->toContain('Laboratorio Central')
+        ->toContain('Teléfono')
+        ->toContain('04141234567')
         ->toContain('Av. Principal, Caracas')
         ->toContain('Observaciones')
         ->toContain('section-title--observations')

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\AffiliateCorporate;
+use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
 use App\Support\Telemedicine\TelemedicinePatientAssociationResolver;
+use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +32,7 @@ final class AssociateAffiliateCorporateWithTelemedicinePatientService
         }
 
         if ($member->status !== 'ACTIVO') {
-            $displayName = trim("{$member->first_name} {$member->last_name}");
+            $displayName = TelemedicinePatientDisplayName::fromAffiliateCorporate($member) ?: 'sin nombre';
 
             throw ValidationException::withMessages([
                 'affiliate' => ["El afiliado corporativo ({$displayName}) no está activo."],
@@ -51,7 +53,7 @@ final class AssociateAffiliateCorporateWithTelemedicinePatientService
             'code_affiliation' => $affiliation->code,
             'status_affiliation' => 'ACTIVO',
             'type_affiliation' => 'CORPORATIVO',
-            'full_name' => $member->first_name,
+            'full_name' => TelemedicinePatientDisplayName::fromAffiliateCorporate($member),
             'nro_identificacion' => $member->nro_identificacion,
             'birth_date' => $member->birth_date,
             'sex' => $sex,
@@ -67,6 +69,9 @@ final class AssociateAffiliateCorporateWithTelemedicinePatientService
             'email_contact' => $affiliation->email,
             'created_by' => $createdByName,
             'business_unit_id' => $affiliation->business_unit_id == null ? null : $affiliation->business_unit_id,
+            'specific_business_unit' => AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit(
+                $member->specific_business_unit ?? $affiliation->specific_business_unit,
+            ),
             'business_line_id' => $affiliation->business_line_id == null ? null : $affiliation->business_line_id,
             'supplier_id' => Auth::user()?->supplier_id,
         ];

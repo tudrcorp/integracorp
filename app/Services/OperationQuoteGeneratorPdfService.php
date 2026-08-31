@@ -18,6 +18,7 @@ class OperationQuoteGeneratorPdfService
         float $bcvRate
     ): PdfDocument {
         $quote->loadMissing('supplier');
+        $coordination->loadMissing('telemedicinePatient');
 
         $logoPath = public_path('image/logoNewPdf.png');
         $logoDataUri = '';

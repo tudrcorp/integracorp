@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Barryvdh\DomPDF\Facade\Pdf;
+use setasign\Fpdi\Fpdi;
 
 uses(Tests\TestCase::class);
 
@@ -47,8 +48,10 @@ function telemedicineInformeRedesignSampleData(): array
         'studiesArr' => [
             'Radiografía de tórax PA',
         ],
+        'doctor_name' => 'Dra. Carolina Josefina Pinillo Lameda',
         'code_cm' => 'CM-24581',
         'code_mpps' => 'MPPS-11209',
+        'signature' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
         'telemedicine_case_id' => 418,
         'telemedicine_consultation_id' => 902,
         'telemedicine_patient_id' => 331,
@@ -93,6 +96,14 @@ function telemedicineInformeWritePdf(string $variant, array $data, string $filen
     return $path;
 }
 
+function telemedicineInformePdfPageCount(string $path): int
+{
+    $pdf = new Fpdi;
+    $count = $pdf->setSourceFile($path);
+
+    return (int) $count;
+}
+
 it('el informe médico corto de producción usa el diseño homologado', function (): void {
     $corto = file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/informe-medico-corto.blade.php');
     $job = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/GeneratePdfInformeMedicoCorto.php');
@@ -108,7 +119,7 @@ it('el informe médico corto de producción usa el diseño homologado', function
     $path = telemedicineInformeWritePdf('corto', telemedicineInformeRedesignSampleData(), 'informe-medico-corto-redesign.pdf');
 
     expect($html)
-        ->toContain('Informe médico (consulta inicial)')
+        ->toContain('Informe Médico')
         ->toContain('#00ADEF')
         ->toContain('DejaVu Sans')
         ->toContain('Datos del paciente')
@@ -126,14 +137,24 @@ it('el informe médico corto de producción usa el diseño homologado', function
         ->toContain('header-bar')
         ->toContain('header-rule-space')
         ->toContain('footer-fixed')
+        ->toContain('doctor-signature')
+        ->toContain('position: fixed')
+        ->toContain('top: 222mm')
+        ->toContain('Dra. Carolina Josefina Pinillo Lameda')
+        ->toContain('MPPS: MPPS-11209')
+        ->toContain('Firma y sello del médico')
+        ->and($html)->not->toContain('max-height: 58px')
+        ->and($html)->not->toContain('Colegio médico')
         ->and($html)->not->toContain('informeMedicoTLM.png')
         ->and($html)->not->toContain('Signos vitales')
         ->and($html)->not->toContain('128/82 mmHg')
         ->and($html)->not->toContain('Informe médico largo (consulta inicial)')
+        ->and($html)->not->toContain('Informe médico (consulta inicial)')
         ->and($html)->not->toContain('Tarjeta de Afiliado');
 
     expect($path)->toBeFile()
-        ->and(filesize($path))->toBeGreaterThan(8_000);
+        ->and(filesize($path))->toBeGreaterThan(8_000)
+        ->and(telemedicineInformePdfPageCount($path))->toBe(1);
 });
 
 it('el informe médico largo de producción usa el diseño homologado', function (): void {
@@ -151,7 +172,7 @@ it('el informe médico largo de producción usa el diseño homologado', function
     $path = telemedicineInformeWritePdf('largo', telemedicineInformeRedesignSampleData(), 'informe-medico-largo-redesign.pdf');
 
     expect($html)
-        ->toContain('Informe médico largo (consulta inicial)')
+        ->toContain('Informe Médico')
         ->toContain('#00ADEF')
         ->toContain('DejaVu Sans')
         ->toContain('Signos vitales')
@@ -161,9 +182,20 @@ it('el informe médico largo de producción usa el diseño homologado', function
         ->toContain('97 %')
         ->toContain('departamento de telemedicina de Tu Doctor en Casa')
         ->toContain('header-rule-space')
+        ->toContain('doctor-signature')
+        ->toContain('position: fixed')
+        ->toContain('top: 222mm')
+        ->toContain('Dra. Carolina Josefina Pinillo Lameda')
+        ->toContain('MPPS: MPPS-11209')
+        ->toContain('Firma y sello del médico')
+        ->and($html)->not->toContain('max-height: 58px')
+        ->and($html)->not->toContain('Colegio médico')
         ->and($html)->not->toContain('informeMedicoTLM.png')
+        ->and($html)->not->toContain('Informe médico largo (consulta inicial)')
+        ->and($html)->not->toContain('Informe médico (consulta inicial)')
         ->and($html)->not->toContain('Tarjeta de Afiliado');
 
     expect($path)->toBeFile()
-        ->and(filesize($path))->toBeGreaterThan(8_000);
+        ->and(filesize($path))->toBeGreaterThan(8_000)
+        ->and(telemedicineInformePdfPageCount($path))->toBe(1);
 });

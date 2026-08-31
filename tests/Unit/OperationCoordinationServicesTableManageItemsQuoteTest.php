@@ -19,9 +19,13 @@ it('el formulario de gestión de ítems define paso de cotización para ítems n
         ->toContain('Precios unitarios por ítem')
         ->toContain('manage_quote_supplier_id')
         ->toContain('manage_quote_supplier_address')
+        ->toContain('manage_quote_supplier_phone')
+        ->toContain('Teléfono del proveedor')
+        ->toContain("Grid::make(['default' => 1, 'md' => 2])")
         ->toContain('manage_quote_observations')
         ->toContain('Observaciones de la cotización')
         ->toContain('resolveManageQuoteSupplierAddress')
+        ->toContain('resolveManageQuoteSupplierPhone')
         ->toContain('manageServiceNonCoveredItemsNotice')
         ->toContain('ManageQuoteSupplierCreator::configureSelect');
 });
@@ -40,7 +44,10 @@ it('permite crear un proveedor nuevo desde parámetros de cotización y seleccio
         ->toContain('return (int) $supplier->getKey()');
 
     expect($editForm)
-        ->toContain('ManageQuoteSupplierCreator::configureSelect');
+        ->toContain('ManageQuoteSupplierCreator::configureSelect')
+        ->toContain('edit_quote_supplier_phone')
+        ->toContain('Teléfono del proveedor')
+        ->toContain("Grid::make(['default' => 1, 'md' => 2])");
 });
 
 it('CoordinationServiceItemsManager valida cotización antes de gestionar ítems no cubiertos', function (): void {
@@ -64,6 +71,10 @@ it('CoordinationServiceItemsManager valida cotización antes de gestionar ítems
 
 it('resolveManageQuoteSupplierAddress devuelve null sin proveedor', function (): void {
     expect(\App\Support\Operations\CoordinationServiceItemsManager::resolveManageQuoteSupplierAddress(null))->toBeNull();
+});
+
+it('resolveManageQuoteSupplierPhone devuelve null sin proveedor', function (): void {
+    expect(\App\Support\Operations\CoordinationServiceItemsManager::resolveManageQuoteSupplierPhone(null))->toBeNull();
 });
 
 it('manageQuoteSubtotalFromLineItems suma precios unitarios en USD', function (): void {

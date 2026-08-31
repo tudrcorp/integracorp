@@ -25,7 +25,8 @@ class PlansTable
         return $table
             ->defaultSort('created_at', 'desc')
             ->heading('PLANES')
-            ->description('Lista de planes registrados en el sistema')
+            ->description('Lista de planes registrados en el sistema. La columna Uso clínico indica si el médico ya puede asignar servicios tipo 1.')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['benefitPlans', 'clinicalSettings']))
             ->columns([
                 TextColumn::make('code')
                     ->label('Codigo')
@@ -57,6 +58,15 @@ class PlansTable
                         };
                     })
                     ->searchable(),
+                TextColumn::make('clinical_usage')
+                    ->label('Uso clínico')
+                    ->badge()
+                    ->state(fn (Plan $record): string => \App\Support\ClinicalEntitlements\PlanClinicalCompleteness::isComplete($record)
+                        ? 'Listo'
+                        : 'Pendiente')
+                    ->color(fn (Plan $record): string => \App\Support\ClinicalEntitlements\PlanClinicalCompleteness::isComplete($record)
+                        ? 'success'
+                        : 'warning'),
                 TextColumn::make('created_by')
                     ->searchable(),
                 TextColumn::make('created_at')
@@ -101,6 +111,15 @@ class PlansTable
                 ActionGroup::make([
                     ViewAction::make()
                         ->label('Ver'),
+                    Action::make('usoClinico')
+                        ->label(fn (Plan $record): string => \App\Support\ClinicalEntitlements\PlanClinicalCompleteness::isComplete($record)
+                            ? 'Uso clínico'
+                            : 'Completar uso clínico')
+                        ->icon('heroicon-o-heart')
+                        ->color(fn (Plan $record): string => \App\Support\ClinicalEntitlements\PlanClinicalCompleteness::isComplete($record)
+                            ? 'gray'
+                            : 'warning')
+                        ->url(fn (Plan $record): string => \App\Filament\Business\Resources\Plans\PlanResource::getUrl('uso-clinico', ['record' => $record])),
                     EditAction::make()
                         ->label('Editar'),
                     Action::make('update_status')

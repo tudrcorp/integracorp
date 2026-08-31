@@ -141,7 +141,8 @@ it('el toggle y el tipo de proveedor no convenido reconstruyen los precios por Ã
         ->toContain('$providerTypeField->afterStateUpdated($onProviderTypeUpdated);')
         ->toContain('public static function registerToggle(?Closure $afterStateUpdated = null): Toggle')
         ->toContain('if ($afterStateUpdated !== null) {')
-        ->toContain('$toggle->afterStateUpdated($afterStateUpdated);');
+        ->toContain('$afterStateUpdated($livewire, $get, $set)')
+        ->toContain('OperationServiceOrderProviderContacts::clearForm($set)');
 });
 
 it('el formulario condiciona el select de proveedor al flujo no cubierto', function (): void {

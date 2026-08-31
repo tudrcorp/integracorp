@@ -61,5 +61,7 @@ it('formulario de paciente en Telemedicina incluye información de contacto', fu
         ->toContain("TextInput::make('phone_contact')")
         ->toContain("TextInput::make('email_contact')")
         ->toContain('Teléfono de contacto')
-        ->toContain('Correo de contacto');
+        ->toContain('Correo de contacto')
+        ->toContain("DatePicker::make('birth_date')")
+        ->toContain('TelemedicinePatientBirthDate::age($state)');
 });

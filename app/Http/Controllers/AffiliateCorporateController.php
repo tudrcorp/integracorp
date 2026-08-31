@@ -39,6 +39,10 @@ class AffiliateCorporateController extends Controller
             $data['created_by'] = Auth::user()->id;
 
             $data['affiliation_corporate_id'] = $ownerRelationship->id;
+            $data['business_unit_id'] = $data['business_unit_id'] ?? $ownerRelationship->business_unit_id;
+            $data['business_line_id'] = $data['business_line_id'] ?? $ownerRelationship->business_line_id;
+            $data['specific_business_unit'] = $data['specific_business_unit']
+                ?? $ownerRelationship->specific_business_unit;
 
             $created_record = AffiliateCorporate::create($data);
 

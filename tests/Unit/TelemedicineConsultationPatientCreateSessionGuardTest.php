@@ -12,7 +12,7 @@ it('valida la sesión antes de inicializar el formulario de creación', function
     expect($sessionReadPosition)->not->toBeFalse()
         ->and($mountPosition)->not->toBeFalse()
         ->and($sessionReadPosition)->toBeLessThan($mountPosition)
-        ->and($contents)->toContain('if (! $this->patient || ! $this->case)');
+        ->and($contents)->toContain('if (! $this->patient instanceof TelemedicinePatient || ! $this->case instanceof TelemedicineCase)');
 });
 
 it('resuelve telemedicine_service_list_drift_id sin error cuando no viene en el registro', function (): void {

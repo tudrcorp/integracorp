@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OperationCoordinationService extends Model
 {
@@ -97,6 +98,22 @@ class OperationCoordinationService extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    /**
+     * @return HasMany<OperationServiceOrder, $this>
+     */
+    public function operationServiceOrders(): HasMany
+    {
+        return $this->hasMany(OperationServiceOrder::class);
+    }
+
+    /**
+     * @return HasMany<OperationQuoteGenerator, $this>
+     */
+    public function operationQuoteGenerators(): HasMany
+    {
+        return $this->hasMany(OperationQuoteGenerator::class);
     }
 
     public function telemedicineConsultationPatient()

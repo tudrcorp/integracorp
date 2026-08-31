@@ -23,9 +23,10 @@
     $labs = is_array($data['labsArr'] ?? null) ? array_values(array_filter($data['labsArr'], static fn (mixed $item): bool => filled($item))) : [];
     $studies = is_array($data['studiesArr'] ?? null) ? array_values(array_filter($data['studiesArr'], static fn (mixed $item): bool => filled($item))) : [];
 
-    $title = $isLong
-        ? 'Informe médico largo (consulta inicial)'
-        : 'Informe médico (consulta inicial)';
+    $title = 'Informe Médico';
+    $stampDataUri = \App\Support\Telemedicine\TelemedicineDoctorStamp::dataUri($data['signature'] ?? null);
+    $stampSize = \App\Support\Telemedicine\TelemedicineDoctorStamp::displaySize($stampDataUri);
+    $doctorName = trim((string) ($data['doctor_name'] ?? ''));
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -54,7 +55,7 @@
             max-width: 100%;
             font-family: DejaVu Sans, sans-serif;
             font-size: 7.5pt;
-            line-height: 1.28;
+            line-height: 1.24;
             color: #374151;
             background: #ffffff;
         }
@@ -91,8 +92,8 @@
             table-layout: fixed;
             border-collapse: separate;
             border-spacing: 0;
-            margin: 0 0 7px 0;
-            padding: 0 0 6px 0;
+            margin: 0 0 5px 0;
+            padding: 0 0 4px 0;
             border-bottom: 1.5px solid {{ $brandCyan }};
         }
         .header-bar td {
@@ -157,7 +158,7 @@
             font-size: 7.5pt;
             font-weight: bold;
             color: #0c4a6e;
-            margin: 4px 0 2px 0;
+            margin: 3px 0 2px 0;
             padding: 2px 5px 2px 6px;
             border-left: 2.5px solid {{ $brandCyan }};
             background: #f0fdff;
@@ -167,7 +168,7 @@
             margin-top: 0;
         }
         .section-title--block {
-            margin-top: 8px;
+            margin-top: 5px;
         }
         .keep-together {
             page-break-inside: avoid;
@@ -180,7 +181,7 @@
             border-spacing: 0;
         }
         .grid td {
-            padding: 2px 8px 3px 0;
+            padding: 1px 8px 2px 0;
             vertical-align: top;
             width: 50%;
             word-wrap: break-word;
@@ -214,7 +215,7 @@
             width: 100%;
             max-width: 100%;
             margin: 0 0 2px 0;
-            padding: 5px 7px;
+            padding: 4px 6px;
             background: #f8fafc;
             border: 1px solid #e5e7eb;
             font-size: 7.35pt;
@@ -235,7 +236,7 @@
         table.items th {
             background-color: {{ $brandCyan }};
             color: #ffffff;
-            padding: 4px 4px;
+            padding: 3px 4px;
             text-align: left;
             font-size: 6.5pt;
             font-weight: bold;
@@ -286,12 +287,43 @@
             color: {{ $brandCyan }};
         }
         .two-col-section {
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         .doc-content {
             position: relative;
             z-index: 1;
-            padding: 0 0 26mm 0;
+            padding: 0 0 28mm 0;
+        }
+        .doctor-signature {
+            position: fixed;
+            top: 222mm; /* A4: DomPDF ignora bottom en este bloque; top lo pega al pie. */
+            left: 20mm;
+            right: 20mm;
+            width: auto;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            overflow: visible;
+            z-index: 11;
+        }
+        .doctor-signature-image {
+            display: block;
+            margin: 0 auto 3px auto;
+            border: 0;
+        }
+        .doctor-signature-name {
+            font-size: 8pt;
+            font-weight: bold;
+            color: #111827;
+            line-height: 1.2;
+            margin: 0 0 1px 0;
+        }
+        .doctor-signature-meta {
+            font-size: 7pt;
+            color: #4b5563;
+            line-height: 1.25;
+            margin: 0;
         }
     </style>
 </head>
@@ -483,8 +515,27 @@
             </tr>
         </table>
     </div>
+
 </div>
 </div>
+</div>
+
+<div class="doctor-signature">
+    @if($stampDataUri !== '')
+        <img
+            class="doctor-signature-image"
+            src="{{ $stampDataUri }}"
+            alt="Firma y sello del médico"
+            @if(is_array($stampSize))
+                width="{{ $stampSize['width'] }}"
+                height="{{ $stampSize['height'] }}"
+            @endif
+        >
+    @endif
+    @if($doctorName !== '')
+        <p class="doctor-signature-name">{{ $val($doctorName) }}</p>
+    @endif
+    <p class="doctor-signature-meta">MPPS: {{ $val($data['code_mpps'] ?? null) }}</p>
 </div>
 
 <div class="footer-fixed">

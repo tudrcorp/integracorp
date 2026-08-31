@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\OperationServiceOrder;
+use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as PdfDocument;
 use Illuminate\Support\Collection;
@@ -126,19 +127,9 @@ final class OperationServiceOrderTableReportPdfService
             return 'Sin paciente';
         }
 
-        if (filled($coordination->patient)) {
-            return (string) $coordination->patient;
-        }
+        $name = TelemedicinePatientDisplayName::forCoordination($coordination);
 
-        if (filled($coordination->telemedicinePatient?->full_name)) {
-            return (string) $coordination->telemedicinePatient->full_name;
-        }
-
-        if (filled($coordination->telemedicineCase?->patient_name)) {
-            return (string) $coordination->telemedicineCase->patient_name;
-        }
-
-        return 'Sin paciente';
+        return $name !== '—' ? $name : 'Sin paciente';
     }
 
     public static function patientDocumentForOrder(OperationServiceOrder $record): string

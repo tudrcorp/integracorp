@@ -6,6 +6,7 @@ namespace App\Filament\Operations\Resources\OperationCoordinationServices\Pages;
 
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Schemas\ManageCoordinationServiceItemsForm;
+use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrderResource;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use Filament\Actions\Action;
@@ -147,13 +148,21 @@ class ManageCoordinationServiceItems extends Page
 
             $data = $this->form->getState();
 
-            if (! CoordinationServiceItemsManager::save($this->getRecord(), $data)) {
+            $createdOrderId = CoordinationServiceItemsManager::save($this->getRecord(), $data);
+
+            if ($createdOrderId === null) {
                 $this->rollBackDatabaseTransaction();
 
                 return;
             }
 
             $this->commitDatabaseTransaction();
+
+            if ($createdOrderId > 0) {
+                $this->redirect(OperationServiceOrderResource::getUrl('view', ['record' => $createdOrderId]));
+
+                return;
+            }
 
             $this->redirect(OperationCoordinationServiceResource::getUrl('index'));
         } catch (Halt $exception) {

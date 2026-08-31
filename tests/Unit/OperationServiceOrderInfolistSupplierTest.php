@@ -14,6 +14,7 @@ it('OperationServiceOrderInfolist muestra proveedor y dirección en el tab Resum
         ->toContain("->label('Dirección')")
         ->toContain('resolveSupplierName')
         ->toContain('resolveSupplierAddress')
+        ->toContain('OperationServiceOrderProviderSummary::name')
         ->toContain('OperationServiceOrderProviderSummary::address');
 });
 

@@ -74,7 +74,8 @@ it('el centro de notificaciones gestiona asociados y follow-up por pestañas', f
         ->toContain("case TelemedicineCaseReversal = 'telemedicine_case_reversal'")
         ->toContain("case BirthdayNotificationWitnessCopy = 'birthday_notification_witness_copy'")
         ->toContain("case BirthdayNotificationSummary = 'birthday_notification_summary'")
-        ->toContain("case TdevRegistration = 'tdev_registration'");
+        ->toContain("case TdevRegistration = 'tdev_registration'")
+        ->toContain("case TelemedicineServiceLimitOverride = 'telemedicine_service_limit_override'");
 
     expect(SystemNotificationKey::AgentQuoteAnulation->defaultEmails())
         ->toBe(['cotizaciones@tudrencasa.com']);

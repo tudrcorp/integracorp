@@ -265,6 +265,14 @@ final class PlanStructurePersistence
             array_filter((array) ($formData['package_benefit_ids'] ?? []), static fn (mixed $id): bool => filled($id)),
         );
 
+        if ($benefitIds === []) {
+            foreach ((array) ($formData['package_benefits'] ?? []) as $row) {
+                if (is_array($row) && filled($row['benefit_id'] ?? null)) {
+                    $benefitIds[] = (int) $row['benefit_id'];
+                }
+            }
+        }
+
         self::syncBenefitPlans($plan, $benefitIds);
 
         $ageRangeIds = self::syncAgeRanges($plan, $formData['package_age_ranges'] ?? []);

@@ -181,29 +181,32 @@ final class ManageCoordinationServiceQuotesForm
                             ->columnSpanFull(),
                         Grid::make(2)
                             ->schema([
-                                TextInput::make('order_number')
-                                    ->label('Número de orden')
-                                    ->required(fn (Get $get): bool => CoordinationServiceQuoteManager::hasApprovedQuotePendingOrderInForm($get('quote_statuses')))
-                                    ->prefixIcon(Heroicon::OutlinedHashtag)
-                                    ->maxLength(255),
-                                Select::make('telemedicine_priority_id')
-                                    ->label('Prioridad')
-                                    ->options(TelemedicinePriority::query()->orderBy('name', 'asc')->pluck('name', 'id'))
-                                    ->required(fn (Get $get): bool => CoordinationServiceQuoteManager::hasApprovedQuotePendingOrderInForm($get('quote_statuses')))
-                                    ->prefixIcon(Heroicon::OutlinedBolt)
-                                    ->native(false),
-                                DateTimePicker::make('appointment_at')
-                                    ->label('Fecha y hora de la cita')
-                                    ->seconds(false)
-                                    ->native(false)
-                                    ->visible(fn (Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
-                                        CoordinationServiceQuoteManager::approvedQuoteServiceType((int) $get('approved_quote_id'))
-                                    ))
-                                    ->required(fn (Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
-                                        CoordinationServiceQuoteManager::approvedQuoteServiceType((int) $get('approved_quote_id'))
-                                    ))
-                                    ->helperText('Obligatoria para servicios con asistencia presencial del paciente.')
-                                    ->prefixIcon(Heroicon::OutlinedCalendarDays)
+                                Grid::make(['default' => 1, 'md' => 3])
+                                    ->schema([
+                                        TextInput::make('order_number')
+                                            ->label('Número de orden')
+                                            ->required(fn (Get $get): bool => CoordinationServiceQuoteManager::hasApprovedQuotePendingOrderInForm($get('quote_statuses')))
+                                            ->prefixIcon(Heroicon::OutlinedHashtag)
+                                            ->maxLength(255),
+                                        Select::make('telemedicine_priority_id')
+                                            ->label('Prioridad')
+                                            ->options(TelemedicinePriority::query()->orderBy('name', 'asc')->pluck('name', 'id'))
+                                            ->required(fn (Get $get): bool => CoordinationServiceQuoteManager::hasApprovedQuotePendingOrderInForm($get('quote_statuses')))
+                                            ->prefixIcon(Heroicon::OutlinedBolt)
+                                            ->native(false),
+                                        DateTimePicker::make('appointment_at')
+                                            ->label('Fecha y hora de la cita')
+                                            ->seconds(false)
+                                            ->native(false)
+                                            ->visible(fn (Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                                CoordinationServiceQuoteManager::approvedQuoteServiceType((int) $get('approved_quote_id'))
+                                            ))
+                                            ->required(fn (Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                                CoordinationServiceQuoteManager::approvedQuoteServiceType((int) $get('approved_quote_id'))
+                                            ))
+                                            ->helperText('Obligatoria para servicios con asistencia presencial del paciente.')
+                                            ->prefixIcon(Heroicon::OutlinedCalendarDays),
+                                    ])
                                     ->columnSpanFull(),
                                 TextInput::make('supplier_notify_email')
                                     ->label('Correo del proveedor (cita)')
@@ -230,11 +233,10 @@ final class ManageCoordinationServiceQuotesForm
                                     ->visible(fn (Get $get): bool => CoordinationServiceQuoteManager::approvedQuoteServiceType((int) $get('approved_quote_id')) === 'MEDICAMENTOS')
                                     ->native(false)
                                     ->columnSpanFull(),
-                                TextInput::make('service_order_description')
+                                Textarea::make('service_order_description')
                                     ->label('Descripción de la orden')
-                                    ->required(fn (Get $get): bool => CoordinationServiceQuoteManager::hasApprovedQuotePendingOrderInForm($get('quote_statuses')))
-                                    ->prefixIcon(Heroicon::OutlinedDocumentText)
-                                    ->maxLength(500)
+                                    ->rows(4)
+                                    ->helperText('Opcional. Use este campo para indicar indicaciones o el detalle de la orden.')
                                     ->columnSpanFull(),
                                 Textarea::make('service_order_observations')
                                     ->label('Observaciones de la orden')

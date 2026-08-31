@@ -133,6 +133,29 @@ it('usa la primera fila cuando las candidatas son equivalentes', function (): vo
         ->and((float) $resolution['row']->fee)->toBe(180.0);
 });
 
+it('marca como no sincronizado si la unidad especifica no coincide', function (): void {
+    $owner = new AffiliationCorporate([
+        'payment_frequency' => 'ANUAL',
+        'business_unit_id' => 2,
+        'business_line_id' => 4,
+        'specific_business_unit' => 'Banco X',
+    ]);
+    $row = planRow(5, 20, 40, 3, 180.0);
+
+    $alDia = affiliate('30', planId: 5, coverageId: 3, fee: 180.0);
+    $alDia->business_unit_id = 2;
+    $alDia->business_line_id = 4;
+    $alDia->specific_business_unit = 'Banco X';
+
+    $otraUnidad = affiliate('30', planId: 5, coverageId: 3, fee: 180.0);
+    $otraUnidad->business_unit_id = 2;
+    $otraUnidad->business_line_id = 4;
+    $otraUnidad->specific_business_unit = 'Convenio Y';
+
+    expect(CorporateAffiliatePlanSynchronizer::isSynced($owner, $alDia, $row))->toBeTrue()
+        ->and(CorporateAffiliatePlanSynchronizer::isSynced($owner, $otraUnidad, $row))->toBeFalse();
+});
+
 it('marca como sincronizado solo si coinciden plan, cobertura, tarifa, unidad y linea', function (): void {
     $owner = new AffiliationCorporate([
         'payment_frequency' => 'ANUAL',

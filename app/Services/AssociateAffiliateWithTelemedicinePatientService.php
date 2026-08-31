@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Affiliate;
+use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
 use App\Support\Telemedicine\TelemedicinePatientAssociationResolver;
+use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -48,7 +50,7 @@ final class AssociateAffiliateWithTelemedicinePatientService
             'code_affiliation' => $affiliation->code,
             'status_affiliation' => 'ACTIVO',
             'type_affiliation' => 'INDIVIDUAL',
-            'full_name' => $affiliate->full_name,
+            'full_name' => TelemedicinePatientDisplayName::fromAffiliate($affiliate),
             'nro_identificacion' => $affiliate->nro_identificacion,
             'birth_date' => $affiliate->birth_date,
             'sex' => $sex,
@@ -66,6 +68,9 @@ final class AssociateAffiliateWithTelemedicinePatientService
                 : null,
             'created_by' => $createdByName,
             'business_unit_id' => $affiliation->business_unit_id == null ? '----' : $affiliation->business_unit_id,
+            'specific_business_unit' => AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit(
+                $affiliate->specific_business_unit ?? $affiliation->specific_business_unit,
+            ),
             'business_line_id' => $affiliation->business_line_id == null ? '----' : $affiliation->business_line_id,
             'supplier_id' => Auth::user()?->supplier_id,
         ];

@@ -28,7 +28,7 @@ class TelemedicineDoctorsTable
         return $table
             ->defaultSort('full_name', 'asc')
             ->heading('Directorio médico')
-            ->description('Datos de contacto, identificación profesional y especialidad. Use «Editar» para actualizar ficha o firma.')
+            ->description('Datos de contacto, identificación profesional, especialidad y sello digital. Use «Editar» para actualizar ficha o sello.')
             ->modifyQueryUsing(function (Builder $query): Builder {
                 OperationsSupplierScope::applyToQuery($query);
 
@@ -54,6 +54,25 @@ class TelemedicineDoctorsTable
                     ->sortable()
                     ->description(fn (TelemedicineDoctor $record): string => $record->email ?? '')
                     ->wrap(),
+                ImageColumn::make('signature')
+                    ->label('Sello')
+                    ->disk('public')
+                    ->visibility('public')
+                    ->alignCenter()
+                    ->imageHeight(96)
+                    ->imageWidth(220)
+                    ->extraAttributes([
+                        'class' => 'max-w-[15rem] overflow-visible',
+                    ])
+                    ->extraImgAttributes([
+                        'alt' => 'Sello digital',
+                        'class' => 'mx-auto block h-24 w-[13.75rem] max-h-24 max-w-[13.75rem] object-contain object-center rounded-lg bg-white p-1.5 shadow-sm ring-1 ring-slate-200/90 dark:bg-slate-900 dark:ring-white/15',
+                    ])
+                    ->extraHeaderAttributes(['class' => 'w-[15rem]'])
+                    ->extraCellAttributes(['class' => 'py-3 w-[15rem] min-w-[15rem] shrink-0'])
+                    ->tooltip(fn (TelemedicineDoctor $record): string => filled($record->signature) ? 'Sello digital' : 'Sin sello cargado')
+                    ->placeholder('Sin sello')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('managed_by')
                     ->label('Pertenece a')
                     ->icon('heroicon-o-building-office-2')

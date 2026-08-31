@@ -28,12 +28,9 @@ it('el select de doctores es buscable y el analista TDG no se limita al proveedo
         ->toContain("->with('supplier:id,name')");
 });
 
-it('la creación y asociación de pacientes redirige a la ficha del paciente', function (): void {
+it('la asociación de afiliados redirige a la ficha del paciente', function (): void {
     $root = dirname(__DIR__, 2);
 
-    $create = file_get_contents(
-        $root.'/app/Filament/Operations/Resources/TelemedicinePatients/Pages/CreateTelemedicinePatient.php'
-    );
     $affiliate = file_get_contents(
         $root.'/app/Filament/Operations/Resources/Affiliates/Pages/ViewAffiliate.php'
     );
@@ -41,11 +38,40 @@ it('la creación y asociación de pacientes redirige a la ficha del paciente', f
         $root.'/app/Filament/Operations/Resources/AffiliateCorporates/Pages/ViewAffiliateCorporate.php'
     );
 
-    expect($create)->toContain("TelemedicinePatientResource::getUrl('view'");
-
     expect($affiliate)
         ->toContain("TelemedicinePatientResource::getUrl('view', ['record' => \$result['patient']])");
 
     expect($affiliateCorporate)
         ->toContain("TelemedicinePatientResource::getUrl('view', ['record' => \$result['patient']])");
+});
+
+it('crear y editar paciente vuelven al listado con aviso claro', function (): void {
+    $root = dirname(__DIR__, 2);
+
+    $operationsCreate = file_get_contents(
+        $root.'/app/Filament/Operations/Resources/TelemedicinePatients/Pages/CreateTelemedicinePatient.php'
+    );
+    $operationsEdit = file_get_contents(
+        $root.'/app/Filament/Operations/Resources/TelemedicinePatients/Pages/EditTelemedicinePatient.php'
+    );
+    $telemedicinaCreate = file_get_contents(
+        $root.'/app/Filament/Telemedicina/Resources/TelemedicinePatients/Pages/CreateTelemedicinePatient.php'
+    );
+    $telemedicinaEdit = file_get_contents(
+        $root.'/app/Filament/Telemedicina/Resources/TelemedicinePatients/Pages/EditTelemedicinePatient.php'
+    );
+
+    foreach ([$operationsCreate, $telemedicinaCreate] as $create) {
+        expect($create)
+            ->toContain("TelemedicinePatientResource::getUrl('index')")
+            ->toContain('Paciente registrado')
+            ->toContain('getCreatedNotification');
+    }
+
+    foreach ([$operationsEdit, $telemedicinaEdit] as $edit) {
+        expect($edit)
+            ->toContain("TelemedicinePatientResource::getUrl('index')")
+            ->toContain('Paciente actualizado')
+            ->toContain('getSavedNotification');
+    }
 });

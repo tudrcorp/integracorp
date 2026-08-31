@@ -59,6 +59,14 @@ trait ConfiguresBusinessGlobalSearch
         //
     }
 
+    /**
+     * @return list<string>
+     */
+    protected static function businessGlobalSearchEagerLoads(): array
+    {
+        return [];
+    }
+
     public static function getGlobalSearchResults(string $search): Collection
     {
         $search = trim($search);
@@ -78,6 +86,12 @@ trait ConfiguresBusinessGlobalSearch
 
         $query = static::getModel()::query()
             ->select($qualify(static::businessGlobalSearchSelectColumns()));
+
+        $eagerLoads = static::businessGlobalSearchEagerLoads();
+
+        if ($eagerLoads !== []) {
+            $query->with($eagerLoads);
+        }
 
         BusinessGlobalSearch::constrain(
             query: $query,

@@ -62,6 +62,11 @@ class Benefit extends Model
         return $this->hasMany(BenefitCoverage::class);
     }
 
+    public function clinicalSetting(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(BenefitClinicalSetting::class);
+    }
+
     public function getBenefitLimitsAttribute()
     {
         return $this->benefitLimits()->get();

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Plans\Pages;
 
+use App\Enums\ClinicalUsageAccessContext;
 use App\Enums\PlanPricingMode;
+use App\Filament\Business\Concerns\InteractsWithClinicalUsageAccessGate;
 use App\Filament\Business\Resources\Plans\PlanResource;
 use App\Filament\Business\Resources\Plans\Schemas\PlanWizardForm;
 use App\Models\Plan;
+use App\Support\ClinicalEntitlements\PlanClinicalStructurePersistence;
 use App\Support\Plans\PlanCodeGenerator;
 use App\Support\Plans\PlanStructurePersistence;
 use Filament\Resources\Pages\CreateRecord;
@@ -21,10 +24,28 @@ use Illuminate\Support\Facades\Auth;
  */
 class CreatePlan extends CreateRecord
 {
+    use InteractsWithClinicalUsageAccessGate;
+
     protected static string $resource = PlanResource::class;
 
     /** @var array<string, mixed> */
     protected array $pendingFormData = [];
+
+    public function mount(): void
+    {
+        parent::mount();
+        $this->bootClinicalUsageAccessGate();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return $this->clinicalUsageAccessHeaderActions();
+    }
+
+    protected function clinicalUsageAccessContext(): ClinicalUsageAccessContext
+    {
+        return ClinicalUsageAccessContext::PlanCreate;
+    }
 
     public function form(Schema $schema): Schema
     {
@@ -54,5 +75,14 @@ class CreatePlan extends CreateRecord
     protected function afterCreate(): void
     {
         PlanStructurePersistence::persist($this->getRecord(), $this->pendingFormData);
+
+        if (! $this->clinicalUsageIsUnlocked()) {
+            return;
+        }
+
+        PlanClinicalStructurePersistence::persist(
+            $this->getRecord(),
+            PlanClinicalStructurePersistence::rowsFromPlanForm($this->pendingFormData),
+        );
     }
 }

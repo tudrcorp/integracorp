@@ -69,6 +69,8 @@ final class TelemedicineCaseReversalService
                 'reversal_note' => $payload['reversal_note'],
             ]);
 
+            \App\Support\ClinicalEntitlements\ClinicalUsageLedger::reverseForCase((int) $case->id);
+
             $case->delete();
 
             SecurityAudit::log('AUDIT_TELEMEDICINE_CASE_REVERSED', 'telemedicina.cases.reverse', [

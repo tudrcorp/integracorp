@@ -1392,6 +1392,15 @@ final class CoordinationServiceItemsManager
         return filled($address) ? (string) $address : null;
     }
 
+    public static function resolveManageQuoteSupplierPhone(mixed $supplierId): ?string
+    {
+        if (! filled($supplierId)) {
+            return null;
+        }
+
+        return OperationServiceOrderProviderContacts::fromCatalogIds(null, (int) $supplierId)['phone'];
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -1417,12 +1426,14 @@ final class CoordinationServiceItemsManager
             'appointment_at' => null,
             'supplier_notify_email' => null,
             'supplier_notify_phone' => null,
+            'supplier_notify_address' => null,
             'service_order_bcv_rate' => OperationCoordinationServicesTable::referenciaTasaBcvDesdeApi(),
             'service_order_price_usd' => null,
             'service_order_price_ves' => null,
             'manage_quote_bcv_rate' => OperationCoordinationServicesTable::referenciaTasaBcvDesdeApi(),
             'manage_quote_supplier_id' => null,
             'manage_quote_supplier_address' => null,
+            'manage_quote_supplier_phone' => null,
             'manage_quote_observations' => null,
             'manage_quote_line_items' => [],
             'manage_quote_costo_dolares' => null,
@@ -1509,7 +1520,10 @@ final class CoordinationServiceItemsManager
         return self::manageServiceSelectedItemsTable($record, self::manageQuoteStepItemKeys($record, $get));
     }
 
-    public static function save(OperationCoordinationService $record, array $data): bool
+    /**
+     * @return int|null ID de la orden creada (> 0), 0 si guardó sin crear orden, null si falló.
+     */
+    public static function save(OperationCoordinationService $record, array $data): ?int
     {
         $selectedKeys = array_values(array_filter(
             (array) ($data['managed_service_item_keys'] ?? []),
@@ -1523,7 +1537,7 @@ final class CoordinationServiceItemsManager
                 ->warning()
                 ->send();
 
-            return false;
+            return null;
         }
 
         $coveredKeys = self::coveredSelectedManagementItemKeys($record, $selectedKeys);
@@ -1567,7 +1581,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
 
             $lineItems = (array) ($data['manage_quote_line_items'] ?? []);
@@ -1587,7 +1601,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
 
             $data['manage_quote_costo_dolares'] = $costoUsd;
@@ -1601,7 +1615,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
         }
 
@@ -1617,7 +1631,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
 
             $lineItems = (array) ($data['manage_quote_line_items'] ?? []);
@@ -1637,7 +1651,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
 
             $coveredBcvRate = OperationCoordinationServicesTable::decimalOrNull($data['manage_quote_bcv_rate'] ?? null);
@@ -1649,7 +1663,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
         }
 
@@ -1663,7 +1677,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
         }
 
@@ -1738,7 +1752,7 @@ final class CoordinationServiceItemsManager
                 ->warning()
                 ->send();
 
-            return false;
+            return null;
         }
 
         $body = $managedCount === 1
@@ -1761,10 +1775,13 @@ final class CoordinationServiceItemsManager
                 : ($resolvedSupplierId !== null ? self::resolveManageQuoteSupplierAddress($resolvedSupplierId) : null);
         }
 
-        if ($shouldCreateServiceOrder && ! $shouldCreateCoveredQuote) {
-            $orderCreated = self::createServiceOrderFromManageModal($record, $data, $coveredKeys, $serviceOrderType);
+        $createdOrderId = 0;
 
-            if ($orderCreated) {
+        if ($shouldCreateServiceOrder && ! $shouldCreateCoveredQuote) {
+            $orderId = self::createServiceOrderFromManageModal($record, $data, $coveredKeys, $serviceOrderType);
+
+            if ($orderId !== null && $orderId > 0) {
+                $createdOrderId = $orderId;
                 $body .= ' Se creó la orden de servicio para los ítems cubiertos seleccionados.';
             }
         }
@@ -1803,7 +1820,7 @@ final class CoordinationServiceItemsManager
             ->success()
             ->send();
 
-        return true;
+        return $createdOrderId;
     }
 
     public static function existingServiceOrdersTable(OperationCoordinationService $record): HtmlString
@@ -1854,9 +1871,10 @@ final class CoordinationServiceItemsManager
         array $data,
         array $coveredKeys,
         string $serviceOrderType
-    ): bool {
+    ): ?int {
         $partitions = CoordinationServiceCourtesy::partitionKeysByCourtesy($record, $coveredKeys);
         $created = 0;
+        $createdOrderId = null;
         $bothGroups = $partitions['regular'] !== [] && $partitions['courtesy'] !== [];
 
         foreach (['regular' => false, 'courtesy' => true] as $group => $isCourtesy) {
@@ -1911,10 +1929,11 @@ final class CoordinationServiceItemsManager
                 ->first();
 
             if ($order instanceof OperationServiceOrder) {
+                $createdOrderId ??= (int) $order->id;
                 AccountsReceivableManager::syncFromServiceOrder($order);
                 MedicalAppointmentManager::createFromServiceOrder($order, [
-                    'email' => $data['supplier_notify_email'] ?? null,
-                    'phone' => $data['supplier_notify_phone'] ?? null,
+                    'email' => $data['supplier_notify_email'] ?? $data['unregistered_correo_principal'] ?? null,
+                    'phone' => $data['supplier_notify_phone'] ?? $data['unregistered_phone'] ?? null,
                 ]);
             }
 
@@ -1928,7 +1947,7 @@ final class CoordinationServiceItemsManager
                 ->warning()
                 ->send();
 
-            return false;
+            return null;
         }
 
         $record->service_order_number = $data['order_number'] ?? $record->service_order_number;
@@ -1943,7 +1962,7 @@ final class CoordinationServiceItemsManager
                 ->send();
         }
 
-        return true;
+        return $createdOrderId;
     }
 
     /**

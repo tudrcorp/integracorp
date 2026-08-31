@@ -13,6 +13,7 @@ use App\Support\Filament\CsvExportDownloadTrigger;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\OperationServiceOrderCoordinationSync;
 use App\Support\Operations\OperationServiceOrderValidity;
+use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -58,19 +59,7 @@ class OperationServiceOrdersTable
             return '—';
         }
 
-        if (filled($coordination->patient)) {
-            return (string) $coordination->patient;
-        }
-
-        if (filled($coordination->telemedicinePatient?->full_name)) {
-            return (string) $coordination->telemedicinePatient->full_name;
-        }
-
-        if (filled($coordination->telemedicineCase?->patient_name)) {
-            return (string) $coordination->telemedicineCase->patient_name;
-        }
-
-        return '—';
+        return TelemedicinePatientDisplayName::forCoordination($coordination);
     }
 
     /**

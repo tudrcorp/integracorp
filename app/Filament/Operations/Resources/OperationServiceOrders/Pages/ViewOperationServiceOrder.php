@@ -355,6 +355,11 @@ class ViewOperationServiceOrder extends ViewRecord
         return OperationServiceOrderViewActions::makeCancelAction();
     }
 
+    public function voidServiceOrderForRegenerationAction(): Action
+    {
+        return OperationServiceOrderViewActions::makeVoidForRegenerationAction();
+    }
+
     public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
     {
         $operationServiceOrder = $this->getRecord();

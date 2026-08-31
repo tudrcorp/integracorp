@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-it('define proveedor natural jurídico y externo en una fila de tres columnas', function (): void {
+it('define proveedor natural, jurídico y el toggle de no convenido', function (): void {
     $providerPath = dirname(__DIR__, 2).'/app/Support/Operations/OperationServiceOrderProviderFormFields.php';
     $tablePath = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php';
 

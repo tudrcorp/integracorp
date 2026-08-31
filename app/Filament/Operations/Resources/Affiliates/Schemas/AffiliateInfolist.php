@@ -6,6 +6,7 @@ namespace App\Filament\Operations\Resources\Affiliates\Schemas;
 
 use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\Affiliate;
+use App\Support\ClinicalEntitlements\OperationsAffiliatePlanBenefitsCard;
 use App\Support\Operations\OperationsMapSearchAddress;
 use Carbon\Carbon;
 use Filament\Infolists\Components\IconEntry;
@@ -16,6 +17,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
@@ -358,6 +360,10 @@ class AffiliateInfolist
                                                     ->label('Unidad de negocio')
                                                     ->badge()
                                                     ->color('gray'),
+                                                TextEntry::make('affiliation.specific_business_unit')
+                                                    ->label('Unidad de negocio específica')
+                                                    ->placeholder('—')
+                                                    ->wrap(),
                                                 TextEntry::make('coverage.price')
                                                     ->label('Cobertura')
                                                     ->money('USD')
@@ -519,27 +525,17 @@ class AffiliateInfolist
                             ->icon(Heroicon::OutlinedQueueList)
                             ->schema([
                                 Section::make('Beneficios del plan')
+                                    ->description('Uso clínico y límite comercial en una sola lista.')
                                     ->icon(Heroicon::OutlinedQueueList)
                                     ->extraAttributes([
                                         'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
-                                        Grid::make(['default' => 1, 'lg' => 2])
-                                            ->extraAttributes([
-                                                'class' => self::IOS_INNER_CLASS,
-                                            ])
-                                            ->schema([
-                                                TextEntry::make('plan.benefitPlans.description')
-                                                    ->label('Beneficios')
-                                                    ->badge()
-                                                    ->color('success')
-                                                    ->listWithLineBreaks(),
-                                                TextEntry::make('plan.benefitPlans.limit.description')
-                                                    ->label('Límites')
-                                                    ->badge()
-                                                    ->color('gray')
-                                                    ->listWithLineBreaks(),
-                                            ]),
+                                        View::make('filament.operations.affiliates.plan-benefits-clinical')
+                                            ->viewData(fn (mixed $record): array => OperationsAffiliatePlanBenefitsCard::viewData(
+                                                $record instanceof Affiliate ? $record : null
+                                            ))
+                                            ->columnSpanFull(),
                                     ])
                                     ->columnSpanFull(),
                             ]),

@@ -38,6 +38,8 @@ use App\Filament\Business\Clusters\NuevosNegocios\NuevosNegociosCluster;
 use App\Filament\Business\Pages\AgendaCorporativa;
 use App\Filament\Business\Pages\CalendariosTdg;
 use App\Filament\Business\Resources\AccountManagers\AccountManagerResource;
+use App\Filament\Business\Resources\AffiliateCorporates\AffiliateCorporateResource as BusinessAffiliateCorporateResource;
+use App\Filament\Business\Resources\Affiliates\AffiliateResource as BusinessAffiliateResource;
 use App\Filament\Business\Resources\AffiliationCorporateRenovationHistories\AffiliationCorporateRenovationHistoryResource;
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Business\Resources\AffiliationRenovationHistories\AffiliationRenovationHistoryResource;
@@ -144,6 +146,9 @@ use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource
 use App\Filament\Operations\Resources\TelemedicineDoctors\TelemedicineDoctorResource;
 use App\Filament\Operations\Resources\TelemedicineGeneralServices\TelemedicineGeneralServiceResource;
 use App\Filament\Operations\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
+use App\Filament\Operations\Resources\TelemedicineListLaboratories\TelemedicineListLaboratoryResource;
+use App\Filament\Operations\Resources\TelemedicineListSpecialists\TelemedicineListSpecialistResource;
+use App\Filament\Operations\Resources\TelemedicineListStudies\TelemedicineListStudyResource;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Filament\Projects\Pages\Backlog;
 use App\Filament\Projects\Pages\Help;
@@ -179,7 +184,9 @@ final class DepartmentNavigationPermissionRegistry
         DressTylorQuoteResource::class => ['cotizador-dress-tylor'],
         CorporateQuoteRequestResource::class => ['solicitudes-dress-tylor'],
         AffiliationResource::class => ['afiliaciones-individuales'],
+        BusinessAffiliateResource::class => ['afiliaciones-individuales'],
         AffiliationCorporateResource::class => ['afiliaciones-corporativas'],
+        BusinessAffiliateCorporateResource::class => ['afiliaciones-corporativas'],
         RenovationResource::class => ['renovaciones-individuales'],
         RenovationCorporateResource::class => ['renovaciones-corporativas'],
         AffiliationRenovationHistoryResource::class => ['historico-renovaciones'],
@@ -296,6 +303,9 @@ final class DepartmentNavigationPermissionRegistry
         OperationTypeServiceResource::class => ['tipos-servicios'],
         TelemedicineGeneralServiceResource::class => ['servicios-consulta-general'],
         PortalHelpContactResource::class => ['contactos-ayuda-portal'],
+        TelemedicineListLaboratoryResource::class => ['lista-laboratorios'],
+        TelemedicineListStudyResource::class => ['lista-estudios'],
+        TelemedicineListSpecialistResource::class => ['lista-especialistas'],
         OperationTypeNegotiationResource::class => ['tipos-negociacion'],
         OperationStatusServiceResource::class => ['estados-servicio'],
         OperationOnCallUserResource::class => ['roles-de-guardia'],

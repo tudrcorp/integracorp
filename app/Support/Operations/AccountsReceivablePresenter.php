@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Operations;
 
 use App\Models\OperationAccountsReceivable;
+use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 
 final class AccountsReceivablePresenter
 {
@@ -15,12 +16,15 @@ final class AccountsReceivablePresenter
 
     public static function patientName(OperationAccountsReceivable $record): string
     {
-        if (filled($record->telemedicinePatient?->full_name)) {
-            return (string) $record->telemedicinePatient->full_name;
+        if ($record->telemedicinePatient !== null) {
+            $name = TelemedicinePatientDisplayName::fromPatient($record->telemedicinePatient);
+            if ($name !== '') {
+                return $name;
+            }
         }
 
         if (filled($record->operationCoordinationService?->patient)) {
-            return (string) $record->operationCoordinationService->patient;
+            return TelemedicinePatientDisplayName::forCoordination($record->operationCoordinationService);
         }
 
         if (filled($record->telemedicineCase?->patient_name)) {

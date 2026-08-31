@@ -8,9 +8,11 @@ use App\Enums\PlanPricingMode;
 use App\Models\Benefit;
 use App\Models\BusinessUnit;
 use App\Models\Plan;
+use App\Support\ClinicalEntitlements\ClinicalUsageAccessOtp;
+use App\Support\ClinicalEntitlements\PlanBenefitClinicalFormSchema;
+use App\Support\ClinicalEntitlements\PlanClinicalStructurePersistence;
 use App\Support\Plans\PlanCodeGenerator;
 use App\Support\Plans\PlanStructureMatrix;
-use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
@@ -22,7 +24,6 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
-use Filament\Support\Enums\GridDirection;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -172,24 +173,28 @@ class PlanWizardForm
     private static function benefitsStep(): Step
     {
         return Step::make('Beneficios')
-            ->label('Beneficios y costos límite')
-            ->description('Qué cubre el plan y hasta cuánto')
+            ->label('Beneficios, cupos clínicos y costos límite')
+            ->description('Qué cubre el plan, qué usa el médico y hasta cuánto en USD')
             ->icon(Heroicon::QueueList)
             ->afterValidation(function (Get $get, Set $set): void {
                 self::syncMatrices($get, $set);
             })
             ->schema([
-                // Paquete de beneficios: van como un todo, sin límite por cobertura.
-                CheckboxList::make('package_benefit_ids')
-                    ->label('Beneficios incluidos en el paquete')
-                    ->helperText('El paquete se cobra como un todo: los beneficios no llevan costo límite por cobertura.')
-                    ->options(fn (): array => Benefit::query()->orderBy('description')->pluck('description', 'id')->all())
-                    ->searchable()
-                    ->bulkToggleable()
-                    ->columns(2)
-                    ->gridDirection(GridDirection::Row)
-                    ->required()
+                Repeater::make('package_benefits')
+                    ->label('Beneficios del paquete y uso clínico')
+                    ->helperText('El paquete se cobra como un todo (tarifas en el siguiente paso). Aquí se define qué servicio clínico desbloquea cada beneficio y con qué cupo. Eso no cambia el precio.')
+                    ->addActionLabel('Agregar beneficio')
+                    ->defaultItems(1)
+                    ->minItems(1)
+                    ->collapsible()
                     ->visible(fn (Get $get): bool => ! self::usesCoverages($get))
+                    ->itemLabel(fn (array $state): string => (string) (
+                        Benefit::query()->find($state['benefit_id'] ?? null)?->description ?? 'Nuevo beneficio'
+                    ))
+                    ->schema([
+                        ...self::benefitSelectFields(),
+                        ...PlanBenefitClinicalFormSchema::fields(),
+                    ])
                     ->columnSpanFull(),
 
                 Repeater::make('plan_benefits')
@@ -203,27 +208,8 @@ class PlanWizardForm
                         Benefit::query()->find($state['benefit_id'] ?? null)?->description ?? 'Nuevo beneficio'
                     ))
                     ->schema([
-                        Select::make('benefit_id')
-                            ->label('Beneficio')
-                            ->options(fn (): array => Benefit::query()->orderBy('description')->pluck('description', 'id')->all())
-                            ->searchable()
-                            ->preload()
-                            ->required()
-                            ->live()
-                            ->distinct()
-                            ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                            ->createOptionForm([
-                                TextInput::make('description')
-                                    ->label('Nombre del beneficio')
-                                    ->required()
-                                    ->maxLength(255),
-                            ])
-                            ->createOptionUsing(fn (array $data): int => (int) Benefit::query()->create([
-                                'description' => $data['description'],
-                                'status' => 'ACTIVO',
-                                'created_by' => Auth::user()?->name ?? 'sistema',
-                            ])->id)
-                            ->columnSpanFull(),
+                        ...self::benefitSelectFields(),
+                        ...PlanBenefitClinicalFormSchema::fields(),
 
                         Repeater::make('limits')
                             ->label('Costo límite por cobertura')
@@ -390,6 +376,49 @@ class PlanWizardForm
         $mode = PlanPricingMode::fromStored($get('pricing_mode') ?? $get('../../pricing_mode'));
 
         return ($mode ?? PlanPricingMode::Coberturas)->usesCoverages();
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private static function benefitSelectFields(): array
+    {
+        return [
+            Select::make('benefit_id')
+                ->label('Beneficio')
+                ->options(fn (): array => Benefit::query()->orderBy('description')->pluck('description', 'id')->all())
+                ->searchable()
+                ->preload()
+                ->required()
+                ->live()
+                ->distinct()
+                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                ->afterStateUpdated(function (Set $set, mixed $state): void {
+                    PlanBenefitClinicalFormSchema::applyCatalogDefaults($set, $state);
+                })
+                ->createOptionForm([
+                    TextInput::make('description')
+                        ->label('Nombre del beneficio')
+                        ->required()
+                        ->maxLength(255)
+                        ->columnSpanFull(),
+                    ...PlanBenefitClinicalFormSchema::fields(),
+                ])
+                ->createOptionUsing(function (array $data): int {
+                    $benefit = Benefit::query()->create([
+                        'description' => strtoupper(trim((string) $data['description'])),
+                        'status' => 'ACTIVO',
+                        'created_by' => Auth::user()?->name ?? 'sistema',
+                    ]);
+
+                    if (ClinicalUsageAccessOtp::allowsEditingOnCurrentPage()) {
+                        PlanClinicalStructurePersistence::persistBenefitDefault((int) $benefit->id, $data);
+                    }
+
+                    return (int) $benefit->id;
+                })
+                ->columnSpanFull(),
+        ];
     }
 
     /**

@@ -15,8 +15,14 @@
         }
     }
     $val = static fn (mixed $value): string => filled($value) ? (string) $value : '—';
-    $medications = is_array($data['medicationsArr'] ?? null) ? $data['medicationsArr'] : [];
+    $medications = \App\Support\Telemedicine\TelemedicineMedicationsPdfRows::normalize(
+        is_array($data['medicationsArr'] ?? null) ? $data['medicationsArr'] : []
+    );
     $copies = ['Original', 'Copia'];
+    $stampDataUri = \App\Support\Telemedicine\TelemedicineDoctorStamp::dataUri($data['signature'] ?? null);
+    $stampSize = \App\Support\Telemedicine\TelemedicineDoctorStamp::displaySize($stampDataUri, 110, 110);
+    $doctorName = trim((string) ($data['doctor_name'] ?? ''));
+    $coverageGroup = trim((string) ($data['coverage_group'] ?? ''));
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -154,11 +160,6 @@
             background: #f9fafb;
             border: 1px dashed #d1d5db;
         }
-        .doctor-line {
-            margin-top: 8px;
-            padding-top: 5px;
-            border-top: 1px solid #e5e7eb;
-        }
         .footer-fixed {
             position: fixed;
             bottom: 8mm;
@@ -170,9 +171,40 @@
             font-size: 6pt;
             color: #9ca3af;
             background: #ffffff;
+            z-index: 10;
         }
         .footer-brand { font-weight: bold; color: {{ $brandCyan }}; }
-        .panel { padding-bottom: 14mm; }
+        .panel { padding-bottom: 52mm; }
+        .doctor-signature {
+            position: fixed;
+            top: 96mm;
+            width: 128mm;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            overflow: visible;
+            z-index: 11;
+        }
+        .doctor-signature-original { left: 14mm; }
+        .doctor-signature-copy { right: 14mm; left: auto; }
+        .doctor-signature-image {
+            display: block;
+            margin: 0 auto 3px auto;
+            border: 0;
+        }
+        .doctor-signature-name {
+            font-size: 7.5pt;
+            font-weight: bold;
+            color: #111827;
+            line-height: 1.2;
+            margin: 0 0 1px 0;
+        }
+        .doctor-signature-meta {
+            font-size: 6.75pt;
+            color: #4b5563;
+            line-height: 1.25;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -182,6 +214,9 @@
 <table class="copies">
     <tr>
         @foreach ($copies as $copyLabel)
+            @php
+                $isOriginal = $copyLabel === 'Original';
+            @endphp
             <td class="copy-col">
                 <div class="panel">
                     <table class="header-bar">
@@ -198,6 +233,9 @@
                                 <p class="doc-sub">Clave: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
                                 <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
                                 <span class="badge">{{ $copyLabel }}</span>
+                                @if($coverageGroup !== '')
+                                    <span class="badge">{{ $coverageGroup }}</span>
+                                @endif
                             </td>
                         </tr>
                         <tr>
@@ -233,43 +271,53 @@
                     @if($medications === [])
                         <p class="items-empty">Sin medicamentos indicados.</p>
                     @else
-                        <table class="items">
+                        <table class="items items-{{ $isOriginal ? 'original' : 'copy' }}">
                             <thead>
                                 <tr>
-                                    <th style="width:42%">Medicamento</th>
-                                    <th style="width:58%">Indicaciones</th>
+                                    @if($isOriginal)
+                                        <th>Medicamento</th>
+                                    @else
+                                        <th style="width:48%">Medicamento</th>
+                                        <th style="width:52%">Indicaciones</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach ($medications as $item)
                                     <tr>
                                         <td>{{ $val(is_array($item) ? ($item['medicines'] ?? null) : $item) }}</td>
-                                        <td>{{ $val(is_array($item) ? ($item['indications'] ?? null) : null) }}</td>
+                                        @unless($isOriginal)
+                                            <td>{{ $val(is_array($item) ? ($item['indications'] ?? null) : null) }}</td>
+                                        @endunless
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     @endif
-
-                    <div class="doctor-line">
-                        <table class="grid">
-                            <tr>
-                                <td>
-                                    <div class="label">Colegio médico</div>
-                                    <div class="value-muted">{{ $val($data['code_cm'] ?? null) }}</div>
-                                </td>
-                                <td>
-                                    <div class="label">MPPS</div>
-                                    <div class="value-muted">{{ $val($data['code_mpps'] ?? null) }}</div>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
                 </div>
             </td>
         @endforeach
     </tr>
 </table>
+@foreach ($copies as $copyLabel)
+    <div class="doctor-signature doctor-signature-{{ $copyLabel === 'Original' ? 'original' : 'copy' }}">
+        @if($stampDataUri !== '')
+            <img
+                class="doctor-signature-image"
+                src="{{ $stampDataUri }}"
+                alt="Firma y sello del médico"
+                @if(is_array($stampSize))
+                    width="{{ $stampSize['width'] }}"
+                    height="{{ $stampSize['height'] }}"
+                @endif
+            >
+        @endif
+        @if($doctorName !== '')
+            <p class="doctor-signature-name">{{ $val($doctorName) }}</p>
+        @endif
+        <p class="doctor-signature-meta">MPPS: {{ $val($data['code_mpps'] ?? null) }}</p>
+    </div>
+@endforeach
 <div class="footer-fixed">
     Documento generado por el <span class="footer-brand">departamento de telemedicina de Tu Doctor en Casa</span>.
     Uso clínico; original y copia en la misma hoja.

@@ -11,13 +11,16 @@ it('expone botón de cancelar en el infolist de la orden de servicio', function 
     $actionsPath = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/OperationServiceOrderViewActions.php');
 
     expect($infolistPath)
+        ->toContain('OperationServiceOrderViewActions::makeVoidForRegenerationAction()')
         ->toContain('OperationServiceOrderViewActions::makeCancelAction()')
         ->toContain('->footerActions([')
         ->toContain('->footerActionsAlignment(Alignment::End)');
 
     expect($pagePath)
         ->toContain('cancelServiceOrderAction')
-        ->toContain('OperationServiceOrderViewActions::makeCancelAction()');
+        ->toContain('voidServiceOrderForRegenerationAction')
+        ->toContain('OperationServiceOrderViewActions::makeCancelAction()')
+        ->toContain('OperationServiceOrderViewActions::makeVoidForRegenerationAction()');
 
     expect($actionsPath)
         ->toContain("'status' => 'CANCELADA'")

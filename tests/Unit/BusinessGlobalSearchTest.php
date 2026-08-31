@@ -10,6 +10,12 @@ it('normaliza documentos y detecta codigos', function (): void {
         ->and(BusinessGlobalSearch::looksLikeCode('AGT-000123'))->toBeTrue()
         ->and(BusinessGlobalSearch::looksLikeCode('Maria Perez'))->toBeFalse()
         ->and(BusinessGlobalSearch::looksLikeDocument('V-12345678'))->toBeTrue()
+        ->and(BusinessGlobalSearch::looksLikeDocument('G-20012345'))->toBeTrue()
+        ->and(BusinessGlobalSearch::looksLikeDocument('C12345678'))->toBeTrue()
+        ->and(BusinessGlobalSearch::documentSearchVariants('V-12.345.678'))
+        ->toContain('V-12.345.678')
+        ->toContain('V12345678')
+        ->toContain('12345678')
         ->and(BusinessGlobalSearch::extractAgentDisplayCodeId('AGT-00045'))->toBe(45)
         ->and(BusinessGlobalSearch::extractAgentDisplayCodeId('agt0007'))->toBe(7)
         ->and(BusinessGlobalSearch::extractAgentDisplayCodeId('no-code'))->toBeNull();
@@ -30,7 +36,9 @@ it('habilita busqueda global optimizada en recursos clave de negocios', function
         'Agencies/AgencyResource.php' => ['code', 'rif', 'ci_responsable', 'name_corporative'],
         'Agents/AgentResource.php' => ['code_agent', 'ci', 'rif', 'extractAgentDisplayCodeId'],
         'Affiliations/AffiliationResource.php' => ['nro_identificacion_ti', 'affiliates', 'code'],
+        'Affiliates/AffiliateResource.php' => ['nro_identificacion', 'AffiliationResource::getUrl', 'shouldRegisterNavigation'],
         'AffiliationCorporates/AffiliationCorporateResource.php' => ['name_corporate', 'corporateAffiliates', 'rif'],
+        'AffiliateCorporates/AffiliateCorporateResource.php' => ['nro_identificacion', 'AffiliationCorporateResource::getUrl', 'shouldRegisterNavigation'],
         'IndividualQuotes/IndividualQuoteResource.php' => ['full_name', 'code'],
         'CorporateQuotes/CorporateQuoteResource.php' => ['full_name', 'rif', 'code'],
         'Companies/CompanyResource.php' => ['name', 'rif'],
@@ -65,6 +73,7 @@ it('define trait BusinessGlobalSearchTest busqueda global sin dividir terminos y
     expect($trait)->not->toBeFalse()
         ->toContain('shouldSplitGlobalSearchTerms')
         ->toContain('BusinessGlobalSearch::constrain')
+        ->toContain('businessGlobalSearchEagerLoads')
         ->toContain('getGlobalSearchResultsLimit');
 });
 

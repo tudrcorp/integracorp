@@ -46,6 +46,8 @@ class ViewAffiliateCorporate extends ViewRecord
             'affiliationCorporate.state',
             'affiliationCorporate.city',
             'affiliationCorporate.region',
+            'plan.benefitPlans.limit:id,description',
+            'plan.clinicalSettings',
         ]);
 
         return $record;

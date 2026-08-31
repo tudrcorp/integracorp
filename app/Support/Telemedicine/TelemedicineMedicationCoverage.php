@@ -63,6 +63,51 @@ final class TelemedicineMedicationCoverage
         return 'No cubierto';
     }
 
+    /**
+     * Etiqueta corta para el PDF que ve el paciente.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public static function pdfCoverageLabelFromRow(array $row, ?bool $inventoryIsCovered = null): string
+    {
+        if (isset($row['coverage']) && is_string($row['coverage']) && $row['coverage'] !== '') {
+            return self::shortPdfCoverageLabel($row['coverage']);
+        }
+
+        if (array_key_exists('is_covered', $row)) {
+            return filter_var($row['is_covered'], FILTER_VALIDATE_BOOLEAN) ? 'Cubierto' : 'No cubierto';
+        }
+
+        if (self::rowHasCoveredWithoutInventory($row)) {
+            return 'Cubierto';
+        }
+
+        if (self::rowHasUncoveredManual($row) && ! self::rowHasInventory($row)) {
+            return 'No cubierto';
+        }
+
+        if (self::rowHasInventory($row)) {
+            return $inventoryIsCovered === true ? 'Cubierto' : 'No cubierto';
+        }
+
+        return 'No cubierto';
+    }
+
+    public static function shortPdfCoverageLabel(string $coverage): string
+    {
+        $normalized = mb_strtolower(trim($coverage));
+
+        if (str_contains($normalized, 'no cubierto')) {
+            return 'No cubierto';
+        }
+
+        if (str_starts_with($normalized, 'cubierto')) {
+            return 'Cubierto';
+        }
+
+        return $coverage;
+    }
+
     public static function coverageForPersist(?int $operationInventoryId, bool $coveredWithoutInventory = false): bool
     {
         if ($coveredWithoutInventory) {

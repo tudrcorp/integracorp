@@ -11,6 +11,7 @@ it('mejora UX de tabla de familiares afiliados en business', function (): void {
         ->toContain('->striped()')
         ->toContain('SelectFilter::make')
         ->toContain("TextColumn::make('business_unit_id')")
+        ->toContain("TextColumn::make('specific_business_unit')")
         ->toContain("TextColumn::make('business_line_id')")
         ->toContain('businessLine:id,definition')
         ->toContain('businessUnit:id,definition')

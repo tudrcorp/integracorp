@@ -15,6 +15,7 @@ it('incluye linea y unidad de negocio en la tabla de afiliados individuales', fu
     expect($source)
         ->toContain("TextColumn::make('affiliation.business_line_id')")
         ->toContain("TextColumn::make('affiliation.business_unit_id')")
+        ->toContain("TextColumn::make('affiliation.specific_business_unit')")
         ->toContain('affiliation.businessLine:id,definition')
         ->toContain('affiliation.businessUnit:id,definition');
 });
@@ -29,6 +30,7 @@ it('incluye linea y unidad de negocio en la tabla de afiliados corporativos', fu
     expect($source)
         ->toContain("TextColumn::make('affiliationCorporate.business_line_id')")
         ->toContain("TextColumn::make('affiliationCorporate.business_unit_id')")
+        ->toContain("TextColumn::make('affiliationCorporate.specific_business_unit')")
         ->toContain('affiliationCorporate.businessLine:id,definition')
         ->toContain('affiliationCorporate.businessUnit:id,definition');
 });

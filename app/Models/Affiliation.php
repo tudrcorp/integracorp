@@ -96,6 +96,7 @@ class Affiliation extends Model
 
         // ...Unidad de Negocio y linea de servicio
         'business_unit_id',
+        'specific_business_unit',
         'business_line_id',
         'ownerAccountManagers',
 
