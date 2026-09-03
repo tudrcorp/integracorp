@@ -220,7 +220,7 @@ final class StorefrontPlanNarrative
             'inicial' => [
                 'key' => 'inicial',
                 'title' => 'Plan Inicial',
-                'kicker' => 'El punto de partida',
+                'kicker' => '',
                 'promise' => 'Orientación médica y beneficios esenciales para empezar a cuidarte sin complicaciones. Ideal si buscas una red de asistencia clara, cercana y al alcance.',
                 'audience' => 'Atención médica en tu domicilio cuando la necesitas: orientación telefónica, consultas, laboratorio e imágenes, sin salir de casa. Hasta los 99 años.',
                 'accent' => '#38bdf8',
@@ -230,7 +230,7 @@ final class StorefrontPlanNarrative
             'ideal' => [
                 'key' => 'ideal',
                 'title' => 'Plan Ideal',
-                'kicker' => 'El más elegido',
+                'kicker' => '',
                 'promise' => 'Más protección, más red y más tranquilidad. Un equilibrio entre cobertura amplia y una tarifa que se entiende, con beneficios que se sienten en el día a día.',
                 'audience' => 'Todo lo del Plan Inicial, más consulta con especialistas y cobertura si tienes un accidente. Para cuando quieres un respaldo más completo. Hasta los 85 años.',
                 'accent' => '#2dd4bf',
@@ -240,7 +240,7 @@ final class StorefrontPlanNarrative
             'especial' => [
                 'key' => 'especial',
                 'title' => 'Plan Especial',
-                'kicker' => 'Máxima cobertura',
+                'kicker' => '',
                 'promise' => 'La protección más completa de la línea básica: topes más altos, más beneficios y la certeza de tener a Tu Dr En Casa cuando el momento lo pide.',
                 'audience' => 'Nuestra cobertura más amplia: todo lo del Plan Ideal, más protección ante emergencias médicas. Tranquilidad total para tu familia. Hasta los 85 años.',
                 'accent' => '#fbbf24',

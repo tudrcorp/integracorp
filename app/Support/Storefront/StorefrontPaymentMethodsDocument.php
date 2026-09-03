@@ -36,6 +36,34 @@ final class StorefrontPaymentMethodsDocument
         return is_string($path) && is_file($path) ? $path : null;
     }
 
+    /**
+     * Copia estable sin espacios para WhatsApp / descarga pública.
+     */
+    public static function ensureShareableRelativePath(): ?string
+    {
+        $source = self::absolutePath();
+
+        if ($source === null) {
+            return null;
+        }
+
+        $relative = self::STORAGE_DIRECTORY.'/'.self::DOWNLOAD_FILENAME;
+        $destination = Storage::disk('public')->path($relative);
+        $directory = dirname($destination);
+
+        if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
+            return null;
+        }
+
+        if (! is_file($destination) || filemtime($destination) < filemtime($source)) {
+            if (! @copy($source, $destination)) {
+                return null;
+            }
+        }
+
+        return is_file($destination) ? $relative : null;
+    }
+
     public static function exists(): bool
     {
         return self::absolutePath() !== null;

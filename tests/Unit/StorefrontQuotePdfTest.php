@@ -49,12 +49,23 @@ it('el pdf de la pwa es una sola hoja dinamica sin portada ni condiciones extra'
         ->and($fullProposal)->toContain('propuesta-economica-page-2')
         ->and($fullProposal)->toContain('propuesta-economica-page-4')
         ->and($creator)->toContain('storeDetailsIndividualQuote')
+        ->and($creator)->toContain('NotifyAnalystsOfStorefrontIndividualQuoteJob::dispatch')
+        ->and($creator)->not->toContain('NotificationController::createdIndividualQuote')
         ->and($creator)->not->toContain('IndividualQuotePdfGenerator')
         ->and($creator)->not->toContain('generateForQuote')
         ->and($generator)->toContain("loadView('documents.storefront-quote'")
         ->and($generator)->not->toContain('propuesta-economica')
         ->and($proposal)->toContain('StorefrontQuotePdf::ensure')
         ->and($utils)->toContain('bool $generatePdf = true');
+
+    $controller = file_get_contents(storefrontQuotePdfPath('app/Http/Controllers/Storefront/StorefrontQuotePdfController.php'));
+    $routes = file_get_contents(storefrontQuotePdfPath('routes/storefront.php'));
+
+    expect($controller)
+        ->toContain('StorefrontQuotePdf::ensure')
+        ->toContain('response()->download')
+        ->and($routes)->toContain('storefront.quote.pdf')
+        ->and($routes)->toContain('StorefrontQuotePdfController');
 });
 
 it('el pie de la pwa lleva contacto y qr de metodos de pago', function (): void {

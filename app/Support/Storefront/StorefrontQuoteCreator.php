@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support\Storefront;
 
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
+use App\Jobs\NotifyAnalystsOfStorefrontIndividualQuoteJob;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\IndividualQuote;
@@ -21,6 +21,7 @@ use Throwable;
  * Persiste una cotización individual. El detalle se guarda en el acto;
  * el PDF de una sola hoja (estructura dinámica) se arma cuando el cliente
  * lo descarga desde la PWA, no la propuesta económica de 3–4 páginas.
+ * El aviso a analistas va en cola para no retrasar la UX.
  */
 final class StorefrontQuoteCreator
 {
@@ -58,6 +59,10 @@ final class StorefrontQuoteCreator
         if (! $systemUser instanceof User) {
             throw new RuntimeException('No se pudo determinar el usuario del sistema para generar la cotización.');
         }
+
+        $agentLabel = $isAgentSession
+            ? (string) ($agentUser?->name ?? 'Agente')
+            : 'PWA público';
 
         try {
             $quote = DB::transaction(function () use ($catalogPlan, $entries, $fullName, $email, $phone, $systemUser, $isAgentSession, $agentUser): IndividualQuote {
@@ -100,11 +105,6 @@ final class StorefrontQuoteCreator
                     throw new RuntimeException('Error al guardar los detalles de la cotización.');
                 }
 
-                NotificationController::createdIndividualQuote(
-                    $record->code,
-                    $isAgentSession ? (string) ($agentUser?->name ?? 'Agente') : 'PWA público',
-                );
-
                 return $record->refresh();
             });
         } catch (ValidationException $exception) {
@@ -114,6 +114,11 @@ final class StorefrontQuoteCreator
 
             throw new RuntimeException('No pudimos generar la cotización. Intenta nuevamente.');
         }
+
+        NotifyAnalystsOfStorefrontIndividualQuoteJob::dispatch(
+            (string) $quote->code,
+            $agentLabel,
+        );
 
         StorefrontQuoteDraft::clear();
         StorefrontQuoteShare::rememberCode((string) $quote->code);

@@ -36,8 +36,10 @@ it('la narrativa convierte el plan tecnico en ficha de producto', function (): v
     $otro = new Plan(['description' => 'Vital']);
 
     expect(StorefrontPlanNarrative::keyFor($inicial))->toBe('inicial')
-        ->and(StorefrontPlanNarrative::for($inicial)['kicker'])->toBe('El punto de partida')
+        ->and(StorefrontPlanNarrative::for($inicial)['kicker'])->toBe('')
         ->and(StorefrontPlanNarrative::keyFor($ideal))->toBe('ideal')
+        ->and(StorefrontPlanNarrative::for($ideal)['kicker'])->toBe('')
+        ->and(StorefrontPlanNarrative::for(new Plan(['description' => 'Especial']))['kicker'])->toBe('')
         ->and(StorefrontPlanNarrative::displayTitle('Especial'))->toBe('Plan Especial')
         ->and(StorefrontPlanNarrative::displayTitle('Plan Inicial'))->toBe('Plan Inicial')
         ->and(StorefrontPlanNarrative::for($otro)['key'])->toBe('otro')
