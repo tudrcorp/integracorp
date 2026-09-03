@@ -241,7 +241,8 @@ html.storefront-app body {
     transform: rotate(-45deg);
 }
 
-html.storefront-app body.is-welcome .storefront-atmosphere {
+html.storefront-app body.is-welcome .storefront-atmosphere,
+html.storefront-app body:has(.sf-product) .storefront-atmosphere {
     display: none;
 }
 
@@ -697,24 +698,34 @@ html.storefront-app body.is-welcome .storefront-atmosphere {
     min-height: 100lvh;
     flex-direction: column;
     justify-content: flex-end;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .sf-product__photo {
-    position: absolute;
+    position: fixed;
     inset: 0;
     width: 100%;
     height: 100%;
+    height: 100lvh;
+    height: 100dvh;
     object-fit: cover;
     object-position: center 28%;
-    transform: translateZ(0) scale(1.04);
+    transform: translateZ(0) scale(1.08);
     transform-origin: center;
+    z-index: 0;
+    pointer-events: none;
     transition: filter 360ms ease, transform 360ms ease;
 }
 
 .sf-product__shade {
-    position: absolute;
+    position: fixed;
     inset: 0;
+    width: 100%;
+    height: 100%;
+    height: 100lvh;
+    height: 100dvh;
+    z-index: 0;
+    pointer-events: none;
     background:
         linear-gradient(180deg, rgba(2, 9, 20, 0.42) 0%, rgba(2, 9, 20, 0.16) 28%, rgba(2, 9, 20, 0.55) 58%, rgba(2, 9, 20, 0.96) 100%),
         linear-gradient(90deg, rgba(2, 9, 20, 0.22) 0%, transparent 45%);
@@ -722,7 +733,7 @@ html.storefront-app body.is-welcome .storefront-atmosphere {
 }
 
 html.storefront-app body:has(.sf-product) .storefront-header {
-    background: linear-gradient(180deg, rgba(2, 9, 20, 0.46) 0%, rgba(2, 9, 20, 0.12) 72%, transparent 100%);
+    background: transparent;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     border-bottom: 0;
@@ -730,6 +741,11 @@ html.storefront-app body:has(.sf-product) .storefront-header {
 
 html.storefront-app body:has(.sf-product) .storefront-header::before {
     display: none;
+}
+
+html.storefront-app body:has(.sf-product) .storefront-stage,
+html.storefront-app body:has(.sf-product) .storefront-page {
+    transform: none;
 }
 
 html.storefront-app body.is-benefits-open .sf-product__photo {
@@ -742,7 +758,7 @@ html.storefront-app body.is-benefits-open .sf-product__shade {
 }
 
 html.storefront-app body.is-benefits-open .storefront-header {
-    background: rgba(2, 9, 20, 0.22);
+    background: transparent;
 }
 
 .sf-product__copy {
@@ -2242,9 +2258,12 @@ html.storefront-app body.is-benefits-open {
     .storefront-overlay,
     .sf-product-overlay,
     .sf-success,
-    .sf-quote-sheet {
+    .sf-quote-sheet,
+    .sf-product__photo,
+    .sf-product__shade {
         width: 430px;
         left: 50%;
+        right: auto;
         margin-left: -215px;
         justify-content: stretch;
     }

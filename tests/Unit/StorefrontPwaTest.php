@@ -64,6 +64,8 @@ it('el layout storefront es una app mobile con menu hamburguesa en el header', f
         ->toContain('body.is-benefits-open .sf-product__photo')
         ->toContain('filter: blur(22px)')
         ->toContain('body:has(.sf-product) .storefront-header')
+        ->toContain('body:has(.sf-product) .storefront-atmosphere')
+        ->toContain('.sf-product__photo')
         ->toContain('.storefront-sheet__icon.is-whatsapp')
         ->toContain('.sf-seg[data-channel="whatsapp"] .sf-seg__btn--whatsapp')
         ->toContain('.sf-seg[data-channel="email"] .sf-seg__btn--email')
