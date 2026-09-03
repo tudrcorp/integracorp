@@ -31,3 +31,11 @@ it('asigna al select el rango o cobertura creados en modo paquete', function ():
         ->toContain('create_general_plan_age_range')
         ->toContain('create_general_plan_coverage');
 });
+
+it('incluye la cotizabilidad dress tylor controlada por el superadmin', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Plans/Schemas/PlanForm.php');
+
+    expect($source)
+        ->toContain('PlanQuotabilityFormSchema::section()')
+        ->toContain('PlanQuotabilityFormSchema::syncTypeChange');
+});

@@ -9,6 +9,7 @@ use App\Models\AgeRange;
 use App\Models\Coverage;
 use App\Models\Fee;
 use App\Models\Plan;
+use App\Support\Plans\PlanQuotability;
 use App\Support\Plans\PlanStructureSummary;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
@@ -146,6 +147,17 @@ class PlanInfolist
                                             ->badge()
                                             ->color('gray')
                                             ->placeholder('—'),
+                                        TextEntry::make('quotability')
+                                            ->label('Cotizable')
+                                            ->badge()
+                                            ->state(fn (mixed $record): string => $record instanceof Plan
+                                                ? PlanQuotability::tableLabel($record)
+                                                : '—')
+                                            ->color(fn (mixed $record): string => $record instanceof Plan
+                                                ? PlanQuotability::tableColor($record)
+                                                : 'gray')
+                                            ->visible(fn (mixed $record): bool => $record instanceof Plan
+                                                && PlanQuotability::isDressTylor($record->type)),
                                         TextEntry::make('pricing_mode')
                                             ->label('Forma de armado')
                                             ->badge()

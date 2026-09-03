@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Support\Telemedicine;
 
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
 final class TelemedicineInformeLargoPdfGenerator
@@ -16,16 +15,16 @@ final class TelemedicineInformeLargoPdfGenerator
      */
     public static function generateAndSave(array $data, string $typeDocument = 'informe-largo'): string
     {
-        ini_set('memory_limit', '2048M');
-
         $fileName = TelemedicineInformeLargoDataBuilder::pdfDocumentName($data, $typeDocument);
         $relativePath = self::STORAGE_DIRECTORY.'/'.$fileName;
 
         self::ensureStorageDirectoryExists();
 
-        $pdf = Pdf::loadView('documents.informe-medico-largo', ['data' => $data])
-            ->setPaper('a4', 'portrait');
-        $pdf->save(public_path('storage/'.$relativePath));
+        TelemedicineInformePdfRenderer::save(
+            TelemedicineInformePdfRenderer::VIEW_LARGO,
+            $data,
+            $relativePath,
+        );
 
         return $fileName;
     }

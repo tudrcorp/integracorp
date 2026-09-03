@@ -6,12 +6,15 @@ use App\Jobs\GeneratePdfInformeMedicoCorto;
 use App\Jobs\GeneratePdfMedicamentos;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
+use App\Models\TelemedicineDoctor;
+use App\Models\TelemedicinePatient;
 use App\Models\TelemedicinePatientMedications;
 use App\Models\User;
+use App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationResult;
 use App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationService;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
-use Illuminate\Bus\PendingBatch;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Queue;
 
 uses(Tests\TestCase::class);
 
@@ -98,17 +101,20 @@ it('expone opciones segun datos del caso y consulta inicial', function (): void 
         ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_ESPECIALISTA);
 });
 
-it('despacha batch de jobs para los documentos seleccionados', function (): void {
-    Bus::fake();
-
-    $case = new TelemedicineCase(['code' => 'TM-2']);
-    $case->id = 20;
-
-    $user = new User(['name' => 'Dr Test']);
-    $user->id = 9;
-
-    $regenerator = new class extends TelemedicineCaseDocumentRegenerationService
+/**
+ * Servicio real con solo las fronteras de I/O sustituidas: la consulta, el
+ * médico, el paciente y la ejecución del job. Todo lo demás —selección,
+ * armado de payloads y control de fallos— es el código de producción.
+ */
+function telemedicineRegenerationServiceForTest(?callable $onRun = null): TelemedicineCaseDocumentRegenerationService
+{
+    return new class($onRun) extends TelemedicineCaseDocumentRegenerationService
     {
+        /** @var list<object> */
+        public array $executed = [];
+
+        public function __construct(private $onRun = null) {}
+
         public function resolveConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
         {
             $consultation = new TelemedicineConsultationPatient([
@@ -122,6 +128,22 @@ it('despacha batch de jobs para los documentos seleccionados', function (): void
             return $consultation;
         }
 
+        protected function resolveDoctor(TelemedicineConsultationPatient $consultation, TelemedicineCase $case): ?TelemedicineDoctor
+        {
+            $doctor = new TelemedicineDoctor(['name' => 'CAROLINA PINILLO']);
+            $doctor->id = 5;
+
+            return $doctor;
+        }
+
+        protected function resolvePatient(TelemedicineConsultationPatient $consultation, TelemedicineCase $case): ?TelemedicinePatient
+        {
+            $patient = new TelemedicinePatient(['nro_identificacion' => '123']);
+            $patient->id = 7;
+
+            return $patient;
+        }
+
         protected function medicationsForCase(TelemedicineCase $case): \Illuminate\Support\Collection
         {
             return collect([
@@ -133,61 +155,107 @@ it('despacha batch de jobs para los documentos seleccionados', function (): void
             ]);
         }
 
-        public function regenerate(TelemedicineCase $case, array $documentKeys, User $user): array
+        protected function runJob(object $job): void
         {
-            $documentKeys = array_values(array_unique(array_filter($documentKeys)));
-            $available = $this->availableOptions($case);
-            $selected = array_values(array_filter(
-                $documentKeys,
-                static fn (string $key): bool => array_key_exists($key, $available),
-            ));
+            $this->executed[] = $job;
 
-            $jobs = [];
-
-            foreach ($selected as $documentKey) {
-                $job = match ($documentKey) {
-                    self::DOCUMENT_INFORME_CORTO => new GeneratePdfInformeMedicoCorto(
-                        ['code_reference' => 'REF-22', 'ci_patient' => '123'],
-                        $user,
-                        self::DOCUMENT_INFORME_CORTO,
-                    ),
-                    self::DOCUMENT_MEDICAMENTOS => new GeneratePdfMedicamentos(
-                        ['code_reference' => 'REF-22', 'ci_patiente' => '123', 'medicationsArr' => []],
-                        $user,
-                        self::DOCUMENT_MEDICAMENTOS,
-                    ),
-                    default => null,
-                };
-
-                if ($job !== null) {
-                    $jobs[] = $job;
-                }
+            if ($this->onRun !== null) {
+                ($this->onRun)($job);
             }
-
-            Bus::batch($jobs)
-                ->name('telemedicina-case-docs-regenerate-'.$case->id)
-                ->onQueue('telemedicina')
-                ->dispatch();
-
-            return $selected;
         }
     };
+}
 
-    $selected = $regenerator->regenerate($case, [
+function telemedicineRegenerationTestCase(): TelemedicineCase
+{
+    $case = new TelemedicineCase(['code' => 'TM-2']);
+    $case->id = 20;
+
+    return $case;
+}
+
+function telemedicineRegenerationTestUser(): User
+{
+    $user = new User(['name' => 'Dr Test']);
+    $user->id = 9;
+
+    return $user;
+}
+
+it('genera los documentos en el request sin tocar la cola', function (): void {
+    Bus::fake();
+    Queue::fake();
+
+    $service = telemedicineRegenerationServiceForTest();
+
+    $result = $service->regenerate(telemedicineRegenerationTestCase(), [
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO,
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS,
-    ], $user);
+    ], telemedicineRegenerationTestUser());
 
-    expect($selected)->toBe([
+    expect($result->generated)->toBe([
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO,
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS,
-    ]);
+    ])
+        ->and($result->failed)->toBe([])
+        ->and($result->allGenerated())->toBeTrue()
+        ->and($service->executed)->toHaveCount(2)
+        ->and($service->executed[0])->toBeInstanceOf(GeneratePdfInformeMedicoCorto::class)
+        ->and($service->executed[1])->toBeInstanceOf(GeneratePdfMedicamentos::class);
 
-    Bus::assertBatched(function (PendingBatch $batch) use ($case): bool {
-        return str_contains((string) $batch->name, 'telemedicina-case-docs-regenerate-'.$case->id)
-            && $batch->jobs->count() === 2
-            && $batch->queue() === 'telemedicina';
+    // El sentido de esta acción es funcionar cuando la cola está caída.
+    Bus::assertNothingBatched();
+    Queue::assertNothingPushed();
+});
+
+it('un documento que falla no impide generar los demás', function (): void {
+    Bus::fake();
+    Queue::fake();
+
+    $service = telemedicineRegenerationServiceForTest(function (object $job): void {
+        if ($job instanceof GeneratePdfMedicamentos) {
+            throw new RuntimeException('Disco lleno');
+        }
     });
+
+    $result = $service->regenerate(telemedicineRegenerationTestCase(), [
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO,
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS,
+    ], telemedicineRegenerationTestUser());
+
+    expect($result->generated)->toBe([TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO])
+        ->and($result->failed)->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS)
+        ->and($result->failed[TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS])->toBe('Disco lleno')
+        ->and($result->allGenerated())->toBeFalse()
+        ->and($result->noneGenerated())->toBeFalse()
+        ->and($result->failedLabels())->not->toBeEmpty();
+});
+
+it('informa cuando ningún documento pudo generarse', function (): void {
+    Bus::fake();
+    Queue::fake();
+
+    $service = telemedicineRegenerationServiceForTest(function (): void {
+        throw new RuntimeException('Fallo de plantilla');
+    });
+
+    $result = $service->regenerate(telemedicineRegenerationTestCase(), [
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO,
+    ], telemedicineRegenerationTestUser());
+
+    expect($result->noneGenerated())->toBeTrue()
+        ->and($result->generatedCount())->toBe(0)
+        ->and($result->failedCount())->toBe(1);
+});
+
+it('rechaza una selección vacía o inexistente', function (): void {
+    $service = telemedicineRegenerationServiceForTest();
+
+    expect(fn () => $service->regenerate(telemedicineRegenerationTestCase(), [], telemedicineRegenerationTestUser()))
+        ->toThrow(InvalidArgumentException::class);
+
+    expect(fn () => $service->regenerate(telemedicineRegenerationTestCase(), ['documento-inventado'], telemedicineRegenerationTestUser()))
+        ->toThrow(InvalidArgumentException::class);
 });
 
 it('la accion filament usa checkbox list y el servicio de regeneracion', function (): void {
@@ -211,7 +279,70 @@ it('la accion filament usa checkbox list y el servicio de regeneracion', functio
         ->toContain('GeneratePdfLaboratorio')
         ->toContain('GeneratePdfImagenologia')
         ->toContain('GeneratePdfEspecialista')
-        ->toContain("->onQueue('telemedicina')")
+        ->toContain('dispatch_sync')
+        ->not->toContain("->onQueue('telemedicina')")
         ->toContain('labsSplitForCase')
         ->toContain('TelemedicineMedicationCoverage::isCovered');
+});
+
+it('el resultado distingue éxito total, parcial y fallo completo', function (): void {
+    $labels = [
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO => 'Informe médico',
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS => 'Récipe',
+    ];
+
+    $todo = new TelemedicineCaseDocumentRegenerationResult(array_keys($labels), [], $labels);
+    $parcial = new TelemedicineCaseDocumentRegenerationResult(
+        [TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO],
+        [TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS => 'Disco lleno'],
+        $labels,
+    );
+    $ninguno = new TelemedicineCaseDocumentRegenerationResult(
+        [],
+        [TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO => 'Error'],
+        $labels,
+    );
+
+    expect($todo->allGenerated())->toBeTrue()
+        ->and($todo->noneGenerated())->toBeFalse()
+        ->and($parcial->allGenerated())->toBeFalse()
+        ->and($parcial->noneGenerated())->toBeFalse()
+        ->and($parcial->failedLabels())->toBe(['Récipe'])
+        ->and($parcial->generatedLabels())->toBe(['Informe médico'])
+        ->and($ninguno->noneGenerated())->toBeTrue()
+        ->and($ninguno->failedCount())->toBe(1);
+});
+
+it('la acción avisa del resultado real y ya no promete un proceso en cola', function (): void {
+    $action = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineCases/Actions/RegenerateTelemedicineCaseDocumentsAction.php');
+
+    expect($action)
+        ->toContain('notifyResult')
+        ->toContain('Generación parcial')
+        ->toContain('No se pudo generar ningún documento')
+        ->toContain('sin pasar por la cola')
+        // El texto viejo prometía un aviso posterior que, con la cola caída, nunca llegaba.
+        ->not->toContain('Recibirá una notificación al finalizar')
+        ->not->toContain('Se regenerarán en segundo plano');
+});
+
+it('tras generar lleva al médico al expediente documental del caso', function (): void {
+    $case = telemedicineRegenerationTestCase();
+
+    $url = App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\RegenerateTelemedicineCaseDocumentsAction::caseDocumentsTabUrl($case);
+
+    expect($url)->toContain('/telemedicina/telemedicine-cases/'.$case->id)
+        // La pestaña se selecciona con `<id>::tab`, no con el slug pelado.
+        ->toContain(rawurlencode(App\Support\Telemedicine\TelemedicineCaseDocumentReadyNotification::EXPEDIENTE_DOCUMENTAL_TAB_QUERY));
+});
+
+it('no redirige cuando no se generó ningún documento', function (): void {
+    $action = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineCases/Actions/RegenerateTelemedicineCaseDocumentsAction.php');
+
+    expect($action)
+        ->toContain('$livewire->redirect($redirectUrl)')
+        // El aviso de fallo debe leerse donde está el médico, sin arrastrarlo a otra pantalla.
+        ->toContain('! $result->noneGenerated() && filled($redirectUrl)')
+        // Se reutiliza el enlace ya probado en lugar de rearmarlo a mano.
+        ->toContain('TelemedicineCaseDocumentReadyNotification::caseExpedienteDocumentalUrl');
 });

@@ -49,10 +49,23 @@ return [
         'default_lng' => (float) env('GOOGLE_MAPS_DEFAULT_LNG', -66.9036),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI') ?: rtrim((string) env('APP_URL', ''), '/').'/app/entrar/google/callback',
+    ],
+
     'chat_agent_registration' => [
         'portal_login_url' => env('CHAT_AGENT_PORTAL_URL', 'https://integracorp.tudrgroup.com/agents/login'),
         'business_whatsapp_phone' => env('CHAT_BUSINESS_WHATSAPP_PHONE', '584127018390'),
         'default_owner_code' => env('CHAT_AGENT_DEFAULT_OWNER_CODE', 'TDG-100'),
+    ],
+
+    'storefront' => [
+        'whatsapp' => [
+            'business' => env('STOREFRONT_WHATSAPP_BUSINESS', env('CHAT_BUSINESS_WHATSAPP_PHONE', '584127018390')),
+            'quotes' => env('STOREFRONT_WHATSAPP_QUOTES', '584127018390'),
+        ],
     ],
 
     'chat_agency_master_registration' => [

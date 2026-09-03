@@ -128,8 +128,8 @@
         .data-table th,
         .data-table td {
             border: 1px solid #d7e7f2;
-            padding: 7px 6px;
-            font-size: 8.5pt;
+            padding: 5px 4px;
+            font-size: 7pt;
             vertical-align: middle;
             word-wrap: break-word;
         }

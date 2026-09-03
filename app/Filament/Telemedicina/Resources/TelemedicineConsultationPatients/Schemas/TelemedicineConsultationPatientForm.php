@@ -2,6 +2,7 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Schemas;
 
+use App\Enums\ClinicalServiceChannel;
 use App\Models\NoPathologicalHistory;
 use App\Models\OperationInventory;
 use App\Models\TelemedicineCase;
@@ -12,6 +13,7 @@ use App\Models\TelemedicineListSpecialist;
 use App\Models\TelemedicineListStudy;
 use App\Models\TelemedicinePriority;
 use App\Models\TelemedicineServiceList;
+use App\Support\ClinicalEntitlements\ClinicalQuotaFormGuard;
 use App\Support\ClinicalEntitlements\TelemedicineConsultationClinicalUi;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
@@ -19,6 +21,7 @@ use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationInventoryOptions;
+use App\Support\Telemedicine\TelemedicineSupplyInventoryOptions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
@@ -65,6 +68,100 @@ class TelemedicineConsultationPatientForm
         }
 
         return $case;
+    }
+
+    /**
+     * Insumos médicos consumidos por el médico en la consulta o el seguimiento.
+     *
+     * El listado sale del inventario (categoría de producto «Insumos Médicos») y,
+     * cuando el consumo descuenta existencias, se acota al almacén del caso.
+     */
+    private static function medicalSuppliesFieldset(mixed $case): Fieldset
+    {
+        return Fieldset::make('Insumos médicos consumidos')
+            ->schema([
+                Placeholder::make('medical_supplies_empty_notice')
+                    ->hiddenLabel()
+                    ->content('Todavía no hay insumos médicos cargados en el inventario. En cuanto Operaciones los registre aparecerán aquí para seleccionarlos.')
+                    ->visible(fn (): bool => self::supplyOptionsForCase($case) === [])
+                    ->columnSpanFull(),
+                Repeater::make('medical_supplies')
+                    ->hiddenLabel()
+                    ->addActionLabel('Agregar insumo consumido')
+                    ->defaultItems(0)
+                    ->reorderable(false)
+                    ->visible(fn (): bool => self::supplyOptionsForCase($case) !== [])
+                    ->table([
+                        TableColumn::make('Insumo médico'),
+                        TableColumn::make('Cantidad consumida')->width('22%'),
+                    ])
+                    ->schema([
+                        Select::make('operation_inventory_id')
+                            ->label('Insumo médico')
+                            ->placeholder('Busque el insumo por nombre')
+                            ->options(fn (): array => self::supplyOptionsForCase($case))
+                            ->getSearchResultsUsing(fn (string $search): array => TelemedicineSupplyInventoryOptions::searchOptionsForCase(
+                                self::caseWithDoctor($case),
+                                $search,
+                                self::caseWithDoctor($case)?->telemedicineDoctor,
+                            ))
+                            ->getOptionLabelUsing(function ($value): ?string {
+                                if (! filled($value)) {
+                                    return null;
+                                }
+
+                                $name = OperationInventory::query()->whereKey($value)->value('name');
+
+                                return filled($name) ? (string) $name : null;
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->distinct()
+                            ->required()
+                            ->validationMessages([
+                                'required' => 'Seleccione el insumo médico consumido.',
+                                'distinct' => 'Este insumo ya está en la lista: ajuste la cantidad en lugar de repetirlo.',
+                            ]),
+                        TextInput::make('quantity')
+                            ->label('Cantidad consumida')
+                            ->numeric()
+                            ->integer()
+                            ->default(1)
+                            ->minValue(1)
+                            ->required()
+                            ->maxValue(fn (Get $get): int|float => TelemedicineSupplyInventoryOptions::availableExistence(
+                                (int) $get('operation_inventory_id')
+                            ) ?? INF)
+                            ->validationMessages([
+                                'required' => 'Indique cuántas unidades consumió.',
+                                'min' => 'La cantidad debe ser al menos 1.',
+                                'max' => 'La cantidad supera la existencia disponible del insumo.',
+                            ]),
+                    ])
+                    ->columnSpanFull(),
+            ])->columnSpanFull()->columns(1);
+    }
+
+    /**
+     * Memorizado por request: el fieldset consulta las opciones para la
+     * visibilidad del aviso, la del repetidor y el propio select.
+     *
+     * @var array<string, array<int|string, string>>
+     */
+    private static array $supplyOptionsCache = [];
+
+    /**
+     * @return array<int|string, string>
+     */
+    private static function supplyOptionsForCase(mixed $case): array
+    {
+        $caseModel = self::caseWithDoctor($case);
+        $cacheKey = 'case:'.($caseModel?->id ?? 'none');
+
+        return self::$supplyOptionsCache[$cacheKey] ??= TelemedicineSupplyInventoryOptions::optionsForCase(
+            $caseModel,
+            $caseModel?->telemedicineDoctor,
+        );
     }
 
     private static function informAmdTrigger(): View
@@ -125,13 +222,30 @@ class TelemedicineConsultationPatientForm
             ->gridDirection(GridDirection::Row)
             ->options(fn (): array => TelemedicineConsultationClinicalUi::complementOptions())
             ->descriptions(fn (): array => TelemedicineConsultationClinicalUi::complementOptionDescriptions())
-            ->helperText(fn (Get $get): ?string => TelemedicineConsultationClinicalUi::complementsHelperText($get('complements')))
+            ->rules([
+                fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::complementsRule($livewire),
+            ])
+            ->helperText(function (Get $get, Component $livewire): ?string {
+                $blocked = ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Medication);
+
+                if ($blocked !== null && in_array(1, array_map('intval', (array) $get('complements')), true)) {
+                    return $blocked;
+                }
+
+                return TelemedicineConsultationClinicalUi::complementsHelperText($get('complements'));
+            })
             ->hint(fn (Get $get): ?string => TelemedicineConsultationClinicalUi::specialistNotContemplatedHint($get('complements')))
             ->hintColor('warning')
             ->hintIcon(fn (Get $get): ?Heroicon => TelemedicineConsultationClinicalUi::specialistNotContemplatedHint($get('complements')) !== null
                 ? Heroicon::OutlinedExclamationTriangle
                 : null)
-            ->afterStateUpdated(function (mixed $state, mixed $old): void {
+            ->afterStateUpdated(function (mixed $state, mixed $old, Component $livewire): void {
+                $blocked = ClinicalQuotaFormGuard::blockedComplementChannel($livewire, $state);
+
+                if ($blocked !== null && ! in_array(1, array_map('intval', (array) $old), true)) {
+                    ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Medication);
+                }
+
                 if (! TelemedicineConsultationClinicalUi::shouldNotifySpecialistNotContemplated($state, $old)) {
                     return;
                 }
@@ -488,7 +602,21 @@ class TelemedicineConsultationPatientForm
                                                         ->disabled($isTelemedicineServiceListIdLocked)
                                                         ->dehydrated(true)
                                                         ->options(fn (): array => TelemedicineConsultationClinicalUi::type1Options())
-                                                        ->helperText(function (Get $get) {
+                                                        ->rules([
+                                                            fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Type1),
+                                                        ])
+                                                        ->helperText(function (Get $get, Component $livewire) {
+                                                            $state = $get('telemedicine_service_list_id');
+                                                            $blocked = ClinicalQuotaFormGuard::helperText(
+                                                                $livewire,
+                                                                ClinicalServiceChannel::Type1,
+                                                                filled($state) ? (int) $state : null,
+                                                            );
+
+                                                            if ($blocked !== null) {
+                                                                return $blocked;
+                                                            }
+
                                                             $banner = TelemedicineConsultationClinicalUi::bannerMessage();
                                                             if (filled($banner)) {
                                                                 return $banner;
@@ -502,8 +630,14 @@ class TelemedicineConsultationPatientForm
 
                                                             return trim(($service?->description ?? '').' · '.($cupo ?? ''));
                                                         })
-                                                        ->afterStateUpdated(function (Set $set, $state, Get $get): void {
+                                                        ->afterStateUpdated(function (Set $set, $state, Get $get, Component $livewire): void {
                                                             self::syncServiceListSideEffects($set, $get, $state);
+
+                                                            ClinicalQuotaFormGuard::notifyIfBlocked(
+                                                                $livewire,
+                                                                ClinicalServiceChannel::Type1,
+                                                                filled($state) ? (int) $state : null,
+                                                            );
                                                         })
                                                         ->searchable()
                                                         ->required(fn (): bool => TelemedicineConsultationClinicalUi::type1Options() !== []),
@@ -550,6 +684,8 @@ class TelemedicineConsultationPatientForm
                                         ->label('Información Adicional')
                                         ->autosize(),
                                 ])->columnSpanFull()->columns(1),
+
+                            self::medicalSuppliesFieldset($case),
 
                         ]),
 
@@ -717,7 +853,21 @@ class TelemedicineConsultationPatientForm
                                         ->disabled($isTelemedicineServiceListIdLocked)
                                         ->dehydrated(true)
                                         ->options(fn (): array => TelemedicineConsultationClinicalUi::type1Options())
-                                        ->helperText(function (Get $get) {
+                                        ->rules([
+                                            fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Type1),
+                                        ])
+                                        ->helperText(function (Get $get, Component $livewire) {
+                                            $state = $get('telemedicine_service_list_id');
+                                            $blocked = ClinicalQuotaFormGuard::helperText(
+                                                $livewire,
+                                                ClinicalServiceChannel::Type1,
+                                                filled($state) ? (int) $state : null,
+                                            );
+
+                                            if ($blocked !== null) {
+                                                return $blocked;
+                                            }
+
                                             $banner = TelemedicineConsultationClinicalUi::bannerMessage();
                                             if (filled($banner)) {
                                                 return $banner;
@@ -731,8 +881,14 @@ class TelemedicineConsultationPatientForm
 
                                             return trim(($service?->description ?? '').' · '.($cupo ?? ''));
                                         })
-                                        ->afterStateUpdated(function (Set $set, $state, Get $get): void {
+                                        ->afterStateUpdated(function (Set $set, $state, Get $get, Component $livewire): void {
                                             self::syncServiceListSideEffects($set, $get, $state);
+
+                                            ClinicalQuotaFormGuard::notifyIfBlocked(
+                                                $livewire,
+                                                ClinicalServiceChannel::Type1,
+                                                filled($state) ? (int) $state : null,
+                                            );
                                         })
                                         ->searchable()
                                         ->required(fn (): bool => TelemedicineConsultationClinicalUi::type1Options() !== []),
@@ -784,6 +940,8 @@ class TelemedicineConsultationPatientForm
                                         ->label('Observaciones')
                                         ->autosize(),
                                 ])->columnSpanFull()->columns(1),
+
+                            self::medicalSuppliesFieldset($case),
                         ]),
 
                     Step::make('Medicamentos e Indicaciones')
@@ -1011,12 +1169,29 @@ class TelemedicineConsultationPatientForm
                                                 ->label('Laboratorios (CUBIERTOS)')
                                                 ->options(TelemedicineListLaboratory::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
                                                 ->multiple()
-                                                ->helperText(fn (): string => TelemedicineConsultationClinicalUi::channelHelper(\App\Enums\ClinicalServiceChannel::Laboratory) ?? 'Seleccione el/los exámenes de Laboratorio que requiera el paciente'),
+                                                ->rules([
+                                                    fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Laboratory),
+                                                ])
+                                                ->afterStateUpdated(function (Component $livewire): void {
+                                                    ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Laboratory);
+                                                })
+                                                ->live(onBlur: true)
+                                                ->helperText(fn (Component $livewire): ?string => ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Laboratory)
+                                                    ?? TelemedicineConsultationClinicalUi::channelHelper(ClinicalServiceChannel::Laboratory)
+                                                    ?? 'Seleccione el/los exámenes de Laboratorio que requiera el paciente'),
                                             Select::make('other_labs')
                                                 ->label('Otros Laboratorio (NO CUBIERTOS)')
                                                 ->options(TelemedicineListLaboratory::where('type', 'NO CUBIERTO')->get()->pluck('name', 'name'))
                                                 ->multiple()
-                                                ->helperText('Seleccione el/los exámenes de Laboratorio que requiera el paciente'),
+                                                ->rules([
+                                                    fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Laboratory),
+                                                ])
+                                                ->afterStateUpdated(function (Component $livewire): void {
+                                                    ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Laboratory);
+                                                })
+                                                ->live(onBlur: true)
+                                                ->helperText(fn (Component $livewire): ?string => ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Laboratory)
+                                                    ?? 'Seleccione el/los exámenes de Laboratorio que requiera el paciente'),
                                         ])->columns(1),
                                     Fieldset::make('Imagenología')
                                         ->schema([
@@ -1025,13 +1200,30 @@ class TelemedicineConsultationPatientForm
                                                 ->live()
                                                 ->options(TelemedicineListStudy::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
                                                 ->multiple()
-                                                ->helperText(fn (): string => TelemedicineConsultationClinicalUi::channelHelper(\App\Enums\ClinicalServiceChannel::Imaging) ?? 'Seleccione el/los estudios de Imágenes que requiera el paciente'),
+                                                ->rules([
+                                                    fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Imaging),
+                                                ])
+                                                ->afterStateUpdated(function (Component $livewire): void {
+                                                    ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Imaging);
+                                                })
+                                                ->live(onBlur: true)
+                                                ->helperText(fn (Component $livewire): ?string => ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Imaging)
+                                                    ?? TelemedicineConsultationClinicalUi::channelHelper(ClinicalServiceChannel::Imaging)
+                                                    ?? 'Seleccione el/los estudios de Imágenes que requiera el paciente'),
                                             Select::make('other_studies')
                                                 ->label(' Otros Estudios de Imágenes (NO CUBIERTOS)')
                                                 ->live()
                                                 ->options(TelemedicineListStudy::where('type', 'NO CUBIERTO')->get()->pluck('name', 'name'))
                                                 ->multiple()
-                                                ->helperText('Seleccione el/los estudios de Imágenes que requiera el paciente'),
+                                                ->rules([
+                                                    fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Imaging),
+                                                ])
+                                                ->afterStateUpdated(function (Component $livewire): void {
+                                                    ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Imaging);
+                                                })
+                                                ->live(onBlur: true)
+                                                ->helperText(fn (Component $livewire): ?string => ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Imaging)
+                                                    ?? 'Seleccione el/los estudios de Imágenes que requiera el paciente'),
                                         ])->columnSpan(2)->columns(1),
                                     // ...
                                 ])->columns(3),
@@ -1052,11 +1244,29 @@ class TelemedicineConsultationPatientForm
                                     Select::make('consult_specialist')
                                         ->label('Interconsultas Especialistas para Patologías Agudas')
                                         ->options(TelemedicineListSpecialist::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
-                                        ->multiple(),
+                                        ->multiple()
+                                        ->rules([
+                                            fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Specialist),
+                                        ])
+                                        ->afterStateUpdated(function (Component $livewire): void {
+                                            ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Specialist);
+                                        })
+                                        ->live(onBlur: true)
+                                        ->helperText(fn (Component $livewire): ?string => ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Specialist)
+                                            ?? 'Interconsultas cubiertas por el plan.'),
                                     Select::make('other_specialist')
                                         ->label('Otros Especialistas') // BVA
                                         ->options(fn () => TelemedicineListSpecialist::uncoveredNames())
-                                        ->multiple(),
+                                        ->multiple()
+                                        ->rules([
+                                            fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Specialist),
+                                        ])
+                                        ->afterStateUpdated(function (Component $livewire): void {
+                                            ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Specialist);
+                                        })
+                                        ->live(onBlur: true)
+                                        ->helperText(fn (Component $livewire): ?string => ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Specialist)
+                                            ?? 'Especialistas no cubiertos por el plan.'),
                                 ])->columnSpanFull()->columns(2),
                         ]),
                 ])

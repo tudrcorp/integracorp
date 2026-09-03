@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Support\Operations;
 
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceItems;
+use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ViewOperationCoordinationService;
+use App\Filament\Operations\Resources\OperationCoordinationServices\Schemas\OperationCoordinationServiceInfolist;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable;
 use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrderResource;
 use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRetailServicesAction;
@@ -894,8 +896,8 @@ final class CoordinationServiceItemsManager
             $style = self::clinicalItemStatusCounterPillStyle($status);
             $label = self::clinicalItemStatusCounterLabel($status, $count);
 
-            $pills[] = '<span style="background:linear-gradient(180deg,'.$style['bg'].' 0%,'.$style['bg'].' 100%);color:#ffffff;padding:8px 16px;border-radius:9999px;font-size:.8rem;font-weight:800;letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;box-shadow:'.$style['shadow'].',inset 0 1px 0 rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.24);">'
-                .'<span style="font-size:10px;opacity:.95;">●</span> '.e($label)
+            $pills[] = '<span style="background:linear-gradient(180deg,'.$style['bg'].' 0%,'.$style['bg'].' 100%);color:#ffffff;padding:4px 12px;border-radius:9999px;font-size:.7rem;font-weight:800;letter-spacing:.02em;line-height:1.25;display:inline-flex;align-items:center;gap:5px;box-shadow:'.$style['shadow'].',inset 0 1px 0 rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.24);">'
+                .'<span style="font-size:8px;opacity:.95;">●</span> '.e($label)
                 .'</span>';
         }
 
@@ -903,7 +905,7 @@ final class CoordinationServiceItemsManager
             return '';
         }
 
-        return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">'.implode('', $pills).'</div>';
+        return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;">'.implode('', $pills).'</div>';
     }
 
     /**
@@ -1099,10 +1101,11 @@ final class CoordinationServiceItemsManager
         $headerSummary = self::clinicalItemsCompactHeaderSummary($itemsForDisplay);
 
         $manageServiceUrl = ManageCoordinationServiceItems::getUrl(['record' => $record]);
+        $associatedItemsUrl = self::associatedItemsTabUrl($record);
         $canShowManageLink = ! self::manageServiceActionIsDisabled($record)
             && ! in_array('ATENMEDI', Auth::user()?->departament ?? [], true);
 
-        $rows = $itemsForDisplay->map(function (array $item) use ($orderLinks, $quoteLinks, $manageServiceUrl, $canShowManageLink): string {
+        $rows = $itemsForDisplay->map(function (array $item) use ($orderLinks, $quoteLinks, $manageServiceUrl, $canShowManageLink, $associatedItemsUrl): string {
             $categoryAbbrev = self::clinicalItemCategoryAbbrev($item['category']);
             $categoryClass = self::managementCategoryBadgeClass($item['category']);
             $coverageAbbrev = self::clinicalItemCoverageAbbrev($item['coverage']);
@@ -1171,7 +1174,14 @@ final class CoordinationServiceItemsManager
                 .'<span class="fi-coordination-clinical-item__category">'
                 .'<span class="'.$categoryClass.'">'.e($categoryAbbrev).'</span>'
                 .'</span>'
-                .'<span class="fi-coordination-clinical-item__label">'.e($label).'</span>'
+                .'<span class="fi-coordination-clinical-item__label">'
+                .'<a href="'.e($associatedItemsUrl).'" '
+                .'class="fi-coordination-clinical-item__label-link" '
+                .'title="Abrir en Ítems asociados" '
+                .'onclick="event.stopPropagation();">'
+                .e($label)
+                .'</a>'
+                .'</span>'
                 .'</span>'
                 .'<span class="fi-coordination-clinical-item__trail">'
                 .'<span class="fi-coordination-clinical-item__meta">'
@@ -1197,6 +1207,18 @@ final class CoordinationServiceItemsManager
             .'<ul class="fi-coordination-clinical-items-list">'.$rows.'</ul>'
             .'</div>'
         );
+    }
+
+    /**
+     * Ficha de la coordinación abierta directamente en la pestaña de ítems asociados,
+     * donde el analista puede consultarlos y editarlos.
+     */
+    public static function associatedItemsTabUrl(OperationCoordinationService $record): string
+    {
+        return ViewOperationCoordinationService::getUrl([
+            'record' => $record,
+            'tab' => OperationCoordinationServiceInfolist::ASSOCIATED_ITEMS_TAB,
+        ]);
     }
 
     public static function manageServiceSelectedItemsTable(OperationCoordinationService $record, mixed $selectedKeys): HtmlString

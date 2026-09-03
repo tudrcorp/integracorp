@@ -6712,6 +6712,81 @@
     @apply min-w-0 flex-1 whitespace-normal break-words text-[13px] font-medium leading-snug text-gray-900 dark:text-gray-100;
   }
 
+  /*
+   * Bitácora de observaciones: el correo del autor va como helper text y no tiene
+   * espacios donde partir, así que sin `overflow-wrap` se desborda sobre la
+   * columna "Actualización".
+   */
+  .fi-bitacora-author {
+    @apply min-w-0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .fi-bitacora-author .fi-in-entry-content-ctn {
+    @apply min-w-0;
+  }
+
+  .fi-coordination-header {
+    @apply flex flex-col gap-2 py-2;
+  }
+
+  .fi-coordination-header__eyebrow {
+    @apply text-[.7rem] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400;
+  }
+
+  .fi-coordination-header__title {
+    @apply text-xl font-bold tracking-tight text-gray-900 dark:text-white;
+  }
+
+  .fi-coordination-header__pills {
+    @apply flex flex-wrap items-center gap-1.5;
+  }
+
+  .fi-coordination-header__pill {
+    @apply inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[.7rem] font-semibold leading-tight text-gray-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-gray-200;
+  }
+
+  .fi-coordination-header__pill-label {
+    @apply font-medium text-gray-500 dark:text-gray-400;
+  }
+
+  .fi-coordination-header__pill-value {
+    @apply font-bold text-gray-900 dark:text-white;
+  }
+
+  .fi-coordination-header__pill--link {
+    @apply border-primary-200 bg-primary-50 text-primary-800 transition hover:border-primary-300 hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 dark:border-primary-500/35 dark:bg-primary-500/10 dark:text-primary-200 dark:hover:bg-primary-500/20;
+  }
+
+  .fi-coordination-header__pill--link .fi-coordination-header__pill-label {
+    @apply text-primary-700/80 dark:text-primary-300/80;
+  }
+
+  .fi-coordination-header__pill--link .fi-coordination-header__pill-value {
+    @apply text-primary-900 dark:text-primary-100;
+  }
+
+  .fi-coordination-header__pill-arrow {
+    @apply text-[.65rem] leading-none opacity-70;
+  }
+
+  .fi-coordination-header__statuses {
+    @apply flex flex-wrap items-center gap-1.5;
+  }
+
+  .fi-coordination-header__status {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/25 px-3 py-1 text-[.7rem] font-extrabold tracking-wide text-white;
+  }
+
+  .fi-coordination-header__status-dot {
+    @apply text-[8px] opacity-95;
+  }
+
+  .fi-coordination-clinical-items-compact .fi-coordination-clinical-item__label-link {
+    @apply cursor-pointer rounded-sm text-inherit underline-offset-2 transition hover:text-primary-700 hover:underline focus-visible:underline focus-visible:outline-none dark:hover:text-primary-300;
+  }
+
   .fi-coordination-clinical-item__trail {
     @apply ml-auto inline-flex shrink-0 flex-wrap items-center justify-end gap-1.5;
   }

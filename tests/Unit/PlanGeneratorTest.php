@@ -272,6 +272,8 @@ it('formulario generador incluye matrices alineadas con columnas compartidas', f
         ->toContain('quotation-page-gallery-button')
         ->toContain('quotation-gallery-modal')
         ->toContain('Agregar columna')
+        ->toContain('->collapsible()')
+        ->toContain('->collapsed()')
         ->toContain('stacked-matrices-editor')
         ->toContain('include_monthly_total')
         ->toContain('Matrices del plan')

@@ -6,6 +6,8 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineCases\Actions;
 
 use App\Models\TelemedicineCase;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Telemedicine\TelemedicineCaseDocumentReadyNotification;
+use App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationResult;
 use App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
@@ -16,6 +18,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\HtmlString;
+use Livewire\Component;
 use Throwable;
 
 final class RegenerateTelemedicineCaseDocumentsAction
@@ -27,7 +30,7 @@ final class RegenerateTelemedicineCaseDocumentsAction
             ->icon(Heroicon::OutlinedDocumentDuplicate)
             ->color('info')
             ->modalHeading('Generar documentos de la consulta')
-            ->modalDescription('Seleccione uno o varios documentos para volver a generarlos a partir de la información registrada en el caso.')
+            ->modalDescription('Seleccione uno o varios documentos para volver a generarlos a partir de la información registrada en el caso. Se generan de inmediato, sin depender de la cola de documentos.')
             ->modalIcon(Heroicon::OutlinedDocumentDuplicate)
             ->modalIconColor('info')
             ->modalWidth(Width::Large)
@@ -79,7 +82,7 @@ final class RegenerateTelemedicineCaseDocumentsAction
                 return [
                     CheckboxList::make('documents')
                         ->label('Documentos a generar')
-                        ->helperText('Puede seleccionar uno o varios. Se regenerarán en segundo plano y quedarán disponibles para descarga.')
+                        ->helperText('Puede seleccionar uno o varios. Se generan en el momento, sin pasar por la cola: espere unos segundos sin cerrar la ventana.')
                         ->options($options)
                         ->required()
                         ->columns(1)
@@ -89,7 +92,7 @@ final class RegenerateTelemedicineCaseDocumentsAction
                         ]),
                 ];
             })
-            ->action(function (TelemedicineCase $record, array $data) use ($beforeAction): void {
+            ->action(function (TelemedicineCase $record, array $data, Component $livewire) use ($beforeAction): void {
                 if ($beforeAction !== null && $beforeAction($record) === false) {
                     return;
                 }
@@ -106,21 +109,23 @@ final class RegenerateTelemedicineCaseDocumentsAction
                 }
 
                 try {
-                    $selected = app(TelemedicineCaseDocumentRegenerationService::class)->regenerate(
+                    $result = app(TelemedicineCaseDocumentRegenerationService::class)->regenerate(
                         $record,
                         array_values(array_filter((array) ($data['documents'] ?? []))),
                         $user,
                     );
 
-                    $count = count($selected);
+                    self::notifyResult($result);
 
-                    Notification::make()
-                        ->title($count === 1 ? 'Documento en generación' : 'Documentos en generación')
-                        ->body($count === 1
-                            ? 'El documento seleccionado se está regenerando. Recibirá una notificación al finalizar.'
-                            : "Se están regenerando {$count} documentos. Recibirá una notificación al finalizar cada uno.")
-                        ->success()
-                        ->send();
+                    // Lo generado se consulta en el expediente del caso: se lleva
+                    // allí al médico en vez de dejarlo en la tabla buscándolo.
+                    // Si no salió ningún documento no se redirige, para que el
+                    // aviso de error se lea donde está.
+                    $redirectUrl = self::caseDocumentsTabUrl($record);
+
+                    if (! $result->noneGenerated() && filled($redirectUrl)) {
+                        $livewire->redirect($redirectUrl);
+                    }
                 } catch (Throwable $exception) {
                     Log::error('RegenerateTelemedicineCaseDocumentsAction: error', [
                         'telemedicine_case_id' => $record->id,
@@ -136,5 +141,61 @@ final class RegenerateTelemedicineCaseDocumentsAction
                         ->send();
                 }
             });
+    }
+
+    /**
+     * Ficha del caso abierta en la pestaña de documentos.
+     *
+     * Reutiliza el enlace que ya usan las notificaciones de documento listo:
+     * la pestaña se selecciona con el valor `expediente-documental::tab`, no con
+     * el slug a secas.
+     */
+    public static function caseDocumentsTabUrl(TelemedicineCase $record): ?string
+    {
+        return TelemedicineCaseDocumentReadyNotification::caseExpedienteDocumentalUrl([
+            'telemedicine_case_id' => $record->id,
+        ]);
+    }
+
+    /**
+     * Un plan B silencioso no sirve: el médico tiene que saber exactamente qué
+     * documento quedó fuera para poder reintentarlo o escalarlo.
+     */
+    private static function notifyResult(TelemedicineCaseDocumentRegenerationResult $result): void
+    {
+        if ($result->noneGenerated()) {
+            Notification::make()
+                ->title('No se pudo generar ningún documento')
+                ->body('Fallaron: '.implode(', ', $result->failedLabels()).'. Intente de nuevo o reporte a soporte.')
+                ->danger()
+                ->persistent()
+                ->send();
+
+            return;
+        }
+
+        if ($result->allGenerated()) {
+            $count = $result->generatedCount();
+
+            Notification::make()
+                ->title($count === 1 ? 'Documento generado' : 'Documentos generados')
+                ->body($count === 1
+                    ? 'El documento ya está disponible para descarga.'
+                    : "Los {$count} documentos ya están disponibles para descarga.")
+                ->success()
+                ->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title('Generación parcial')
+            ->body(
+                'Se generaron: '.implode(', ', $result->generatedLabels()).'. '
+                .'No se pudieron generar: '.implode(', ', $result->failedLabels()).'.'
+            )
+            ->warning()
+            ->persistent()
+            ->send();
     }
 }

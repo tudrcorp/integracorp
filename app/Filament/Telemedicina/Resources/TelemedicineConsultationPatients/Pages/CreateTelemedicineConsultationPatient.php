@@ -33,6 +33,7 @@ use App\Models\TelemedicinePatientStudy;
 use App\Models\User;
 use App\Services\NotificationTelemedicinaService;
 use App\Services\TelemedicineMedicationInventoryDeductor;
+use App\Services\TelemedicineSupplyConsumptionRecorder;
 use App\Support\ClinicalEntitlements\AffiliateClinicalEntitlementResolver;
 use App\Support\ClinicalEntitlements\ClinicalConsultationConsumption;
 use App\Support\ClinicalEntitlements\ClinicalEntitlement;
@@ -903,6 +904,13 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         try {
 
             $record = $this->getRecord()->toArray();
+
+            $consultationForSupplies = $this->getRecord();
+
+            if ($consultationForSupplies instanceof TelemedicineConsultationPatient) {
+                app(TelemedicineSupplyConsumptionRecorder::class)
+                    ->recordAndNotify($consultationForSupplies, $this->data['medical_supplies'] ?? []);
+            }
 
             if (($record['status'] ?? '') !== TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS) {
                 try {

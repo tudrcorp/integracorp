@@ -24,9 +24,6 @@
     $studies = is_array($data['studiesArr'] ?? null) ? array_values(array_filter($data['studiesArr'], static fn (mixed $item): bool => filled($item))) : [];
 
     $title = 'Informe Médico';
-    $stampDataUri = \App\Support\Telemedicine\TelemedicineDoctorStamp::dataUri($data['signature'] ?? null);
-    $stampSize = \App\Support\Telemedicine\TelemedicineDoctorStamp::displaySize($stampDataUri);
-    $doctorName = trim((string) ($data['doctor_name'] ?? ''));
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -47,7 +44,7 @@
             background: #ffffff;
         }
         body {
-            margin: 18mm 20mm 18mm 20mm;
+            margin: 18mm 20mm {{ \App\Support\Telemedicine\TelemedicineInformeSignatureStamp::bottomMarginMm() }}mm 20mm; /* reserva las bandas del pie y de la firma */
             padding: 0;
             height: auto;
             min-height: 0;
@@ -292,39 +289,15 @@
         .doc-content {
             position: relative;
             z-index: 1;
-            padding: 0 0 28mm 0;
-        }
-        .doctor-signature {
-            position: fixed;
-            top: 222mm; /* A4: DomPDF ignora bottom en este bloque; top lo pega al pie. */
-            left: 20mm;
-            right: 20mm;
-            width: auto;
-            max-width: 100%;
-            margin: 0;
             padding: 0;
-            text-align: center;
-            overflow: visible;
-            z-index: 11;
         }
-        .doctor-signature-image {
-            display: block;
-            margin: 0 auto 3px auto;
-            border: 0;
-        }
-        .doctor-signature-name {
-            font-size: 8pt;
-            font-weight: bold;
-            color: #111827;
-            line-height: 1.2;
-            margin: 0 0 1px 0;
-        }
-        .doctor-signature-meta {
-            font-size: 7pt;
-            color: #4b5563;
-            line-height: 1.25;
-            margin: 0;
-        }
+        /*
+         * La firma NO se maqueta aquí: la estampa
+         * TelemedicineInformeSignatureStamp sobre la banda inferior de la última
+         * página. En el flujo ocupaba ~34 mm y, cuando no cabían, saltaba sola a
+         * una hoja vacía. Su banda queda reservada por el margen inferior del
+         * cuerpo, declarado arriba con la misma constante.
+         */
     </style>
 </head>
 <body>
@@ -516,31 +489,16 @@
         </table>
     </div>
 
-</div>
-</div>
-</div>
 
-<div class="doctor-signature">
-    @if($stampDataUri !== '')
-        <img
-            class="doctor-signature-image"
-            src="{{ $stampDataUri }}"
-            alt="Firma y sello del médico"
-            @if(is_array($stampSize))
-                width="{{ $stampSize['width'] }}"
-                height="{{ $stampSize['height'] }}"
-            @endif
-        >
-    @endif
-    @if($doctorName !== '')
-        <p class="doctor-signature-name">{{ $val($doctorName) }}</p>
-    @endif
-    <p class="doctor-signature-meta">MPPS: {{ $val($data['code_mpps'] ?? null) }}</p>
+</div>
+</div>
 </div>
 
 <div class="footer-fixed">
-    Documento generado por el <span class="footer-brand">departamento de telemedicina de Tu Doctor en Casa</span>.<br>
-    Uso clínico; la reproducción no autorizada puede estar restringida según políticas de la organización.
+    <strong>TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1</strong><br>
+    Dirección Comercial: Av. Francisco de Miranda, Centro Lido, Torre A, Piso 12, Oficina 124. El Rosal, Caracas.<br>
+    <strong>Teléfono MediChat atención 24 horas: (0424) 213 21 12<strong> Celular Coordinación de servicios: (0414) 901 03 52<br>
+    Correo: 24H@tudrencasa.com IG: @tudrencasa WEB: https://tudrencasa.com/
 </div>
 </body>
 </html>

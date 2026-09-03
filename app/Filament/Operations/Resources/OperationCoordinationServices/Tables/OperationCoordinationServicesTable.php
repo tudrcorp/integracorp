@@ -1307,7 +1307,7 @@ class OperationCoordinationServicesTable
                         'class' => 'fi-coordination-clinical-items-cell py-2.5 align-top',
                         'style' => 'min-width: 22rem; max-width: 30rem; white-space: normal; vertical-align: top;',
                     ])
-                    ->tooltip('Detalle de medicamentos, laboratorios, estudios y especialidades asociados a esta coordinación.'),
+                    ->tooltip('Detalle de medicamentos, laboratorios, estudios y especialidades asociados a esta coordinación. Haga clic en un ítem para abrirlo en la ficha.'),
                 TextColumn::make('date_solicitud')
                     ->label('Fecha de Solicitud')
                     ->icon('heroicon-m-calendar-days')

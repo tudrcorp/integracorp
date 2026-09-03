@@ -1,0 +1,25 @@
+{
+    "name": "Tu Dr En Casa",
+    "short_name": "Tu Dr En Casa",
+    "description": "Conoce los planes, cotiza y lleva Tu Dr En Casa en el bolsillo.",
+    "start_url": "/app",
+    "scope": "/app",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#020914",
+    "theme_color": "#020914",
+    "icons": [
+        {
+            "src": "/pwa/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/pwa/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

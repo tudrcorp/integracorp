@@ -12,6 +12,8 @@ use App\Support\Operations\CoordinationServiceAssociatedItemPricePreview;
 use App\Support\Operations\CoordinationServiceCoveredItemsFinalizer;
 use App\Support\Operations\CoordinationServiceDocumentsAggregator;
 use App\Support\Operations\CoordinationServiceItemCancellation;
+use App\Support\Operations\CoordinationServiceItemEdit;
+use App\Support\Operations\CoordinationServiceItemExternalManagement;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\OperationServiceOrderProviderSummary;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
@@ -34,6 +36,14 @@ class OperationCoordinationServiceInfolist
 {
     private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
 
+    /**
+     * Identificador del tab de ítems asociados. Público porque la tabla del recurso
+     * enlaza directo a esta pestaña vía `?tab=`.
+     */
+    public const ASSOCIATED_ITEMS_TAB = 'items-asociados';
+
+    private const TABS_ID = 'operation-coordination-service-infolist-tabs';
+
     private const SECTION_CARD = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
 
     public static function configure(Schema $schema): Schema
@@ -41,8 +51,10 @@ class OperationCoordinationServiceInfolist
         return $schema
             ->components([
                 Tabs::make('operationCoordinationServiceInfolistTabs')
+                    ->id(self::TABS_ID)
                     ->columnSpanFull()
                     ->persistTab()
+                    ->persistTabInQueryString()
                     ->extraAttributes([
                         'class' => self::TABS_CONTAINER,
                     ])
@@ -179,6 +191,8 @@ class OperationCoordinationServiceInfolist
                                     ])->columnSpanFull(),
                             ]),
                         Tab::make('Ítems asociados')
+                            ->id(self::ASSOCIATED_ITEMS_TAB)
+                            ->key(self::ASSOCIATED_ITEMS_TAB)
                             ->icon(Heroicon::ClipboardDocumentList)
                             ->schema([
                                 Section::make('Ítems asociados a la coordinación')
@@ -690,6 +704,7 @@ class OperationCoordinationServiceInfolist
                     providerRif: $provider['rif'],
                     quoteId: $provider['quote_id'],
                     orderId: $provider['order_id'],
+                    hasServiceOrder: CoordinationServiceItemEdit::itemHasServiceOrder($orderLinks, 'Medicamento', $label),
                 );
             })
             ->values()
@@ -732,6 +747,7 @@ class OperationCoordinationServiceInfolist
                     providerRif: $provider['rif'],
                     quoteId: $provider['quote_id'],
                     orderId: $provider['order_id'],
+                    hasServiceOrder: CoordinationServiceItemEdit::itemHasServiceOrder($orderLinks, 'Laboratorio', $label),
                 );
             })
             ->values()
@@ -774,6 +790,7 @@ class OperationCoordinationServiceInfolist
                     providerRif: $provider['rif'],
                     quoteId: $provider['quote_id'],
                     orderId: $provider['order_id'],
+                    hasServiceOrder: CoordinationServiceItemEdit::itemHasServiceOrder($orderLinks, 'Estudio', $label),
                 );
             })
             ->values()
@@ -819,6 +836,7 @@ class OperationCoordinationServiceInfolist
                     providerRif: $provider['rif'],
                     quoteId: $provider['quote_id'],
                     orderId: $provider['order_id'],
+                    hasServiceOrder: CoordinationServiceItemEdit::itemHasServiceOrder($orderLinks, 'Especialista', $label),
                 );
             })
             ->values()
@@ -826,7 +844,7 @@ class OperationCoordinationServiceInfolist
     }
 
     /**
-     * @return array{id: int, item_type: string, title: string, detail: string, status: string, coverage: bool|null, provider_name: ?string, provider_rif: ?string, quote_id: ?int, order_id: ?int, can_cancel: bool}
+     * @return array{id: int, item_type: string, title: string, detail: string, status: string, coverage: bool|null, provider_name: ?string, provider_rif: ?string, quote_id: ?int, order_id: ?int, can_cancel: bool, can_edit: bool, can_external_management: bool}
      */
     private static function associatedItemState(
         int $id,
@@ -839,6 +857,7 @@ class OperationCoordinationServiceInfolist
         ?string $providerRif = null,
         ?int $quoteId = null,
         ?int $orderId = null,
+        bool $hasServiceOrder = false,
     ): array {
         return [
             'id' => $id,
@@ -852,6 +871,9 @@ class OperationCoordinationServiceInfolist
             'quote_id' => $quoteId,
             'order_id' => $orderId,
             'can_cancel' => CoordinationServiceItemCancellation::statusIsCancellable($status),
+            'can_edit' => CoordinationServiceItemEdit::itemIsEditable($status, $hasServiceOrder),
+            'can_external_management' => CoordinationServiceItemExternalManagement::statusIsManageable($status)
+                && CoordinationServiceItemExternalManagement::coverageAllowsExternalManagement($coverage),
         ];
     }
 
@@ -942,10 +964,20 @@ class OperationCoordinationServiceInfolist
 
         $actions = [];
         $preview = CoordinationServiceAssociatedItemPricePreview::makeAction($row);
+        $edit = CoordinationServiceItemEdit::makeEditAction($row);
+        $externalManagement = CoordinationServiceItemExternalManagement::makeExternalManagementAction($row);
         $cancel = CoordinationServiceItemCancellation::makeCancelAction($row);
 
         if ($preview instanceof Action) {
             $actions[] = $preview;
+        }
+
+        if ($edit instanceof Action) {
+            $actions[] = $edit;
+        }
+
+        if ($externalManagement instanceof Action) {
+            $actions[] = $externalManagement;
         }
 
         if ($cancel instanceof Action) {

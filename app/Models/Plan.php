@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\PlanPricingMode;
+use App\Enums\PlanQuotableScope;
+use App\Support\Plans\PlanQuotability;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,6 +20,8 @@ class Plan extends Model
         'status',
         'created_by',
         'type',
+        'is_quotable',
+        'quotable_in',
         'agencies',
         'pricing_mode',
         'structure_version',
@@ -34,7 +38,16 @@ class Plan extends Model
         return [
             'pricing_mode' => PlanPricingMode::class,
             'structure_version' => 'integer',
+            'is_quotable' => 'boolean',
+            'quotable_in' => PlanQuotableScope::class,
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(static function (Plan $plan): void {
+            PlanQuotability::normalizeOnSave($plan);
+        });
     }
 
     public function pricingMode(): PlanPricingMode

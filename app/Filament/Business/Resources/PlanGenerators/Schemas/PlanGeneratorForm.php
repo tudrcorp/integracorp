@@ -518,6 +518,7 @@ class PlanGeneratorForm
                                                     ->addActionLabel('Agregar columna')
                                                     ->reorderable()
                                                     ->collapsible()
+                                                    ->collapsed()
                                                     ->live()
                                                     ->afterStateUpdated(function (Set $set, Get $get): void {
                                                         $columns = PlanGeneratorMatrixState::normalizeColumns((array) ($get('columns') ?? []));

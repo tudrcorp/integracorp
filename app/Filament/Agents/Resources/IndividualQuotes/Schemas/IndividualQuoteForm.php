@@ -7,7 +7,7 @@ use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\AgeRange;
 use App\Models\IndividualQuote;
-use App\Models\Plan;
+use App\Support\Plans\PlanQuotability;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
@@ -203,7 +203,7 @@ class IndividualQuoteForm
                                         ->live()
                                         ->options(function () {
 
-                                            $planesConBeneficios = Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->pluck('description', 'id');
+                                            $planesConBeneficios = PlanQuotability::optionsForIndividual();
 
                                             // agregar el plan livewire
                                             $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
@@ -413,7 +413,7 @@ class IndividualQuoteForm
                                                 ->options(function (Get $get) {
                                                     Log::info($get('plan'));
 
-                                                    return Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->pluck('description', 'id');
+                                                    return PlanQuotability::optionsForIndividual();
                                                 })->columnSpan(3),
                                             Select::make('age_range_id')
                                                 ->label('Rango de edad')

@@ -121,3 +121,49 @@ it('muestra el proveedor y la CI/RIF de la gestión en cada ítem asociado', fun
         ->toContain("'quote_id'")
         ->toContain("'order_id'");
 });
+
+it('permite editar ítems pendientes con nota obligatoria desde el tab de ítems asociados', function (): void {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Schemas/OperationCoordinationServiceInfolist.php');
+
+    expect($contents)
+        ->toContain('CoordinationServiceItemEdit')
+        ->toContain('CoordinationServiceItemEdit::makeEditAction($row)')
+        ->toContain('CoordinationServiceItemEdit::itemIsEditable($status, $hasServiceOrder)')
+        ->toContain("'can_edit'")
+        ->toContain("CoordinationServiceItemEdit::itemHasServiceOrder(\$orderLinks, 'Medicamento', \$label)")
+        ->toContain("CoordinationServiceItemEdit::itemHasServiceOrder(\$orderLinks, 'Laboratorio', \$label)")
+        ->toContain("CoordinationServiceItemEdit::itemHasServiceOrder(\$orderLinks, 'Estudio', \$label)")
+        ->toContain("CoordinationServiceItemEdit::itemHasServiceOrder(\$orderLinks, 'Especialista', \$label)");
+});
+
+it('permite enlazar directamente al tab de ítems asociados desde la tabla', function (): void {
+    $root = dirname(__DIR__, 2);
+    $infolist = file_get_contents($root.'/app/Filament/Operations/Resources/OperationCoordinationServices/Schemas/OperationCoordinationServiceInfolist.php');
+    $manager = file_get_contents($root.'/app/Support/Operations/CoordinationServiceItemsManager.php');
+    $theme = file_get_contents($root.'/resources/css/filament/admin/theme.css');
+
+    expect($infolist)
+        ->toContain("public const ASSOCIATED_ITEMS_TAB = 'items-asociados'")
+        ->toContain('->id(self::TABS_ID)')
+        ->toContain('->persistTabInQueryString()')
+        ->toContain('->id(self::ASSOCIATED_ITEMS_TAB)')
+        ->toContain('->key(self::ASSOCIATED_ITEMS_TAB)')
+        ->and($manager)
+        ->toContain('public static function associatedItemsTabUrl(OperationCoordinationService $record): string')
+        ->toContain("'tab' => OperationCoordinationServiceInfolist::ASSOCIATED_ITEMS_TAB,")
+        ->toContain('fi-coordination-clinical-item__label-link')
+        ->and($theme)
+        ->toContain('.fi-coordination-clinical-item__label-link');
+});
+
+it('no anida anclas dentro de la celda de ítems clínicos de la tabla', function (): void {
+    $table = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php');
+
+    $clinicalColumn = mb_substr(
+        $table,
+        (int) mb_strpos($table, "TextColumn::make('clinical_management_items')"),
+        1200,
+    );
+
+    expect($clinicalColumn)->not->toContain('->url(');
+});

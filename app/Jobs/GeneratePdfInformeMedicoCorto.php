@@ -8,8 +8,9 @@ use App\Models\TelemedicineConsultationPatient;
 use App\Services\NotificationTelemedicinaService;
 use App\Support\Telemedicine\Concerns\LogsTelemedicineJobFailures;
 use App\Support\Telemedicine\TelemedicineCaseDocumentReadyNotification;
+use App\Support\Telemedicine\TelemedicineConsultationUploadedDocuments;
+use App\Support\Telemedicine\TelemedicineInformePdfRenderer;
 use App\Support\Telemedicine\TelemedicineJobFailureLogger;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Notifications\Notification;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -76,12 +77,13 @@ class GeneratePdfInformeMedicoCorto implements ShouldQueue
 
     private function generatePDF($data)
     {
-        ini_set('memory_limit', '2048M');
-
-        $pdf = Pdf::loadView('documents.informe-medico-corto', compact('data'))
-            ->setPaper('a4', 'portrait');
         $name_pdf = $data['ci_patient'].'-'.$data['code_reference'].'-'.$this->type_document.'.pdf';
-        $pdf->save(public_path('storage/telemedicina-doc/'.$name_pdf));
+
+        TelemedicineInformePdfRenderer::save(
+            TelemedicineInformePdfRenderer::VIEW_CORTO,
+            $data,
+            'telemedicina-doc/'.$name_pdf,
+        );
 
         $this->syncConsultationUploadedDocuments($data, $name_pdf);
 
@@ -115,21 +117,17 @@ class GeneratePdfInformeMedicoCorto implements ShouldQueue
             $defaultDocumentTypeName = 'INFORME MEDICO CONSULTA INICIAL (CORTO)';
         }
 
-        $existingDocuments = is_array($consultation->uploaded_documents)
-            ? $consultation->uploaded_documents
-            : [];
-
-        $newDocument = [
+        // Reemplaza la entrada previa de este tipo en vez de acumularla: con
+        // array_merge cada regeneración dejaba un duplicado más, y el catálogo
+        // —que deduplica— acababa mostrando la copia más antigua, como si el
+        // documento no se hubiese vuelto a generar.
+        TelemedicineConsultationUploadedDocuments::sync($consultation, [
             'document_name' => $namePdf,
             'file_path' => 'telemedicina-doc/'.$namePdf,
             'document_type_ids' => [$defaultDocumentTypeId],
             'document_types' => [$defaultDocumentTypeName],
             'uploaded_at' => now()->toDateTimeString(),
-        ];
-
-        $consultation->update([
-            'uploaded_documents' => array_values(array_merge($existingDocuments, [$newDocument])),
-        ]);
+        ], $defaultDocumentTypeId);
     }
 
     private function sendNotifications($data)

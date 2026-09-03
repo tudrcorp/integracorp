@@ -156,6 +156,16 @@ it('no repite las trampas de DomPDF que recortaban la hoja', function (): void {
     // Un nombre de beneficio largo estiraba la tabla fuera de la hoja.
     expect($matriz)->toContain('table-layout: fixed');
     expect($pagina)->toContain('table-layout: fixed');
+
+    // La matriz armada desde el catálogo de beneficios va más chica que el
+    // resto de la propuesta, tanto en individual como en corporativa.
+    expect($matriz)
+        ->toContain("\$fontSize = \$isDense ? '6pt' : '7pt'")
+        ->toContain("\$checkFontSize = \$isDense ? '8pt' : '9pt'");
+
+    expect($pagina)
+        ->toContain('.data-table th,')
+        ->toContain('font-size: 7pt;');
 });
 
 it('alinea los totales con las tarifas en una sola tabla', function (): void {

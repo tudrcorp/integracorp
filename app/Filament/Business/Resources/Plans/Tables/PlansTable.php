@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\Plans\Tables;
 
 use App\Models\Plan;
+use App\Support\Plans\PlanQuotability;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -43,6 +44,11 @@ class PlansTable
                     ->badge()
                     ->color('azulOscuro')
                     ->searchable(),
+                TextColumn::make('quotability')
+                    ->label('Cotizable')
+                    ->badge()
+                    ->state(fn (Plan $record): string => PlanQuotability::tableLabel($record))
+                    ->color(fn (Plan $record): string => PlanQuotability::tableColor($record)),
                 TextColumn::make('businessUnit.definition')
                     ->label('Unidad de negocios')
                     ->badge()

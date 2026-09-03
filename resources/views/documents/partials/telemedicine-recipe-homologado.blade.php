@@ -319,8 +319,10 @@
     </div>
 @endforeach
 <div class="footer-fixed">
-    Documento generado por el <span class="footer-brand">departamento de telemedicina de Tu Doctor en Casa</span>.
-    Uso clínico; original y copia en la misma hoja.
+    <strong>TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1</strong><br>
+    Dirección Comercial: Av. Francisco de Miranda, Centro Lido, Torre A, Piso 12, Oficina 124. El Rosal, Caracas.<br>
+    Teléfono MediChat atención 24 horas: (0424) 213 21 12- Celular Coordinación de servicios: (0414) 901 03 52<br>
+    Correo: 24H@tudrencasa.com IG: @tudrencasa WEB: https://tudrencasa.com/
 </div>
 </body>
 </html>

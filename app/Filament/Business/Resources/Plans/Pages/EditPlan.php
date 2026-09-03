@@ -13,6 +13,7 @@ use App\Filament\Business\Resources\Plans\Schemas\PlanWizardForm;
 use App\Models\Plan;
 use App\Support\ClinicalEntitlements\PlanClinicalStructurePersistence;
 use App\Support\PlanCreationPersistence;
+use App\Support\Plans\PlanQuotability;
 use App\Support\Plans\PlanStructurePersistence;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -123,6 +124,7 @@ class EditPlan extends EditRecord
             'description' => $data['description'] ?? $this->getRecord()->description,
             'business_unit_id' => $data['business_unit_id'] ?? $this->getRecord()->business_unit_id,
             'type' => $data['type'] ?? $this->getRecord()->type,
+            ...PlanQuotability::attributesFromForm($data),
             'status' => $data['status'] ?? $this->getRecord()->status,
             'pricing_mode' => (PlanPricingMode::fromStored($data['pricing_mode'] ?? null) ?? $this->getRecord()->pricingMode())->value,
             'structure_version' => Plan::STRUCTURE_VERSION_WIZARD,
