@@ -9,7 +9,7 @@
                 return;
             }
 
-            navigator.serviceWorker.register('/app/sw.js?v=2', { scope: '/app/' }).catch(() => {});
+            navigator.serviceWorker.register('/app/sw.js?v=3', { scope: '/app/' }).catch(() => {});
         },
         isInstalled() {
             const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches ?? false;

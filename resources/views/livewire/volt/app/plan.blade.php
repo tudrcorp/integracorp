@@ -17,6 +17,8 @@ new #[Layout('components.layouts.storefront')] #[Title('Plan')] class extends Co
 
     public bool $asAgent = false;
 
+    public bool $detailsReady = false;
+
     /** @var array<string, mixed> */
     public array $product = [];
 
@@ -28,7 +30,22 @@ new #[Layout('components.layouts.storefront')] #[Title('Plan')] class extends Co
 
         $this->planId = (int) $model->getKey();
         $this->asAgent = StorefrontAuth::currentIsAgent();
+        $this->product = StorefrontPlanView::shell($model);
+        $this->detailsReady = false;
+    }
+
+    public function loadDetails(): void
+    {
+        if ($this->detailsReady) {
+            return;
+        }
+
+        $model = StorefrontCatalog::findActiveBasic($this->planId);
+
+        abort_unless($model !== null, 404);
+
         $this->product = StorefrontPlanView::make($model);
+        $this->detailsReady = true;
     }
 
     public function startQuote()
@@ -46,7 +63,15 @@ new #[Layout('components.layouts.storefront')] #[Title('Plan')] class extends Co
 <div
     class="sf-product"
     x-data="{ benefitsOpen: false }"
-    x-init="$watch('benefitsOpen', value => document.body.classList.toggle('is-benefits-open', !!value))"
+    x-init="
+        $watch('benefitsOpen', value => document.body.classList.toggle('is-benefits-open', !!value));
+        const hydrate = () => $wire.loadDetails();
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(hydrate, { timeout: 900 });
+        } else {
+            setTimeout(hydrate, 120);
+        }
+    "
     x-on:keydown.escape.window="benefitsOpen = false"
     x-on:livewire:navigating.window="benefitsOpen = false; document.body.classList.remove('is-benefits-open')"
 >
@@ -58,15 +83,14 @@ new #[Layout('components.layouts.storefront')] #[Title('Plan')] class extends Co
     @endphp
 
     <div class="sf-product__scene">
-        <img
-            class="sf-product__photo"
-            src="{{ asset($narrative['cover']) }}"
-            alt=""
-            width="1100"
-            height="733"
-            decoding="async"
-            fetchpriority="high"
-        >
+        @include('storefront.partials.cover-picture', [
+            'src' => $narrative['cover'],
+            'class' => 'sf-product__photo',
+            'width' => 900,
+            'height' => 600,
+            'eager' => true,
+            'priority' => true,
+        ])
         <span class="sf-product__shade" aria-hidden="true"></span>
 
         <div class="sf-product__copy">
@@ -84,7 +108,7 @@ new #[Layout('components.layouts.storefront')] #[Title('Plan')] class extends Co
             <button
                 type="button"
                 class="sf-btn sf-btn-ghost"
-                x-on:click="benefitsOpen = true; $dispatch('storefront-close-menu')"
+                x-on:click="benefitsOpen = true; $dispatch('storefront-close-menu'); if (! $wire.detailsReady) { $wire.loadDetails(); }"
                 x-bind:aria-expanded="benefitsOpen.toString()"
                 aria-controls="sf-product-sheet"
             >
@@ -135,61 +159,71 @@ new #[Layout('components.layouts.storefront')] #[Title('Plan')] class extends Co
                     <span>Desde / año</span>
                 </div>
                 <div>
-                    <strong>{{ $benefitCount }}</strong>
+                    <strong wire:loading.remove wire:target="loadDetails">{{ $detailsReady ? $benefitCount : '…' }}</strong>
+                    <strong wire:loading wire:target="loadDetails">…</strong>
                     <span>Beneficios</span>
                 </div>
                 <div>
-                    <strong>{{ $rateCount }}</strong>
+                    <strong wire:loading.remove wire:target="loadDetails">{{ $detailsReady ? $rateCount : '…' }}</strong>
+                    <strong wire:loading wire:target="loadDetails">…</strong>
                     <span>Rangos</span>
                 </div>
             </div>
 
             <div class="sf-product-sheet__body">
                 <h3>Qué incluye</h3>
-                <div class="sf-product-sheet__includes">
-                    @forelse ($benefits['rows'] as $row)
-                        <div class="sf-product-sheet__row">
-                            <span class="sf-product-sheet__icon" aria-hidden="true">✓</span>
-                            <div>
-                                <strong>{{ StorefrontPlanNarrative::sentenceLabel((string) ($row['benefit_label'] ?? 'Beneficio')) }}</strong>
+                <div class="sf-product-sheet__includes" wire:loading.class="is-loading" wire:target="loadDetails">
+                    @if (! $detailsReady)
+                        <p class="sf-product-sheet__lead">Cargando beneficios…</p>
+                    @else
+                        @forelse ($benefits['rows'] as $row)
+                            <div class="sf-product-sheet__row">
+                                <span class="sf-product-sheet__icon" aria-hidden="true">✓</span>
+                                <div>
+                                    <strong>{{ StorefrontPlanNarrative::sentenceLabel((string) ($row['benefit_label'] ?? 'Beneficio')) }}</strong>
+                                </div>
                             </div>
-                        </div>
-                    @empty
-                        <p class="sf-product-sheet__lead">Este plan todavía está cargando su estructura de beneficios.</p>
-                    @endforelse
+                        @empty
+                            <p class="sf-product-sheet__lead">Este plan todavía está cargando su estructura de beneficios.</p>
+                        @endforelse
+                    @endif
                 </div>
 
                 <h3>Rangos de edad y tarifas</h3>
                 <div class="sf-product-sheet__rates">
-                    @forelse ($product['rates'] as $rate)
-                        @php
-                            $rateCells = array_values($rate['cells'] ?? []);
-                        @endphp
-                        @if (count($rateCells) <= 1)
-                            <div class="sf-product-sheet__rate">
-                                <span class="sf-product-sheet__rate-label">{{ StorefrontPlanNarrative::sentenceLabel((string) $rate['label']) }}</span>
-                                <span class="sf-product-sheet__rate-values">
+                    @if (! $detailsReady)
+                        <p class="sf-product-sheet__lead">Cargando tarifas…</p>
+                    @else
+                        @forelse ($product['rates'] as $rate)
+                            @php
+                                $rateCells = array_values($rate['cells'] ?? []);
+                            @endphp
+                            @if (count($rateCells) <= 1)
+                                <div class="sf-product-sheet__rate">
+                                    <span class="sf-product-sheet__rate-label">{{ StorefrontPlanNarrative::sentenceLabel((string) $rate['label']) }}</span>
+                                    <span class="sf-product-sheet__rate-values">
+                                        @foreach ($rateCells as $cell)
+                                            <span>{{ filled($cell['value'] ?? null) ? $cell['value'] : '—' }}</span>
+                                        @endforeach
+                                    </span>
+                                </div>
+                            @else
+                                <div class="sf-product-sheet__rate-group">
+                                    <p class="sf-product-sheet__rate-label">{{ StorefrontPlanNarrative::sentenceLabel((string) $rate['label']) }}</p>
                                     @foreach ($rateCells as $cell)
-                                        <span>{{ filled($cell['value'] ?? null) ? $cell['value'] : '—' }}</span>
+                                        <div class="sf-product-sheet__rate">
+                                            <span class="sf-product-sheet__rate-coverage">{{ StorefrontPlanNarrative::sentenceLabel((string) ($cell['label'] ?? 'Cobertura')) }}</span>
+                                            <span>{{ filled($cell['value'] ?? null) ? $cell['value'] : '—' }}</span>
+                                        </div>
                                     @endforeach
-                                </span>
-                            </div>
-                        @else
-                            <div class="sf-product-sheet__rate-group">
-                                <p class="sf-product-sheet__rate-label">{{ StorefrontPlanNarrative::sentenceLabel((string) $rate['label']) }}</p>
-                                @foreach ($rateCells as $cell)
-                                    <div class="sf-product-sheet__rate">
-                                        <span class="sf-product-sheet__rate-coverage">{{ StorefrontPlanNarrative::sentenceLabel((string) ($cell['label'] ?? 'Cobertura')) }}</span>
-                                        <span>{{ filled($cell['value'] ?? null) ? $cell['value'] : '—' }}</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-                    @empty
-                        <p class="sf-product-sheet__lead">Las tarifas de este plan se confirman al cotizar.</p>
-                    @endforelse
+                                </div>
+                            @endif
+                        @empty
+                            <p class="sf-product-sheet__lead">Las tarifas de este plan se confirman al cotizar.</p>
+                        @endforelse
+                    @endif
                 </div>
-                @if (! $product['is_package'])
+                @if ($detailsReady && ! $product['is_package'])
                     <p class="sf-product-sheet__note">El precio final depende de la cobertura que elijas al cotizar.</p>
                 @endif
             </div>

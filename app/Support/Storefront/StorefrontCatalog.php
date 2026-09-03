@@ -9,6 +9,7 @@ use App\Models\Plan;
 use App\Support\Plans\PlanQuotability;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Catálogo de la PWA: solo planes individuales BÁSICOS activos.
@@ -24,6 +25,10 @@ final class StorefrontCatalog
      * @var list<int>
      */
     public const INDIVIDUAL_BASIC_IDS = [1, 2, 3];
+
+    private const STARTING_PRICES_CACHE_KEY = 'storefront.catalog.starting_prices.v1';
+
+    private const STARTING_PRICES_CACHE_SECONDS = 180;
 
     /**
      * @return Builder<Plan>
@@ -64,15 +69,23 @@ final class StorefrontCatalog
             return collect();
         }
 
-        $startingPrices = Fee::query()
-            ->whereIn('plan_id', $plans->modelKeys())
-            ->whereNotNull('price')
-            ->selectRaw('plan_id, MIN(price) as desde')
-            ->groupBy('plan_id')
-            ->pluck('desde', 'plan_id');
+        /** @var array<int|string, mixed> $startingPrices */
+        $startingPrices = Cache::remember(
+            self::STARTING_PRICES_CACHE_KEY,
+            self::STARTING_PRICES_CACHE_SECONDS,
+            static function () use ($plans): array {
+                return Fee::query()
+                    ->whereIn('plan_id', $plans->modelKeys())
+                    ->whereNotNull('price')
+                    ->selectRaw('plan_id, MIN(price) as desde')
+                    ->groupBy('plan_id')
+                    ->pluck('desde', 'plan_id')
+                    ->all();
+            },
+        );
 
         return $plans->map(static function (Plan $plan) use ($startingPrices): array {
-            $desde = $startingPrices->get($plan->getKey());
+            $desde = $startingPrices[$plan->getKey()] ?? null;
 
             return [
                 'plan' => $plan,

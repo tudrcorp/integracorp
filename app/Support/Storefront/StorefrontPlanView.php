@@ -27,6 +27,27 @@ use Illuminate\Support\Collection;
 final class StorefrontPlanView
 {
     /**
+     * Primera pintura de la ficha: narrativa y precio, sin matriz de beneficios.
+     *
+     * @return PlanProduct
+     */
+    public static function shell(Plan $plan): array
+    {
+        return [
+            'plan' => $plan,
+            'narrative' => StorefrontPlanNarrative::for($plan),
+            'is_package' => $plan->isBenefitPackage(),
+            'desde' => self::startingPrice($plan),
+            'benefits' => [
+                'columns' => [],
+                'rows' => [],
+            ],
+            'rates' => [],
+            'age_ranges' => [],
+        ];
+    }
+
+    /**
      * @return PlanProduct
      */
     public static function make(Plan $plan): array

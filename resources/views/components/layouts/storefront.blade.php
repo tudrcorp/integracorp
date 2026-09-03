@@ -17,6 +17,7 @@
         successPdfBusy: false,
         successAsAgent: false,
         headerGlass: false,
+        navigating: false,
         closeMenu() {
             this.menuOpen = false;
             this.dragY = 0;
@@ -118,13 +119,15 @@
         },
     }"
     x-init="syncHeaderGlass()"
-    x-bind:class="{ 'is-menu-open': menuOpen, 'is-success-open': successOpen, 'is-header-glass': headerGlass }"
+    x-bind:class="{ 'is-menu-open': menuOpen, 'is-success-open': successOpen, 'is-header-glass': headerGlass, 'is-navigating': navigating }"
     x-on:keydown.escape.window="successOpen ? dismissSuccess() : closeMenu()"
     x-on:scroll.window.passive="syncHeaderGlass()"
     x-on:storefront-close-menu.window="closeMenu()"
     x-on:storefront-quote-success.window="openSuccess($event)"
-    x-on:livewire:navigated.window="closeMenu(); successOpen = false; document.body.classList.remove('is-quote-sheet-open'); $nextTick(() => syncHeaderGlass())"
+    x-on:livewire:navigating.window="navigating = true"
+    x-on:livewire:navigated.window="navigating = false; closeMenu(); successOpen = false; document.body.classList.remove('is-quote-sheet-open'); $nextTick(() => syncHeaderGlass())"
 >
+    <div class="storefront-nav-progress" aria-hidden="true"></div>
     <div class="storefront-atmosphere" aria-hidden="true">
         <span class="storefront-atmosphere__orb storefront-atmosphere__orb--a"></span>
         <span class="storefront-atmosphere__orb storefront-atmosphere__orb--b"></span>
@@ -288,6 +291,28 @@
     </div>
 
     @include('storefront.partials.quote-success')
+
+    <script>
+        window.__sfPrefetchPlan = window.__sfPrefetchPlan || function (url, imageUrl) {
+            window.__sfPrefetchDone = window.__sfPrefetchDone || Object.create(null);
+
+            if (url && ! window.__sfPrefetchDone['u:' + url]) {
+                window.__sfPrefetchDone['u:' + url] = true;
+                const link = document.createElement('link');
+                link.rel = 'prefetch';
+                link.href = url;
+                link.as = 'document';
+                document.head.appendChild(link);
+            }
+
+            if (imageUrl && ! window.__sfPrefetchDone['i:' + imageUrl]) {
+                window.__sfPrefetchDone['i:' + imageUrl] = true;
+                const image = new Image();
+                image.decoding = 'async';
+                image.src = imageUrl;
+            }
+        };
+    </script>
 
     @fluxScripts
     @persist('toast')

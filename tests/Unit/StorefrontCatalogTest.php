@@ -44,6 +44,7 @@ it('la narrativa convierte el plan tecnico en ficha de producto', function (): v
         ->and(StorefrontPlanNarrative::displayTitle('Plan Inicial'))->toBe('Plan Inicial')
         ->and(StorefrontPlanNarrative::for($otro)['key'])->toBe('otro')
         ->and(StorefrontPlanNarrative::for($inicial)['cover'])->toBe('image/storefront/plan-inicial.jpg')
+        ->and(StorefrontPlanNarrative::coverWebp('image/storefront/plan-inicial.jpg'))->toBe('image/storefront/plan-inicial.webp')
         ->and(StorefrontPlanNarrative::for($ideal)['cover'])->toBe('image/storefront/plan-ideal.jpg')
         ->and(StorefrontPlanNarrative::formatMoney(1200))->toBe('US$ 1.200')
         ->and(StorefrontPlanNarrative::formatMoney(99.5))->toBe('US$ 99,50')
@@ -65,5 +66,9 @@ it('las fotos de portada de cada plan básico existen en public', function (): v
 
     expect(file_exists($root.'/public/image/storefront/plan-inicial.jpg'))->toBeTrue()
         ->and(file_exists($root.'/public/image/storefront/plan-ideal.jpg'))->toBeTrue()
-        ->and(file_exists($root.'/public/image/storefront/plan-especial.jpg'))->toBeTrue();
+        ->and(file_exists($root.'/public/image/storefront/plan-especial.jpg'))->toBeTrue()
+        ->and(file_exists($root.'/public/image/storefront/plan-inicial.webp'))->toBeTrue()
+        ->and(file_exists($root.'/public/image/storefront/plan-ideal.webp'))->toBeTrue()
+        ->and(file_exists($root.'/public/image/storefront/plan-especial.webp'))->toBeTrue()
+        ->and(file_exists($root.'/public/image/storefront/welcome.webp'))->toBeTrue();
 });
