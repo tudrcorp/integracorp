@@ -76,6 +76,13 @@ it('oculta las coberturas y la matriz de límites en un paquete de beneficios', 
         ->toContain("Repeater::make('package_age_ranges')");
 });
 
+it('incluye la cotizabilidad dress tylor en la identidad del plan', function (): void {
+    expect(fuenteDelAsistenteDePlanes())
+        ->toContain('PlanQuotabilityFormSchema::section()')
+        ->toContain('PlanQuotabilityFormSchema::syncTypeChange')
+        ->toContain('->live()');
+});
+
 it('marca los planes creados con el asistente para no reescribir los históricos', function (): void {
     expect(fuenteDelAsistenteDePlanes())
         ->toContain("Hidden::make('structure_version')->default(Plan::STRUCTURE_VERSION_WIZARD)");

@@ -112,8 +112,7 @@ it('el informe médico corto de producción usa el diseño homologado', function
         ->toContain('documents.partials.informe-medico-homologado')
         ->toContain("'variant' => 'corto'")
         ->and($corto)->not->toContain('informeMedicoTLM.png')
-        ->and($job)->toContain("loadView('documents.informe-medico-corto'")
-        ->and($job)->toContain("setPaper('a4', 'portrait')");
+        ->and($job)->toContain('TelemedicineInformePdfRenderer::VIEW_CORTO');
 
     $html = telemedicineInformeRender('corto', telemedicineInformeRedesignSampleData());
     $path = telemedicineInformeWritePdf('corto', telemedicineInformeRedesignSampleData(), 'informe-medico-corto-redesign.pdf');
@@ -133,16 +132,17 @@ it('el informe médico corto de producción usa el diseño homologado', function
         ->toContain('Plan terapéutico')
         ->toContain('Paracetamol 500 mg')
         ->toContain('Laboratorios')
-        ->toContain('departamento de telemedicina de Tu Doctor en Casa')
+        ->toContain('TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1')
         ->toContain('header-bar')
         ->toContain('header-rule-space')
         ->toContain('footer-fixed')
-        ->toContain('doctor-signature')
-        ->toContain('position: fixed')
-        ->toContain('top: 222mm')
-        ->toContain('Dra. Carolina Josefina Pinillo Lameda')
-        ->toContain('MPPS: MPPS-11209')
-        ->toContain('Firma y sello del médico')
+        ->not->toContain('doctor-signature')
+        ->not->toContain('top: 222mm')
+        // El nombre del médico ya no va en el HTML: lo estampa
+        // TelemedicineInformeSignatureStamp (cubierto en su propio test).
+        ->not->toContain('Dra. Carolina Josefina Pinillo Lameda')
+        ->not->toContain('MPPS: MPPS-11209')
+        ->not->toContain('Firma y sello del médico')
         ->and($html)->not->toContain('max-height: 58px')
         ->and($html)->not->toContain('Colegio médico')
         ->and($html)->not->toContain('informeMedicoTLM.png')
@@ -165,8 +165,7 @@ it('el informe médico largo de producción usa el diseño homologado', function
         ->toContain('documents.partials.informe-medico-homologado')
         ->toContain("'variant' => 'largo'")
         ->and($largo)->not->toContain('informeMedicoTLM.png')
-        ->and($generator)->toContain("loadView('documents.informe-medico-largo'")
-        ->and($generator)->toContain("setPaper('a4', 'portrait')");
+        ->and($generator)->toContain('TelemedicineInformePdfRenderer::VIEW_LARGO');
 
     $html = telemedicineInformeRender('largo', telemedicineInformeRedesignSampleData());
     $path = telemedicineInformeWritePdf('largo', telemedicineInformeRedesignSampleData(), 'informe-medico-largo-redesign.pdf');
@@ -180,14 +179,15 @@ it('el informe médico largo de producción usa el diseño homologado', function
         ->toContain('128/82 mmHg')
         ->toContain('38.2 °C')
         ->toContain('97 %')
-        ->toContain('departamento de telemedicina de Tu Doctor en Casa')
+        ->toContain('TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1')
         ->toContain('header-rule-space')
-        ->toContain('doctor-signature')
-        ->toContain('position: fixed')
-        ->toContain('top: 222mm')
-        ->toContain('Dra. Carolina Josefina Pinillo Lameda')
-        ->toContain('MPPS: MPPS-11209')
-        ->toContain('Firma y sello del médico')
+        ->not->toContain('doctor-signature')
+        ->not->toContain('top: 222mm')
+        // El nombre del médico ya no va en el HTML: lo estampa
+        // TelemedicineInformeSignatureStamp (cubierto en su propio test).
+        ->not->toContain('Dra. Carolina Josefina Pinillo Lameda')
+        ->not->toContain('MPPS: MPPS-11209')
+        ->not->toContain('Firma y sello del médico')
         ->and($html)->not->toContain('max-height: 58px')
         ->and($html)->not->toContain('Colegio médico')
         ->and($html)->not->toContain('informeMedicoTLM.png')
@@ -195,7 +195,10 @@ it('el informe médico largo de producción usa el diseño homologado', function
         ->and($html)->not->toContain('Informe médico (consulta inicial)')
         ->and($html)->not->toContain('Tarjeta de Afiliado');
 
+    // Este informe estaba a ~4 mm de llenar la hoja. Al reservar la banda de la
+    // firma (ver TelemedicineInformeSignatureStamp) pasa a dos páginas: es el
+    // precio de que la firma no pueda quedarse sola en una hoja.
     expect($path)->toBeFile()
         ->and(filesize($path))->toBeGreaterThan(8_000)
-        ->and(telemedicineInformePdfPageCount($path))->toBe(1);
+        ->and(telemedicineInformePdfPageCount($path))->toBe(2);
 });

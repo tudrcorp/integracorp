@@ -3,7 +3,9 @@
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Pages;
 
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
+use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRetailServicesAction;
+use App\Models\OperationCoordinationService;
 use App\Models\OperationDocumentList;
 use App\Support\Operations\CoordinationServiceCoveredItemsFinalizer;
 use App\Support\Operations\CoordinationServiceItemsManager;
@@ -16,7 +18,11 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
+use Throwable;
 
 class ViewOperationCoordinationService extends ViewRecord
 {
@@ -184,51 +190,99 @@ class ViewOperationCoordinationService extends ViewRecord
         return mb_strtoupper(trim((string) $this->getRecord()->status)) === 'EN GESTION';
     }
 
-    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
+    public function getTitle(): string|Htmlable
     {
-        $operationCoordinationService = $this->getRecord();
-        $status = (string) ($operationCoordinationService->status ?? '');
-        $clinicalItems = CoordinationServiceItemsManager::clinicalItemsWithEffectiveDisplayStatus($operationCoordinationService);
+        $record = $this->getRecord();
+        $status = (string) ($record->status ?? '');
+        $clinicalItems = CoordinationServiceItemsManager::clinicalItemsWithEffectiveDisplayStatus($record);
         $statusCountersHtml = CoordinationServiceItemsManager::renderClinicalItemsStatusCounterPills($clinicalItems);
 
         if ($statusCountersHtml === '') {
             $badgeStyle = $this->badgeStyleForStatus($status);
-            $statusCountersHtml = '<div style="display:flex;align-items:center;margin-top:2px;">'
-                .'<span style="background:linear-gradient(180deg,'.$badgeStyle['bg'].' 0%,'.$badgeStyle['bg'].' 100%);color:#ffffff;padding:8px 16px;border-radius:9999px;font-size:.8rem;font-weight:800;letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;box-shadow:'.$badgeStyle['shadow'].',inset 0 1px 0 rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.24);">'
-                .'<span style="font-size:10px;opacity:.95;">●</span> '.e($status)
-                .'</span>'
-                .'</div>';
-        } else {
-            $statusCountersHtml = '<div style="margin-top:2px;">'.$statusCountersHtml.'</div>';
+            $statusCountersHtml = '<span class="fi-coordination-header__status" style="background:'.$badgeStyle['bg'].';box-shadow:'.$badgeStyle['shadow'].',inset 0 1px 0 rgba(255,255,255,.25);">'
+                .'<span aria-hidden="true" class="fi-coordination-header__status-dot">●</span> '.e($status)
+                .'</span>';
         }
 
-        $referenceNumber = (string) ($operationCoordinationService->reference_number ?? '—');
-        $patientId = (string) ($operationCoordinationService->ci_patient ?? '—');
-        $patientName = (string) ($operationCoordinationService->patient ?? 'Paciente no definido');
+        $patientName = trim((string) ($record->patient ?? ''));
 
-        return new \Illuminate\Support\HtmlString(
-            '<div style="display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;gap:12px;padding:12px 0;">'.
-                // Título principal
-                '<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-white mb-2">'.
-                'Detalles del Servicio de Coordinación'.
-                '</span>'.
-                // Nombre paciente
-                '<span class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white mb-2">'.
-                'Paciente: '.$patientName.
-                '</span>'.
-                // Metadatos
-                '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;">'.
-                '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9999px;background:linear-gradient(180deg,#f4f8ff 0%,#e7efff 100%);color:#1f2937;font-size:.78rem;font-weight:700;border:1px solid #d7e3ff;box-shadow:0 1px 2px rgba(15,23,42,.06),inset 0 1px 0 rgba(255,255,255,.9);">'.
-                'Referencia: '.$referenceNumber.
-                '</span>'.
-                '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9999px;background:linear-gradient(180deg,#f8fafc 0%,#ecf1f7 100%);color:#1f2937;font-size:.78rem;font-weight:700;border:1px solid #dde5ef;box-shadow:0 1px 2px rgba(15,23,42,.06),inset 0 1px 0 rgba(255,255,255,.9);">'.
-                'C.I. paciente: '.$patientId.
-                '</span>'.
-                '</div>'.
-                // Contadores de estatus clínicos
-                $statusCountersHtml.
-                '</div>'
+        return new HtmlString(
+            '<div class="fi-coordination-header">'
+            .'<p class="fi-coordination-header__eyebrow">Detalles del Servicio de Coordinación</p>'
+            .'<p class="fi-coordination-header__title">Paciente: '.e($patientName !== '' ? $patientName : 'Paciente no definido').'</p>'
+            .'<div class="fi-coordination-header__pills">'.$this->headerPillsHtml($record).'</div>'
+            .'<div class="fi-coordination-header__statuses">'.$statusCountersHtml.'</div>'
+            .'</div>'
         );
+    }
+
+    /**
+     * Metadatos de cabecera. El caso de telemedicina se enlaza a su ficha; el resto
+     * son informativos y se omiten cuando el dato no existe.
+     */
+    private function headerPillsHtml(OperationCoordinationService $record): string
+    {
+        $case = $record->telemedicineCase;
+        $caseCode = trim((string) ($case->code ?? ''));
+
+        $pills = [
+            $this->renderHeaderPill('Referencia', (string) ($record->reference_number ?? '')),
+            $this->renderHeaderPill('C.I. paciente', (string) ($record->ci_patient ?? '')),
+            $this->renderHeaderPill(
+                'Caso',
+                $caseCode,
+                $case !== null && $caseCode !== ''
+                    ? TelemedicineCaseResource::getUrl('view', ['record' => $case])
+                    : null,
+                'Abrir la ficha del caso de telemedicina',
+            ),
+            $this->renderHeaderPill('Fecha de servicio', $this->serviceDateLabel($record)),
+            $this->renderHeaderPill('Médico tratante', (string) ($record->telemedicineDoctor->full_name ?? '')),
+        ];
+
+        return implode('', array_filter($pills));
+    }
+
+    /**
+     * `date_service` no está casteado en el modelo, así que puede llegar como fecha,
+     * fecha-hora o texto libre: se formatea cuando se puede y si no se muestra crudo.
+     */
+    private function serviceDateLabel(OperationCoordinationService $record): string
+    {
+        $value = trim((string) ($record->date_service ?? ''));
+
+        if ($value === '') {
+            return '';
+        }
+
+        try {
+            return Carbon::parse($value)->format('d/m/Y');
+        } catch (Throwable) {
+            return $value;
+        }
+    }
+
+    private function renderHeaderPill(string $label, string $value, ?string $url = null, ?string $tooltip = null): string
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return '';
+        }
+
+        $inner = '<span class="fi-coordination-header__pill-label">'.e($label).':</span>'
+            .'<span class="fi-coordination-header__pill-value">'.e($value).'</span>';
+
+        if ($url === null) {
+            return '<span class="fi-coordination-header__pill">'.$inner.'</span>';
+        }
+
+        return '<a href="'.e($url).'" '
+            .'class="fi-coordination-header__pill fi-coordination-header__pill--link" '
+            .'title="'.e($tooltip ?? ('Abrir '.$label)).'">'
+            .$inner
+            .'<span aria-hidden="true" class="fi-coordination-header__pill-arrow">&rarr;</span>'
+            .'</a>';
     }
 
     /**

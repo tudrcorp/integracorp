@@ -53,6 +53,10 @@ Si un test “necesita” recrear la base real, **no se recrea**. Se adapta el t
 
 `bootstrap/cache/config.php` existe y está cacheado con `database.default = mysql` → `operaciones`. Una config cacheada ignora los `env()`, así que los `force="true"` de `phpunit.xml` **no se aplican**. Como `TestCase` solo redirige a sqlite cuando detecta un trait destructivo, un test unitario que haga `uses(Tests\TestCase::class)` y escriba deja basura en la base del usuario. Ya pasó (`PlanFormSchemaTest`, `PlanAndQuoteSupportTest`).
 
+**El interruptor que desarma toda esta trampa es `php artisan config:clear`.** Sin config cacheada, los `force="true"` de `phpunit.xml` sí se aplican y *toda* la suite corre contra sqlite `:memory:`, no contra `operaciones`. Por eso `composer run test` (que hace `config:clear` y luego `php artisan test`) es la forma segura de correr tests, y `php artisan test` a secas no lo es. El costo es que después la config queda sin cachear — aceptable en local, y en todo caso preferible a escribir en la base real.
+
+Aun así, la regla de la transacción revertida sigue vigente: es la red que protege al agente que corre `php artisan test --filter=...` directamente, que es lo habitual.
+
 Todo test unitario que **escriba** debe envolverse en una transacción que siempre se revierte — patrón ya establecido en `tests/Unit/PlanStructurePersistenceTest.php`:
 
 ```php
@@ -193,11 +197,12 @@ El sitio **siempre** está servido por Herd en `https://www.integracorp.test` (`
 | Un archivo de test | `php artisan test tests/Unit/NombreTest.php` |
 | Un test concreto | `php artisan test --filter=nombreDelTest` |
 | Suite completa (**solo si el usuario lo pide**) | `php artisan test` / `./vendor/bin/pest` |
+| Suite con la DB **realmente aislada** | `composer run test` (hace `config:clear` primero; ver §0.2) |
 | Migrar | **`php artisan migrate --path=database/migrations/<archivo>.php`** (una por una; `migrate` a secas siempre falla, ver abajo) |
 | Sincronizar permisos de menú Filament | `php artisan permissions:sync-navigation --panel=business` |
 | Crear archivos Filament | `php artisan make:filament-resource ... --no-interaction` (ver `list-artisan-commands` de Boost) |
 
-**`php artisan migrate` a secas siempre falla.** Hay ~380 archivos de migración en disco y solo ~157 registrados en la tabla `migrations`: el esquema se construyó importando un dump, no ejecutando las migraciones. Por eso `migrate` arranca por `0001_01_01_000000_create_users_table` y muere con *«Table 'users' already exists»*. No hay daño (aborta en el primer `CREATE TABLE`), pero se pierde tiempo diagnosticando. Escribir las migraciones nuevas idempotentes (`Schema::hasTable`, `Schema::hasColumn`) y aplicarlas una por una:
+**`php artisan migrate` a secas siempre falla.** Hay ~397 archivos de migración en disco y solo ~157 registrados en la tabla `migrations`: el esquema se construyó importando un dump, no ejecutando las migraciones. Por eso `migrate` arranca por `0001_01_01_000000_create_users_table` y muere con *«Table 'users' already exists»*. No hay daño (aborta en el primer `CREATE TABLE`), pero se pierde tiempo diagnosticando. Escribir las migraciones nuevas idempotentes (`Schema::hasTable`, `Schema::hasColumn`) y aplicarlas una por una:
 
 ```
 php artisan migrate --path=database/migrations/2026_08_20_180000_add_pricing_mode_to_plans_table.php
@@ -205,7 +210,19 @@ php artisan migrate --path=database/migrations/2026_08_20_180000_add_pricing_mod
 
 Verificar el resultado con una consulta a `information_schema`, no asumiendo que corrió.
 
-**La config está cacheada** (`bootstrap/cache/config.php`). Eso significa que un cambio en `.env` o en `config/*.php` no se ve hasta correr `php artisan config:clear`, y que los `env()` de `phpunit.xml` se ignoran (§0.2).
+**Casi todo el framework está cacheado en `bootstrap/cache/`.** `php artisan about` reporta hoy `Config`, `Events`, `Routes`, `Views`, `Blade Icons` y `Panel Components` en **CACHED**. Consecuencias que cuestan una sesión entera de diagnóstico si no se saben:
+
+| Cache | Qué queda invisible | Cómo refrescar |
+| --- | --- | --- |
+| `config.php` | cambios en `.env` y `config/*.php`; los `env()` de `phpunit.xml` se ignoran (§0.2) | `php artisan config:clear` |
+| `routes-v7.php` | **una ruta nueva en `routes/web.php` no existe** hasta refrescar (404 inexplicable) | `php artisan route:clear` |
+| `events.php` | listeners nuevos no se disparan | `php artisan event:clear` |
+| `blade-icons.php` | un set de iconos recién instalado no resuelve | `php artisan icons:cache` |
+| Panel Components | componentes/temas Filament nuevos | `php artisan filament:cache-components` |
+
+`Views` sí se invalida sola por `mtime`: un cambio en un Blade se ve sin tocar nada.
+
+Antes de concluir «mi código no se ejecuta», comprobar la cache correspondiente. Y si se limpia una, **volver a cachearla al terminar** solo si el usuario lo pide: dejarlas limpias es más seguro en local que dejarlas obsoletas.
 
 `vite.config.js` solo compila cuatro temas Filament: `admin`, `agents`, `general`, `telemedicina`. Un tema nuevo en `resources/css/filament/` **no** se compila hasta agregarlo al array `input`.
 
@@ -215,7 +232,8 @@ Comandos propios en `app/Console/Commands/` (backup, exports de afiliaciones, im
 
 - `.github/workflows/lint.yml`: corre `vendor/bin/pint` (el auto-commit del estilo está comentado, así que **el formateo debe venir ya hecho en el commit**).
 - `.github/workflows/tests.yml`: `npm run build` + `./vendor/bin/pest`.
-- Ambos workflows disparan solo en `push`/`pull_request` a **`develop`** y **`main`**. La rama principal local es `master` y el trabajo suele ir en ramas de feature, así que **CI no valida** esos commits: correr Pint y los tests afectados en local es la única red.
+- Ambos workflows disparan solo en `push`/`pull_request` a **`develop`** y **`main`**, y **ninguna de esas dos ramas existe en `origin`** (`origin/HEAD` apunta a `master`; las ramas vivas son `master`, `incidencias`, `negocios`, `telemedicina`, `renovaciones`, `certificados`, `administracion`, `GESTION-MARCA-BLANCA`, `Domiciliaciones`, `domiciliaciones-r4`, `zona-de-descargas`). Es decir: **CI no corre nunca**. Pint y los tests afectados en local son la única red; no esperar que «lo valide el pipeline».
+- `.trunk/` trae Trunk CLI configurado (actionlint, markdownlint, prettier, yamllint, trufflehog, osv-scanner, svgo, oxipng…), pero **no incluye ningún linter PHP** y sus acciones `trunk-fmt-pre-commit` / `trunk-check-pre-push` están **deshabilitadas**; CI tampoco lo invoca. No correr `trunk check` como si fuera el gate del proyecto: el gate del código PHP es `vendor/bin/pint --dirty`.
 - CI usa **PHP 8.4** y Node 22 mientras el local es PHP 8.3.25 y `composer.json` pide `^8.2`. No usar sintaxis exclusiva de 8.4.
 
 ---
@@ -273,14 +291,30 @@ Al registrar, jobs envían WhatsApp/email de bienvenida y notifican analistas (`
 ### 4.2 Producto: planes, tarifas, coberturas
 
 - **Plan** ligado a unidad de negocio / línea. Relaciones: benefits, coverages, fees, agencies (`agency_plans`).
-- **Fee**: tarifas por rango de edad / plan (`fee_plans`, y `plan_id` en fees en el trabajo reciente de catálogo).
+- **Fee**: tarifas por rango de edad / plan (`fee_plans`, y `plan_id` en fees en el trabajo reciente de catálogo). La forma de la fila depende del modo de precio del plan — ver §4.2.1.
 - **Coverage**, **Benefit**, **BenefitCoverage**, **Limit**, **Sublimit**, **ConfigCostoBenefit**.
 - **AgeRange**, **BusinessUnit**, **BusinessLine**.
 - **PlanGenerator**: matriz de cotización corporativa (celdas, rates, imágenes, PDF). Lógica en `app/Support/PlanGenerators/` y `PlanGeneratorPdfService`.
 - **WhiteCompany**: tarifas negociadas, planes asignados (`WhiteCompanyPlan` + `WhiteCompanyPlanAssignment`), documentos de marca, liquidaciones (`WhiteCompanyPaymentSettlement`).
 - **Reporte de ventas de empresa aliada**: `WhiteCompanySalesReportService` arma el reporte por rango de fechas desde la **neta congelada en cada afiliación** (`white_company_neta` / `white_company_sale_price`), no desde la matriz de negociación vigente — así un reporte ya emitido sigue cuadrando aunque mañana se renegocien tarifas. Preview y envío por `WhiteCompanySalesReportController` (rutas `administration/white-companies/{whiteCompany}/sales-report/{preview,send}`), entrega en cola (`SendWhiteCompanySalesReportJob`, `SendWhiteCompanySalesReportWhatsAppJob`, `WhiteCompanySalesReportMail`) y verificación pública del documento en `/reporte-aliada/verificar/{key?}` con clave de `WhiteCompanySalesReportKey`.
 
-### 4.2.1 Plantillas PDF (DomPDF) — reglas que ya costaron romper el documento
+### 4.2.1 Modos de precio de un plan (`plans.pricing_mode`)
+
+Un plan se arma y se cobra de **dos maneras excluyentes**, según el enum `PlanPricingMode`. Este valor decide a la vez el formulario que ve el analista, la forma de las filas de `fees` y cómo se resuelve la tarifa de un afiliado. Es el eje del módulo de planes; no tocar `fees`, el asistente de plan ni el cálculo de tarifa sin entenderlo.
+
+| Modo | Estructura | Fila de `fees` | Resolución de tarifa |
+| --- | --- | --- | --- |
+| `COBERTURAS` | El plan tiene coberturas propias; cada beneficio declara un costo límite por cobertura (`benefit_coverages.limit`, NULL = sin límite) | una por **(rango de edad, cobertura)**, con `coverage_id` | por (plan, cobertura, rango de edad) |
+| `PAQUETE` | Sin coberturas; los beneficios van como un todo | una por **rango de edad**, con `coverage_id` **nulo** | por (plan, rango de edad) |
+
+- **Escritura:** `App\Support\Plans\PlanStructurePersistence` (asistente de Negocios, `PlanWizardForm` + `CreatePlan`/`EditPlan`). Todo en una transacción: un plan a medio escribir deja cotizaciones y afiliaciones tomando precios inexistentes.
+- **Lectura/cálculo:** `App\Support\AffiliationAffiliateFeeCalculator::planHasNoCoverages()`. **Antes esto era el número mágico `plan_id === 1`**; hoy es la columna, con el plan 1 solo como respaldo si `pricing_mode` aún no está poblado. `isInitialPlanWithoutCoverage()` queda `@deprecated` pero viva porque la llaman afiliaciones, renovaciones y tarifas negociadas — no borrarla de pasada.
+- **Nada que pueda estar referenciado se borra a ciegas.** Una cobertura que sale del plan se **desvincula** (`plan_id` a NULL), no se elimina. Una tarifa con precio negociado por una empresa aliada **nunca se borra**: se marca `INACTIVO`, porque `white_company_fees.fee_id` la referencia y `affiliations.white_company_fee_id` apunta a esa negociación. Romper esa cadena descuadra reportes ya emitidos.
+- Los IDs 1/2/3 (`INITIAL_PLAN_ID`, `IDEAL_PLAN_ID`, `SPECIAL_PLAN_ID`) siguen siendo constantes del calculador con reglas propias: el Ideal valida que la edad caiga en sus rangos y, si no, emite el mensaje de negociación hacia el Plan Especial.
+- **`PlanQuotableScope`** (`individual` / `corporate` / `both`) acota dónde puede cotizarse un plan **Dress Tylor**; solo aplica si `plans.is_quotable`, y los planes BÁSICOS lo ignoran.
+- Tests de referencia: `PlanPricingModeTest`, `PlanStructurePersistenceTest`, `PlanStructureMatrixTest`, `PlanQuotabilityTest`.
+
+### 4.2.2 Plantillas PDF (DomPDF) — reglas que ya costaron romper el documento
 
 Cuatro restricciones del motor, aprendidas rompiendo la propuesta económica. Partir de `resources/views/livewire/planes-cotizacion-estructura.blade.php`, que ya las aplica y las tiene fijadas en `tests/Unit/QuotePdfStructurePageRenderTest.php`.
 
@@ -378,6 +412,32 @@ Flujos:
 
 Panel médico: `telemedicina`. Operaciones ve la misma data con más herramientas.
 
+### 4.7.1 Cupos clínicos (`app/Support/ClinicalEntitlements/`)
+
+Subsistema que controla **cuántas veces** un afiliado puede consumir cada beneficio de su plan. Es independiente del tope comercial en USD (`benefit_coverages.limit`): ese es dinero, esto es conteo. Atraviesa planes (Negocios), consulta médica (Telemedicina) y las tarjetas de Operaciones, así que un cambio aquí se siente en tres paneles.
+
+**Piezas**
+
+- `ClinicalQuotaScope` — cómo se cuenta: `PER_AFFILIATION_YEAR` (por año de afiliación), `PER_CONTRACT` (una vez en toda la vigencia), `DISTINCT_CASES` (por casos distintos), `UNLIMITED`.
+- `ClinicalServiceChannel` — la puerta por la que se consume; un beneficio se liga a **una sola**: `TYPE_1` (select de telemedicina), `MEDICATION`, `LABORATORY`, `IMAGING`, `SPECIALIST`.
+- `PlanBenefitClinicalSetting` / `BenefitClinicalSetting` — la configuración por plan-beneficio. Se edita con `PlanBenefitClinicalFormSchema`; `PlanClinicalCompleteness` dice si un plan quedó bien configurado.
+- `AffiliateClinicalEntitlementResolver` → `ClinicalEntitlementSnapshot` — resuelve el derecho vigente de un titular. Entra por paciente de telemedicina, `Affiliate` o `AffiliateCorporate` (el puente al plan es `TelemedicinePatientPlanBridge`) y **cachea en estático por request**; en un job largo que recorra muchos titulares, tenerlo en cuenta.
+- `ClinicalEntitlementWindow` — calcula la ventana de conteo por **aniversario de `effective_date`**, no por año calendario.
+- `ClinicalUsageLedger` — el libro mayor: `consume()` al guardar la consulta, `reverseForConsultation()` / `reverseForCase()` al revertir. Persiste en `AffiliateClinicalServiceUsage`. `TelemedicineCaseReversalService` depende de esto: revertir un caso **debe** devolver el cupo.
+
+**Dos OTP distintos, no confundirlos**
+
+| Clase | Modelo de reto | Para qué |
+| --- | --- | --- |
+| `ClinicalServiceOverrideOtp` | `ClinicalServiceOverrideChallenge` | El médico agotó el cupo y necesita autorización para pasarse |
+| `ClinicalUsageAccessOtp` | `ClinicalUsageAccessChallenge` | Editar la configuración de cupos de un plan/beneficio (contextos de `ClinicalUsageAccessContext`) |
+
+Ambos emiten (`issue`), reenvían (`resend`), verifican (`verify`) y marcan consumido (`markConsumed`); el segundo notifica a los SUPERADMIN. El campo de la UI es `App\Filament\Forms\Components\OtpBoxesInput`.
+
+**Dónde se aplica el bloqueo:** `ClinicalQuotaFormGuard` corta en el **campo** del formulario de consulta, no al final del asistente — el médico ve el tope antes de recorrer todos los pasos, y la misma regla impide avanzar al pulsar «Siguiente». Al tocar el formulario de consulta, mantener esa propiedad.
+
+Tarjetas de lectura en Operaciones: `OperationsClinicalQuotaCard` y `OperationsAffiliatePlanBenefitsCard`. Tests: `ClinicalEntitlementsTest`, `ClinicalQuotaFormGuardTest`, `ClinicalUsageAccessOtpTest`.
+
 ### 4.8 Marketing
 
 - Notificaciones masivas email/WhatsApp/video (`MassNotification*`, throttle y lock en `config/mass-notifications.php`).
@@ -427,15 +487,16 @@ app/
     Actions/                   # Acciones reutilizables (p. ej. ImportAction)
     Concerns/ Shared/          # Traits y componentes usados por varios paneles
     Exports/ Imports/          # Exporters e importers Filament
+    Forms/Components/          # Campos de formulario propios (OtpBoxesInput)
     AvatarProviders/
     Widgets/                   # Widgets compartidos (WelcomeUserLiquidGlassWidget)
   Http/Controllers/            # PDF, CSV, webhooks, utilidades, Livewire pages clásicas
   Http/Middleware/             # DuplicatedSession, EnsurePresentationHubAccess
   Http/Requests/               # Form requests (validación HTTP)
-  Jobs/                        # ~95 jobs: WhatsApp, PDF, mail, exports, renovaciones
+  Jobs/                        # ~98 jobs: WhatsApp, PDF, mail, exports, renovaciones
   Livewire/                    # Flujos públicos de cotización/afiliación/registro
   Mail/  Notifications/
-  Models/                      # ~264 modelos. ProjectManagement/ anidado
+  Models/                      # ~268 modelos. ProjectManagement/ anidado
   Observers/
   Listeners/                   # Solo LogFilamentImportActivity
   Policies/                    # Casi vacío a propósito (ver §6): solo TelemedicineCaseMessagePolicy
@@ -595,11 +656,11 @@ Pantallas nuevas de **producto interno** van en Filament del panel correspondien
 
 ## 11. Testing
 
-- Pest 3. Unit en `tests/Unit` (~810 archivos), Feature en `tests/Feature` (10 archivos).
+- Pest 3. Unit en `tests/Unit` (~857 archivos), Feature en `tests/Feature` (18 archivos). Las cifras de este apartado envejecen: recontar con `ls tests/Unit/*.php | wc -l` antes de citarlas.
 - La proporción es deliberada: **el estilo dominante es el test unitario que lee el código fuente** — assertions sobre strings de Resources, Schemas, Tables y registries, sin tocar base de datos ni contenedor. Copiar ese patrón antes de montar un test con DB.
-- **`tests/Unit` no arranca la aplicación por defecto.** `tests/Pest.php` hace `pest()->extend(Tests\TestCase::class)` solo `->in('Feature')`. Un test de Unit es PHPUnit puro: `config()`, `app()` y las facades **no resuelven** (fallan con `Target class [config] does not exist`). Para tener contenedor hay que declarar `uses(Tests\TestCase::class);` — lo hacen ~226 de los 810 archivos.
+- **`tests/Unit` no arranca la aplicación por defecto.** `tests/Pest.php` hace `pest()->extend(Tests\TestCase::class)` solo `->in('Feature')`. Un test de Unit es PHPUnit puro: `config()`, `app()` y las facades **no resuelven** (fallan con `Target class [config] does not exist`). Para tener contenedor hay que declarar `uses(Tests\TestCase::class);` — lo hacen ~237 de los 857 archivos. Y de esos 237, **solo 10 envuelven en transacción revertida**: el resto escribe en MySQL si el test escribe.
 - **En cuanto un test de Unit arranca la aplicación, la conexión es la MySQL de desarrollo** (§0.2). Escribir sin transacción revertida ensucia la base del usuario.
-- **`tests/Feature` está roto y no sirve como alternativa.** `tests/Pest.php` le aplica `RefreshDatabase`, `TestCase` lo redirige a sqlite `:memory:` (correcto, protege la base), pero el esquema no se puede construir desde cero: hay tablas sin migración de creación y revienta en `2025_07_14_145024_add_configuration_menu_to_agents.php` con `no such table: agents`. **Los 37 tests del suite fallan hoy.** No montar tests nuevos ahí esperando que pasen.
+- **`tests/Feature` está roto y no sirve como alternativa.** `tests/Pest.php` le aplica `RefreshDatabase`, `TestCase` lo redirige a sqlite `:memory:` (correcto, protege la base), pero el esquema no se puede construir desde cero: hay tablas sin migración de creación y revienta en `2025_07_14_145024_add_configuration_menu_to_agents.php` con `no such table: agents`. **Todo el suite de Feature falla hoy.** No montar tests nuevos ahí esperando que pasen.
 - Helpers globales de `tests/Pest.php`: `ensureSqliteInMemoryDatabaseOrSkip()` e `insertPublicAiAgentTestAgency()` (siembra una agencia mínima para el chat público).
 - **Fallos preexistentes**, ajenos a cualquier cambio nuevo — no perseguirlos ni "arreglarlos" borrando aserciones: `QuotePdfCoverageTableTest` (falla por `Target class [config] does not exist`, le falta el `uses`), `PlanCodeGeneratorTest` (2 tests con aserciones sobre strings que nunca existieron) y `PlanGeneratorTest` (exige un `canView` que `PlanGeneratorResource.php` nunca tuvo). Ante una corrida en rojo, confirmar con `git stash` antes de atribuírselo a lo propio.
 - Nombrar tests en español está aceptado en el repo (`it('...', ...)`).
@@ -654,6 +715,8 @@ Frontend que “no se ve”: pedir `npm run dev` / `npm run build` / `composer r
 - **White company:** marca blanca con tarifas y planes propios.
 - **Padron / población:** listado de asegurados corporativos.
 - **Centro de notificaciones:** interruptores que prenden o apagan jobs del scheduler.
+- **Cupo clínico:** número de veces que un afiliado puede consumir un beneficio (§4.7.1). No es el tope en USD.
+- **Paquete / Coberturas:** los dos modos de precio de un plan (§4.2.1).
 - **Diagnomóvil:** inventario operativo de insumos/medicamentos.
 - **R4:** pasarela de domiciliación de Mi Banco (CNTA/CELE).
 - **UltraMsg:** API de WhatsApp usada por notificaciones.
@@ -676,6 +739,9 @@ Frontend que “no se ve”: pedir `npm run dev` / `npm run build` / `composer r
 | `config/services.php` | Maps, chat, Viveplus |
 | `app/Http/Controllers/NotificationController.php` | Hub histórico WhatsApp |
 | `app/Services/PublicAiAgent/AgentOrchestrator.php` | Chat / guía pública |
+| `app/Support/AffiliationAffiliateFeeCalculator.php` | Cómo se resuelve la tarifa de un afiliado (§4.2.1) |
+| `app/Support/Plans/PlanStructurePersistence.php` | Cómo se escribe un plan y qué nunca se borra |
+| `app/Support/ClinicalEntitlements/ClinicalUsageLedger.php` | Consumo y reverso de cupos clínicos (§4.7.1) |
 | `tests/TestCase.php` | Guarda dura: fuerza sqlite `:memory:` en tests que recrean el esquema |
 | `tests/Pest.php` | Helpers globales (`ensureSqliteInMemoryDatabaseOrSkip`) y `RefreshDatabase` en Feature |
 | `phpunit.xml` | Declara sqlite `:memory:`… que la config cacheada ignora (§0.2) |

@@ -70,11 +70,19 @@ it('TelemedicineInformeLargoPdfGenerator guarda el PDF en telemedicina-doc', fun
     $path = dirname(__DIR__, 2).'/app/Support/Telemedicine/TelemedicineInformeLargoPdfGenerator.php';
     $contents = file_get_contents($path);
 
+    // El render (vista, papel y estampado de firma) vive ahora en
+    // TelemedicineInformePdfRenderer, compartido con el informe corto.
     expect($contents)
-        ->toContain('informe-medico-largo')
-        ->toContain("setPaper('a4', 'portrait')")
+        ->toContain('TelemedicineInformePdfRenderer::VIEW_LARGO')
+        ->toContain('TelemedicineInformePdfRenderer::save')
         ->toContain('telemedicina-doc')
         ->toContain('fileExists');
+
+    $renderer = file_get_contents(dirname(__DIR__, 2).'/app/Support/Telemedicine/TelemedicineInformePdfRenderer.php');
+
+    expect($renderer)
+        ->toContain('documents.informe-medico-largo')
+        ->toContain("setPaper('a4', 'portrait')");
 });
 
 it('HasInformAmdModal permite informar AMD antes de guardar la consulta', function (): void {

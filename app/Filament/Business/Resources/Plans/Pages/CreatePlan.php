@@ -12,6 +12,7 @@ use App\Filament\Business\Resources\Plans\Schemas\PlanWizardForm;
 use App\Models\Plan;
 use App\Support\ClinicalEntitlements\PlanClinicalStructurePersistence;
 use App\Support\Plans\PlanCodeGenerator;
+use App\Support\Plans\PlanQuotability;
 use App\Support\Plans\PlanStructurePersistence;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Schemas\Schema;
@@ -65,6 +66,7 @@ class CreatePlan extends CreateRecord
             'description' => $data['description'] ?? null,
             'business_unit_id' => $data['business_unit_id'] ?? 1,
             'type' => $data['type'] ?? 'BASICO',
+            ...PlanQuotability::attributesFromForm($data),
             'status' => $data['status'] ?? 'ACTIVO',
             'created_by' => $data['created_by'] ?? (string) (Auth::user()?->name ?? 'sistema'),
             'pricing_mode' => (PlanPricingMode::fromStored($data['pricing_mode'] ?? null) ?? PlanPricingMode::Coberturas)->value,

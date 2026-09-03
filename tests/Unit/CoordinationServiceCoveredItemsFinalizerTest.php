@@ -96,7 +96,7 @@ it('expone la acción para colocar servicios cubiertos en gestión cambiando de 
     expect($support)
         ->toContain('makePlaceCoveredItemsInManagementAction')
         ->toContain("Action::make('placeCoveredItemsInManagement')")
-        ->toContain("->label('Colocar cubiertos en gestión')")
+        ->toContain("->label('Activar gestión')")
         ->toContain('hasCoveredItemsPendingManagement')
         ->toContain('coveredPendingManagementOptions')
         ->toContain('placeCoveredItemsInManagement')

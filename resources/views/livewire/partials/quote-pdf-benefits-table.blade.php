@@ -13,11 +13,11 @@
     // ocultar una cobertura de una propuesta comercial sería peor que
     // imprimirla con tipografía menor.
     $isDense = (bool) ($isDense ?? false);
-    $fontSize = $isDense ? '7pt' : '8.5pt';
+    $fontSize = $isDense ? '6pt' : '7pt';
     // El check se dibuja algo mayor que el texto para que pese lo mismo que un
     // monto en la lectura de la columna.
-    $checkFontSize = $isDense ? '10pt' : '12pt';
-    $cellPadding = $isDense ? '5px 4px' : '7px 6px';
+    $checkFontSize = $isDense ? '8pt' : '9pt';
+    $cellPadding = $isDense ? '4px 3px' : '5px 4px';
 
     // El ancho de la primera columna se reparte para que las de cobertura
     // queden iguales entre sí y la tabla nunca exceda el ancho de la hoja.

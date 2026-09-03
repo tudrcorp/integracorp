@@ -474,10 +474,14 @@ final class TelemedicineCaseDocumentsCatalog
      */
     private static function finalizeEntries(Collection $entries): array
     {
+        // El orden importa: `unique()` conserva la PRIMERA aparición, así que hay
+        // que ordenar por fecha antes de deduplicar. Si no, un histórico con la
+        // misma ruta repetida se queda con la copia más vieja y el documento
+        // parece no haberse regenerado.
         return $entries
             ->filter(static fn (array $entry): bool => ($entry['file_path'] ?? '') !== '')
-            ->unique('uid')
             ->sortByDesc('sort_timestamp')
+            ->unique('uid')
             ->values()
             ->all();
     }

@@ -1,0 +1,110 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Models\IndividualQuote;
+use App\Models\Plan;
+use App\Support\Storefront\StorefrontAuth;
+use App\Support\Storefront\StorefrontPlanNarrative;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
+use Livewire\Volt\Component;
+
+new #[Layout('components.layouts.storefront')] #[Title('Cotización lista')] class extends Component
+{
+    public string $code = '';
+
+    public string $planTitle = 'Plan';
+
+    public string $fullName = '';
+
+    public string $email = '';
+
+    public string $phone = '';
+
+    public string $displayName = '';
+
+    public string $displayPhone = '';
+
+    public bool $asAgent = false;
+
+    public function mount(string $code): void
+    {
+        $record = IndividualQuote::query()
+            ->where('code', $code)
+            ->first();
+
+        abort_unless($record instanceof IndividualQuote, 404);
+
+        $this->code = (string) $record->code;
+        $this->fullName = (string) $record->full_name;
+        $this->email = (string) $record->email;
+        $this->phone = (string) $record->phone;
+        $this->displayName = StorefrontPlanNarrative::personName($this->fullName);
+        $this->displayPhone = StorefrontPlanNarrative::phoneLabel($this->phone);
+        $this->asAgent = StorefrontAuth::currentIsAgent();
+
+        $plan = Plan::query()->find((int) $record->plan);
+        $this->planTitle = $plan instanceof Plan
+            ? StorefrontPlanNarrative::for($plan)['title']
+            : 'Plan';
+    }
+}; ?>
+
+<div
+    class="sf-quote"
+    x-data="{
+        copied: false,
+        async copyCode() {
+            try {
+                await navigator.clipboard.writeText(@js($code));
+                this.copied = true;
+                setTimeout(() => this.copied = false, 1800);
+            } catch (error) {
+                this.copied = false;
+            }
+        },
+    }"
+>
+    <section class="sf-hero sf-hero--result">
+        <span class="sf-ticket__seal" aria-hidden="true">✓</span>
+        <p class="sf-kicker">Listo</p>
+        <h1 class="sf-title">Tu cotización está lista</h1>
+        <p class="sf-lead">{{ $asAgent ? 'Quedó registrada a tu nombre. Compártela con el cliente cuando quieras.' : 'Guarda el código. Un asesor puede ayudarte a convertirla en afiliación.' }}</p>
+    </section>
+
+    <article class="sf-ticket sf-glass">
+        <p class="sf-ticket__kicker">Código de cotización</p>
+        <p class="sf-ticket__code" id="sf-quote-code">{{ $code }}</p>
+        <button type="button" class="sf-ticket__copy" x-on:click="copyCode()">
+            <span x-text="copied ? 'Copiado' : 'Copiar código'"></span>
+        </button>
+        <dl class="sf-review__facts sf-review__facts--plain">
+            <div>
+                <dt>Plan</dt>
+                <dd>{{ StorefrontPlanNarrative::planLabel($planTitle) }}</dd>
+            </div>
+            <div>
+                <dt>{{ $asAgent ? 'Cliente' : 'A nombre de' }}</dt>
+                <dd>{{ $displayName }}</dd>
+            </div>
+            @if ($email !== '')
+                <div>
+                    <dt>Correo</dt>
+                    <dd>{{ $email }}</dd>
+                </div>
+            @endif
+            @if ($displayPhone !== '')
+                <div>
+                    <dt>Teléfono</dt>
+                    <dd>{{ $displayPhone }}</dd>
+                </div>
+            @endif
+        </dl>
+    </article>
+
+    <div class="sf-sticky-cta">
+        <a href="{{ route('storefront.quote.proposal', $code) }}" wire:navigate class="sf-btn">Ver propuesta</a>
+        <a href="{{ route('storefront.home') }}" wire:navigate class="sf-btn sf-btn-ghost">Volver a planes</a>
+    </div>
+</div>

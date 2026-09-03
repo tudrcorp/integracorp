@@ -12,6 +12,7 @@ use App\Support\ClinicalEntitlements\ClinicalUsageAccessOtp;
 use App\Support\ClinicalEntitlements\PlanBenefitClinicalFormSchema;
 use App\Support\ClinicalEntitlements\PlanClinicalStructurePersistence;
 use App\Support\Plans\PlanCodeGenerator;
+use App\Support\Plans\PlanQuotabilityFormSchema;
 use App\Support\Plans\PlanStructureMatrix;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Radio;
@@ -104,8 +105,13 @@ class PlanWizardForm
                             'DRESS-TAILOR' => 'DRESS-TAILOR',
                         ])
                         ->default('BASICO')
-                        ->required(),
+                        ->required()
+                        ->live()
+                        ->afterStateUpdated(function (Set $set, mixed $state): void {
+                            PlanQuotabilityFormSchema::syncTypeChange($set, $state);
+                        }),
                 ]),
+                ...PlanQuotabilityFormSchema::section(),
 
                 Radio::make('pricing_mode')
                     ->label('¿Cómo se arma este plan?')

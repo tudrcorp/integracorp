@@ -23,6 +23,7 @@ use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Models\User;
 use App\Services\TelemedicineMedicationInventoryDeductor;
+use App\Services\TelemedicineSupplyConsumptionRecorder;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
@@ -84,6 +85,11 @@ class EditTelemedicineConsultationPatient extends EditRecord
     protected function afterSave(): void
     {
         $record = $this->getRecord();
+
+        if ($record instanceof TelemedicineConsultationPatient) {
+            app(TelemedicineSupplyConsumptionRecorder::class)
+                ->recordAndNotify($record, $this->data['medical_supplies'] ?? []);
+        }
 
         if ((string) $record->status === TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS) {
             return;

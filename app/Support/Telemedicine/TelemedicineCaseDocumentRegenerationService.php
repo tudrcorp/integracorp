@@ -20,8 +20,9 @@ use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Models\User;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Throwable;
 
 class TelemedicineCaseDocumentRegenerationService
 {
@@ -81,7 +82,18 @@ class TelemedicineCaseDocumentRegenerationService
      * @param  list<string>  $documentKeys
      * @return list<string>
      */
-    public function regenerate(TelemedicineCase $case, array $documentKeys, User $user): array
+    /**
+     * Regenera los documentos seleccionados **dentro del request**, sin pasar por
+     * la cola.
+     *
+     * Esta acción es el plan B del médico justo cuando la cola de documentos ha
+     * fallado: encolar aquí reproduciría el fallo que se quiere sortear. Se
+     * ejecuta cada job de forma aislada para que un documento roto no impida los
+     * demás, y se devuelve el detalle de lo que salió y lo que no.
+     *
+     * @param  list<string>  $documentKeys
+     */
+    public function regenerate(TelemedicineCase $case, array $documentKeys, User $user): TelemedicineCaseDocumentRegenerationResult
     {
         $documentKeys = array_values(array_unique(array_filter($documentKeys, static fn (mixed $key): bool => is_string($key) && $key !== '')));
 
@@ -105,8 +117,8 @@ class TelemedicineCaseDocumentRegenerationService
             throw new InvalidArgumentException('El caso no tiene consultas para regenerar documentos.');
         }
 
-        $doctor = TelemedicineDoctor::query()->find($consultation->telemedicine_doctor_id ?? $case->telemedicine_doctor_id);
-        $patient = TelemedicinePatient::query()->find($consultation->telemedicine_patient_id ?? $case->telemedicine_patient_id);
+        $doctor = $this->resolveDoctor($consultation, $case);
+        $patient = $this->resolvePatient($consultation, $case);
 
         if ($doctor === null || $patient === null) {
             throw new InvalidArgumentException('No se encontró el médico o el paciente del caso.');
@@ -150,7 +162,7 @@ class TelemedicineCaseDocumentRegenerationService
             };
 
             if ($job !== null) {
-                $jobs[] = $job;
+                $jobs[$documentKey] = $job;
             }
         }
 
@@ -158,12 +170,59 @@ class TelemedicineCaseDocumentRegenerationService
             throw new InvalidArgumentException('No se pudieron preparar los documentos seleccionados.');
         }
 
-        Bus::batch($jobs)
-            ->name('telemedicina-case-docs-regenerate-'.$case->id.'-'.now()->timestamp)
-            ->onQueue('telemedicina')
-            ->dispatch();
+        return $this->runJobsSynchronously($jobs, $case, $available);
+    }
 
-        return $selected;
+    /**
+     * Ejecuta los jobs en el propio request, uno a uno y sin cola.
+     *
+     * @param  array<string, object>  $jobs  Clave de documento => job.
+     * @param  array<string, string>  $labels
+     */
+    protected function runJobsSynchronously(array $jobs, TelemedicineCase $case, array $labels): TelemedicineCaseDocumentRegenerationResult
+    {
+        // Hasta seis PDF en un mismo request: el límite por defecto se queda corto.
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(300);
+        }
+
+        $generated = [];
+        $failed = [];
+
+        foreach ($jobs as $documentKey => $job) {
+            try {
+                $this->runJob($job);
+                $generated[] = $documentKey;
+            } catch (Throwable $exception) {
+                $failed[$documentKey] = $exception->getMessage();
+
+                Log::error('TelemedicineCaseDocumentRegenerationService: documento no generado', [
+                    'telemedicine_case_id' => $case->id,
+                    'document' => $documentKey,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return new TelemedicineCaseDocumentRegenerationResult($generated, $failed, $labels);
+    }
+
+    /**
+     * Aislado para que las pruebas puedan sustituir la ejecución del job.
+     */
+    protected function runJob(object $job): void
+    {
+        dispatch_sync($job);
+    }
+
+    protected function resolveDoctor(TelemedicineConsultationPatient $consultation, TelemedicineCase $case): ?TelemedicineDoctor
+    {
+        return TelemedicineDoctor::query()->find($consultation->telemedicine_doctor_id ?? $case->telemedicine_doctor_id);
+    }
+
+    protected function resolvePatient(TelemedicineConsultationPatient $consultation, TelemedicineCase $case): ?TelemedicinePatient
+    {
+        return TelemedicinePatient::query()->find($consultation->telemedicine_patient_id ?? $case->telemedicine_patient_id);
     }
 
     public function resolveConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
