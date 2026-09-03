@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Storefront\StorefrontGoogleAuthController;
 use App\Http\Controllers\Storefront\StorefrontPaymentMethodsController;
+use App\Http\Controllers\Storefront\StorefrontQuotePdfController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -28,11 +29,16 @@ Route::middleware('web')
         Volt::route('/cotizacion/{code}/propuesta', 'volt.app.quote-proposal')
             ->where('code', '[A-Za-z0-9\-]+')
             ->name('storefront.quote.proposal');
+        Route::get('/cotizacion/{code}/pdf', StorefrontQuotePdfController::class)
+            ->where('code', '[A-Za-z0-9\-]+')
+            ->name('storefront.quote.pdf');
         Volt::route('/cotizacion/{code}', 'volt.app.quote-result')
             ->where('code', '[A-Za-z0-9\-]+')
             ->name('storefront.quote.result');
         Route::get('/documentos/metodos-de-pago', StorefrontPaymentMethodsController::class)
             ->name('storefront.documents.payment-methods');
+        Volt::route('/metodos-de-pago', 'volt.app.payment-methods')
+            ->name('storefront.payment-methods');
         Volt::route('/entrar', 'volt.app.login')->name('storefront.login');
         Route::get('/entrar/google', [StorefrontGoogleAuthController::class, 'redirect'])
             ->name('storefront.login.google');

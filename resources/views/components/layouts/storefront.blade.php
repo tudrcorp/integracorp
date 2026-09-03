@@ -13,6 +13,8 @@
         successOpen: false,
         successCode: '',
         successUrl: '',
+        successPdfUrl: '',
+        successPdfBusy: false,
         successAsAgent: false,
         headerGlass: false,
         closeMenu() {
@@ -60,9 +62,43 @@
             this.closeMenu();
             this.successCode = String(detail.code ?? '');
             this.successUrl = String(detail.url ?? '');
+            this.successPdfUrl = String(detail.pdfUrl ?? '');
+            this.successPdfBusy = false;
             this.successAsAgent = Boolean(detail.asAgent);
             this.successOpen = true;
             this.$nextTick(() => this.$refs.successDone?.focus());
+        },
+        async downloadSuccessPdf() {
+            if (! this.successPdfUrl || this.successPdfBusy) {
+                return;
+            }
+
+            this.successPdfBusy = true;
+
+            try {
+                const response = await fetch(this.successPdfUrl, {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'application/pdf' },
+                });
+
+                if (! response.ok) {
+                    throw new Error('pdf-unavailable');
+                }
+
+                const blob = await response.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = objectUrl;
+                link.download = (this.successCode || 'cotizacion') + '.pdf';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(objectUrl);
+            } catch (error) {
+                window.location.assign(this.successPdfUrl);
+            } finally {
+                this.successPdfBusy = false;
+            }
         },
         dismissSuccess() {
             const url = this.successUrl;
@@ -183,7 +219,7 @@
                                     <span class="storefront-sheet__label">{{ $item['label'] }}</span>
                                     <span class="storefront-sheet__hint">{{ $item['hint'] }}</span>
                                 </span>
-                                <span class="storefront-sheet__soon">Pronto</span>
+                                <span class="storefront-sheet__soon">{{ $item['soon_label'] ?? 'Pronto' }}</span>
                             </div>
                         @elseif ($item['method'] === 'post' && $item['route'])
                             <form method="POST" action="{{ route($item['route']) }}">
@@ -231,20 +267,6 @@
                             </a>
                         @endif
                     @endforeach
-
-                    <button
-                        type="button"
-                        class="storefront-sheet__row"
-                        x-on:click="closeMenu(); $dispatch('storefront-open-install')"
-                    >
-                        <span class="storefront-sheet__icon">
-                            @include('storefront.partials.nav-icon', ['name' => 'install'])
-                        </span>
-                        <span class="storefront-sheet__copy">
-                            <span class="storefront-sheet__label">Instalar app</span>
-                            <span class="storefront-sheet__hint">En tu pantalla de inicio, como una app nativa</span>
-                        </span>
-                    </button>
                 </div>
 
                 <div class="storefront-sheet__footer">

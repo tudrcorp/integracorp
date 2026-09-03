@@ -33,14 +33,31 @@
             <h2 id="sf-success-title">Cotización generada</h2>
             <p id="sf-success-copy" x-text="successCopy()"></p>
 
-            <button
-                type="button"
-                class="sf-success__done"
-                x-ref="successDone"
-                x-on:click="dismissSuccess()"
-            >
-                Ver propuesta
-            </button>
+            <div class="sf-success__actions">
+                <button
+                    type="button"
+                    class="sf-success__done"
+                    x-ref="successDone"
+                    x-on:click="dismissSuccess()"
+                >
+                    Ver propuesta
+                </button>
+                <button
+                    type="button"
+                    class="sf-success__pdf"
+                    x-show="successPdfUrl"
+                    x-bind:disabled="successPdfBusy"
+                    x-bind:class="successPdfBusy && 'is-busy'"
+                    x-bind:aria-busy="successPdfBusy.toString()"
+                    x-on:click="downloadSuccessPdf()"
+                >
+                    <span class="sf-success__pdf-idle" x-show="! successPdfBusy">Descargar cotización en PDF</span>
+                    <span class="sf-success__pdf-busy" x-show="successPdfBusy" x-cloak>
+                        <span class="sf-spinner" aria-hidden="true"></span>
+                        <span>Preparando PDF…</span>
+                    </span>
+                </button>
+            </div>
         </div>
     </div>
 </template>

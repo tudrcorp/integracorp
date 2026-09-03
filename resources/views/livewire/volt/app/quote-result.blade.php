@@ -73,7 +73,7 @@ new #[Layout('components.layouts.storefront')] #[Title('Cotización lista')] cla
 }; ?>
 
 <div
-    class="sf-quote"
+    class="sf-quote sf-quote--result"
     x-data="{
         copied: false,
         async copyCode() {
@@ -87,27 +87,27 @@ new #[Layout('components.layouts.storefront')] #[Title('Cotización lista')] cla
         },
     }"
 >
-    <section class="sf-hero sf-hero--result">
+    <section class="sf-hero sf-hero--compact sf-hero--result">
         <span class="sf-ticket__seal" aria-hidden="true">✓</span>
-        <p class="sf-kicker">Listo</p>
         <h1 class="sf-title">Tu cotización está lista</h1>
-        <p class="sf-lead">{{ $asAgent ? 'Quedó registrada a tu nombre. Compártela con el cliente cuando quieras.' : 'Guarda el código. Un asesor puede ayudarte a convertirla en afiliación.' }}</p>
+        <p class="sf-lead">{{ $asAgent ? 'Quedó registrada a tu nombre.' : 'Guarda el código para afiliarte.' }}</p>
     </section>
 
-    <article class="sf-ticket sf-glass">
-        <p class="sf-ticket__kicker">Código de cotización</p>
-        <p class="sf-ticket__code" id="sf-quote-code">{{ $code }}</p>
-        <button type="button" class="sf-ticket__copy" x-on:click="copyCode()">
-            <span x-text="copied ? 'Copiado' : 'Copiar código'"></span>
-        </button>
-        <dl class="sf-review__facts sf-review__facts--plain">
+    <article class="sf-ticket sf-ticket--compact sf-glass">
+        <div class="sf-ticket__code-row">
+            <div>
+                <p class="sf-ticket__kicker">Código de cotización</p>
+                <p class="sf-ticket__code" id="sf-quote-code">{{ $code }}</p>
+            </div>
+            <button type="button" class="sf-ticket__copy sf-ticket__copy--mini" x-on:click="copyCode()">
+                <span x-text="copied ? 'Copiado' : 'Copiar'"></span>
+            </button>
+        </div>
+
+        <dl class="sf-review__facts sf-review__facts--plain sf-ticket__facts">
             <div>
                 <dt>Plan</dt>
                 <dd>{{ StorefrontPlanNarrative::planLabel($planTitle) }}</dd>
-            </div>
-            <div>
-                <dt>{{ $asAgent ? 'Cliente' : 'A nombre de' }}</dt>
-                <dd>{{ $displayName }}</dd>
             </div>
             @if ($headline !== '')
                 <div>
@@ -115,6 +115,10 @@ new #[Layout('components.layouts.storefront')] #[Title('Cotización lista')] cla
                     <dd>{{ $headline }}</dd>
                 </div>
             @endif
+            <div>
+                <dt>{{ $asAgent ? 'Cliente' : 'A nombre de' }}</dt>
+                <dd>{{ $displayName }}</dd>
+            </div>
             @if ($groups !== [])
                 <div>
                     <dt>Grupo</dt>
@@ -131,7 +135,7 @@ new #[Layout('components.layouts.storefront')] #[Title('Cotización lista')] cla
                 </div>
             @endif
             @if ($email !== '')
-                <div>
+                <div class="sf-ticket__fact--wide">
                     <dt>Correo</dt>
                     <dd>{{ $email }}</dd>
                 </div>

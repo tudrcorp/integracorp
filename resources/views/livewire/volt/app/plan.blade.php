@@ -73,7 +73,9 @@ new #[Layout('components.layouts.storefront')] #[Title('Plan')] class extends Co
             @if ($asAgent)
                 <span class="sf-agent-chip">Cotiza este plan a tu cliente</span>
             @endif
-            <p class="sf-product__kicker">{{ $narrative['kicker'] }}</p>
+            @if (($narrative['kicker'] ?? '') !== '')
+                <p class="sf-product__kicker">{{ $narrative['kicker'] }}</p>
+            @endif
             <h1 class="sf-product__title">{{ $narrative['title'] }}</h1>
             <p class="sf-product__hook">{{ $narrative['audience'] }}</p>
         </div>
@@ -115,7 +117,9 @@ new #[Layout('components.layouts.storefront')] #[Title('Plan')] class extends Co
             </div>
 
             <header class="sf-product-sheet__head">
-                <span class="sf-product-sheet__badge">{{ $narrative['kicker'] }}</span>
+                @if (($narrative['kicker'] ?? '') !== '')
+                    <span class="sf-product-sheet__badge">{{ $narrative['kicker'] }}</span>
+                @endif
                 <h2>{{ $narrative['title'] }}</h2>
             </header>
 

@@ -116,6 +116,7 @@ new #[Layout('components.layouts.storefront')] #[Title('Confirmar')] class exten
             'code' => $created['code'],
             'asAgent' => $this->asAgent,
             'url' => route('storefront.quote.proposal', ['code' => $created['code']]),
+            'pdfUrl' => route('storefront.quote.pdf', ['code' => $created['code']]),
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $this->js('window.dispatchEvent(new CustomEvent("storefront-quote-success", { detail: '.$payload.' }));');

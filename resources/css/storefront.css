@@ -141,7 +141,7 @@ html.storefront-app body {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.12rem;
+    gap: 0.85rem;
     min-width: 0;
 }
 
@@ -240,7 +240,7 @@ html.storefront-app body.is-header-glass .storefront-header::before {
 }
 
 html.storefront-app body:has(.storefront-back) {
-    --sf-header-h: calc(4.55rem + var(--sf-safe-top));
+    --sf-header-h: calc(5.35rem + var(--sf-safe-top));
 }
 
 .storefront-menu-btn {
@@ -1187,18 +1187,112 @@ html.storefront-app body.is-header-glass .storefront-header::before {
     background: linear-gradient(180deg, rgba(2, 9, 20, 0) 0%, rgba(2, 9, 20, 0.78) 38%, rgba(2, 9, 20, 0.96) 100%);
 }
 
-.sf-quote--confirm {
-    min-height: calc(100svh - var(--sf-header-h) - 2.15rem);
-    min-height: calc(100dvh - var(--sf-header-h) - 2.15rem);
+/* Confirmar / resultado: cabe en el viewport sin scroll; CTA por encima del safe-area */
+body:has(.sf-quote--confirm) .storefront-shell,
+body:has(.sf-quote--result) .storefront-shell {
+    height: 100svh;
+    height: 100dvh;
+    max-height: 100svh;
+    max-height: 100dvh;
+    overflow: hidden;
 }
 
-.sf-quote--confirm .sf-sticky-cta {
+body:has(.sf-quote--confirm) .storefront-stage,
+body:has(.sf-quote--confirm) .storefront-page,
+body:has(.sf-quote--result) .storefront-stage,
+body:has(.sf-quote--result) .storefront-page {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.sf-quote--confirm,
+.sf-quote--result {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+}
+
+.sf-quote--confirm .sf-steps {
+    margin-bottom: 0.55rem;
+}
+
+.sf-quote--confirm .sf-hero--compact,
+.sf-quote--result .sf-hero--compact {
+    padding-bottom: 0.4rem;
+}
+
+.sf-quote--confirm .sf-sticky-cta,
+.sf-quote--result .sf-sticky-cta {
     position: static;
     margin-top: auto;
-    padding-top: 0.85rem;
-    padding-bottom: 0.1rem;
-    margin-bottom: -0.85rem;
+    margin-bottom: 0;
+    padding-top: 0.55rem;
+    padding-bottom: 0;
+    flex-shrink: 0;
     background: none;
+    border-top: 0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.sf-quote--payments {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.sf-pay-actions {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0.35rem 0 0.5rem;
+}
+
+.sf-pay-action {
+    display: grid;
+    gap: 0.28rem;
+    width: 100%;
+    padding: 1.05rem 1.1rem;
+    border: 1px solid rgba(243, 238, 230, 0.18);
+    border-radius: 1.25rem;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
+    color: #f3eee6;
+    text-align: left;
+    cursor: pointer;
+    appearance: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
+}
+
+.sf-pay-action:active:not(:disabled) {
+    transform: scale(0.985);
+}
+
+.sf-pay-action.is-busy,
+.sf-pay-action:disabled {
+    opacity: 0.78;
+    pointer-events: none;
+    cursor: wait;
+}
+
+.sf-pay-action__label {
+    font-size: 1.05rem;
+    font-weight: 680;
+    letter-spacing: -0.03em;
+}
+
+.sf-pay-action__busy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.sf-pay-action__hint {
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: rgba(243, 238, 230, 0.58);
+}
+
+.sf-pay-action .sf-spinner {
+    color: #f3eee6;
 }
 
 .sf-sticky-cta--row {
@@ -1233,14 +1327,22 @@ html.storefront-app body.is-header-glass .storefront-header::before {
     max-width: none;
     display: grid;
     justify-items: center;
-    gap: 0.7rem;
-    padding: 0.45rem 1.35rem calc(1.15rem + var(--sf-safe-bottom));
+    gap: 0.85rem;
+    min-height: min(42dvh, 26rem);
+    padding: 0.55rem 1.35rem calc(1.55rem + var(--sf-safe-bottom));
     border-radius: 1.45rem 1.45rem 0 0;
     background: #f3eee6;
     color: #1a2836;
     text-align: center;
     box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.32);
     animation: sf-success-card-in 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.sf-success__actions {
+    width: 100%;
+    display: grid;
+    gap: 0.65rem;
+    margin-top: 0.35rem;
 }
 
 .sf-success__grab {
@@ -1291,22 +1393,59 @@ html.storefront-app body.is-header-glass .storefront-header::before {
     color: rgba(26, 40, 54, 0.62);
 }
 
-.sf-success__done {
+.sf-success__done,
+.sf-success__pdf {
     width: 100%;
     min-height: 3.2rem;
-    margin-top: 0.55rem;
-    border: 0;
+    margin-top: 0;
     border-radius: 999px;
-    background: #141b24;
-    color: #f6f1ea;
     font-size: 1.02rem;
     font-weight: 650;
     letter-spacing: -0.02em;
-    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
     transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.sf-success__done:active {
+.sf-success__done {
+    border: 0;
+    background: #141b24;
+    color: #f6f1ea;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+.sf-success__pdf {
+    border: 1.5px solid rgba(26, 40, 54, 0.22);
+    background: rgba(255, 255, 255, 0.55);
+    color: #1a2836;
+    box-shadow: none;
+    cursor: pointer;
+    appearance: none;
+    gap: 0.55rem;
+}
+
+.sf-success__pdf.is-busy,
+.sf-success__pdf:disabled {
+    opacity: 0.78;
+    pointer-events: none;
+    cursor: wait;
+}
+
+.sf-success__pdf-busy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+}
+
+.sf-success__pdf .sf-spinner {
+    color: #1a2836;
+}
+
+.sf-success__done:active,
+.sf-success__pdf:active:not(:disabled) {
     transform: scale(0.98);
 }
 
@@ -1708,12 +1847,13 @@ html.storefront-app body.is-header-glass .storefront-header::before {
 
 .sf-hero--result {
     text-align: center;
-    padding-top: 0.85rem;
+    padding-top: 0.35rem;
 }
 
 .sf-hero--result .sf-lead {
     margin-left: auto;
     margin-right: auto;
+    max-width: 18rem;
 }
 
 .sf-review,
@@ -1870,24 +2010,46 @@ html.storefront-app body.is-header-glass .storefront-header::before {
     text-align: center;
 }
 
+.sf-ticket--compact {
+    text-align: left;
+    padding: 0.85rem 0.9rem 0.95rem;
+    margin-bottom: 0;
+}
+
+.sf-ticket__code-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
 .sf-ticket__seal {
     display: grid;
     place-items: center;
-    width: 2.4rem;
-    height: 2.4rem;
-    margin: 0 auto 0.75rem;
+    width: 2rem;
+    height: 2rem;
+    margin: 0 auto 0.45rem;
     border-radius: 999px;
     background: #cceed9;
     color: #0b6b45;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     font-weight: 800;
 }
 
-.sf-ticket__code {
-    margin: 0.45rem 0 0.85rem;
+.sf-quote--result .sf-title {
     font-size: clamp(1.35rem, 6vw, 1.7rem);
+}
+
+.sf-quote--result .sf-lead {
+    margin-top: 0.25rem;
+    font-size: 0.86rem;
+}
+
+.sf-ticket__code {
+    margin: 0.2rem 0 0;
+    font-size: clamp(1.05rem, 4.5vw, 1.25rem);
     font-weight: 720;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
     color: #f3eee6;
     overflow-wrap: anywhere;
 }
@@ -1904,6 +2066,37 @@ html.storefront-app body.is-header-glass .storefront-header::before {
     font-weight: 620;
     cursor: pointer;
     appearance: none;
+}
+
+.sf-ticket__copy--mini {
+    width: auto;
+    min-width: 5.5rem;
+    min-height: 2.35rem;
+    margin: 0;
+    padding: 0 0.95rem;
+    flex-shrink: 0;
+    font-size: 0.86rem;
+}
+
+.sf-ticket__facts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem 0.75rem;
+    margin: 0.75rem 0 0;
+}
+
+.sf-ticket__facts > div {
+    padding-top: 0.5rem;
+    gap: 0.1rem;
+    border-top: 1px solid rgba(243, 238, 230, 0.1);
+}
+
+.sf-ticket__facts .sf-ticket__fact--wide {
+    grid-column: 1 / -1;
+}
+
+.sf-ticket__facts dd {
+    font-size: 0.88rem;
 }
 
 .sf-ticket .sf-review__facts--plain {

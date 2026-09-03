@@ -16,9 +16,18 @@ class StorefrontPaymentMethodsController extends Controller
 
         abort_unless(is_string($path) && is_file($path), 404);
 
+        $filename = StorefrontPaymentMethodsDocument::DOWNLOAD_FILENAME;
+        $asDownload = request()->boolean('download');
+
+        if ($asDownload) {
+            return response()->download($path, $filename, [
+                'Content-Type' => 'application/pdf',
+            ]);
+        }
+
         return response()->file($path, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="'.StorefrontPaymentMethodsDocument::DOWNLOAD_FILENAME.'"',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
         ]);
     }
 }

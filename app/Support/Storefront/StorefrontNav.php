@@ -19,6 +19,7 @@ use Throwable;
  *     route: string|null,
  *     method: string,
  *     soon: bool,
+ *     soon_label: string|null,
  *     url: string|null,
  *     external: bool
  * }
@@ -36,12 +37,23 @@ final class StorefrontNav
         $items = [
             self::item('home', 'Inicio', 'Planes listos para cotizar', 'home', 'storefront.home'),
             self::item('quote', 'Cotizar', 'Elige un plan y arma la cotización', 'quote', 'storefront.home'),
+            self::item('payments', 'Métodos de pago', 'Descarga o reenvía el documento', 'payments', 'storefront.payment-methods'),
         ];
 
         if ($isAgent) {
             $items[] = self::item('logout', 'Cerrar sesión', 'Salir del modo agente', 'logout', 'storefront.logout', 'post');
         } else {
             $items[] = self::item('login', 'Soy agente', 'Entra con tu cuenta de IntegraCorp', 'login', 'storefront.login');
+            $items[] = self::item(
+                'register',
+                'Registrarme!',
+                'Crea tu cuenta en la app',
+                'affiliations',
+                null,
+                'get',
+                true,
+                'Próximamente!',
+            );
         }
 
         $items[] = self::whatsapp(
@@ -75,11 +87,12 @@ final class StorefrontNav
 
         return match ($name) {
             'storefront.plan' => '',
-            'storefront.quote.people' => 'Cotizar',
-            'storefront.quote.details' => 'Tus datos',
-            'storefront.quote.confirm' => 'Confirmar',
-            'storefront.quote.result' => 'Cotización lista',
-            'storefront.quote.proposal' => 'Propuesta',
+            'storefront.quote.people' => '',
+            'storefront.quote.details' => '',
+            'storefront.quote.confirm' => '',
+            'storefront.quote.result' => '',
+            'storefront.quote.proposal' => '',
+            'storefront.payment-methods' => '',
             'storefront.login' => 'Entrar',
             default => self::homeSubtitle($user),
         };
@@ -101,6 +114,10 @@ final class StorefrontNav
                 'route' => 'storefront.home',
                 'label' => 'Volver al catálogo',
             ],
+            'storefront.payment-methods' => [
+                'route' => 'storefront.home',
+                'label' => 'Volver al catálogo',
+            ],
             default => null,
         };
     }
@@ -113,7 +130,7 @@ final class StorefrontNav
             return 'Hola, '.StorefrontAuth::displayName($resolved);
         }
 
-        return 'Planes';
+        return '';
     }
 
     /**
@@ -134,6 +151,7 @@ final class StorefrontNav
             'route' => null,
             'method' => 'get',
             'soon' => false,
+            'soon_label' => null,
             'url' => $digits === '' ? null : 'https://wa.me/'.$digits.'?text='.rawurlencode($message),
             'external' => true,
         ];
@@ -165,6 +183,7 @@ final class StorefrontNav
         ?string $route,
         string $method = 'get',
         bool $soon = false,
+        ?string $soonLabel = null,
     ): array {
         return [
             'key' => $key,
@@ -174,6 +193,7 @@ final class StorefrontNav
             'route' => $route,
             'method' => $method,
             'soon' => $soon,
+            'soon_label' => $soonLabel,
             'url' => null,
             'external' => false,
         ];
