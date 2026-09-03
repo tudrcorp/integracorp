@@ -38,6 +38,9 @@ new #[Layout('components.layouts.storefront')] #[Title('Confirmar')] class exten
 
     public string $errorMessage = '';
 
+    /** @var list<array{label: string, persons: int}> */
+    public array $groups = [];
+
     public function mount(int $plan): void
     {
         $model = StorefrontCatalog::findActiveBasic($plan);
@@ -67,8 +70,11 @@ new #[Layout('components.layouts.storefront')] #[Title('Confirmar')] class exten
         $this->displayName = StorefrontPlanNarrative::personName($this->fullName);
         $this->displayPhone = StorefrontPlanNarrative::phoneLabel($this->phone);
 
+        $ageRanges = StorefrontPlanView::ageRangeModels($model);
+        $this->groups = StorefrontQuoteDraft::groupSummary($this->planId, $ageRanges, $this->asAgent);
+
         try {
-            $entries = StorefrontQuoteDraft::entries($this->planId, StorefrontPlanView::ageRangeModels($model), $this->asAgent);
+            $entries = StorefrontQuoteDraft::entries($this->planId, $ageRanges, $this->asAgent);
             $quote = StorefrontQuotePricer::quoteForPlan($this->planId, $entries);
             $this->headline = StorefrontQuotePricer::amountLabel($quote);
             $this->coverage = StorefrontQuotePricer::coverageLabel($quote);
@@ -109,32 +115,34 @@ new #[Layout('components.layouts.storefront')] #[Title('Confirmar')] class exten
         $payload = json_encode([
             'code' => $created['code'],
             'asAgent' => $this->asAgent,
-            'url' => route('storefront.quote.result', ['code' => $created['code']]),
+            'url' => route('storefront.quote.proposal', ['code' => $created['code']]),
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $this->js('window.dispatchEvent(new CustomEvent("storefront-quote-success", { detail: '.$payload.' }));');
     }
 }; ?>
 
-<div class="sf-quote">
-    @include('storefront.partials.quote-steps', ['step' => 3])
+<div class="sf-quote sf-quote--confirm">
+    @include('storefront.partials.quote-steps', ['step' => 3, 'planId' => $planId])
 
-    <section class="sf-hero">
-        <p class="sf-kicker">Confirmación</p>
+    <section class="sf-hero sf-hero--compact">
         <h1 class="sf-title">Revisa y confirma</h1>
-        <p class="sf-lead">Así quedará la cotización. Si algo no cuadra, corrige los datos antes de generarla.</p>
+        <p class="sf-lead">Si algo no cuadra, corrige los datos antes de generarla.</p>
     </section>
 
-    <article class="sf-review sf-glass">
-        <p class="sf-review__kicker">Plan</p>
-        <h2 class="sf-review__plan">{{ StorefrontPlanNarrative::planLabel($planTitle) }}</h2>
-
-        <div class="sf-review__price">
-            <span>Estimado</span>
-            <strong>{{ $headline }}</strong>
-            @if ($coverage !== '')
-                <em>{{ $coverage }}</em>
-            @endif
+    <article class="sf-review sf-review--compact sf-glass">
+        <div class="sf-review__top">
+            <div>
+                <p class="sf-review__kicker">Plan</p>
+                <h2 class="sf-review__plan">{{ StorefrontPlanNarrative::planLabel($planTitle) }}</h2>
+            </div>
+            <div class="sf-review__price">
+                <span>Estimado</span>
+                <strong>{{ $headline }}</strong>
+                @if ($coverage !== '')
+                    <em>{{ $coverage }}</em>
+                @endif
+            </div>
         </div>
 
         <dl class="sf-review__facts">
@@ -142,6 +150,16 @@ new #[Layout('components.layouts.storefront')] #[Title('Confirmar')] class exten
                 <dt>{{ $asAgent ? 'Cliente' : 'Titular' }}</dt>
                 <dd>{{ $displayName }}</dd>
             </div>
+            @if ($groups !== [])
+                <div>
+                    <dt>Grupo</dt>
+                    <dd>
+                        @foreach ($groups as $group)
+                            {{ $group['persons'] }} {{ $group['persons'] === 1 ? 'persona' : 'personas' }} · {{ $group['label'] }}@if (! $loop->last)<br>@endif
+                        @endforeach
+                    </dd>
+                </div>
+            @endif
             <div>
                 <dt>Correo</dt>
                 <dd>{{ $email }}</dd>

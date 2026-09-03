@@ -36,6 +36,23 @@ class IndividualQuotePdfGenerator
         return true;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
+    public static function detailsPayload(
+        IndividualQuote $record,
+        int $planId,
+        string $layout,
+        ?string $agentName = null,
+    ): ?array {
+        return self::buildDetailsPayload(
+            $record,
+            $planId,
+            $layout,
+            $agentName ?? self::resolveAgentName($record),
+        );
+    }
+
     public static function regenerateIfMissing(IndividualQuote $record): bool
     {
         $path = public_path('storage/quotes/'.$record->code.'.pdf');

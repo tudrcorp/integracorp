@@ -14,6 +14,7 @@
         successCode: '',
         successUrl: '',
         successAsAgent: false,
+        headerGlass: false,
         closeMenu() {
             this.menuOpen = false;
             this.dragY = 0;
@@ -38,6 +39,10 @@
 
             this.dragY = 0;
             this.dragging = false;
+        },
+        syncHeaderGlass() {
+            const y = window.scrollY || document.documentElement.scrollTop || 0;
+            this.headerGlass = y > 12;
         },
         successCopy() {
             if (! this.successCode) {
@@ -76,11 +81,13 @@
             });
         },
     }"
-    x-bind:class="{ 'is-menu-open': menuOpen, 'is-success-open': successOpen }"
+    x-init="syncHeaderGlass()"
+    x-bind:class="{ 'is-menu-open': menuOpen, 'is-success-open': successOpen, 'is-header-glass': headerGlass }"
     x-on:keydown.escape.window="successOpen ? dismissSuccess() : closeMenu()"
+    x-on:scroll.window.passive="syncHeaderGlass()"
     x-on:storefront-close-menu.window="closeMenu()"
     x-on:storefront-quote-success.window="openSuccess($event)"
-    x-on:livewire:navigated.window="closeMenu(); successOpen = false; document.body.classList.remove('is-quote-sheet-open')"
+    x-on:livewire:navigated.window="closeMenu(); successOpen = false; document.body.classList.remove('is-quote-sheet-open'); $nextTick(() => syncHeaderGlass())"
 >
     <div class="storefront-atmosphere" aria-hidden="true">
         <span class="storefront-atmosphere__orb storefront-atmosphere__orb--a"></span>
@@ -90,13 +97,36 @@
 
     <div class="storefront-shell">
         <header class="storefront-header">
-            <a href="{{ route('storefront.home') }}" wire:navigate class="storefront-brand">
-                <img src="{{ asset('image/logoNewTDG.png') }}" alt="Tu Dr En Casa">
-                <span class="storefront-brand__copy">
-                    <span class="storefront-brand__kicker">{{ \App\Support\Storefront\StorefrontAuth::currentIsAgent() ? 'Modo agente' : 'Tu Dr En Casa' }}</span>
-                    <span class="storefront-brand__name">{{ \App\Support\Storefront\StorefrontNav::subtitle() }}</span>
-                </span>
-            </a>
+            @php
+                $storefrontBack = \App\Support\Storefront\StorefrontNav::back();
+                $storefrontSubtitle = \App\Support\Storefront\StorefrontNav::subtitle();
+                $storefrontIsAgent = \App\Support\Storefront\StorefrontAuth::currentIsAgent();
+            @endphp
+            <div class="storefront-header__lead">
+                <a href="{{ route('storefront.home') }}" wire:navigate class="storefront-brand">
+                    <img src="{{ asset('image/logoNewPdf.png') }}" alt="Tu Dr En Casa" width="168" height="43">
+                    @if ($storefrontIsAgent || $storefrontSubtitle !== '')
+                        <span class="storefront-brand__copy">
+                            @if ($storefrontIsAgent)
+                                <span class="storefront-brand__kicker">Modo agente</span>
+                            @endif
+                            @if ($storefrontSubtitle !== '')
+                                <span class="storefront-brand__name">{{ $storefrontSubtitle }}</span>
+                            @endif
+                        </span>
+                    @endif
+                </a>
+                @if ($storefrontBack !== null)
+                    <a
+                        href="{{ route($storefrontBack['route']) }}"
+                        wire:navigate
+                        class="storefront-back"
+                    >
+                        <span aria-hidden="true">‹</span>
+                        {{ $storefrontBack['label'] }}
+                    </a>
+                @endif
+            </div>
 
             <button
                 type="button"

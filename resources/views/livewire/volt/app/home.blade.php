@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Support\Storefront\StorefrontAuth;
 use App\Support\Storefront\StorefrontCatalog;
 use App\Support\Storefront\StorefrontPlanNarrative;
+use App\Support\Storefront\StorefrontQuoteShare;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
@@ -15,12 +16,15 @@ new #[Layout('components.layouts.storefront')] #[Title('Planes')] class extends 
 
     public string $greeting = '';
 
+    public ?string $lastQuoteCode = null;
+
     public function mount(): void
     {
         $this->asAgent = StorefrontAuth::currentIsAgent();
         $this->greeting = $this->asAgent
             ? 'Listo para cotizar, '.StorefrontAuth::displayName()
             : 'Tu plan de asistencia, al alcance del pulgar';
+        $this->lastQuoteCode = StorefrontQuoteShare::lastCode();
     }
 
     public function cards()
@@ -43,7 +47,22 @@ new #[Layout('components.layouts.storefront')] #[Title('Planes')] class extends 
                 Tres planes claros. Beneficios visibles. Tarifas por edad. Cotiza en menos de un minuto, sin crear cuenta.
             @endif
         </p>
+        <p>
+            <button type="button" class="sf-chip" x-on:click="$dispatch('storefront-open-install')">
+                Agregar a inicio
+            </button>
+        </p>
     </section>
+
+    @if ($lastQuoteCode)
+        <a href="{{ route('storefront.quote.proposal', $lastQuoteCode) }}" wire:navigate class="sf-resume sf-glass">
+            <span>
+                <strong>Tu última cotización</strong>
+                <span>{{ $lastQuoteCode }}</span>
+            </span>
+            <span class="sf-cta-pill">Ver →</span>
+        </a>
+    @endif
 
     @forelse ($this->cards() as $card)
         @php

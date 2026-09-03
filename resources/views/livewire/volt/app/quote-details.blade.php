@@ -63,7 +63,7 @@ new #[Layout('components.layouts.storefront')] #[Title('Tus datos')] class exten
 }; ?>
 
 <div class="sf-quote">
-    @include('storefront.partials.quote-steps', ['step' => 2])
+    @include('storefront.partials.quote-steps', ['step' => 2, 'planId' => $planId])
 
     <section class="sf-hero">
         <p class="sf-kicker">Un último dato</p>

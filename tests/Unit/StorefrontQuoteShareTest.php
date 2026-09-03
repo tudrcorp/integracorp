@@ -73,3 +73,18 @@ it('el envio de la pwa reutiliza correo y whatsapp del sistema en cola', functio
         ->toContain('sendLinkIndividualQuote')
         ->and($share)->toContain('SendStorefrontQuoteShareJob::dispatch');
 });
+
+it('recuerda el codigo reciente y descarta valores invalidos', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Support/Storefront/StorefrontQuoteShare.php');
+
+    expect($source)
+        ->toContain('LAST_CODE_COOKIE')
+        ->toContain('rememberCode')
+        ->toContain('lastCode')
+        ->and(StorefrontQuoteShare::lastCode())->toBeNull();
+
+    StorefrontQuoteShare::rememberCode('');
+    StorefrontQuoteShare::rememberCode('no vale!');
+
+    expect(StorefrontQuoteShare::lastCode())->toBeNull();
+});

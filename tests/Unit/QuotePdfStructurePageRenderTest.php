@@ -160,8 +160,8 @@ it('no repite las trampas de DomPDF que recortaban la hoja', function (): void {
     // La matriz armada desde el catálogo de beneficios va más chica que el
     // resto de la propuesta, tanto en individual como en corporativa.
     expect($matriz)
-        ->toContain("\$fontSize = \$isDense ? '6pt' : '7pt'")
-        ->toContain("\$checkFontSize = \$isDense ? '8pt' : '9pt'");
+        ->toContain("\$fontSize = \$compact ? '5.5pt' : (\$isDense ? '6pt' : '7pt')")
+        ->toContain("\$checkFontSize = \$compact ? '7pt' : (\$isDense ? '8pt' : '9pt')");
 
     expect($pagina)
         ->toContain('.data-table th,')

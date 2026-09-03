@@ -98,3 +98,36 @@ it('un paquete con una sola tarifa muestra el total exacto', function (): void {
         ->and(StorefrontQuotePricer::amountLabel($quote))->toBe('US$ 360')
         ->and(StorefrontQuotePricer::coverageLabel($quote))->toBe('Al año · 2 personas');
 });
+
+it('resume el grupo familiar por rango de edad', function (): void {
+    $adulto = new AgeRange([
+        'plan_id' => 1,
+        'age_init' => 18,
+        'age_end' => 59,
+        'range' => '18-59',
+    ]);
+    $adulto->id = 10;
+
+    StorefrontQuoteDraft::put([
+        'plan_id' => 1,
+        'people' => [['age' => 34, 'quantity' => 2]],
+        'ranges' => [],
+        'full_name' => '',
+        'email' => '',
+        'phone' => '',
+    ]);
+
+    expect(StorefrontQuoteDraft::groupSummary(1, collect([$adulto]), false))->toBe([
+        ['label' => '18 a 59 años', 'persons' => 2],
+    ]);
+});
+
+it('el borrador queda respaldado en cookie y se puede resumir', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Support/Storefront/StorefrontQuoteDraft.php');
+
+    expect($source)
+        ->toContain('COOKIE_KEY')
+        ->toContain('fromCookie')
+        ->toContain('queueCookie')
+        ->toContain('groupSummary');
+});

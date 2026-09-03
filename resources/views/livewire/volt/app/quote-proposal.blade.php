@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\IndividualQuote;
 use App\Models\Plan;
 use App\Support\Quotes\InteractiveIndividualQuoteView;
+use App\Support\Storefront\StorefrontQuotePdf;
 use App\Support\Storefront\StorefrontQuoteShare;
 use Flux\Flux;
 use Illuminate\Validation\ValidationException;
@@ -49,19 +50,23 @@ new #[Layout('components.layouts.storefront')] #[Title('Propuesta económica')] 
 
     public function download()
     {
-        $file = public_path('storage/quotes/'.$this->code.'.pdf');
+        $record = IndividualQuote::query()
+            ->where('code', $this->code)
+            ->first();
 
-        if ($this->code === '' || ! is_file($file)) {
+        abort_unless($record instanceof IndividualQuote, 404);
+
+        if (! StorefrontQuotePdf::ensure($record)) {
             Flux::toast(
                 heading: 'PDF no disponible',
-                text: 'La cotización aún no tiene el documento listo. Un asesor puede reenviártelo.',
+                text: 'No pudimos armar el documento. Inténtalo de nuevo en unos segundos.',
                 variant: 'danger',
             );
 
             return;
         }
 
-        return response()->download($file, $this->code.'.pdf');
+        return response()->download(StorefrontQuotePdf::path($this->code), $this->code.'.pdf');
     }
 
     public function addRecipient(?string $channel = null): void
@@ -199,6 +204,7 @@ new #[Layout('components.layouts.storefront')] #[Title('Propuesta económica')] 
                     type="button"
                     class="sf-proposal__choice"
                     wire:key="option-{{ $option['key'] }}"
+                    x-bind:class="selected === @js($option['key']) && 'is-on'"
                     x-on:click="openCalc(@js($option['key']))"
                 >
                     <span>
@@ -210,6 +216,22 @@ new #[Layout('components.layouts.storefront')] #[Title('Propuesta económica')] 
             @endforeach
         </div>
     </section>
+
+    <div class="sf-sticky-cta sf-sticky-cta--row">
+        <button type="button" class="sf-btn sf-btn-ghost" x-on:click="openCalc(selected || @js($view['default_coverage_key']))">
+            Ver
+        </button>
+        <button
+            type="button"
+            class="sf-btn"
+            wire:click="download"
+            wire:loading.attr="disabled"
+            wire:target="download"
+            wire:loading.class="is-busy"
+        >
+            @include('storefront.partials.btn-loading', ['target' => 'download', 'label' => 'Descargar cotización', 'wait' => 'Preparando PDF…'])
+        </button>
+    </div>
 
     <div
         class="sf-quote-sheet"

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Support\Storefront;
 
 use App\Models\AgeRange;
+use App\Support\Plans\PlanStructureSummary;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Borrador de cotización en sesión. Cada página del flujo lee y escribe
@@ -27,6 +29,10 @@ use Illuminate\Validation\ValidationException;
 final class StorefrontQuoteDraft
 {
     public const SESSION_KEY = 'storefront_quote_draft';
+
+    public const COOKIE_KEY = 'storefront_quote_draft';
+
+    public const COOKIE_MINUTES = 10_080;
 
     /**
      * @return Draft
@@ -48,13 +54,30 @@ final class StorefrontQuoteDraft
      */
     public static function get(): array
     {
-        $stored = Session::get(self::SESSION_KEY);
+        $stored = null;
+
+        try {
+            $stored = Session::get(self::SESSION_KEY);
+        } catch (Throwable) {
+            $stored = null;
+        }
+
+        if (! is_array($stored)) {
+            $stored = self::fromCookie();
+        }
 
         if (! is_array($stored)) {
             return self::empty();
         }
 
-        return array_merge(self::empty(), $stored);
+        $draft = array_merge(self::empty(), $stored);
+
+        try {
+            Session::put(self::SESSION_KEY, $draft);
+        } catch (Throwable) {
+        }
+
+        return $draft;
     }
 
     /**
@@ -62,12 +85,24 @@ final class StorefrontQuoteDraft
      */
     public static function put(array $draft): void
     {
-        Session::put(self::SESSION_KEY, array_merge(self::empty(), $draft));
+        $payload = array_merge(self::empty(), $draft);
+
+        try {
+            Session::put(self::SESSION_KEY, $payload);
+        } catch (Throwable) {
+        }
+
+        self::queueCookie($payload);
     }
 
     public static function clear(): void
     {
-        Session::forget(self::SESSION_KEY);
+        try {
+            Session::forget(self::SESSION_KEY);
+        } catch (Throwable) {
+        }
+
+        self::queueCookie(null);
     }
 
     /**
@@ -305,5 +340,77 @@ final class StorefrontQuoteDraft
         return filled($draft['full_name'] ?? null)
             && filled($draft['email'] ?? null)
             && filled($draft['phone'] ?? null);
+    }
+
+    /**
+     * @param  Collection<int, AgeRange>  $ageRanges
+     * @return list<array{label: string, persons: int}>
+     */
+    public static function groupSummary(int $planId, Collection $ageRanges, bool $asAgent): array
+    {
+        try {
+            $entries = self::entries($planId, $ageRanges, $asAgent);
+        } catch (ValidationException) {
+            return [];
+        }
+
+        $rows = [];
+
+        foreach ($entries as $entry) {
+            $range = $ageRanges->first(
+                static fn (AgeRange $item): bool => (int) $item->getKey() === (int) $entry['age_range_id'],
+            );
+
+            $rows[] = [
+                'label' => $range instanceof AgeRange
+                    ? PlanStructureSummary::ageRangeLabel($range)
+                    : 'Grupo familiar',
+                'persons' => (int) $entry['total_persons'],
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return Draft|null
+     */
+    private static function fromCookie(): ?array
+    {
+        try {
+            $raw = (string) request()->cookie(self::COOKIE_KEY, '');
+        } catch (Throwable) {
+            return null;
+        }
+
+        if ($raw === '') {
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    /**
+     * @param  Draft|null  $draft
+     */
+    private static function queueCookie(?array $draft): void
+    {
+        try {
+            if ($draft === null) {
+                cookie()->queue(cookie()->forget(self::COOKIE_KEY));
+
+                return;
+            }
+
+            cookie()->queue(cookie(
+                self::COOKIE_KEY,
+                json_encode($draft, JSON_UNESCAPED_UNICODE),
+                self::COOKIE_MINUTES,
+                '/app',
+            ));
+        } catch (Throwable) {
+        }
     }
 }
