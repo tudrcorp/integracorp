@@ -18,15 +18,14 @@ new #[Layout('components.layouts.storefront-welcome')] #[Title('Bienvenida')] cl
 }; ?>
 
 <div class="sf-welcome">
-    <img
-        class="sf-welcome__photo"
-        src="{{ asset('image/storefront/welcome.jpg') }}"
-        alt=""
-        width="1024"
-        height="1536"
-        decoding="async"
-        fetchpriority="high"
-    >
+    @include('storefront.partials.cover-picture', [
+        'src' => 'image/storefront/welcome.jpg',
+        'class' => 'sf-welcome__photo',
+        'width' => 900,
+        'height' => 1350,
+        'eager' => true,
+        'priority' => true,
+    ])
     <span class="sf-welcome__shade" aria-hidden="true"></span>
 
     <header class="sf-welcome__brand">

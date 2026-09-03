@@ -49,23 +49,26 @@ new #[Layout('components.layouts.storefront')] #[Title('Planes')] class extends 
         @php
             $plan = $card['plan'];
             $narrative = $card['narrative'];
+            $coverWebp = StorefrontPlanNarrative::coverWebp((string) $narrative['cover']);
+            $planUrl = route('storefront.plan', $plan);
         @endphp
         <a
-            href="{{ route('storefront.plan', $plan) }}"
+            href="{{ $planUrl }}"
             wire:navigate
             class="sf-plan-card"
             wire:key="plan-card-{{ $plan->id }}"
+            x-on:pointerenter="window.__sfPrefetchPlan && window.__sfPrefetchPlan(@js($planUrl), @js($coverWebp ? asset($coverWebp) : asset($narrative['cover'])))"
+            x-on:pointerdown="window.__sfPrefetchPlan && window.__sfPrefetchPlan(@js($planUrl), @js($coverWebp ? asset($coverWebp) : asset($narrative['cover'])))"
         >
             <span class="sf-plan-card__media">
-                <img
-                    class="sf-plan-card__photo"
-                    src="{{ asset($narrative['cover']) }}"
-                    alt=""
-                    width="1100"
-                    height="733"
-                    decoding="async"
-                    @if ($loop->first) fetchpriority="high" @else loading="lazy" @endif
-                >
+                @include('storefront.partials.cover-picture', [
+                    'src' => $narrative['cover'],
+                    'class' => 'sf-plan-card__photo',
+                    'width' => 900,
+                    'height' => 600,
+                    'eager' => true,
+                    'priority' => $loop->first,
+                ])
                 <span class="sf-plan-card__shade" aria-hidden="true"></span>
             </span>
             <span class="sf-plan-card__body">

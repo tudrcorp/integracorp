@@ -1,4 +1,4 @@
-const CACHE_NAME = 'storefront-static-v2';
+const CACHE_NAME = 'storefront-static-v3';
 
 const OFFLINE_URL = '/app/offline.html';
 
@@ -7,12 +7,19 @@ const STATIC_ASSETS = [
     '/pwa/icon-192.png',
     '/pwa/icon-512.png',
     '/pwa/apple-touch-icon.png',
+    '/image/storefront/plan-inicial.webp',
+    '/image/storefront/plan-ideal.webp',
+    '/image/storefront/plan-especial.webp',
+    '/image/storefront/welcome.webp',
     OFFLINE_URL,
 ];
 
 const isStorefrontPath = (pathname) => pathname === '/app' || pathname === '/app/' || pathname.startsWith('/app/');
 
-const isStaticAssetPath = (pathname) => pathname.startsWith('/pwa/') && ! pathname.includes('guia-chat');
+const isStaticAssetPath = (pathname) =>
+    (pathname.startsWith('/pwa/') && ! pathname.includes('guia-chat'))
+    || pathname.startsWith('/image/storefront/')
+    || (pathname.startsWith('/build/assets/') && pathname.includes('storefront'));
 
 self.addEventListener('install', (event) => {
     event.waitUntil(

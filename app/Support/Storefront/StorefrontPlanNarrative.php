@@ -212,6 +212,26 @@ final class StorefrontPlanNarrative
     }
 
     /**
+     * Versión WebP de la portada si existe en disco (mismo look, menos peso).
+     */
+    public static function coverWebp(string $cover): ?string
+    {
+        $cover = ltrim(str_replace('\\', '/', $cover), '/');
+
+        if ($cover === '' || ! str_ends_with(mb_strtolower($cover), '.jpg')) {
+            return null;
+        }
+
+        $webp = preg_replace('/\.jpg$/i', '.webp', $cover) ?? '';
+
+        if ($webp === '' || $webp === $cover) {
+            return null;
+        }
+
+        return is_file(public_path($webp)) ? $webp : null;
+    }
+
+    /**
      * @return array<string, Narrative>
      */
     private static function presets(): array

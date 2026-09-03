@@ -34,7 +34,10 @@ it('el layout storefront es una app mobile con menu hamburguesa en el header', f
         ->toContain('quote-success')
         ->toContain('successPdfUrl')
         ->toContain('downloadSuccessPdf')
-        ->toContain('successPdfBusy')
+        ->toContain('storefront-nav-progress')
+        ->toContain('is-navigating')
+        ->toContain('__sfPrefetchPlan')
+        ->toContain('livewire:navigating.window')
         ->toContain('target="_blank"')
         ->toContain('rel="noopener noreferrer"')
         ->toContain('is-whatsapp')
@@ -49,6 +52,8 @@ it('el layout storefront es una app mobile con menu hamburguesa en el header', f
         ->and($layout)->not->toContain('position: fixed; bottom: 0');
 
     expect($css)
+        ->toContain('.storefront-nav-progress')
+        ->toContain('body.is-navigating .storefront-nav-progress')
         ->toContain('storefront-header')
         ->toContain('.storefront-menu-btn')
         ->toContain('background: transparent')
@@ -145,13 +150,13 @@ it('existe manifest pwa y service worker de la app de planes', function (): void
 
     expect($sw)
         ->toContain("self.addEventListener('install'")
-        ->toContain('storefront-static-v2')
+        ->toContain('storefront-static-v3')
         ->toContain('/app/offline.html')
         ->toContain('/app')
         ->toContain("request.mode === 'navigate'");
 
     expect($install)
-        ->toContain("register('/app/sw.js?v=2")
+        ->toContain("register('/app/sw.js?v=3")
         ->toContain("scope: '/app/'")
         ->toContain('Agregar a pantalla de inicio');
 
@@ -204,6 +209,8 @@ it('el catalogo y la ficha venden el plan como producto', function (): void {
         ->toContain('sf-plan-card')
         ->toContain('sf-plan-card__photo')
         ->toContain('sf-plan-card__media')
+        ->toContain('cover-picture')
+        ->toContain('__sfPrefetchPlan')
         ->toContain('storefront.plan')
         ->and($home)->not->toContain('lastQuoteCode')
         ->and($home)->not->toContain('storefront-open-install')
@@ -211,7 +218,10 @@ it('el catalogo y la ficha venden el plan como producto', function (): void {
         ->and($home)->not->toContain('Agregar a inicio')
         ->and($home)->not->toContain('Tu última cotización')
         ->and($home)->not->toContain('sf-plan-card__glow')
+        ->and($home)->not->toContain('loading="lazy"')
         ->and($plan)->toContain('sf-product')
+        ->and($plan)->toContain('loadDetails')
+        ->and($plan)->toContain('StorefrontPlanView::shell')
         ->and($plan)->not->toContain('El plan')
         ->and($plan)->toContain('Ver Beneficios')
         ->and($plan)->toContain('Cotizar')
