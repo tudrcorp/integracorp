@@ -76,7 +76,7 @@ html.storefront-app body {
         radial-gradient(120% 80% at 10% -10%, rgba(14, 116, 188, 0.55), transparent 55%),
         radial-gradient(90% 60% at 110% 10%, rgba(45, 212, 191, 0.22), transparent 50%),
         radial-gradient(80% 50% at 50% 120%, rgba(251, 191, 36, 0.16), transparent 46%),
-        linear-gradient(180deg, #06264f 0%, #041428 42%, #020914 100%);
+        linear-gradient(180deg, #020914 0%, #041428 48%, #020914 100%);
 }
 
 .storefront-atmosphere__orb {
@@ -126,27 +126,52 @@ html.storefront-app body {
     top: 0;
     z-index: 40;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 0.75rem;
     min-height: var(--sf-header-h);
     padding: calc(0.55rem + var(--sf-safe-top)) 1rem 0.55rem;
-    background: linear-gradient(180deg, rgba(8, 28, 58, 0.72) 0%, rgba(8, 28, 58, 0.28) 100%);
-    backdrop-filter: blur(28px) saturate(1.8);
-    -webkit-backdrop-filter: blur(28px) saturate(1.8);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: 0;
+}
+
+.storefront-header__lead {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.12rem;
+    min-width: 0;
 }
 
 .storefront-header::before {
+    content: none;
+}
+
+html.storefront-app body.is-header-glass .storefront-header {
+    background: linear-gradient(180deg, rgba(10, 22, 42, 0.62), rgba(2, 9, 20, 0.4));
+    backdrop-filter: blur(22px) saturate(1.85);
+    -webkit-backdrop-filter: blur(22px) saturate(1.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+html.storefront-app body.is-header-glass .storefront-header::before {
     content: '';
     position: absolute;
     inset: 0;
     pointer-events: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.22);
-    mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent 46%),
+        radial-gradient(120% 80% at 12% -20%, rgba(125, 211, 252, 0.16), transparent 52%);
 }
 
 .storefront-brand {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     gap: 0.7rem;
@@ -156,10 +181,13 @@ html.storefront-app body {
 }
 
 .storefront-brand img {
-    width: 2.15rem;
+    width: auto;
     height: 2.15rem;
+    max-width: min(9.4rem, 46vw);
     object-fit: contain;
-    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.28));
+    object-position: left center;
+    mix-blend-mode: screen;
+    filter: none;
 }
 
 .storefront-brand__copy {
@@ -184,8 +212,41 @@ html.storefront-app body {
     text-overflow: ellipsis;
 }
 
+.storefront-brand__name:empty {
+    display: none;
+}
+
+.storefront-back {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin: 0;
+    padding: 0.05rem 0 0.15rem;
+    color: rgba(255, 255, 255, 0.86);
+    font-size: 0.82rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.storefront-back span {
+    font-size: 1.2rem;
+    line-height: 1;
+    transform: translateY(-0.04rem);
+}
+
+html.storefront-app body:has(.storefront-back) {
+    --sf-header-h: calc(4.55rem + var(--sf-safe-top));
+}
+
 .storefront-menu-btn {
     position: relative;
+    z-index: 1;
+    margin-left: auto;
     width: 2.7rem;
     height: 2.7rem;
     border: 0;
@@ -744,8 +805,14 @@ html.storefront-app body:has(.sf-product) .storefront-header::before {
 }
 
 html.storefront-app body:has(.sf-product) .storefront-stage,
-html.storefront-app body:has(.sf-product) .storefront-page {
+html.storefront-app body:has(.sf-product) .storefront-page,
+html.storefront-app body:has(.sf-quote-sheet) .storefront-stage,
+html.storefront-app body:has(.sf-quote-sheet) .storefront-page {
     transform: none;
+}
+
+html.storefront-app body.is-quote-sheet-open .storefront-stage {
+    z-index: 80;
 }
 
 html.storefront-app body.is-benefits-open .sf-product__photo {
@@ -759,6 +826,27 @@ html.storefront-app body.is-benefits-open .sf-product__shade {
 
 html.storefront-app body.is-benefits-open .storefront-header {
     background: transparent;
+}
+
+html.storefront-app body.is-header-glass .storefront-header {
+    background: linear-gradient(180deg, rgba(10, 22, 42, 0.62), rgba(2, 9, 20, 0.4));
+    backdrop-filter: blur(22px) saturate(1.85);
+    -webkit-backdrop-filter: blur(22px) saturate(1.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+html.storefront-app body.is-header-glass .storefront-header::before {
+    content: '';
+    display: block;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent 46%),
+        radial-gradient(120% 80% at 12% -20%, rgba(125, 211, 252, 0.16), transparent 52%);
 }
 
 .sf-product__copy {
@@ -821,7 +909,8 @@ html.storefront-app body.is-benefits-open .storefront-header {
     --sf-paper-line: rgba(92, 64, 40, 0.12);
     width: 100%;
     max-width: none;
-    max-height: min(58dvh, 34rem);
+    height: 70dvh;
+    max-height: 70dvh;
     display: flex;
     flex-direction: column;
     border-radius: 1.45rem 1.45rem 0 0;
@@ -1098,6 +1187,27 @@ html.storefront-app body.is-benefits-open .storefront-header {
     background: linear-gradient(180deg, rgba(2, 9, 20, 0) 0%, rgba(2, 9, 20, 0.78) 38%, rgba(2, 9, 20, 0.96) 100%);
 }
 
+.sf-quote--confirm {
+    min-height: calc(100svh - var(--sf-header-h) - 2.15rem);
+    min-height: calc(100dvh - var(--sf-header-h) - 2.15rem);
+}
+
+.sf-quote--confirm .sf-sticky-cta {
+    position: static;
+    margin-top: auto;
+    padding-top: 0.85rem;
+    padding-bottom: 0.1rem;
+    margin-bottom: -0.85rem;
+    background: none;
+}
+
+.sf-sticky-cta--row {
+    grid-template-columns: 0.9fr 1.35fr;
+    align-items: stretch;
+    margin-bottom: -0.85rem;
+    padding-bottom: 0.1rem;
+}
+
 .sf-success {
     position: fixed;
     top: 0;
@@ -1283,11 +1393,22 @@ html.storefront-app body.is-benefits-open .storefront-header {
 
 .sf-quote-sheet {
     z-index: 80;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    align-items: flex-end;
+    justify-content: stretch;
 }
 
 .sf-quote-sheet__panel {
     width: 100%;
     max-width: none;
+    margin-top: auto;
+    margin-bottom: 0;
     height: 70vh;
     max-height: 70vh;
     height: 70dvh;
@@ -1687,6 +1808,64 @@ html.storefront-app body.is-benefits-open .storefront-header {
     color: rgba(243, 238, 230, 0.62);
 }
 
+.sf-hero--compact {
+    padding-bottom: 0.7rem;
+}
+
+.sf-quote--confirm .sf-title {
+    font-size: clamp(1.35rem, 6vw, 1.7rem);
+}
+
+.sf-quote--confirm .sf-lead {
+    margin-top: 0.3rem;
+    font-size: 0.86rem;
+}
+
+.sf-review--compact {
+    padding: 0.85rem 0.9rem 0.9rem;
+    margin-bottom: 0;
+}
+
+.sf-review__top {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 0.65rem;
+    align-items: start;
+}
+
+.sf-review--compact .sf-review__plan {
+    margin-top: 0.2rem;
+    font-size: 1.18rem;
+}
+
+.sf-review--compact .sf-review__price {
+    margin: 0;
+    padding: 0.55rem 0.7rem;
+}
+
+.sf-review--compact .sf-review__price strong {
+    font-size: 1.05rem;
+}
+
+.sf-review--compact .sf-review__facts {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem 0.7rem;
+    margin-top: 0.7rem;
+}
+
+.sf-review--compact .sf-review__facts > div {
+    padding-top: 0.5rem;
+}
+
+.sf-review--compact .sf-review__facts dd {
+    font-size: 0.86rem;
+}
+
+.sf-review--compact .sf-review__note {
+    margin-top: 0.55rem;
+    font-size: 0.76rem;
+}
+
 .sf-ticket {
     text-align: center;
 }
@@ -1913,6 +2092,13 @@ html.storefront-app body.is-benefits-open .storefront-header {
     border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+button.sf-chip {
+    color: inherit;
+    cursor: pointer;
+    appearance: none;
+    font: inherit;
+}
+
 .sf-field {
     margin-bottom: 0.85rem;
 }
@@ -1985,19 +2171,38 @@ html.storefront-app body.is-benefits-open .storefront-header {
 }
 
 .sf-steps {
-    display: flex;
-    gap: 0.35rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.4rem;
     margin: 0.15rem 0 1rem;
 }
 
+.sf-steps a,
+.sf-steps span {
+    display: grid;
+    justify-items: center;
+    gap: 0.35rem;
+    color: rgba(232, 241, 255, 0.48);
+    font-size: 0.68rem;
+    font-weight: 620;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+}
+
+.sf-steps a.is-on,
+.sf-steps span.is-on {
+    color: #f3eee6;
+}
+
 .sf-steps i {
-    flex: 1;
+    display: block;
+    width: 100%;
     height: 4px;
     border-radius: 99px;
     background: rgba(255, 255, 255, 0.16);
 }
 
-.sf-steps i.is-on {
+.sf-steps .is-on i {
     background: white;
 }
 
@@ -2019,6 +2224,27 @@ html.storefront-app body.is-benefits-open .storefront-header {
 .sf-empty {
     padding: 1.4rem 0.4rem;
     text-align: center;
+    color: var(--sf-muted);
+}
+
+.sf-resume {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0 0 1rem;
+    padding: 0.85rem 1rem;
+    text-decoration: none;
+    color: inherit;
+}
+
+.sf-resume strong {
+    display: block;
+    font-size: 0.95rem;
+}
+
+.sf-resume span {
+    font-size: 0.78rem;
     color: var(--sf-muted);
 }
 
@@ -2074,17 +2300,15 @@ html.storefront-app body.is-benefits-open .storefront-header {
     z-index: 2;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    font-family: 'Instrument Serif', 'Times New Roman', serif;
-    font-size: 1.42rem;
-    letter-spacing: -0.03em;
-    text-transform: lowercase;
 }
 
 .sf-welcome__brand img {
-    width: 2rem;
-    height: 2rem;
+    width: auto;
+    height: 2.35rem;
+    max-width: min(11rem, 58vw);
     object-fit: contain;
+    object-position: left center;
+    mix-blend-mode: screen;
 }
 
 .sf-welcome__hero {
@@ -2208,6 +2432,18 @@ html.storefront-app body.is-benefits-open .storefront-header {
 .sf-welcome__btn--plans {
     color: #041428;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(219, 234, 254, 0.9));
+}
+
+.sf-welcome__agent {
+    margin: 0.35rem 0 0;
+    text-align: center;
+    font-size: 0.86rem;
+}
+
+.sf-welcome__agent a {
+    color: rgba(232, 241, 255, 0.82);
+    text-decoration: underline;
+    text-underline-offset: 0.18rem;
 }
 
 .sf-or {

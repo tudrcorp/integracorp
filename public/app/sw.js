@@ -1,10 +1,13 @@
-const CACHE_NAME = 'storefront-static-v1';
+const CACHE_NAME = 'storefront-static-v2';
+
+const OFFLINE_URL = '/app/offline.html';
 
 const STATIC_ASSETS = [
     '/pwa/storefront.webmanifest',
     '/pwa/icon-192.png',
     '/pwa/icon-512.png',
     '/pwa/apple-touch-icon.png',
+    OFFLINE_URL,
 ];
 
 const isStorefrontPath = (pathname) => pathname === '/app' || pathname === '/app/' || pathname.startsWith('/app/');
@@ -44,7 +47,15 @@ self.addEventListener('fetch', (event) => {
 
     if (event.request.mode === 'navigate' && isStorefrontPath(url.pathname)) {
         event.respondWith(
-            fetch(event.request).catch(() => caches.match(event.request)),
+            fetch(event.request).catch(() => caches.match(OFFLINE_URL).then((cached) => cached || caches.match(event.request))),
+        );
+
+        return;
+    }
+
+    if (url.pathname === OFFLINE_URL) {
+        event.respondWith(
+            caches.match(event.request).then((cached) => cached || fetch(event.request)),
         );
 
         return;

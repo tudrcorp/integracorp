@@ -39,7 +39,7 @@
                 x-ref="successDone"
                 x-on:click="dismissSuccess()"
             >
-                Listo
+                Ver propuesta
             </button>
         </div>
     </div>

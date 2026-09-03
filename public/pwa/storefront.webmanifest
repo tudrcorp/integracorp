@@ -2,7 +2,7 @@
     "name": "Tu Dr En Casa",
     "short_name": "Tu Dr En Casa",
     "description": "Conoce los planes, cotiza y lleva Tu Dr En Casa en el bolsillo.",
-    "start_url": "/app",
+    "start_url": "/app/planes",
     "scope": "/app",
     "display": "standalone",
     "orientation": "portrait",

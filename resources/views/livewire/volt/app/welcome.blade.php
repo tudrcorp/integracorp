@@ -30,8 +30,7 @@ new #[Layout('components.layouts.storefront-welcome')] #[Title('Bienvenida')] cl
     <span class="sf-welcome__shade" aria-hidden="true"></span>
 
     <header class="sf-welcome__brand">
-        <img src="{{ asset('image/logoNewTDG.png') }}" alt="">
-        <span>tu dr en casa</span>
+        <img src="{{ asset('image/logoNewPdf.png') }}" alt="Tu Dr En Casa" width="168" height="43">
     </header>
 
     <section class="sf-welcome__hero">
@@ -44,15 +43,13 @@ new #[Layout('components.layouts.storefront-welcome')] #[Title('Bienvenida')] cl
             <p class="sf-welcome__notice" role="status">{{ session('storefront_notice') }}</p>
         @endif
 
-        @include('storefront.partials.google-login-button')
-
-        <a href="{{ route('storefront.login') }}" wire:navigate class="sf-welcome__btn sf-welcome__btn--login">
-            Iniciar sesión
-        </a>
-
         <a href="{{ route('storefront.home') }}" wire:navigate class="sf-welcome__btn sf-welcome__btn--plans">
             Ver planes
         </a>
+
+        <p class="sf-welcome__agent">
+            <a href="{{ route('storefront.login') }}" wire:navigate>¿Eres agente? Entra aquí</a>
+        </p>
 
         <p class="sf-welcome__legal">Al continuar aceptas cotizar y gestionar tu asistencia con Tu Dr En Casa.</p>
     </div>

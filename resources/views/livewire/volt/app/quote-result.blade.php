@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\IndividualQuote;
 use App\Models\Plan;
+use App\Support\Quotes\InteractiveIndividualQuoteView;
 use App\Support\Storefront\StorefrontAuth;
 use App\Support\Storefront\StorefrontPlanNarrative;
 use Livewire\Attributes\Layout;
@@ -28,9 +29,17 @@ new #[Layout('components.layouts.storefront')] #[Title('Cotización lista')] cla
 
     public bool $asAgent = false;
 
+    public string $headline = '';
+
+    public string $personsLabel = '';
+
+    /** @var list<array{label: string, persons: int}> */
+    public array $groups = [];
+
     public function mount(string $code): void
     {
         $record = IndividualQuote::query()
+            ->with(['detailsQuote.ageRange', 'detailsQuote.coverage'])
             ->where('code', $code)
             ->first();
 
@@ -48,6 +57,18 @@ new #[Layout('components.layouts.storefront')] #[Title('Cotización lista')] cla
         $this->planTitle = $plan instanceof Plan
             ? StorefrontPlanNarrative::for($plan)['title']
             : 'Plan';
+
+        if ($plan instanceof Plan) {
+            $view = InteractiveIndividualQuoteView::from($record, $plan, $record->detailsQuote);
+            $this->headline = (string) $view['headline'];
+            $this->personsLabel = (string) $view['persons_label'];
+            $this->groups = collect($view['ranges'])
+                ->map(static fn (array $range): array => [
+                    'label' => (string) $range['age_label'],
+                    'persons' => (int) $range['persons'],
+                ])
+                ->all();
+        }
     }
 }; ?>
 
@@ -88,6 +109,27 @@ new #[Layout('components.layouts.storefront')] #[Title('Cotización lista')] cla
                 <dt>{{ $asAgent ? 'Cliente' : 'A nombre de' }}</dt>
                 <dd>{{ $displayName }}</dd>
             </div>
+            @if ($headline !== '')
+                <div>
+                    <dt>Estimado</dt>
+                    <dd>{{ $headline }}</dd>
+                </div>
+            @endif
+            @if ($groups !== [])
+                <div>
+                    <dt>Grupo</dt>
+                    <dd>
+                        @foreach ($groups as $group)
+                            {{ $group['persons'] }} {{ $group['persons'] === 1 ? 'persona' : 'personas' }} · {{ $group['label'] }}@if (! $loop->last)<br>@endif
+                        @endforeach
+                    </dd>
+                </div>
+            @elseif ($personsLabel !== '')
+                <div>
+                    <dt>Personas</dt>
+                    <dd>{{ $personsLabel }}</dd>
+                </div>
+            @endif
             @if ($email !== '')
                 <div>
                     <dt>Correo</dt>

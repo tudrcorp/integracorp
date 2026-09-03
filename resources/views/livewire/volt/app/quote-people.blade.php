@@ -183,7 +183,7 @@ new #[Layout('components.layouts.storefront')] #[Title('Cotizar')] class extends
 }; ?>
 
 <div class="sf-quote">
-    @include('storefront.partials.quote-steps', ['step' => 1])
+    @include('storefront.partials.quote-steps', ['step' => 1, 'planId' => $planId])
 
     <section class="sf-hero">
         <p class="sf-kicker">{{ $planTitle }}</p>
@@ -192,7 +192,7 @@ new #[Layout('components.layouts.storefront')] #[Title('Cotizar')] class extends
             @if ($asAgent)
                 Indica cuántas personas van en cada rango. El precio se actualiza al instante.
             @else
-                Agrega las edades. Sin formularios eternos: una persona tras otra, y ves el precio en vivo.
+                Agrega las edades de quienes se cubren. Si varias personas tienen la misma edad, súmalas en Personas.
             @endif
         </p>
     </section>

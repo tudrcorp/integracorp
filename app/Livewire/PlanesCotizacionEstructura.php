@@ -51,6 +51,12 @@ class PlanesCotizacionEstructura extends Component
 
     public bool $populationOnlyIfMultiple = false;
 
+    public bool $compact = false;
+
+    public bool $showConditions = true;
+
+    public bool $storefrontFooter = false;
+
     /**
      * Filas de precio para un paquete de beneficios, que no tiene coberturas y
      * por lo tanto no puede desglosarse en columnas.
@@ -66,12 +72,18 @@ class PlanesCotizacionEstructura extends Component
         ?string $number_control = null,
         int|string|null $planId = null,
         bool $populationOnlyIfMultiple = false,
+        bool $compact = false,
+        bool $showConditions = true,
+        bool $storefrontFooter = false,
     ): void {
         $this->data = $data;
         $this->name = $name;
         $this->name_user = $name_user;
         $this->number_control = $number_control;
         $this->populationOnlyIfMultiple = $populationOnlyIfMultiple;
+        $this->compact = $compact;
+        $this->showConditions = $showConditions;
+        $this->storefrontFooter = $storefrontFooter;
 
         $this->buildQuotePdfCoverageTable($data, $planId);
 

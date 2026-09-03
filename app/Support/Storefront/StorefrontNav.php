@@ -8,9 +8,8 @@ use App\Models\User;
 use Throwable;
 
 /**
- * Ítems de la hoja inferior (bottom sheet). Los módulos que todavía
- * no existen se muestran como «próximamente» para que la arquitectura
- * de la app ya se sienta completa.
+ * Ítems de la hoja inferior (bottom sheet). El menú es corto:
+ * planes, cotizar, sesión de agente y contacto por WhatsApp.
  *
  * @phpstan-type NavItem array{
  *     key: string,
@@ -36,7 +35,7 @@ final class StorefrontNav
 
         $items = [
             self::item('home', 'Inicio', 'Planes listos para cotizar', 'home', 'storefront.home'),
-            self::item('quote', 'Cotizar', 'Arma una cotización en minutos', 'quote', 'storefront.home'),
+            self::item('quote', 'Cotizar', 'Elige un plan y arma la cotización', 'quote', 'storefront.home'),
         ];
 
         if ($isAgent) {
@@ -58,10 +57,6 @@ final class StorefrontNav
             self::phone('quotes'),
         );
 
-        $items[] = self::item('affiliations', 'Afiliaciones', 'Consulta y da de alta', 'affiliations', null, 'get', true);
-        $items[] = self::item('payments', 'Pagos', 'Historial de cobros realizados', 'payments', null, 'get', true);
-        $items[] = self::item('pending', 'Cobros pendientes', 'Lo que aún falta por cobrar', 'pending', null, 'get', true);
-
         return $items;
     }
 
@@ -72,13 +67,53 @@ final class StorefrontNav
 
     public static function subtitle(?User $user = null): string
     {
-        $resolved = func_num_args() === 0 ? StorefrontAuth::user() : $user;
+        try {
+            $name = request()->route()?->getName();
+        } catch (Throwable) {
+            $name = null;
+        }
+
+        return match ($name) {
+            'storefront.plan' => '',
+            'storefront.quote.people' => 'Cotizar',
+            'storefront.quote.details' => 'Tus datos',
+            'storefront.quote.confirm' => 'Confirmar',
+            'storefront.quote.result' => 'Cotización lista',
+            'storefront.quote.proposal' => 'Propuesta',
+            'storefront.login' => 'Entrar',
+            default => self::homeSubtitle($user),
+        };
+    }
+
+    /**
+     * @return array{route: string, label: string}|null
+     */
+    public static function back(): ?array
+    {
+        try {
+            $name = request()->route()?->getName();
+        } catch (Throwable) {
+            $name = null;
+        }
+
+        return match ($name) {
+            'storefront.plan' => [
+                'route' => 'storefront.home',
+                'label' => 'Volver al catálogo',
+            ],
+            default => null,
+        };
+    }
+
+    private static function homeSubtitle(?User $user = null): string
+    {
+        $resolved = $user ?? StorefrontAuth::user();
 
         if (StorefrontAuth::isAgent($resolved)) {
             return 'Hola, '.StorefrontAuth::displayName($resolved);
         }
 
-        return 'Planes de asistencia médica';
+        return 'Planes';
     }
 
     /**

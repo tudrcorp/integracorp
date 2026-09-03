@@ -22,6 +22,8 @@ final class StorefrontQuoteShare
 
     public const MAX_RECIPIENTS = 8;
 
+    public const LAST_CODE_COOKIE = 'storefront_last_quote';
+
     /**
      * @return list<Recipient>
      */
@@ -188,6 +190,35 @@ final class StorefrontQuoteShare
             : 'Hola, quiero hablar con un asesor de negocios sobre la cotización '.$code.'.';
 
         return 'https://wa.me/'.$digits.'?text='.rawurlencode($text);
+    }
+
+    public static function rememberCode(string $code): void
+    {
+        $clean = trim($code);
+
+        if ($clean === '' || preg_match('/^[A-Za-z0-9\-]+$/', $clean) !== 1) {
+            return;
+        }
+
+        try {
+            cookie()->queue(cookie(self::LAST_CODE_COOKIE, $clean, 60 * 24 * 30, '/app'));
+        } catch (Throwable) {
+        }
+    }
+
+    public static function lastCode(): ?string
+    {
+        try {
+            $code = trim((string) request()->cookie(self::LAST_CODE_COOKIE, ''));
+        } catch (Throwable) {
+            return null;
+        }
+
+        if ($code === '' || preg_match('/^[A-Za-z0-9\-]+$/', $code) !== 1) {
+            return null;
+        }
+
+        return $code;
     }
 
     public static function channel(mixed $value): string

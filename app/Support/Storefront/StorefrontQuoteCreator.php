@@ -18,9 +18,9 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Persiste una cotización individual con el mismo pipeline que el resto
- * del sistema (detalle, PDF, aviso a analistas). Público se atribuye a
- * la casa matriz; agente, a su cuenta.
+ * Persiste una cotización individual. El detalle se guarda en el acto;
+ * el PDF de una sola hoja (estructura dinámica) se arma cuando el cliente
+ * lo descarga desde la PWA, no la propuesta económica de 3–4 páginas.
  */
 final class StorefrontQuoteCreator
 {
@@ -93,6 +93,7 @@ final class StorefrontQuoteCreator
                     $record->toArray(),
                     $entries,
                     $entries,
+                    false,
                 );
 
                 if ($stored !== true) {
@@ -115,6 +116,7 @@ final class StorefrontQuoteCreator
         }
 
         StorefrontQuoteDraft::clear();
+        StorefrontQuoteShare::rememberCode((string) $quote->code);
 
         return [
             'quote' => $quote,

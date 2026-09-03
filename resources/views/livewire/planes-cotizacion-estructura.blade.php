@@ -63,6 +63,106 @@
             padding-bottom: 15mm;
         }
 
+        .is-compact .header-table {
+            margin-bottom: 10px;
+        }
+
+        .is-compact .page-cell-first {
+            padding-top: 10mm;
+        }
+
+        .is-compact .page-cell-last {
+            padding-bottom: 8mm;
+        }
+
+        .is-compact .validity {
+            margin: 10px 0 6px 0;
+        }
+
+        .is-compact .note-title {
+            margin: 10px 0 2px 0;
+        }
+
+        .is-compact .data-table {
+            margin-top: 10px;
+        }
+
+        .is-compact .data-table th,
+        .is-compact .data-table td {
+            padding: 3px 3px;
+            font-size: 6.5pt;
+        }
+
+        .is-compact .page-cell-last {
+            padding-bottom: 6mm;
+        }
+
+        /*
+         * Sin altura fija ni spacer alto: DomPDF los interpreta como
+         * «no cabe» y manda el pie a la página 2 aunque haya espacio vacío.
+         * El pie va pegado al contenido, centrado, con el QR a la derecha.
+         */
+        .storefront-footer-slot {
+            vertical-align: top;
+            padding-top: 16mm;
+            padding-bottom: 6mm;
+            page-break-before: avoid;
+            page-break-inside: avoid;
+        }
+
+        .storefront-footer {
+            position: relative;
+            width: 100%;
+            min-height: 58px;
+            page-break-inside: avoid;
+        }
+
+        .storefront-footer__copy {
+            width: 100%;
+            text-align: center;
+            color: #052F60;
+            font-size: 6pt;
+            line-height: 1.25;
+        }
+
+        .storefront-footer__copy img {
+            width: 72px;
+            height: auto;
+            margin-bottom: 2px;
+        }
+
+        .storefront-footer__copy p {
+            margin: 0;
+        }
+
+        .storefront-footer__qr {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 64px;
+            text-align: center;
+        }
+
+        .storefront-footer__qr a {
+            color: #052F60;
+            text-decoration: none;
+        }
+
+        .storefront-footer__qr img {
+            width: 48px;
+            height: 48px;
+            border: 0;
+        }
+
+        .storefront-footer__qr-caption {
+            display: block;
+            margin-top: 2px;
+            font-size: 5pt;
+            color: #052F60;
+            line-height: 1.2;
+            font-weight: bold;
+        }
+
         .header-table {
             width: 100%;
             border-collapse: collapse;
@@ -161,7 +261,10 @@
     </style>
 </head>
 
-<body>
+<body class="{{ $compact ? 'is-compact' : '' }}">
+    {{-- Un solo hijo de body: Livewire (con APP_DEBUG) cuenta raíces en <body>
+         y el pie fijo no puede vivir como segundo hermano del page-frame. --}}
+    <div class="pdf-root">
     <table class="page-frame">
         <tr>
             <td class="page-cell page-cell-first">
@@ -192,6 +295,7 @@
                     'benefitRows' => $benefitRows,
                     'headerBackground' => '#29ABE2',
                     'isDense' => $isDense,
+                    'compact' => $compact,
                 ])
 
                 <p class="note-title">{{ $note['title'] }}</p>
@@ -273,16 +377,55 @@
                 @endif
             </td>
         </tr>
-        <tr>
-            <td class="page-cell page-cell-last">
-                <ul class="conditions">
-                    @foreach (QuotePdfPlanStructure::conditions() as $condition)
-                        <li>{{ $condition }}</li>
-                    @endforeach
-                </ul>
-            </td>
-        </tr>
+        @if ($showConditions)
+            <tr>
+                <td class="page-cell page-cell-last">
+                    <ul class="conditions">
+                        @foreach (QuotePdfPlanStructure::conditions() as $condition)
+                            <li>{{ $condition }}</li>
+                        @endforeach
+                    </ul>
+                </td>
+            </tr>
+        @endif
+
+        @if ($storefrontFooter)
+            @php
+                $paymentQr = null;
+                $paymentUrl = null;
+
+                try {
+                    $paymentUrl = \App\Support\Storefront\StorefrontPaymentMethodsDocument::publicUrl();
+                    $paymentQr = \App\Support\Storefront\StorefrontPaymentMethodsDocument::qrDataUri();
+                } catch (Throwable) {
+                    $paymentQr = null;
+                    $paymentUrl = null;
+                }
+            @endphp
+            <tr>
+                <td class="page-cell page-cell-last storefront-footer-slot">
+                    <div class="storefront-footer">
+                        @if (filled($paymentQr) && filled($paymentUrl))
+                            <div class="storefront-footer__qr">
+                                <a href="{{ $paymentUrl }}" title="Descargar métodos de pago">
+                                    <img src="{{ $paymentQr }}" alt="Métodos de pago">
+                                    <span class="storefront-footer__qr-caption">Haz clic aquí<br>o escanea</span>
+                                </a>
+                            </div>
+                        @endif
+                        <div class="storefront-footer__copy">
+                            <img src="{{ public_path('image/logoNewPdf.png') }}" alt="Tu Dr En Casa">
+                            <p><strong>Cotización generada por Integracorp-pwa</strong></p>
+                            <p>Teléfonos de Contacto: 0424-222-0056 / 0424227-1498</p>
+                            <p>Email: comercial@tudrencasa.com</p>
+                            <p>Instagram: @tudrencasa</p>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        @endif
     </table>
+    </div>
 </body>
 
 </html>
