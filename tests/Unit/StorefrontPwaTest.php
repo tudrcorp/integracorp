@@ -25,7 +25,8 @@ it('el layout storefront es una app mobile con menu hamburguesa en el header', f
         ->toContain('StorefrontNav::subtitle()')
         ->toContain('StorefrontNav::back()')
         ->toContain('storefront-back')
-        ->and($layout)->toContain('$storefrontBack[\'label\']')
+        ->toContain('$storefrontBack[\'label\']')
+        ->toContain('$storefrontBack[\'params\']')
         ->and($layout)->toContain('logoNewPdf.png')
         ->toContain('headerGlass')
         ->toContain('syncHeaderGlass')
@@ -43,6 +44,7 @@ it('el layout storefront es una app mobile con menu hamburguesa en el header', f
         ->toContain('is-whatsapp')
         ->toContain("\$item['url']")
         ->toContain("\$item['soon_label']")
+        ->toContain('is-accent')
         ->and($layout)->not->toContain('Instalar app')
         ->and($layout)->not->toContain('storefront-open-install')
         ->and($layout)->not->toContain('El plan')
@@ -113,11 +115,21 @@ it('el layout storefront es una app mobile con menu hamburguesa en el header', f
         ->toContain('body.is-quote-sheet-open .storefront-stage')
         ->toContain('.sf-product__photo')
         ->toContain('.storefront-sheet__icon.is-whatsapp')
+        ->toContain('.storefront-sheet__row.is-accent')
+        ->toContain('.storefront-sheet__icon svg')
         ->toContain('.sf-seg[data-channel="whatsapp"] .sf-seg__btn--whatsapp')
         ->toContain('.sf-seg[data-channel="email"] .sf-seg__btn--email')
         ->toContain('.sf-seg[data-channel="email"] .sf-seg__btn--whatsapp')
         ->toContain('#25d366')
         ->toContain('.sf-spinner')
+        ->toContain('.sf-quotes')
+        ->toContain('.sf-quote-card')
+        ->toContain('.sf-quotes__search')
+        ->toContain('.sf-pay__choice')
+        ->toContain('.sf-pay__calc')
+        ->toContain('.sf-cov__choice')
+        ->toContain('.sf-cov__scroll')
+        ->toContain('.sf-receipt__picker')
         ->toContain('width: 100vw')
         ->and($css)->not->toContain('max-height: min(88dvh, 46rem)')
         ->and($css)->not->toContain('height: -webkit-fill-available')
@@ -150,13 +162,13 @@ it('existe manifest pwa y service worker de la app de planes', function (): void
 
     expect($sw)
         ->toContain("self.addEventListener('install'")
-        ->toContain('storefront-static-v3')
+        ->toContain('storefront-static-v6')
         ->toContain('/app/offline.html')
         ->toContain('/app')
         ->toContain("request.mode === 'navigate'");
 
     expect($install)
-        ->toContain("register('/app/sw.js?v=3")
+        ->toContain("register('/app/sw.js?v=6")
         ->toContain("scope: '/app/'")
         ->toContain('Agregar a pantalla de inicio');
 
@@ -181,13 +193,27 @@ it('las rutas de la pwa viven bajo /app y el flujo de cotizacion es por paginas'
         ->toContain('volt.app.quote-proposal')
         ->toContain('volt.app.quote-result')
         ->toContain('volt.app.login')
+        ->toContain('volt.app.register')
+        ->toContain('volt.app.profile')
+        ->toContain('volt.app.quotes')
+        ->toContain('storefront.quotes')
+        ->toContain('/cotizaciones')
+        ->toContain('volt.app.quote-coverages')
+        ->toContain('volt.app.quote-frequency')
+        ->toContain('volt.app.quote-pay')
+        ->toContain('volt.app.quote-receipt')
+        ->toContain('volt.app.quote-receipt-success')
         ->toContain('storefront.login.google')
+        ->toContain("middleware('storefront.auth')")
         ->toContain('storefront.documents.payment-methods')
         ->toContain('storefront.payment-methods')
         ->toContain('volt.app.payment-methods')
         ->toContain('storefront.quote.pdf')
         ->toContain('StorefrontQuotePdfController')
         ->toContain('storefront.logout');
+
+    expect($routes)
+        ->toContain("redirect()->route('storefront.welcome')");
 
     expect($bootstrap)->toContain('routes/storefront.php')
         ->and($vite)->toContain('resources/css/storefront.css');
@@ -201,6 +227,7 @@ it('el catalogo y la ficha venden el plan como producto', function (): void {
     $confirm = file_get_contents(storefrontBasePath('resources/views/livewire/volt/app/quote-confirm.blade.php'));
     $result = file_get_contents(storefrontBasePath('resources/views/livewire/volt/app/quote-result.blade.php'));
     $proposal = file_get_contents(storefrontBasePath('resources/views/livewire/volt/app/quote-proposal.blade.php'));
+    $quotes = file_get_contents(storefrontBasePath('resources/views/livewire/volt/app/quotes.blade.php'));
     $login = file_get_contents(storefrontBasePath('resources/views/livewire/volt/app/login.blade.php'));
     $steps = file_get_contents(storefrontBasePath('resources/views/storefront/partials/quote-steps.blade.php'));
     $success = file_get_contents(storefrontBasePath('resources/views/storefront/partials/quote-success.blade.php'));
@@ -262,11 +289,18 @@ it('el catalogo y la ficha venden el plan como producto', function (): void {
         ->and($result)->toContain('sf-ticket--compact')
         ->and($result)->toContain('Código de cotización')
         ->and($result)->toContain('Copiar')
-        ->and($result)->toContain('A nombre de')
         ->and($result)->toContain('InteractiveIndividualQuoteView')
-        ->and($result)->toContain('Estimado')
-        ->and($result)->toContain('Grupo')
+        ->and($result)->toContain('paymentFromDetails')
+        ->and($result)->toContain('storefront.partials.quote-plan-row')
+        ->and($result)->toContain('storefront.quote.coverages')
+        ->and($result)->toContain('storefront.quote.frequency')
+        ->and($result)->toContain('StorefrontQuoteCoverages::needsSelection')
         ->and($result)->toContain('storefront.quote.proposal')
+        ->and($result)->toContain('Pagar o cargar comprobante')
+        ->and($result)->not->toContain('<dt>Grupo</dt>')
+        ->and($result)->not->toContain('<dt>Correo</dt>')
+        ->and($result)->not->toContain('<dt>Estimado</dt>')
+        ->and($result)->not->toContain('A nombre de')
         ->and($result)->toContain('wire:navigate')
         ->and($result)->not->toContain('/in/')
         ->and($proposal)->toContain('components.layouts.storefront')
@@ -295,10 +329,10 @@ it('el catalogo y la ficha venden el plan como producto', function (): void {
         ->and($proposal)->toContain('openCalc(selected')
         ->and($proposal)->not->toContain('components.layouts.interactive')
         ->and($confirm)->toContain('storefront.partials.btn-loading')
-        ->and($login)->toContain('Entra con tu cuenta')
-        ->and($login)->toContain('no inicia sesión')
+        ->and($login)->toContain('Entra a la app')
+        ->and($login)->toContain('identifier')
         ->and($login)->toContain('google-login-button')
-        ->and($login)->toContain('o con tu correo de agente')
+        ->and($login)->toContain('Crear cuenta')
         ->and($steps)->toContain('Personas')
         ->and($steps)->toContain('Datos')
         ->and($steps)->toContain('Confirmar')
@@ -312,5 +346,10 @@ it('el catalogo y la ficha venden el plan como producto', function (): void {
         ->and($success)->toContain('sf-success__pdf')
         ->and($confirm)->toContain('pdfUrl')
         ->and($confirm)->toContain('storefront.quote.pdf')
-        ->and($success)->not->toContain('>Listo<');
+        ->and($success)->not->toContain('>Listo<')
+        ->and($quotes)->toContain('Mis cotizaciones')
+        ->and($quotes)->toContain('sf-quote-card')
+        ->and($quotes)->toContain('sf-quote-card__hit')
+        ->and($quotes)->toContain('storefront.partials.quote-plan-row')
+        ->and($quotes)->toContain('wire:model.live.debounce.300ms="search"');
 });

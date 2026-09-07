@@ -75,9 +75,9 @@ it('NotificationController envia documentos de telemedicina al telefono indicado
     $contents = file_get_contents(dirname(__DIR__, 2).'/app/Http/Controllers/NotificationController.php');
 
     expect($contents)
-        ->toContain('public static function sendTelemedicineDocumentWhatsApp(string $phone, string $namePdf, string $caption): bool')
-        ->toContain('HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone)')
-        ->toContain('TelemedicineConsultationDocumentsNotificationService::telemedicineDocumentPublicUrl($namePdf)')
+        ->toContain('public static function sendTelemedicineDocumentWhatsApp(string $phone, string $namePdf, string $caption, ?string $relativePath = null): bool')
+        ->toContain("telemedicina-doc/'")
+        ->toContain('return self::sendWhatsAppDocument($phone, $caption, $relativePath, $namePdf);')
         ->toContain('whatsAppApiResponseSucceeded')
         ->not->toContain("'to' => '04127018390',");
 });

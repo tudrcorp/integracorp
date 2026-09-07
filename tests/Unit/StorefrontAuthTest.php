@@ -9,7 +9,7 @@ it('un visitante no es agente', function (): void {
     expect(StorefrontAuth::isAgent(null))->toBeFalse();
 });
 
-it('solo un usuario de agente activo con ficha puede entrar a la pwa', function (): void {
+it('solo un usuario de agente activo con ficha activa el modo agente', function (): void {
     $agente = new User([
         'name' => 'Ana Pérez',
         'is_agent' => true,
@@ -40,6 +40,8 @@ it('solo un usuario de agente activo con ficha puede entrar a la pwa', function 
 
     expect(StorefrontAuth::isAgent($agente))->toBeTrue()
         ->and(StorefrontAuth::canLoginAsAgent($agente))->toBeTrue()
+        ->and(StorefrontAuth::canAccessPwa($agente))->toBeTrue()
+        ->and(StorefrontAuth::canAccessPwa($cliente))->toBeTrue()
         ->and(StorefrontAuth::isAgent($inactivo))->toBeFalse()
         ->and(StorefrontAuth::isAgent($sinFicha))->toBeFalse()
         ->and(StorefrontAuth::isAgent($cliente))->toBeFalse();

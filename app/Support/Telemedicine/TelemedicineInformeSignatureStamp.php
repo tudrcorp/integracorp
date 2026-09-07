@@ -43,6 +43,9 @@ final class TelemedicineInformeSignatureStamp
 
     public const SIDE_MARGIN_MM = 20.0;
 
+    /** Prefijo de los temporales del sello: acota qué puede borrar cleanUp(). */
+    private const TEMP_PREFIX = 'tdg-firma-';
+
     private const STAMP_WIDTH_MM = 34.0;
 
     private const STAMP_MAX_HEIGHT_MM = 17.0;
@@ -61,16 +64,20 @@ final class TelemedicineInformeSignatureStamp
      * Registra el dibujo de la firma. Debe llamarse tras `render()` y antes de
      * `output()`.
      *
+     * Devuelve la ruta del sello volcado a disco, que el llamador debe pasar a
+     * {@see cleanUp()} tras `output()`.
+     *
      * @param  array<string, mixed>  $data
+     * @return string|null Ruta temporal del sello, o null si no se creó ninguna.
      */
-    public static function applyTo(Dompdf $dompdf, array $data): void
+    public static function applyTo(Dompdf $dompdf, array $data): ?string
     {
         $doctorName = trim((string) ($data['doctor_name'] ?? ''));
         $mpps = trim((string) ($data['code_mpps'] ?? ''));
         $stampPath = self::resolveStampPath($data['signature'] ?? null);
 
         if ($doctorName === '' && $mpps === '' && $stampPath === null) {
-            return;
+            return null;
         }
 
         $canvas = $dompdf->getCanvas();
@@ -87,17 +94,30 @@ final class TelemedicineInformeSignatureStamp
 
             self::draw($canvas, $fontMetrics, $stampPath, $doctorName, $mpps);
         });
+
+        return $stampPath;
     }
 
     /**
-     * Borra el archivo temporal del sello, si se creó uno. Llamar tras `output()`.
+     * Borra el temporal que devolvió {@see applyTo()}. Llamar tras `output()`.
+     *
+     * Recibe la ruta y no la firma: derivarla otra vez del contenido devolvía la
+     * misma ruta para todos los renders del mismo sello, y un job borraba el
+     * archivo que otro estaba dibujando.
      */
-    public static function cleanUp(mixed $signature): void
+    public static function cleanUp(?string $stampPath): void
     {
-        $path = self::temporaryPathFor($signature);
+        if ($stampPath === null || $stampPath === '') {
+            return;
+        }
 
-        if ($path !== null && is_file($path)) {
-            @unlink($path);
+        // Nunca borrar algo que no haya creado este estampado.
+        if (! str_starts_with(basename($stampPath), self::TEMP_PREFIX)) {
+            return;
+        }
+
+        if (is_file($stampPath)) {
+            @unlink($stampPath);
         }
     }
 
@@ -184,8 +204,15 @@ final class TelemedicineInformeSignatureStamp
     }
 
     /**
-     * `Canvas::image()` necesita una ruta; el sello llega como data URI, así que
-     * se vuelca a un temporal estable (mismo contenido => misma ruta).
+     * `Canvas::image()` necesita una ruta, y el sello llega como data URI, así que
+     * se vuelca a disco. **Un archivo propio por render**, con nombre aleatorio.
+     *
+     * Antes la ruta salía de `md5()` del contenido: todos los informes del mismo
+     * médico compartían archivo, y como el temporal se borra al terminar cada
+     * render, dos documentos en paralelo se pisaban — el primero en acabar
+     * borraba el sello que el segundo aún no había dibujado, y ese informe salía
+     * sin firma. Un nombre aleatorio por render lo hace imposible; de paso el
+     * temporal deja de ser predecible desde fuera.
      */
     private static function resolveStampPath(mixed $signature): ?string
     {
@@ -207,27 +234,12 @@ final class TelemedicineInformeSignatureStamp
             return null;
         }
 
-        $path = self::temporaryPathFor($signature);
+        $path = sys_get_temp_dir().'/'.self::TEMP_PREFIX.bin2hex(random_bytes(16)).'.png';
 
-        if ($path === null) {
+        if (@file_put_contents($path, $binary, LOCK_EX) === false) {
             return null;
-        }
-
-        if (! is_file($path)) {
-            file_put_contents($path, $binary);
         }
 
         return $path;
-    }
-
-    private static function temporaryPathFor(mixed $signature): ?string
-    {
-        $dataUri = TelemedicineDoctorStamp::dataUri($signature);
-
-        if ($dataUri === '') {
-            return null;
-        }
-
-        return sys_get_temp_dir().'/tdg-firma-'.md5($dataUri).'.png';
     }
 }

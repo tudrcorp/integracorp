@@ -11,13 +11,17 @@ use App\Models\TelemedicineGeneralService;
 use App\Models\TelemedicineListLaboratory;
 use App\Models\TelemedicineListSpecialist;
 use App\Models\TelemedicineListStudy;
+use App\Models\TelemedicinePatient;
 use App\Models\TelemedicinePriority;
 use App\Models\TelemedicineServiceList;
 use App\Support\ClinicalEntitlements\ClinicalQuotaFormGuard;
 use App\Support\ClinicalEntitlements\TelemedicineConsultationClinicalUi;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Telemedicine\ConsultationFormContext;
+use App\Support\Telemedicine\ProvidesConsultationFormContext;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
+use App\Support\Telemedicine\TelemedicineConsultationSigningDoctor;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationInventoryOptions;
@@ -68,6 +72,34 @@ class TelemedicineConsultationPatientForm
         }
 
         return $case;
+    }
+
+    /**
+     * Contexto clínico de la pestaña actual (Livewire), no de la sesión global.
+     */
+    private static function formContext(Schema $schema): ConsultationFormContext
+    {
+        $livewire = $schema->getLivewire();
+
+        if ($livewire instanceof ProvidesConsultationFormContext) {
+            return $livewire->consultationFormContext();
+        }
+
+        if (is_object($livewire) && method_exists($livewire, 'getRecord')) {
+            $record = $livewire->getRecord();
+            if ($record instanceof TelemedicineConsultationPatient) {
+                $case = TelemedicineCase::query()->find($record->telemedicine_case_id);
+                $patient = TelemedicinePatient::query()->find($record->telemedicine_patient_id);
+
+                return new ConsultationFormContext(
+                    case: $case instanceof TelemedicineCase ? $case : null,
+                    patient: $patient instanceof TelemedicinePatient ? $patient : null,
+                    consultation: $record,
+                );
+            }
+        }
+
+        return ConsultationFormContext::fromSession();
     }
 
     /**
@@ -275,24 +307,19 @@ class TelemedicineConsultationPatientForm
 
     public static function configure(Schema $schema): Schema
     {
-        // Variables recuperadas de la sesion del usuario
-        // ------------------------------------------------
-        $case = session()->get('case');
-        $patient = session()->get('patient');
-        $consultation = session()->get('consultation');
-        $caseId = $case?->id;
-        $defaultTelemedicineServiceListId = null;
-        if ($consultation instanceof TelemedicineConsultationPatient) {
-            if (filled($consultation->telemedicine_service_list_drift_id)) {
-                $defaultTelemedicineServiceListId = (int) $consultation->telemedicine_service_list_drift_id;
-            } elseif (filled($consultation->telemedicine_service_list_id)) {
-                $defaultTelemedicineServiceListId = (int) $consultation->telemedicine_service_list_id;
-            }
-        }
+        $context = self::formContext($schema);
+        $case = $context->case;
+        $patient = $context->patient;
+        $consultation = $context->consultation;
+        $caseId = $context->caseId();
+        $defaultTelemedicineServiceListId = $context->defaultServiceListId();
         $isTelemedicineServiceListIdLocked = $defaultTelemedicineServiceListId !== null;
         $countCase = filled($caseId)
             ? TelemedicineConsultationPatient::where('telemedicine_case_id', $caseId)->count()
             : 0;
+        if ($context->isEditingInitialConsultation()) {
+            $countCase = 0;
+        }
         $caseCanBeDischarged = filled($caseId)
             ? TelemedicineCaseDischargeGuard::caseCanBeDischarged((int) $caseId)
             : true;
@@ -316,9 +343,13 @@ class TelemedicineConsultationPatientForm
                                 ->schema([
                                     Fieldset::make('Datos del Caso')
                                         ->schema([
-                                            Hidden::make('telemedicine_case_id')->default($case->id),
-                                            Hidden::make('telemedicine_doctor_id')->default($case->telemedicine_doctor_id),
-                                            Hidden::make('telemedicine_patient_id')->default($case->telemedicine_patient_id),
+                                            Hidden::make('telemedicine_case_id')->default($case?->id),
+                                            // Firma quien atiende, no el asignado al caso: en el pool TDG
+                                            // un médico abre el caso de otro. El valor definitivo se fija
+                                            // en el servidor al guardar (mutateFormDataBeforeCreate).
+                                            Hidden::make('telemedicine_doctor_id')
+                                                ->default(TelemedicineConsultationSigningDoctor::defaultIdForForm(Auth::user(), $case)),
+                                            Hidden::make('telemedicine_patient_id')->default($case?->telemedicine_patient_id),
                                             Hidden::make('assigned_by')->default(Auth::user()->id),
                                             Hidden::make('status')->default(function () use ($countCase) {
                                                 if ($countCase < 1) {
@@ -335,7 +366,7 @@ class TelemedicineConsultationPatientForm
                                                 ->dehydrated(),
                                             TextInput::make('telemedicine_case_code')
                                                 ->label('Código del Caso')
-                                                ->default($case->code)
+                                                ->default($case?->code)
                                                 ->disabled()
                                                 ->dehydrated(),
                                         ])->columnSpanFull()->columns(6),
@@ -344,41 +375,41 @@ class TelemedicineConsultationPatientForm
                                         ->schema([
                                             TextInput::make('full_name')
                                                 ->label('Paciente')
-                                                ->default($patient->full_name)
+                                                ->default($patient?->full_name)
                                                 ->disabled()
                                                 ->dehydrated(),
                                             TextInput::make('nro_identificacion')
                                                 ->label('Número de Identificación')
                                                 ->prefix('V-')
-                                                ->default($patient->nro_identificacion)
+                                                ->default($patient?->nro_identificacion)
                                                 ->disabled()
                                                 ->dehydrated(),
                                             TextInput::make('sex')
                                                 ->label('Sexo')
-                                                ->default($patient->sex)
+                                                ->default($patient?->sex)
                                                 ->disabled()
                                                 ->dehydrated(),
                                             TextInput::make('age')
                                                 ->label('Edad')
                                                 ->prefix(' Años')
-                                                ->default($patient->age)
+                                                ->default($patient?->age)
                                                 ->disabled()
                                                 ->dehydrated(),
                                             TextInput::make('phone_ppal')
                                                 ->label('Número de Teléfono Principal')
-                                                ->default($case->patient_phone)
+                                                ->default($case?->patient_phone)
                                                 ->disabled()
                                                 ->dehydrated(),
                                             TextInput::make('phone_secondary')
                                                 ->label('Número de Teléfono Secundario')
-                                                ->default($case->patient_phone_2)
+                                                ->default($case?->patient_phone_2)
                                                 ->disabled()
                                                 ->dehydrated(),
                                             TextArea::make('address')
                                                 ->autosize()
                                                 ->label('Dirección')
                                                 ->helperText('Direccion descrita por el paciente al momento de la asignación del caso.')
-                                                ->default($case->patient_address)
+                                                ->default($case?->patient_address)
                                                 ->disabled()
                                                 ->columnSpanFull()
                                                 ->dehydrated(),
@@ -386,11 +417,11 @@ class TelemedicineConsultationPatientForm
                                                 ->autosize()
                                                 ->label('Dirección alternativa para estacionamiento de Ambulancia')
                                                 ->helperText('Esta en la dirección alternativa donde el paciente puede recibir un servicio de ambulancia.')
-                                                ->default($case->directionAmbulance)
+                                                ->default($case?->directionAmbulance)
                                                 ->disabled()
                                                 ->columnSpanFull()
                                                 ->dehydrated()
-                                                ->hidden(fn () => $case->directionAmbulance == null),
+                                                ->hidden(fn () => blank($case?->directionAmbulance)),
                                         ])->columnSpanFull()->columns(3),
                                 ])
                                 ->columnSpanFull(),
@@ -525,10 +556,12 @@ class TelemedicineConsultationPatientForm
                                                         ->icon('heroicon-s-share')
                                                         ->slideOver()
                                                         ->modalHeading('Histórico de Antecedentes No Patológicos')
-                                                        ->modalContent(function () {
+                                                        ->modalContent(function () use ($patient) {
 
-                                                            $patient = session()->get('patient');
                                                             $records = $patient?->telemedicinePatientHistory()->orderByDesc('created_at')->get()->first();
+                                                            if ($records === null) {
+                                                                return view('pathological-history-table', ['records' => collect()]);
+                                                            }
                                                             $record = $records->toArray();
                                                             $history = NoPathologicalHistory::where('telemedicine_history_patient_id', $record['id'])->get();
 
@@ -544,26 +577,25 @@ class TelemedicineConsultationPatientForm
                                                             // 2. **Sincronización del estado (EL PASO CLAVE)**
                                                             // Accede al formulario del componente Livewire y establece el valor del campo 'background'.
                                                             $livewire->form->fill([
-                                                                'telemedicine_case_id' => $case->id,
-                                                                'telemedicine_doctor_id' => $case->telemedicine_doctor_id,
-                                                                'telemedicine_patient_id' => $case->telemedicine_patient_id,
+                                                                'telemedicine_case_id' => $case?->id,
+                                                                'telemedicine_doctor_id' => TelemedicineConsultationSigningDoctor::defaultIdForForm(Auth::user(), $case),
+                                                                'telemedicine_patient_id' => $case?->telemedicine_patient_id,
                                                                 'assigned_by' => Auth::user()->id,
                                                                 'status' => 'CONSULTA INICIAL',
                                                                 'code_reference' => 'REF-'.rand(11111, 99999),
-                                                                'full_name' => $case->patient_name,
-                                                                'telemedicine_case_code' => $case->code,
-                                                                'nro_identificacion' => $patient->nro_identificacion,
-                                                                'age' => $patient->age,
-                                                                'sex' => $patient->sex,
-                                                                'phone_ppal' => $case->patient_phone,
-                                                                'phone_secondary' => $case->patient_phone_2,
-                                                                'address' => $case->patient_address,
-                                                                'reason_consultation' => $case->reason,
+                                                                'full_name' => $case?->patient_name,
+                                                                'telemedicine_case_code' => $case?->code,
+                                                                'nro_identificacion' => $patient?->nro_identificacion,
+                                                                'age' => $patient?->age,
+                                                                'sex' => $patient?->sex,
+                                                                'phone_ppal' => $case?->patient_phone,
+                                                                'phone_secondary' => $case?->patient_phone_2,
+                                                                'address' => $case?->patient_address,
+                                                                'reason_consultation' => $case?->reason,
                                                                 'background' => $nuevoValorDeSesion,
                                                             ]);
                                                         })
-                                                        ->hidden(function () {
-                                                            $patient = session()->get('patient');
+                                                        ->hidden(function () use ($patient) {
                                                             $exist = $patient?->noPathologicalHistories()->exists();
                                                             if ($exist) {
                                                                 // ... Si el paciente tiene historia registrada lo muestro!

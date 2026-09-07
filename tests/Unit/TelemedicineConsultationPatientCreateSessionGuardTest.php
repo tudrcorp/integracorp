@@ -2,16 +2,18 @@
 
 declare(strict_types=1);
 
-it('valida la sesión antes de inicializar el formulario de creación', function (): void {
+it('valida el contexto por URL antes de inicializar el formulario de creación', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Pages/CreateTelemedicineConsultationPatient.php';
     $contents = file_get_contents($path);
 
-    $sessionReadPosition = strpos($contents, '$this->patient = session()->get(\'patient\');');
+    $fromRequestPosition = strpos($contents, 'resolveConsultationContextFromRequest');
     $mountPosition = strpos($contents, 'parent::mount();');
 
-    expect($sessionReadPosition)->not->toBeFalse()
+    expect($fromRequestPosition)->not->toBeFalse()
         ->and($mountPosition)->not->toBeFalse()
-        ->and($sessionReadPosition)->toBeLessThan($mountPosition)
+        ->and($fromRequestPosition)->toBeLessThan($mountPosition)
+        ->and($contents)->toContain('function consultationFormContext(): ConsultationFormContext')
+        ->and($contents)->toContain('ConsultationClinicalSelections::fromFormData')
         ->and($contents)->toContain('if (! $this->patient instanceof TelemedicinePatient || ! $this->case instanceof TelemedicineCase)');
 });
 
@@ -26,12 +28,25 @@ it('resuelve telemedicine_service_list_drift_id sin error cuando no viene en el 
         ->toContain('if ($serviceListDriftId === 8)');
 });
 
-it('usa un id de caso seguro en el schema de consulta', function (): void {
+it('el schema de consulta toma el caso del contexto Livewire, no de la sesion global', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Schemas/TelemedicineConsultationPatientForm.php';
     $contents = file_get_contents($path);
 
     expect($contents)
-        ->toContain('$caseId = $case?->id;')
-        ->toContain('TelemedicineConsultationPatient::where(\'telemedicine_case_id\', $caseId)->count()')
-        ->toContain(': 0;');
+        ->toContain('function formContext(Schema $schema): ConsultationFormContext')
+        ->toContain('ProvidesConsultationFormContext')
+        ->toContain('$caseId = $context->caseId();')
+        ->and($contents)->not->toContain("session()->get('case')")
+        ->and($contents)->not->toContain("session()->get('patient')");
+});
+
+it('los puntos de entrada abren la consulta con caseId en la URL', function (): void {
+    $dash = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Widgets/TelemedicineCaseTableDash.php');
+    $cases = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineCases/Tables/TelemedicineCasesTable.php');
+    $patients = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicinePatients/Tables/TelemedicinePatientsTable.php');
+    $relation = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicinePatients/RelationManagers/TelemedicineCasesRelationManager.php');
+
+    foreach ([$dash, $cases, $patients, $relation] as $source) {
+        expect($source)->toContain('ConsultationCreateRoute::url');
+    }
 });

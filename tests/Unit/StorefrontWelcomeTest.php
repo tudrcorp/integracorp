@@ -7,7 +7,7 @@ function storefrontWelcomePath(string $path): string
     return dirname(__DIR__, 2).'/'.ltrim($path, '/');
 }
 
-it('la bienvenida centra el catalogo y deja el login de agente como enlace', function (): void {
+it('la bienvenida es la puerta de acceso con entrar, registro y google', function (): void {
     $welcome = file_get_contents(storefrontWelcomePath('resources/views/livewire/volt/app/welcome.blade.php'));
     $layout = file_get_contents(storefrontWelcomePath('resources/views/components/layouts/storefront-welcome.blade.php'));
     $css = file_get_contents(storefrontWelcomePath('resources/css/storefront.css'));
@@ -17,20 +17,24 @@ it('la bienvenida centra el catalogo y deja el login de agente como enlace', fun
         ->toContain("Layout('components.layouts.storefront-welcome')")
         ->toContain('sf-welcome__photo')
         ->toContain('image/storefront/welcome.jpg')
-        ->toContain('Ver planes')
-        ->toContain('storefront.home')
-        ->toContain('¿Eres agente?')
+        ->toContain('Entrar')
+        ->toContain('¿No tienes cuenta?')
+        ->toContain('Crear cuenta')
+        ->toContain('sf-welcome__register')
         ->toContain('storefront.login')
-        ->toContain('sf-welcome__agent')
+        ->toContain('storefront.register')
+        ->toContain('google-login-button')
         ->toContain('logoNewPdf.png')
+        ->and($welcome)->not->toContain('sf-welcome__btn--login')
         ->and($welcome)->not->toContain('logoNewTDG.png')
-        ->and($welcome)->not->toContain('tu dr en casa')
-        ->and($welcome)->not->toContain('storefront.partials.google-login-button')
-        ->and($welcome)->not->toContain('Iniciar sesión')
+        ->and($welcome)->not->toContain('Ver planes')
+        ->and($welcome)->not->toContain('¿Eres agente?')
         ->and($welcome)->not->toContain('storefront-menu-btn')
         ->and($welcome)->not->toContain('sf-welcome__tile');
 
-    expect($login)->toContain('google-login-button');
+    expect($login)->toContain('google-login-button')
+        ->and($login)->toContain('identifier')
+        ->and($login)->toContain('Entra a la app');
 
     $googleButton = file_get_contents(storefrontWelcomePath('resources/views/storefront/partials/google-login-button.blade.php'));
 
@@ -39,6 +43,7 @@ it('la bienvenida centra el catalogo y deja el login de agente como enlace', fun
         ->toContain('storefront.login.google')
         ->toContain('sf-welcome__google-icon')
         ->toContain('sf-welcome__google-label')
+        ->toContain('sf-welcome__google-content')
         ->and($googleButton)->not->toContain('x-show="! going"')
         ->and($googleButton)->not->toContain('display: inline-flex');
 
@@ -55,7 +60,8 @@ it('la bienvenida centra el catalogo y deja el login de agente como enlace', fun
         ->toContain('white-space: nowrap')
         ->toContain('.sf-welcome__btn--login')
         ->toContain('.sf-welcome__btn--plans')
-        ->toContain('.sf-welcome__agent')
+        ->toContain('.sf-welcome__register')
+        ->toContain('justify-content: center')
         ->toContain('.sf-welcome__photo')
         ->toContain('mix-blend-mode: screen')
         ->toContain('border-radius: 999px')

@@ -20,6 +20,7 @@ use Throwable;
  *     method: string,
  *     soon: bool,
  *     soon_label: string|null,
+ *     accent: bool,
  *     url: string|null,
  *     external: bool
  * }
@@ -32,7 +33,7 @@ final class StorefrontNav
     public static function items(?User $user = null): array
     {
         $resolved = func_num_args() === 0 ? StorefrontAuth::user() : $user;
-        $isAgent = StorefrontAuth::isAgent($resolved);
+        $isLoggedIn = $resolved instanceof User && StorefrontAuth::canAccessPwa($resolved);
 
         $items = [
             self::item('home', 'Inicio', 'Planes listos para cotizar', 'home', 'storefront.home'),
@@ -40,20 +41,13 @@ final class StorefrontNav
             self::item('payments', 'Métodos de pago', 'Descarga o reenvía el documento', 'payments', 'storefront.payment-methods'),
         ];
 
-        if ($isAgent) {
-            $items[] = self::item('logout', 'Cerrar sesión', 'Salir del modo agente', 'logout', 'storefront.logout', 'post');
+        if ($isLoggedIn) {
+            $items[] = self::item('quotes', 'Mis cotizaciones', 'Revisa las que generaste en la app', 'quotes', 'storefront.quotes', accent: true);
+            $items[] = self::item('profile', 'Mi perfil', 'Actualiza cédula, teléfono o correo', 'login', 'storefront.profile');
+            $items[] = self::item('logout', 'Cerrar sesión', 'Salir de la app', 'logout', 'storefront.logout', 'post');
         } else {
-            $items[] = self::item('login', 'Soy agente', 'Entra con tu cuenta de IntegraCorp', 'login', 'storefront.login');
-            $items[] = self::item(
-                'register',
-                'Registrarme!',
-                'Crea tu cuenta en la app',
-                'affiliations',
-                null,
-                'get',
-                true,
-                'Próximamente!',
-            );
+            $items[] = self::item('login', 'Entrar', 'Correo, teléfono o cédula', 'login', 'storefront.login');
+            $items[] = self::item('register', 'Crear cuenta', 'Registro rápido para nuevos usuarios', 'affiliations', 'storefront.register');
         }
 
         $items[] = self::whatsapp(
@@ -94,6 +88,14 @@ final class StorefrontNav
             'storefront.quote.proposal' => '',
             'storefront.payment-methods' => '',
             'storefront.login' => 'Entrar',
+            'storefront.register' => 'Registro',
+            'storefront.profile' => 'Perfil',
+            'storefront.quotes' => '',
+            'storefront.quote.coverages' => '',
+            'storefront.quote.frequency' => '',
+            'storefront.quote.pay' => '',
+            'storefront.quote.receipt' => '',
+            'storefront.quote.receipt.success' => '',
             default => self::homeSubtitle($user),
         };
     }
@@ -118,6 +120,45 @@ final class StorefrontNav
                 'route' => 'storefront.home',
                 'label' => 'Volver al catálogo',
             ],
+            'storefront.quotes' => [
+                'route' => 'storefront.home',
+                'label' => 'Volver al catálogo',
+            ],
+            'storefront.quote.coverages' => [
+                'route' => 'storefront.quotes',
+                'label' => 'Volver a cotizaciones',
+            ],
+            'storefront.quote.frequency' => StorefrontQuoteCoverages::hasRequestSelection((string) (request()->route('code') ?? ''))
+                ? [
+                    'route' => 'storefront.quote.coverages',
+                    'label' => 'Cambiar coberturas',
+                    'params' => StorefrontQuoteCoverages::appendFromRequest([
+                        'code' => (string) (request()->route('code') ?? ''),
+                    ]),
+                ]
+                : [
+                    'route' => 'storefront.quotes',
+                    'label' => 'Volver a cotizaciones',
+                ],
+            'storefront.quote.pay' => [
+                'route' => 'storefront.quote.frequency',
+                'label' => 'Cambiar frecuencia',
+                'params' => StorefrontQuoteCoverages::appendFromRequest([
+                    'code' => (string) (request()->route('code') ?? ''),
+                ]),
+            ],
+            'storefront.quote.receipt' => [
+                'route' => 'storefront.quote.pay',
+                'label' => 'Volver al pago',
+                'params' => StorefrontQuoteCoverages::appendFromRequest([
+                    'code' => (string) (request()->route('code') ?? ''),
+                    'frequency' => (string) (request()->route('frequency') ?? StorefrontQuoteFrequency::Annual),
+                ]),
+            ],
+            'storefront.quote.receipt.success' => [
+                'route' => 'storefront.quotes',
+                'label' => 'Volver a cotizaciones',
+            ],
             default => null,
         };
     }
@@ -126,7 +167,7 @@ final class StorefrontNav
     {
         $resolved = $user ?? StorefrontAuth::user();
 
-        if (StorefrontAuth::isAgent($resolved)) {
+        if ($resolved instanceof User && StorefrontAuth::canAccessPwa($resolved)) {
             return 'Hola, '.StorefrontAuth::displayName($resolved);
         }
 
@@ -152,6 +193,7 @@ final class StorefrontNav
             'method' => 'get',
             'soon' => false,
             'soon_label' => null,
+            'accent' => false,
             'url' => $digits === '' ? null : 'https://wa.me/'.$digits.'?text='.rawurlencode($message),
             'external' => true,
         ];
@@ -184,6 +226,7 @@ final class StorefrontNav
         string $method = 'get',
         bool $soon = false,
         ?string $soonLabel = null,
+        bool $accent = false,
     ): array {
         return [
             'key' => $key,
@@ -194,6 +237,7 @@ final class StorefrontNav
             'method' => $method,
             'soon' => $soon,
             'soon_label' => $soonLabel,
+            'accent' => $accent,
             'url' => null,
             'external' => false,
         ];

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Support\Storefront\StorefrontAccount;
 use App\Support\Storefront\StorefrontAuth;
 use App\Support\Storefront\StorefrontGoogleAuth;
 use Illuminate\Http\RedirectResponse;
@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
 
@@ -20,21 +21,21 @@ class StorefrontGoogleAuthController extends Controller
 {
     public function redirect(Request $request): RedirectResponse
     {
-        if (StorefrontAuth::currentIsAgent()) {
+        if (StorefrontAuth::check()) {
             return redirect()->route('storefront.home');
         }
 
         if (! StorefrontGoogleAuth::isConfigured()) {
             return redirect()
-                ->route('storefront.welcome')
-                ->with('storefront_notice', 'El acceso con Google se activa cuando el equipo cargue las credenciales. Mientras tanto entra con tu correo de agente.');
+                ->route('storefront.register')
+                ->with('storefront_notice', 'Google aún no está configurado. Crea tu cuenta con el formulario.');
         }
 
         $throttleKey = 'storefront-google:'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 8)) {
             return redirect()
-                ->route('storefront.welcome')
+                ->route('storefront.login')
                 ->with('storefront_notice', 'Demasiados intentos con Google. Espera un minuto e inténtalo de nuevo.');
         }
 
@@ -56,13 +57,13 @@ class StorefrontGoogleAuthController extends Controller
 
         if ($expectedState === '' || $codeVerifier === '' || ! hash_equals($expectedState, $returnedState)) {
             return redirect()
-                ->route('storefront.welcome')
+                ->route('storefront.login')
                 ->with('storefront_notice', 'No pudimos confirmar el acceso con Google. Inténtalo otra vez.');
         }
 
         if ($request->filled('error')) {
             return redirect()
-                ->route('storefront.welcome')
+                ->route('storefront.login')
                 ->with('storefront_notice', 'Cancelaste el acceso con Google.');
         }
 
@@ -70,37 +71,36 @@ class StorefrontGoogleAuthController extends Controller
 
         if ($code === '') {
             return redirect()
-                ->route('storefront.welcome')
+                ->route('storefront.login')
                 ->with('storefront_notice', 'Google no devolvió un código de acceso.');
         }
 
         try {
             $profile = StorefrontGoogleAuth::userFromAuthorizationCode($code, $codeVerifier);
+            $user = StorefrontAccount::createFromGoogle($profile['email'], $profile['name']);
+        } catch (ValidationException $exception) {
+            $message = collect($exception->errors())->flatten()->first()
+                ?: 'No pudimos crear tu cuenta con Google.';
+
+            return redirect()
+                ->route('storefront.login')
+                ->with('storefront_notice', $message);
         } catch (RuntimeException $exception) {
             return redirect()
-                ->route('storefront.welcome')
+                ->route('storefront.login')
                 ->with('storefront_notice', $exception->getMessage());
         } catch (Throwable $exception) {
             report($exception);
 
             return redirect()
-                ->route('storefront.welcome')
+                ->route('storefront.login')
                 ->with('storefront_notice', 'No pudimos entrar con Google. Inténtalo de nuevo.');
-        }
-
-        $user = User::query()
-            ->whereRaw('LOWER(email) = ?', [$profile['email']])
-            ->first();
-
-        if (! $user instanceof User || ! StorefrontAuth::canLoginAsAgent($user)) {
-            return redirect()
-                ->route('storefront.welcome')
-                ->with('storefront_notice', 'Esta app es para agentes. El cliente no necesita iniciar sesión: entra a ver planes.');
         }
 
         Auth::login($user, true);
         $request->session()->regenerate();
+        $request->session()->put(StorefrontAccount::SESSION_FORCE_PROFILE, true);
 
-        return redirect()->route('storefront.home');
+        return redirect()->route('storefront.profile');
     }
 }

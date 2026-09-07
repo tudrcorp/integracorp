@@ -10,6 +10,7 @@ use App\Models\TelemedicineCase;
 use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
 use App\Support\FilamentDateDisplay;
+use App\Support\Telemedicine\ConsultationCreateRoute;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -404,10 +405,7 @@ class TelemedicinePatientsTable
                                 'exit_record' => $exitRecord,
                             ]);
 
-                            return redirect()->route(
-                                'filament.telemedicina.resources.telemedicine-consultation-patients.create',
-                                ['id' => $record->id],
-                            );
+                            return redirect()->to(ConsultationCreateRoute::url($record, $case));
                         }),
                 ])
                     ->icon(Heroicon::OutlinedEllipsisHorizontalCircle)

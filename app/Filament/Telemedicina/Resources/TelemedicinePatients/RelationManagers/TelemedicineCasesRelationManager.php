@@ -9,6 +9,7 @@ use App\Filament\Telemedicina\Resources\TelemedicineCases\TelemedicineCaseResour
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
+use App\Support\Telemedicine\ConsultationCreateRoute;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -181,7 +182,7 @@ class TelemedicineCasesRelationManager extends RelationManager
                                 'exit_record' => $exitRecord,
                             ]);
 
-                            return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
+                            return redirect()->to(ConsultationCreateRoute::url($patient, $case));
                         })
                         ->hidden(fn (TelemedicineCase $record): bool => $record->status !== 'EN SEGUIMIENTO'),
                     ReverseTelemedicineCaseAction::make(),

@@ -139,15 +139,19 @@
             @php
                 $storefrontBack = \App\Support\Storefront\StorefrontNav::back();
                 $storefrontSubtitle = \App\Support\Storefront\StorefrontNav::subtitle();
-                $storefrontIsAgent = \App\Support\Storefront\StorefrontAuth::currentIsAgent();
+                $storefrontUser = \App\Support\Storefront\StorefrontAuth::user();
+                $storefrontLoggedIn = \App\Support\Storefront\StorefrontAuth::check();
+                $storefrontIsAgent = \App\Support\Storefront\StorefrontAuth::isAgent($storefrontUser);
             @endphp
             <div class="storefront-header__lead">
                 <a href="{{ route('storefront.home') }}" wire:navigate class="storefront-brand">
                     <img src="{{ asset('image/logoNewPdf.png') }}" alt="Tu Dr En Casa" width="168" height="43">
-                    @if ($storefrontIsAgent || $storefrontSubtitle !== '')
+                    @if ($storefrontLoggedIn || $storefrontSubtitle !== '')
                         <span class="storefront-brand__copy">
                             @if ($storefrontIsAgent)
                                 <span class="storefront-brand__kicker">Modo agente</span>
+                            @elseif ($storefrontLoggedIn)
+                                <span class="storefront-brand__kicker">Mi cuenta</span>
                             @endif
                             @if ($storefrontSubtitle !== '')
                                 <span class="storefront-brand__name">{{ $storefrontSubtitle }}</span>
@@ -157,7 +161,7 @@
                 </a>
                 @if ($storefrontBack !== null)
                     <a
-                        href="{{ route($storefrontBack['route']) }}"
+                        href="{{ route($storefrontBack['route'], $storefrontBack['params'] ?? []) }}"
                         wire:navigate
                         class="storefront-back"
                     >
@@ -213,8 +217,11 @@
 
                 <div class="storefront-sheet__body">
                     @foreach (\App\Support\Storefront\StorefrontNav::items() as $item)
+                        @php
+                            $sheetRowClass = ['storefront-sheet__row', 'is-accent' => (bool) ($item['accent'] ?? false)];
+                        @endphp
                         @if ($item['soon'])
-                            <div class="storefront-sheet__row is-soon">
+                            <div @class($sheetRowClass + ['is-soon' => true])>
                                 <span class="storefront-sheet__icon">
                                     @include('storefront.partials.nav-icon', ['name' => $item['icon']])
                                 </span>
@@ -227,7 +234,7 @@
                         @elseif ($item['method'] === 'post' && $item['route'])
                             <form method="POST" action="{{ route($item['route']) }}">
                                 @csrf
-                                <button type="submit" class="storefront-sheet__row">
+                                <button type="submit" @class($sheetRowClass)>
                                     <span class="storefront-sheet__icon">
                                         @include('storefront.partials.nav-icon', ['name' => $item['icon']])
                                     </span>
@@ -240,7 +247,7 @@
                         @elseif (($item['url'] ?? null) && ($item['external'] ?? false))
                             <a
                                 href="{{ $item['url'] }}"
-                                class="storefront-sheet__row"
+                                @class($sheetRowClass)
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 x-on:click="closeMenu()"
@@ -257,7 +264,7 @@
                             <a
                                 href="{{ route($item['route']) }}"
                                 wire:navigate
-                                class="storefront-sheet__row"
+                                @class($sheetRowClass)
                                 x-on:click="closeMenu()"
                             >
                                 <span class="storefront-sheet__icon">
