@@ -326,11 +326,10 @@
                         @php
                             $plan = \App\Models\Plan::where('id', $data['plan'][$i]['plan_id'])->first()->description;
 
-                            if ($plan == 'PLAN INICIAL') {
-                                $coverage = '';
-                            } else {
-                                $coverage = \App\Models\Coverage::where('id', $data['plan'][$i]['coverage_id'])->first()->price;
-                            }
+                            $coverage = \App\Support\CorporateDocumentPlanCoverage::priceForLine(
+                                $data['plan'][$i]['plan_id'] ?? null,
+                                $data['plan'][$i]['coverage_id'] ?? null,
+                            );
 
                             if ($data['plan'][$i]['payment_frequency'] == 'ANUAL') {
                                 $total_amount = $data['plan'][$i]['subtotal_anual'];
@@ -354,7 +353,7 @@
                         <tr>
                             <td class="desc-col">
                                 <p class="plan-line">
-                                    {{ $plan }}@if ($coverage !== ''), COBERTURA: US${{ round($coverage) }}@endif<br>
+                                    {{ $plan }}@if (filled($coverage)), COBERTURA: US${{ round($coverage) }}@endif<br>
 
                                     RANGO DE EDAD: {{ $age_range }} años<br>
                                     FRECUENCIA DE PAGO: {{ $data['plan'][$i]['payment_frequency'] }}<br>
