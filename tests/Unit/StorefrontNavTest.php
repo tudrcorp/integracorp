@@ -6,12 +6,12 @@ use App\Models\User;
 use App\Support\Storefront\StorefrontAuth;
 use App\Support\Storefront\StorefrontNav;
 
-it('el menu publico ofrece login de agente, registro proximo y contacto', function (): void {
+it('el menu publico ofrece login, registro y contacto', function (): void {
     $items = StorefrontNav::items(null);
     $keys = array_column($items, 'key');
 
     expect($keys)->toContain('home', 'quote', 'payments', 'login', 'register', 'business_whatsapp', 'quotes_whatsapp')
-        ->and($keys)->not->toContain('logout', 'pending')
+        ->and($keys)->not->toContain('logout', 'pending', 'profile', 'quotes')
         ->and($items[0]['icon'])->toBe('home')
         ->and($keys[array_search('payments', $keys, true) - 1])->toBe('quote');
 
@@ -19,9 +19,9 @@ it('el menu publico ofrece login de agente, registro proximo y contacto', functi
     $payments = collect($items)->firstWhere('key', 'payments');
 
     expect($register)->not->toBeNull()
-        ->and($register['label'])->toBe('Registrarme!')
-        ->and($register['soon'])->toBeTrue()
-        ->and($register['soon_label'])->toBe('Próximamente!')
+        ->and($register['label'])->toBe('Crear cuenta')
+        ->and($register['soon'])->toBeFalse()
+        ->and($register['route'])->toBe('storefront.register')
         ->and($payments['label'])->toBe('Métodos de pago')
         ->and($payments['route'])->toBe('storefront.payment-methods');
 });
@@ -35,6 +35,7 @@ it('cada item del menu trae un icono para la hoja inferior', function (): void {
         ->toContain("'home'")
         ->toContain("'payments'")
         ->toContain("'affiliations'")
+        ->toContain("'quotes'")
         ->toContain("'whatsapp'");
 });
 
@@ -55,7 +56,7 @@ it('el menu abre whatsapp del cliente hacia negocios y cotizaciones', function (
         ->and($contacts[0]['hint'])->toContain('0412 701 8390');
 });
 
-it('el menu de agente cierra sesion en vez de pedir login', function (): void {
+it('el menu autenticado ofrece perfil y cerrar sesion', function (): void {
     $agente = new User([
         'name' => 'Ana Pérez',
         'is_agent' => true,
@@ -66,12 +67,24 @@ it('el menu de agente cierra sesion en vez de pedir login', function (): void {
     $items = StorefrontNav::items($agente);
     $keys = array_column($items, 'key');
 
-    expect($keys)->toContain('logout')
+    expect($keys)->toContain('logout', 'profile', 'quotes')
         ->and($keys)->not->toContain('login')
         ->and($keys)->not->toContain('register')
         ->and($keys)->toContain('business_whatsapp', 'quotes_whatsapp')
+        ->and($keys[array_search('quotes', $keys, true) - 1])->toBe('payments')
         ->and(StorefrontAuth::isAgent($agente))->toBeTrue()
         ->and(StorefrontNav::subtitle($agente))->toStartWith('Hola,');
+
+    $quotes = collect($items)->firstWhere('key', 'quotes');
+
+    expect($quotes)->not->toBeNull()
+        ->and($quotes['label'])->toBe('Mis cotizaciones')
+        ->and($quotes['route'])->toBe('storefront.quotes')
+        ->and($quotes['icon'])->toBe('quotes')
+        ->and($quotes['accent'])->toBeTrue();
+
+    expect(collect($items)->firstWhere('key', 'home')['accent'])->toBeFalse()
+        ->and(collect($items)->firstWhere('key', 'payments')['accent'])->toBeFalse();
 });
 
 it('la ficha del plan no usa El plan y ofrece volver al catalogo', function (): void {
@@ -124,6 +137,27 @@ it('la pantalla de propuesta no muestra Propuesta junto al logo', function (): v
     expect($nav)
         ->toContain("'storefront.quote.proposal' => ''")
         ->not->toContain("'storefront.quote.proposal' => 'Propuesta'");
+});
+
+it('la pantalla de pagar no muestra titulo junto al logo', function (): void {
+    $nav = file_get_contents(dirname(__DIR__, 2).'/app/Support/Storefront/StorefrontNav.php');
+
+    expect($nav)
+        ->toContain("'storefront.quote.coverages' => ''")
+        ->toContain("'storefront.quote.frequency' => ''")
+        ->toContain("'storefront.quote.pay' => ''")
+        ->toContain("'storefront.quote.receipt' => ''")
+        ->toContain("'storefront.quote.receipt.success' => ''")
+        ->toContain("'label' => 'Volver a cotizaciones'");
+});
+
+it('la pantalla de cotizaciones no muestra Mis cotizaciones junto al logo', function (): void {
+    $nav = file_get_contents(dirname(__DIR__, 2).'/app/Support/Storefront/StorefrontNav.php');
+
+    expect($nav)
+        ->toContain("'storefront.quotes' => ''")
+        ->toContain("'storefront.quotes' => [")
+        ->not->toContain("'storefront.quotes' => 'Mis cotizaciones'");
 });
 
 it('la pantalla de resultado no muestra Cotización lista junto al logo', function (): void {

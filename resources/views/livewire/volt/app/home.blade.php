@@ -18,7 +18,7 @@ new #[Layout('components.layouts.storefront')] #[Title('Planes')] class extends 
     public function mount(): void
     {
         $this->asAgent = StorefrontAuth::currentIsAgent();
-        $this->greeting = $this->asAgent
+        $this->greeting = StorefrontAuth::check()
             ? 'Listo para cotizar, '.StorefrontAuth::displayName()
             : 'Tu plan de asistencia, al alcance del pulgar';
     }

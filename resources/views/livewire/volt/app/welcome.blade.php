@@ -11,8 +11,13 @@ new #[Layout('components.layouts.storefront-welcome')] #[Title('Bienvenida')] cl
 {
     public function mount(): void
     {
-        if (StorefrontAuth::currentIsAgent()) {
-            $this->redirect(route('storefront.home'), navigate: true);
+        if (StorefrontAuth::check()) {
+            $this->redirect(
+                StorefrontAuth::mustCompleteProfile()
+                    ? route('storefront.profile')
+                    : route('storefront.home'),
+                navigate: true,
+            );
         }
     }
 }; ?>
@@ -42,12 +47,15 @@ new #[Layout('components.layouts.storefront-welcome')] #[Title('Bienvenida')] cl
             <p class="sf-welcome__notice" role="status">{{ session('storefront_notice') }}</p>
         @endif
 
-        <a href="{{ route('storefront.home') }}" wire:navigate class="sf-welcome__btn sf-welcome__btn--plans">
-            Ver planes
+        <a href="{{ route('storefront.login') }}" wire:navigate class="sf-welcome__btn sf-welcome__btn--plans">
+            Entrar
         </a>
 
-        <p class="sf-welcome__agent">
-            <a href="{{ route('storefront.login') }}" wire:navigate>¿Eres agente? Entra aquí</a>
+        @include('storefront.partials.google-login-button')
+
+        <p class="sf-welcome__register">
+            <span>¿No tienes cuenta?</span>
+            <a href="{{ route('storefront.register') }}" wire:navigate>Crear cuenta</a>
         </p>
 
         <p class="sf-welcome__legal">Al continuar aceptas cotizar y gestionar tu asistencia con Tu Dr En Casa.</p>

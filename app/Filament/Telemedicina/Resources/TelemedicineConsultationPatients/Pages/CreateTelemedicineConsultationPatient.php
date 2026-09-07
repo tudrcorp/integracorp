@@ -40,11 +40,16 @@ use App\Support\ClinicalEntitlements\ClinicalEntitlement;
 use App\Support\ClinicalEntitlements\ClinicalEntitlementException;
 use App\Support\ClinicalEntitlements\ClinicalServiceOverrideOtp;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Telemedicine\ConsultationClinicalSelections;
+use App\Support\Telemedicine\ConsultationCreateRoute;
 use App\Support\Telemedicine\ConsultationCreateWizardDefaults;
+use App\Support\Telemedicine\ConsultationFormContext;
+use App\Support\Telemedicine\ProvidesConsultationFormContext;
 use App\Support\Telemedicine\TelemedicineAmdFileRegistrar;
 use App\Support\Telemedicine\TelemedicineAmdInformRegistrar;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
+use App\Support\Telemedicine\TelemedicineConsultationSigningDoctor;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
@@ -64,7 +69,7 @@ use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 
-class CreateTelemedicineConsultationPatient extends CreateRecord
+class CreateTelemedicineConsultationPatient extends CreateRecord implements ProvidesConsultationFormContext
 {
     use HasInformAmdModal;
     use HasMedicamentosStepInfoModal;
@@ -80,6 +85,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
     #[Locked]
     public ?int $telemedicinePatientId = null;
 
+    #[Locked]
+    public ?int $telemedicineConsultationId = null;
+
     /**
      * @var array<string, int>
      */
@@ -93,16 +101,44 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
     protected ?TelemedicineCase $case = null;
 
+    /**
+     * Última consulta del caso, cuando el asistente se abre para actualizarla.
+     */
+    protected ?TelemedicineConsultationPatient $contextConsultation = null;
+
+    /**
+     * Recetas y órdenes del formulario, de `mutateFormDataBeforeCreate` a
+     * `afterCreate`. Vive en la petición, no en la sesión: ver
+     * {@see ConsultationClinicalSelections}.
+     */
+    protected ?ConsultationClinicalSelections $clinicalSelections = null;
+
+    public function consultationFormContext(): ConsultationFormContext
+    {
+        $this->resolveConsultationContext();
+
+        $action = session()->get('action');
+        $status = session()->get('status');
+
+        return new ConsultationFormContext(
+            case: $this->case,
+            patient: $this->patient,
+            consultation: $this->contextConsultation,
+            action: is_string($action) ? $action : null,
+            status: is_string($status) ? $status : null,
+        );
+    }
+
     public function mount(): void
     {
-        // 1. Obtener paciente y caso desde la sesión antes de inicializar el formulario.
-        $this->patient = session()->get('patient');
-        $this->case = session()->get('case');
+        // 1. Caso, paciente y consulta previa salen de la URL —que es de esta
+        //    pestaña— antes de inicializar el formulario. Ver ConsultationCreateRoute.
+        $this->resolveConsultationContextFromRequest();
 
         if (! $this->patient instanceof TelemedicinePatient || ! $this->case instanceof TelemedicineCase) {
             Notification::make()
-                ->title('Error: información de sesión incompleta.')
-                ->body('No se encontró el paciente o el caso para crear la consulta.')
+                ->title('Error: no se pudo abrir la consulta.')
+                ->body('No se encontró el paciente o el caso. Vuelva a abrir el caso desde el tablero de telemedicina.')
                 ->danger()
                 ->send();
 
@@ -111,13 +147,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
             return;
         }
 
-        // Refrescar el caso y el paciente desde BD (evita sesión con identidad desfasada).
-        $freshCase = TelemedicineCase::query()->find($this->case->id);
-        if ($freshCase !== null) {
-            $this->case = $freshCase;
-            session(['case' => $freshCase]);
-        }
-
+        // El paciente siempre se toma del caso: es la identidad que se valida al guardar.
         $freshPatient = TelemedicinePatient::query()->find($this->case->telemedicine_patient_id ?? $this->patient->id);
         if ($freshPatient === null) {
             Notification::make()
@@ -132,7 +162,6 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         }
 
         $this->patient = $freshPatient;
-        session(['patient' => $freshPatient]);
         $this->rememberConsultationContextIds();
 
         // 2. Llama al mount original de Filament cuando la sesión está lista.
@@ -497,14 +526,22 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         $this->telemedicinePatientId = $this->patient instanceof TelemedicinePatient
             ? (int) $this->patient->id
             : null;
+        $this->telemedicineConsultationId = $this->contextConsultation instanceof TelemedicineConsultationPatient
+            ? (int) $this->contextConsultation->id
+            : $this->telemedicineConsultationId;
     }
 
     /**
-     * Rehidrata caso/paciente en cada request Livewire (props protected no persisten).
+     * Primera carga: el contexto clínico viene de la URL de esta pestaña.
+     * La sesión solo se usa como respaldo de enlaces antiguos (sin caseId).
      */
-    protected function resolveConsultationContext(): void
+    protected function resolveConsultationContextFromRequest(): void
     {
-        $caseId = $this->telemedicineCaseId;
+        $request = request();
+        $patientId = ConsultationCreateRoute::patientIdFromRequest($request);
+        $caseId = ConsultationCreateRoute::caseIdFromRequest($request);
+        $consultationId = ConsultationCreateRoute::consultationIdFromRequest($request);
+
         if ($caseId === null) {
             $sessionCase = session()->get('case');
             if ($sessionCase instanceof TelemedicineCase) {
@@ -514,18 +551,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
             }
         }
 
-        if ($caseId !== null && $caseId > 0) {
-            $this->case = TelemedicineCase::query()->find($caseId);
-            if ($this->case instanceof TelemedicineCase) {
-                $this->telemedicineCaseId = (int) $this->case->id;
-                session(['case' => $this->case]);
-            }
-        }
-
-        $patientId = $this->telemedicinePatientId
-            ?? (int) ($this->case?->telemedicine_patient_id ?? 0);
-
-        if ($patientId < 1) {
+        if ($patientId === null) {
             $sessionPatient = session()->get('patient');
             if ($sessionPatient instanceof TelemedicinePatient) {
                 $patientId = (int) $sessionPatient->id;
@@ -534,11 +560,97 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
             }
         }
 
+        if ($consultationId === null) {
+            $sessionConsultation = session()->get('consultation');
+            if ($sessionConsultation instanceof TelemedicineConsultationPatient) {
+                $consultationId = (int) $sessionConsultation->id;
+            } elseif (is_object($sessionConsultation) && isset($sessionConsultation->id)) {
+                $consultationId = (int) $sessionConsultation->id;
+            }
+        }
+
+        if ($consultationId !== null && $consultationId > 0) {
+            $this->contextConsultation = TelemedicineConsultationPatient::query()->find($consultationId);
+            $this->telemedicineConsultationId = $this->contextConsultation instanceof TelemedicineConsultationPatient
+                ? (int) $this->contextConsultation->id
+                : null;
+
+            if ($this->contextConsultation instanceof TelemedicineConsultationPatient && ($caseId === null || $caseId < 1)) {
+                $caseId = (int) $this->contextConsultation->telemedicine_case_id;
+            }
+
+            if ($this->contextConsultation instanceof TelemedicineConsultationPatient && ($patientId === null || $patientId < 1)) {
+                $patientId = (int) $this->contextConsultation->telemedicine_patient_id;
+            }
+        }
+
+        if ($caseId !== null && $caseId > 0) {
+            $this->case = TelemedicineCase::query()->find($caseId);
+            $this->telemedicineCaseId = $this->case instanceof TelemedicineCase
+                ? (int) $this->case->id
+                : null;
+        }
+
+        if ($patientId !== null && $patientId > 0) {
+            $this->patient = TelemedicinePatient::query()->find($patientId);
+            $this->telemedicinePatientId = $this->patient instanceof TelemedicinePatient
+                ? (int) $this->patient->id
+                : null;
+        }
+
+        if ((! $this->patient instanceof TelemedicinePatient) && $this->case instanceof TelemedicineCase) {
+            $linkedPatientId = (int) ($this->case->telemedicine_patient_id ?? 0);
+            if ($linkedPatientId > 0) {
+                $this->patient = TelemedicinePatient::query()->find($linkedPatientId);
+                $this->telemedicinePatientId = $this->patient instanceof TelemedicinePatient
+                    ? (int) $this->patient->id
+                    : null;
+            }
+        }
+
+        // Respaldo para pantallas de historia clínica que aún regresan por sesión.
+        if ($this->case instanceof TelemedicineCase) {
+            session(['case' => $this->case]);
+        }
+        if ($this->patient instanceof TelemedicinePatient) {
+            session(['patient' => $this->patient]);
+        }
+        if ($this->contextConsultation instanceof TelemedicineConsultationPatient) {
+            session(['consultation' => $this->contextConsultation]);
+        }
+
+        $this->rememberConsultationContextIds();
+    }
+
+    /**
+     * Rehidrata caso/paciente en cada request Livewire desde los IDs Locked
+     * (por pestaña). No reescribe la sesión global: eso contaminaba otras pestañas.
+     */
+    protected function resolveConsultationContext(): void
+    {
+        $caseId = $this->telemedicineCaseId;
+        if ($caseId !== null && $caseId > 0) {
+            $this->case = TelemedicineCase::query()->find($caseId);
+            if ($this->case instanceof TelemedicineCase) {
+                $this->telemedicineCaseId = (int) $this->case->id;
+            }
+        }
+
+        $consultationId = $this->telemedicineConsultationId;
+        if ($consultationId !== null && $consultationId > 0) {
+            $this->contextConsultation = TelemedicineConsultationPatient::query()->find($consultationId);
+            if ($this->contextConsultation instanceof TelemedicineConsultationPatient) {
+                $this->telemedicineConsultationId = (int) $this->contextConsultation->id;
+            }
+        }
+
+        $patientId = $this->telemedicinePatientId
+            ?? (int) ($this->case?->telemedicine_patient_id ?? 0);
+
         if ($patientId > 0) {
             $this->patient = TelemedicinePatient::query()->find($patientId);
             if ($this->patient instanceof TelemedicinePatient) {
                 $this->telemedicinePatientId = (int) $this->patient->id;
-                session(['patient' => $this->patient]);
             }
         }
     }
@@ -557,9 +669,36 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         ]);
     }
 
+    protected function failConsultationSigningDoctor(): never
+    {
+        Notification::make()
+            ->title('No se pudo registrar la consulta')
+            ->body(TelemedicineConsultationSigningDoctor::MISSING_DOCTOR_MESSAGE)
+            ->danger()
+            ->persistent()
+            ->send();
+
+        throw ValidationException::withMessages([
+            'data.telemedicine_doctor_id' => [TelemedicineConsultationSigningDoctor::MISSING_DOCTOR_MESSAGE],
+        ]);
+    }
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $this->resolveConsultationContext();
+
+        // El sello del documento no se toma del caso ni del campo oculto del
+        // formulario —el primero es el médico ASIGNADO y el segundo puede llegar
+        // desfasado o manipulado—: se resuelve aquí, del médico en sesión, para
+        // que informe, receta y órdenes lleven la firma de quien atendió. De este
+        // id cuelga además la autoría que se persiste en los registros hijos.
+        $signingDoctorId = TelemedicineConsultationSigningDoctor::idForUser(Auth::user());
+
+        if ($signingDoctorId === null) {
+            $this->failConsultationSigningDoctor();
+        }
+
+        $data['telemedicine_doctor_id'] = $signingDoctorId;
 
         $casePatientId = (int) ($this->case?->telemedicine_patient_id ?? 0);
         $formPatientId = (int) ($data['telemedicine_patient_id'] ?? 0);
@@ -571,7 +710,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
 
         if (($formPatientId > 0 && $formPatientId !== $casePatientId)
             || ($sessionPatientId > 0 && $sessionPatientId !== $casePatientId)) {
-            $this->failConsultationIdentity('La identidad de la sesión no coincide con el paciente del caso. Vuelva a abrir la consulta desde el caso.');
+            $this->failConsultationIdentity('La identidad de la consulta no coincide con el paciente del caso. Vuelva a abrir la consulta desde el caso.');
         }
 
         $patient = TelemedicinePatient::query()->find($casePatientId);
@@ -581,7 +720,6 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
         }
 
         $this->patient = $patient;
-        session(['patient' => $patient]);
         $this->rememberConsultationContextIds();
         $data = TelemedicinePatientIdentity::enforceConsultationIdentity($data, $patient);
 
@@ -589,25 +727,22 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
             $caseId = (int) ($data['telemedicine_case_id'] ?? 0);
             TelemedicineCaseDischargeGuard::assertCanBeDischarged($caseId);
 
-            session()->put('feedbackOne', $data['feedbackOne']);
             $consult = TelemedicineConsultationPatient::where('telemedicine_case_id', $data['telemedicine_case_id'])->latest()->first();
             $data['telemedicine_service_list_id'] = $consult->telemedicine_service_list_drift_id;
         }
-        // ...Asignamos los valores a la variable de sesion
-        // Medicamentos
-        isset($data['medications']) ? session()->put('medications', $data['medications']) : null;
 
-        // Laboratorios
-        isset($data['labs']) ? session()->put('labs', $data['labs']) : null;
-        isset($data['other_labs']) ? session()->put('other_labs', $data['other_labs']) : null;
-
-        // Estudios
-        isset($data['studies']) ? session()->put('studies', $data['studies']) : null;
-        isset($data['other_studies']) ? session()->put('other_studies', $data['other_studies']) : null;
-
-        // Consultas con especialistas
-        isset($data['consult_specialist']) ? session()->put('consult_specialist', $data['consult_specialist']) : null;
-        isset($data['other_specialist']) ? session()->put('other_specialist', $data['other_specialist']) : null;
+        // Recetas y órdenes viven en la petición (no en sesión global entre pestañas).
+        $this->clinicalSelections = ConsultationClinicalSelections::fromFormData($data);
+        session()->forget([
+            'medications',
+            'labs',
+            'other_labs',
+            'studies',
+            'other_studies',
+            'consult_specialist',
+            'other_specialist',
+            'feedbackOne',
+        ]);
 
         if (! ($data['feedbackOne'] ?? false)) {
             ClinicalConsultationConsumption::assertCanSave(
@@ -969,16 +1104,17 @@ class CreateTelemedicineConsultationPatient extends CreateRecord
                     $dataEstudios = [];
                     $dataEspecialistas = [];
 
-                    $feedbackOne = session()->get('feedbackOne');
+                    $selections = $this->clinicalSelections ?? ConsultationClinicalSelections::empty();
+                    $feedbackOne = $selections->discharge;
 
-                    $medicationsArr = TelemedicineMedicationsPdfRows::normalize(session()->get('medications') ?? []);
+                    $medicationsArr = TelemedicineMedicationsPdfRows::normalize($selections->medications);
                     // dd($medicationsArr);
-                    $labsArr = session()->get('labs') ?? [];
-                    $otherLabsArr = session()->get('other_labs') ?? [];
-                    $studiesArr = session()->get('studies') ?? [];
-                    $otherStudiesArr = session()->get('other_studies') ?? [];
-                    $consultSpecialistArr = session()->get('consult_specialist') ?? [];
-                    $otherSpecialistArr = session()->get('other_specialist') ?? [];
+                    $labsArr = $selections->labs;
+                    $otherLabsArr = $selections->otherLabs;
+                    $studiesArr = $selections->studies;
+                    $otherStudiesArr = $selections->otherStudies;
+                    $consultSpecialistArr = $selections->consultSpecialist;
+                    $otherSpecialistArr = $selections->otherSpecialist;
 
                     if ($feedbackOne != true) {
                         $finalArrLabs = array_merge($labsArr, $otherLabsArr);

@@ -34,12 +34,15 @@ final class TelemedicineInformePdfRenderer
 
         // El script se registra tras el layout y se ejecuta al volcar el PDF:
         // para entonces ya se sabe cuál es la última página.
-        TelemedicineInformeSignatureStamp::applyTo($dompdf, $data);
+        $stampPath = TelemedicineInformeSignatureStamp::applyTo($dompdf, $data);
 
         try {
             return (string) $dompdf->output();
         } finally {
-            TelemedicineInformeSignatureStamp::cleanUp($data['signature'] ?? null);
+            // Se borra la ruta de ESTE render: el sello ya no se comparte entre
+            // documentos, así que ninguno puede quedarse sin firma por la limpieza
+            // de otro que iba en paralelo.
+            TelemedicineInformeSignatureStamp::cleanUp($stampPath);
         }
     }
 

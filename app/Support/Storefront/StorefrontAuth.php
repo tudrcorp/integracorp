@@ -9,8 +9,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Quién está usando la PWA: un visitante público o un agente con su
- * cuenta existente. El cliente final no inicia sesión.
+ * Sesión de la PWA: cualquier usuario ACTIVO de la tabla users.
+ * El “modo agente” solo activa etiquetas y atribución de cotización.
  */
 final class StorefrontAuth
 {
@@ -19,6 +19,24 @@ final class StorefrontAuth
         $user = Auth::user();
 
         return $user instanceof User ? $user : null;
+    }
+
+    public static function check(): bool
+    {
+        $user = self::user();
+
+        return $user instanceof User && self::canAccessPwa($user);
+    }
+
+    public static function canAccessPwa(?User $user): bool
+    {
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        $status = strtoupper(trim((string) ($user->status ?? '')));
+
+        return $status === '' || $status === 'ACTIVO';
     }
 
     public static function isAgent(?User $user): bool
@@ -67,12 +85,38 @@ final class StorefrontAuth
         $raw = trim((string) $user->name);
         $first = explode(' ', $raw)[0] ?? '';
 
-        return $first !== '' ? $first : 'Agente';
+        return $first !== '' ? $first : 'Usuario';
     }
 
+    /** @deprecated Usa canAccessPwa(); se mantiene por compatibilidad de tests. */
     public static function canLoginAsAgent(User $user): bool
     {
         return self::isAgent($user);
+    }
+
+    public static function mustCompleteProfile(?User $user = null): bool
+    {
+        $user ??= self::user();
+
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        if (StorefrontAccount::profileIsComplete($user)) {
+            try {
+                session()->forget(StorefrontAccount::SESSION_FORCE_PROFILE);
+            } catch (\Throwable) {
+                //
+            }
+
+            return false;
+        }
+
+        try {
+            return (bool) session(StorefrontAccount::SESSION_FORCE_PROFILE, false);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private static function isTruthyFlag(mixed $value): bool

@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
- * OAuth de Google para la PWA, sin Socialite: el agente entra con la
- * misma cuenta de IntegraCorp si el correo coincide.
+ * OAuth de Google para la PWA (sin Socialite).
+ * Solo crea cuentas nuevas de externos; si el correo ya existe, pide login con clave.
  */
 final class StorefrontGoogleAuth
 {

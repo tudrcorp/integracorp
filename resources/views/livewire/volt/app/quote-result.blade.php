@@ -7,6 +7,8 @@ use App\Models\Plan;
 use App\Support\Quotes\InteractiveIndividualQuoteView;
 use App\Support\Storefront\StorefrontAuth;
 use App\Support\Storefront\StorefrontPlanNarrative;
+use App\Support\Storefront\StorefrontQuoteCoverages;
+use App\Support\Storefront\StorefrontQuotesIndex;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
@@ -17,24 +19,24 @@ new #[Layout('components.layouts.storefront')] #[Title('Cotización lista')] cla
 
     public string $planTitle = 'Plan';
 
-    public string $fullName = '';
-
-    public string $email = '';
-
-    public string $phone = '';
-
     public string $displayName = '';
-
-    public string $displayPhone = '';
 
     public bool $asAgent = false;
 
-    public string $headline = '';
-
     public string $personsLabel = '';
 
-    /** @var list<array{label: string, persons: int}> */
-    public array $groups = [];
+    public string $payUrl = '';
+
+    /**
+     * @var array{has_amount: bool, amount: float, amount_label: string, amount_prefix: string, amount_period: string}
+     */
+    public array $payment = [
+        'has_amount' => false,
+        'amount' => 0.0,
+        'amount_label' => 'Monto por confirmar',
+        'amount_prefix' => '',
+        'amount_period' => '',
+    ];
 
     public function mount(string $code): void
     {
@@ -46,28 +48,27 @@ new #[Layout('components.layouts.storefront')] #[Title('Cotización lista')] cla
         abort_unless($record instanceof IndividualQuote, 404);
 
         $this->code = (string) $record->code;
-        $this->fullName = (string) $record->full_name;
-        $this->email = (string) $record->email;
-        $this->phone = (string) $record->phone;
-        $this->displayName = StorefrontPlanNarrative::personName($this->fullName);
-        $this->displayPhone = StorefrontPlanNarrative::phoneLabel($this->phone);
+        $this->displayName = StorefrontPlanNarrative::personName((string) $record->full_name);
         $this->asAgent = StorefrontAuth::currentIsAgent();
 
         $plan = Plan::query()->find((int) $record->plan);
         $this->planTitle = $plan instanceof Plan
             ? StorefrontPlanNarrative::for($plan)['title']
             : 'Plan';
+        $this->payment = StorefrontQuotesIndex::paymentFromDetails(
+            $record->detailsQuote,
+            $plan instanceof Plan ? $plan : null,
+        );
+        $this->payUrl = StorefrontQuoteCoverages::needsSelection(
+            $plan instanceof Plan ? $plan : null,
+            $record->detailsQuote,
+        )
+            ? route('storefront.quote.coverages', ['code' => $record->code])
+            : route('storefront.quote.frequency', ['code' => $record->code]);
 
         if ($plan instanceof Plan) {
             $view = InteractiveIndividualQuoteView::from($record, $plan, $record->detailsQuote);
-            $this->headline = (string) $view['headline'];
             $this->personsLabel = (string) $view['persons_label'];
-            $this->groups = collect($view['ranges'])
-                ->map(static fn (array $range): array => [
-                    'label' => (string) $range['age_label'],
-                    'persons' => (int) $range['persons'],
-                ])
-                ->all();
         }
     }
 }; ?>
@@ -104,53 +105,17 @@ new #[Layout('components.layouts.storefront')] #[Title('Cotización lista')] cla
             </button>
         </div>
 
-        <dl class="sf-review__facts sf-review__facts--plain sf-ticket__facts">
-            <div>
-                <dt>Plan</dt>
-                <dd>{{ StorefrontPlanNarrative::planLabel($planTitle) }}</dd>
-            </div>
-            @if ($headline !== '')
-                <div>
-                    <dt>Estimado</dt>
-                    <dd>{{ $headline }}</dd>
-                </div>
-            @endif
-            <div>
-                <dt>{{ $asAgent ? 'Cliente' : 'A nombre de' }}</dt>
-                <dd>{{ $displayName }}</dd>
-            </div>
-            @if ($groups !== [])
-                <div>
-                    <dt>Grupo</dt>
-                    <dd>
-                        @foreach ($groups as $group)
-                            {{ $group['persons'] }} {{ $group['persons'] === 1 ? 'persona' : 'personas' }} · {{ $group['label'] }}@if (! $loop->last)<br>@endif
-                        @endforeach
-                    </dd>
-                </div>
-            @elseif ($personsLabel !== '')
-                <div>
-                    <dt>Personas</dt>
-                    <dd>{{ $personsLabel }}</dd>
-                </div>
-            @endif
-            @if ($email !== '')
-                <div class="sf-ticket__fact--wide">
-                    <dt>Correo</dt>
-                    <dd>{{ $email }}</dd>
-                </div>
-            @endif
-            @if ($displayPhone !== '')
-                <div>
-                    <dt>Teléfono</dt>
-                    <dd>{{ $displayPhone }}</dd>
-                </div>
-            @endif
-        </dl>
+        <h2 class="sf-quote-card__client">{{ $displayName !== '' ? $displayName : 'Sin nombre' }}</h2>
+        @include('storefront.partials.quote-plan-row', [
+            'quote' => $payment,
+            'planLabel' => StorefrontPlanNarrative::planLabel($planTitle),
+            'personsLabel' => $personsLabel,
+            'showPersons' => $personsLabel !== '',
+        ])
     </article>
 
     <div class="sf-sticky-cta">
-        <a href="{{ route('storefront.quote.proposal', $code) }}" wire:navigate class="sf-btn">Ver propuesta</a>
-        <a href="{{ route('storefront.home') }}" wire:navigate class="sf-btn sf-btn-ghost">Volver a planes</a>
+        <a href="{{ $payUrl }}" wire:navigate class="sf-btn">Pagar o cargar comprobante</a>
+        <a href="{{ route('storefront.quote.proposal', $code) }}" wire:navigate class="sf-btn sf-btn-ghost">Ver propuesta</a>
     </div>
 </div>

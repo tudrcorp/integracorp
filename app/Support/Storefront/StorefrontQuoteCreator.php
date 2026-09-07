@@ -65,7 +65,7 @@ final class StorefrontQuoteCreator
             : 'PWA público';
 
         try {
-            $quote = DB::transaction(function () use ($catalogPlan, $entries, $fullName, $email, $phone, $systemUser, $isAgentSession, $agentUser): IndividualQuote {
+            $quote = DB::transaction(function () use ($catalogPlan, $entries, $fullName, $email, $phone, $systemUser, $isAgentSession, $agentUser, $actingUser): IndividualQuote {
                 $agent = $isAgentSession ? StorefrontAuth::agent($agentUser) : null;
                 $ownerCode = self::resolveOwnerCode($agent);
                 $codeAgency = (string) ($agent?->owner_code ?? config('services.chat_individual_quote.default_owner_code', 'TDG-100'));
@@ -85,6 +85,7 @@ final class StorefrontQuoteCreator
                 $record->plan = (int) $catalogPlan->getKey();
                 $record->status = 'PRE-APROBADA';
                 $record->created_by = $createdBy;
+                $record->storefront_user_id = $actingUser instanceof User ? (int) $actingUser->id : null;
                 $record->agent_id = $agent?->id;
                 $record->code_agency = $codeAgency;
                 $record->owner_code = $ownerCode;

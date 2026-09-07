@@ -1,4 +1,4 @@
-const CACHE_NAME = 'storefront-static-v3';
+const CACHE_NAME = 'storefront-static-v6';
 
 const OFFLINE_URL = '/app/offline.html';
 

@@ -14,7 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        $middleware->alias([
+            'storefront.auth' => \App\Http\Middleware\EnsureStorefrontAuthenticated::class,
+            'storefront.guest' => \App\Http\Middleware\RedirectIfStorefrontAuthenticated::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

@@ -11,6 +11,7 @@ use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Telemedicine\ConsultationCreateRoute;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
@@ -172,7 +173,7 @@ class TelemedicineCaseTableDash extends TableWidget
         $this->unmountAction();
 
         return $this->redirect(
-            route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id])
+            ConsultationCreateRoute::url($patient, $case, $consultationForSession ?? $last)
         );
     }
 
@@ -269,7 +270,7 @@ class TelemedicineCaseTableDash extends TableWidget
         $this->unmountAction();
 
         return $this->redirect(
-            route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id])
+            ConsultationCreateRoute::url($patient, $case)
         );
     }
 

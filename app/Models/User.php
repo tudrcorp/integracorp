@@ -61,6 +61,7 @@ class User extends Authenticatable implements FilamentUser
         'is_proveedor_amd',
         'phone',
         'identity_card',
+        'nro_identification',
 
     ];
 

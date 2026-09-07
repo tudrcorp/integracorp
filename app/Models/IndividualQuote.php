@@ -27,6 +27,7 @@ class IndividualQuote extends Model
         'birth_date',
         'status',
         'created_by',
+        'storefront_user_id',
         'state_id',
         'region',
         'code_agent',
@@ -78,6 +79,11 @@ class IndividualQuote extends Model
     public function detailsQuote(): HasMany
     {
         return $this->hasMany(DetailIndividualQuote::class, 'individual_quote_id', 'id');
+    }
+
+    public function paymentReceipts(): HasMany
+    {
+        return $this->hasMany(IndividualQuotePaymentReceipt::class, 'individual_quote_id');
     }
 
     /**
