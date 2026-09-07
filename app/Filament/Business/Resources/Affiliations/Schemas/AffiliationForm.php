@@ -838,8 +838,21 @@ class AffiliationForm
                                             ->live()
                                             ->boolean()
                                             ->inline()
-                                            ->inlineLabel(false),
-                                    ])->hiddenOn('edit'),
+                                            ->inlineLabel(false)
+                                            ->helperText(fn (string $operation): ?string => $operation === 'edit'
+                                                ? 'En edición puede corregir el responsable de pago y sus datos, aunque coincidan con el titular.'
+                                                : null)
+                                            ->afterStateUpdated(function (mixed $state, Set $set, Get $get): void {
+                                                if (! $state) {
+                                                    return;
+                                                }
+
+                                                $set('full_name_payer', $get('full_name_ti'));
+                                                $set('nro_identificacion_payer', $get('nro_identificacion_ti'));
+                                                $set('email_payer', $get('email_ti'));
+                                                $set('phone_payer', $get('phone_ti'));
+                                            }),
+                                    ]),
                                 Fieldset::make('Datos principales del pagador')
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
@@ -981,7 +994,13 @@ class AffiliationForm
                                                 'HIJO' => 'HIJO',
                                                 'HIJA' => 'HIJA',
                                             ]),
-                                    ])->columns(3)->hidden(fn (Get $get) => $get('feedback_dos')),
+                                    ])->columns(3)->hidden(function (Get $get, string $operation): bool {
+                                        if ($operation === 'edit') {
+                                            return false;
+                                        }
+
+                                        return (bool) $get('feedback_dos');
+                                    }),
                             ]),
                         Tab::make('Acuerdo y condiciones')
                             ->icon('heroicon-o-document-check')
