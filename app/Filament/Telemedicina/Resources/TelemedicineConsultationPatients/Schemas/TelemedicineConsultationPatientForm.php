@@ -17,6 +17,7 @@ use App\Models\TelemedicineServiceList;
 use App\Support\ClinicalEntitlements\ClinicalQuotaFormGuard;
 use App\Support\ClinicalEntitlements\TelemedicineConsultationClinicalUi;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Telemedicine\ConsultationFormContext;
 use App\Support\Telemedicine\ProvidesConsultationFormContext;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
@@ -196,6 +197,29 @@ class TelemedicineConsultationPatientForm
         );
     }
 
+    private static function labImagingResultsPreview(array $documents, int $countCase): View
+    {
+        return View::make('filament.telemedicina.consultations.lab-imaging-results-preview')
+            ->viewData([
+                'documents' => $documents,
+                'embeddedInModal' => false,
+            ])
+            ->columnSpanFull()
+            ->visible(function (Get $get) use ($documents, $countCase): bool {
+                if ($documents === [] || ! self::isFollowUpConsultationContext($countCase)) {
+                    return false;
+                }
+
+                $selected = (int) $get('telemedicine_service_list_id');
+
+                if ($selected < 1) {
+                    return true;
+                }
+
+                return LabImagingResultsFollowUpRegistrar::isReadingResultsServiceListId($selected);
+            });
+    }
+
     private static function informAmdTrigger(): View
     {
         return View::make('filament.telemedicina.consultations.inform-amd-trigger')
@@ -326,6 +350,9 @@ class TelemedicineConsultationPatientForm
         $dischargeBlockedMessage = filled($caseId) && ! $caseCanBeDischarged
             ? TelemedicineCaseDischargeGuard::blockingMessage((int) $caseId)
             : null;
+        $labImagingResultDocuments = filled($caseId)
+            ? LabImagingResultsFollowUpRegistrar::previewDocumentsForCase((int) $caseId)
+            : [];
 
         return $schema
             ->components([
@@ -739,6 +766,7 @@ class TelemedicineConsultationPatientForm
                             return false;
                         })
                         ->schema([
+                            self::labImagingResultsPreview($labImagingResultDocuments, $countCase),
                             Fieldset::make('Diagnóstico principal')
                                 ->schema([
                                     Textarea::make(TelemedicineInitialDiagnosisUpdater::FORM_FIELD)

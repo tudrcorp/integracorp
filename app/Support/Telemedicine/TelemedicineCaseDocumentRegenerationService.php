@@ -8,6 +8,7 @@ use App\Jobs\GeneratePdfEspecialista;
 use App\Jobs\GeneratePdfImagenologia;
 use App\Jobs\GeneratePdfInformeMedicoCorto;
 use App\Jobs\GeneratePdfInformeMedicoLargo;
+use App\Jobs\GeneratePdfInformeSeguimiento;
 use App\Jobs\GeneratePdfLaboratorio;
 use App\Jobs\GeneratePdfMedicamentos;
 use App\Models\TelemedicineCase;
@@ -29,6 +30,8 @@ class TelemedicineCaseDocumentRegenerationService
     public const DOCUMENT_INFORME_CORTO = 'informe-corto';
 
     public const DOCUMENT_INFORME_LARGO = 'informe-largo';
+
+    public const DOCUMENT_INFORME_SEGUIMIENTO = 'informe-seguimiento';
 
     public const DOCUMENT_MEDICAMENTOS = 'medicamentos';
 
@@ -57,6 +60,10 @@ class TelemedicineCaseDocumentRegenerationService
             if (! $this->isAmdConsultation($consultation)) {
                 $options[self::DOCUMENT_INFORME_LARGO] = 'Informe médico largo (consulta inicial)';
             }
+        }
+
+        if ($this->latestFollowUpConsultation($case) !== null) {
+            $options[self::DOCUMENT_INFORME_SEGUIMIENTO] = 'Informe de seguimiento';
         }
 
         if ($this->medicationsForCase($case)->isNotEmpty()) {
@@ -138,6 +145,7 @@ class TelemedicineCaseDocumentRegenerationService
                     $user,
                     self::DOCUMENT_INFORME_LARGO,
                 ),
+                self::DOCUMENT_INFORME_SEGUIMIENTO => $this->makeFollowUpReportJob($case, $doctor, $patient, $user),
                 self::DOCUMENT_MEDICAMENTOS => new GeneratePdfMedicamentos(
                     $this->buildMedicamentosPayload($consultation, $doctor, $patient, $case),
                     $user,
@@ -241,6 +249,42 @@ class TelemedicineCaseDocumentRegenerationService
             ->where('telemedicine_case_id', $case->id)
             ->orderBy('id')
             ->first();
+    }
+
+    protected function latestFollowUpConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
+    {
+        return TelemedicineConsultationPatient::query()
+            ->where('telemedicine_case_id', $case->id)
+            ->where('status', '!=', TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS)
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    protected function makeFollowUpReportJob(
+        TelemedicineCase $case,
+        TelemedicineDoctor $doctor,
+        TelemedicinePatient $patient,
+        User $user,
+    ): ?GeneratePdfInformeSeguimiento {
+        $followUp = $this->latestFollowUpConsultation($case);
+
+        if ($followUp === null) {
+            return null;
+        }
+
+        $followUpDoctor = $this->resolveDoctor($followUp, $case) ?? $doctor;
+        $followUpPatient = $this->resolvePatient($followUp, $case) ?? $patient;
+        $payload = TelemedicineFollowUpReportDocument::payloadFromConsultation(
+            $followUp,
+            $followUpDoctor,
+            $followUpPatient,
+        );
+
+        if ($payload === null) {
+            return null;
+        }
+
+        return TelemedicineFollowUpReportDocument::makeJob($payload, $user);
     }
 
     protected function canGenerateInforme(TelemedicineConsultationPatient $consultation): bool

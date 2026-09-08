@@ -12,7 +12,8 @@ it('ViewOperationCoordinationService incluye acción de carga de documentos', fu
         ->toContain("'uploaded_documents'")
         ->toContain('document_type_ids')
         ->toContain('service_item_keys')
-        ->toContain('CoordinationServiceCoveredItemsFinalizer::buildUploadedDocumentsFromForm');
+        ->toContain('CoordinationServiceCoveredItemsFinalizer::buildUploadedDocumentsFromForm')
+        ->toContain('LabImagingResultsFollowUpRegistrar::register');
 });
 
 it('ViewOperationCoordinationService expone header action para crear cotización TPA/RETAIL', function (): void {

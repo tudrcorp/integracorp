@@ -245,15 +245,19 @@ final class CoordinationServiceCoveredItemsFinalizer
             'uploaded_documents' => array_values(array_merge($existingDocuments, $newDocuments)),
         ]);
 
+        $followUpSuffix = LabImagingResultsFollowUpRegistrar::analystMessageSuffix(
+            LabImagingResultsFollowUpRegistrar::register($record, $newDocuments),
+        );
+
         $shouldFinalize = filter_var($arguments['finalize'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         if (! $shouldFinalize) {
             Notification::make()
                 ->success()
                 ->title('Documentos cargados')
-                ->body(count($newDocuments) > 1
+                ->body((count($newDocuments) > 1
                     ? 'Se cargaron '.count($newDocuments).' documentos en la coordinación.'
-                    : 'Se cargó 1 documento en la coordinación.')
+                    : 'Se cargó 1 documento en la coordinación.').$followUpSuffix)
                 ->send();
 
             return;
@@ -265,7 +269,7 @@ final class CoordinationServiceCoveredItemsFinalizer
             Notification::make()
                 ->warning()
                 ->title('Sin servicios cubiertos por finalizar')
-                ->body('Se guardaron los documentos, pero no había servicios cubiertos pendientes de finalizar.')
+                ->body('Se guardaron los documentos, pero no había servicios cubiertos pendientes de finalizar.'.$followUpSuffix)
                 ->send();
 
             return;
@@ -274,9 +278,9 @@ final class CoordinationServiceCoveredItemsFinalizer
         Notification::make()
             ->success()
             ->title('Servicios cubiertos finalizados')
-            ->body($finalized > 1
+            ->body(($finalized > 1
                 ? 'Se guardaron los documentos y se finalizaron '.$finalized.' servicios cubiertos.'
-                : 'Se guardaron los documentos y se finalizó 1 servicio cubierto.')
+                : 'Se guardaron los documentos y se finalizó 1 servicio cubierto.').$followUpSuffix)
             ->send();
     }
 

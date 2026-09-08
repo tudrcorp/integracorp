@@ -5,9 +5,11 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\P
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasInformAmdModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasMedicamentosStepInfoModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
+use App\Jobs\GeneratePdfInformeSeguimiento;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\User;
 use App\Services\TelemedicineSupplyConsumptionRecorder;
+use App\Support\Telemedicine\TelemedicineFollowUpReportDocument;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
@@ -19,14 +21,11 @@ use Illuminate\Support\Facades\Log;
 /**
  * Edición de una consulta ya registrada.
  *
- * Editar **no** regenera los documentos del caso: para eso está
+ * Editar **no** regenera recetas ni órdenes clínicas: para eso está
  * {@see \App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationService}.
- * Aquí vivía un `afterCreate()` copiado de la página de creación que Filament
- * nunca llegó a llamar —`callHook('afterCreate')` solo existe en `CreateRecord`—
- * y que ni siquiera podía correr: invocaba un `sendNotifications()` inexistente
- * y una variable `$data` sin definir. De haberse "arreglado" moviéndolo a
- * `afterSave()` habría duplicado medicamentos y laboratorios en cada edición y
- * descontado el inventario dos veces. No reintroducirlo.
+ * El informe de seguimiento sí se vuelve a generar: es el documento de este
+ * acto clínico y debe quedar alineado con el diagnóstico, la historia actual
+ * y la evolución que el médico acaba de guardar.
  */
 class EditTelemedicineConsultationPatient extends EditRecord
 {
@@ -79,10 +78,12 @@ class EditTelemedicineConsultationPatient extends EditRecord
     {
         $record = $this->getRecord();
 
-        if ($record instanceof TelemedicineConsultationPatient) {
-            app(TelemedicineSupplyConsumptionRecorder::class)
-                ->recordAndNotify($record, $this->data['medical_supplies'] ?? []);
+        if (! $record instanceof TelemedicineConsultationPatient) {
+            return;
         }
+
+        app(TelemedicineSupplyConsumptionRecorder::class)
+            ->recordAndNotify($record, $this->data['medical_supplies'] ?? []);
 
         if ((string) $record->status === TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS) {
             return;
@@ -105,6 +106,44 @@ class EditTelemedicineConsultationPatient extends EditRecord
             Notification::make()
                 ->title('No se pudo actualizar el diagnóstico principal')
                 ->body('La consulta se guardó, pero el diagnóstico de la consulta inicial no se actualizó. Revise la bitácora e intente de nuevo.')
+                ->danger()
+                ->send();
+        }
+
+        $this->dispatchFollowUpReportDocument($record);
+    }
+
+    private function dispatchFollowUpReportDocument(TelemedicineConsultationPatient $record): void
+    {
+        if (! TelemedicineFollowUpReportDocument::appliesTo((string) $record->status)) {
+            return;
+        }
+
+        try {
+            $payload = TelemedicineFollowUpReportDocument::payloadFromSavedConsultation(
+                $record,
+                Auth::user() instanceof User ? Auth::user() : null,
+            );
+
+            if ($payload === null) {
+                throw new \RuntimeException('No se encontró el médico o el paciente para firmar el informe de seguimiento.');
+            }
+
+            GeneratePdfInformeSeguimiento::dispatch(
+                $payload,
+                Auth::user(),
+                TelemedicineFollowUpReportDocument::TYPE_DOCUMENT,
+            );
+        } catch (\Throwable $exception) {
+            Log::error('Error al generar el informe de seguimiento: '.$exception->getMessage(), [
+                'telemedicine_case_id' => $record->telemedicine_case_id,
+                'telemedicine_consultation_id' => $record->id,
+                'exception' => $exception,
+            ]);
+
+            Notification::make()
+                ->title('No se pudo generar el informe de seguimiento')
+                ->body('El seguimiento se guardó, pero el PDF no se encoló. Intente de nuevo o use «Generar documentos» en el caso.')
                 ->danger()
                 ->send();
         }

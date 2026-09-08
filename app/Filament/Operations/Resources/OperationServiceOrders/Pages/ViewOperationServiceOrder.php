@@ -6,6 +6,7 @@ use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrd
 use App\Mail\OperationServiceOrderPdfMail;
 use App\Models\OperationDocumentList;
 use App\Models\OperationServiceOrder;
+use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Operations\OperationServiceOrderCoordinationSync;
 use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Operations\OperationServiceOrderViewActions;
@@ -257,6 +258,10 @@ class ViewOperationServiceOrder extends ViewRecord
             'uploaded_documents' => array_values(array_merge($existingDocuments, $newDocuments)),
         ]);
 
+        $followUpSuffix = LabImagingResultsFollowUpRegistrar::analystMessageSuffix(
+            LabImagingResultsFollowUpRegistrar::registerFromServiceOrder($record, $newDocuments),
+        );
+
         $shouldFinalize = filter_var($arguments['finalize'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         if ($shouldFinalize) {
@@ -264,7 +269,7 @@ class ViewOperationServiceOrder extends ViewRecord
                 Notification::make()
                     ->warning()
                     ->title('No se puede finalizar')
-                    ->body('Los documentos se guardaron, pero la orden ya no admite finalización.')
+                    ->body('Los documentos se guardaron, pero la orden ya no admite finalización.'.$followUpSuffix)
                     ->send();
 
                 return;
@@ -275,7 +280,7 @@ class ViewOperationServiceOrder extends ViewRecord
             Notification::make()
                 ->success()
                 ->title('Orden finalizada')
-                ->body('Se guardaron los documentos y la orden #'.($record->order_number ?: $record->getKey()).' quedó en estatus FINALIZADO.')
+                ->body('Se guardaron los documentos y la orden #'.($record->order_number ?: $record->getKey()).' quedó en estatus FINALIZADO.'.$followUpSuffix)
                 ->send();
 
             return;
@@ -284,9 +289,9 @@ class ViewOperationServiceOrder extends ViewRecord
         Notification::make()
             ->success()
             ->title('Documentos cargados')
-            ->body(count($newDocuments) > 1
+            ->body((count($newDocuments) > 1
                 ? 'Se cargaron '.count($newDocuments).' documentos en la orden.'
-                : 'Se cargó 1 documento en la orden.')
+                : 'Se cargó 1 documento en la orden.').$followUpSuffix)
             ->send();
     }
 
