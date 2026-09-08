@@ -5,10 +5,11 @@
      *
      * @var array<string, mixed> $data
      * @var string $logoDataUri
-     * @var string $variant  'corto' | 'largo'
+     * @var string $variant  'corto' | 'largo' | 'seguimiento'
      */
     $variant = $variant ?? 'corto';
     $isLong = $variant === 'largo';
+    $isFollowUp = $variant === 'seguimiento';
     $brandCyan = '#00ADEF';
     $logoDataUri = $logoDataUri ?? '';
     if ($logoDataUri === '') {
@@ -23,7 +24,7 @@
     $labs = is_array($data['labsArr'] ?? null) ? array_values(array_filter($data['labsArr'], static fn (mixed $item): bool => filled($item))) : [];
     $studies = is_array($data['studiesArr'] ?? null) ? array_values(array_filter($data['studiesArr'], static fn (mixed $item): bool => filled($item))) : [];
 
-    $title = 'Informe Médico';
+    $title = $isFollowUp ? 'Informe de seguimiento' : 'Informe Médico';
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -322,7 +323,7 @@
                 <p class="doc-title">{{ $title }}</p>
                 <p class="doc-sub">Clave del servicio: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
                 <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
-                <span class="badge">Consulta inicial</span>
+                <span class="badge">{{ $isFollowUp ? 'Seguimiento' : 'Consulta inicial' }}</span>
             </td>
         </tr>
         <tr>
@@ -356,138 +357,149 @@
         </table>
     </div>
 
-    <div class="section-title section-title--block">Motivo de consulta</div>
-    <div class="prose-box">{{ $val($data['reason'] ?? null) }}</div>
+    @if($isFollowUp)
+        <div class="section-title section-title--block">Diagnóstico principal de la consulta inicial</div>
+        <div class="prose-box">{{ $val($data['diagnostic_impression'] ?? null) }}</div>
 
-    <div class="section-title section-title--block">Enfermedad actual</div>
-    <div class="prose-box">{{ $val($data['actual_phatology'] ?? null) }}</div>
+        <div class="section-title section-title--block">Historia de la enfermedad actual</div>
+        <div class="prose-box">{{ $val($data['current_illness_history'] ?? null) }}</div>
 
-    <div class="section-title section-title--block">Antecedentes</div>
-    <div class="prose-box">{{ $val($data['background'] ?? null) }}</div>
+        <div class="section-title section-title--block">Evolución del paciente</div>
+        <div class="prose-box">{{ $val($data['patient_evolution'] ?? null) }}</div>
+    @else
+        <div class="section-title section-title--block">Motivo de consulta</div>
+        <div class="prose-box">{{ $val($data['reason'] ?? null) }}</div>
 
-    @if($isLong)
+        <div class="section-title section-title--block">Enfermedad actual</div>
+        <div class="prose-box">{{ $val($data['actual_phatology'] ?? null) }}</div>
+
+        <div class="section-title section-title--block">Antecedentes</div>
+        <div class="prose-box">{{ $val($data['background'] ?? null) }}</div>
+
+        @if($isLong)
+            <div class="keep-together">
+                <div class="section-title section-title--block">Signos vitales</div>
+                <table class="items">
+                    <thead>
+                        <tr>
+                            <th style="width:20%">Presión arterial</th>
+                            <th style="width:20%">Frecuencia cardíaca</th>
+                            <th style="width:20%">Frecuencia respiratoria</th>
+                            <th style="width:20%">Temperatura</th>
+                            <th style="width:20%">Saturación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="center">{{ $val($data['pa'] ?? null) }}</td>
+                            <td class="center">{{ $val($data['fc'] ?? null) }}</td>
+                            <td class="center">{{ $val($data['fr'] ?? null) }}</td>
+                            <td class="center">{{ $val($data['temp'] ?? null) }}</td>
+                            <td class="center">{{ $val($data['saturacion'] ?? null) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        @endif
+
         <div class="keep-together">
-            <div class="section-title section-title--block">Signos vitales</div>
-            <table class="items">
-                <thead>
-                    <tr>
-                        <th style="width:20%">Presión arterial</th>
-                        <th style="width:20%">Frecuencia cardíaca</th>
-                        <th style="width:20%">Frecuencia respiratoria</th>
-                        <th style="width:20%">Temperatura</th>
-                        <th style="width:20%">Saturación</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="center">{{ $val($data['pa'] ?? null) }}</td>
-                        <td class="center">{{ $val($data['fc'] ?? null) }}</td>
-                        <td class="center">{{ $val($data['fr'] ?? null) }}</td>
-                        <td class="center">{{ $val($data['temp'] ?? null) }}</td>
-                        <td class="center">{{ $val($data['saturacion'] ?? null) }}</td>
-                    </tr>
-                </tbody>
+            <div class="section-title section-title--block">Medidas antropométricas</div>
+            <table class="grid">
+                <tr>
+                    <td>
+                        <div class="label">Peso</div>
+                        <div class="value">{{ $val($data['peso'] ?? null) }} kg</div>
+                    </td>
+                    <td>
+                        <div class="label">Estatura</div>
+                        <div class="value">{{ $val($data['estatura'] ?? null) }} m</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="label">IMC</div>
+                        <div class="value">{{ $val($data['imc'] ?? null) }}</div>
+                    </td>
+                    <td></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="section-title section-title--block">Impresión diagnóstica</div>
+        <div class="prose-box">{{ $val($data['diagnostic_impression'] ?? null) }}</div>
+
+        <div class="keep-together">
+            <div class="section-title section-title--block">Plan terapéutico</div>
+            @if($medications === [])
+                <p class="items-empty">Sin medicamentos indicados.</p>
+            @else
+                <table class="items">
+                    <thead>
+                        <tr>
+                            <th style="width:42%">Medicamento</th>
+                            <th style="width:58%">Indicaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($medications as $item)
+                            <tr>
+                                <td>{{ $val(is_array($item) ? ($item['medicines'] ?? null) : $item) }}</td>
+                                <td>{{ $val(is_array($item) ? ($item['indications'] ?? null) : null) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        </div>
+
+        <div class="keep-together">
+            <div class="section-title section-title--block">Paraclínicos</div>
+            <table class="grid">
+                <tr>
+                    <td>
+                        @if($labs === [])
+                            <p class="items-empty">Sin laboratorios indicados.</p>
+                        @else
+                            <table class="items">
+                                <thead>
+                                    <tr>
+                                        <th>Laboratorios</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($labs as $lab)
+                                        <tr>
+                                            <td>{{ $val($lab) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @endif
+                    </td>
+                    <td>
+                        @if($studies === [])
+                            <p class="items-empty">Sin exámenes indicados.</p>
+                        @else
+                            <table class="items">
+                                <thead>
+                                    <tr>
+                                        <th>Exámenes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($studies as $study)
+                                        <tr>
+                                            <td>{{ $val($study) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @endif
+                    </td>
+                </tr>
             </table>
         </div>
     @endif
-
-    <div class="keep-together">
-        <div class="section-title section-title--block">Medidas antropométricas</div>
-        <table class="grid">
-            <tr>
-                <td>
-                    <div class="label">Peso</div>
-                    <div class="value">{{ $val($data['peso'] ?? null) }} kg</div>
-                </td>
-                <td>
-                    <div class="label">Estatura</div>
-                    <div class="value">{{ $val($data['estatura'] ?? null) }} m</div>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <div class="label">IMC</div>
-                    <div class="value">{{ $val($data['imc'] ?? null) }}</div>
-                </td>
-                <td></td>
-            </tr>
-        </table>
-    </div>
-
-    <div class="section-title section-title--block">Impresión diagnóstica</div>
-    <div class="prose-box">{{ $val($data['diagnostic_impression'] ?? null) }}</div>
-
-    <div class="keep-together">
-        <div class="section-title section-title--block">Plan terapéutico</div>
-        @if($medications === [])
-            <p class="items-empty">Sin medicamentos indicados.</p>
-        @else
-            <table class="items">
-                <thead>
-                    <tr>
-                        <th style="width:42%">Medicamento</th>
-                        <th style="width:58%">Indicaciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($medications as $item)
-                        <tr>
-                            <td>{{ $val(is_array($item) ? ($item['medicines'] ?? null) : $item) }}</td>
-                            <td>{{ $val(is_array($item) ? ($item['indications'] ?? null) : null) }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
-    </div>
-
-    <div class="keep-together">
-        <div class="section-title section-title--block">Paraclínicos</div>
-        <table class="grid">
-            <tr>
-                <td>
-                    @if($labs === [])
-                        <p class="items-empty">Sin laboratorios indicados.</p>
-                    @else
-                        <table class="items">
-                            <thead>
-                                <tr>
-                                    <th>Laboratorios</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($labs as $lab)
-                                    <tr>
-                                        <td>{{ $val($lab) }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @endif
-                </td>
-                <td>
-                    @if($studies === [])
-                        <p class="items-empty">Sin exámenes indicados.</p>
-                    @else
-                        <table class="items">
-                            <thead>
-                                <tr>
-                                    <th>Exámenes</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($studies as $study)
-                                    <tr>
-                                        <td>{{ $val($study) }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @endif
-                </td>
-            </tr>
-        </table>
-    </div>
 
 
 </div>

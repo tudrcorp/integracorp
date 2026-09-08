@@ -45,8 +45,11 @@ it('los puntos de entrada abren la consulta con caseId en la URL', function (): 
     $cases = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineCases/Tables/TelemedicineCasesTable.php');
     $patients = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicinePatients/Tables/TelemedicinePatientsTable.php');
     $relation = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicinePatients/RelationManagers/TelemedicineCasesRelationManager.php');
+    $registrar = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/LabImagingResultsFollowUpRegistrar.php');
 
-    foreach ([$dash, $cases, $patients, $relation] as $source) {
-        expect($source)->toContain('ConsultationCreateRoute::url');
-    }
+    expect($dash)->toContain('ConsultationCreateRoute::url')
+        ->and($patients)->toContain('ConsultationCreateRoute::url')
+        ->and($cases)->toContain('LabImagingResultsFollowUpRegistrar::startDoctorFollowUp')
+        ->and($relation)->toContain('LabImagingResultsFollowUpRegistrar::startDoctorFollowUp')
+        ->and($registrar)->toContain('ConsultationCreateRoute::url');
 });

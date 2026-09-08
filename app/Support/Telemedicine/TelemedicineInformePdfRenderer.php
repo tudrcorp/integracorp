@@ -7,7 +7,7 @@ namespace App\Support\Telemedicine;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 /**
- * Única vía de render de los informes médicos (corto y largo).
+ * Única vía de render de los informes médicos (corto, largo y de seguimiento).
  *
  * Antes cada informe se generaba por su lado —el corto desde su job, el largo
  * desde su propio generador—, y esa asimetría ya costó un fallo. Aquí comparten
@@ -19,6 +19,8 @@ final class TelemedicineInformePdfRenderer
     public const VIEW_CORTO = 'documents.informe-medico-corto';
 
     public const VIEW_LARGO = 'documents.informe-medico-largo';
+
+    public const VIEW_SEGUIMIENTO = 'documents.informe-seguimiento';
 
     /**
      * @param  array<string, mixed>  $data

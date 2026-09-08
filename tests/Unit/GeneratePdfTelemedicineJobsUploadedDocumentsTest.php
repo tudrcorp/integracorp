@@ -47,13 +47,28 @@ it('GeneratePdfEspecialista guarda metadata en uploaded_documents con tipo por d
 it('GeneratePdfInformeMedicoCorto guarda metadata en uploaded_documents con tipo por defecto 14', function (): void {
     $path = dirname(__DIR__, 2).'/app/Jobs/GeneratePdfInformeMedicoCorto.php';
     $contents = file_get_contents($path);
+    $sync = file_get_contents(dirname(__DIR__, 2).'/app/Support/Telemedicine/TelemedicineConsultationUploadedDocuments.php');
 
     expect($contents)
         ->toContain('syncConsultationUploadedDocuments')
         ->toContain('$defaultDocumentTypeId = 14;')
         ->toContain("'INFORME MEDICO CONSULTA INICIAL (CORTO)'")
         ->toContain("'document_type_ids' => [\$defaultDocumentTypeId]")
-        ->toContain("'uploaded_documents' => array_values(array_merge(\$existingDocuments, [\$newDocument]))");
+        ->toContain('TelemedicineConsultationUploadedDocuments::sync');
+
+    expect($sync)
+        ->toContain("'uploaded_documents' => array_values(array_merge(\$filtered, [\$newDocument]))");
+});
+
+it('GeneratePdfInformeSeguimiento guarda metadata en uploaded_documents como INFORME DE SEGUIMIENTO', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Jobs/GeneratePdfInformeSeguimiento.php';
+    $contents = file_get_contents($path);
+
+    expect($contents)
+        ->toContain('TelemedicineInformePdfRenderer::VIEW_SEGUIMIENTO')
+        ->toContain('TelemedicineConsultationUploadedDocuments::sync')
+        ->toContain('TelemedicineFollowUpReportDocument::DOCUMENT_TYPE_NAME')
+        ->toContain('TelemedicineFollowUpReportDocument::documentTypeId');
 });
 
 it('GeneratePdfInformeMedicoLargo guarda metadata en uploaded_documents con tipo por defecto 9', function (): void {

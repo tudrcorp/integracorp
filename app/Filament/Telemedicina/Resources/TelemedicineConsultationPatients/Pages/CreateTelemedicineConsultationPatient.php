@@ -39,7 +39,9 @@ use App\Support\ClinicalEntitlements\ClinicalConsultationConsumption;
 use App\Support\ClinicalEntitlements\ClinicalEntitlement;
 use App\Support\ClinicalEntitlements\ClinicalEntitlementException;
 use App\Support\ClinicalEntitlements\ClinicalServiceOverrideOtp;
+use App\Support\Filament\FilamentIosActionsMenu;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Telemedicine\ConsultationClinicalSelections;
 use App\Support\Telemedicine\ConsultationCreateRoute;
 use App\Support\Telemedicine\ConsultationCreateWizardDefaults;
@@ -50,6 +52,7 @@ use App\Support\Telemedicine\TelemedicineAmdInformRegistrar;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineConsultationSigningDoctor;
+use App\Support\Telemedicine\TelemedicineFollowUpReportDocument;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
@@ -58,6 +61,7 @@ use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -319,190 +323,176 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
     protected function getHeaderActions(): array
     {
         return [
-
-            Action::make('autorizar_fuera_de_limite')
-                ->label('Autorizar servicio extra (OTP)')
-                ->icon('heroicon-o-key')
-                ->color('warning')
-                ->visible(fn (): bool => ClinicalServiceOverrideOtp::userMayOverride(Auth::user() instanceof User ? Auth::user() : null)
-                    && ($this->exhaustedChannelOptions() !== [] || filled($this->pendingClinicalOverridePublicId)))
-                ->modalHeading('Servicio fuera de límite')
-                ->modalDescription('El cupo del plan está cubierto. Se enviará una clave de 6 dígitos (5 minutos) por WhatsApp y correo a los contactos del centro de notificaciones. Ellos se la dictan al médico. Un OTP autoriza un solo servicio extra. Puede reenviar a los 2 minutos.')
-                ->modalSubmitActionLabel(fn (): string => filled($this->pendingClinicalOverridePublicId) ? 'Confirmar clave' : 'Enviar clave')
-                ->closeModalByClickingAway(false)
-                ->form([
-                    \Filament\Forms\Components\Textarea::make('reason')
-                        ->label('Motivo clínico')
-                        ->required()
-                        ->minLength(10)
-                        ->rows(3)
-                        ->helperText('Explique por qué este afiliado necesita un uso adicional (mínimo 10 caracteres).'),
-                    \Filament\Forms\Components\Select::make('benefit_id')
-                        ->label('Servicio a autorizar')
-                        ->options(fn (): array => $this->exhaustedChannelOptions())
-                        ->required()
-                        ->native(false)
-                        ->helperText('Cada beneficio agotado aparece una sola vez. Un OTP cubre ese servicio extra.'),
-                    \Filament\Forms\Components\Placeholder::make('otp_status')
-                        ->label('Estado de la clave')
-                        ->content(fn (): string => $this->clinicalOtpStatusMessage())
-                        ->visible(fn (): bool => filled($this->pendingClinicalOverridePublicId)),
-                    \App\Filament\Forms\Components\OtpBoxesInput::make('otp_code')
-                        ->label('Clave de 6 dígitos')
-                        ->length(6)
-                        ->autofocus()
-                        ->visible(fn (): bool => filled($this->pendingClinicalOverridePublicId))
-                        ->helperText('Un dígito por casilla. Puede pegar la clave completa. Pídala a quien recibió el WhatsApp o el correo.'),
-                ])
-                ->extraModalFooterActions([
-                    Action::make('resendClinicalOtp')
-                        ->label(fn (): string => ($wait = $this->secondsUntilClinicalOtpResend()) > 0
-                            ? 'Reenviar clave ('.$wait.' s)'
-                            : 'Reenviar clave')
-                        ->icon('heroicon-o-arrow-path')
-                        ->color('gray')
-                        ->visible(fn (): bool => filled($this->pendingClinicalOverridePublicId))
-                        ->disabled(fn (): bool => $this->secondsUntilClinicalOtpResend() > 0)
-                        ->action(function (Action $action): void {
-                            $this->resendPendingClinicalOverride();
-                            $action->halt();
-                        }),
-                ])
-                ->action(function (array $data, Action $action): void {
-                    $this->handleClinicalOverrideModal($data, $action);
-                }),
-
             Action::make('back_dashboard')
                 ->label('Dashboard')
-                ->button()
                 ->icon('heroicon-s-arrow-left')
                 ->color('estandar')
+                ->url(route('filament.telemedicina.pages.dashboard'))
                 ->extraAttributes([
                     'class' => FilamentIosButton::extraClassForFilamentColor('estandar'),
-                ])
-                ->url(route('filament.telemedicina.pages.dashboard')),
+                ]),
+            FilamentIosActionsMenu::make([
+                Action::make('preview_lab_imaging_results')
+                    ->label(function (): string {
+                        $count = count($this->labImagingResultPreviewDocuments());
 
-            Action::make('create_history')
-                ->label('Registrar Historia Clínica')
-                ->button()
-                ->slideOver()
-                ->icon('healthicons-f-health-worker-form')
-                ->color('urgencia')
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('urgencia'),
-                ])
-                ->action(function () {
+                        return $count > 1 ? 'Ver resultados ('.$count.')' : 'Ver resultados';
+                    })
+                    ->icon('heroicon-o-document-magnifying-glass')
+                    ->color('info')
+                    ->visible(fn (): bool => $this->labImagingResultPreviewDocuments() !== [])
+                    ->modalHeading('Resultados de laboratorio e imagenología')
+                    ->modalDescription('Todos los archivos que Operaciones cargó para este caso. Ábralos aquí o en una pestaña nueva mientras completa la lectura.')
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->modalContent(fn (): \Illuminate\Contracts\View\View => view(
+                        'filament.telemedicina.consultations.lab-imaging-results-preview',
+                        [
+                            'documents' => $this->labImagingResultPreviewDocuments(),
+                            'embeddedInModal' => true,
+                        ],
+                    )),
 
-                    $patient = session()->get('patient');
-                    $record = $patient?->telemedicinePatientHistory()->first();
+                Action::make('autorizar_fuera_de_limite')
+                    ->label('Autorizar servicio extra (OTP)')
+                    ->icon('heroicon-o-key')
+                    ->color('warning')
+                    ->visible(fn (): bool => ClinicalServiceOverrideOtp::userMayOverride(Auth::user() instanceof User ? Auth::user() : null)
+                        && ($this->exhaustedChannelOptions() !== [] || filled($this->pendingClinicalOverridePublicId)))
+                    ->modalHeading('Servicio fuera de límite')
+                    ->modalDescription('El cupo del plan está cubierto. Se enviará una clave de 6 dígitos (5 minutos) por WhatsApp y correo a los contactos del centro de notificaciones. Ellos se la dictan al médico. Un OTP autoriza un solo servicio extra. Puede reenviar a los 2 minutos.')
+                    ->modalSubmitActionLabel(fn (): string => filled($this->pendingClinicalOverridePublicId) ? 'Confirmar clave' : 'Enviar clave')
+                    ->closeModalByClickingAway(false)
+                    ->form([
+                        \Filament\Forms\Components\Textarea::make('reason')
+                            ->label('Motivo clínico')
+                            ->required()
+                            ->minLength(10)
+                            ->rows(3)
+                            ->helperText('Explique por qué este afiliado necesita un uso adicional (mínimo 10 caracteres).'),
+                        \Filament\Forms\Components\Select::make('benefit_id')
+                            ->label('Servicio a autorizar')
+                            ->options(fn (): array => $this->exhaustedChannelOptions())
+                            ->required()
+                            ->native(false)
+                            ->helperText('Cada beneficio agotado aparece una sola vez. Un OTP cubre ese servicio extra.'),
+                        \Filament\Forms\Components\Placeholder::make('otp_status')
+                            ->label('Estado de la clave')
+                            ->content(fn (): string => $this->clinicalOtpStatusMessage())
+                            ->visible(fn (): bool => filled($this->pendingClinicalOverridePublicId)),
+                        \App\Filament\Forms\Components\OtpBoxesInput::make('otp_code')
+                            ->label('Clave de 6 dígitos')
+                            ->length(6)
+                            ->autofocus()
+                            ->visible(fn (): bool => filled($this->pendingClinicalOverridePublicId))
+                            ->helperText('Un dígito por casilla. Puede pegar la clave completa. Pídala a quien recibió el WhatsApp o el correo.'),
+                    ])
+                    ->extraModalFooterActions([
+                        Action::make('resendClinicalOtp')
+                            ->label(fn (): string => ($wait = $this->secondsUntilClinicalOtpResend()) > 0
+                                ? 'Reenviar clave ('.$wait.' s)'
+                                : 'Reenviar clave')
+                            ->icon('heroicon-o-arrow-path')
+                            ->color('gray')
+                            ->visible(fn (): bool => filled($this->pendingClinicalOverridePublicId))
+                            ->disabled(fn (): bool => $this->secondsUntilClinicalOtpResend() > 0)
+                            ->action(function (Action $action): void {
+                                $this->resendPendingClinicalOverride();
+                                $action->halt();
+                            }),
+                    ])
+                    ->action(function (array $data, Action $action): void {
+                        $this->handleClinicalOverrideModal($data, $action);
+                    }),
 
-                    return redirect(TelemedicineHistoryPatientResource::getUrl('create', ['record' => $patient->id]));
-                })
-                ->hidden(function () {
-                    $patient = session()->get('patient');
-                    $records = $patient?->telemedicinePatientHistory()->exists();
+                Action::make('create_history')
+                    ->label('Registrar Historia Clínica')
+                    ->slideOver()
+                    ->icon('healthicons-f-health-worker-form')
+                    ->color('urgencia')
+                    ->action(function () {
+                        $patient = session()->get('patient');
 
-                    return $records;
-                }),
+                        return redirect(TelemedicineHistoryPatientResource::getUrl('create', ['record' => $patient->id]));
+                    })
+                    ->hidden(function () {
+                        $patient = session()->get('patient');
 
-            Action::make('edit_history')
-                ->label('Editar Historia Clínica')
-                ->button()
-                ->slideOver()
-                ->icon('healthicons-f-health-worker-form')
-                ->color('urgencia')
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('urgencia'),
-                ])
-                ->action(function () {
+                        return $patient?->telemedicinePatientHistory()->exists();
+                    }),
 
-                    $patient = session()->get('patient');
-                    $record = $patient?->telemedicinePatientHistory()->first();
-                    // dd($record);
+                Action::make('edit_history')
+                    ->label('Editar Historia Clínica')
+                    ->slideOver()
+                    ->icon('healthicons-f-health-worker-form')
+                    ->color('urgencia')
+                    ->action(function () {
+                        $patient = session()->get('patient');
+                        $record = $patient?->telemedicinePatientHistory()->first();
 
-                    return redirect(TelemedicineHistoryPatientResource::getUrl('edit', ['record' => $record->id]));
+                        return redirect(TelemedicineHistoryPatientResource::getUrl('edit', ['record' => $record->id]));
+                    })
+                    ->hidden(function () {
+                        $patient = session()->get('patient');
 
-                    // return redirect()->route('filament.telemedicina.resources.telemedicine-history-patients.edit', ['id' => $records->id]);
-                })
-                ->hidden(function () {
-                    $patient = session()->get('patient');
-                    $record = $patient?->telemedicinePatientHistory()->exists();
+                        return ! $patient?->telemedicinePatientHistory()->exists();
+                    }),
 
-                    return ! $record;
-                }),
+                Action::make('view_history')
+                    ->label('Resumen Historia Clínica')
+                    ->slideOver()
+                    ->icon('healthicons-f-health-worker-form')
+                    ->color('primary')
+                    ->modalSubmitAction(false)
+                    ->modalContent(function () {
+                        $patient = session()->get('patient');
+                        $records = $patient?->telemedicinePatientHistory()->first();
 
-            Action::make('view_history')
-                ->label('Resumen Historia Clínica')
-                ->button()
-                ->slideOver()
-                ->icon('healthicons-f-health-worker-form')
-                ->color('primary')
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
-                ])
-                ->modalSubmitAction(false)
-                ->modalContent(function () {
+                        return view('history-patient-infolist', ['record' => $records]);
+                    })
+                    ->hidden(function () {
+                        $patient = session()->get('patient');
 
-                    $patient = session()->get('patient');
-                    $records = $patient?->telemedicinePatientHistory()->first();
+                        return ! $patient?->telemedicinePatientHistory()->exists();
+                    }),
 
-                    return view('history-patient-infolist', ['record' => $records]);
-                })
-                ->hidden(function () {
-                    $patient = session()->get('patient');
-                    $records = $patient?->telemedicinePatientHistory()->exists();
+                Action::make('consultation_history')
+                    ->label('Histórico del Caso')
+                    ->icon('heroicon-s-clipboard-document-list')
+                    ->color('primary')
+                    ->slideOver()
+                    ->modalHeading('Historial de Casos del Paciente')
+                    ->modalContent(function () {
+                        $patient = session()->get('patient');
+                        $records = $patient?->telemedicineConsultationPatients()->orderByDesc('created_at')->get();
 
-                    return ! $records;
-                }),
+                        return view('consultation-patient-table', ['records' => $records]);
+                    })
+                    ->hidden(function () {
+                        $patient = session()->get('patient');
 
-            Action::make('consultation_history')
-                ->label('Histórico del Caso')
-                ->button()
-                ->icon('heroicon-s-clipboard-document-list')
-                ->color('primary')
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
-                ])
-                ->slideOver()
-                ->modalHeading('Historial de Casos del Paciente')
-                ->modalContent(function () {
-                    $patient = session()->get('patient');
-                    $records = $patient?->telemedicineConsultationPatients()->orderByDesc('created_at')->get();
+                        return ! $patient?->telemedicineConsultationPatients()->exists();
+                    }),
 
-                    // dd($records);
-                    return view('consultation-patient-table', ['records' => $records]);
-                })
-                ->hidden(function () {
-                    $patient = session()->get('patient');
-                    $records = $patient->telemedicineConsultationPatients()->exists();
+                Action::make('consultation_history_case')
+                    ->label('Últimos Casos')
+                    ->icon('heroicon-s-clipboard-document-list')
+                    ->color('primary')
+                    ->slideOver()
+                    ->modalHeading('Historial de Casos del Paciente')
+                    ->modalContent(function () {
+                        $patient = session()->get('patient');
+                        $records = $patient?->telemedicineCases()->orderByDesc('created_at')->get();
 
-                    return ! $records;
-                }),
+                        return view('table-telemedicine-cases', ['records' => $records]);
+                    })
+                    ->hidden(function () {
+                        $patient = session()->get('patient');
 
-            Action::make('consultation_history_case')
-                ->label('Últimos Casos')
-                ->button()
-                ->icon('heroicon-s-clipboard-document-list')
-                ->color('primary')
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
-                ])
-                ->slideOver()
-                ->modalHeading('Historial de Casos del Paciente')
-                ->modalContent(function () {
-                    $patient = session()->get('patient');
-                    $records = $patient?->telemedicineCases()->orderByDesc('created_at')->get();
-
-                    // dd($records);
-                    return view('table-telemedicine-cases', ['records' => $records]);
-                })
-                ->hidden(function () {
-                    $patient = session()->get('patient');
-                    $records = $patient->telemedicineCases()->exists();
-
-                    return ! $records;
-                }),
-
+                        return ! $patient?->telemedicineCases()->exists();
+                    }),
+            ]),
         ];
     }
 
@@ -753,7 +743,43 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
             );
         }
 
+        $data = $this->attachLabImagingResultDocuments($data);
+
         return TelemedicineInitialDiagnosisUpdater::mergeIntoConsultationFormData($data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function attachLabImagingResultDocuments(array $data): array
+    {
+        $serviceId = (int) ($data['telemedicine_service_list_id'] ?? 0);
+        $caseId = (int) ($this->case?->id ?? $data['telemedicine_case_id'] ?? 0);
+
+        if ($caseId < 1 || ! LabImagingResultsFollowUpRegistrar::isReadingResultsServiceListId($serviceId)) {
+            return $data;
+        }
+
+        $documents = LabImagingResultsFollowUpRegistrar::previewDocumentsForCase($caseId);
+
+        if ($documents !== []) {
+            $data['uploaded_documents'] = $documents;
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function labImagingResultPreviewDocuments(): array
+    {
+        $this->resolveConsultationContext();
+
+        $caseId = (int) ($this->case?->id ?? $this->telemedicineCaseId ?? 0);
+
+        return LabImagingResultsFollowUpRegistrar::previewDocumentsForCase($caseId);
     }
 
     /**
@@ -1045,6 +1071,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
             if ($consultationForSupplies instanceof TelemedicineConsultationPatient) {
                 app(TelemedicineSupplyConsumptionRecorder::class)
                     ->recordAndNotify($consultationForSupplies, $this->data['medical_supplies'] ?? []);
+                LabImagingResultsFollowUpRegistrar::discardPlaceholderIfReplaced($consultationForSupplies);
             }
 
             if (($record['status'] ?? '') !== TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS) {
@@ -1506,6 +1533,16 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                         if (! $isAmdService) {
                             $pdfJobs[] = new GeneratePdfInformeMedicoLargo($dataInformeLargo, Auth::user(), 'informe-largo');
                         }
+                    } elseif (TelemedicineFollowUpReportDocument::appliesTo((string) ($record['status'] ?? ''))) {
+                        $pdfJobs[] = TelemedicineFollowUpReportDocument::makeJob(
+                            TelemedicineFollowUpReportDocument::payloadFromCreateData(
+                                $record,
+                                $this->data,
+                                $doctor,
+                                $patientDisplayName,
+                            ),
+                            Auth::user(),
+                        );
                     }
 
                     /**
@@ -1566,9 +1603,8 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                                     $patientEmail !== '' ? $patientEmail : null,
                                     $patientName,
                                     $userId,
-                                )->onQueue('telemedicina');
+                                );
                             })
-                            ->onQueue('telemedicina')
                             ->dispatch();
                     }
 

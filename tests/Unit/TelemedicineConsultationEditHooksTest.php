@@ -37,7 +37,7 @@ it('solo la página de creación de Filament invoca el hook afterCreate', functi
     expect($invocan)->toBe(['CreateRecord.php']);
 });
 
-it('editar una consulta no reemite documentos ni duplica registros clínicos', function (): void {
+it('editar una consulta no reemite recetas ni órdenes clínicas', function (): void {
     $contenido = file_get_contents(PAGINA_EDITAR_CONSULTA);
 
     expect($contenido)
@@ -49,6 +49,15 @@ it('editar una consulta no reemite documentos ni duplica registros clínicos', f
         ->not->toContain('new TelemedicinePatientMedications')
         ->not->toContain('TelemedicineMedicationInventoryDeductor')
         ->not->toContain('dd($th)');
+});
+
+it('editar un seguimiento regenera el informe de seguimiento', function (): void {
+    $contenido = file_get_contents(PAGINA_EDITAR_CONSULTA);
+
+    expect($contenido)
+        ->toContain('GeneratePdfInformeSeguimiento::dispatch')
+        ->toContain('TelemedicineFollowUpReportDocument::payloadFromSavedConsultation')
+        ->toContain('dispatchFollowUpReportDocument');
 });
 
 it('la edición conserva lo que sí debe correr al guardar', function (): void {

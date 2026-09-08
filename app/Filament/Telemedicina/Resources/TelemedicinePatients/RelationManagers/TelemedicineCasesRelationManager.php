@@ -7,9 +7,8 @@ namespace App\Filament\Telemedicina\Resources\TelemedicinePatients\RelationManag
 use App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\ReverseTelemedicineCaseAction;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Models\TelemedicineCase;
-use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
-use App\Support\Telemedicine\ConsultationCreateRoute;
+use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -170,19 +169,7 @@ class TelemedicineCasesRelationManager extends RelationManager
                                 return null;
                             }
 
-                            $exitRecord = TelemedicineHistoryPatient::query()
-                                ->where('telemedicine_patient_id', $record->telemedicine_patient_id)
-                                ->exists();
-
-                            session()->forget(['case', 'patient', 'exit_record']);
-
-                            session([
-                                'case' => $case,
-                                'patient' => $patient,
-                                'exit_record' => $exitRecord,
-                            ]);
-
-                            return redirect()->to(ConsultationCreateRoute::url($patient, $case));
+                            return redirect()->to(LabImagingResultsFollowUpRegistrar::startDoctorFollowUp($case, $patient));
                         })
                         ->hidden(fn (TelemedicineCase $record): bool => $record->status !== 'EN SEGUIMIENTO'),
                     ReverseTelemedicineCaseAction::make(),

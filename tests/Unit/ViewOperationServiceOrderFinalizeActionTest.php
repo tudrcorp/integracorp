@@ -21,6 +21,7 @@ it('expone acción de header para finalizar la orden de servicio', function (): 
         ->toContain('makeModalSubmitAction')
         ->toContain('OperationServiceOrderCoordinationSync::finalizeOrder')
         ->toContain('OperationServiceOrderViewActions::canFinalize')
+        ->toContain('LabImagingResultsFollowUpRegistrar::registerFromServiceOrder')
         ->toContain('renderVigenciaHeaderPill')
         ->toContain('shouldHighlightVigencia');
 });

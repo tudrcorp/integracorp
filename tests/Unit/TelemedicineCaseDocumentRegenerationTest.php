@@ -26,6 +26,8 @@ it('expone opciones segun datos del caso y consulta inicial', function (): void 
     {
         public ?TelemedicineConsultationPatient $consultation = null;
 
+        public ?TelemedicineConsultationPatient $followUp = null;
+
         /** @var list<array{medicine: string, indications: string, duration: string}> */
         public array $medications = [];
 
@@ -41,6 +43,11 @@ it('expone opciones segun datos del caso y consulta inicial', function (): void 
         public function resolveConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
         {
             return $this->consultation;
+        }
+
+        protected function latestFollowUpConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
+        {
+            return $this->followUp;
         }
 
         protected function medicationsForCase(TelemedicineCase $case): \Illuminate\Support\Collection
@@ -98,7 +105,20 @@ it('expone opciones segun datos del caso y consulta inicial', function (): void 
         ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS)
         ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_LABORATORIOS)
         ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_IMAGENOLOGIA)
-        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_ESPECIALISTA);
+        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_ESPECIALISTA)
+        ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_SEGUIMIENTO);
+
+    $followUp = new TelemedicineConsultationPatient([
+        'status' => 'EN SEGUIMIENTO',
+        'current_illness_history' => 'CURSO RECIENTE',
+        'patient_evolution' => 'MEJORIA',
+        'code_reference' => 'REF-2',
+    ]);
+    $followUp->id = 8;
+    $service->followUp = $followUp;
+
+    expect($service->availableOptions($case))
+        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_SEGUIMIENTO);
 });
 
 /**
@@ -126,6 +146,11 @@ function telemedicineRegenerationServiceForTest(?callable $onRun = null): Teleme
             $consultation->id = 22;
 
             return $consultation;
+        }
+
+        protected function latestFollowUpConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
+        {
+            return null;
         }
 
         protected function resolveDoctor(TelemedicineConsultationPatient $consultation, TelemedicineCase $case): ?TelemedicineDoctor
@@ -275,6 +300,7 @@ it('la accion filament usa checkbox list y el servicio de regeneracion', functio
 
     expect($service)
         ->toContain('GeneratePdfInformeMedicoCorto')
+        ->toContain('GeneratePdfInformeSeguimiento')
         ->toContain('GeneratePdfMedicamentos')
         ->toContain('GeneratePdfLaboratorio')
         ->toContain('GeneratePdfImagenologia')

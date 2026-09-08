@@ -10,6 +10,7 @@ use App\Models\OperationDocumentList;
 use App\Support\Operations\CoordinationServiceCoveredItemsFinalizer;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\CoordinationServiceQuoteManager;
+use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
@@ -148,12 +149,16 @@ class ViewOperationCoordinationService extends ViewRecord
                         'uploaded_documents' => array_values(array_merge($existingDocuments, $newDocuments)),
                     ]);
 
+                    $followUpSuffix = LabImagingResultsFollowUpRegistrar::analystMessageSuffix(
+                        LabImagingResultsFollowUpRegistrar::register($record, $newDocuments),
+                    );
+
                     Notification::make()
                         ->success()
                         ->title('Documentos cargados')
-                        ->body(count($newDocuments) > 1
+                        ->body((count($newDocuments) > 1
                             ? 'Se cargaron '.count($newDocuments).' documentos en la coordinación.'
-                            : 'Se cargó 1 documento en la coordinación.')
+                            : 'Se cargó 1 documento en la coordinación.').$followUpSuffix)
                         ->send();
                 }),
 
