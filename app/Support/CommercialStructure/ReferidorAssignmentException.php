@@ -10,12 +10,12 @@ final class ReferidorAssignmentException extends RuntimeException
 {
     public static function notReferrerAgency(): self
     {
-        return new self('Solo una agencia o un agente marcado como referidor puede asignar agencias generales o agentes.');
+        return new self('Solo una agencia o un agente marcado como referidor puede asignar agencias o agentes.');
     }
 
     public static function agencyNotAssignable(): self
     {
-        return new self('Una o más agencias generales no están disponibles para este referidor. Recargue el formulario e intente de nuevo.');
+        return new self('Una o más agencias no están disponibles para este referidor. Recargue el formulario e intente de nuevo.');
     }
 
     public static function agentNotAssignable(): self

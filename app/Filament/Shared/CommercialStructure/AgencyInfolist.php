@@ -120,7 +120,7 @@ class AgencyInfolist
                                                     ->visible(fn (Agency $record): bool => ReferidorAssignmentService::hasAssignedReferrer($record))
                                                     ->placeholder('—'),
                                                 TextEntry::make('referred_general_agencies_list')
-                                                    ->label('Agencias generales referidas')
+                                                    ->label('Agencias referidas')
                                                     ->state(fn (Agency $record): string => ReferidorAssignmentService::referredGeneralAgenciesText($record))
                                                     ->visible(fn (Agency $record): bool => ReferidorAssignmentService::isReferrerAgency($record))
                                                     ->columnSpanFull(),

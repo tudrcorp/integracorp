@@ -71,7 +71,7 @@ class AgentInfolist
                     ->state(fn (Agent $record): ?string => ReferidorAssignmentService::assignedReferrerLabel($record))
                     ->visible(fn (Agent $record): bool => ReferidorAssignmentService::hasAssignedReferrer($record)),
                 TextEntry::make('referred_general_agencies_list')
-                    ->label('Agencias generales referidas')
+                    ->label('Agencias referidas')
                     ->state(fn (Agent $record): string => ReferidorAssignmentService::referredGeneralAgenciesText($record))
                     ->visible(fn (Agent $record): bool => ReferidorAssignmentService::isReferrerAgent($record)),
                 TextEntry::make('referred_agents_list')
