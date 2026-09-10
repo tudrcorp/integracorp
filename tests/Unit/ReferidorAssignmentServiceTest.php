@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Models\Agency;
+use App\Models\AgencyType;
 use App\Models\Agent;
+use App\Support\CommercialStructure\ReferidorAssignmentException;
 use App\Support\CommercialStructure\ReferidorAssignmentService;
 
 function referidorAssignmentBasePath(string $path): string
@@ -39,13 +41,15 @@ it('expone referidor_id y relaciones en agencias y agentes', function (): void {
         ->toContain('function referidor()')
         ->toContain('function referidorAgent()')
         ->toContain('function referredGeneralAgencies()')
-        ->toContain('function referredAgents()');
+        ->toContain('function referredAgents()')
+        ->not->toContain("where('agency_type_id', '!=', 1)");
 
     expect($agent)
         ->toContain('function referidor()')
         ->toContain('function referidorAgent()')
         ->toContain('function referredGeneralAgencies()')
-        ->toContain('function referredAgents()');
+        ->toContain('function referredAgents()')
+        ->not->toContain("where('agency_type_id', '!=', 1)");
 });
 
 it('normaliza captura y limpia campos virtuales de asignación', function (): void {
@@ -98,7 +102,41 @@ it('reconoce agencias master y generales referidoras', function (): void {
     expect($service)
         ->toContain('whereKeyNot($referrer->id)')
         ->toContain('fn (int $id): bool => $id !== $referrerId')
-        ->toContain("'column' => 'referidor_agent_id'");
+        ->toContain("'column' => 'referidor_agent_id'")
+        ->not->toContain('MASTER_AGENCY_TYPE_ID')
+        ->not->toContain("where('agency_type_id', '!=', self::MASTER_AGENCY_TYPE_ID)");
+});
+
+it('etiqueta agencias master y generales sin ocultar el tipo', function (): void {
+    $master = (new Agency)->forceFill([
+        'id' => 10,
+        'code' => 'TDG-201',
+        'name_corporative' => 'Casa Master',
+        'status' => 'ACTIVO',
+        'agency_type_id' => 1,
+    ]);
+    $master->setRelation('typeAgency', new AgencyType(['definition' => 'MASTER']));
+
+    $general = (new Agency)->forceFill([
+        'id' => 11,
+        'code' => 'TDG-310',
+        'name_corporative' => 'Red General',
+        'status' => 'ACTIVO',
+        'agency_type_id' => 2,
+    ]);
+    $general->setRelation('typeAgency', new AgencyType(['definition' => 'GENERAL']));
+
+    expect(ReferidorAssignmentService::generalAgencyLabel($master))
+        ->toBe('TDG-201 — Casa Master (MASTER) (ACTIVO)')
+        ->and(ReferidorAssignmentService::generalAgencyLabel($general))
+        ->toBe('TDG-310 — Red General (GENERAL) (ACTIVO)');
+});
+
+it('describe excepciones de asignación sin restringir a agencias generales', function (): void {
+    expect(ReferidorAssignmentException::notReferrerAgency()->getMessage())
+        ->toBe('Solo una agencia o un agente marcado como referidor puede asignar agencias o agentes.')
+        ->and(ReferidorAssignmentException::agencyNotAssignable()->getMessage())
+        ->toBe('Una o más agencias no están disponibles para este referidor. Recargue el formulario e intente de nuevo.');
 });
 
 it('existe migración referidor_agent_id en agencias y agentes', function (): void {
@@ -163,7 +201,7 @@ it('muestra la red de referidor en fichas de agente', function (): void {
 
     foreach ($infolists as $infolist) {
         expect(file_get_contents(referidorAssignmentBasePath($infolist)))
-            ->toContain("->label('Agencias generales referidas')")
+            ->toContain("->label('Agencias referidas')")
             ->toContain('ReferidorAssignmentService::isReferrerAgent');
     }
 });
@@ -191,22 +229,24 @@ it('agrega dos selects múltiples de referidor en formularios internos de agenci
         ->toContain('Select::make(ReferidorAssignmentService::GENERAL_AGENCY_IDS_FIELD)')
         ->toContain('Select::make(ReferidorAssignmentService::AGENT_IDS_FIELD)')
         ->toContain('->multiple()')
-        ->toContain("->label('Agencias generales')")
+        ->toContain("->label('Agencias')")
         ->toContain("->label('Agentes y subagentes')")
+        ->toContain('cualquier agencia (MASTER o GENERAL)')
+        ->toContain('cualquier agente o subagente')
         ->toContain("return (bool) \$get('is_referidor') && ReferidorAccess::userCanManage();")
         ->not->toContain('agency_type_id');
 });
 
-it('muestra la red de referidor en fichas master y general', function (): void {
+it('muestra la red de referidor en fichas de agencia', function (): void {
     $infolists = [
+        'app/Filament/Shared/CommercialStructure/AgencyInfolist.php',
         'app/Filament/Master/Resources/Agencies/Schemas/AgencyInfolist.php',
         'app/Filament/General/Resources/Agencies/Schemas/AgencyInfolist.php',
     ];
 
     foreach ($infolists as $infolist) {
         expect(file_get_contents(referidorAssignmentBasePath($infolist)))
-            ->toContain("Fieldset::make('Red de referidor')")
-            ->toContain("->label('Agencias generales referidas')")
+            ->toContain("->label('Agencias referidas')")
             ->toContain('ReferidorAssignmentService::isReferrerAgency');
     }
 });

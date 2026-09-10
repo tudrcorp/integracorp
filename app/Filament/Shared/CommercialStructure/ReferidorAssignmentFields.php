@@ -17,7 +17,7 @@ final class ReferidorAssignmentFields
     public static function section(?string $sectionClass = null): Section
     {
         $section = Section::make('Red de referidor')
-            ->description('Seleccione las agencias generales y los agentes o subagentes que este referidor cubre. Cada uno queda con el ID de este referidor.')
+            ->description('Seleccione las agencias y los agentes o subagentes que este referidor cubre. Puede referir a cualquier agencia (MASTER o GENERAL) y a cualquier agente o subagente, sin distinción de jerarquía. Cada uno queda con el ID de este referidor.')
             ->icon('heroicon-o-user-group')
             ->schema([
                 self::generalAgenciesSelect(),
@@ -37,8 +37,8 @@ final class ReferidorAssignmentFields
     public static function generalAgenciesSelect(): Select
     {
         return Select::make(ReferidorAssignmentService::GENERAL_AGENCY_IDS_FIELD)
-            ->label('Agencias generales')
-            ->helperText('Busque por código, razón social o RIF. Solo aparecen agencias generales libres o ya asignadas a este referidor.')
+            ->label('Agencias')
+            ->helperText('Busque por código, razón social o RIF. Aparecen agencias MASTER y GENERAL libres o ya asignadas a este referidor.')
             ->multiple()
             ->searchable()
             ->native(false)
@@ -61,7 +61,7 @@ final class ReferidorAssignmentFields
     {
         return Select::make(ReferidorAssignmentService::AGENT_IDS_FIELD)
             ->label('Agentes y subagentes')
-            ->helperText('Busque por nombre, cédula, correo o código. Solo aparecen agentes o subagentes libres o ya asignados a este referidor.')
+            ->helperText('Busque por nombre, cédula, correo o código. Aparecen agentes y subagentes libres o ya asignados a este referidor.')
             ->multiple()
             ->searchable()
             ->native(false)

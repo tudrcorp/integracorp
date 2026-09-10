@@ -11,8 +11,6 @@ use Illuminate\Support\Facades\DB;
 
 final class ReferidorAssignmentService
 {
-    public const MASTER_AGENCY_TYPE_ID = 1;
-
     public const GENERAL_AGENCY_IDS_FIELD = 'referred_general_agency_ids';
 
     public const AGENT_IDS_FIELD = 'referred_agent_ids';
@@ -101,6 +99,7 @@ final class ReferidorAssignmentService
     public static function referredGeneralAgenciesText(Agency|Agent $record): string
     {
         $labels = $record->referredGeneralAgencies
+            ->loadMissing('typeAgency')
             ->map(fn (Agency $agency): string => self::generalAgencyLabel($agency))
             ->filter()
             ->values();
@@ -172,7 +171,6 @@ final class ReferidorAssignmentService
 
         return Agency::query()
             ->where($owner['column'], $owner['id'])
-            ->where('agency_type_id', '!=', self::MASTER_AGENCY_TYPE_ID)
             ->orderBy('name_corporative')
             ->pluck('id')
             ->map(fn (mixed $id): int => (int) $id)
@@ -217,9 +215,10 @@ final class ReferidorAssignmentService
                     ->orWhere('name_corporative', 'like', '%'.$term.'%')
                     ->orWhere('rif', 'like', '%'.$term.'%');
             })
+            ->with('typeAgency:id,definition')
             ->orderBy('name_corporative')
             ->limit(40)
-            ->get(['id', 'code', 'name_corporative', 'rif', 'status'])
+            ->get(['id', 'code', 'name_corporative', 'rif', 'status', 'agency_type_id'])
             ->mapWithKeys(fn (Agency $agency): array => [
                 (int) $agency->id => self::generalAgencyLabel($agency),
             ])
@@ -268,8 +267,9 @@ final class ReferidorAssignmentService
         }
 
         return Agency::query()
+            ->with('typeAgency:id,definition')
             ->whereIn('id', $ids)
-            ->get(['id', 'code', 'name_corporative', 'rif', 'status'])
+            ->get(['id', 'code', 'name_corporative', 'rif', 'status', 'agency_type_id'])
             ->mapWithKeys(fn (Agency $agency): array => [
                 (int) $agency->id => self::generalAgencyLabel($agency),
             ])
@@ -303,10 +303,15 @@ final class ReferidorAssignmentService
         $name = trim((string) ($agency->name_corporative ?? ''));
         $code = trim((string) ($agency->code ?? ''));
         $status = trim((string) ($agency->status ?? ''));
+        $type = trim((string) ($agency->typeAgency?->definition ?? ''));
 
         $label = $code !== '' && $name !== ''
             ? $code.' — '.$name
             : ($name !== '' ? $name : ($code !== '' ? $code : 'Agencia #'.$agency->id));
+
+        if ($type !== '') {
+            $label .= ' ('.$type.')';
+        }
 
         return $status !== '' ? $label.' ('.$status.')' : $label;
     }
@@ -536,8 +541,7 @@ final class ReferidorAssignmentService
 
     private static function assignableGeneralAgenciesQuery(Agency|Agent|null $referrer = null): Builder
     {
-        $query = Agency::query()
-            ->where('agency_type_id', '!=', self::MASTER_AGENCY_TYPE_ID);
+        $query = Agency::query();
 
         if ($referrer instanceof Agency && $referrer->exists) {
             $query->whereKeyNot($referrer->id);

@@ -248,7 +248,6 @@ class Agent extends Model
     public function referredGeneralAgencies(): HasMany
     {
         return $this->hasMany(Agency::class, 'referidor_agent_id')
-            ->where('agency_type_id', '!=', 1)
             ->orderBy('name_corporative');
     }
 
