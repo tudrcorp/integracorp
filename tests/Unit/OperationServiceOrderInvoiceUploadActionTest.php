@@ -112,3 +112,71 @@ it('al guardar la factura la orden queda en estatus FACTURADO y con auditoría',
         ->and($src)->toContain('Factura registrada con diferencia')
         ->and($src)->toContain("Action::make('previewInvoice')");
 });
+
+it('la migración de control y fecha de registro es aditiva e idempotente', function (): void {
+    $src = (string) file_get_contents(
+        dirname(__DIR__, 2).'/database/migrations/2026_09_10_160000_add_control_number_and_registration_date_to_operation_service_orders_table.php'
+    );
+
+    expect($src)
+        ->toContain("hasColumn('operation_service_orders', 'invoice_control_number')")
+        ->and($src)->toContain("hasColumn('operation_service_orders', 'invoice_registration_date')")
+        ->and($src)->toContain("->string('invoice_control_number', 60)->nullable()->after('invoice_number')")
+        ->and($src)->toContain("->date('invoice_registration_date')->nullable()->after('invoice_date')")
+        ->and($src)->toContain("->index('invoice_control_number')")
+        ->and($src)->not->toContain('dropIfExists')
+        ->and($src)->not->toContain('migrate:fresh');
+});
+
+it('el modelo acepta control y fecha de registro, y castea la fecha', function (): void {
+    $order = new OperationServiceOrder;
+
+    expect($order->getFillable())
+        ->toContain('invoice_control_number')
+        ->toContain('invoice_registration_date');
+
+    expect($order->getCasts())
+        ->toHaveKey('invoice_registration_date', 'date')
+        ->toHaveKey('invoice_date', 'date');
+
+    $order->fill(['invoice_control_number' => '00-0012345']);
+
+    expect($order->invoice_control_number)->toBe('00-0012345');
+});
+
+it('el formulario pide el N° de control y la fecha de registro con sus reglas', function (): void {
+    $src = invoiceUploadTableSource();
+
+    expect($src)
+        ->toContain("TextInput::make('invoice_control_number')")
+        ->and($src)->toContain("->label('N° de control')")
+        ->and($src)->toContain("DatePicker::make('invoice_registration_date')")
+        ->and($src)->toContain("->label('Fecha de registro de la factura')")
+        ->and($src)->toContain("->minDate(fn (Get \$get) => \$get('invoice_date') ?: null)")
+        ->and($src)->toContain('->default(now()->startOfDay())')
+        ->and($src)->toContain('->live(onBlur: true)');
+});
+
+it('los mensajes de validación del formulario de factura están en español', function (): void {
+    $src = invoiceUploadTableSource();
+
+    expect($src)
+        ->toContain("'required' => 'Indica el número de la factura.'")
+        ->and($src)->toContain("'max' => 'El número de control no puede superar los 60 caracteres.'")
+        ->and($src)->toContain("'required' => 'Indica la fecha en que registras la factura.'")
+        ->and($src)->toContain("'after_or_equal' => 'La fecha de registro no puede ser anterior a la fecha de emisión de la factura.'")
+        ->and($src)->toContain("'before_or_equal' => 'La fecha de registro no puede ser posterior a hoy.'")
+        ->and($src)->toContain("'required_without' => 'Indica el monto en US\$ o, en su defecto, el monto en bolívares.'")
+        ->and($src)->not->toContain('validation.required');
+});
+
+it('la factura se precarga y se guarda con control y fecha de registro', function (): void {
+    $src = invoiceUploadTableSource();
+
+    expect($src)
+        ->toContain("'invoice_control_number' => \$record->invoice_control_number,")
+        ->and($src)->toContain("'invoice_registration_date' => \$record->invoice_registration_date ?? now()->startOfDay(),")
+        ->and($src)->toContain("'invoice_control_number' => \$controlNumber !== '' ? \$controlNumber : null,")
+        ->and($src)->toContain("'invoice_registration_date' => \$data['invoice_registration_date'] ?: now()->toDateString(),")
+        ->and($src)->toContain("filled(\$record->invoice_control_number) ? ' (control '");
+});

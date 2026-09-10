@@ -131,13 +131,13 @@ final class TechnologyAdvancesPresentationSlides
             ],
             [
                 'id' => 'pwa',
-                'type' => 'lifecycle',
+                'type' => 'devices',
                 'title' => 'PWA comercial · planes en el bolsillo',
                 'subtitle' => 'Una app instalable en iPhone y Android para conocer planes, cotizar y avanzar la afiliación como si fuera un producto, no un formulario interno.',
                 'module' => 'PWA',
                 'icon' => '◇',
                 'color' => '#00C7BE',
-                'speaker_note' => 'Ruta /app. Experiencia mobile-first, menú hamburguesa, login con correo o Google. El cliente final cotiza; el agente entra con su cuenta.',
+                'speaker_note' => 'Ruta /app. A la izquierda, la bienvenida. A la derecha, el catálogo de planes. El cliente cotiza; el agente entra con su cuenta.',
                 'highlights' => [
                     'Instalable en iOS y Android, con comportamiento de app nativa',
                     'Planes Inicial, Ideal y Especial como fichas de producto',
@@ -146,7 +146,10 @@ final class TechnologyAdvancesPresentationSlides
                 ],
                 'tags' => ['PWA', 'Mobile', 'Cotización'],
                 'data' => [
-                    'kicker' => 'El canal número 1 para cotizar desde el celular',
+                    'device_set' => 'pwa',
+                    'kicker' => 'Así se ve en el iPhone: bienvenida y catálogo de planes',
+                    'phone_caption' => 'iPhone · Bienvenida',
+                    'plans_caption' => 'iPhone · Planes',
                     'steps' => [
                         [
                             'title' => 'Catálogo',
@@ -165,18 +168,41 @@ final class TechnologyAdvancesPresentationSlides
                             'detail' => 'Resultado, propuesta, PDF, frecuencia y métodos de pago. El analista recibe aviso cuando hay una cotización nueva.',
                         ],
                     ],
+                    'plans' => [
+                        [
+                            'title' => 'Plan Inicial',
+                            'promise' => 'Orientación médica y beneficios esenciales para empezar a cuidarte.',
+                            'cover' => 'image/storefront/plan-inicial.jpg',
+                            'cover_webp' => 'image/storefront/plan-inicial.webp',
+                            'price' => 'Ver tarifas',
+                        ],
+                        [
+                            'title' => 'Plan Ideal',
+                            'promise' => 'Más protección, más red y más tranquilidad en el día a día.',
+                            'cover' => 'image/storefront/plan-ideal.jpg',
+                            'cover_webp' => 'image/storefront/plan-ideal.webp',
+                            'price' => 'Ver tarifas',
+                        ],
+                        [
+                            'title' => 'Plan Especial',
+                            'promise' => 'La cobertura más amplia de la línea básica para tu familia.',
+                            'cover' => 'image/storefront/plan-especial.jpg',
+                            'cover_webp' => 'image/storefront/plan-especial.webp',
+                            'price' => 'Ver tarifas',
+                        ],
+                    ],
                     'promise' => 'La PWA acerca el producto al cliente y libera a Negocios de cotizaciones que el usuario ya puede armar solo.',
                 ],
             ],
             [
                 'id' => 'portal-paciente',
-                'type' => 'value',
+                'type' => 'devices',
                 'title' => 'Portal del Paciente',
-                'subtitle' => 'La cara digital del servicio. Self-service para el afiliado, menos fricción para Operaciones y un servidor propio para no saturar el núcleo.',
+                'subtitle' => 'La cara digital del servicio. El afiliado entra con cédula y clave, en el teléfono o en el computador, sin saturar el núcleo operativo.',
                 'module' => 'Portal Paciente',
                 'icon' => '◌',
                 'color' => '#FF2D55',
-                'speaker_note' => 'Cada interacción del paciente que se digitaliza libera tiempo analítico y reduce tickets repetitivos.',
+                'speaker_note' => 'A la izquierda el login en iPhone; a la derecha, el mismo ingreso en monitor. Cada interacción digitalizada libera tiempo analítico y reduce tickets repetitivos.',
                 'highlights' => [
                     'Experiencia self-service para el afiliado',
                     'Canal directo de atención que descongestiona canales internos',
@@ -185,6 +211,16 @@ final class TechnologyAdvancesPresentationSlides
                 ],
                 'tags' => ['Portal', 'CX', 'Operaciones'],
                 'data' => [
+                    'device_set' => 'portal',
+                    'phone_caption' => 'iPhone · Login',
+                    'monitor_caption' => 'PC · Login',
+                    'login_image' => 'image/storefront/portal-paciente-login.jpg',
+                    'login_logo' => 'image/logoNewTDG.png',
+                    'steps' => [
+                        ['title' => 'Self-service'],
+                        ['title' => 'Menos tickets'],
+                        ['title' => 'Servidor propio'],
+                    ],
                     'for_company' => [
                         'Mejora la percepción de servicio y modernidad de la marca',
                         'Escala atención sin escalar headcount en la misma proporción',
@@ -200,13 +236,13 @@ final class TechnologyAdvancesPresentationSlides
             ],
             [
                 'id' => 'marketing',
-                'type' => 'tests',
+                'type' => 'devices',
                 'title' => 'Sistema de Marketing',
-                'subtitle' => 'Campañas, cumpleaños, eventos y despacho masivo sobre un panel propio, con pruebas automatizadas para innovar sin romper producción.',
+                'subtitle' => 'Landing pública en el computador; el analista entra al panel desde el iPhone o el iPad. Campañas, cumpleaños y despacho masivo sobre un sistema propio.',
                 'module' => 'Marketing',
                 'icon' => '◈',
                 'color' => '#FF9500',
-                'speaker_note' => 'Marketing no es un Excel con WhatsApp: es un sistema con carpetas, progreso de despacho, API de salud y servidor dedicado.',
+                'speaker_note' => 'A la derecha, la landing de TDG Marketing. A la izquierda, el login del panel en iPhone e iPad. No es un Excel con WhatsApp: hay carpetas, progreso de despacho y servidor dedicado.',
                 'highlights' => [
                     'Notificaciones masivas por email, WhatsApp y video, con carpetas y progreso',
                     'Cumpleaños, eventos corporativos y CAPEMIAC',
@@ -215,6 +251,19 @@ final class TechnologyAdvancesPresentationSlides
                 ],
                 'tags' => ['Campañas', 'WhatsApp', 'Calidad'],
                 'data' => [
+                    'device_set' => 'marketing',
+                    'phone_caption' => 'iPhone · Acceso',
+                    'tablet_caption' => 'iPad · Acceso',
+                    'monitor_caption' => 'PC · Landing',
+                    'login_logo' => 'image/logoNewTDG.png',
+                    'casa_image' => 'image/storefront/tdg-casa-bg.jpg',
+                    'viajes_image' => 'image/storefront/tdg-viajes-bg.jpg',
+                    'steps' => [
+                        ['title' => 'Landing'],
+                        ['title' => 'Acceso al panel'],
+                        ['title' => 'Campañas'],
+                        ['title' => 'Servidor propio'],
+                    ],
                     'suites' => [
                         ['name' => 'Campañas', 'items' => ['Masivos email / WhatsApp / video', 'Carpetas de despacho', 'Progreso en vivo', 'Reintento controlado']],
                         ['name' => 'Relación', 'items' => ['Cumpleaños', 'Eventos corporativos', 'CAPEMIAC', 'Listas de contacto']],

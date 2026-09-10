@@ -248,6 +248,73 @@
         border-color: color-mix(in srgb, #34C759 28%, transparent);
     }
 
+    .presentation-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 9999px;
+        padding: 0.28rem 0.72rem;
+        font-size: 10px;
+        font-weight: 650;
+        letter-spacing: 0.04em;
+        line-height: 1.2;
+        border: 1px solid rgba(20, 33, 61, 0.08);
+        background: rgba(255, 255, 255, 0.72);
+        color: rgba(29, 29, 31, 0.68);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    }
+
+    .presentation-badge--module {
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--accent);
+        border-color: color-mix(in srgb, var(--accent) 26%, white);
+        background: color-mix(in srgb, var(--accent) 12%, rgba(255, 255, 255, 0.78));
+    }
+
+    .presentation-badge--chip {
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.01em;
+        color: var(--navy);
+        background: rgba(255, 255, 255, 0.78);
+        border-color: rgba(255, 255, 255, 0.9);
+    }
+
+    html[data-theme="dark"] .presentation-badge,
+    html[data-theme="dark"] .bg-white\/55.rounded-full,
+    html[data-theme="dark"] .bg-white\/70.rounded-full,
+    html[data-theme="dark"] .bg-white\/75.rounded-full {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.14);
+        color: rgba(245, 245, 247, 0.86);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    }
+
+    html[data-theme="dark"] .presentation-badge--module,
+    html[data-theme="dark"] .slide span.rounded-full.liquid-glass {
+        background: color-mix(in srgb, var(--accent) 18%, rgba(255, 255, 255, 0.04));
+        border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+        color: color-mix(in srgb, var(--accent) 55%, #fff);
+        box-shadow:
+            inset 0 1px 0 color-mix(in srgb, var(--accent) 22%, transparent),
+            0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+
+    html[data-theme="dark"] .presentation-badge--chip {
+        background: color-mix(in srgb, var(--accent) 12%, rgba(255, 255, 255, 0.05));
+        border-color: color-mix(in srgb, var(--accent) 28%, rgba(255, 255, 255, 0.08));
+        color: rgba(245, 245, 247, 0.92);
+    }
+
+    html[data-theme="dark"] .text-\[var\(--navy\)\]\/55 {
+        color: rgba(245, 245, 247, 0.82);
+    }
+
+    html[data-theme="dark"] .pwa-device__caption {
+        color: rgba(245, 245, 247, 0.62);
+    }
+
     @media (min-width: 768px) {
         .presentation-theme-toggle--float {
             top: calc(57px + 0.5rem);
