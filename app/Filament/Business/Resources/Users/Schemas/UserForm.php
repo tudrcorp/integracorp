@@ -6,6 +6,8 @@ namespace App\Filament\Business\Resources\Users\Schemas;
 
 use App\Models\Rol;
 use App\Models\User;
+use App\Support\Filament\CommercialNetworkAccess;
+use App\Support\Filament\CommercialNetworkPermissionRegistry;
 use App\Support\Filament\UserCredentialSynchronizer;
 use App\Support\Filament\UserFormPermissionOptions;
 use App\Support\Filament\UserModulesFormUi;
@@ -97,6 +99,8 @@ class UserForm
             $keys[] = self::permissionFieldKey($module);
         }
 
+        $keys[] = CommercialNetworkPermissionRegistry::FIELD_KEY;
+
         return array_values(array_unique($keys));
     }
 
@@ -141,6 +145,14 @@ class UserForm
             }
         }
 
+        $commercialValue = $state[CommercialNetworkPermissionRegistry::FIELD_KEY] ?? null;
+
+        if (is_array($commercialValue)) {
+            foreach ($commercialValue as $id) {
+                $permissionIds[] = (int) $id;
+            }
+        }
+
         return array_values(array_unique($permissionIds));
     }
 
@@ -163,6 +175,46 @@ class UserForm
         }
 
         return null;
+    }
+
+    /**
+     * @return list<Section>
+     */
+    public static function commercialNetworkPermissionsTabSchema(): array
+    {
+        return [
+            Section::make('Seguimiento de afiliados')
+                ->description('Estos permisos abren menús de solo consulta en el panel del agente o de la agencia. El usuario verá únicamente pacientes y casos de sus afiliados.')
+                ->icon(Heroicon::OutlinedHeart)
+                ->extraAttributes([
+                    'class' => self::IOS_SECTION_CLASS,
+                ])
+                ->schema([
+                    Grid::make(1)
+                        ->extraAttributes([
+                            'class' => self::IOS_INNER_CLASS,
+                        ])
+                        ->schema([
+                            Placeholder::make('commercial_network_permissions_intro')
+                                ->hiddenLabel()
+                                ->content(new HtmlString(
+                                    '<div class="space-y-2 text-sm text-slate-600 dark:text-slate-300">'
+                                    .'<p>Asigna qué puede consultar este usuario en su panel comercial. No otorga acceso al panel de Operaciones ni permite crear o modificar casos.</p>'
+                                    .'<ul class="list-disc space-y-1 pl-5">'
+                                    .'<li>Pacientes: ficha de telemedicina de sus afiliados.</li>'
+                                    .'<li>Gestión de casos: casos abiertos y consultas. Sin historia clínica y sin altas médicas.</li>'
+                                    .'</ul>'
+                                    .'</div>'
+                                )),
+                            CheckboxList::make(CommercialNetworkPermissionRegistry::FIELD_KEY)
+                                ->hiddenLabel()
+                                ->options(fn (): array => CommercialNetworkPermissionRegistry::options())
+                                ->descriptions(fn (): array => CommercialNetworkPermissionRegistry::optionDescriptions())
+                                ->bulkToggleable()
+                                ->columns(1),
+                        ]),
+                ]),
+        ];
     }
 
     /**
@@ -243,7 +295,9 @@ class UserForm
             View::make(UserModulesFormUi::stylesView())
                 ->columnSpanFull(),
             Section::make('Paneles INTEGRACORP')
-                ->description('Selecciona los módulos a los que tendrá acceso este usuario.')
+                ->description(fn (Get $get, ?User $record): string => CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record)
+                    ? 'Los módulos internos son opcionales para agentes y agencias. Asígnalos solo si este usuario también debe entrar a paneles de INTEGRACORP.'
+                    : 'Selecciona los módulos a los que tendrá acceso este usuario.')
                 ->icon(Heroicon::OutlinedSquares2x2)
                 ->extraAttributes([
                     'class' => self::IOS_SECTION_CLASS,
@@ -256,10 +310,15 @@ class UserForm
                         ->schema([
                             Placeholder::make('modules_intro')
                                 ->hiddenLabel()
-                                ->content(UserModulesFormUi::modulesIntroHtml()),
+                                ->content(fn (Get $get, ?User $record): HtmlString => UserModulesFormUi::modulesIntroHtml(
+                                    CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record),
+                                )),
                             Placeholder::make('modules_selection_summary')
                                 ->hiddenLabel()
-                                ->content(fn (Get $get): HtmlString => UserModulesFormUi::selectionSummaryHtml($get('departament'))),
+                                ->content(fn (Get $get, ?User $record): HtmlString => UserModulesFormUi::selectionSummaryHtml(
+                                    $get('departament'),
+                                    CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record),
+                                )),
                             Placeholder::make('proveedor_amd_notice')
                                 ->hiddenLabel()
                                 ->visible(fn (?User $record): bool => (bool) ($record?->is_proveedor_amd))
@@ -278,7 +337,11 @@ class UserForm
                                 ->gridDirection('row')
                                 ->bulkToggleable()
                                 ->searchable()
-                                ->required()
+                                ->default([])
+                                ->required(fn (Get $get, ?User $record): bool => ! CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record))
+                                ->helperText(fn (Get $get, ?User $record): ?string => CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record)
+                                    ? 'Opcional. Si no asignas módulos internos, el usuario solo usará su panel comercial (agente o agencia).'
+                                    : null)
                                 ->live()
                                 ->extraAttributes([
                                     'class' => 'user-modules-checkbox-list',
@@ -551,6 +614,10 @@ class UserForm
                                             ]),
                                     ]),
                             ]),
+                        Tab::make('Permisos de red')
+                            ->icon(Heroicon::OutlinedHeart)
+                            ->visible(fn (Get $get, ?User $record): bool => CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record))
+                            ->schema(self::commercialNetworkPermissionsTabSchema()),
                         Tab::make('Permisos')
                             ->icon(Heroicon::OutlinedKey)
                             ->schema([

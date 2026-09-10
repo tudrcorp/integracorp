@@ -68,6 +68,7 @@ class OperationServiceOrderController extends Controller
                     'total_amount_usd' => $data['total_amount_usd'] ?? null,
                     'total_amount_ves' => $data['total_amount_ves'] ?? null,
                     'status' => $data['status'] ?? 'EN GESTION',
+                    'administrative_status' => $data['administrative_status'] ?? 'PENDIENTE',
                     'is_courtesy' => (bool) ($data['is_courtesy'] ?? false),
                     'approved_at' => now(),
                     'appointment_at' => $data['appointment_at'] ?? null,

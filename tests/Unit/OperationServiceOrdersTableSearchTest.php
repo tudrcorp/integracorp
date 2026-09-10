@@ -15,7 +15,10 @@ it('define búsqueda global por paciente, caso, descripción y proveedor', funct
         ->and($src)->toContain('->searchable()')
         ->and($src)->toContain('->searchUsing(')
         ->and($src)->toContain('LOWER(COALESCE(patient')
+        ->and($src)->toContain('LOWER(COALESCE(ci_patient')
         ->and($src)->toContain('LOWER(COALESCE(full_name')
+        ->and($src)->toContain('LOWER(COALESCE(nro_identificacion')
+        ->and($src)->toContain('LOWER(COALESCE(specific_business_unit')
         ->and($src)->toContain('LOWER(COALESCE(patient_name')
         ->and($src)->toContain('LOWER(COALESCE(code')
         ->and($src)->toContain('LOWER(COALESCE(description')
@@ -34,6 +37,7 @@ it('applyTableSearch construye un where con LOWER para coincidencia case-insensi
 
     expect($sql)->toContain('lower(order_number) like ?')
         ->and($sql)->toContain('lower(coalesce(description')
+        ->and($sql)->toContain('lower(coalesce(ci_patient')
         ->and($sql)->toContain('exists')
         ->and($result->getBindings())->toContain('%nancy%');
 });

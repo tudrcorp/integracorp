@@ -9,9 +9,15 @@ it('expone estilos y resumen de modulos para la pestaña dedicada', function ():
 
     expect(UserModulesFormUi::stylesView())->toBe('filament.business.users.partials.modules-form-styles')
         ->and(UserModulesFormUi::modulesIntroHtml()->toHtml())->toContain('¿Qué son los módulos?')
+        ->and(UserModulesFormUi::modulesIntroHtml()->toHtml())->toContain('Cada módulo habilita un panel')
+        ->and(UserModulesFormUi::modulesIntroHtml(true)->toHtml())->toContain('no son obligatorios para un agente o una agencia')
         ->and(UserModulesFormUi::permissionsHintHtml()->toHtml())->toContain('Permisos')
         ->and(UserModulesFormUi::selectionSummaryHtml([])->toHtml())->toContain('Ningún módulo seleccionado')
+        ->and(UserModulesFormUi::selectionSummaryHtml([])->toHtml())->toContain('user-modules-summary--empty')
+        ->and(UserModulesFormUi::selectionSummaryHtml([], true)->toHtml())->toContain('asignar paneles internos es opcional')
+        ->and(UserModulesFormUi::selectionSummaryHtml([], true)->toHtml())->toContain('user-modules-summary--optional')
         ->and(UserModulesFormUi::selectionSummaryHtml(['NEGOCIOS'])->toHtml())->toContain('1 módulo seleccionado')
         ->and(UserModulesFormUi::selectionSummaryHtml(['NEGOCIOS', 'ADMINISTRACION'])->toHtml())->toContain('2 módulos seleccionados')
-        ->and($styles)->toContain('.user-modules-checkbox-list .fi-fo-checkbox-list-option:has(.fi-checkbox-input:checked)');
+        ->and($styles)->toContain('.user-modules-checkbox-list .fi-fo-checkbox-list-option:has(.fi-checkbox-input:checked)')
+        ->and($styles)->toContain('.user-modules-summary--optional');
 });

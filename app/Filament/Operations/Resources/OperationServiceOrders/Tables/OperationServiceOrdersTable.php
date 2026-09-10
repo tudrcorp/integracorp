@@ -11,9 +11,8 @@ use App\Models\Supplier;
 use App\Services\OperationServiceOrderMedicationQuotePdfService;
 use App\Support\Filament\CsvExportDownloadTrigger;
 use App\Support\Filament\Operations\OperationsSupplierScope;
-use App\Support\Operations\OperationServiceOrderCoordinationSync;
+use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Operations\OperationServiceOrderValidity;
-use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -21,6 +20,7 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -35,11 +35,13 @@ use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\HtmlString;
 use ZipArchive;
 
@@ -51,19 +53,8 @@ class OperationServiceOrdersTable
 
     private const IOS_GRAY_BTN = 'ticket-btn-ios-gray shrink-0 inline-flex min-w-[7.5rem] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
-    private static function patientNameForOrder(OperationServiceOrder $record): string
-    {
-        $coordination = $record->operationCoordinationService;
-
-        if ($coordination === null) {
-            return '—';
-        }
-
-        return TelemedicinePatientDisplayName::forCoordination($coordination);
-    }
-
     /**
-     * Búsqueda global: orden, paciente (case-insensitive), caso, descripción y proveedor.
+     * Búsqueda global: orden, paciente, cédula, unidad específica, caso, descripción y proveedor.
      */
     public static function applyTableSearch(Builder $query, string $search): Builder
     {
@@ -91,9 +82,13 @@ class OperationServiceOrdersTable
                 ->orWhereHas('operationCoordinationService', function (Builder $coordinationQuery) use ($like): void {
                     $coordinationQuery
                         ->whereRaw('LOWER(COALESCE(patient, \'\')) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(COALESCE(ci_patient, \'\')) LIKE ?', [$like])
                         ->orWhereHas(
                             'telemedicinePatient',
-                            fn (Builder $patientQuery): Builder => $patientQuery->whereRaw('LOWER(COALESCE(full_name, \'\')) LIKE ?', [$like]),
+                            fn (Builder $patientQuery): Builder => $patientQuery
+                                ->whereRaw('LOWER(COALESCE(full_name, \'\')) LIKE ?', [$like])
+                                ->orWhereRaw('LOWER(COALESCE(nro_identificacion, \'\')) LIKE ?', [$like])
+                                ->orWhereRaw('LOWER(COALESCE(specific_business_unit, \'\')) LIKE ?', [$like]),
                         )
                         ->orWhereHas('telemedicineCase', function (Builder $caseQuery) use ($like): void {
                             $caseQuery
@@ -146,6 +141,68 @@ class OperationServiceOrdersTable
         };
     }
 
+    private static function documentCodeColumn(string $name): TextColumn
+    {
+        return TextColumn::make($name)
+            ->badge()
+            ->color('warning');
+    }
+
+    private static function previewOrderPdfAction(): Action
+    {
+        return Action::make('preview_order_pdf')
+            ->label('Vista previa de la orden')
+            ->modalHeading(fn (OperationServiceOrder $record): string => 'Orden de servicio '.($record->order_number ?: ''))
+            ->modalDescription('Visualice el PDF de la orden sin salir de la tabla.')
+            ->modalWidth(Width::SevenExtraLarge)
+            ->modalIcon('heroicon-o-eye')
+            ->modalContent(function (OperationServiceOrder $record): ViewContract {
+                return View::make('filament.operations.operation-service-orders.pdf-preview', [
+                    'pdfPreviewUrl' => route('operations.operation-service-orders.pdf.preview', [
+                        'operationServiceOrder' => $record,
+                    ]),
+                    'pdfDownloadUrl' => route('operations.operation-service-orders.pdf', [
+                        'operationServiceOrder' => $record,
+                    ]),
+                    'documentLabel' => 'Orden de servicio',
+                    'documentTitle' => $record->order_number ?: 'Vista previa del PDF',
+                ]);
+            })
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar');
+    }
+
+    private static function previewQuotePdfAction(): Action
+    {
+        return Action::make('preview_quote_pdf')
+            ->label('Vista previa de la cotización')
+            ->modalHeading(fn (OperationServiceOrder $record): string => 'Cotización '.OperationServiceOrderListDisplay::quoteCodeLabel($record->approvedOperationQuote?->id))
+            ->modalDescription('Visualice el PDF de la cotización asociada sin salir de la tabla.')
+            ->modalWidth(Width::SevenExtraLarge)
+            ->modalIcon('heroicon-o-eye')
+            ->disabled(fn (OperationServiceOrder $record): bool => $record->approvedOperationQuote === null
+                && ! filled(OperationServiceOrderListDisplay::quotePdfStoragePath($record)))
+            ->modalContent(function (OperationServiceOrder $record): ViewContract {
+                $previewUrl = self::quotePdfPublicUrl($record);
+
+                return View::make('filament.operations.operation-service-orders.pdf-preview', [
+                    'pdfPreviewUrl' => $previewUrl,
+                    'pdfDownloadUrl' => $previewUrl,
+                    'documentLabel' => 'Cotización',
+                    'documentTitle' => OperationServiceOrderListDisplay::quoteCodeLabel($record->approvedOperationQuote?->id),
+                ]);
+            })
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar');
+    }
+
+    private static function quotePdfPublicUrl(OperationServiceOrder $record): ?string
+    {
+        $path = OperationServiceOrderListDisplay::quotePdfStoragePath($record);
+
+        return filled($path) ? URL::to(Storage::url($path)) : null;
+    }
+
     /** Valor de referencia de la API BCV para el formulario (una petición por request). */
     private static function referenciaTasaBcvDesdeApi(): ?float
     {
@@ -171,28 +228,6 @@ class OperationServiceOrdersTable
             'PAGO MOVIL VES' => 'PAGO MOVIL(VES)',
             'TRANSFERENCIA VES' => 'TRANSFERENCIA(VES)',
         ];
-    }
-
-    /**
-     * Misma lógica que exige el modal al guardar: método de pago, tasa BCV > 0 y al menos un monto.
-     */
-    private static function hasRegisteredPaymentData(OperationServiceOrder $record): bool
-    {
-        if (! filled($record->payment_method)) {
-            return false;
-        }
-
-        $tasa = (float) ($record->tasa_bcv ?? 0);
-        if ($tasa <= 0) {
-            return false;
-        }
-
-        $usd = $record->total_amount_usd;
-        $ves = $record->total_amount_ves;
-        $hasUsd = $usd !== null && $usd !== '' && is_numeric($usd);
-        $hasVes = $ves !== null && $ves !== '' && is_numeric($ves);
-
-        return $hasUsd || $hasVes;
     }
 
     /**
@@ -331,7 +366,7 @@ class OperationServiceOrdersTable
             ->description('Órdenes generadas desde coordinación. Vigencia de 10 días desde la aprobación; vencidas pasan a CADUCADA. La franja lateral refleja la prioridad salvo en órdenes cerradas.')
             ->defaultSort('created_at', 'desc')
             ->searchable()
-            ->searchPlaceholder('Buscar por orden, paciente, caso, proveedor o descripción…')
+            ->searchPlaceholder('Buscar por orden, paciente, cédula, unidad, caso, proveedor o descripción…')
             ->persistSearchInSession()
             ->searchUsing(fn (Builder $query, string $search): Builder => self::applyTableSearch($query, $search))
             ->paginated([10, 25, 50, 100])
@@ -352,18 +387,44 @@ class OperationServiceOrdersTable
                         'operationCoordinationService.telemedicineCase',
                         'operationCoordinationService.telemedicinePatient',
                     ])
-                    ->withCount('operationServiceOrderQuotes');
+                    ->withCount('operationServiceOrderQuotes')
+                    ->withSum('operationServiceOrderQuotes', 'total_amount_usd');
             })
             ->columns([
-                TextColumn::make('order_number')
-                    ->label('Nº orden')
-                    ->sortable()
+                TextColumn::make('patient_identity')
+                    ->label('Paciente')
+                    ->state(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::patientFullName($record))
+                    ->description(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::patientDocumentLabel($record))
+                    ->tooltip(fn (OperationServiceOrder $record): string => trim(
+                        OperationServiceOrderListDisplay::patientFullName($record)
+                        .' · '
+                        .OperationServiceOrderListDisplay::patientDocumentLabel($record)
+                    ))
                     ->weight('semibold')
-                    ->icon('heroicon-m-hashtag')
-                    ->copyable()
-                    ->copyMessage('Número copiado')
-                    ->description(fn (OperationServiceOrder $record): string => self::patientNameForOrder($record))
-                    ->tooltip(fn (OperationServiceOrder $record): string => self::patientNameForOrder($record)),
+                    ->icon('heroicon-m-user'),
+                self::documentCodeColumn('order_number')
+                    ->label('Orden servicio')
+                    ->sortable()
+                    ->tooltip('Clic para ver el PDF de la orden de servicio')
+                    ->extraAttributes([
+                        'class' => 'cursor-pointer hover:opacity-90',
+                    ])
+                    ->action(self::previewOrderPdfAction()),
+                self::documentCodeColumn('approvedOperationQuote.id')
+                    ->label('Código cotización')
+                    ->placeholder('—')
+                    ->formatStateUsing(
+                        fn (mixed $state): string => OperationServiceOrderListDisplay::quoteCodeLabel($state)
+                    )
+                    ->tooltip(fn (OperationServiceOrder $record): string => filled(OperationServiceOrderListDisplay::quotePdfStoragePath($record))
+                        || filled($record->approvedOperationQuote?->id)
+                        ? 'Clic para ver el PDF de la cotización'
+                        : 'Se completa cuando la orden nace desde una cotización aprobada.')
+                    ->extraAttributes(fn (OperationServiceOrder $record): array => filled($record->approvedOperationQuote?->id)
+                        || filled(OperationServiceOrderListDisplay::quotePdfStoragePath($record))
+                        ? ['class' => 'cursor-pointer hover:opacity-90']
+                        : [])
+                    ->action(self::previewQuotePdfAction()),
                 TextColumn::make('operationCoordinationService.telemedicineCase.code')
                     ->label('Nº caso')
                     ->badge()
@@ -373,7 +434,7 @@ class OperationServiceOrdersTable
                     ->placeholder('—')
                     ->formatStateUsing(fn (?string $state): string => filled($state) ? mb_strtoupper((string) $state) : '—'),
                 TextColumn::make('status')
-                    ->label('Estado')
+                    ->label('Estatus operativo')
                     ->badge()
                     ->sortable()
                     ->icon(fn (?string $state): string => self::statusIcon($state))
@@ -385,10 +446,35 @@ class OperationServiceOrdersTable
                         'CANCELADA' => 'danger',
                         'CANCELADO' => 'gray',
                         default => 'gray',
-                    })
-                    ->description(fn (OperationServiceOrder $record): ?string => OperationServiceOrderValidity::vigenciaLabel($record) !== '—'
-                        ? OperationServiceOrderValidity::vigenciaLabel($record)
+                    }),
+                TextColumn::make('administrative_status')
+                    ->label('Estatus administrativo')
+                    ->badge()
+                    ->sortable()
+                    ->state(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::administrativeStatus($record))
+                    ->color(fn (?string $state): string => OperationServiceOrderListDisplay::administrativeStatusColor($state))
+                    ->icon(fn (?string $state): string => OperationServiceOrderListDisplay::administrativeStatusIcon($state))
+                    ->description(fn (OperationServiceOrder $record): ?string => OperationServiceOrderListDisplay::hasInvoice($record)
+                        ? 'Factura '.($record->invoice_number ?: 'cargada')
                         : null),
+                TextColumn::make('patient_specific_business_unit')
+                    ->label('U.N. específica')
+                    ->state(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::specificBusinessUnit($record))
+                    ->badge()
+                    ->color('gray')
+                    ->placeholder('—')
+                    ->wrap()
+                    ->limit(36)
+                    ->tooltip(fn (OperationServiceOrder $record): ?string => ($label = OperationServiceOrderListDisplay::specificBusinessUnit($record)) !== '—'
+                        ? $label
+                        : null),
+                TextColumn::make('quote_amount')
+                    ->label('Monto cotizado')
+                    ->state(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::quoteAmountLabel($record))
+                    ->alignEnd()
+                    ->weight('semibold')
+                    ->placeholder('—')
+                    ->icon('heroicon-m-banknotes'),
                 TextColumn::make('is_courtesy')
                     ->label('Cortesía')
                     ->state(fn (OperationServiceOrder $record): string => $record->is_courtesy ? 'CORTESÍA' : '—')
@@ -417,24 +503,6 @@ class OperationServiceOrdersTable
                     ->color('gray')
                     ->icon(fn (?string $state): string => self::serviceTypeIcon($state))
                     ->toggleable(),
-                TextColumn::make('description')
-                    ->label('Descripción')
-                    ->wrap()
-                    ->lineClamp(2)
-                    ->placeholder('—')
-                    ->tooltip(fn (OperationServiceOrder $record): ?string => filled($record->description) ? (string) $record->description : null)
-                    ->toggleable(),
-                TextColumn::make('approvedOperationQuote.id')
-                    ->label('Código cotización')
-                    ->badge()
-                    ->color('warning')
-                    ->formatStateUsing(
-                        fn (mixed $state): string => filled($state)
-                            ? 'COT-'.str_pad((string) ((int) $state), 6, '0', STR_PAD_LEFT)
-                            : '—'
-                    )
-                    ->tooltip('Se completa cuando la orden nace desde una cotización aprobada.')
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('managed_by')
                     ->label('Gestionado por')
                     ->badge()
@@ -538,6 +606,10 @@ class OperationServiceOrdersTable
                         'CADUCADA' => 'Caducada',
                         'CANCELADO' => 'Cancelado',
                     ])
+                    ->multiple(),
+                SelectFilter::make('administrative_status')
+                    ->label('Estatus administrativo')
+                    ->options(OperationServiceOrderListDisplay::administrativeStatusOptions())
                     ->multiple(),
                 SelectFilter::make('service_type')
                     ->label('Tipo de servicio')
@@ -810,16 +882,20 @@ class OperationServiceOrdersTable
                                 ]),
                         ])
                         ->hidden(fn (): bool => true),
-                    Action::make('registerPayment')
-                        ->label('Datos de pago')
-                        ->icon('heroicon-m-banknotes')
-                        ->color('primary')
+                    Action::make('uploadInvoice')
+                        ->label(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::hasInvoice($record)
+                            ? 'Actualizar factura'
+                            : 'Cargar factura')
+                        ->icon('heroicon-m-receipt-percent')
+                        ->color('info')
                         ->slideOver()
                         ->modalWidth(Width::ThreeExtraLarge)
-                        ->modalIcon('heroicon-m-banknotes')
-                        ->modalHeading('Registrar datos de pago')
-                        ->modalDescription('Completa la tasa BCV, los montos y el método de pago para actualizar la orden. Usa el botón «Guardar» al finalizar: los totales en dólares y bolívares se sincronizan según la tasa (si indicas ambos montos, prevalece el total en US$).')
-                        ->modalSubmitActionLabel('Guardar datos de pago')
+                        ->modalIcon('heroicon-m-receipt-percent')
+                        ->modalHeading(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::hasInvoice($record)
+                            ? 'Actualizar factura del proveedor'
+                            : 'Cargar factura del proveedor')
+                        ->modalDescription('Revisa los datos del proveedor y de la cotización antes de registrar la factura. Al guardar, la orden pasa a estatus administrativo «Facturado».')
+                        ->modalSubmitActionLabel('Guardar factura')
                         ->modalSubmitAction(
                             fn (Action $action): Action => $action
                                 ->extraAttributes([
@@ -834,54 +910,80 @@ class OperationServiceOrdersTable
                                 ])
                         )
                         ->fillForm(fn (OperationServiceOrder $record): array => [
-                            'tasa_bcv' => filled($record->tasa_bcv)
-                                ? $record->tasa_bcv
-                                : self::referenciaTasaBcvDesdeApi(),
-                            'total_amount_usd' => $record->total_amount_usd,
-                            'total_amount_ves' => $record->total_amount_ves,
-                            'payment_method' => $record->payment_method,
+                            'invoice_number' => $record->invoice_number,
+                            'invoice_date' => $record->invoice_date,
+                            'invoice_amount_usd' => $record->invoice_amount_usd
+                                ?? OperationServiceOrderListDisplay::quoteAmountUsd($record),
+                            'invoice_amount_ves' => $record->invoice_amount_ves,
+                            'invoice_file_path' => $record->invoice_file_path,
                         ])
-                        ->form([
-                            Section::make('Información de pago')
-                                ->description('Indica la tasa del día y al menos un monto (US$ o Bs.); el otro se calcula al guardar. El método de pago es obligatorio.')
-                                ->icon('heroicon-m-currency-dollar')
+                        ->form(fn (OperationServiceOrder $record): array => [
+                            Section::make('Datos del proveedor y de la cotización')
+                                ->description('Información tomada de la orden para que puedas conciliar la factura sin salir de esta pantalla.')
+                                ->icon('heroicon-m-identification')
+                                ->schema([
+                                    Placeholder::make('invoice_context_preview')
+                                        ->label('')
+                                        ->content(fn (): HtmlString => self::renderInvoiceContextPreview($record)),
+                                ])
+                                ->columns(1)
+                                ->columnSpanFull()
+                                ->extraAttributes([
+                                    'class' => self::IOS_SECTION_CLASS,
+                                ]),
+                            Section::make('Datos de la factura')
+                                ->description('Registra el número, la fecha y el monto facturado, y adjunta el documento emitido por el proveedor.')
+                                ->icon('heroicon-m-document-currency-dollar')
                                 ->schema([
                                     Grid::make(['default' => 1, 'lg' => 2])
                                         ->schema([
-                                            TextInput::make('tasa_bcv')
-                                                ->label('Tasa BCV')
-                                                ->prefix('VES')
-                                                ->placeholder('Ej. 36,50')
-                                                ->numeric()
+                                            TextInput::make('invoice_number')
+                                                ->label('N° de factura')
+                                                ->prefixIcon('heroicon-m-hashtag')
+                                                ->placeholder('Ej. 00012345')
                                                 ->required()
-                                                ->minValue(0.000001)
-                                                ->helperText(function (): string {
-                                                    $tasa = self::referenciaTasaBcvDesdeApi();
-
-                                                    return $tasa !== null
-                                                        ? 'Tipo de cambio oficial o acordado para esta orden. Tasa referencial: '.number_format((float) $tasa, 2, ',', '.').' Bs./US$.'
-                                                        : 'La API BCV no está disponible; ingresa la tasa manualmente.';
-                                                }),
-                                            Select::make('payment_method')
-                                                ->label('Método de pago')
-                                                ->prefixIcon('heroicon-m-credit-card')
-                                                ->options(self::paymentMethodOptions())
-                                                ->required()
+                                                ->maxLength(60)
+                                                ->helperText('Tal como aparece en el documento del proveedor.'),
+                                            DatePicker::make('invoice_date')
+                                                ->label('Fecha de emisión')
+                                                ->prefixIcon('heroicon-m-calendar-days')
                                                 ->native(false)
-                                                ->searchable(),
-                                            TextInput::make('total_amount_usd')
-                                                ->label('Total en US$')
+                                                ->displayFormat('d/m/Y')
+                                                ->maxDate(now())
+                                                ->required()
+                                                ->helperText('No puede ser posterior a hoy.'),
+                                            TextInput::make('invoice_amount_usd')
+                                                ->label('Monto facturado en US$')
                                                 ->prefix('US$')
                                                 ->placeholder('0,00')
                                                 ->numeric()
-                                                ->helperText('Opcional si ya ingresaste el total en bolívares.'),
-                                            TextInput::make('total_amount_ves')
-                                                ->label('Total en bolívares')
+                                                ->minValue(0)
+                                                ->requiredWithout('invoice_amount_ves')
+                                                ->helperText(fn (): string => 'Se sugiere el monto cotizado ('.OperationServiceOrderListDisplay::quoteAmountLabel($record).'); ajústalo si la factura difiere.'),
+                                            TextInput::make('invoice_amount_ves')
+                                                ->label('Monto facturado en Bs.')
                                                 ->prefix('Bs.')
                                                 ->placeholder('0,00')
                                                 ->numeric()
-                                                ->helperText('Opcional si ya ingresaste el total en US$.'),
+                                                ->minValue(0)
+                                                ->requiredWithout('invoice_amount_usd')
+                                                ->helperText('Opcional si ya indicaste el monto en US$.'),
                                         ]),
+                                    FileUpload::make('invoice_file_path')
+                                        ->label('Documento de la factura')
+                                        ->disk('public')
+                                        ->directory('operation-service-orders/invoices')
+                                        ->visibility('public')
+                                        ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
+                                        ->maxSize(4096)
+                                        ->required()
+                                        ->downloadable()
+                                        ->openable()
+                                        ->helperText('Formatos: PDF, JPG, PNG o WebP. Máximo 4 MB.')
+                                        ->validationMessages([
+                                            'required' => 'Debes adjuntar el documento de la factura.',
+                                        ])
+                                        ->columnSpanFull(),
                                 ])
                                 ->columns(1)
                                 ->columnSpanFull()
@@ -891,100 +993,81 @@ class OperationServiceOrdersTable
                         ])
                         ->successNotification(null)
                         ->action(function (OperationServiceOrder $record, array $data): void {
-                            $tasa = (float) ($data['tasa_bcv'] ?? 0);
-                            if ($tasa <= 0) {
-                                Notification::make()
-                                    ->title('Tasa inválida')
-                                    ->body('La tasa BCV debe ser mayor que cero.')
-                                    ->warning()
-                                    ->send();
-
-                                return;
-                            }
-
-                            $usdRaw = $data['total_amount_usd'] ?? null;
-                            $vesRaw = $data['total_amount_ves'] ?? null;
-                            $usd = ($usdRaw !== null && $usdRaw !== '') ? (float) $usdRaw : null;
-                            $ves = ($vesRaw !== null && $vesRaw !== '') ? (float) $vesRaw : null;
+                            $usdRaw = $data['invoice_amount_usd'] ?? null;
+                            $vesRaw = $data['invoice_amount_ves'] ?? null;
+                            $usd = ($usdRaw !== null && $usdRaw !== '') ? round((float) $usdRaw, 4) : null;
+                            $ves = ($vesRaw !== null && $vesRaw !== '') ? round((float) $vesRaw, 4) : null;
 
                             if ($usd === null && $ves === null) {
                                 Notification::make()
                                     ->title('Montos requeridos')
-                                    ->body('Indica al menos un monto en US$ o en bolívares.')
+                                    ->body('Indica al menos el monto facturado en US$ o en bolívares.')
                                     ->warning()
                                     ->send();
 
                                 return;
                             }
 
-                            if ($usd !== null && $ves !== null) {
-                                $ves = $usd * $tasa;
-                            } elseif ($usd !== null) {
-                                $ves = $usd * $tasa;
-                            } else {
-                                $usd = $ves / $tasa;
+                            $filePath = $data['invoice_file_path'] ?? null;
+
+                            if (is_array($filePath)) {
+                                $filePath = reset($filePath) ?: null;
+                            }
+
+                            if (! filled($filePath)) {
+                                Notification::make()
+                                    ->title('Documento requerido')
+                                    ->body('Adjunta el archivo de la factura para poder registrarla.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
                             }
 
                             $record->update([
-                                'tasa_bcv' => $tasa,
-                                'total_amount_usd' => round($usd, 4),
-                                'total_amount_ves' => round($ves, 4),
-                                'payment_method' => (string) $data['payment_method'],
+                                'invoice_number' => trim((string) $data['invoice_number']),
+                                'invoice_date' => $data['invoice_date'],
+                                'invoice_amount_usd' => $usd,
+                                'invoice_amount_ves' => $ves,
+                                'invoice_file_path' => (string) $filePath,
+                                'invoice_uploaded_by' => Auth::user()?->name ?? 'sistema',
+                                'invoice_uploaded_at' => now(),
+                                'administrative_status' => OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_INVOICED,
                                 'updated_by' => Auth::user()?->name ?? 'sistema',
-                                'status_payment' => 'PAGADO',
                             ]);
 
-                            Notification::make()
-                                ->title('Datos de pago guardados')
-                                ->body('La orden #'.($record->order_number ?: $record->getKey()).' se actualizó correctamente.')
-                                ->success()
-                                ->send();
-                        })
-                        ->hidden(fn (OperationServiceOrder $record): bool => $record->status_payment === 'PAGADO'),
-                    Action::make('upload_files')
-                        ->label('Cargar Soportes')
-                        ->icon('heroicon-m-cloud-arrow-up')
-                        ->color('warning')
-                        // ->button()
-                        // ->extraAttributes([
-                        //     'x-on:click.stop' => '',
-                        //     'class' => 'rounded-full border-b-2 border-warning-600 dark:border-warning-500 bg-warning-500/15 dark:bg-warning-500/25 text-warning-700 dark:text-warning-300 font-semibold shadow-sm hover:bg-warning-500/25 dark:hover:bg-warning-500/35',
-                        // ])
-                        ->modalHeading('Cargar Soportes')
-                        ->modalDescription('Cargue los soportes de la orden de servicio')
-                        ->modalSubmitActionLabel('Cargar')
-                        ->modalCancelActionLabel('Cancelar')
-                        ->modalIcon('heroicon-m-cloud-arrow-up')
-                        ->form([
-                            FileUpload::make('files')
-                                ->label('Soportes')
-                                ->disk('public')
-                                ->directory('operation-service-orders-files')
-                                ->visibility('public')
-                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
-                                ->maxSize(2048)
-                                ->helperText('Formatos: JPG, PNG, WebP o PDF. Máximo 2 MB.')
-                                ->multiple()
-                                ->required()
-                                ->validationMessages([
-                                    'required' => 'El campo es requerido',
-                                ]),
-                        ])
-                        ->action(function (OperationServiceOrder $record, array $data): void {
-                            $record->update([
-                                'files' => $data['files'],
-                                'updated_by' => Auth::user()->name,
-                            ]);
+                            $quoted = OperationServiceOrderListDisplay::quoteAmountUsd($record);
+                            $difference = ($usd !== null && $quoted !== null) ? round($usd - $quoted, 2) : null;
 
-                            OperationServiceOrderCoordinationSync::finalizeOrder($record);
+                            if ($difference !== null && abs($difference) >= 0.01) {
+                                Notification::make()
+                                    ->title('Factura registrada con diferencia')
+                                    ->body('La orden #'.($record->order_number ?: $record->getKey()).' quedó facturada, pero el monto difiere de la cotización en US$ '
+                                        .number_format(abs($difference), 2, ',', '.').' ('.($difference > 0 ? 'por encima' : 'por debajo').'). Verifica con el proveedor si corresponde.')
+                                    ->warning()
+                                    ->persistent()
+                                    ->send();
+
+                                return;
+                            }
 
                             Notification::make()
-                                ->title('¡TAREA COMPLETADA!')
-                                ->body('Los soportes se cargaron, la orden quedó finalizada y los ítems de la coordinación se actualizaron.')
+                                ->title('Factura registrada')
+                                ->body('La orden #'.($record->order_number ?: $record->getKey()).' pasó a estatus administrativo «Facturado».')
                                 ->success()
                                 ->send();
-                        })
-                        ->hidden(fn (OperationServiceOrder $record): bool => $record->status === 'FINALIZADO'),
+                        }),
+                    Action::make('previewInvoice')
+                        ->label('Ver factura')
+                        ->icon('heroicon-m-document-magnifying-glass')
+                        ->color('gray')
+                        ->url(
+                            fn (OperationServiceOrder $record): ?string => filled($record->invoice_file_path)
+                                ? URL::to(Storage::url((string) $record->invoice_file_path))
+                                : null,
+                            shouldOpenInNewTab: true
+                        )
+                        ->hidden(fn (OperationServiceOrder $record): bool => ! filled($record->invoice_file_path)),
                     Action::make('preview_files')
                         ->label('Vista previa')
                         ->icon('heroicon-m-eye')
@@ -1058,6 +1141,80 @@ class OperationServiceOrdersTable
         }
 
         return [TelemedicinePriorityFilamentBadge::recordRowClasses($record->telemedicinePriority?->name)];
+    }
+
+    /**
+     * Proveedor efectivo de la orden: el propio, el de telemedicina o el de la cotización aprobada.
+     */
+    private static function invoiceSupplier(OperationServiceOrder $record): ?Supplier
+    {
+        return $record->supplier
+            ?? $record->telemedicineSupplier
+            ?? $record->approvedOperationQuote?->supplier;
+    }
+
+    /**
+     * Ficha de solo lectura que ve el analista al cargar la factura: proveedor, monto y código de cotización.
+     */
+    private static function renderInvoiceContextPreview(OperationServiceOrder $record): HtmlString
+    {
+        $supplier = self::invoiceSupplier($record);
+        $supplierName = filled($supplier?->name) ? (string) $supplier->name : self::supplierLabel($record);
+        $quoteCode = OperationServiceOrderListDisplay::quoteCodeLabel($record->approvedOperationQuote?->id);
+        $quoteAmount = OperationServiceOrderListDisplay::quoteAmountLabel($record);
+        $quotePdfUrl = self::quotePdfPublicUrl($record);
+
+        $rows = [
+            ['Orden de servicio', $record->order_number ?: '—'],
+            ['Tipo de servicio', filled($record->service_type) ? mb_strtoupper((string) $record->service_type) : '—'],
+            ['Proveedor', $supplierName],
+            ['RIF / Razón social', trim(implode(' · ', array_filter([
+                filled($supplier?->rif) ? (string) $supplier->rif : null,
+                filled($supplier?->razon_social) ? (string) $supplier->razon_social : null,
+            ]))) ?: '—'],
+            ['Contacto del proveedor', trim(implode(' · ', array_filter([
+                filled($supplier?->local_phone) ? (string) $supplier->local_phone : null,
+                filled($supplier?->personal_phone) ? (string) $supplier->personal_phone : null,
+                filled($supplier?->correo_principal) ? (string) $supplier->correo_principal : null,
+            ]))) ?: '—'],
+            ['Condiciones de pago', trim(implode(' · ', array_filter([
+                filled($supplier?->convenio_pago) ? (string) $supplier->convenio_pago : null,
+                filled($supplier?->tiempo_credito) ? 'Crédito: '.$supplier->tiempo_credito : null,
+            ]))) ?: '—'],
+            ['Código de cotización', $quoteCode],
+            ['Monto cotizado', $quoteAmount],
+        ];
+
+        $cells = '';
+
+        foreach ($rows as [$label, $value]) {
+            $cells .= '<div class="flex flex-col gap-0.5 rounded-xl border border-gray-200/90 bg-white/60 px-3 py-2 dark:border-white/10 dark:bg-white/5">'
+                .'<span class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">'.e($label).'</span>'
+                .'<span class="text-sm font-medium text-gray-900 dark:text-gray-100">'.e($value).'</span>'
+                .'</div>';
+        }
+
+        $footer = '';
+
+        if ($quotePdfUrl !== null) {
+            $footer = '<div class="mt-3 flex justify-end">'
+                .'<a href="'.e($quotePdfUrl).'" target="_blank" class="inline-flex items-center gap-1 rounded-full border-b-2 border-primary-600 bg-primary-500/15 px-3 py-1 text-xs font-semibold text-primary-700 dark:border-primary-500 dark:bg-primary-500/25 dark:text-primary-300">Abrir PDF de la cotización</a>'
+                .'</div>';
+        }
+
+        $notice = '';
+
+        if (OperationServiceOrderListDisplay::hasInvoice($record)) {
+            $notice = '<p class="mt-3 rounded-xl bg-warning-500/10 px-3 py-2 text-xs font-medium text-warning-700 dark:text-warning-300">'
+                .'Esta orden ya tiene la factura '.e($record->invoice_number ?: 'cargada')
+                .(filled($record->invoice_uploaded_by) ? ', registrada por '.e((string) $record->invoice_uploaded_by) : '')
+                .(filled($record->invoice_uploaded_at) ? ' el '.e($record->invoice_uploaded_at->format('d/m/Y H:i')) : '')
+                .'. Al guardar se reemplazarán los datos anteriores.</p>';
+        }
+
+        return new HtmlString(
+            '<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">'.$cells.'</div>'.$footer.$notice
+        );
     }
 
     private static function renderMedicationQuotesPreview(OperationServiceOrder $record): HtmlString

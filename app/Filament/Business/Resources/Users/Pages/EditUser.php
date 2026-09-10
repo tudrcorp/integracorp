@@ -7,6 +7,7 @@ namespace App\Filament\Business\Resources\Users\Pages;
 use App\Filament\Business\Resources\Users\Schemas\UserForm;
 use App\Filament\Business\Resources\Users\UserResource;
 use App\Models\User;
+use App\Support\Filament\CommercialNetworkPermissionRegistry;
 use App\Support\Filament\UserCredentialSynchronizer;
 use App\Support\Filament\UserFormPermissionOptions;
 use App\Support\Filament\UserPageHeader;
@@ -59,6 +60,13 @@ class EditUser extends EditRecord
             }
         }
 
+        $data[CommercialNetworkPermissionRegistry::FIELD_KEY] = $record->permissions()
+            ->where('permissions.module', CommercialNetworkPermissionRegistry::MODULE)
+            ->pluck('permissions.id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
+
         return $data;
     }
 
@@ -95,6 +103,20 @@ class EditUser extends EditRecord
         }
 
         $this->pendingPermissionIds = UserForm::extractPermissionIdsFromState($state);
+
+        if (! array_key_exists(CommercialNetworkPermissionRegistry::FIELD_KEY, $state)) {
+            $existingCommercialIds = $this->record->permissions()
+                ->where('permissions.module', CommercialNetworkPermissionRegistry::MODULE)
+                ->pluck('permissions.id')
+                ->map(fn (mixed $id): int => (int) $id)
+                ->all();
+
+            $this->pendingPermissionIds = array_values(array_unique(array_merge(
+                $this->pendingPermissionIds,
+                $existingCommercialIds,
+            )));
+        }
+
         foreach (UserForm::allPermissionFieldKeys() as $permissionFieldKey) {
             unset($data[$permissionFieldKey]);
         }

@@ -134,6 +134,7 @@ class AffiliationCorporatesTable
             ])
             ->recordActions([
                 ActionGroup::make([
+                    \App\Filament\Shared\CommercialTelemedicine\Actions\ViewAffiliationTelemedicinePatientsAction::make(),
                     /**UPLOAD */
                     Action::make('upload')
                         ->label('Comprobante de Pago')
