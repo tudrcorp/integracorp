@@ -315,11 +315,132 @@
             color: var(--navy);
         }
 
-        .pillar-detail, .value-detail, .suite-detail, .future-detail { display: none; }
+        .pillar-detail, .value-detail, .suite-detail, .future-detail, .lifecycle-detail { display: none; }
         .pillar-card.is-active .pillar-detail,
         .value-card.is-active .value-detail,
         .suite-card.is-active .suite-detail,
-        .future-card.is-active .future-detail { display: block; }
+        .future-card.is-active .future-detail,
+        .lifecycle-step.is-active .lifecycle-detail { display: block; }
+
+        .cover-tracks {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.55rem;
+        }
+
+        @media (min-width: 420px) {
+            .cover-tracks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+
+        .cover-track {
+            border-radius: 0.95rem;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.72);
+            padding: 0.7rem 0.75rem;
+            text-align: left;
+            min-height: 4.4rem;
+        }
+
+        .cover-track__label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--navy);
+            letter-spacing: -0.01em;
+        }
+
+        .cover-track__hint {
+            margin-top: 0.2rem;
+            font-size: 0.65rem;
+            line-height: 1.35;
+            color: var(--ink-soft);
+        }
+
+        .flow-kicker {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .flow-rail {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.65rem;
+        }
+
+        @media (min-width: 768px) {
+            .flow-rail {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 0.55rem;
+            }
+        }
+
+        .lifecycle-step {
+            position: relative;
+            min-height: 6.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .lifecycle-step { min-height: 8.25rem; }
+        }
+
+        .lifecycle-step__num {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: white;
+            background: var(--accent);
+            box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 28%, transparent);
+        }
+
+        .hub-url {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .hub-url__link {
+            font-size: clamp(1.15rem, 3.2vw, 1.85rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: var(--navy);
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .hub-url__link:hover,
+        .hub-url__link:focus-visible {
+            color: var(--accent);
+        }
+
+        .hub-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border-radius: 9999px;
+            padding: 0.35rem 0.75rem;
+            font-size: 11px;
+            font-weight: 700;
+            background: color-mix(in srgb, #34C759 14%, white);
+            color: #1F7A3A;
+            border: 1px solid color-mix(in srgb, #34C759 28%, white);
+        }
+
+        .hub-status__dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 9999px;
+            background: #34C759;
+            box-shadow: 0 0 0 4px rgba(52, 199, 89, 0.18);
+        }
 
         .speaker-note {
             max-height: 0;
@@ -513,6 +634,15 @@
                 top: 3.75rem;
                 bottom: 5.75rem;
             }
+
+            .cover-track {
+                min-height: 0;
+                padding: 0.5rem 0.65rem;
+            }
+
+            .lifecycle-step {
+                min-height: 0;
+            }
         }
     </style>
     @include('partials.presentation-app-chrome-styles')
@@ -578,12 +708,15 @@
                                     <div class="liquid-glass liquid-glass--accent p-8 sm:p-10 float-y w-full max-w-md">
                                         <div class="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)] mb-3">{{ $slide['data']['badge'] ?? 'Presentación' }}</div>
                                         <div class="text-2xl font-bold text-[var(--navy)] mb-2">Departamento de Tecnología</div>
-                                        <p class="text-sm text-[var(--ink-soft)] leading-relaxed mb-6">
+                                        <p class="text-sm text-[var(--ink-soft)] leading-relaxed mb-5">
                                             Robustez · Interactividad · Escalabilidad. El trabajo que sostiene Operaciones, Negocios, Marketing y la experiencia del paciente.
                                         </p>
-                                        <div class="grid grid-cols-3 gap-2">
-                                            @foreach (['Ops', 'API', 'CX'] as $chip)
-                                                <div class="rounded-xl bg-white/70 border border-white/80 px-2 py-3 text-center text-xs font-semibold text-[var(--navy)]">{{ $chip }}</div>
+                                        <div class="cover-tracks">
+                                            @foreach ($slide['data']['tracks'] ?? [] as $track)
+                                                <div class="cover-track">
+                                                    <div class="cover-track__label">{{ $track['label'] }}</div>
+                                                    <div class="cover-track__hint">{{ $track['hint'] }}</div>
+                                                </div>
                                             @endforeach
                                         </div>
                                     </div>
@@ -655,6 +788,78 @@
                                         </ul>
                                     </div>
                                 </div>
+                            </div>
+
+                        @elseif ($slide['type'] === 'lifecycle')
+                            <div class="flex flex-col gap-4">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    @foreach ($slide['tags'] as $tag)
+                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                    @endforeach
+                                </div>
+                                <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
+                                <p class="reveal-item text-sm sm:text-base text-[var(--ink-soft)] max-w-3xl">{{ $slide['subtitle'] }}</p>
+                                @if (! empty($slide['data']['kicker']))
+                                    <div class="reveal-item flow-kicker">{{ $slide['data']['kicker'] }}</div>
+                                @endif
+                                <div class="flow-rail">
+                                    @foreach ($slide['data']['steps'] ?? [] as $i => $step)
+                                        <button type="button" class="lifecycle-step liquid-glass liquid-glass--interactive text-left px-4 py-4 {{ $i === 0 ? 'is-active' : '' }}">
+                                            <div class="flex items-center gap-2.5 mb-2">
+                                                <span class="lifecycle-step__num" aria-hidden="true">{{ $i + 1 }}</span>
+                                                <div class="font-semibold text-[var(--navy)] leading-snug">{{ $step['title'] }}</div>
+                                            </div>
+                                            <p class="lifecycle-detail text-sm text-[var(--ink-soft)] leading-relaxed">{{ $step['detail'] }}</p>
+                                        </button>
+                                    @endforeach
+                                </div>
+                                @if (! empty($slide['data']['promise']))
+                                    <div class="reveal-item liquid-glass liquid-glass--accent px-4 py-3 text-sm font-medium text-[var(--navy)]">
+                                        {{ $slide['data']['promise'] }}
+                                    </div>
+                                @endif
+                                @if ($slide['speaker_note'])
+                                    <button type="button" class="reveal-item text-left text-xs text-[var(--accent)] font-medium" data-toggle-note>Nota del presentador ▾</button>
+                                    <div class="speaker-note liquid-glass px-4 py-3 text-sm text-[var(--ink-soft)]">{{ $slide['speaker_note'] }}</div>
+                                @endif
+                            </div>
+
+                        @elseif ($slide['type'] === 'hub')
+                            <div class="flex flex-col gap-4">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    @foreach ($slide['tags'] as $tag)
+                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                    @endforeach
+                                </div>
+                                <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
+                                <p class="reveal-item text-sm sm:text-base text-[var(--ink-soft)] max-w-3xl">{{ $slide['subtitle'] }}</p>
+                                <div class="reveal-item liquid-glass liquid-glass--accent px-5 py-5 hub-url">
+                                    <a class="hub-url__link" href="{{ $slide['data']['url'] ?? '#' }}" target="_blank" rel="noopener noreferrer">
+                                        {{ str_replace('https://', '', $slide['data']['url'] ?? '') }}
+                                    </a>
+                                    <span class="hub-status">
+                                        <span class="hub-status__dot pulse-soft" aria-hidden="true"></span>
+                                        {{ $slide['data']['status'] ?? 'En línea' }}
+                                    </span>
+                                </div>
+                                <div class="grid sm:grid-cols-3 gap-3">
+                                    @foreach ($slide['data']['cards'] ?? [] as $card)
+                                        <div class="reveal-item liquid-glass px-4 py-4">
+                                            <div class="text-xs font-semibold uppercase tracking-wide mb-1" style="color: {{ $slide['color'] }}">{{ $card['title'] }}</div>
+                                            <p class="text-sm text-[var(--ink-soft)] leading-relaxed">{{ $card['detail'] }}</p>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div class="reveal-item flex flex-wrap items-center gap-2">
+                                    <span class="rounded-full bg-white/75 border border-white/85 px-3 py-1 text-[11px] font-semibold text-[var(--navy)]">{{ $slide['data']['host'] ?? '' }}</span>
+                                    <span class="text-[11px] text-[var(--ink-soft)]">Hub interno · HTTPS · equipo de Tecnología</span>
+                                </div>
+                                @if ($slide['speaker_note'])
+                                    <button type="button" class="reveal-item text-left text-xs text-[var(--accent)] font-medium" data-toggle-note>Nota del presentador ▾</button>
+                                    <div class="speaker-note liquid-glass px-4 py-3 text-sm text-[var(--ink-soft)]">{{ $slide['speaker_note'] }}</div>
+                                @endif
                             </div>
 
                         @elseif ($slide['type'] === 'value')
@@ -1101,6 +1306,14 @@
                     card.dataset.ready = '1';
                     card.addEventListener('click', () => {
                         setExclusiveActive(slideEl.querySelectorAll('.future-card'), card);
+                    });
+                });
+
+                slideEl.querySelectorAll('.lifecycle-step').forEach((card) => {
+                    if (card.dataset.ready) return;
+                    card.dataset.ready = '1';
+                    card.addEventListener('click', () => {
+                        setExclusiveActive(slideEl.querySelectorAll('.lifecycle-step'), card);
                     });
                 });
 

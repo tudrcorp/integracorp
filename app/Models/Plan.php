@@ -25,6 +25,7 @@ class Plan extends Model
         'agencies',
         'pricing_mode',
         'structure_version',
+        'requires_preexistence_note',
     ];
 
     /** Planes armados con el asistente de Negocios. */
@@ -39,6 +40,7 @@ class Plan extends Model
             'pricing_mode' => PlanPricingMode::class,
             'structure_version' => 'integer',
             'is_quotable' => 'boolean',
+            'requires_preexistence_note' => 'boolean',
             'quotable_in' => PlanQuotableScope::class,
         ];
     }

@@ -69,7 +69,7 @@ final class SystemsKnowledgeCatalog
             [
                 'id' => 'avances',
                 'title' => 'Última presentación (avances tecnológicos)',
-                'subtitle' => 'Paneles, API, infraestructura y futuro',
+                'subtitle' => 'Operaciones, PWA, portal, marketing, intra y generador de planes',
                 'url' => '/avances-tecnologicos',
                 'status' => self::STATUS_READY,
                 'requires_auth' => true,

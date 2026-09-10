@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Mail\SendMailKitBienvenida;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
+use App\Models\Plan;
 use App\Models\User;
+use App\Support\AffiliationCorporates\CorporateCertificateBenefitSections;
+use App\Support\Affiliations\WelcomeKitAttachments;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\SecurityAudit;
 use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
@@ -13,7 +16,6 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -1054,130 +1056,138 @@ class AffiliationController extends Controller
      * Comprime y descarga múltiples archivos en un único archivo ZIP.
      * * NOTA: Requiere que la extensión 'zip' de PHP esté habilitada.
      */
+    /**
+     * Descarga (ZIP) o reenvía (correo) el kit de bienvenida de una afiliación individual.
+     *
+     * Los tres documentos se resuelven y verifican antes de actuar: la tarjeta ya no siempre
+     * se llama `TAR-{code}.pdf` y el condicionado depende de la marca (TDG o empresa aliada).
+     *
+     * @param  array<string, mixed>  $data
+     * @return string|bool Ruta del ZIP en DESCARGAR (null si falta algo); true/false si se envió en REENVIAR.
+     */
     public static function downloadResendKit($record, $data)
     {
+        $option = $data['option'] ?? null;
+        $kit = WelcomeKitAttachments::forAffiliation($record);
+
+        if (! $kit->isComplete()) {
+            Notification::make()
+                ->title('El kit está incompleto')
+                ->body($kit->missingSummary().' Genera los documentos pendientes de la afiliación '
+                    .($record->code ?: '').' y vuelve a intentarlo.')
+                ->icon('heroicon-s-x-circle')
+                ->iconColor('danger')
+                ->danger()
+                ->persistent()
+                ->send();
+
+            Log::warning('KIT INCOMPLETO: no se descargó ni se envió el kit de bienvenida.', [
+                'code' => $record->code,
+                'option' => $option,
+                'missing' => $kit->missingLabels(),
+            ]);
+
+            return $option === 'DESCARGAR' ? null : false;
+        }
 
         try {
 
             /**
              * DESCARGAR KIT BIENVENIDA
              *
-             * @version 2.0
+             * @version 3.0
              */
-            if ($data['option'] == 'DESCARGAR') {
+            if ($option === 'DESCARGAR') {
 
-                $certificado = storage_path('app/public/certificados-doc/CER-'.$record->code.'.pdf');
-                $tarjeta = storage_path('app/public/tarjeta-afiliacion/TAR-'.$record->code.'.pdf');
-
-                if ($record->plan_id == 1) {
-                    $condicionado = storage_path('app/public/condicionados/CondicionesINICIAL.pdf');
-                } elseif ($record->plan_id == 2) {
-                    $condicionado = storage_path('app/public/condicionados/CondicionesIDEAL.pdf');
-                } elseif ($record->plan_id == 3) {
-                    $condicionado = storage_path('app/public/condicionados/CondicionesESPECIAL.pdf');
-                } else {
-                    throw new \Exception("Plan no soportado: {$record->plan_id}");
-                }
-
-                if (! file_exists($certificado) || ! file_exists($tarjeta) || ! file_exists($condicionado)) {
-                    Notification::make()
-                        ->title('Error')
-                        ->body('Uno o más archivos del kit no existen.')
-                        ->danger()
-                        ->send();
-
-                    return null;
-                }
-
-                $files = [
-                    $certificado,
-                    $tarjeta,
-                    $condicionado,
-                ];
-
-                // dd($files);
-
-                // 2. Configurar el archivo ZIP temporal de salida
                 $zipFileName = 'Kit_Bienvenida_'.time().'.zip';
-                // Usamos el directorio temporal del sistema operativo
-                $tempZipPath = storage_path('app/public/kit-temp/').$zipFileName;
+                $directory = storage_path('app/public/kit-temp/');
 
-                // AffiliationController::downloadMultipleFilesAsZip($files);
+                if (! is_dir($directory)) {
+                    mkdir($directory, 0755, true);
+                }
+
+                $tempZipPath = $directory.$zipFileName;
+
                 $zip = new ZipArchive;
 
-                // Abrir/Crear el archivo ZIP
                 if ($zip->open($tempZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-                    // Error en la creación del archivo ZIP
-                    return response('Error: No se pudo crear el archivo ZIP temporal.', 500);
+                    throw new \Exception('No se pudo crear el archivo ZIP temporal del kit.');
                 }
 
-                for ($i = 0; $i < count($files); $i++) {
-
-                    $zip->addFile($files[$i], basename($files[$i]));
+                foreach ($kit->paths() as $file) {
+                    $zip->addFile($file, basename($file));
                 }
 
                 $zip->close();
-                Log::info('ZIP path', ['path' => $tempZipPath, 'exists' => file_exists($tempZipPath)]);
-                Log::info('DESCARGA COMPLETADA: Kit enviado correctamente.', [
-                    // 'to' => $data['email'],
+
+                Log::info('DESCARGA COMPLETADA: Kit generado correctamente.', [
+                    'code' => $record->code,
                     'user' => $record->full_name_payer,
+                    'files' => $kit->filenames(),
                 ]);
 
                 return $tempZipPath;
-                // return response()->download($tempZipPath, $zipFileName)->deleteFileAfterSend(true);
-
             }
 
             /**
              * REENVIAR KIT BIENVENIDA
              *
-             * @version 2.0
+             * Se envía en el acto (no en cola) para que el analista sepa de verdad si salió:
+             * encolado, un adjunto ausente moría en el worker y la UI ya había dicho «enviado».
+             *
+             * @version 3.0
              */
-            if ($data['option'] == 'REENVIAR') {
+            if ($option === 'REENVIAR') {
 
                 $code = [
                     'code' => $record->code,
                 ];
 
-                if ($record->plan_id == 1) {
-                    $condicionado = 'CondicionesINICIAL.pdf';
-                }
-                if ($record->plan_id == 2) {
-                    $condicionado = 'CondicionesIDEAL.pdf';
-                }
-                if ($record->plan_id == 3) {
-                    $condicionado = 'CondicionesESPECIAL.pdf';
-                }
-
                 Mail::to($data['email'])
                     ->cc('afiliaciones@tudrencasa.com')
-                    ->send(new SendMailKitBienvenida($code, $condicionado));
+                    ->sendNow(new SendMailKitBienvenida(
+                        $code,
+                        basename((string) $kit->condicionadoPath),
+                        $kit->paths(),
+                    ));
 
                 Log::info('ENVIO COMPLETADO: Kit enviado correctamente.', [
-                    // 'to' => $data['email'],
+                    'code' => $record->code,
+                    'to' => $data['email'],
                     'user' => $record->full_name_payer,
+                    'files' => $kit->filenames(),
                 ]);
 
                 Notification::make()
                     ->title('¡TAREA COMPLETADA!')
-                    ->body('✅ Kit reenviado correctamente.')
+                    ->body('✅ Kit enviado a '.$data['email'].'.')
                     ->success()
                     ->send();
+
+                return true;
             }
+
+            return false;
         } catch (\Throwable $th) {
 
             Log::error('FALLA DE ENVIO: No se pudo enviar el kit.', [
-                // 'to' => $data['email'],
+                'code' => $record->code,
+                'to' => $data['email'] ?? null,
                 'user' => $record->full_name_payer,
                 'error' => $th->getMessage(),
                 'trace' => $th->getTraceAsString(),
             ]);
 
             Notification::make()
-                ->title('EXCEPTION')
-                ->body($th->getMessage().' Linea: '.$th->getLine().' Archivo: '.$th->getFile())
+                ->title($option === 'DESCARGAR' ? 'ERROR EN LA DESCARGA DEL KIT' : 'ERROR EN EL ENVIO DEL KIT')
+                ->body($th->getMessage())
+                ->icon('heroicon-s-x-circle')
+                ->iconColor('danger')
                 ->danger()
+                ->persistent()
                 ->send();
+
+            return $option === 'DESCARGAR' ? null : false;
         }
     }
 
@@ -1189,28 +1199,73 @@ class AffiliationController extends Controller
      * @param  iterable<mixed>  $afiliates
      * @return array<string, mixed>
      */
+    /**
+     * @param  array<string, mixed>  $pagador
+     * @param  list<string>  $beneficios_table
+     * @param  iterable<mixed>  $afiliates
+     * @param  list<array{plan_id: int|null, plan_label: string, rows: list<array{text: string, show_cobertura: bool}>, note: string|null}>|null  $benefitSections
+     *                                                                                                                                                              Secciones de beneficios ya resueltas (corporativas con varios planes). Si es null se
+     *                                                                                                                                                              arma una sola sección con `$beneficios_table`, que es el caso del certificado individual.
+     * @return array<string, mixed>
+     */
     public static function dataForCertificatePdfView(
         array $pagador,
         array $beneficios_table,
         iterable $afiliates,
         ?WhiteCompanyDocumentBrand $brand = null,
+        ?array $benefitSections = null,
+        bool $showPlanColumn = false,
     ): array {
         $pagador['periodo_facturado_hasta'] = self::certificatePeriodoFacturadoHasta($pagador);
         $brand ??= WhiteCompanyDocumentBrand::tdec();
         $planId = isset($pagador['plan_id']) ? (int) $pagador['plan_id'] : null;
         $pagador['plan'] = $brand->planDisplayName($planId, (string) ($pagador['plan'] ?? ''));
 
+        $cobertura = (float) ($pagador['cobertura'] ?? 0);
+        $hasCoverageAmount = $cobertura > 0;
+
+        $benefitSections ??= [[
+            'plan_id' => $planId,
+            'plan_label' => '',
+            'rows' => self::certificateBeneficiosRows($beneficios_table, $hasCoverageAmount),
+            'note' => self::planRequiresPreexistenceNote($planId)
+                ? CorporateCertificateBenefitSections::PREEXISTENCE_NOTE
+                : null,
+        ]];
+
         return [
             'pagador' => $pagador,
             'affiliateTableRows' => self::certificateAffiliateTableRows($afiliates),
-            'coberturaFormatted' => number_format((float) ($pagador['cobertura'] ?? 0), 2, ',', '.'),
-            'beneficiosRows' => self::certificateBeneficiosRows($beneficios_table),
+            'coberturaFormatted' => number_format($cobertura, 2, ',', '.'),
+            'beneficiosRows' => $benefitSections[0]['rows'] ?? [],
+            'benefitSections' => array_values($benefitSections),
+            'showPlanColumn' => $showPlanColumn,
             'brandColor' => $brand->primaryColor,
             'logoDataUri' => $brand->logoDataUri(),
             'signatureDataUri' => $brand->signatureDataUri(),
             'isAlliedCertificate' => $brand->isAllied(),
             'companyName' => $brand->companyName(),
         ];
+    }
+
+    /**
+     * La nota de preexistencias la declara el plan (`plans.requires_preexistence_note`).
+     * Antes se decidía con el número mágico `plan_id == 3`, que dejaba fuera a los planes
+     * equivalentes del catálogo nuevo; ese id queda solo como respaldo.
+     */
+    private static function planRequiresPreexistenceNote(?int $planId): bool
+    {
+        if ($planId === null) {
+            return false;
+        }
+
+        $flag = Plan::query()->whereKey($planId)->value('requires_preexistence_note');
+
+        if ($flag === null) {
+            return $planId === 3;
+        }
+
+        return (bool) $flag;
     }
 
     /**
@@ -1259,6 +1314,7 @@ class AffiliationController extends Controller
                     'nro_identificacion' => (string) ($a['nro_identificacion'] ?? ''),
                     'birth_date' => $a['birth_date'] ?? '',
                     'relationship' => (string) ($a['relationship'] ?? ''),
+                    'plan_label' => (string) ($a['plan_label'] ?? ''),
                 ];
             }
 
@@ -1267,6 +1323,7 @@ class AffiliationController extends Controller
                 'nro_identificacion' => (string) $a->nro_identificacion,
                 'birth_date' => $a->birth_date,
                 'relationship' => (string) $a->relationship,
+                'plan_label' => '',
             ];
         })->all();
     }
@@ -1275,7 +1332,7 @@ class AffiliationController extends Controller
      * @param  list<string>  $beneficios_table
      * @return list<array{text: string, show_cobertura: bool}>
      */
-    private static function certificateBeneficiosRows(array $beneficios_table): array
+    private static function certificateBeneficiosRows(array $beneficios_table, bool $hasCoverageAmount = true): array
     {
         $conCobertura = [
             'EMERGENCIAS MÉDICAS POR PATOLOGIAS LISTADAS',
@@ -1287,7 +1344,7 @@ class AffiliationController extends Controller
             $text = (string) $fila;
             $out[] = [
                 'text' => $text,
-                'show_cobertura' => in_array($text, $conCobertura, true),
+                'show_cobertura' => $hasCoverageAmount && in_array(trim($text), $conCobertura, true),
             ];
         }
 

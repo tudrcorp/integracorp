@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Support\AffiliateCard\AffiliateCardPageLayout;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\AffiliationCorporates\CorporateAffiliationContractedPlan;
+use App\Support\AffiliationCorporates\CorporateCertificateBenefitSections;
 use App\Support\Affiliations\AffiliationJobFailureLogger;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\Viveplus\ViveplusDocumentWebhookDispatcher;
@@ -703,18 +704,40 @@ class AffiliationCorporateBusinessDocumentsService
         ];
 
         $beneficios = CorporateAffiliationContractedPlan::benefitDescriptions($record);
-        $affiliates = $record->corporateAffiliates->map(function ($affiliate): array {
+
+        // Una corporativa puede tener afiliados en planes distintos: cada uno lleva su bloque
+        // de beneficios y la tabla indica a qué plan pertenece cada persona.
+        $benefitSections = CorporateCertificateBenefitSections::forAffiliation(
+            $record,
+            (float) $pagador['cobertura'] > 0,
+        );
+        $planNames = CorporateCertificateBenefitSections::planNames($record);
+        $showPlanColumn = count($benefitSections) > 1;
+
+        $affiliates = $record->corporateAffiliates->map(function ($affiliate) use ($planNames, $pagador): array {
             return [
-                'full_name' => trim((string) $affiliate->first_name.' '.(string) $affiliate->last_name),
+                'full_name' => self::certificateFullName($affiliate->first_name, $affiliate->last_name),
                 'nro_identificacion' => (string) $affiliate->nro_identificacion,
                 'birth_date' => (string) ($affiliate->birth_date ?? ''),
                 'relationship' => CorporateAffiliateRelationship::forCertificate($affiliate->relationship),
+                'plan_label' => CorporateCertificateBenefitSections::planLabelForAffiliate(
+                    $affiliate->plan_id !== null ? (int) $affiliate->plan_id : null,
+                    $planNames,
+                    (string) $pagador['plan'],
+                ),
             ];
         });
 
         $pdf = Pdf::loadView(
             'documents.certificate',
-            AffiliationController::dataForCertificatePdfView($pagador, $beneficios, $affiliates),
+            AffiliationController::dataForCertificatePdfView(
+                $pagador,
+                $beneficios,
+                $affiliates,
+                null,
+                $benefitSections !== [] ? $benefitSections : null,
+                $showPlanColumn,
+            ),
         );
         DomPdfBatchRenderOptions::apply($pdf);
 
@@ -724,6 +747,27 @@ class AffiliationCorporateBusinessDocumentsService
         if (! is_file($certificatePath)) {
             throw new RuntimeException('No se pudo guardar el certificado corporativo en disco.');
         }
+    }
+
+    /**
+     * Los padrones importados guardan «...» o «-» cuando el apellido venía en el mismo campo;
+     * imprimirlo tal cual dejaba nombres como «CAMILA GARCÍA CRUZCO ...» en el certificado.
+     */
+    private static function certificateFullName(?string $firstName, ?string $lastName): string
+    {
+        $parts = [];
+
+        foreach ([$firstName, $lastName] as $part) {
+            $clean = trim((string) $part);
+
+            if ($clean === '' || preg_match('/^[.\-_\/]+$/', $clean) === 1 || mb_strtoupper($clean) === 'N/A') {
+                continue;
+            }
+
+            $parts[] = $clean;
+        }
+
+        return trim(implode(' ', $parts));
     }
 
     private static function queueViveplusDocuments(AffiliationCorporate $record, ?int $userId): void

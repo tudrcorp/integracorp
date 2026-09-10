@@ -1,150 +1,214 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tarjeta de Afiliado</title>
+    <title>Certificado de Afiliación</title>
 
     <style>
-
+        /*
+         * El certificado pagina solo: la población corporativa puede tener miles de afiliados.
+         * Por eso nada del contenido usa `position: absolute` (antes la firma vivía en
+         * `top: 930px` y se montaba sobre la tabla) y el marco de la marca es un elemento
+         * `fixed`, que DomPDF repite en todas las páginas.
+         */
         @page {
-            margin: 0px;
+            /*
+             * Margen derecho de 90px: la línea azul del marco cae en x≈713 de los 794px de la
+             * página, así que el contenido debe terminar antes para no montarse sobre ella.
+             */
+            margin: 132px 90px 104px 58px;
         }
 
-        /* Estilos generales */
         body {
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            /* Centra horizontalmente */
-            align-items: center;
-            /* Centra verticalmente */
-            /* width: 100vw; */
-            min-height: 100vh;
-            /* Altura mínima de la ventana */
-            /* background-color: #f4f4f9; */
-
-        }
-
-        /* Contenedor padre */
-        .container {
-            width: 700px;
-            /* Ancho fijo del contenedor */
-            display: flex;
-            /* Activa Flexbox */
-            justify-content: space-between;
-            /* Espacio entre los divs */
-            border: 1px solid #ccc;
-            /* Borde para visualizar el contenedor */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            /* Sombra suave */
-            border-radius: 8px;
-            /* Bordes redondeados */
-            overflow: hidden;
-            /* Asegura que los bordes redondeados se vean bien */
-        }
-
-        .parent {
-            display: flex;
-            /* Activa Flexbox */
-            width: 100vw;
-            /* Ancho total de la ventana */
-            height: 155px;
-            /* Altura fija */
-            background-color: #f4f4f9;
-            /* Fondo claro */
-            border: 1px solid #ccc;
-            /* Borde para visualizar el contenedor */
-            box-sizing: border-box;
-            /* Incluye el borde en el cálculo del tamaño */
-        }
-
-        /* Divs hijos */
-        .child {
-            flex: 1;
-            /* Cada div ocupa el mismo espacio (50% del ancho del padre) */
-            display: flex;
-            justify-content: center;
-            /* Centra horizontalmente */
-            align-items: center;
-            /* Centra verticalmente */
-            text-align: center;
-            /* Alinea el texto al centro */
-            font-size: 18px;
-            color: #ffffff;
-            /* Texto blanco */
-        }
-
-        .cover {
-            position: relative;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            /* page-break-after: always; */
-        }
-
-
-        /* Estilos de la tabla */
-        table {
-            width: 100%; /* Ancho total */
-            border-collapse: separate; /* Necesario para bordes redondeados */
-            border-spacing: 0; /* Elimina el espacio entre celdas */
-            margin: 0; /* Centra la tabla */
-            max-width: 800px; /* Ancho máximo */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra suave */
+            font-family: 'Helvetica', Arial, sans-serif;
             font-size: 10px;
+            color: #000000;
         }
 
-
-        /* Separación entre filas */
-
-
-        /* Efecto hover en las filas */
-        tbody tr:hover {
-            background-color: #d9edff; /* Cambia el color al pasar el cursor */
+        .page-frame {
+            position: fixed;
+            top: -132px;
+            left: -58px;
+            width: 794px;
+            height: 1123px;
         }
 
-        footer {
-            display: flex;
-            position: fixed; 
-            bottom: 0px; 
-            left: 0px; 
-            right: 0px;
-            align-items: center;
-            text-align: center;
+        .page-frame img {
+            width: 794px;
+            height: 1123px;
         }
 
-        .titulos_table_uno{
-            color: #575757;
-            font-size: 12px;
-            text-align: left;
+        .allied-logo {
+            position: fixed;
+            top: -108px;
+            right: -18px;
+            text-align: right;
+        }
+
+        .allied-logo img {
+            max-width: 170px;
+            max-height: 82px;
+        }
+
+        .allied-name {
+            font-family: 'Helvetica', Arial, sans-serif;
+            font-size: 15px;
             font-weight: bold;
             text-transform: uppercase;
-            font-style: sans-serif;
-            font-family: 'Helvetica', Century, sans-serif;
-
         }
 
-        .contenido_table_uno{
-            color: #000000;
-            font-size: 12px;
-            text-align: left;
+        h2.section-title {
+            margin: 0 0 8px 0;
+            font-size: 15px;
+            font-weight: bold;
             text-transform: uppercase;
-            font-style: sans-serif;
-            font-family: 'Helvetica', Century, sans-serif;
-
+            font-family: 'Helvetica', Arial, sans-serif;
         }
 
+        h2.section-title.spaced {
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+
+        /* Datos principales de la afiliación */
+        .table-info td {
+            padding: 3px 6px 3px 0;
+            vertical-align: top;
+            font-size: 11px;
+            font-family: 'Helvetica', Arial, sans-serif;
+        }
+
+        .table-info .label {
+            color: #575757;
+            font-weight: bold;
+            text-transform: uppercase;
+            width: 128px;
+        }
+
+        .table-info .value {
+            color: #000000;
+            text-transform: uppercase;
+            word-wrap: break-word;
+        }
+
+        /* Población */
+        .table-people thead {
+            display: table-header-group;
+        }
+
+        .table-people tr {
+            page-break-inside: avoid;
+        }
+
+        .table-people th {
+            background-color: #b5b5b5;
+            color: #ffffff;
+            border: 1px solid #cccccc;
+            padding: 5px 6px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 9px;
+            text-transform: uppercase;
+        }
+
+        .table-people td {
+            border: 1px solid #cccccc;
+            padding: 4px 6px;
+            text-align: left;
+            font-size: 9.5px;
+            text-transform: uppercase;
+            word-wrap: break-word;
+        }
+
+        /* Beneficios */
+        .benefits-block {
+            margin-top: 14px;
+        }
+
+        .table-benefits td {
+            border-bottom: 1px solid #cccccc;
+            padding: 5px 4px;
+            font-size: 9px;
+            text-transform: uppercase;
+            word-wrap: break-word;
+        }
+
+        .table-benefits tr {
+            page-break-inside: avoid;
+        }
+
+        .table-benefits .mark {
+            width: 92px;
+            text-align: right;
+            padding-right: 10px;
+        }
+
+        .table-benefits .amount {
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .benefit-note {
+            margin: 8px 0 0 0;
+            font-size: 8px;
+            text-align: justify;
+            page-break-inside: avoid;
+        }
+
+        /*
+         * La numeración va con contadores CSS: `DomPdfBatchRenderOptions` arranca el motor con
+         * `isPhpEnabled => false`, así que un <script type="text/php"> jamás llega a ejecutarse.
+         */
+        .page-number {
+            position: fixed;
+            /*
+             * DomPDF ancla los elementos `fixed` al área de contenido, no al papel: por eso el
+             * desplazamiento negativo, que lo baja hasta la franja libre bajo el pie del marco.
+             */
+            bottom: -78px;
+            left: 0;
+            right: 0;
+            text-align: right;
+            font-size: 7.5px;
+            color: #7a7a7a;
+        }
+
+        .page-number:after {
+            /* `counter(pages)` devuelve 0 con este motor; se numera sin total. */
+            content: "Página " counter(page);
+        }
+
+        .signature {
+            margin-top: 26px;
+            page-break-inside: avoid;
+        }
+
+        .signature img {
+            width: 180px;
+            height: 70px;
+        }
+
+        .signature.allied {
+            text-align: center;
+        }
+
+        .signature.allied img {
+            width: auto;
+            max-width: 260px;
+            height: auto;
+            max-height: 90px;
+        }
     </style>
-
-
 </head>
+
 <body>
     @php
         $brandColor = $brandColor ?? '#26b2ca';
@@ -152,293 +216,153 @@
         $signatureDataUri = $signatureDataUri ?? '';
         $isAlliedCertificate = $isAlliedCertificate ?? false;
         $companyName = $companyName ?? '';
+        $pagador = $pagador ?? [];
+        $affiliateTableRows = $affiliateTableRows ?? [];
+        $coberturaFormatted = $coberturaFormatted ?? '0,00';
+        $showPlanColumn = $showPlanColumn ?? false;
+        $benefitSections = $benefitSections ?? [[
+            'plan_id' => $pagador['plan_id'] ?? null,
+            'plan_label' => '',
+            'rows' => $beneficiosRows ?? [],
+            'note' => null,
+        ]];
+        $peopleHeaders = ['Nombre y apellido', 'Documento de identidad', 'Fecha de nacimiento', 'Parentesco'];
+        if ($showPlanColumn) {
+            $peopleHeaders[] = 'Plan';
+        }
     @endphp
-    
-    <div
-        class="cover"
-        @if ($isAlliedCertificate)
-            style="background-color: #ffffff;"
-        @else
-            style="background-image: url('{{ public_path('storage/certificados/fondo-certificado.png') }}'); "
-        @endif
-    >
-        @if ($isAlliedCertificate)
-            @if ($logoDataUri !== '')
-                <img src="{{ $logoDataUri }}" alt="{{ $companyName }}" style="position: absolute; top: 24px; right: 40px; max-width: 170px; max-height: 90px;">
-            @elseif ($companyName !== '')
-                <div style="position: absolute; top: 32px; right: 40px; font-family: Helvetica, sans-serif; font-size: 16px; font-weight: bold; color: {{ $brandColor }}; text-transform: uppercase;">
-                    {{ $companyName }}
-                </div>
-            @endif
-        @endif
 
-        <!-- TITULO 1 -->
-        <div style="position: absolute; top: 60px; left: 60px; margin-top: 0px; padding: 0px; margin-left: 0px">
-            <!-- Titulo Uno-->
-            <p style="font-size: 30px;">
-                <span style="
-                        font-weight: bold;
-                        color: {{ $brandColor }};
-                        font-size: 16px; 
-                        font-style: sans-serif; 
-                        font-family: 'Helvetica', Century, sans-serif; 
-                        text-transform: uppercase;
-                    ">
-                    CERTIFICADO DE AFILIACIÓN
-                </span>
-            </p>
+    <div class="page-number"></div>
 
-            <!-- Tabla Informacionn Principal-->
-            <div style="width: 600px; max-width: 600px; margin: -20px auto;">
-                <table class="table_info_ti">
-                    <tbody class="tb_table_info_ti">
-                        <tr class="tr_table_info_ti">
-                            <td class="titulos_table_uno">Contratante:</td>
-                            <td class="contenido_table_uno">{{ $pagador['name'] }}</td>
-                            <td class="titulos_table_uno" style="font-weight: bold">Agente:</td>
-                            <td class="contenido_table_uno">{{ $pagador['agente_agencia'] }}</td>
-                        </tr>
-                        <tr class="tr_table_info_ti">
-                            <td class="titulos_table_uno" style="font-weight: bold">Código de Afiliación:</td>
-                            <td class="contenido_table_uno">{{ $pagador['code'] }}</td>
-                            <td class="titulos_table_uno" style="font-weight: bold">Tarifa Anual:</td>
-                            <td class="contenido_table_uno">US$ {{ number_format($pagador['tarifa_anual'], 2, ',', '.') }}</td>
-                        </tr>
-                        <tr class="tr_table_info_ti">
-                            <td class="titulos_table_uno" style="font-weight: bold">Plan:</td>
-                            <td class="contenido_table_uno">{{ $pagador['plan'] }}</td>
-                            <td class="titulos_table_uno" style="font-weight: bold">Frecuencia de Pago:</td>
-                            <td class="contenido_table_uno">{{ $pagador['frecuencia_pago'] }}</td>
-                        </tr>
-                        <tr class="tr_table_info_ti">
-                            <td class="titulos_table_uno" style="font-weight: bold">Fecha de Afiliación:</td>
-                            <td class="contenido_table_uno">{{ $pagador['fecha_afiliacion'] }}</td>
-                            <td class="titulos_table_uno" style="font-weight: bold">Tarifa Periodo:</td>
-                            <td class="contenido_table_uno">US$ {{ number_format($pagador['tarifa_periodo'], 2, ',', '.') }}</td>
-                        </tr>
-                        <tr class="tr_table_info_ti">
-                            <td class="titulos_table_uno" style="font-weight: bold">Vigencia:</td>
-                            <td class="contenido_table_uno">
-                                <p class="contenido_table_uno">Desde: {{ $pagador['fecha_vigencia'] }}</p>
-                                <p class="contenido_table_uno">Hasta: {{ $pagador['fecha_vigencia_final'] }}</p>
+    {{-- Marco de la marca: primero en el documento para que el contenido se dibuje encima. --}}
+    @if (! $isAlliedCertificate)
+        <div class="page-frame">
+            <img src="{{ public_path('storage/certificados/fondo-certificado.png') }}" alt="">
+        </div>
+    @elseif ($logoDataUri !== '')
+        <div class="allied-logo">
+            <img src="{{ $logoDataUri }}" alt="{{ $companyName }}">
+        </div>
+    @elseif ($companyName !== '')
+        <div class="allied-logo">
+            <span class="allied-name" style="color: {{ $brandColor }};">{{ $companyName }}</span>
+        </div>
+    @endif
 
+    <h2 class="section-title" style="color: {{ $brandColor }};">Certificado de afiliación</h2>
 
-                            </td>
-                            <td class="titulos_table_uno">Periodo Facturado:</td>
-                            <td class="contenido_table_uno">
-                                <p class="contenido_table_uno">Desde: {{ $pagador['fecha_vigencia'] }}</p>
-                                <p class="contenido_table_uno">Hasta: {{ $pagador['periodo_facturado_hasta'] }}</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+    <table class="table-info">
+        <tbody>
+            <tr>
+                <td class="label">Contratante:</td>
+                <td class="value">{{ $pagador['name'] ?? '' }}</td>
+                <td class="label">Agente:</td>
+                <td class="value">{{ $pagador['agente_agencia'] ?? '' }}</td>
+            </tr>
+            <tr>
+                <td class="label">Código de afiliación:</td>
+                <td class="value">{{ $pagador['code'] ?? '' }}</td>
+                <td class="label">Tarifa anual:</td>
+                <td class="value">US$ {{ number_format((float) ($pagador['tarifa_anual'] ?? 0), 2, ',', '.') }}</td>
+            </tr>
+            <tr>
+                <td class="label">Plan:</td>
+                <td class="value">{{ $pagador['plan'] ?? '' }}</td>
+                <td class="label">Frecuencia de pago:</td>
+                <td class="value">{{ $pagador['frecuencia_pago'] ?? '' }}</td>
+            </tr>
+            <tr>
+                <td class="label">Fecha de afiliación:</td>
+                <td class="value">{{ $pagador['fecha_afiliacion'] ?? '' }}</td>
+                <td class="label">Tarifa periodo:</td>
+                <td class="value">US$ {{ number_format((float) ($pagador['tarifa_periodo'] ?? 0), 2, ',', '.') }}</td>
+            </tr>
+            <tr>
+                <td class="label">Vigencia:</td>
+                <td class="value">
+                    Desde: {{ $pagador['fecha_vigencia'] ?? '' }}<br>
+                    Hasta: {{ $pagador['fecha_vigencia_final'] ?? '' }}
+                </td>
+                <td class="label">Periodo facturado:</td>
+                <td class="value">
+                    Desde: {{ $pagador['fecha_vigencia'] ?? '' }}<br>
+                    Hasta: {{ $pagador['periodo_facturado_hasta'] ?? '' }}
+                </td>
+            </tr>
+        </tbody>
+    </table>
 
-            <!-- Titulo Dos-->
-            <p class="sin-margen" style="font-size: 30px; margin-bottom: 25px;">
+    <h2 class="section-title spaced" style="color: {{ $brandColor }};">Datos de afiliado y beneficiarios</h2>
 
-                <span style="
-                        font-weight: bold;
-                        color: {{ $brandColor }};
-                        font-size: 16px; 
-                        font-style: sans-serif; 
-                        font-family: 'Helvetica', Century, sans-serif; 
-                        text-transform: uppercase;
-                    ">
-                    DATOS DE AFILIADO Y BENEFICIARIOS
-                </span>
-            </p>
+    <table class="table-people">
+        <thead>
+            <tr>
+                @foreach ($peopleHeaders as $header)
+                    <th @if ($loop->first) style="width: 34%;" @endif>{{ $header }}</th>
+                @endforeach
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($affiliateTableRows as $index => $celda)
+                <tr style="background-color: {{ $index % 2 === 0 ? '#ffffff' : '#f7f7f7' }};">
+                    <td>{{ $celda['full_name'] }}</td>
+                    <td>{{ $celda['nro_identificacion'] }}</td>
+                    <td>{{ $celda['birth_date'] }}</td>
+                    <td>{{ $celda['relationship'] }}</td>
+                    @if ($showPlanColumn)
+                        <td>{{ $celda['plan_label'] ?? '' }}</td>
+                    @endif
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
 
-            <!-- Tabla Afiliados -->
-            <div style="width: 100%; max-width: 600px; ">
+    @foreach ($benefitSections as $section)
+        @continue(empty($section['rows']))
 
-                <table style="
-                            width: 600px;
-                            border-collapse: collapse;
-                            font-family: Arial, sans-serif;
-                            font-size: 12px;
-                            margin: -20px auto;
-                        ">
+        <div class="benefits-block">
+            <h2 class="section-title" style="color: {{ $brandColor }};">
+                @if (filled($section['plan_label'] ?? '') && count($benefitSections) > 1)
+                    Beneficios del {{ $section['plan_label'] }}
+                @else
+                    Beneficios del plan seleccionado
+                @endif
+            </h2>
 
-                    {{-- Encabezado de la Tabla --}}
-                    <thead style="background-color: #b5b5b5;">
+            <table class="table-benefits">
+                <tbody>
+                    @foreach ($section['rows'] as $row)
                         <tr>
-                            @foreach (['NOMBRE Y APELLIDO', 'DOCUMENTO DE IDENTIDAD', 'FECHA DE NACIMIENTO', 'PARENTESCO'] as $header)
-                            <th style="
-                                        color: #ffffff;
-                                        border: 1px solid #cccccc;
-                                        padding: 4px; 
-                                        text-align: left;
-                                        font-weight: bold;
-                                        text-transform: uppercase;
-                                    ">
-                                {{ $header }}
-                            </th>
-                            @endforeach
-                        </tr>
-                    </thead>
-
-                    {{-- Cuerpo de la Tabla --}}
-                    <tbody>
-                        @foreach ($affiliateTableRows as $index => $celda)
-                        <tr style="background-color: {{ $index % 2 === 0 ? '#ffffff' : '#f7f7f7' }};">
-                            <td style="
-                                            border: 1px solid #cccccc;
-                                            padding: 4px;
-                                            text-align: left;
-                                            text-transform: uppercase;
-                                        ">
-                                {{ $celda['full_name'] }}
-                            </td>
-                            <td style="
-                                            border: 1px solid #cccccc;
-                                            padding: 4px;
-                                            text-align: left;
-                                        ">
-                                {{ $celda['nro_identificacion'] }}
-                            </td>
-                            <td style="
-                                            border: 1px solid #cccccc;
-                                            padding: 4px;
-                                            text-align: left;
-                                        ">
-                                {{ $celda['birth_date'] }}
-                            </td>
-                            <td style="
-                                            border: 1px solid #cccccc;
-                                            padding: 4px;
-                                            text-align: left;
-                                            text-transform: uppercase;
-                                        ">
-                                {{ $celda['relationship'] }}
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-
-
-
-            </div>
-
-            <!-- Titulo Tres-->
-            <p class="sin-margen" style="font-size: 30px; margin-bottom: 5px;">
-                <span style="
-                    font-weight: bold;
-                    color: {{ $brandColor }};
-                    font-size: 16px;
-                    font-style: sans-serif; 
-                    font-family: 'Helvetica', Century, sans-serif; 
-                    text-transform: uppercase;
-                ">
-                    BENEFICIOS DEL PLAN SELECCIONADO
-                </span>
-            </p>
-
-            <!-- Tabla Beneficios -->
-            <div style="width: 100%; max-width: 600px;">
-
-                <table style="
-                            width: 600px;
-                            border-collapse: collapse;
-                            font-size: 9px;
-                            font-style: sans-serif;
-                            font-family: 'Helvetica', Century, sans-serif;
-                        ">
-                    {{-- Cuerpo de la Tabla --}}
-                    <tbody>
-                        @foreach ($beneficiosRows as $row)
-                        <tr>
-                            {{-- Columna 1: Descripción --}}
-                            <td style="
-                                    border-bottom: 1px solid #cccccc;
-                                    padding: 0px;
-                                    text-align: left;
-                                ">
-                                {{ $row['text'] }}
-                            </td>
-
-                            {{-- Columna 2: Ícono Unicode (Centrado) --}}
-                            <td style="
-                                        border-bottom: 1px solid #cccccc;
-                                        padding: 8px;
-                                        text-align: right; 
-                                        /* Aplicamos el color y tamaño de fuente para simular el ícono */
-                                        font-size: 9px; 
-                                        font-weight: bold;
-                                    ">
+                            <td>{{ $row['text'] }}</td>
+                            <td class="mark">
                                 @if ($row['show_cobertura'])
-                                    <span style="font-size: 14px; font-weight: bold; color: {{ $isAlliedCertificate ? $brandColor : '#000000' }};">US$ {{ $coberturaFormatted }}</span>
+                                    <span class="amount" style="color: {{ $isAlliedCertificate ? $brandColor : '#000000' }};">US$ {{ $coberturaFormatted }}</span>
                                 @else
                                     <img src="{{ public_path('storage/certificados/check-beneficios.png') }}" style="width: 12px; height: 12px;" alt="">
                                 @endif
                             </td>
                         </tr>
-                        @endforeach
-                        @if($pagador['plan_id'] == 3)
-                            <tr>
-                                <td colspan="2" style="font-size: 8px;
-                                                    text-align: justify; 
-                                                    padding: 2px; 
-                                                    font-style: sans-serif;
-                                                    font-family: 'Helvetica', Century, sans-serif;
-                                                ">
-                                    LUEGO DEL ANÁLISIS TÉCNICO Y MÉDICO DE LA SOLICITUD, QUEDA EXCLUIDO DEL BENEFICIO DE EMERGENCIAS MÉDICAS POR PATOLOGÍAS LISTADAS, TODA OCURRENCIA RELACIONADA Y/O A CONSECUENCIA DE LAS PREEXISTENCIAS DECLARADAS O NO. <br> ANTE ALGÚN EVENTO INESPERADO ASOCIADO A LAS PREEXISTENCIAS DECLARADAS Y EN CONOCIMIENTO O NO, SERÁ ESTABILIZADO EN SU DOMICILIO EN EL MOMENTO QUE SEA REQUERIDO.
-                                </td>
-                            </tr>
-                        @endif
-                    </tbody>
-                </table>
-            </div>
+                    @endforeach
+                </tbody>
+            </table>
 
-        </div>
-
-
-
-        @if ($isAlliedCertificate)
-            @if ($signatureDataUri !== '')
-                <div style="position: absolute; bottom: 28px; left: 0; right: 0; text-align: center;">
-                    <img src="{{ $signatureDataUri }}" alt="Firma {{ $companyName }}" style="max-width: 260px; max-height: 90px;">
-                </div>
+            @if (filled($section['note'] ?? null))
+                <p class="benefit-note">{{ $section['note'] }}</p>
             @endif
-        @else
-            <div style="position: absolute; top: 930px; left: 60px; margin-top: 0px; padding: 0px; margin-left: 0px">
-                <img src="{{ public_path('storage/certificados/firmaHC-Certificados.png') }}" style="width: 180px; height: 70px;" alt="">
+        </div>
+    @endforeach
+
+    @if ($isAlliedCertificate)
+        @if ($signatureDataUri !== '')
+            <div class="signature allied">
+                <img src="{{ $signatureDataUri }}" alt="Firma {{ $companyName }}">
             </div>
         @endif
-
-
-        <!-- Firma Humberto Sanchez -->
-        {{-- <div style="position: absolute; top: 970px; left: 60px; margin-top: 0px; padding: 0px; margin-left: 0px">
-            <div style="text-align: center;">
-                <p class="sin-margen" style="font-size: 30px; line-height: 12px;">
-                    <span style="
-                        font-weight: bold;
-                        font-size: 12px; 
-                        font-style: sans-serif; 
-                        font-family: 'Helvetica', Century, sans-serif; 
-                    ">
-                        HUMBERTO SANCHEZ<br>
-                        Director de Negocios
-                    </span>
-                </p>
-
-            </div> --}}
+    @else
+        <div class="signature">
+            <img src="{{ public_path('storage/certificados/firmaHC-Certificados.png') }}" alt="Firma autorizada">
         </div>
-
-
-    </div>
-
-
-    <script type="text/php">
-        if ( isset($pdf) ) {
-            $pdf->page_script('
-                $font = $fontMetrics->get_font("Arial, Helvetica, sans-serif", "normal");
-                $pdf->text(500, 790, "Pag $PAGE_NUM/$PAGE_COUNT", $font, 10);
-            ');
-        }
-    </script>
+    @endif
 </body>
 
 </html>
-
