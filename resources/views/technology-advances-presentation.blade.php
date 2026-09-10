@@ -26,7 +26,7 @@
     </script>
     <link rel="icon" href="{{ asset('image/imagotipo.png') }}" type="image/png">
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700|dm-sans:400,500,600,700" rel="stylesheet">
+    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700|instrument-serif:400,400i|dm-sans:400,500,600,700" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         :root {
@@ -643,6 +643,1237 @@
             .lifecycle-step {
                 min-height: 0;
             }
+
+            .pwa-devices,
+            .portal-devices,
+            .mkt-devices {
+                transform: scale(0.86);
+                transform-origin: top center;
+            }
+        }
+
+        .pwa-devices {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 1.75rem 2.25rem;
+            flex-wrap: wrap;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .pwa-device {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.7rem;
+        }
+
+        .pwa-device__caption {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+        }
+
+        .pwa-device__frame {
+            position: relative;
+            background: linear-gradient(160deg, #3a3a3c 0%, #1c1c1e 42%, #0b0b0d 100%);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.28),
+                inset 0 -2px 6px rgba(0, 0, 0, 0.45),
+                0 26px 56px rgba(2, 9, 20, 0.3);
+        }
+
+        .pwa-device__frame--phone {
+            width: 256px;
+            padding: 12px 11px 14px;
+            border-radius: 2.7rem;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+
+        .pwa-device__side {
+            position: absolute;
+            background: #2a2a2c;
+            border-radius: 1px;
+        }
+
+        .pwa-device__side--silent {
+            left: -2px;
+            top: 92px;
+            width: 3px;
+            height: 20px;
+        }
+
+        .pwa-device__side--volume {
+            left: -2px;
+            top: 126px;
+            width: 3px;
+            height: 62px;
+        }
+
+        .pwa-device__side--power {
+            right: -2px;
+            top: 138px;
+            width: 3px;
+            height: 50px;
+        }
+
+        .pwa-device__screen {
+            position: relative;
+            overflow: hidden;
+            background: #020914;
+        }
+
+        .pwa-device__screen--phone {
+            width: 234px;
+            height: 506px;
+            border-radius: 2.05rem;
+        }
+
+        .pwa-device__island {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            z-index: 6;
+            width: 78px;
+            height: 20px;
+            transform: translateX(-50%);
+            border-radius: 999px;
+            background: #050505;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        }
+
+        .pwa-device__home {
+            position: absolute;
+            left: 50%;
+            bottom: 9px;
+            z-index: 6;
+            width: 96px;
+            height: 5px;
+            transform: translateX(-50%);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.42);
+        }
+
+        .pwa-scale {
+            transform-origin: top left;
+        }
+
+        .pwa-scale--phone {
+            width: 390px;
+            height: 844px;
+            transform: scale(calc(234 / 390));
+        }
+
+        .pwa-welcome {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            width: 390px;
+            height: 844px;
+            overflow: hidden;
+            color: #e8f1ff;
+            background: #020914;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Instrument Sans', sans-serif;
+            padding: 28px 22px 22px;
+        }
+
+        .pwa-welcome__photo {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 30%;
+        }
+
+        .pwa-welcome__shade {
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(2, 9, 20, 0.28) 0%, rgba(2, 9, 20, 0.18) 28%, rgba(2, 9, 20, 0.55) 62%, rgba(2, 9, 20, 0.9) 100%);
+        }
+
+        .pwa-welcome__brand,
+        .pwa-welcome__hero,
+        .pwa-welcome__dock {
+            position: relative;
+            z-index: 2;
+        }
+
+        .pwa-welcome__brand img {
+            height: 38px;
+            width: auto;
+            mix-blend-mode: screen;
+        }
+
+        .pwa-welcome__hero {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding-bottom: 28px;
+        }
+
+        .pwa-welcome__kicker {
+            margin: 0 0 10px;
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(232, 241, 255, 0.62);
+        }
+
+        .pwa-welcome__title {
+            margin: 0;
+            font-family: 'Instrument Serif', 'Times New Roman', serif;
+            font-size: 46px;
+            font-weight: 400;
+            line-height: 0.94;
+            letter-spacing: -0.04em;
+            text-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+        }
+
+        .pwa-welcome__title em {
+            font-style: italic;
+        }
+
+        .pwa-welcome__dock {
+            display: grid;
+            gap: 12px;
+        }
+
+        .pwa-welcome__btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 54px;
+            border-radius: 999px;
+            font-size: 17px;
+            font-weight: 620;
+        }
+
+        .pwa-welcome__btn--plans {
+            color: #041428;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(219, 234, 254, 0.92));
+        }
+
+        .pwa-welcome__btn--google {
+            color: #111827;
+            background: #fff;
+        }
+
+        .pwa-welcome__register {
+            margin: 4px 0 18px;
+            text-align: center;
+            font-size: 14px;
+            color: rgba(232, 241, 255, 0.72);
+        }
+
+        .pwa-plans {
+            position: relative;
+            width: 390px;
+            height: 844px;
+            overflow: hidden;
+            color: #e8f1ff;
+            background: #020914;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Instrument Sans', sans-serif;
+            padding: 28px 18px 22px;
+        }
+
+        .pwa-plans__atmosphere {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(120% 80% at 10% -10%, rgba(14, 116, 188, 0.55), transparent 55%),
+                radial-gradient(90% 60% at 110% 10%, rgba(45, 212, 191, 0.22), transparent 50%),
+                linear-gradient(180deg, #020914 0%, #041428 48%, #020914 100%);
+        }
+
+        .pwa-plans__header,
+        .pwa-plans__hero,
+        .pwa-plans__list {
+            position: relative;
+            z-index: 2;
+        }
+
+        .pwa-plans__header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 44px;
+            margin-bottom: 6px;
+        }
+
+        .pwa-plans__brand img {
+            height: 30px;
+            width: auto;
+            mix-blend-mode: screen;
+        }
+
+        .pwa-plans__menu {
+            width: 22px;
+            height: 14px;
+            position: relative;
+        }
+
+        .pwa-plans__menu span {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            border-radius: 99px;
+            background: white;
+        }
+
+        .pwa-plans__menu span:nth-child(1) { top: 0; }
+        .pwa-plans__menu span:nth-child(2) { top: 6px; }
+        .pwa-plans__menu span:nth-child(3) { top: 12px; }
+
+        .pwa-plans__kicker {
+            margin: 0;
+            font-size: 13px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: rgba(232, 241, 255, 0.62);
+        }
+
+        .pwa-plans__title {
+            margin: 6px 0 12px;
+            font-size: 26px;
+            font-weight: 720;
+            letter-spacing: -0.05em;
+            line-height: 1.05;
+        }
+
+        .pwa-plans__lead {
+            display: none;
+        }
+
+        .pwa-plans__list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .pwa-plan-card {
+            position: relative;
+            min-height: 188px;
+            overflow: hidden;
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: #061428;
+        }
+
+        .pwa-plan-card__media,
+        .pwa-plan-card__photo,
+        .pwa-plan-card__shade {
+            position: absolute;
+            inset: 0;
+        }
+
+        .pwa-plan-card__photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 28%;
+        }
+
+        .pwa-plan-card__shade {
+            background:
+                linear-gradient(180deg, rgba(2, 9, 20, 0.12) 0%, rgba(2, 9, 20, 0.18) 32%, rgba(2, 9, 20, 0.78) 72%, rgba(2, 9, 20, 0.94) 100%);
+        }
+
+        .pwa-plan-card__body {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 188px;
+            padding: 14px 14px 14px;
+        }
+
+        .pwa-plan-card__title {
+            margin: 0 0 4px;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+        }
+
+        .pwa-plan-card__promise {
+            margin: 0 0 10px;
+            font-size: 12px;
+            line-height: 1.3;
+            color: rgba(255, 255, 255, 0.78);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .pwa-plan-card__meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .pwa-plan-card__meta span {
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .portal-devices {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 1.75rem 2.4rem;
+            flex-wrap: wrap;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .portal-monitor {
+            gap: 0.55rem;
+        }
+
+        .portal-monitor__body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .portal-monitor__frame {
+            position: relative;
+            width: 620px;
+            padding: 16px 16px 18px;
+            border-radius: 1.15rem;
+            background: linear-gradient(165deg, #4a4a4e 0%, #1d1d20 46%, #0c0c0e 100%);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.28),
+                inset 0 -2px 8px rgba(0, 0, 0, 0.45),
+                0 28px 56px rgba(2, 9, 20, 0.28);
+        }
+
+        .portal-monitor__camera {
+            position: absolute;
+            top: 6px;
+            left: 50%;
+            z-index: 2;
+            width: 8px;
+            height: 8px;
+            transform: translateX(-50%);
+            border-radius: 999px;
+            background: radial-gradient(circle at 35% 35%, #5b7a9a 0%, #0b1220 70%);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+        }
+
+        .portal-monitor__screen {
+            overflow: hidden;
+            width: 588px;
+            height: 368px;
+            border-radius: 0.45rem;
+            background: #020914;
+        }
+
+        .portal-monitor__chrome {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            height: 28px;
+            padding: 0 10px;
+            background: linear-gradient(180deg, #eceff3 0%, #d9dee6 100%);
+            border-bottom: 1px solid rgba(3, 30, 54, 0.12);
+        }
+
+        .portal-monitor__dots {
+            display: flex;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+
+        .portal-monitor__dots i {
+            display: block;
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #ff5f57;
+        }
+
+        .portal-monitor__dots i:nth-child(2) { background: #febc2e; }
+        .portal-monitor__dots i:nth-child(3) { background: #28c840; }
+
+        .portal-monitor__url {
+            flex: 1;
+            min-width: 0;
+            height: 16px;
+            padding: 0 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.92);
+            color: #4b5563;
+            font-size: 9px;
+            font-weight: 650;
+            letter-spacing: 0.02em;
+            line-height: 16px;
+            text-align: center;
+        }
+
+        .portal-monitor__viewport {
+            position: relative;
+            width: 588px;
+            height: 340px;
+            overflow: hidden;
+        }
+
+        .portal-monitor__neck {
+            width: 78px;
+            height: 26px;
+            background: linear-gradient(180deg, #3a3a3e 0%, #1a1a1c 100%);
+            clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
+        }
+
+        .portal-monitor__base {
+            width: 196px;
+            height: 8px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #3f3f44 0%, #161618 100%);
+            box-shadow: 0 8px 16px rgba(2, 9, 20, 0.28);
+        }
+
+        .portal-login {
+            position: relative;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Instrument Sans', sans-serif;
+            color: #031e36;
+        }
+
+        .portal-login--phone {
+            width: 390px;
+            height: 844px;
+        }
+
+        .portal-login--desktop {
+            width: 588px;
+            height: 340px;
+        }
+
+        .portal-login__photo {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 18%;
+        }
+
+        .portal-login__veil {
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(4, 51, 90, 0.16) 48%, rgba(3, 30, 54, 0.34) 100%),
+                rgba(68, 116, 163, 0.06);
+        }
+
+        .portal-login__stage {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding: 72px 28px 48px;
+            box-sizing: border-box;
+        }
+
+        .portal-login--desktop .portal-login__stage {
+            padding: 22px 28px;
+        }
+
+        .portal-login__card {
+            position: relative;
+            width: 100%;
+            max-width: 318px;
+            padding: 22px 20px 18px;
+            border-radius: 28px;
+            background: linear-gradient(155deg, rgba(255, 255, 255, 0.58) 0%, rgba(255, 255, 255, 0.28) 46%, rgba(196, 212, 230, 0.18) 100%);
+            backdrop-filter: blur(18px) saturate(160%);
+            -webkit-backdrop-filter: blur(18px) saturate(160%);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                0 18px 40px rgba(3, 30, 54, 0.22);
+        }
+
+        .portal-login--desktop .portal-login__card {
+            max-width: 268px;
+            padding: 14px 16px 12px;
+            border-radius: 20px;
+        }
+
+        .portal-login__logo {
+            display: block;
+            height: 32px;
+            width: auto;
+            margin: 0 auto 14px;
+        }
+
+        .portal-login--desktop .portal-login__logo {
+            height: 22px;
+            margin-bottom: 8px;
+        }
+
+        .portal-login__title {
+            margin: 0;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 720;
+            letter-spacing: -0.04em;
+            line-height: 1.15;
+        }
+
+        .portal-login--desktop .portal-login__title {
+            font-size: 16px;
+        }
+
+        .portal-login__lead {
+            margin: 6px 0 16px;
+            text-align: center;
+            font-size: 13px;
+            line-height: 1.35;
+            color: rgba(3, 30, 54, 0.72);
+        }
+
+        .portal-login--desktop .portal-login__lead {
+            margin: 4px 0 10px;
+            font-size: 10px;
+        }
+
+        .portal-login__label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 650;
+            color: #031e36;
+        }
+
+        .portal-login--desktop .portal-login__label {
+            margin-bottom: 4px;
+            font-size: 9px;
+        }
+
+        .portal-login__label-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .portal-login--desktop .portal-login__label-row {
+            margin-top: 8px;
+        }
+
+        .portal-login__link,
+        .portal-login__contact {
+            color: #031e36;
+            font-weight: 700;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .portal-login__link {
+            font-size: 11px;
+        }
+
+        .portal-login--desktop .portal-login__link {
+            font-size: 8px;
+        }
+
+        .portal-login__input {
+            display: flex;
+            align-items: center;
+            min-height: 42px;
+            padding: 0 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(3, 30, 54, 0.14);
+            background: rgba(255, 255, 255, 0.78);
+            color: rgba(3, 30, 54, 0.42);
+            font-size: 14px;
+        }
+
+        .portal-login--desktop .portal-login__input {
+            min-height: 28px;
+            padding: 0 10px;
+            border-radius: 8px;
+            font-size: 11px;
+        }
+
+        .portal-login__input--secret {
+            letter-spacing: 0.18em;
+            color: #031e36;
+        }
+
+        .portal-login__btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 16px;
+            min-height: 44px;
+            border-radius: 12px;
+            background: #031e36;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .portal-login--desktop .portal-login__btn {
+            margin-top: 10px;
+            min-height: 30px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        .portal-login__contact {
+            margin: 16px 0 0;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .portal-login--desktop .portal-login__contact {
+            margin-top: 10px;
+            font-size: 10px;
+        }
+
+        .pwa-device__frame--tablet {
+            width: 280px;
+            padding: 11px;
+            border-radius: 1.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+
+        .pwa-device__screen--tablet {
+            width: 258px;
+            height: 344px;
+            border-radius: 1.2rem;
+        }
+
+        .pwa-device__camera--tablet {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            z-index: 6;
+            width: 9px;
+            height: 9px;
+            transform: translateX(-50%);
+            border-radius: 999px;
+            background: radial-gradient(circle at 35% 35%, #6b7c94 0%, #0b1220 70%);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+        }
+
+        .pwa-device__home--tablet {
+            width: 72px;
+            bottom: 8px;
+        }
+
+        .portal-monitor__frame--compact {
+            width: 500px;
+            padding: 12px 12px 14px;
+        }
+
+        .portal-monitor__screen--compact {
+            width: 476px;
+            height: 298px;
+        }
+
+        .portal-monitor__viewport--compact {
+            width: 476px;
+            height: 270px;
+        }
+
+        .mkt-devices {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 1.15rem 1.5rem;
+            flex-wrap: wrap;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .mkt-login {
+            position: relative;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Instrument Sans', sans-serif;
+            color: #2d3250;
+            background:
+                radial-gradient(ellipse 65% 50% at 12% -8%, rgba(249, 177, 122, 0.22), transparent 58%),
+                radial-gradient(ellipse 50% 40% at 92% 4%, rgba(103, 111, 157, 0.16), transparent 52%),
+                linear-gradient(180deg, #f4f5fb 0%, #e8ebf4 100%);
+        }
+
+        .mkt-login--phone {
+            width: 390px;
+            height: 844px;
+        }
+
+        .mkt-login--tablet {
+            width: 258px;
+            height: 344px;
+        }
+
+        .mkt-login__orb {
+            position: absolute;
+            border-radius: 999px;
+            filter: blur(42px);
+        }
+
+        .mkt-login__orb--a {
+            top: 8%;
+            left: -18%;
+            width: 180px;
+            height: 180px;
+            background: rgba(249, 177, 122, 0.38);
+        }
+
+        .mkt-login__orb--b {
+            right: -16%;
+            bottom: 12%;
+            width: 200px;
+            height: 200px;
+            background: rgba(103, 111, 157, 0.28);
+        }
+
+        .mkt-login__stage {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding: 88px 28px 48px;
+            box-sizing: border-box;
+        }
+
+        .mkt-login--tablet .mkt-login__stage {
+            padding: 28px 18px 22px;
+        }
+
+        .mkt-login__card {
+            width: 100%;
+            max-width: 318px;
+            padding: 26px 22px 22px;
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.9),
+                0 18px 40px rgba(45, 50, 80, 0.12);
+        }
+
+        .mkt-login--tablet .mkt-login__card {
+            max-width: 228px;
+            padding: 16px 14px 14px;
+            border-radius: 20px;
+        }
+
+        .mkt-login__logo {
+            display: block;
+            height: 34px;
+            width: auto;
+            margin: 0 auto 14px;
+        }
+
+        .mkt-login--tablet .mkt-login__logo {
+            height: 22px;
+            margin-bottom: 8px;
+        }
+
+        .mkt-login__title {
+            margin: 0;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .mkt-login--tablet .mkt-login__title {
+            font-size: 15px;
+        }
+
+        .mkt-login__pill {
+            display: table;
+            margin: 10px auto 0;
+            padding: 4px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(213, 217, 232, 0.9);
+            background: rgba(213, 217, 232, 0.65);
+            color: #2d3250;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .mkt-login--tablet .mkt-login__pill {
+            margin-top: 6px;
+            padding: 3px 8px;
+            font-size: 7px;
+        }
+
+        .mkt-login__rule {
+            display: block;
+            width: 40px;
+            height: 1px;
+            margin: 14px auto 16px;
+            background: linear-gradient(90deg, transparent, #d5d9e8, transparent);
+        }
+
+        .mkt-login--tablet .mkt-login__rule {
+            margin: 8px auto 10px;
+        }
+
+        .mkt-login__label {
+            display: block;
+            margin: 0 0 6px 6px;
+            font-size: 10px;
+            font-weight: 650;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #565d87;
+        }
+
+        .mkt-login--tablet .mkt-login__label {
+            margin-bottom: 4px;
+            font-size: 8px;
+        }
+
+        .mkt-login__field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 42px;
+            margin-bottom: 12px;
+            padding: 0 6px 0 6px;
+            border-radius: 999px;
+            border: 1px solid rgba(103, 111, 157, 0.28);
+            background: #fff;
+            color: rgba(45, 50, 80, 0.45);
+            font-size: 13px;
+        }
+
+        .mkt-login--tablet .mkt-login__field {
+            min-height: 28px;
+            margin-bottom: 8px;
+            font-size: 10px;
+        }
+
+        .mkt-login__icon {
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+            border-radius: 999px;
+            background: rgba(213, 217, 232, 0.9);
+            box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .mkt-login--tablet .mkt-login__icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .mkt-login__secret {
+            letter-spacing: 0.16em;
+            color: #2d3250;
+        }
+
+        .mkt-login__remember {
+            margin: 2px 0 14px 8px;
+            font-size: 12px;
+            color: #565d87;
+        }
+
+        .mkt-login--tablet .mkt-login__remember {
+            margin: 0 0 8px 6px;
+            font-size: 9px;
+        }
+
+        .mkt-login__btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #fab98a 0%, #f9b17a 100%);
+            color: #2d3250;
+            font-size: 15px;
+            font-weight: 700;
+            box-shadow: 0 8px 20px rgba(249, 177, 122, 0.32);
+        }
+
+        .mkt-login--tablet .mkt-login__btn {
+            min-height: 30px;
+            font-size: 11px;
+        }
+
+        .mkt-landing {
+            position: relative;
+            width: 476px;
+            height: 270px;
+            overflow: hidden;
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #2d3250;
+            background:
+                radial-gradient(ellipse 70% 55% at 8% -8%, rgba(249, 177, 122, 0.28), transparent 58%),
+                radial-gradient(ellipse 55% 45% at 96% 0%, rgba(103, 111, 157, 0.2), transparent 52%),
+                linear-gradient(180deg, #f7f8fc 0%, #eef0f7 100%);
+        }
+
+        .mkt-landing__orb {
+            position: absolute;
+            border-radius: 999px;
+            filter: blur(28px);
+            pointer-events: none;
+        }
+
+        .mkt-landing__orb--a {
+            top: 18%;
+            left: -8%;
+            width: 120px;
+            height: 120px;
+            background: rgba(249, 177, 122, 0.32);
+        }
+
+        .mkt-landing__orb--b {
+            right: -6%;
+            top: 8%;
+            width: 130px;
+            height: 130px;
+            background: rgba(103, 111, 157, 0.22);
+        }
+
+        .mkt-landing__header {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 36px;
+            padding: 0 14px;
+            background: rgba(255, 255, 255, 0.82);
+            border-bottom: 1px solid rgba(213, 217, 232, 0.55);
+        }
+
+        .mkt-landing__logo {
+            height: 16px;
+            width: auto;
+        }
+
+        .mkt-landing__nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 8px;
+            font-weight: 650;
+            color: #565d87;
+        }
+
+        .mkt-landing__nav strong {
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #fab98a 0%, #f9b17a 100%);
+            color: #2d3250;
+            font-weight: 750;
+        }
+
+        .mkt-landing__hero {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 12px;
+            height: calc(100% - 36px);
+            padding: 12px 14px 12px;
+            box-sizing: border-box;
+        }
+
+        .mkt-landing__eyebrow {
+            margin: 0 0 6px;
+            font-size: 7px;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: #676f9d;
+        }
+
+        .mkt-landing__title {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 720;
+            letter-spacing: -0.04em;
+            line-height: 1.12;
+        }
+
+        .mkt-landing__title em {
+            font-style: normal;
+            background: linear-gradient(118deg, #e87d2f 0%, #f9b17a 38%, #676f9d 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .mkt-landing__lead {
+            margin: 6px 0 0;
+            font-size: 8px;
+            line-height: 1.35;
+            color: #565d87;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .mkt-landing__actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .mkt-landing__cta {
+            display: inline-flex;
+            align-items: center;
+            min-height: 18px;
+            padding: 0 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(213, 217, 232, 0.95);
+            background: rgba(255, 255, 255, 0.55);
+            font-size: 7px;
+            font-weight: 700;
+        }
+
+        .mkt-landing__cta--primary {
+            border: 0;
+            background: linear-gradient(180deg, #fab98a 0%, #f9b17a 100%);
+            color: #2d3250;
+        }
+
+        .mkt-landing__stack {
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .mkt-landing__card {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 0;
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+        }
+
+        .mkt-landing__card-bg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .mkt-landing__card--casa .mkt-landing__card-bg { object-position: center 30%; }
+        .mkt-landing__card--viajes .mkt-landing__card-bg { object-position: center 40%; }
+
+        .mkt-landing__card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(45, 50, 80, 0.08) 0%, rgba(45, 50, 80, 0.72) 100%);
+        }
+
+        .mkt-landing__kicker,
+        .mkt-landing__card h4 {
+            position: relative;
+            z-index: 1;
+            margin: 0;
+            color: #fff;
+        }
+
+        .mkt-landing__kicker {
+            font-size: 7px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0.85;
+        }
+
+        .mkt-landing__card h4 {
+            margin-top: 2px;
+            font-size: 11px;
+            font-weight: 720;
+            letter-spacing: -0.03em;
+        }
+
+        @media (max-width: 1100px) {
+            .portal-monitor__frame {
+                width: 500px;
+                padding: 12px 12px 14px;
+            }
+
+            .portal-monitor__screen,
+            .portal-monitor__viewport,
+            .portal-login--desktop {
+                width: 476px;
+            }
+
+            .portal-monitor__screen {
+                height: 300px;
+            }
+
+            .portal-monitor__viewport,
+            .portal-login--desktop {
+                height: 272px;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .pwa-devices,
+            .portal-devices,
+            .mkt-devices {
+                gap: 1.1rem;
+            }
+
+            .portal-monitor__frame {
+                width: 320px;
+            }
+
+            .portal-monitor__screen,
+            .portal-monitor__viewport,
+            .portal-login--desktop {
+                width: 296px;
+            }
+
+            .portal-monitor__screen {
+                height: 198px;
+            }
+
+            .portal-monitor__viewport,
+            .portal-login--desktop {
+                height: 170px;
+            }
+
+            .portal-login--desktop .portal-login__card {
+                max-width: 210px;
+                padding: 8px 10px;
+            }
         }
     </style>
     @include('partials.presentation-app-chrome-styles')
@@ -684,9 +1915,9 @@
                             <div class="grid lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-10 items-center">
                                 <div class="flex flex-col gap-5">
                                     <div class="flex flex-wrap gap-2">
-                                        <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass text-[var(--accent)]">{{ $slide['data']['eyebrow'] ?? $slide['module'] }}</span>
+                                        <span class="reveal-item presentation-badge presentation-badge--module">{{ $slide['data']['eyebrow'] ?? $slide['module'] }}</span>
                                         @foreach ($slide['tags'] as $tag)
-                                            <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                            <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                         @endforeach
                                     </div>
                                     <h1 class="reveal-item text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[var(--navy)] leading-[1.08]">
@@ -726,9 +1957,9 @@
                         @elseif ($slide['type'] === 'pillars')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -764,8 +1995,8 @@
                         @elseif ($slide['type'] === 'preview')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
-                                    <span class="reveal-item text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[color-mix(in_srgb,var(--accent)_12%,white)] text-[var(--accent)] border border-[color-mix(in_srgb,var(--accent)_25%,white)]">{{ $slide['data']['status'] ?? 'Preview' }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module">{{ $slide['data']['status'] ?? 'Preview' }}</span>
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
                                 <p class="reveal-item text-sm sm:text-base text-[var(--ink-soft)] max-w-3xl">{{ $slide['subtitle'] }}</p>
@@ -790,12 +2021,42 @@
                                 </div>
                             </div>
 
+                        @elseif ($slide['type'] === 'devices')
+                            <div class="flex flex-col gap-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                        @foreach ($slide['tags'] as $tag)
+                                            <span class="reveal-item presentation-badge">{{ $tag }}</span>
+                                        @endforeach
+                                    </div>
+                                    <div class="reveal-item hidden sm:flex flex-wrap gap-2">
+                                        @foreach ($slide['data']['steps'] ?? [] as $step)
+                                            <span class="presentation-badge presentation-badge--chip">{{ $step['title'] }}</span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                <div class="text-center max-w-3xl mx-auto">
+                                    <h2 class="reveal-item text-2xl sm:text-3xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
+                                    <p class="reveal-item mt-1 text-sm text-[var(--ink-soft)]">{{ $slide['subtitle'] }}</p>
+                                </div>
+                                <div class="reveal-item">
+                                    @if (($slide['data']['device_set'] ?? 'pwa') === 'portal')
+                                        @include('partials.presentation-portal-login-devices', ['slide' => $slide])
+                                    @elseif (($slide['data']['device_set'] ?? 'pwa') === 'marketing')
+                                        @include('partials.presentation-marketing-devices', ['slide' => $slide])
+                                    @else
+                                        @include('partials.presentation-pwa-devices', ['slide' => $slide])
+                                    @endif
+                                </div>
+                            </div>
+
                         @elseif ($slide['type'] === 'lifecycle')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -828,9 +2089,9 @@
                         @elseif ($slide['type'] === 'hub')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -853,7 +2114,7 @@
                                     @endforeach
                                 </div>
                                 <div class="reveal-item flex flex-wrap items-center gap-2">
-                                    <span class="rounded-full bg-white/75 border border-white/85 px-3 py-1 text-[11px] font-semibold text-[var(--navy)]">{{ $slide['data']['host'] ?? '' }}</span>
+                                    <span class="presentation-badge presentation-badge--chip">{{ $slide['data']['host'] ?? '' }}</span>
                                     <span class="text-[11px] text-[var(--ink-soft)]">Hub interno · HTTPS · equipo de Tecnología</span>
                                 </div>
                                 @if ($slide['speaker_note'])
@@ -865,9 +2126,9 @@
                         @elseif ($slide['type'] === 'value')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -900,9 +2161,9 @@
                         @elseif ($slide['type'] === 'tests')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -926,9 +2187,9 @@
                         @elseif ($slide['type'] === 'api')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -947,9 +2208,9 @@
                         @elseif ($slide['type'] === 'feature')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -971,9 +2232,9 @@
                         @elseif ($slide['type'] === 'infra')
                             <div class="flex flex-col gap-3 sm:gap-3.5">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass text-[var(--accent)]">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -1137,7 +2398,7 @@
                                         </div>
                                         <div class="flex flex-wrap gap-2">
                                             @foreach (['Ambientes', 'Bases de datos', 'Integraciones'] as $chip)
-                                                <span class="rounded-full bg-white/75 border border-white/85 px-3 py-1 text-[11px] font-semibold text-[var(--navy)]">{{ $chip }}</span>
+                                                <span class="presentation-badge presentation-badge--chip">{{ $chip }}</span>
                                             @endforeach
                                         </div>
                                     </div>
@@ -1149,10 +2410,10 @@
                         @elseif ($slide['type'] === 'future')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
-                                    <span class="reveal-item text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white/70 border border-white/80" style="color: {{ $slide['color'] }}">Próximo</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">Próximo</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -1162,7 +2423,7 @@
                                         <button type="button" class="future-card liquid-glass liquid-glass--interactive text-left px-4 py-4 {{ $i === 0 ? 'is-active' : '' }}">
                                             <div class="flex items-center justify-between gap-2 mb-2">
                                                 <span class="text-xs font-semibold uppercase tracking-wide" style="color: {{ $slide['color'] }}">0{{ $i + 1 }} · {{ $item['tag'] }}</span>
-                                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/75 border border-white/85 text-[var(--navy)]/55">Roadmap</span>
+                                                <span class="presentation-badge">Roadmap</span>
                                             </div>
                                             <div class="font-semibold text-[var(--navy)]">{{ $item['title'] }}</div>
                                             <p class="future-detail mt-2 text-sm text-[var(--ink-soft)] leading-relaxed">{{ $item['detail'] }}</p>
@@ -1180,7 +2441,7 @@
 
                         @elseif ($slide['type'] === 'closing')
                             <div class="flex flex-col items-center text-center gap-5 max-w-3xl mx-auto">
-                                <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass text-[var(--accent)]">{{ $slide['module'] }}</span>
+                                <span class="reveal-item presentation-badge presentation-badge--module">{{ $slide['module'] }}</span>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
                                 <p class="reveal-item text-sm sm:text-base text-[var(--ink-soft)]">{{ $slide['subtitle'] }}</p>
                                 <div class="reveal-item liquid-glass liquid-glass--accent px-6 sm:px-10 py-8 w-full">

@@ -916,7 +916,9 @@ class OperationServiceOrdersTable
                         )
                         ->fillForm(fn (OperationServiceOrder $record): array => [
                             'invoice_number' => $record->invoice_number,
+                            'invoice_control_number' => $record->invoice_control_number,
                             'invoice_date' => $record->invoice_date,
+                            'invoice_registration_date' => $record->invoice_registration_date ?? now()->startOfDay(),
                             'invoice_amount_usd' => $record->invoice_amount_usd
                                 ?? OperationServiceOrderListDisplay::quoteAmountUsd($record),
                             'invoice_amount_ves' => $record->invoice_amount_ves,
@@ -937,7 +939,7 @@ class OperationServiceOrdersTable
                                     'class' => self::IOS_SECTION_CLASS,
                                 ]),
                             Section::make('Datos de la factura')
-                                ->description('Registra el número, la fecha y el monto facturado, y adjunta el documento emitido por el proveedor.')
+                                ->description('Registra el número y el control fiscal, las fechas de emisión y de registro, y el monto facturado; luego adjunta el documento emitido por el proveedor.')
                                 ->icon('heroicon-m-document-currency-dollar')
                                 ->schema([
                                     Grid::make(['default' => 1, 'lg' => 2])
@@ -948,15 +950,48 @@ class OperationServiceOrdersTable
                                                 ->placeholder('Ej. 00012345')
                                                 ->required()
                                                 ->maxLength(60)
-                                                ->helperText('Tal como aparece en el documento del proveedor.'),
+                                                ->helperText('Tal como aparece en el documento del proveedor.')
+                                                ->validationMessages([
+                                                    'required' => 'Indica el número de la factura.',
+                                                    'max' => 'El número de factura no puede superar los 60 caracteres.',
+                                                ]),
+                                            TextInput::make('invoice_control_number')
+                                                ->label('N° de control')
+                                                ->prefixIcon('heroicon-m-shield-check')
+                                                ->placeholder('Ej. 00-0012345')
+                                                ->maxLength(60)
+                                                ->helperText('Número fiscal impreso por la imprenta autorizada. Déjalo vacío si la factura no lo trae.')
+                                                ->validationMessages([
+                                                    'max' => 'El número de control no puede superar los 60 caracteres.',
+                                                ]),
                                             DatePicker::make('invoice_date')
-                                                ->label('Fecha de emisión')
+                                                ->label('Fecha de emisión de la factura')
                                                 ->prefixIcon('heroicon-m-calendar-days')
                                                 ->native(false)
                                                 ->displayFormat('d/m/Y')
                                                 ->maxDate(now())
                                                 ->required()
-                                                ->helperText('No puede ser posterior a hoy.'),
+                                                ->live(onBlur: true)
+                                                ->helperText('No puede ser posterior a hoy.')
+                                                ->validationMessages([
+                                                    'required' => 'Indica la fecha de emisión de la factura.',
+                                                    'before_or_equal' => 'La fecha de emisión no puede ser posterior a hoy.',
+                                                ]),
+                                            DatePicker::make('invoice_registration_date')
+                                                ->label('Fecha de registro de la factura')
+                                                ->prefixIcon('heroicon-m-inbox-arrow-down')
+                                                ->native(false)
+                                                ->displayFormat('d/m/Y')
+                                                ->default(now()->startOfDay())
+                                                ->minDate(fn (Get $get) => $get('invoice_date') ?: null)
+                                                ->maxDate(now())
+                                                ->required()
+                                                ->helperText('Día en que Operaciones recibe y carga la factura. Se sugiere hoy; no puede ser anterior a la emisión ni posterior a hoy.')
+                                                ->validationMessages([
+                                                    'required' => 'Indica la fecha en que registras la factura.',
+                                                    'after_or_equal' => 'La fecha de registro no puede ser anterior a la fecha de emisión de la factura.',
+                                                    'before_or_equal' => 'La fecha de registro no puede ser posterior a hoy.',
+                                                ]),
                                             TextInput::make('invoice_amount_usd')
                                                 ->label('Monto facturado en US$')
                                                 ->prefix('US$')
@@ -964,7 +999,12 @@ class OperationServiceOrdersTable
                                                 ->numeric()
                                                 ->minValue(0)
                                                 ->requiredWithout('invoice_amount_ves')
-                                                ->helperText(fn (): string => 'Se sugiere el monto cotizado ('.OperationServiceOrderListDisplay::quoteAmountLabel($record).'); ajústalo si la factura difiere.'),
+                                                ->helperText(fn (): string => 'Se sugiere el monto cotizado ('.OperationServiceOrderListDisplay::quoteAmountLabel($record).'); ajústalo si la factura difiere.')
+                                                ->validationMessages([
+                                                    'required_without' => 'Indica el monto en US$ o, en su defecto, el monto en bolívares.',
+                                                    'numeric' => 'El monto en US$ debe ser un número.',
+                                                    'min' => 'El monto en US$ no puede ser negativo.',
+                                                ]),
                                             TextInput::make('invoice_amount_ves')
                                                 ->label('Monto facturado en Bs.')
                                                 ->prefix('Bs.')
@@ -972,7 +1012,12 @@ class OperationServiceOrdersTable
                                                 ->numeric()
                                                 ->minValue(0)
                                                 ->requiredWithout('invoice_amount_usd')
-                                                ->helperText('Opcional si ya indicaste el monto en US$.'),
+                                                ->helperText('Opcional si ya indicaste el monto en US$.')
+                                                ->validationMessages([
+                                                    'required_without' => 'Indica el monto en bolívares o, en su defecto, el monto en US$.',
+                                                    'numeric' => 'El monto en Bs. debe ser un número.',
+                                                    'min' => 'El monto en Bs. no puede ser negativo.',
+                                                ]),
                                         ]),
                                     FileUpload::make('invoice_file_path')
                                         ->label('Documento de la factura')
@@ -1029,9 +1074,13 @@ class OperationServiceOrdersTable
                                 return;
                             }
 
+                            $controlNumber = trim((string) ($data['invoice_control_number'] ?? ''));
+
                             $record->update([
                                 'invoice_number' => trim((string) $data['invoice_number']),
+                                'invoice_control_number' => $controlNumber !== '' ? $controlNumber : null,
                                 'invoice_date' => $data['invoice_date'],
+                                'invoice_registration_date' => $data['invoice_registration_date'] ?: now()->toDateString(),
                                 'invoice_amount_usd' => $usd,
                                 'invoice_amount_ves' => $ves,
                                 'invoice_file_path' => (string) $filePath,
@@ -1212,6 +1261,7 @@ class OperationServiceOrdersTable
         if (OperationServiceOrderListDisplay::hasInvoice($record)) {
             $notice = '<p class="mt-3 rounded-xl bg-warning-500/10 px-3 py-2 text-xs font-medium text-warning-700 dark:text-warning-300">'
                 .'Esta orden ya tiene la factura '.e($record->invoice_number ?: 'cargada')
+                .(filled($record->invoice_control_number) ? ' (control '.e((string) $record->invoice_control_number).')' : '')
                 .(filled($record->invoice_uploaded_by) ? ', registrada por '.e((string) $record->invoice_uploaded_by) : '')
                 .(filled($record->invoice_uploaded_at) ? ' el '.e($record->invoice_uploaded_at->format('d/m/Y H:i')) : '')
                 .'. Al guardar se reemplazarán los datos anteriores.</p>';
