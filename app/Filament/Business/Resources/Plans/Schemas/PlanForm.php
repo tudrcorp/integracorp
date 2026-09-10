@@ -197,6 +197,15 @@ class PlanForm
                                     ->afterStateUpdated(function (Set $set, mixed $state): void {
                                         PlanQuotabilityFormSchema::syncTypeChange($set, $state);
                                     }),
+                                Toggle::make('requires_preexistence_note')
+                                    ->label('Imprimir la nota de preexistencias en el certificado')
+                                    ->helperText('Actívalo si el certificado de este plan debe advertir que las patologías preexistentes quedan excluidas de las emergencias médicas listadas.')
+                                    ->default(false)
+                                    ->onColor('warning')
+                                    ->offColor('gray')
+                                    ->inline(false)
+                                    ->columnSpanFull(),
+
                                 Hidden::make('status')->default('ACTIVO'),
                                 Hidden::make('created_by')->default(Auth::user()->name),
                             ]),

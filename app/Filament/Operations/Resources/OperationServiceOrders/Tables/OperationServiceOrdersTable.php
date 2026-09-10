@@ -141,6 +141,19 @@ class OperationServiceOrdersTable
         };
     }
 
+    private static function serviceTypeColor(?string $serviceType): string
+    {
+        $normalized = mb_strtoupper(trim((string) $serviceType));
+
+        return match (true) {
+            str_contains($normalized, 'MEDICAMENTO') => 'success',
+            str_contains($normalized, 'LABORATORIO') => 'info',
+            str_contains($normalized, 'IMAGEN') => 'warning',
+            str_contains($normalized, 'ESPECIAL') => 'primary',
+            default => 'gray',
+        };
+    }
+
     private static function documentCodeColumn(string $name): TextColumn
     {
         return TextColumn::make($name)
@@ -500,7 +513,7 @@ class OperationServiceOrdersTable
                 TextColumn::make('service_type')
                     ->label('Tipo de servicio')
                     ->badge()
-                    ->color('gray')
+                    ->color(fn (?string $state): string => self::serviceTypeColor($state))
                     ->icon(fn (?string $state): string => self::serviceTypeIcon($state))
                     ->toggleable(),
                 TextColumn::make('managed_by')
@@ -568,14 +581,6 @@ class OperationServiceOrdersTable
                     ->color(fn (?string $state): string => filled($state) ? 'success' : 'gray')
                     ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Generado' : 'No aplica')
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('operation_service_order_quotes_count')
-                    ->label('Cotizaciones')
-                    ->badge()
-                    ->color('info')
-                    ->icon('heroicon-m-document-currency-dollar')
-                    ->sortable()
-                    ->formatStateUsing(fn (int $state): string => $state === 1 ? '1 cotización' : $state.' cotizaciones')
-                    ->toggleable(),
                 TextColumn::make('created_by')
                     ->label('Creado por')
                     ->toggleable(isToggledHiddenByDefault: true),

@@ -57,7 +57,11 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('partials.presentation-theme-styles')
         ->toContain('partials.presentation-theme-script')
         ->toContain('data-theme')
-        ->toContain('color-scheme');
+        ->toContain('color-scheme')
+        ->toContain('cover-tracks')
+        ->toContain('lifecycle-step')
+        ->toContain('hub-url')
+        ->toContain('flow-rail');
 
     expect($headerContents)
         ->toContain('id="btn-overview"')
@@ -70,14 +74,17 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('data-presentation-theme-toggle');
 });
 
-it('define doce diapositivas estructuradas de avances tecnologicos', function (): void {
+it('define quince diapositivas estructuradas de avances tecnologicos', function (): void {
     $slides = TechnologyAdvancesPresentationSlides::all();
 
-    expect($slides)->toHaveCount(12)
+    expect($slides)->toHaveCount(15)
         ->and($slides[0]['type'])->toBe('cover')
-        ->and($slides[10]['type'])->toBe('future')
-        ->and($slides[11]['type'])->toBe('closing')
-        ->and(collect($slides)->pluck('id')->unique()->count())->toBe(12);
+        ->and($slides[2]['type'])->toBe('lifecycle')
+        ->and($slides[3]['type'])->toBe('lifecycle')
+        ->and($slides[6]['type'])->toBe('hub')
+        ->and($slides[13]['type'])->toBe('future')
+        ->and($slides[14]['type'])->toBe('closing')
+        ->and(collect($slides)->pluck('id')->unique()->count())->toBe(15);
 
     foreach ($slides as $slide) {
         expect($slide)->toHaveKeys([
@@ -99,16 +106,19 @@ it('define doce diapositivas estructuradas de avances tecnologicos', function ()
     }
 });
 
-it('incluye el contenido clave de paneles, portal, marketing, api, helpdesk e infraestructura', function (): void {
+it('incluye el contenido clave de operaciones, planes, pwa, portal, marketing e intra', function (): void {
     $byId = collect(TechnologyAdvancesPresentationSlides::all())->keyBy('id');
 
     expect($byId->keys()->all())->toContain(
         'portada',
         'operaciones',
-        'proyectos',
-        'metricas',
+        'generador-planes',
+        'pwa',
         'portal-paciente',
         'marketing',
+        'intra',
+        'proyectos',
+        'metricas',
         'api',
         'helpdesk',
         'notificaciones',
@@ -117,11 +127,28 @@ it('incluye el contenido clave de paneles, portal, marketing, api, helpdesk e in
         'cierre',
     );
 
-    expect($byId['operaciones']['data']['pillars'])->toHaveCount(4)
+    expect($byId['portada']['data']['tracks'])->toHaveCount(6)
+        ->and(collect($byId['portada']['data']['tracks'])->pluck('label')->all())->toContain(
+            'Operaciones',
+            'Planes',
+            'PWA',
+            'Portal',
+            'Marketing',
+            'Intra',
+        )
+        ->and($byId['operaciones']['data']['pillars'])->toHaveCount(4)
+        ->and(collect($byId['operaciones']['data']['pillars'])->pluck('title')->all())->toContain('Cupos clínicos')
+        ->and($byId['generador-planes']['data']['steps'])->toHaveCount(4)
+        ->and($byId['generador-planes']['title'])->toContain('carga desde el catálogo')
+        ->and($byId['pwa']['data']['steps'])->toHaveCount(4)
+        ->and($byId['pwa']['title'])->toContain('PWA comercial')
+        ->and($byId['portal-paciente']['data']['for_analysts'])->toHaveCount(3)
+        ->and($byId['marketing']['title'])->toBe('Sistema de Marketing')
+        ->and($byId['marketing']['data']['suites'])->toHaveCount(4)
+        ->and($byId['intra']['data']['url'])->toBe('https://intra.tudrgroup.com')
+        ->and($byId['intra']['data']['cards'])->toHaveCount(3)
         ->and($byId['proyectos']['data']['company_help'])->toHaveCount(4)
         ->and($byId['metricas']['data']['status'])->toBe('En construcción')
-        ->and($byId['portal-paciente']['data']['for_analysts'])->toHaveCount(3)
-        ->and($byId['marketing']['data']['suites'])->toHaveCount(4)
         ->and($byId['api']['data']['improvements'])->toHaveCount(4)
         ->and($byId['helpdesk']['data']['upgrades'])->toHaveCount(4)
         ->and($byId['notificaciones']['data']['upgrades'])->toHaveCount(4)
@@ -138,6 +165,7 @@ it('incluye el contenido clave de paneles, portal, marketing, api, helpdesk e in
         ->and($byId['infraestructura']['data']['layers'][2]['nodes'][0]['id'])->toBe('SRV-PROD-BD')
         ->and($byId['infraestructura']['data']['layers'][2]['nodes'][0]['kind'])->toBe('database')
         ->and($byId['infraestructura']['data']['dev']['id'])->toBe('SRV-DES-INTEGRACORP')
+        ->and($byId['infraestructura']['data']['dev']['detail'])->toContain('intra.tudrgroup.com')
         ->and($byId['futuro']['data']['items'])->toHaveCount(4)
         ->and($byId['futuro']['title'])->toBe('Un futuro muy cercano')
         ->and(collect($byId['futuro']['data']['items'])->pluck('title')->all())->toContain(
@@ -174,5 +202,15 @@ it('responde la ruta de presentacion de avances tecnologicos con la vista liquid
         ->assertSee('Un futuro muy cercano', false)
         ->assertSee('Mensajería Instantánea TuDrGroup', false)
         ->assertSee('Red Social TuDrGroup', false)
-        ->assertSee('Todo en la vida comienza con un voto de FE', false);
+        ->assertSee('Todo en la vida comienza con un voto de FE', false)
+        ->assertSee('Cupos clínicos', false)
+        ->assertSee('Generador de planes', false)
+        ->assertSee('Cargar estructura', false)
+        ->assertSee('PWA comercial', false)
+        ->assertSee('Sistema de Marketing', false)
+        ->assertSee('intra.tudrgroup.com', false)
+        ->assertSee('Portal del Paciente', false)
+        ->assertSee('cover-tracks', false)
+        ->assertSee('lifecycle-step', false)
+        ->assertSee('hub-url', false);
 });

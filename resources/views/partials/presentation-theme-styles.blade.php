@@ -237,6 +237,17 @@
         background: transparent;
     }
 
+    html[data-theme="dark"] .cover-track {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.10);
+    }
+
+    html[data-theme="dark"] .hub-status {
+        background: color-mix(in srgb, #34C759 18%, transparent);
+        color: #7DDA95;
+        border-color: color-mix(in srgb, #34C759 28%, transparent);
+    }
+
     @media (min-width: 768px) {
         .presentation-theme-toggle--float {
             top: calc(57px + 0.5rem);

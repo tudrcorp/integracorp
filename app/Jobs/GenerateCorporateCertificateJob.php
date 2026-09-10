@@ -27,7 +27,8 @@ class GenerateCorporateCertificateJob implements ShouldQueue
     public function handle(): void
     {
         $this->runWithAffiliationFailureLogging(function (): void {
-            ini_set('memory_limit', '1024M');
+            // Un padrón de ~2.700 afiliados roza los 900 MB al paginar el certificado completo.
+            ini_set('memory_limit', '2048M');
             set_time_limit(540);
 
             $record = AffiliationCorporate::query()

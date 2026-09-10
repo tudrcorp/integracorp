@@ -19,6 +19,7 @@ use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -126,6 +127,15 @@ class PlanWizardForm
                     ->default(PlanPricingMode::Coberturas->value)
                     ->required()
                     ->live()
+                    ->columnSpanFull(),
+
+                Toggle::make('requires_preexistence_note')
+                    ->label('Imprimir la nota de preexistencias en el certificado')
+                    ->helperText('Actívalo si el certificado de este plan debe advertir que las patologías preexistentes quedan excluidas de las emergencias médicas listadas.')
+                    ->default(false)
+                    ->onColor('warning')
+                    ->offColor('gray')
+                    ->inline(false)
                     ->columnSpanFull(),
 
                 Hidden::make('status')->default('ACTIVO'),
