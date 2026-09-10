@@ -83,6 +83,8 @@ it('el comando sincroniza la accion en cada modulo habilitado', function (): voi
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Console/Commands/SyncFilamentNavigationPermissionsCommand.php');
 
     expect($source)
+        ->toContain('syncCommercialNetworkPermissions')
+        ->toContain('CommercialNetworkPermissionRegistry::ensurePermissionsExist')
         ->toContain("foreach (\$definition['modules'] as \$module) {")
         ->toContain("'module' => \$module,")
         ->not->toContain("'module' => 'NEGOCIOS',");

@@ -2,21 +2,18 @@
 
 declare(strict_types=1);
 
-it('OperationServiceOrdersTable incluye acción modal de datos de pago con estilo iOS', function (): void {
+it('OperationServiceOrdersTable conserva estilo iOS, prioridades y accesos a PDF', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationServiceOrders/Tables/OperationServiceOrdersTable.php';
     $src = file_get_contents($path);
 
-    expect($src)->toContain("Action::make('registerPayment')")
-        ->toContain('emptyStateHeading')
+    expect($src)->toContain('emptyStateHeading')
         ->toContain('supplierLabel')
         ->toContain('statusIcon')
         ->toContain('serviceTypeIcon')
-        ->toContain('Registrar datos de pago')
         ->toContain('fi-helpdesk-ios-section')
         ->toContain('aviso-btn-ios-success')
         ->toContain('ticket-btn-ios-gray')
         ->toContain('paymentMethodOptions')
-        ->toContain('hasRegisteredPaymentData')
         ->toContain('OperationServiceOrder $record')
         ->toContain('use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;')
         ->toContain('TelemedicinePriorityFilamentBadge::color')
@@ -28,13 +25,35 @@ it('OperationServiceOrdersTable incluye acción modal de datos de pago con estil
         ->toContain('border-gray-400 bg-gray-100/90')
         ->toContain('border-red-500 bg-red-50/90')
         ->toContain('OperationServiceOrderValidity::expireEligibleOrders')
-        ->toContain('patientNameForOrder')
+        ->toContain('OperationServiceOrderListDisplay::patientFullName')
         ->toContain("->label('Nº caso')")
-        ->toContain("->label('Nº orden')")
+        ->toContain("->label('Orden servicio')")
+        ->toContain("->label('Paciente')")
+        ->toContain("->label('Estatus administrativo')")
+        ->toContain("->label('U.N. específica')")
+        ->toContain("->label('Monto cotizado')")
+        ->toContain("Action::make('preview_order_pdf')")
+        ->toContain("Action::make('preview_quote_pdf')")
+        ->toContain('filament.operations.operation-service-orders.pdf-preview')
         ->toContain('operationCoordinationService.telemedicineCase')
-        ->toContain('patientNameForOrder')
         ->toContain("TextColumn::make('currency')")
         ->toContain("TextColumn::make('associated_quote_pdf_path')");
+});
+
+it('la tabla ya no ofrece las acciones de datos de pago ni de carga de soportes', function (): void {
+    $src = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationServiceOrders/Tables/OperationServiceOrdersTable.php');
+
+    expect($src)
+        ->not->toContain("Action::make('registerPayment')")
+        ->and($src)->not->toContain("Action::make('upload_files')")
+        ->and($src)->not->toContain('Registrar datos de pago')
+        ->and($src)->not->toContain("->label('Cargar Soportes')")
+        ->and($src)->not->toContain('hasRegisteredPaymentData');
+
+    // La carga de factura y la vista previa de soportes ya cargados sí permanecen.
+    expect($src)
+        ->toContain("Action::make('uploadInvoice')")
+        ->and($src)->toContain("Action::make('preview_files')");
 });
 
 it('oculta por defecto las columnas de pago y pdf en OperationServiceOrdersTable', function (): void {

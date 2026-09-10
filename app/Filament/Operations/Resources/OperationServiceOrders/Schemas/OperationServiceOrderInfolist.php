@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\OperationServiceOrders\Schemas;
 
 use App\Models\OperationServiceOrder;
+use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Operations\OperationServiceOrderProviderSummary;
 use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Operations\OperationServiceOrderViewActions;
@@ -74,6 +75,12 @@ class OperationServiceOrderInfolist
                                                         'CANCELADA', 'CANCELADO' => 'gray',
                                                         default => 'warning',
                                                     })
+                                                    ->placeholder('-'),
+                                                TextEntry::make('administrative_status')
+                                                    ->label('Estatus administrativo')
+                                                    ->badge()
+                                                    ->state(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::administrativeStatus($record))
+                                                    ->color(fn (?string $state): string => OperationServiceOrderListDisplay::administrativeStatusColor($state))
                                                     ->placeholder('-'),
                                                 TextEntry::make('approved_at')
                                                     ->label('Fecha de aprobación')

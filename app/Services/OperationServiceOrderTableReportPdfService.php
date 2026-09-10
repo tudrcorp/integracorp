@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\OperationServiceOrder;
+use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as PdfDocument;
@@ -134,21 +135,9 @@ final class OperationServiceOrderTableReportPdfService
 
     public static function patientDocumentForOrder(OperationServiceOrder $record): string
     {
-        $coordination = $record->operationCoordinationService;
+        $document = OperationServiceOrderListDisplay::patientDocument($record);
 
-        if ($coordination === null) {
-            return '—';
-        }
-
-        if (filled($coordination->ci_patient)) {
-            return (string) $coordination->ci_patient;
-        }
-
-        if (filled($coordination->telemedicinePatient?->nro_identificacion)) {
-            return (string) $coordination->telemedicinePatient->nro_identificacion;
-        }
-
-        return '—';
+        return $document !== '' ? $document : '—';
     }
 
     public static function supplierLabel(OperationServiceOrder $record): string

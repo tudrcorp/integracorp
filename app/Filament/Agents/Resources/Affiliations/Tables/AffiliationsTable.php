@@ -214,6 +214,7 @@ class AffiliationsTable
             ])
             ->recordActions([
                 ActionGroup::make([
+                    \App\Filament\Shared\CommercialTelemedicine\Actions\ViewAffiliationTelemedicinePatientsAction::make(),
 
                     /**DESCARGAR */
                     Action::make('download')

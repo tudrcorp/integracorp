@@ -23,7 +23,9 @@ it('define sincronizacion de items de coordinacion al finalizar orden', function
         ->toContain('TelemedicinePatientLab');
 
     expect($viewPath)->toContain('OperationServiceOrderCoordinationSync::finalizeOrder');
-    expect($tablePath)->toContain('OperationServiceOrderCoordinationSync::finalizeOrder');
+
+    // La finalización se hace desde la ficha de la orden; la tabla ya no carga soportes ni finaliza.
+    expect($tablePath)->not->toContain('OperationServiceOrderCoordinationSync::finalizeOrder');
 });
 
 it('detecta cuando todos los items de coordinacion estan finalizados', function (): void {
