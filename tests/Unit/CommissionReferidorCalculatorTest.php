@@ -6,6 +6,36 @@ use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\Commission;
 use App\Support\CommercialStructure\CommissionReferidorCalculator;
+use Illuminate\Support\Collection;
+
+it('suma la comisión cuando hay varios referidores activos', function (): void {
+    $first = new Agency([
+        'is_referidor' => true,
+        'referidor_percentage' => '6.00',
+        'name_corporative' => 'Referidor A',
+    ]);
+    $second = new Agency([
+        'is_referidor' => true,
+        'referidor_percentage' => '4.00',
+        'name_corporative' => 'Referidor C',
+    ]);
+
+    $agent = new Agent(['name' => 'Vendedor B']);
+    $agent->setRelation('referrerAgencies', new Collection([$first, $second]));
+    $agent->setRelation('referrerAgents', new Collection);
+
+    $result = CommissionReferidorCalculator::compute(
+        agent: $agent,
+        agency: null,
+        totalAmount: 1000.0,
+        payAmountUsd: 1000.0,
+        payAmountVes: 40000.0,
+    );
+
+    expect($result['percentage'])->toBe(10.0)
+        ->and($result['usd'])->toBe(100.0)
+        ->and($result['ves'])->toBe(4000.0);
+});
 
 it('calcula la comisión de referidor sobre el total de la venta', function (): void {
     $referrer = new Agency([

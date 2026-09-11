@@ -126,6 +126,7 @@ use App\Filament\Operations\Resources\DoctorNurses\DoctorNurseResource;
 use App\Filament\Operations\Resources\DownloadZones\DownloadZoneResource as OperationsDownloadZoneResource;
 use App\Filament\Operations\Resources\Helpdesks\HelpdeskResource as OperationsHelpdeskResource;
 use App\Filament\Operations\Resources\IndicadoresDeDesempeno\IndicadoresDeDesempenoResource;
+use App\Filament\Operations\Resources\OperationAccountsPayables\OperationAccountsPayableResource;
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
 use App\Filament\Operations\Resources\OperationInventories\OperationInventoryResource;
 use App\Filament\Operations\Resources\OperationInventoryEntries\OperationInventoryEntryResource;
@@ -300,6 +301,7 @@ final class DepartmentNavigationPermissionRegistry
         OperationMedicalAppointmentResource::class => ['citas-medicas'],
         AccountsReceivableResource::class => ['cuentas-por-cobrar'],
         AccountsPayableResource::class => ['cuentas-por-pagar'],
+        OperationAccountsPayableResource::class => ['cuentas-por-pagar-facturas'],
         OperationTypeServiceResource::class => ['tipos-servicios'],
         TelemedicineGeneralServiceResource::class => ['servicios-consulta-general'],
         PortalHelpContactResource::class => ['contactos-ayuda-portal'],

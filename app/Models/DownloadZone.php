@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DownloadZone extends Model
 {
@@ -17,8 +19,13 @@ class DownloadZone extends Model
         'description',
     ];
 
-    public function zone(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function zone(): BelongsTo
     {
         return $this->belongsTo(Zone::class);
+    }
+
+    public function likes(): HasMany
+    {
+        return $this->hasMany(DownloadZoneLike::class);
     }
 }

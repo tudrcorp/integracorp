@@ -114,7 +114,7 @@ class AgencyInfolist
                                                     ->boolean(),
                                                 ReferidorPercentageField::entry(),
                                                 TextEntry::make('referidor_display')
-                                                    ->label('Referidor')
+                                                    ->label('Referidores')
                                                     ->icon('heroicon-m-user-group')
                                                     ->state(fn (Agency $record): ?string => ReferidorAssignmentService::assignedReferrerLabel($record))
                                                     ->visible(fn (Agency $record): bool => ReferidorAssignmentService::hasAssignedReferrer($record))

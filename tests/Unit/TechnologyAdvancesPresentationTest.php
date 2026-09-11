@@ -29,6 +29,11 @@ it('expone la vista technology-advances-presentation con navegación e interacti
     $marketingLandingPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-marketing-landing-screen.blade.php';
     $marketingCasaImagePath = dirname(__DIR__, 2).'/public/image/storefront/tdg-casa-bg.jpg';
     $marketingViajesImagePath = dirname(__DIR__, 2).'/public/image/storefront/tdg-viajes-bg.jpg';
+    $sistemasDevicesPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-sistemas-devices.blade.php';
+    $sistemasHubPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-sistemas-hub-screen.blade.php';
+    $sistemasHeroImagePath = dirname(__DIR__, 2).'/public/image/presentaciones-sistemas-bg.png';
+    $intraDevicesPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-intra-devices.blade.php';
+    $intraIndexPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-intra-index-screen.blade.php';
 
     expect(file_exists($viewPath))->toBeTrue()
         ->and(file_exists($headerPath))->toBeTrue()
@@ -41,7 +46,12 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->and(file_exists($marketingLoginPartialPath))->toBeTrue()
         ->and(file_exists($marketingLandingPartialPath))->toBeTrue()
         ->and(file_exists($marketingCasaImagePath))->toBeTrue()
-        ->and(file_exists($marketingViajesImagePath))->toBeTrue();
+        ->and(file_exists($marketingViajesImagePath))->toBeTrue()
+        ->and(file_exists($sistemasDevicesPartialPath))->toBeTrue()
+        ->and(file_exists($sistemasHubPartialPath))->toBeTrue()
+        ->and(file_exists($sistemasHeroImagePath))->toBeTrue()
+        ->and(file_exists($intraDevicesPartialPath))->toBeTrue()
+        ->and(file_exists($intraIndexPartialPath))->toBeTrue();
 
     $viewContents = file_get_contents($viewPath);
     $headerContents = file_get_contents($headerPath);
@@ -52,6 +62,10 @@ it('expone la vista technology-advances-presentation con navegación e interacti
     $marketingDevicesPartial = file_get_contents($marketingDevicesPartialPath);
     $marketingLoginPartial = file_get_contents($marketingLoginPartialPath);
     $marketingLandingPartial = file_get_contents($marketingLandingPartialPath);
+    $sistemasDevicesPartial = file_get_contents($sistemasDevicesPartialPath);
+    $sistemasHubPartial = file_get_contents($sistemasHubPartialPath);
+    $intraDevicesPartial = file_get_contents($intraDevicesPartialPath);
+    $intraIndexPartial = file_get_contents($intraIndexPartialPath);
 
     expect($controllerContents)
         ->toContain("return view('technology-advances-presentation'")
@@ -96,7 +110,11 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('portal-devices')
         ->toContain('portal-monitor')
         ->toContain('partials.presentation-marketing-devices')
-        ->toContain('mkt-devices');
+        ->toContain('mkt-devices')
+        ->toContain('partials.presentation-sistemas-devices')
+        ->toContain('sys-devices')
+        ->toContain('partials.presentation-intra-devices')
+        ->toContain('intra-devices');
 
     expect($devicesPartial)
         ->toContain('pwa-device--phone')
@@ -139,6 +157,31 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('Tu Dr en Viajes')
         ->toContain('tdg-casa-bg.jpg');
 
+    expect($sistemasDevicesPartial)
+        ->toContain('pwa-device--phone')
+        ->toContain('portal-monitor')
+        ->toContain('iPhone · Identidad')
+        ->toContain('PC · Panel')
+        ->toContain('dpto-tecnologia-sistemas');
+
+    expect($sistemasHubPartial)
+        ->toContain('Departamento de Sistemas')
+        ->toContain('Verifica tu identidad')
+        ->toContain('presentaciones-sistemas-bg.png')
+        ->toContain('Presentaciones');
+
+    expect($intraDevicesPartial)
+        ->toContain('portal-monitor')
+        ->toContain('intra.tudrgroup.com')
+        ->toContain('PC · Índice');
+
+    expect($intraIndexPartial)
+        ->toContain('Índice de portales')
+        ->toContain('Producción')
+        ->toContain('Desarrollo')
+        ->toContain('Tecnología y Sistemas')
+        ->toContain('Integracorp App');
+
     $themePath = dirname(__DIR__, 2).'/resources/views/partials/presentation-theme-styles.blade.php';
     $themeContents = file_get_contents($themePath);
 
@@ -159,17 +202,18 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('data-presentation-theme-toggle');
 });
 
-it('define quince diapositivas estructuradas de avances tecnologicos', function (): void {
+it('define nueve diapositivas estructuradas de avances tecnologicos', function (): void {
     $slides = TechnologyAdvancesPresentationSlides::all();
 
-    expect($slides)->toHaveCount(15)
+    expect($slides)->toHaveCount(9)
         ->and($slides[0]['type'])->toBe('cover')
         ->and($slides[2]['type'])->toBe('lifecycle')
+        ->and($slides[3]['id'])->toBe('panel-sistemas')
         ->and($slides[3]['type'])->toBe('devices')
-        ->and($slides[6]['type'])->toBe('hub')
-        ->and($slides[13]['type'])->toBe('future')
-        ->and($slides[14]['type'])->toBe('closing')
-        ->and(collect($slides)->pluck('id')->unique()->count())->toBe(15);
+        ->and($slides[4]['type'])->toBe('devices')
+        ->and($slides[7]['type'])->toBe('hub')
+        ->and($slides[8]['type'])->toBe('closing')
+        ->and(collect($slides)->pluck('id')->unique()->count())->toBe(9);
 
     foreach ($slides as $slide) {
         expect($slide)->toHaveKeys([
@@ -198,24 +242,19 @@ it('incluye el contenido clave de operaciones, planes, pwa, portal, marketing e 
         'portada',
         'operaciones',
         'generador-planes',
+        'panel-sistemas',
         'pwa',
         'portal-paciente',
         'marketing',
         'intra',
-        'proyectos',
-        'metricas',
-        'api',
-        'helpdesk',
-        'notificaciones',
-        'infraestructura',
-        'futuro',
         'cierre',
     );
 
-    expect($byId['portada']['data']['tracks'])->toHaveCount(6)
+    expect($byId['portada']['data']['tracks'])->toHaveCount(7)
         ->and(collect($byId['portada']['data']['tracks'])->pluck('label')->all())->toContain(
             'Operaciones',
             'Planes',
+            'Hub',
             'PWA',
             'Portal',
             'Marketing',
@@ -225,6 +264,12 @@ it('incluye el contenido clave de operaciones, planes, pwa, portal, marketing e 
         ->and(collect($byId['operaciones']['data']['pillars'])->pluck('title')->all())->toContain('Cupos clínicos')
         ->and($byId['generador-planes']['data']['steps'])->toHaveCount(4)
         ->and($byId['generador-planes']['title'])->toContain('carga desde el catálogo')
+        ->and($byId['panel-sistemas']['type'])->toBe('devices')
+        ->and($byId['panel-sistemas']['data']['device_set'])->toBe('sistemas')
+        ->and($byId['panel-sistemas']['data']['url'])->toContain('dpto-tecnologia-sistemas')
+        ->and($byId['panel-sistemas']['data']['hero_image'])->toContain('presentaciones-sistemas-bg.png')
+        ->and($byId['panel-sistemas']['data']['phone_caption'])->toContain('iPhone')
+        ->and($byId['panel-sistemas']['data']['monitor_caption'])->toContain('PC')
         ->and($byId['pwa']['data']['steps'])->toHaveCount(4)
         ->and($byId['pwa']['type'])->toBe('devices')
         ->and($byId['pwa']['data']['device_set'])->toBe('pwa')
@@ -252,35 +297,10 @@ it('incluye el contenido clave de operaciones, planes, pwa, portal, marketing e 
         ->and($byId['marketing']['data']['casa_image'])->toContain('tdg-casa-bg.jpg')
         ->and($byId['marketing']['data']['suites'])->toHaveCount(4)
         ->and($byId['intra']['data']['url'])->toBe('https://intra.tudrgroup.com')
+        ->and($byId['intra']['data']['device_set'])->toBe('intra')
+        ->and($byId['intra']['data']['monitor_caption'])->toContain('PC · Índice')
         ->and($byId['intra']['data']['cards'])->toHaveCount(3)
-        ->and($byId['proyectos']['data']['company_help'])->toHaveCount(4)
-        ->and($byId['metricas']['data']['status'])->toBe('En construcción')
-        ->and($byId['api']['data']['improvements'])->toHaveCount(4)
-        ->and($byId['helpdesk']['data']['upgrades'])->toHaveCount(4)
-        ->and($byId['notificaciones']['data']['upgrades'])->toHaveCount(4)
-        ->and($byId['infraestructura']['data']['prod'])->toHaveCount(5)
-        ->and($byId['infraestructura']['data']['layers'])->toHaveCount(3)
-        ->and($byId['infraestructura']['data']['layers'][0]['nodes'])->toHaveCount(3)
-        ->and(collect($byId['infraestructura']['data']['layers'][0]['nodes'])->pluck('id')->all())->toBe([
-            'SRV-PROD-INTEGRACORP',
-            'SRV-PROD-PORTALPACIENTE',
-            'SRV-PROD-MARKETING',
-        ])
-        ->and($byId['infraestructura']['data']['layers'][1]['nodes'][0]['id'])->toBe('SRV-PROD-INTEGRACORP-API')
-        ->and($byId['infraestructura']['data']['layers'][1]['nodes'][0]['kind'])->toBe('api')
-        ->and($byId['infraestructura']['data']['layers'][2]['nodes'][0]['id'])->toBe('SRV-PROD-BD')
-        ->and($byId['infraestructura']['data']['layers'][2]['nodes'][0]['kind'])->toBe('database')
-        ->and($byId['infraestructura']['data']['dev']['id'])->toBe('SRV-DES-INTEGRACORP')
-        ->and($byId['infraestructura']['data']['dev']['detail'])->toContain('intra.tudrgroup.com')
-        ->and($byId['futuro']['data']['items'])->toHaveCount(4)
-        ->and($byId['futuro']['title'])->toBe('Un futuro muy cercano')
-        ->and(collect($byId['futuro']['data']['items'])->pluck('title')->all())->toContain(
-            'Mensajería Instantánea TuDrGroup',
-            'Red Social TuDrGroup',
-            'Seguimiento y auto-responder con IA + N8N',
-            'Automatización de procesos internos',
-        )
-        ->and($byId['cierre']['data']['quote'])->toContain('voto de FE');
+        ->and($byId['cierre']['data']['quote'])->toContain('Lo más difícil de ver es lo bueno');
 });
 
 it('responde la ruta de presentacion de avances tecnologicos con la vista liquid glass', function (): void {
@@ -300,18 +320,17 @@ it('responde la ruta de presentacion de avances tecnologicos con la vista liquid
         ->assertSee('Tester', false)
         ->assertSee('Cerrar sesión', false)
         ->assertSee('Desliza', false)
-        ->assertSee('SRV-PROD-INTEGRACORP-API', false)
-        ->assertSee('infra-hierarchy', false)
-        ->assertSee('infra-icon--server', false)
-        ->assertSee('infra-icon--api', false)
-        ->assertSee('infra-icon--database', false)
-        ->assertSee('Un futuro muy cercano', false)
-        ->assertSee('Mensajería Instantánea TuDrGroup', false)
-        ->assertSee('Red Social TuDrGroup', false)
-        ->assertSee('Todo en la vida comienza con un voto de FE', false)
+        ->assertSee('Lo más difícil de ver es lo bueno', false)
+        ->assertSee('En tu Doctor Group, lo bueno pesa muchísimo más', false)
         ->assertSee('Cupos clínicos', false)
         ->assertSee('Generador de planes', false)
         ->assertSee('Cargar estructura', false)
+        ->assertSee('Panel de Sistemas', false)
+        ->assertSee('iPhone · Identidad', false)
+        ->assertSee('PC · Panel', false)
+        ->assertSee('Verifica tu identidad', false)
+        ->assertSee('dpto-tecnologia-sistemas', false)
+        ->assertSee('presentaciones-sistemas-bg', false)
         ->assertSee('PWA comercial', false)
         ->assertSee('iPhone · Bienvenida', false)
         ->assertSee('iPhone · Planes', false)
@@ -332,6 +351,9 @@ it('responde la ruta de presentacion de avances tecnologicos con la vista liquid
         ->assertSee('tdg-casa-bg', false)
         ->assertSee('pwa-device--tablet', false)
         ->assertSee('intra.tudrgroup.com', false)
+        ->assertSee('Índice de portales', false)
+        ->assertSee('Tecnología y Sistemas', false)
+        ->assertSee('PC · Índice de portales', false)
         ->assertSee('Portal del Paciente', false)
         ->assertSee('iPhone · Login', false)
         ->assertSee('PC · Login', false)

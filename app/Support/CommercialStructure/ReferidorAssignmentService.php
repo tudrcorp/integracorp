@@ -6,7 +6,9 @@ namespace App\Support\CommercialStructure;
 
 use App\Models\Agency;
 use App\Models\Agent;
+use App\Models\ReferidorAssignment;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 final class ReferidorAssignmentService
@@ -76,24 +78,46 @@ final class ReferidorAssignmentService
 
     public static function hasAssignedReferrer(Agency|Agent $record): bool
     {
+        $loaded = self::loadedReferrers($record);
+
+        if ($loaded !== null) {
+            return $loaded !== [];
+        }
+
         return filled($record->referidor_id) || filled($record->referidor_agent_id);
     }
 
     public static function assignedReferrerLabel(Agency|Agent $record): ?string
     {
-        if (filled($record->referidor_agent_id)) {
-            $agent = $record->referidorAgent;
+        $labels = [];
 
-            return $agent instanceof Agent ? self::agentLabel($agent) : null;
+        foreach (self::assignedReferrers($record) as $referrer) {
+            $label = $referrer instanceof Agent
+                ? self::agentLabel($referrer)
+                : self::generalAgencyLabel($referrer);
+
+            if ($label !== '') {
+                $labels[] = $label;
+            }
         }
 
-        if (filled($record->referidor_id)) {
-            $agency = $record->referidor;
+        return $labels === [] ? null : implode("\n", $labels);
+    }
 
-            return $agency instanceof Agency ? self::generalAgencyLabel($agency) : null;
+    /**
+     * @return list<Agency|Agent>
+     */
+    public static function assignedReferrers(Agency|Agent $record): array
+    {
+        $loaded = self::loadedReferrers($record);
+
+        if ($loaded !== null) {
+            return $loaded;
         }
 
-        return null;
+        $legacy = self::legacyReferrer($record);
+
+        return $legacy !== null ? [$legacy] : [];
     }
 
     public static function referredGeneralAgenciesText(Agency|Agent $record): string
@@ -153,8 +177,8 @@ final class ReferidorAssignmentService
             self::assertGeneralAgenciesAssignable($referrer, $generalAgencyIds);
             self::assertAgentsAssignable($referrer, $agentIds);
 
-            self::syncGeneralAgencies($referrer, $generalAgencyIds);
-            self::syncAgents($referrer, $agentIds);
+            self::syncReferredAgencies($referrer, $generalAgencyIds);
+            self::syncReferredAgents($referrer, $agentIds);
         });
     }
 
@@ -163,16 +187,15 @@ final class ReferidorAssignmentService
      */
     public static function assignedGeneralAgencyIds(Agency|Agent $referrer): array
     {
-        $owner = self::referrerOwner($referrer);
-
-        if ($owner === null) {
+        if (! $referrer->exists) {
             return [];
         }
 
-        return Agency::query()
-            ->where($owner['column'], $owner['id'])
-            ->orderBy('name_corporative')
-            ->pluck('id')
+        return ReferidorAssignment::query()
+            ->forReferrer($referrer)
+            ->whereNotNull('referred_agency_id')
+            ->orderBy('referred_agency_id')
+            ->pluck('referred_agency_id')
             ->map(fn (mixed $id): int => (int) $id)
             ->values()
             ->all();
@@ -183,16 +206,15 @@ final class ReferidorAssignmentService
      */
     public static function assignedAgentIds(Agency|Agent $referrer): array
     {
-        $owner = self::referrerOwner($referrer);
-
-        if ($owner === null) {
+        if (! $referrer->exists) {
             return [];
         }
 
-        return self::assignableAgentsQuery($referrer)
-            ->where($owner['column'], $owner['id'])
-            ->orderBy('name')
-            ->pluck('id')
+        return ReferidorAssignment::query()
+            ->forReferrer($referrer)
+            ->whereNotNull('referred_agent_id')
+            ->orderBy('referred_agent_id')
+            ->pluck('referred_agent_id')
             ->map(fn (mixed $id): int => (int) $id)
             ->values()
             ->all();
@@ -356,26 +378,85 @@ final class ReferidorAssignmentService
         return array_values(array_unique($ids));
     }
 
+    /**
+     * @return list<Agency|Agent>|null
+     */
+    private static function loadedReferrers(Agency|Agent $record): ?array
+    {
+        $agenciesLoaded = $record->relationLoaded('referrerAgencies');
+        $agentsLoaded = $record->relationLoaded('referrerAgents');
+
+        if (! $agenciesLoaded && ! $agentsLoaded) {
+            return null;
+        }
+
+        $agencies = $agenciesLoaded ? $record->getRelation('referrerAgencies') : [];
+        $agents = $agentsLoaded ? $record->getRelation('referrerAgents') : [];
+
+        $referrers = [];
+
+        foreach ($agents as $agent) {
+            if ($agent instanceof Agent) {
+                $referrers[] = $agent;
+            }
+        }
+
+        foreach ($agencies as $agency) {
+            if ($agency instanceof Agency) {
+                $referrers[] = $agency;
+            }
+        }
+
+        return $referrers;
+    }
+
+    private static function legacyReferrer(Agency|Agent $record): Agency|Agent|null
+    {
+        if (filled($record->referidor_agent_id)) {
+            $agent = $record->relationLoaded('referidorAgent')
+                ? $record->getRelation('referidorAgent')
+                : $record->referidorAgent;
+
+            return $agent instanceof Agent ? $agent : null;
+        }
+
+        if (filled($record->referidor_id)) {
+            $agency = $record->relationLoaded('referidor')
+                ? $record->getRelation('referidor')
+                : $record->referidor;
+
+            return $agency instanceof Agency ? $agency : null;
+        }
+
+        return null;
+    }
+
     private static function clearAssignments(Agency|Agent $referrer): void
     {
-        $owner = self::referrerOwner($referrer);
-
-        if ($owner === null) {
+        if (! $referrer->exists) {
             return;
         }
 
-        $cleared = [
-            'referidor_id' => null,
-            'referidor_agent_id' => null,
-        ];
+        $affectedAgencyIds = ReferidorAssignment::query()
+            ->forReferrer($referrer)
+            ->whereNotNull('referred_agency_id')
+            ->pluck('referred_agency_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
 
-        Agency::query()
-            ->where($owner['column'], $owner['id'])
-            ->update($cleared);
+        $affectedAgentIds = ReferidorAssignment::query()
+            ->forReferrer($referrer)
+            ->whereNotNull('referred_agent_id')
+            ->pluck('referred_agent_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
 
-        Agent::query()
-            ->where($owner['column'], $owner['id'])
-            ->update($cleared);
+        ReferidorAssignment::query()
+            ->forReferrer($referrer)
+            ->delete();
+
+        self::refreshLegacyColumnsForAgencies($affectedAgencyIds);
+        self::refreshLegacyColumnsForAgents($affectedAgentIds);
     }
 
     /**
@@ -417,126 +498,123 @@ final class ReferidorAssignmentService
     /**
      * @param  list<int>  $ids
      */
-    private static function syncGeneralAgencies(Agency|Agent $referrer, array $ids): void
+    private static function syncReferredAgencies(Agency|Agent $referrer, array $ids): void
     {
-        $owner = self::referrerOwner($referrer);
+        $currentIds = self::assignedGeneralAgencyIds($referrer);
+        $toDetach = array_values(array_diff($currentIds, $ids));
+        $toAttach = array_values(array_diff($ids, $currentIds));
 
-        if ($owner === null) {
-            return;
+        if ($toDetach !== []) {
+            ReferidorAssignment::query()
+                ->forReferrer($referrer)
+                ->whereIn('referred_agency_id', $toDetach)
+                ->delete();
         }
 
-        $cleared = [
-            'referidor_id' => null,
-            'referidor_agent_id' => null,
-        ];
+        foreach ($toAttach as $agencyId) {
+            $agency = (new Agency)->forceFill(['id' => $agencyId]);
+            $agency->exists = true;
 
-        Agency::query()
-            ->where($owner['column'], $owner['id'])
-            ->when($ids !== [], fn (Builder $query): Builder => $query->whereNotIn('id', $ids))
-            ->update($cleared);
-
-        if ($ids === []) {
-            return;
+            ReferidorAssignment::query()->create(array_merge(
+                [
+                    'assignment_key' => ReferidorAssignment::keyFor($referrer, $agency),
+                    'created_by' => Auth::id(),
+                ],
+                ReferidorAssignment::referrerPayload($referrer),
+                ReferidorAssignment::referredPayload($agency),
+            ));
         }
 
-        Agency::query()
-            ->whereIn('id', $ids)
-            ->update(self::assignmentPayload($referrer));
+        self::refreshLegacyColumnsForAgencies(array_values(array_unique([...$toDetach, ...$toAttach])));
     }
 
     /**
      * @param  list<int>  $ids
      */
-    private static function syncAgents(Agency|Agent $referrer, array $ids): void
+    private static function syncReferredAgents(Agency|Agent $referrer, array $ids): void
     {
-        $owner = self::referrerOwner($referrer);
+        $currentIds = self::assignedAgentIds($referrer);
+        $toDetach = array_values(array_diff($currentIds, $ids));
+        $toAttach = array_values(array_diff($ids, $currentIds));
 
-        if ($owner === null) {
-            return;
+        if ($toDetach !== []) {
+            ReferidorAssignment::query()
+                ->forReferrer($referrer)
+                ->whereIn('referred_agent_id', $toDetach)
+                ->delete();
         }
 
-        $cleared = [
+        foreach ($toAttach as $agentId) {
+            $agent = (new Agent)->forceFill(['id' => $agentId]);
+            $agent->exists = true;
+
+            ReferidorAssignment::query()->create(array_merge(
+                [
+                    'assignment_key' => ReferidorAssignment::keyFor($referrer, $agent),
+                    'created_by' => Auth::id(),
+                ],
+                ReferidorAssignment::referrerPayload($referrer),
+                ReferidorAssignment::referredPayload($agent),
+            ));
+        }
+
+        self::refreshLegacyColumnsForAgents(array_values(array_unique([...$toDetach, ...$toAttach])));
+    }
+
+    /**
+     * @param  list<int>  $ids
+     */
+    private static function refreshLegacyColumnsForAgencies(array $ids): void
+    {
+        foreach ($ids as $id) {
+            $agency = Agency::query()->find($id);
+
+            if ($agency instanceof Agency) {
+                self::refreshLegacyReferrerColumns($agency);
+            }
+        }
+    }
+
+    /**
+     * @param  list<int>  $ids
+     */
+    private static function refreshLegacyColumnsForAgents(array $ids): void
+    {
+        foreach ($ids as $id) {
+            $agent = Agent::query()->find($id);
+
+            if ($agent instanceof Agent) {
+                self::refreshLegacyReferrerColumns($agent);
+            }
+        }
+    }
+
+    private static function refreshLegacyReferrerColumns(Agency|Agent $referred): void
+    {
+        $assignments = ReferidorAssignment::query()
+            ->forReferred($referred)
+            ->orderBy('id')
+            ->get(['referrer_agency_id', 'referrer_agent_id']);
+
+        $agentReferrerId = $assignments
+            ->first(fn (ReferidorAssignment $assignment): bool => filled($assignment->referrer_agent_id))
+            ?->referrer_agent_id;
+        $agencyReferrerId = $assignments
+            ->first(fn (ReferidorAssignment $assignment): bool => filled($assignment->referrer_agency_id))
+            ?->referrer_agency_id;
+
+        $payload = [
             'referidor_id' => null,
             'referidor_agent_id' => null,
         ];
 
-        Agent::query()
-            ->where($owner['column'], $owner['id'])
-            ->when($ids !== [], fn (Builder $query): Builder => $query->whereNotIn('id', $ids))
-            ->update($cleared);
-
-        if ($ids === []) {
-            return;
+        if ($agentReferrerId !== null) {
+            $payload['referidor_agent_id'] = (int) $agentReferrerId;
+        } elseif ($agencyReferrerId !== null) {
+            $payload['referidor_id'] = (int) $agencyReferrerId;
         }
 
-        Agent::query()
-            ->whereIn('id', $ids)
-            ->update(self::assignmentPayload($referrer));
-    }
-
-    /**
-     * @return array{referidor_id: int|null, referidor_agent_id: int|null}
-     */
-    private static function assignmentPayload(Agency|Agent $referrer): array
-    {
-        if ($referrer instanceof Agent) {
-            return [
-                'referidor_id' => null,
-                'referidor_agent_id' => (int) $referrer->id,
-            ];
-        }
-
-        return [
-            'referidor_id' => (int) $referrer->id,
-            'referidor_agent_id' => null,
-        ];
-    }
-
-    /**
-     * @return array{column: string, id: int}|null
-     */
-    private static function referrerOwner(Agency|Agent|null $referrer): ?array
-    {
-        if ($referrer instanceof Agent && $referrer->exists) {
-            return [
-                'column' => 'referidor_agent_id',
-                'id' => (int) $referrer->id,
-            ];
-        }
-
-        if ($referrer instanceof Agency && $referrer->exists) {
-            return [
-                'column' => 'referidor_id',
-                'id' => (int) $referrer->id,
-            ];
-        }
-
-        return null;
-    }
-
-    private static function applyAssignableOwnerConstraint(Builder $query, Agency|Agent|null $referrer): Builder
-    {
-        $owner = self::referrerOwner($referrer);
-
-        return $query->where(function (Builder $constraint) use ($owner): void {
-            $constraint->where(function (Builder $free): void {
-                $free->whereNull('referidor_id')
-                    ->whereNull('referidor_agent_id');
-            });
-
-            if ($owner === null) {
-                return;
-            }
-
-            $otherColumn = $owner['column'] === 'referidor_id'
-                ? 'referidor_agent_id'
-                : 'referidor_id';
-
-            $constraint->orWhere(function (Builder $owned) use ($owner, $otherColumn): void {
-                $owned->where($owner['column'], $owner['id'])
-                    ->whereNull($otherColumn);
-            });
-        });
+        $referred->forceFill($payload)->saveQuietly();
     }
 
     private static function assignableGeneralAgenciesQuery(Agency|Agent|null $referrer = null): Builder
@@ -547,7 +625,7 @@ final class ReferidorAssignmentService
             $query->whereKeyNot($referrer->id);
         }
 
-        return self::applyAssignableOwnerConstraint($query, $referrer);
+        return $query;
     }
 
     private static function assignableAgentsQuery(Agency|Agent|null $referrer = null): Builder
@@ -561,6 +639,6 @@ final class ReferidorAssignmentService
             $query->whereKeyNot($referrer->id);
         }
 
-        return self::applyAssignableOwnerConstraint($query, $referrer);
+        return $query;
     }
 }

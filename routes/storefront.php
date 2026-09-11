@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Storefront\StorefrontDownloadZoneController;
 use App\Http\Controllers\Storefront\StorefrontGoogleAuthController;
 use App\Http\Controllers\Storefront\StorefrontPaymentMethodsController;
 use App\Http\Controllers\Storefront\StorefrontQuotePdfController;
@@ -82,5 +83,16 @@ Route::middleware('web')
                 ->name('storefront.documents.payment-methods');
             Volt::route('/metodos-de-pago', 'volt.app.payment-methods')
                 ->name('storefront.payment-methods');
+            Route::get('/documentos/zona-de-descarga/{downloadZone}', StorefrontDownloadZoneController::class)
+                ->whereNumber('downloadZone')
+                ->name('storefront.documents.download-zone');
+            Route::get('/documentos/zona-de-descarga/{downloadZone}/imagen', [StorefrontDownloadZoneController::class, 'image'])
+                ->whereNumber('downloadZone')
+                ->name('storefront.documents.download-zone-image');
+            Volt::route('/zona-de-descarga', 'volt.app.download-zone')
+                ->name('storefront.download-zone');
+            Volt::route('/zona-de-descarga/{zone}', 'volt.app.download-zone-feed')
+                ->whereNumber('zone')
+                ->name('storefront.download-zone.feed');
         });
     });

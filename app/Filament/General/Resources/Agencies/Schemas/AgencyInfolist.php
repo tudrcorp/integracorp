@@ -39,7 +39,7 @@ class AgencyInfolist
                         Fieldset::make('Red de referidor')
                             ->schema([
                                 TextEntry::make('referidor')
-                                    ->label('Referidor')
+                                    ->label('Referidores')
                                     ->state(fn (Agency $record): ?string => ReferidorAssignmentService::assignedReferrerLabel($record))
                                     ->visible(fn (Agency $record): bool => ReferidorAssignmentService::hasAssignedReferrer($record))
                                     ->placeholder('—'),

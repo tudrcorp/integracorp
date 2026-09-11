@@ -6,6 +6,31 @@ use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\Commission;
 use App\Support\CommercialStructure\CommissionReferidorPercentage;
+use Illuminate\Support\Collection;
+
+it('suma los porcentajes cuando el referido tiene varios referidores', function (): void {
+    $first = new Agency([
+        'is_referidor' => true,
+        'referidor_percentage' => '5.00',
+        'name_corporative' => 'Referidor A',
+    ]);
+    $second = new Agent([
+        'is_referidor' => true,
+        'referidor_percentage' => '3.50',
+        'name' => 'Referidor E',
+    ]);
+
+    $agent = new Agent(['name' => 'Referido B']);
+    $agent->setRelation('referrerAgencies', new Collection([$first]));
+    $agent->setRelation('referrerAgents', new Collection([$second]));
+
+    $commission = new Commission;
+    $commission->setRelation('agent', $agent);
+    $commission->setRelation('agency', null);
+
+    expect(CommissionReferidorPercentage::for($commission))->toBe(8.5)
+        ->and($commission->referidorBeneficiaryLabel())->toBe('Referidor E · Referidor A');
+});
 
 it('usa el porcentaje del referidor asignado al agente', function (): void {
     $referrer = new Agency([

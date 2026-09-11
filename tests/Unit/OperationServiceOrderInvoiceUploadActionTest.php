@@ -106,9 +106,10 @@ it('al guardar la factura la orden queda en estatus FACTURADO y con auditoría',
 
     expect($src)
         ->toContain("'administrative_status' => OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_INVOICED")
-        ->and($src)->toContain("'invoice_uploaded_by' => Auth::user()?->name ?? 'sistema'")
+        ->and($src)->toContain("\$actor = Auth::user()?->name ?? 'sistema';")
+        ->and($src)->toContain("'invoice_uploaded_by' => \$actor,")
         ->and($src)->toContain("'invoice_uploaded_at' => now()")
-        ->and($src)->toContain("'updated_by' => Auth::user()?->name ?? 'sistema'")
+        ->and($src)->toContain("'updated_by' => \$actor,")
         ->and($src)->toContain('Factura registrada con diferencia')
         ->and($src)->toContain("Action::make('previewInvoice')");
 });
@@ -177,6 +178,7 @@ it('la factura se precarga y se guarda con control y fecha de registro', functio
         ->toContain("'invoice_control_number' => \$record->invoice_control_number,")
         ->and($src)->toContain("'invoice_registration_date' => \$record->invoice_registration_date ?? now()->startOfDay(),")
         ->and($src)->toContain("'invoice_control_number' => \$controlNumber !== '' ? \$controlNumber : null,")
-        ->and($src)->toContain("'invoice_registration_date' => \$data['invoice_registration_date'] ?: now()->toDateString(),")
+        ->and($src)->toContain("\$registrationDate = \$data['invoice_registration_date'] ?: now()->toDateString();")
+        ->and($src)->toContain("'invoice_registration_date' => \$registrationDate,")
         ->and($src)->toContain("filled(\$record->invoice_control_number) ? ' (control '");
 });

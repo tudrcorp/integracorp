@@ -167,21 +167,29 @@ class Commission extends Model
 
     public function referidorBeneficiaryLabel(): string
     {
-        $referrer = CommissionReferidorPercentage::referrerFor($this);
+        $referrers = CommissionReferidorPercentage::referrersFor($this);
 
-        if ($referrer instanceof Agency) {
-            $name = trim((string) ($referrer->name_corporative ?? ''));
-
-            return $name !== '' ? $name : 'Referidor agencia';
+        if ($referrers === []) {
+            return 'Sin referidor';
         }
 
-        if ($referrer instanceof Agent) {
-            $name = trim((string) ($referrer->name ?? ''));
+        $names = [];
 
-            return $name !== '' ? $name : 'Referidor agente';
+        foreach ($referrers as $referrer) {
+            if ($referrer instanceof Agency) {
+                $name = trim((string) ($referrer->name_corporative ?? ''));
+                $names[] = $name !== '' ? $name : 'Referidor agencia';
+
+                continue;
+            }
+
+            if ($referrer instanceof Agent) {
+                $name = trim((string) ($referrer->name ?? ''));
+                $names[] = $name !== '' ? $name : 'Referidor agente';
+            }
         }
 
-        return 'Sin referidor';
+        return $names === [] ? 'Sin referidor' : implode(' · ', $names);
     }
 
     public function referidorPercentage(): float

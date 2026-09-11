@@ -67,7 +67,7 @@ class AgentInfolist
                     ->boolean(),
                 ReferidorPercentageField::entry(),
                 TextEntry::make('referidor_display')
-                    ->label('Referidor')
+                    ->label('Referidores')
                     ->state(fn (Agent $record): ?string => ReferidorAssignmentService::assignedReferrerLabel($record))
                     ->visible(fn (Agent $record): bool => ReferidorAssignmentService::hasAssignedReferrer($record)),
                 TextEntry::make('referred_general_agencies_list')
