@@ -113,10 +113,13 @@ class AgencyResource extends Resource
                 'referidor:id,code,name_corporative,agency_type_id',
                 'referidor.typeAgency:id,definition',
                 'referidorAgent:id,name,code_agent,status',
-                'referredGeneralAgencies:id,referidor_id,code,name_corporative,status,agency_type_id',
+                'referrerAgencies:id,code,name_corporative,status,agency_type_id',
+                'referrerAgencies.typeAgency:id,definition',
+                'referrerAgents:id,name,code_agent,status',
+                'referredGeneralAgencies:id,code,name_corporative,status,agency_type_id',
                 'referredGeneralAgencies.typeAgency:id,definition',
                 'referredAgents' => fn ($query) => $query
-                    ->select(['id', 'referidor_id', 'name', 'code_agent', 'agent_type_id', 'status'])
+                    ->select(['agents.id', 'agents.name', 'agents.code_agent', 'agents.agent_type_id', 'agents.status'])
                     ->with('typeAgent:id,definition'),
             ]);
     }

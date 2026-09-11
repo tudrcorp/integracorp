@@ -408,7 +408,7 @@
         }
 
         .hub-url__link {
-            font-size: clamp(1.15rem, 3.2vw, 1.85rem);
+            font-size: clamp(1rem, 2.6vw, 1.55rem);
             font-weight: 700;
             letter-spacing: -0.03em;
             color: var(--navy);
@@ -646,9 +646,15 @@
 
             .pwa-devices,
             .portal-devices,
-            .mkt-devices {
+            .mkt-devices,
+            .sys-devices,
+            .intra-devices {
                 transform: scale(0.86);
                 transform-origin: top center;
+            }
+
+            .intra-devices {
+                transform: scale(0.78);
             }
         }
 
@@ -1398,6 +1404,252 @@
             height: 270px;
         }
 
+        .portal-monitor__frame--wide {
+            width: 760px;
+        }
+
+        .portal-monitor__screen--wide {
+            width: 728px;
+            height: 430px;
+        }
+
+        .portal-monitor__viewport--wide {
+            width: 728px;
+            height: 402px;
+        }
+
+        .intra-devices {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .intra-index {
+            box-sizing: border-box;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            padding: 14px 18px 12px;
+            color: #0d1620;
+            background:
+                radial-gradient(520px 240px at 50% -18%, rgba(0, 48, 96, 0.07), transparent 68%),
+                linear-gradient(180deg, #edf1f6 0%, #f7f8fa 42%);
+            font-family: Verdana, Geneva, 'DejaVu Sans', sans-serif;
+        }
+
+        .intra-index__mast {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .intra-index__logo {
+            display: block;
+            height: 22px;
+            width: auto;
+            margin-bottom: 8px;
+            opacity: 0.86;
+        }
+
+        .intra-index__mast h3 {
+            margin: 0;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+            color: #0d1620;
+        }
+
+        .intra-index__mast p {
+            margin: 5px 0 0;
+            max-width: 46ch;
+            font-size: 10px;
+            line-height: 1.4;
+            color: #647889;
+        }
+
+        .intra-index__stamp {
+            flex: none;
+            margin: 0 !important;
+            text-align: right;
+            font-size: 9px;
+            line-height: 1.55;
+            color: #647889;
+        }
+
+        .intra-index__stamp strong {
+            display: block;
+            color: #33455a;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .intra-index__bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 12px -18px 0;
+            padding: 8px 18px;
+            background: rgba(247, 248, 250, 0.78);
+            box-shadow: inset 0 -1px 0 rgba(13, 22, 32, 0.06);
+        }
+
+        .intra-index__search {
+            flex: 1;
+            min-width: 0;
+            height: 26px;
+            padding: 0 10px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: inset 0 0 0 1px rgba(13, 22, 32, 0.1);
+            color: #8b9cac;
+            font-size: 10px;
+            line-height: 26px;
+        }
+
+        .intra-index__chip {
+            flex: none;
+            height: 26px;
+            padding: 0 10px;
+            border-radius: 8px;
+            color: #647889;
+            font-size: 9px;
+            font-weight: 600;
+            line-height: 26px;
+        }
+
+        .intra-index__chip.is-active {
+            color: #0d1620;
+            font-weight: 700;
+            background: #fff;
+            box-shadow: inset 0 0 0 1px rgba(13, 22, 32, 0.1);
+        }
+
+        .intra-index__chip--ok::before,
+        .intra-index__chip--warn::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            margin-right: 6px;
+            border-radius: 999px;
+            vertical-align: middle;
+        }
+
+        .intra-index__chip--ok::before { background: #0e8a59; }
+        .intra-index__chip--warn::before { background: #9a5a00; }
+
+        .intra-index__cols {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 18px;
+            margin-top: 6px;
+        }
+
+        .intra-index__head {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 10px 0 6px;
+            border-bottom: 1px solid rgba(13, 22, 32, 0.1);
+        }
+
+        .intra-index__head h4 {
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #0d1620;
+        }
+
+        .intra-index__head span {
+            font-size: 9px;
+            font-weight: 700;
+            color: #003060;
+        }
+
+        .intra-index__dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+        }
+
+        .intra-index__dot--ok { background: #0e8a59; }
+        .intra-index__dot--warn { background: #9a5a00; }
+
+        .intra-index__rows {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .intra-index__rows li {
+            display: grid;
+            grid-template-columns: 16px minmax(0, 1fr) auto;
+            grid-template-rows: auto auto;
+            column-gap: 8px;
+            padding: 7px 4px 7px 0;
+            border-bottom: 1px solid rgba(13, 22, 32, 0.055);
+        }
+
+        .intra-index__rows b {
+            grid-row: 1 / span 2;
+            font-size: 9px;
+            font-weight: 700;
+            color: #8b9cac;
+            line-height: 1.35;
+        }
+
+        .intra-index__rows span {
+            min-width: 0;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #0d1620;
+            line-height: 1.2;
+        }
+
+        .intra-index__rows em {
+            justify-self: end;
+            align-self: start;
+            padding: 1px 6px;
+            border-radius: 999px;
+            background: rgba(0, 48, 96, 0.075);
+            color: #003060;
+            font-size: 8px;
+            font-style: normal;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .intra-index__rows code {
+            grid-column: 2 / span 2;
+            overflow: hidden;
+            color: #647889;
+            font-family: Verdana, Geneva, 'DejaVu Sans', sans-serif;
+            font-size: 8px;
+            line-height: 1.35;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .intra-index__rows strong {
+            color: #0d1620;
+            font-weight: 700;
+        }
+
         .mkt-devices {
             display: flex;
             align-items: flex-end;
@@ -1822,6 +2074,304 @@
             letter-spacing: -0.03em;
         }
 
+        .sys-devices {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 1.75rem 2.25rem;
+            flex-wrap: wrap;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .sys-hub {
+            position: relative;
+            overflow: hidden;
+            font-family: 'Plus Jakarta Sans', 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+            color: #14213D;
+            background: linear-gradient(160deg, #ffffff 0%, #f4f5f7 45%, #e8ecf3 100%);
+        }
+
+        .sys-hub--phone {
+            display: flex;
+            flex-direction: column;
+            width: 390px;
+            height: 844px;
+        }
+
+        .sys-hub--desktop {
+            display: grid;
+            grid-template-columns: 0.92fr 1.08fr;
+            width: 100%;
+            height: 100%;
+        }
+
+        .sys-hub__visual {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 0;
+            padding: 18px;
+        }
+
+        .sys-hub--desktop .sys-hub__visual {
+            height: 100%;
+        }
+
+        .sys-hub--phone .sys-hub__visual {
+            flex: 0 0 46%;
+            padding: 28px 22px 20px;
+        }
+
+        .sys-hub__photo {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 35%;
+        }
+
+        .sys-hub__shade {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 0, 0, 0.68) 100%);
+        }
+
+        .sys-hub__chip,
+        .sys-hub__copy {
+            position: relative;
+            z-index: 1;
+        }
+
+        .sys-hub__chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .sys-hub__chip img {
+            width: 16px;
+            height: 16px;
+            object-fit: contain;
+        }
+
+        .sys-hub--phone .sys-hub__chip {
+            font-size: 11px;
+            padding: 8px 12px;
+        }
+
+        .sys-hub--phone .sys-hub__chip img {
+            width: 20px;
+            height: 20px;
+        }
+
+        .sys-hub__copy {
+            color: #fff;
+            text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+        }
+
+        .sys-hub__copy h3 {
+            margin: 0 0 6px;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+        }
+
+        .sys-hub--phone .sys-hub__copy h3 {
+            font-size: 26px;
+        }
+
+        .sys-hub__copy p {
+            margin: 0;
+            font-size: 9px;
+            line-height: 1.35;
+            color: rgba(255, 255, 255, 0.88);
+        }
+
+        .sys-hub--phone .sys-hub__copy p {
+            font-size: 14px;
+        }
+
+        .sys-hub__login {
+            flex: 1;
+            padding: 22px 22px 28px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), #f4f5f7);
+        }
+
+        .sys-hub__login h3 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .sys-hub__login > p {
+            margin: 8px 0 0;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #5b657a;
+        }
+
+        .sys-hub__tabs {
+            display: flex;
+            gap: 8px;
+            margin: 16px 0 12px;
+        }
+
+        .sys-hub__tabs span {
+            padding: 7px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(20, 33, 61, 0.12);
+            background: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            font-weight: 700;
+            color: #5b657a;
+        }
+
+        .sys-hub__tabs span.is-active {
+            color: #111;
+            background: linear-gradient(135deg, #fca311, #ffd28a);
+            border-color: transparent;
+        }
+
+        .sys-hub__field {
+            display: flex;
+            align-items: center;
+            min-height: 48px;
+            padding: 0 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(20, 33, 61, 0.12);
+            background: rgba(255, 255, 255, 0.86);
+            color: rgba(20, 33, 61, 0.42);
+            font-size: 16px;
+        }
+
+        .sys-hub__hint {
+            margin: 8px 0 16px;
+            font-size: 12px;
+            color: #5b657a;
+        }
+
+        .sys-hub__btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 48px;
+            padding: 0 14px 0 16px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #e5e5e5, #fff 45%, #d4d4d8);
+            color: #111;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .sys-hub__btn::after {
+            content: '→';
+            display: grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            background: #111;
+            color: #fff;
+            font-size: 13px;
+        }
+
+        .sys-hub__panel {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            padding: 14px 14px 10px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.18));
+        }
+
+        .sys-hub__eyebrow {
+            margin: 0;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #fca311;
+        }
+
+        .sys-hub__panel > h3 {
+            margin: 4px 0 0;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+        }
+
+        .sys-hub__lead {
+            margin: 4px 0 0;
+            font-size: 9px;
+            line-height: 1.35;
+            color: #5b657a;
+        }
+
+        .sys-hub__meta {
+            margin: 8px 0;
+            font-size: 8px;
+            color: #5b657a;
+        }
+
+        .sys-hub__card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            padding: 8px 10px;
+            border-radius: 12px;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.42));
+            border: 1px solid rgba(255, 255, 255, 0.78);
+            box-shadow: 0 8px 18px rgba(20, 33, 61, 0.06);
+        }
+
+        .sys-hub__card span {
+            display: grid;
+            place-items: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            background: rgba(20, 33, 61, 0.08);
+            font-size: 8px;
+            font-weight: 800;
+        }
+
+        .sys-hub__card strong {
+            display: block;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .sys-hub__card small {
+            display: block;
+            margin-top: 1px;
+            font-size: 8px;
+            color: #5b657a;
+        }
+
+        .sys-hub__footer {
+            margin: auto 0 0;
+            font-size: 7px;
+            letter-spacing: 0.04em;
+            color: #5b657a;
+        }
+
         @media (max-width: 1100px) {
             .portal-monitor__frame {
                 width: 500px;
@@ -1842,12 +2392,37 @@
             .portal-login--desktop {
                 height: 272px;
             }
+
+            .portal-monitor__frame--wide {
+                width: 620px;
+            }
+
+            .portal-monitor__screen--wide {
+                width: 588px;
+                height: 360px;
+            }
+
+            .portal-monitor__viewport--wide {
+                width: 588px;
+                height: 332px;
+            }
+
+            .intra-index__cols {
+                grid-template-columns: 1fr;
+                gap: 4px;
+            }
+
+            .intra-index__mast h3 {
+                font-size: 18px;
+            }
         }
 
         @media (max-width: 720px) {
             .pwa-devices,
             .portal-devices,
-            .mkt-devices {
+            .mkt-devices,
+            .sys-devices,
+            .intra-devices {
                 gap: 1.1rem;
             }
 
@@ -1867,6 +2442,20 @@
 
             .portal-monitor__viewport,
             .portal-login--desktop {
+                height: 170px;
+            }
+
+            .portal-monitor__frame--wide,
+            .portal-monitor__screen--wide,
+            .portal-monitor__viewport--wide {
+                width: 296px;
+            }
+
+            .portal-monitor__screen--wide {
+                height: 198px;
+            }
+
+            .portal-monitor__viewport--wide {
                 height: 170px;
             }
 
@@ -2045,6 +2634,8 @@
                                         @include('partials.presentation-portal-login-devices', ['slide' => $slide])
                                     @elseif (($slide['data']['device_set'] ?? 'pwa') === 'marketing')
                                         @include('partials.presentation-marketing-devices', ['slide' => $slide])
+                                    @elseif (($slide['data']['device_set'] ?? 'pwa') === 'sistemas')
+                                        @include('partials.presentation-sistemas-devices', ['slide' => $slide])
                                     @else
                                         @include('partials.presentation-pwa-devices', ['slide' => $slide])
                                     @endif
@@ -2087,16 +2678,16 @@
                             </div>
 
                         @elseif ($slide['type'] === 'hub')
-                            <div class="flex flex-col gap-4">
+                            <div class="flex flex-col gap-3">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
                                         <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
-                                <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
-                                <p class="reveal-item text-sm sm:text-base text-[var(--ink-soft)] max-w-3xl">{{ $slide['subtitle'] }}</p>
-                                <div class="reveal-item liquid-glass liquid-glass--accent px-5 py-5 hub-url">
+                                <h2 class="reveal-item text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
+                                <p class="reveal-item text-sm text-[var(--ink-soft)] max-w-3xl">{{ $slide['subtitle'] }}</p>
+                                <div class="reveal-item liquid-glass liquid-glass--accent px-5 py-3 hub-url">
                                     <a class="hub-url__link" href="{{ $slide['data']['url'] ?? '#' }}" target="_blank" rel="noopener noreferrer">
                                         {{ str_replace('https://', '', $slide['data']['url'] ?? '') }}
                                     </a>
@@ -2105,13 +2696,8 @@
                                         {{ $slide['data']['status'] ?? 'En línea' }}
                                     </span>
                                 </div>
-                                <div class="grid sm:grid-cols-3 gap-3">
-                                    @foreach ($slide['data']['cards'] ?? [] as $card)
-                                        <div class="reveal-item liquid-glass px-4 py-4">
-                                            <div class="text-xs font-semibold uppercase tracking-wide mb-1" style="color: {{ $slide['color'] }}">{{ $card['title'] }}</div>
-                                            <p class="text-sm text-[var(--ink-soft)] leading-relaxed">{{ $card['detail'] }}</p>
-                                        </div>
-                                    @endforeach
+                                <div class="reveal-item">
+                                    @include('partials.presentation-intra-devices', ['slide' => $slide])
                                 </div>
                                 <div class="reveal-item flex flex-wrap items-center gap-2">
                                     <span class="presentation-badge presentation-badge--chip">{{ $slide['data']['host'] ?? '' }}</span>

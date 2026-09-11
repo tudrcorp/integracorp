@@ -9,7 +9,7 @@ use Throwable;
 
 /**
  * Ítems de la hoja inferior (bottom sheet). El menú es corto:
- * planes, cotizar, sesión de agente y contacto por WhatsApp.
+ * planes, cotizar, métodos de pago, zona de descarga, sesión y contacto por WhatsApp.
  *
  * @phpstan-type NavItem array{
  *     key: string,
@@ -39,6 +39,7 @@ final class StorefrontNav
             self::item('home', 'Inicio', 'Planes listos para cotizar', 'home', 'storefront.home'),
             self::item('quote', 'Cotizar', 'Elige un plan y arma la cotización', 'quote', 'storefront.home'),
             self::item('payments', 'Métodos de pago', 'Descarga o reenvía el documento', 'payments', 'storefront.payment-methods'),
+            self::item('downloads', 'Zona de Descarga', 'Documentos listos para descargar', 'downloads', 'storefront.download-zone'),
         ];
 
         if ($isLoggedIn) {
@@ -87,6 +88,8 @@ final class StorefrontNav
             'storefront.quote.result' => '',
             'storefront.quote.proposal' => '',
             'storefront.payment-methods' => '',
+            'storefront.download-zone' => '',
+            'storefront.download-zone.feed' => '',
             'storefront.login' => 'Entrar',
             'storefront.register' => 'Registro',
             'storefront.profile' => 'Perfil',
@@ -119,6 +122,14 @@ final class StorefrontNav
             'storefront.payment-methods' => [
                 'route' => 'storefront.home',
                 'label' => 'Volver al catálogo',
+            ],
+            'storefront.download-zone' => [
+                'route' => 'storefront.home',
+                'label' => 'Volver al catálogo',
+            ],
+            'storefront.download-zone.feed' => [
+                'route' => 'storefront.download-zone',
+                'label' => 'Volver a carpetas',
             ],
             'storefront.quotes' => [
                 'route' => 'storefront.home',

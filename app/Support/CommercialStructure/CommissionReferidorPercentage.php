@@ -11,39 +11,79 @@ use App\Models\Commission;
 final class CommissionReferidorPercentage
 {
     /**
-     * Porcentaje del referidor asignado a la agencia o al agente de la venta.
-     * El agente tiene prioridad sobre la agencia. Sin referidor: 0.
+     * Suma los porcentajes de todos los referidores del agente (prioridad)
+     * o, si el agente no tiene, de la agencia. Sin referidor: 0.
      */
     public static function for(Commission $commission): float
     {
-        $referrer = self::referrerFor($commission);
-
-        return self::percentageOf($referrer);
+        return self::totalPercentage(self::referrersFor($commission));
     }
 
     public static function referrerFor(Commission $commission): Agency|Agent|null
     {
+        $referrers = self::referrersFor($commission);
+
+        return $referrers[0] ?? null;
+    }
+
+    /**
+     * @return list<Agency|Agent>
+     */
+    public static function referrersFor(Commission $commission): array
+    {
         $agent = $commission->agent instanceof Agent ? $commission->agent : null;
         $agency = $commission->agency instanceof Agency ? $commission->agency : null;
 
-        return self::referrerForParticipants($agent, $agency);
+        return self::referrersForParticipants($agent, $agency);
     }
 
-    public static function referrerForParticipants(?Agent $agent, ?Agency $agency): Agency|Agent|null
+    /**
+     * @return list<Agency|Agent>
+     */
+    public static function referrersForParticipants(?Agent $agent, ?Agency $agency): array
     {
         foreach ([$agent, $agency] as $participant) {
             if (! $participant instanceof Agency && ! $participant instanceof Agent) {
                 continue;
             }
 
-            $referrer = self::assignedReferrer($participant);
+            $assigned = ReferidorAssignmentService::assignedReferrers($participant);
 
-            if ($referrer !== null) {
-                return $referrer;
+            if ($assigned === []) {
+                continue;
             }
+
+            return array_values(array_filter(
+                $assigned,
+                fn (Agency|Agent $referrer): bool => self::isActiveReferrer($referrer),
+            ));
         }
 
-        return null;
+        return [];
+    }
+
+    /**
+     * @param  list<Agency|Agent>  $referrers
+     */
+    public static function totalPercentage(array $referrers): float
+    {
+        $total = 0.0;
+
+        foreach ($referrers as $referrer) {
+            $total += self::percentageOf($referrer);
+        }
+
+        $total = round($total, 2);
+
+        if ($total < 0) {
+            return 0.0;
+        }
+
+        if ($total > 100) {
+            return 100.0;
+        }
+
+        return $total;
     }
 
     public static function percentageOf(Agency|Agent|null $referrer): float
@@ -76,32 +116,15 @@ final class CommissionReferidorPercentage
     public static function eagerLoadRelations(): array
     {
         return [
+            'agency.referrerAgencies',
+            'agency.referrerAgents',
             'agency.referidor',
             'agency.referidorAgent',
+            'agent.referrerAgencies',
+            'agent.referrerAgents',
             'agent.referidor',
             'agent.referidorAgent',
         ];
-    }
-
-    private static function assignedReferrer(Agency|Agent $record): Agency|Agent|null
-    {
-        if (self::hasAssignedValue($record->referidor_agent_id)) {
-            $agent = $record->relationLoaded('referidorAgent')
-                ? $record->getRelation('referidorAgent')
-                : $record->referidorAgent;
-
-            return $agent instanceof Agent ? $agent : null;
-        }
-
-        if (self::hasAssignedValue($record->referidor_id)) {
-            $agency = $record->relationLoaded('referidor')
-                ? $record->getRelation('referidor')
-                : $record->referidor;
-
-            return $agency instanceof Agency ? $agency : null;
-        }
-
-        return null;
     }
 
     private static function hasAssignedValue(mixed $value): bool

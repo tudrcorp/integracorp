@@ -12,7 +12,7 @@ it('AccountsPayableResource usa cotizaciones de coordinacion en el grupo COORDIN
 
     expect($resource)
         ->toContain('OperationQuoteGenerator::class')
-        ->toContain("'Cuentas por pagar'")
+        ->toContain("'Cotizaciones por pagar'")
         ->toContain("'COORDINACIÓN DE SERVICIOS'")
         ->toContain('Heroicon::OutlinedBanknotes')
         ->toContain('canCreate(): bool')

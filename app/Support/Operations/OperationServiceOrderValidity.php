@@ -7,6 +7,8 @@ namespace App\Support\Operations;
 use App\Models\OperationServiceOrder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 final class OperationServiceOrderValidity
 {
@@ -226,6 +228,34 @@ final class OperationServiceOrderValidity
         ]);
 
         return true;
+    }
+
+    /**
+     * Ventana mínima entre barridos disparados desde la interfaz.
+     */
+    public const SWEEP_THROTTLE_SECONDS = 600;
+
+    /**
+     * Barrido de caducidad pensado para llamarse desde una pantalla.
+     *
+     * `expireEligibleOrders()` recorre y actualiza todas las órdenes vigentes, y
+     * la tabla de órdenes lo invocaba en cada render: cada paginación, cada
+     * búsqueda y cada cambio de orden repetían el trabajo completo. Aquí se
+     * limita a una vez cada diez minutos por proceso; el barrido garantizado lo
+     * sigue haciendo el scheduler con `ExpireOperationServiceOrders`.
+     */
+    public static function expireEligibleOrdersThrottled(string $updatedBy = 'system'): void
+    {
+        try {
+            if (! Cache::add('operation-service-orders:expiry-sweep', true, self::SWEEP_THROTTLE_SECONDS)) {
+                return;
+            }
+        } catch (Throwable) {
+            // Sin caché disponible se prefiere no bloquear el render de la tabla.
+            return;
+        }
+
+        self::expireEligibleOrders($updatedBy);
     }
 
     public static function expireEligibleOrders(string $updatedBy = 'system'): int

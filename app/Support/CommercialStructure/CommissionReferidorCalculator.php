@@ -34,13 +34,13 @@ final class CommissionReferidorCalculator
             return $empty;
         }
 
-        $referrer = CommissionReferidorPercentage::referrerForParticipants($agent, $agency);
+        $referrers = CommissionReferidorPercentage::referrersForParticipants($agent, $agency);
 
-        if ($referrer === null || ! CommissionReferidorPercentage::isActiveReferrer($referrer)) {
+        if ($referrers === []) {
             return $empty;
         }
 
-        $percentage = CommissionReferidorPercentage::percentageOf($referrer);
+        $percentage = CommissionReferidorPercentage::totalPercentage($referrers);
 
         if ($percentage <= 0) {
             return $empty;
@@ -114,7 +114,7 @@ final class CommissionReferidorCalculator
         }
 
         return Agent::query()
-            ->with(['referidor', 'referidorAgent'])
+            ->with(['referrerAgencies', 'referrerAgents', 'referidor', 'referidorAgent'])
             ->find($commission->agent_id);
     }
 
@@ -133,7 +133,7 @@ final class CommissionReferidorCalculator
         }
 
         return Agency::query()
-            ->with(['referidor', 'referidorAgent'])
+            ->with(['referrerAgencies', 'referrerAgents', 'referidor', 'referidorAgent'])
             ->where('code', $code)
             ->first();
     }
@@ -146,13 +146,15 @@ final class CommissionReferidorCalculator
      */
     private static function ensureReferrerRelations(Agency|Agent $record): Agency|Agent
     {
-        if (! $record->relationLoaded('referidor')) {
-            $record->loadMissing('referidor');
+        if ($record->relationLoaded('referrerAgencies') || $record->relationLoaded('referrerAgents')) {
+            return $record;
         }
 
-        if (! $record->relationLoaded('referidorAgent')) {
-            $record->loadMissing('referidorAgent');
+        if ($record->relationLoaded('referidor') || $record->relationLoaded('referidorAgent')) {
+            return $record;
         }
+
+        $record->loadMissing(['referrerAgencies', 'referrerAgents', 'referidor', 'referidorAgent']);
 
         return $record;
     }

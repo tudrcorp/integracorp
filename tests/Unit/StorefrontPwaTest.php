@@ -208,6 +208,12 @@ it('las rutas de la pwa viven bajo /app y el flujo de cotizacion es por paginas'
         ->toContain('storefront.documents.payment-methods')
         ->toContain('storefront.payment-methods')
         ->toContain('volt.app.payment-methods')
+        ->toContain('storefront.documents.download-zone')
+        ->toContain('storefront.download-zone')
+        ->toContain('volt.app.download-zone')
+        ->toContain('volt.app.download-zone-feed')
+        ->toContain('storefront.download-zone.feed')
+        ->toContain('StorefrontDownloadZoneController')
         ->toContain('storefront.quote.pdf')
         ->toContain('StorefrontQuotePdfController')
         ->toContain('storefront.logout');

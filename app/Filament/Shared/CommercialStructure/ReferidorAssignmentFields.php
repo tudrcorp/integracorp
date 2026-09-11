@@ -17,7 +17,7 @@ final class ReferidorAssignmentFields
     public static function section(?string $sectionClass = null): Section
     {
         $section = Section::make('Red de referidor')
-            ->description('Seleccione las agencias y los agentes o subagentes que este referidor cubre. Puede referir a cualquier agencia (MASTER o GENERAL) y a cualquier agente o subagente, sin distinción de jerarquía. Cada uno queda con el ID de este referidor.')
+            ->description('Seleccione las agencias y los agentes o subagentes que este referidor cubre. Puede referir a cualquiera, sin distinción de jerarquía. Un referido puede tener varios referidores: A puede referir a B, C y D, y B puede tener otros referidores además de A.')
             ->icon('heroicon-o-user-group')
             ->schema([
                 self::generalAgenciesSelect(),
@@ -38,7 +38,7 @@ final class ReferidorAssignmentFields
     {
         return Select::make(ReferidorAssignmentService::GENERAL_AGENCY_IDS_FIELD)
             ->label('Agencias')
-            ->helperText('Busque por código, razón social o RIF. Aparecen agencias MASTER y GENERAL libres o ya asignadas a este referidor.')
+            ->helperText('Busque por código, razón social o RIF. Aparecen agencias MASTER y GENERAL. Un referido puede tener varios referidores a la vez.')
             ->multiple()
             ->searchable()
             ->native(false)
@@ -61,7 +61,7 @@ final class ReferidorAssignmentFields
     {
         return Select::make(ReferidorAssignmentService::AGENT_IDS_FIELD)
             ->label('Agentes y subagentes')
-            ->helperText('Busque por nombre, cédula, correo o código. Aparecen agentes y subagentes libres o ya asignados a este referidor.')
+            ->helperText('Busque por nombre, cédula, correo o código. Aparecen agentes y subagentes. Un referido puede tener varios referidores a la vez.')
             ->multiple()
             ->searchable()
             ->native(false)

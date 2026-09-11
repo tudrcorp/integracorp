@@ -13,6 +13,33 @@ use Throwable;
 
 final class TelemedicinePatientDisplayName
 {
+    /**
+     * Resultado de Schema::hasTable() por tabla. El esquema no cambia dentro de
+     * una misma petición y cada consulta a information_schema es cara.
+     *
+     * @var array<string, bool>
+     */
+    private static array $tableExistsCache = [];
+
+    /**
+     * Nombre ya resuelto por afiliado, cacheado por petición. La clave incluye
+     * las referencias de afiliación y el documento, de modo que si el paciente
+     * se reasocia a otra afiliación la clave cambia y no se sirve un valor viejo.
+     *
+     * @var array<string, string>
+     */
+    private static array $affiliateNameCache = [];
+
+    /**
+     * Vacía las cachés estáticas. Necesario en jobs largos que recorren muchos
+     * pacientes dentro de un mismo proceso.
+     */
+    public static function flushCache(): void
+    {
+        self::$tableExistsCache = [];
+        self::$affiliateNameCache = [];
+    }
+
     public static function fromAffiliate(Affiliate $affiliate): string
     {
         return self::clean($affiliate->full_name);
@@ -127,6 +154,28 @@ final class TelemedicinePatientDisplayName
 
     private static function resolveFromAffiliate(TelemedicinePatient $patient): string
     {
+        $cacheKey = self::affiliateCacheKey($patient);
+
+        if (array_key_exists($cacheKey, self::$affiliateNameCache)) {
+            return self::$affiliateNameCache[$cacheKey];
+        }
+
+        return self::$affiliateNameCache[$cacheKey] = self::resolveFromAffiliateUncached($patient);
+    }
+
+    private static function affiliateCacheKey(TelemedicinePatient $patient): string
+    {
+        return implode('|', [
+            (string) ($patient->getKey() ?? ''),
+            (string) ($patient->afilliation_corporate_id ?? ''),
+            (string) ($patient->afilliation_id ?? ''),
+            (string) ($patient->type_affiliation ?? ''),
+            (string) ($patient->nro_identificacion ?? ''),
+        ]);
+    }
+
+    private static function resolveFromAffiliateUncached(TelemedicinePatient $patient): string
+    {
         if (filled($patient->afilliation_corporate_id)) {
             $corporate = self::findCorporateAffiliate($patient);
             if ($corporate instanceof AffiliateCorporate) {
@@ -166,6 +215,21 @@ final class TelemedicinePatientDisplayName
             return null;
         }
 
+        try {
+            $fast = self::exactDocumentLookup(
+                Affiliate::query()->select(['id', 'full_name', 'nro_identificacion']),
+                'affiliation_id',
+                $patient->afilliation_id,
+                $patient->nro_identificacion,
+            );
+
+            if ($fast !== null) {
+                return $fast;
+            }
+        } catch (Throwable) {
+            // Si la vía rápida falla se cae a la búsqueda tolerante de abajo.
+        }
+
         $query = Affiliate::query()->select(['id', 'full_name', 'nro_identificacion']);
 
         if (! self::constrainAffiliateLookup($query, 'affiliation_id', $patient->afilliation_id, $patient->nro_identificacion)) {
@@ -185,6 +249,21 @@ final class TelemedicinePatientDisplayName
             return null;
         }
 
+        try {
+            $fast = self::exactDocumentLookup(
+                AffiliateCorporate::query()->select(['id', 'first_name', 'last_name', 'nro_identificacion']),
+                'affiliation_corporate_id',
+                $patient->afilliation_corporate_id,
+                $patient->nro_identificacion,
+            );
+
+            if ($fast !== null) {
+                return $fast;
+            }
+        } catch (Throwable) {
+            // Si la vía rápida falla se cae a la búsqueda tolerante de abajo.
+        }
+
         $query = AffiliateCorporate::query()->select(['id', 'first_name', 'last_name', 'nro_identificacion']);
 
         if (! self::constrainAffiliateLookup($query, 'affiliation_corporate_id', $patient->afilliation_corporate_id, $patient->nro_identificacion)) {
@@ -196,6 +275,36 @@ final class TelemedicinePatientDisplayName
         } catch (Throwable) {
             return null;
         }
+    }
+
+    /**
+     * Vía rápida: busca el documento por igualdad, que sí usa los índices de
+     * `nro_identificacion`. La búsqueda tolerante original lleva un
+     * `REPLACE(...)` sobre la columna, que obliga a MySQL a recorrer la tabla
+     * entera; se reserva como respaldo para cuando la igualdad no encuentra nada.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<\Illuminate\Database\Eloquent\Model>  $query
+     */
+    private static function exactDocumentLookup($query, string $affiliationColumn, mixed $affiliationId, mixed $document): mixed
+    {
+        $raw = trim((string) $document);
+        $normalized = TelemedicinePatientIdentity::normalizeDocument(
+            is_string($document) || $document === null ? $document : (string) $document
+        );
+
+        $values = array_values(array_unique(array_filter([$raw, $normalized], fn (string $v): bool => $v !== '')));
+
+        if ($values === []) {
+            return null;
+        }
+
+        if (filled($affiliationId)) {
+            $query->where($affiliationColumn, $affiliationId);
+        }
+
+        $candidates = $query->whereIn('nro_identificacion', $values)->limit(100)->get();
+
+        return self::firstMatchingDocument($candidates, $document);
     }
 
     /**
@@ -272,10 +381,14 @@ final class TelemedicinePatientDisplayName
 
     private static function tableExists(string $table): bool
     {
+        if (array_key_exists($table, self::$tableExistsCache)) {
+            return self::$tableExistsCache[$table];
+        }
+
         try {
-            return Schema::hasTable($table);
+            return self::$tableExistsCache[$table] = Schema::hasTable($table);
         } catch (Throwable) {
-            return false;
+            return self::$tableExistsCache[$table] = false;
         }
     }
 

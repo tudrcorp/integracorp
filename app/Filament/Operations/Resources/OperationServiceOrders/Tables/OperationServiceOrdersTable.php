@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\OperationServiceOrders\Tables;
 
 use App\Http\Controllers\ApiBcvController;
 use App\Http\Controllers\OperationServiceOrderExportCsvController;
+use App\Models\BusinessUnit;
 use App\Models\OperationServiceOrder;
 use App\Models\OperationServiceOrderItem;
 use App\Models\OperationServiceOrderQuote;
@@ -13,6 +14,7 @@ use App\Support\Filament\CsvExportDownloadTrigger;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Operations\OperationServiceOrderValidity;
+use App\Support\Operations\ServiceOrderAccountsPayableRegistrar;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -39,6 +41,7 @@ use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -382,12 +385,13 @@ class OperationServiceOrdersTable
             ->searchPlaceholder('Buscar por orden, paciente, cédula, unidad, caso, proveedor o descripción…')
             ->persistSearchInSession()
             ->searchUsing(fn (Builder $query, string $search): Builder => self::applyTableSearch($query, $search))
+            ->deferLoading()
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(25)
             ->emptyStateHeading('Sin órdenes de servicio')
             ->emptyStateDescription('Cuando se genere una orden desde coordinación aparecerá aquí. Use la búsqueda y los filtros para localizar registros.')
             ->modifyQueryUsing(function (Builder $query): Builder {
-                OperationServiceOrderValidity::expireEligibleOrders('system');
+                OperationServiceOrderValidity::expireEligibleOrdersThrottled('system');
 
                 OperationsSupplierScope::applyServiceOrderListScope($query);
 
@@ -923,6 +927,9 @@ class OperationServiceOrdersTable
                                 ?? OperationServiceOrderListDisplay::quoteAmountUsd($record),
                             'invoice_amount_ves' => $record->invoice_amount_ves,
                             'invoice_file_path' => $record->invoice_file_path,
+                            'payable_supplier_name' => ServiceOrderAccountsPayableRegistrar::suggestedSupplierName($record),
+                            'payable_supplier_rif' => ServiceOrderAccountsPayableRegistrar::suggestedSupplierRif($record),
+                            'payable_business_unit_id' => ServiceOrderAccountsPayableRegistrar::suggestedBusinessUnitId($record),
                         ])
                         ->form(fn (OperationServiceOrder $record): array => [
                             Section::make('Datos del proveedor y de la cotización')
@@ -1040,6 +1047,54 @@ class OperationServiceOrdersTable
                                 ->extraAttributes([
                                     'class' => self::IOS_SECTION_CLASS,
                                 ]),
+                            Section::make('Datos para cuentas por pagar')
+                                ->description('Con estos datos se genera automáticamente la cuenta por pagar. Vienen precargados del proveedor y de la coordinación; corrígelos si hace falta.')
+                                ->icon('heroicon-m-banknotes')
+                                ->schema([
+                                    Grid::make(['default' => 1, 'lg' => 2])
+                                        ->schema([
+                                            TextInput::make('payable_supplier_name')
+                                                ->label('Nombre del proveedor')
+                                                ->prefixIcon('heroicon-m-building-storefront')
+                                                ->required()
+                                                ->maxLength(255)
+                                                ->helperText('Queda congelado en la cuenta por pagar: si mañana cambia la ficha del proveedor, esta factura no se altera.')
+                                                ->validationMessages([
+                                                    'required' => 'Indica el nombre del proveedor que emite la factura.',
+                                                ]),
+                                            TextInput::make('payable_supplier_rif')
+                                                ->label('RIF del proveedor')
+                                                ->prefixIcon('heroicon-m-identification')
+                                                ->placeholder('J-123456789-0')
+                                                ->required()
+                                                ->maxLength(40)
+                                                ->helperText('Obligatorio para cuentas por pagar. Si el proveedor no lo tiene cargado, escríbelo aquí.')
+                                                ->validationMessages([
+                                                    'required' => 'Indica el RIF del proveedor; sin él la cuenta por pagar queda incompleta.',
+                                                ]),
+                                            Select::make('payable_business_unit_id')
+                                                ->label('Unidad de negocio específica')
+                                                ->prefixIcon('heroicon-m-squares-2x2')
+                                                ->options(fn (): array => BusinessUnit::query()
+                                                    ->where('status', 'ACTIVO')
+                                                    ->orderBy('definition')
+                                                    ->pluck('definition', 'id')
+                                                    ->all())
+                                                ->searchable()
+                                                ->preload()
+                                                ->required()
+                                                ->helperText('Se toma de la coordinación de servicio cuando está definida.')
+                                                ->validationMessages([
+                                                    'required' => 'Selecciona la unidad de negocio a la que se imputa la factura.',
+                                                ])
+                                                ->columnSpanFull(),
+                                        ]),
+                                ])
+                                ->columns(1)
+                                ->columnSpanFull()
+                                ->extraAttributes([
+                                    'class' => self::IOS_SECTION_CLASS,
+                                ]),
                         ])
                         ->successNotification(null)
                         ->action(function (OperationServiceOrder $record, array $data): void {
@@ -1075,20 +1130,51 @@ class OperationServiceOrdersTable
                             }
 
                             $controlNumber = trim((string) ($data['invoice_control_number'] ?? ''));
+                            $actor = Auth::user()?->name ?? 'sistema';
+                            $registrationDate = $data['invoice_registration_date'] ?: now()->toDateString();
 
-                            $record->update([
-                                'invoice_number' => trim((string) $data['invoice_number']),
-                                'invoice_control_number' => $controlNumber !== '' ? $controlNumber : null,
-                                'invoice_date' => $data['invoice_date'],
-                                'invoice_registration_date' => $data['invoice_registration_date'] ?: now()->toDateString(),
-                                'invoice_amount_usd' => $usd,
-                                'invoice_amount_ves' => $ves,
-                                'invoice_file_path' => (string) $filePath,
-                                'invoice_uploaded_by' => Auth::user()?->name ?? 'sistema',
-                                'invoice_uploaded_at' => now(),
-                                'administrative_status' => OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_INVOICED,
-                                'updated_by' => Auth::user()?->name ?? 'sistema',
-                            ]);
+                            /*
+                             * La orden y su cuenta por pagar se escriben juntas: una factura
+                             * cargada sin su cuenta por pagar dejaría a Administración sin el
+                             * compromiso registrado.
+                             */
+                            $payableResult = DB::transaction(function () use ($record, $data, $controlNumber, $usd, $ves, $filePath, $actor, $registrationDate): array {
+                                $record->update([
+                                    'invoice_number' => trim((string) $data['invoice_number']),
+                                    'invoice_control_number' => $controlNumber !== '' ? $controlNumber : null,
+                                    'invoice_date' => $data['invoice_date'],
+                                    'invoice_registration_date' => $registrationDate,
+                                    'invoice_amount_usd' => $usd,
+                                    'invoice_amount_ves' => $ves,
+                                    'invoice_file_path' => (string) $filePath,
+                                    'invoice_uploaded_by' => $actor,
+                                    'invoice_uploaded_at' => now(),
+                                    'administrative_status' => OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_INVOICED,
+                                    'updated_by' => $actor,
+                                ]);
+
+                                return ServiceOrderAccountsPayableRegistrar::register($record, [
+                                    'invoice_number' => trim((string) $data['invoice_number']),
+                                    'invoice_control_number' => $controlNumber !== '' ? $controlNumber : null,
+                                    'invoice_date' => $data['invoice_date'],
+                                    'invoice_registration_date' => $registrationDate,
+                                    'invoice_amount_usd' => $usd,
+                                    'invoice_amount_ves' => $ves,
+                                    'invoice_file_path' => (string) $filePath,
+                                    'supplier_name' => trim((string) ($data['payable_supplier_name'] ?? '')),
+                                    'supplier_rif' => trim((string) ($data['payable_supplier_rif'] ?? '')),
+                                    'business_unit_id' => $data['payable_business_unit_id'] ?? null,
+                                ], $actor);
+                            });
+
+                            if ($payableResult['payment_preserved']) {
+                                Notification::make()
+                                    ->title('Factura actualizada; el pago se conservó')
+                                    ->body('La cuenta por pagar de esta orden ya tenía un pago registrado, así que se actualizaron los datos de la factura pero se respetaron la referencia, la fecha y los montos del pago.')
+                                    ->warning()
+                                    ->persistent()
+                                    ->send();
+                            }
 
                             $quoted = OperationServiceOrderListDisplay::quoteAmountUsd($record);
                             $difference = ($usd !== null && $quoted !== null) ? round($usd - $quoted, 2) : null;
@@ -1096,7 +1182,9 @@ class OperationServiceOrdersTable
                             if ($difference !== null && abs($difference) >= 0.01) {
                                 Notification::make()
                                     ->title('Factura registrada con diferencia')
-                                    ->body('La orden #'.($record->order_number ?: $record->getKey()).' quedó facturada, pero el monto difiere de la cotización en US$ '
+                                    ->body('La orden #'.($record->order_number ?: $record->getKey()).' quedó facturada y '
+                                        .($payableResult['created'] ? 'se creó su cuenta por pagar' : 'se actualizó su cuenta por pagar')
+                                        .', pero el monto difiere de la cotización en US$ '
                                         .number_format(abs($difference), 2, ',', '.').' ('.($difference > 0 ? 'por encima' : 'por debajo').'). Verifica con el proveedor si corresponde.')
                                     ->warning()
                                     ->persistent()
@@ -1106,8 +1194,11 @@ class OperationServiceOrdersTable
                             }
 
                             Notification::make()
-                                ->title('Factura registrada')
-                                ->body('La orden #'.($record->order_number ?: $record->getKey()).' pasó a estatus administrativo «Facturado».')
+                                ->title($payableResult['created'] ? 'Factura registrada y cuenta por pagar creada' : 'Factura actualizada')
+                                ->body('La orden #'.($record->order_number ?: $record->getKey()).' pasó a estatus administrativo «Facturado» y '
+                                    .($payableResult['created']
+                                        ? 'quedó registrada en Cuentas por pagar como «Pendiente por pagar».'
+                                        : 'su cuenta por pagar quedó actualizada.'))
                                 ->success()
                                 ->send();
                         }),
