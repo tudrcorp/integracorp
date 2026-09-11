@@ -17,7 +17,7 @@
     >
         <div
             x-data="{
-                showDetail: @entangle('selectedPatientId').live,
+                showDetail: @entangle('selectedPatientKey').live,
                 patientName: @entangle('selectedPatientName').live,
             }"
         >
@@ -64,7 +64,7 @@
                         x-load
                         x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('chart', 'filament/widgets') }}"
                         wire:ignore
-                        wire:key="top-patients-md-{{ $this->selectedPatientId ?? 'overview' }}"
+                        wire:key="top-patients-md-{{ $this->selectedPatientKey ?? 'overview' }}"
                         data-chart-type="{{ $type }}"
                         x-data="chart({
                                     cachedData: @js($this->getCachedData()),

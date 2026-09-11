@@ -24,6 +24,7 @@ it('el builder de timeline contempla creación, notas, prioridad y estado', func
         ->toContain("'type' => 'note'")
         ->toContain("'type' => 'status_change'")
         ->toContain("'type' => 'priority_change'")
+        ->toContain("'type' => 'assignment_change'")
         ->toContain("preg_match('/^\\[(?<meta>")
         ->toContain('HelpdeskTimelineActorResolver::resolve');
 });

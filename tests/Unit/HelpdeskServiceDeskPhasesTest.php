@@ -48,7 +48,8 @@ it('ModalActions de paneles delegan al modulo compartido', function (string $pan
         ->toContain('SharedHelpdeskTicketModalActions')
         ->toContain('makeAddNoteAction')
         ->toContain('makeUpdateStatusAction')
-        ->toContain('makeUpdatePriorityAction');
+        ->toContain('makeUpdatePriorityAction')
+        ->toContain('makeReassignAction');
 })->with(['Business', 'Administration', 'Operations', 'Marketing']);
 
 it('ModalActions compartido incluye CSAT, cancelacion y reapertura', function (): void {

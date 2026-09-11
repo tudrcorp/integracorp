@@ -1200,7 +1200,12 @@ class OperationCoordinationServicesTable
             ->heading('Cuadro de control')
             ->description('Coordinaciones médicas del sistema: agrupe por caso, revise ítems clínicos y gestione el servicio.')
             ->defaultSort('date_solicitud', 'desc')
+            ->deferLoading()
             ->modifyQueryUsing(function (Builder $query): Builder {
+                // Una pasada de render por consulta: la memoria de ítems clínicos
+                // no debe sobrevivir a una acción que acabe de escribir.
+                CoordinationServiceItemsManager::flushClinicalItemsCache();
+
                 OperationsSupplierScope::applyCoordinationListScope($query);
 
                 return $query->with([
@@ -1701,23 +1706,42 @@ class OperationCoordinationServicesTable
 
     private static function serviceOrderType(OperationCoordinationService $record): ?string
     {
-        if ($record->telemedicinePatientMedications()->where('status', '!=', 'EN GESTION')->exists()) {
-            return 'MEDICAMENTOS';
-        }
+        $tipos = [
+            'telemedicinePatientMedications' => 'MEDICAMENTOS',
+            'telemedicinePatientStudies' => 'IMAGENOLOGIA',
+            'telemedicinePatientLabs' => 'LABORATORIOS',
+            'telemedicinePatientSpecialties' => 'ESPECIALISTA',
+        ];
 
-        if ($record->telemedicinePatientStudies()->where('status', '!=', 'EN GESTION')->exists()) {
-            return 'IMAGENOLOGIA';
-        }
-
-        if ($record->telemedicinePatientLabs()->where('status', '!=', 'EN GESTION')->exists()) {
-            return 'LABORATORIOS';
-        }
-
-        if ($record->telemedicinePatientSpecialties()->where('status', '!=', 'EN GESTION')->exists()) {
-            return 'ESPECIALISTA';
+        foreach ($tipos as $relacion => $tipo) {
+            if (self::hasItemOutsideManagement($record, $relacion)) {
+                return $tipo;
+            }
         }
 
         return null;
+    }
+
+    /**
+     * Aprovecha la relación ya precargada cuando existe; la tabla las carga
+     * todas en `modifyQueryUsing`, así que consultarlas de nuevo por fila era
+     * trabajo repetido.
+     */
+    private static function hasItemOutsideManagement(OperationCoordinationService $record, string $relacion): bool
+    {
+        if ($record->relationLoaded($relacion)) {
+            return $record->getRelation($relacion)
+                ->contains(function (object $item): bool {
+                    // SQL descarta los NULL en `status != ...`; aquí también.
+                    if ($item->status === null) {
+                        return false;
+                    }
+
+                    return mb_strtoupper(trim((string) $item->status)) !== 'EN GESTION';
+                });
+        }
+
+        return $record->{$relacion}()->where('status', '!=', 'EN GESTION')->exists();
     }
 
     private static function serviceOrderTypeBadge(OperationCoordinationService $record): HtmlString

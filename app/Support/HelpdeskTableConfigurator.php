@@ -420,6 +420,7 @@ final class HelpdeskTableConfigurator
             $modalActionsClass::makeAddNoteAction(),
             $modalActionsClass::makeUpdateStatusAction(),
             $modalActionsClass::makeUpdatePriorityAction(),
+            $modalActionsClass::makeReassignAction(),
             self::makeViewNotesAction($modalActionsClass),
         ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro');
 

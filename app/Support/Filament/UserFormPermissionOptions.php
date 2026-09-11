@@ -74,6 +74,7 @@ class UserFormPermissionOptions
         'telemedicinedoctorresource' => ['doctores'],
         'telemedicinepatientresource' => ['pacientes'],
         'telemedicinecaseresource' => ['gestion-casos'],
+        'bitacoradecaso' => ['bitacora-de-caso'],
         'telemedicinehistorypatientresource' => ['historia-clinica'],
         'operationcoordinationserviceresource' => ['servicios-medicos'],
         'operationserviceorderresource' => ['ordenes-servicios'],

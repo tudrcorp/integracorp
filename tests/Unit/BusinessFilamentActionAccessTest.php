@@ -251,6 +251,40 @@ it('fuera de un panel niega el reporte de ventas sin el subpermiso aunque vea em
     ))->toBeFalse();
 });
 
+it('permite reasignar tickets helpdesk a superadmin', function (): void {
+    $user = makeActionUser(['SUPERADMIN', 'NEGOCIOS']);
+
+    expect(UserNavigationAccess::canPerformModuleAction(
+        $user,
+        'NEGOCIOS',
+        BusinessFilamentActionPermissionRegistry::REASSIGN_HELPDESK_TICKET,
+    ))->toBeTrue();
+});
+
+it('permite reasignar tickets helpdesk con el permiso asignado', function (): void {
+    $user = makeActionUser(
+        ['OPERACIONES'],
+        [BusinessFilamentActionPermissionRegistry::REASSIGN_HELPDESK_TICKET],
+        'OPERACIONES',
+    );
+
+    expect(UserNavigationAccess::canPerformModuleAction(
+        $user,
+        'OPERACIONES',
+        BusinessFilamentActionPermissionRegistry::REASSIGN_HELPDESK_TICKET,
+    ))->toBeTrue();
+});
+
+it('niega reasignar tickets helpdesk sin el permiso asignado', function (): void {
+    $user = makeActionUser(['OPERACIONES'], ['helpdesks'], 'OPERACIONES');
+
+    expect(UserNavigationAccess::canPerformModuleAction(
+        $user,
+        'OPERACIONES',
+        BusinessFilamentActionPermissionRegistry::REASSIGN_HELPDESK_TICKET,
+    ))->toBeFalse();
+});
+
 it('permite gestionar referidor al analista de administracion en su panel', function (): void {
     $user = makeActionUser(
         ['ADMINISTRACION'],

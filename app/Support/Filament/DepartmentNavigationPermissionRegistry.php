@@ -113,6 +113,7 @@ use App\Filament\Metrics\Pages\Operaciones as MetricsOperaciones;
 use App\Filament\Metrics\Pages\Proveedores as MetricsProveedores;
 use App\Filament\Metrics\Pages\Proyectos as MetricsProyectos;
 use App\Filament\Operations\Pages\AgendaCorporativa as OperationsAgendaCorporativa;
+use App\Filament\Operations\Pages\BitacoraDeCaso;
 use App\Filament\Operations\Pages\CalendariosTdg as OperationsCalendariosTdg;
 use App\Filament\Operations\Pages\DashboardOperaciones;
 use App\Filament\Operations\Pages\ManageOperationInventoryParameters;
@@ -295,6 +296,7 @@ final class DepartmentNavigationPermissionRegistry
         TelemedicineDoctorResource::class => ['doctores'],
         TelemedicinePatientResource::class => ['pacientes'],
         TelemedicineCaseResource::class => ['gestion-casos'],
+        BitacoraDeCaso::class => ['bitacora-de-caso'],
         TelemedicineHistoryPatientResource::class => ['historia-clinica'],
         OperationCoordinationServiceResource::class => ['servicios-medicos'],
         OperationServiceOrderResource::class => ['ordenes-servicios'],

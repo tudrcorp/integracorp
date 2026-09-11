@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Observers\OperationServiceStatisticObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Schema;
 
+#[ObservedBy([OperationServiceStatisticObserver::class])]
 class OperationServiceOrder extends Model
 {
     //

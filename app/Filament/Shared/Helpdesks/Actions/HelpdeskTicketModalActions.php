@@ -4,14 +4,16 @@ namespace App\Filament\Shared\Helpdesks\Actions;
 
 use App\Models\HelpDesk;
 use App\Models\HelpDeskCsat;
-use App\Models\RrhhColaborador;
+use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\HelpdeskEventRecorder;
+use App\Support\HelpdeskFormSchema;
 use App\Support\HelpdeskObservationAppender;
 use App\Support\HelpdeskSla;
 use App\Support\HelpdeskStatusChangeNote;
 use App\Support\HelpdeskTaskStatusOptions;
 use App\Support\HelpdeskTicketIdentity;
+use App\Support\HelpdeskTicketReassignment;
 use App\Support\HelpdeskTicketVisibility;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
@@ -35,19 +37,13 @@ final class HelpdeskTicketModalActions
 
     public static function currentUserIsTicketAssignee(HelpDesk $record): bool
     {
-        $colaborador = RrhhColaborador::query()
-            ->where('user_id', Auth::id())
-            ->first();
+        $user = Auth::user();
 
-        if ($colaborador === null) {
+        if (! $user instanceof User) {
             return false;
         }
 
-        $record->loadMissing('rrhhColaboradores');
-
-        return $record->rrhhColaboradores->contains(
-            fn (RrhhColaborador $c): bool => (int) $c->getKey() === (int) $colaborador->getKey()
-        );
+        return HelpdeskTicketReassignment::userIsAssignee($user, $record);
     }
 
     /**
@@ -711,5 +707,127 @@ final class HelpdeskTicketModalActions
             })
             ->hidden(fn (HelpDesk $record): bool => ! HelpdeskTicketIdentity::isCreator($record, Auth::user())
                 || in_array($record->status, ['TERMINADO', 'CANCELADO'], true));
+    }
+
+    public static function makeReassignAction(string $panel = 'business'): Action
+    {
+        return Action::make('reassignTicket')
+            ->label('Reasignar ticket')
+            ->icon('heroicon-m-user-plus')
+            ->color('primary')
+            ->slideOver()
+            ->modalWidth(Width::ThreeExtraLarge)
+            ->modalHeading('Reasignar ticket')
+            ->modalDescription(fn (HelpDesk $record): string => 'Cambiar responsables · Ticket #'.$record->getKey().' · '.$record->created_by)
+            ->modalSubmitActionLabel('Guardar reasignación')
+            ->modalSubmitAction(
+                fn (Action $action): Action => $action
+                    ->extraAttributes([
+                        'class' => self::IOS_SUCCESS_BTN,
+                    ])
+            )
+            ->modalCancelAction(
+                fn (Action $action): Action => $action
+                    ->label('Cancelar')
+                    ->extraAttributes([
+                        'class' => self::IOS_GRAY_BTN,
+                    ])
+            )
+            ->fillForm(fn (HelpDesk $record): array => [
+                'rrhhColaboradores' => $record->rrhhColaboradores
+                    ->map(fn ($colaborador): int => (int) $colaborador->getKey())
+                    ->all(),
+            ])
+            ->form([
+                Section::make('Nuevos responsables')
+                    ->description('Sustituye a quienes ejecutan el ticket. Quien reciba el caso podrá atenderlo y, si tiene el permiso, volver a reasignarlo.')
+                    ->icon('heroicon-m-user-plus')
+                    ->schema([
+                        Select::make('rrhhColaboradores')
+                            ->label('Asignados')
+                            ->prefixIcon('heroicon-m-user-plus')
+                            ->multiple()
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->options(HelpdeskFormSchema::rrhhColaboradorOptionsForHelpdeskMultiselect())
+                            ->helperText('Seleccione uno o más colaboradores. Los anteriores dejarán de ser responsables.')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(1)
+                    ->columnSpanFull()
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ]),
+                Section::make('Motivo de la reasignación')
+                    ->description('Quedará registrado en las notas y en la bitácora del ticket.')
+                    ->icon('heroicon-m-chat-bubble-left-right')
+                    ->schema([
+                        RichEditor::make('reassignment_explanation')
+                            ->label('Motivo')
+                            ->placeholder('Indique por qué transfiere el caso, acuerdos o el siguiente paso…')
+                            ->helperText('Obligatorio. Mínimo 3 caracteres de contenido.')
+                            ->required()
+                            ->fileAttachments(false)
+                            ->toolbarButtons([
+                                ['bold', 'italic', 'underline', 'strike', 'highlight', 'textColor'],
+                                ['h2', 'h3'],
+                                ['bulletList', 'orderedList', 'blockquote'],
+                                ['link'],
+                                ['undo', 'redo'],
+                            ])
+                            ->extraInputAttributes([
+                                'class' => 'min-h-[10rem]',
+                            ])
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(1)
+                    ->columnSpanFull()
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ]),
+            ])
+            ->successNotification(null)
+            ->action(function (HelpDesk $record, array $data) use ($panel): void {
+                $user = Auth::user();
+
+                if (! $user instanceof User) {
+                    return;
+                }
+
+                $result = HelpdeskTicketReassignment::apply(
+                    $record,
+                    $user,
+                    is_array($data['rrhhColaboradores'] ?? null) ? $data['rrhhColaboradores'] : [],
+                    isset($data['reassignment_explanation']) ? (string) $data['reassignment_explanation'] : null,
+                    $panel,
+                );
+
+                $notification = Notification::make()
+                    ->title($result['title'])
+                    ->body($result['body']);
+
+                if ($result['ok']) {
+                    $notification->success()->send();
+
+                    return;
+                }
+
+                if (in_array($result['code'], ['no_changes'], true)) {
+                    $notification->info()->send();
+
+                    return;
+                }
+
+                if (in_array($result['code'], ['forbidden'], true)) {
+                    $notification->danger()->send();
+
+                    return;
+                }
+
+                $notification->warning()->send();
+            })
+            ->hidden(fn (HelpDesk $record): bool => ! HelpdeskTicketReassignment::userCan(Auth::user(), $record, $panel));
     }
 }

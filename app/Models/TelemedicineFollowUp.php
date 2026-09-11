@@ -2,29 +2,32 @@
 
 namespace App\Models;
 
+use App\Observers\OperationServiceStatisticObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 
+#[ObservedBy([OperationServiceStatisticObserver::class])]
 class TelemedicineFollowUp extends Model
 {
     protected $table = 'telemedicine_follow_ups';
 
     protected $fillable = [
-        //Relaciones
+        // Relaciones
         'telemedicine_patient_id',
         'telemedicine_case_id',
         'telemedicine_doctor_id',
         'telemedicine_consultation_patient_id',
         'telemedicine_service_list_id',
 
-        //Informacion de paciente
+        // Informacion de paciente
         'full_name',
         'nro_identificacion',
         'reason_consultation',
         'actual_phatology',
         'background',
         'diagnostic_impression',
-        
-        //Cuentionarios
+
+        // Cuentionarios
         'cuestion_1',
         'cuestion_2',
         'cuestion_3',
@@ -32,12 +35,12 @@ class TelemedicineFollowUp extends Model
         'cuestion_5',
         'created_by',
 
-        //Informacion de seguimiento
+        // Informacion de seguimiento
         'next_follow_up',
         'hour',
         'code',
 
-        //Informacion de seguimiento
+        // Informacion de seguimiento
         'labs',
         'studies',
         'other_labs',
@@ -79,9 +82,9 @@ class TelemedicineFollowUp extends Model
     ];
 
     protected $casts = [
-        'labs'                  => 'array',
-        'studies'               => 'array',
-        'consult_specialist'    => 'array',
+        'labs' => 'array',
+        'studies' => 'array',
+        'consult_specialist' => 'array',
     ];
 
     public function telemedicineCase()
@@ -113,6 +116,4 @@ class TelemedicineFollowUp extends Model
     {
         return $this->hasMany(TelemedicinePatientMedications::class);
     }
-
-    
 }
