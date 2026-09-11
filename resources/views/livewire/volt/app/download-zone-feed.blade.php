@@ -190,12 +190,10 @@ new #[Layout('components.layouts.storefront')] #[Title('Zona de Descarga')] clas
                     @endif
 
                     <span class="sf-reel__burst" x-bind:class="burst && 'is-on'" aria-hidden="true">♥</span>
-                    <span class="sf-reel__shade" aria-hidden="true"></span>
                 </div>
 
-                <p class="sf-reel__index">{{ $index + 1 }} / {{ $total }}</p>
-
                 <div class="sf-reel__chrome">
+                    <p class="sf-reel__index">{{ $index + 1 }} / {{ $total }}</p>
                     <p class="sf-reel__kicker">{{ $folder }}</p>
                     <h2 class="sf-reel__title">{{ $post['description'] }}</h2>
 
