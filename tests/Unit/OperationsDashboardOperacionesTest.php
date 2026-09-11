@@ -14,7 +14,11 @@ it('registra la página Dashboard Operaciones con sus widgets', function (): voi
         ->and($page)->toContain("protected static string \$routePath = 'dashboard-operaciones'")
         ->and($page)->toContain('OperationsDashboardStatsOverview::class')
         ->and($page)->toContain('TopPatientsMedicalDischargeChart::class')
-        ->and($page)->toContain('FinishedServicesMonthlyChart::class');
+        ->and($page)->toContain('FinishedServicesMonthlyChart::class')
+        ->and($page)->toContain('ServicesByStatusChart::class')
+        ->and($page)->toContain('ServicesByBusinessLineChart::class')
+        ->and($page)->toContain('ServicesByServiceTypeChart::class')
+        ->and($page)->toContain("'lg' => 3");
 });
 
 it('widget de pacientes atendidos soporta drill-down por paciente', function (): void {
@@ -25,23 +29,49 @@ it('widget de pacientes atendidos soporta drill-down por paciente', function ():
         ->toContain('public function handleChartClick(array $payload)')
         ->toContain('public function resetToPatientsOverview()')
         ->toContain('topPatientsByMedicalDischargeCases(20)')
-        ->toContain('medicalDischargeCasesForPatient($patientId)')
+        ->toContain('medicalDischargeCasesForPatient($patientKey)')
+        ->toContain('medicalDischargeCaseHoverLines')
+        ->toContain("'summaries' => \$summaries")
+        ->toContain('afterBody: function(context)')
         ->toContain('$wire.handleChartClick({')
-        ->toContain('chartPatientIds');
+        ->toContain('chartPatientKeys');
 
     expect($view)
-        ->toContain('@entangle(\'selectedPatientId\').live')
+        ->toContain('@entangle(\'selectedPatientKey\').live')
         ->toContain('wire:click="resetToPatientsOverview"')
         ->toContain('x-transition:enter');
 });
 
-it('widget de servicios finalizados agrupa coordinaciones por mes', function (): void {
+it('widget de servicios finalizados agrupa la tabla de hechos por mes', function (): void {
     $widget = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Widgets/Dashboard/FinishedServicesMonthlyChart.php');
 
     expect($widget)
-        ->toContain("->where('status', 'FINALIZADO')")
-        ->toContain('->perMonth()')
-        ->toContain('coordinationServicesQuery()');
+        ->toContain('finishedServicesMonthlyCounts($year)')
+        ->toContain('tabla de estadísticas')
+        ->not->toContain('coordinationServicesQuery()');
+});
+
+it('widgets de volumen de servicios leen la tabla de hechos', function (): void {
+    $base = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Widgets/Dashboard/OperationsFactBarChart.php');
+    $status = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Widgets/Dashboard/ServicesByStatusChart.php');
+    $line = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Widgets/Dashboard/ServicesByBusinessLineChart.php');
+    $type = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Widgets/Dashboard/ServicesByServiceTypeChart.php');
+
+    expect($base)
+        ->toContain("return 'bar'")
+        ->toContain('protected static bool $isDiscovered = false');
+
+    expect($status)
+        ->toContain('countsByServiceStatus')
+        ->toContain('Total de servicios por estatus');
+
+    expect($line)
+        ->toContain('countsByBusinessLine')
+        ->toContain('Total de servicios por línea de negocio');
+
+    expect($type)
+        ->toContain('countsByServiceType')
+        ->toContain('Total de servicios por tipo de servicio');
 });
 
 it('widgets del dashboard no se auto-descubren en el dashboard principal', function (): void {
@@ -49,6 +79,9 @@ it('widgets del dashboard no se auto-descubren en el dashboard principal', funct
         'OperationsDashboardStatsOverview',
         'TopPatientsMedicalDischargeChart',
         'FinishedServicesMonthlyChart',
+        'ServicesByStatusChart',
+        'ServicesByBusinessLineChart',
+        'ServicesByServiceTypeChart',
     ] as $widget) {
         $contents = file_get_contents(dirname(__DIR__, 2)."/app/Filament/Operations/Widgets/Dashboard/{$widget}.php");
 

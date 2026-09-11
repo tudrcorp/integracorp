@@ -18,6 +18,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const MANAGE_REFERIDOR = 'gestionar-referidor';
 
+    public const REASSIGN_HELPDESK_TICKET = 'reasignar-tickets-helpdesk';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -63,6 +65,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Asignación de referidor',
                 'group' => 'ESTRUCTURA COMERCIAL',
                 'modules' => [self::OWNER_MODULE, 'ADMINISTRACION'],
+            ],
+            self::REASSIGN_HELPDESK_TICKET => [
+                'name' => 'Reasignar tickets',
+                'group' => 'HELPDESK',
+                'modules' => [self::OWNER_MODULE, 'ADMINISTRACION', 'OPERACIONES', 'MARKETING'],
             ],
         ];
     }

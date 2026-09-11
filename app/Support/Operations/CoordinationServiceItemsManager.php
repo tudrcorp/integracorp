@@ -133,6 +133,34 @@ final class CoordinationServiceItemsManager
      *     selectable: bool
      * }>
      */
+    /**
+     * Ítems clínicos ya resueltos, por coordinación y por pasada de render.
+     *
+     * En el cuadro de control cada fila resuelve estos ítems dos veces: una para
+     * el color de la fila (`recordClasses`) y otra para la columna de ítems. La
+     * tabla vacía esta caché en `modifyQueryUsing`, que corre una sola vez por
+     * render, de modo que la memoria nunca sobrevive a una escritura.
+     *
+     * @var array<int, Collection<int, array<string, mixed>>>
+     */
+    private static array $clinicalItemsCache = [];
+
+    /**
+     * @var array<int, array<string, array<string, mixed>>>
+     */
+    private static array $serviceOrderLinksCache = [];
+
+    /**
+     * Vacía la memoria de ítems clínicos. La tabla la invoca al construir su
+     * consulta; los flujos que crean órdenes o cotizaciones deben invocarla si
+     * vuelven a pintar dentro de la misma petición.
+     */
+    public static function flushClinicalItemsCache(): void
+    {
+        self::$clinicalItemsCache = [];
+        self::$serviceOrderLinksCache = [];
+    }
+
     public static function associatedServiceItemsForManagement(OperationCoordinationService $record): Collection
     {
         TelemedicineCaseTdgReassignmentCoordination::ensureAmdManagementItem($record);
@@ -788,6 +816,26 @@ final class CoordinationServiceItemsManager
      */
     public static function clinicalItemsWithEffectiveDisplayStatus(OperationCoordinationService $record): Collection
     {
+        $cacheKey = $record->exists ? (int) $record->getKey() : null;
+
+        if ($cacheKey !== null && array_key_exists($cacheKey, self::$clinicalItemsCache)) {
+            return self::$clinicalItemsCache[$cacheKey];
+        }
+
+        $items = self::resolveClinicalItemsWithEffectiveDisplayStatus($record);
+
+        if ($cacheKey !== null) {
+            self::$clinicalItemsCache[$cacheKey] = $items;
+        }
+
+        return $items;
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private static function resolveClinicalItemsWithEffectiveDisplayStatus(OperationCoordinationService $record): Collection
+    {
         $orderLinks = self::serviceOrderLinksByClinicalItemKey($record);
 
         return self::associatedServiceItemsForManagement($record)
@@ -998,6 +1046,26 @@ final class CoordinationServiceItemsManager
      */
     public static function serviceOrderLinksByClinicalItemKey(OperationCoordinationService $record): array
     {
+        $cacheKey = $record->exists ? (int) $record->getKey() : null;
+
+        if ($cacheKey !== null && array_key_exists($cacheKey, self::$serviceOrderLinksCache)) {
+            return self::$serviceOrderLinksCache[$cacheKey];
+        }
+
+        $map = self::resolveServiceOrderLinksByClinicalItemKey($record);
+
+        if ($cacheKey !== null) {
+            self::$serviceOrderLinksCache[$cacheKey] = $map;
+        }
+
+        return $map;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private static function resolveServiceOrderLinksByClinicalItemKey(OperationCoordinationService $record): array
+    {
         $map = [];
 
         OperationServiceOrder::query()
@@ -1102,7 +1170,13 @@ final class CoordinationServiceItemsManager
 
         $manageServiceUrl = ManageCoordinationServiceItems::getUrl(['record' => $record]);
         $associatedItemsUrl = self::associatedItemsTabUrl($record);
-        $canShowManageLink = ! self::manageServiceActionIsDisabled($record)
+        /*
+         * `$itemsForDisplay` ya trae la bandera `selectable` de cada ítem, así que
+         * preguntar de nuevo a la base (manageServiceActionIsDisabled) repetiría
+         * cuatro consultas por fila. Los `ensure*` que aquella hace ya corrieron al
+         * construir la colección.
+         */
+        $canShowManageLink = $itemsForDisplay->contains(fn (array $item): bool => (bool) ($item['selectable'] ?? false))
             && ! in_array('ATENMEDI', Auth::user()?->departament ?? [], true);
 
         $rows = $itemsForDisplay->map(function (array $item) use ($orderLinks, $quoteLinks, $manageServiceUrl, $canShowManageLink, $associatedItemsUrl): string {

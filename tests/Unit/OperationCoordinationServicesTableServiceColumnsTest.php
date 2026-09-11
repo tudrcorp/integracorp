@@ -392,7 +392,11 @@ it('OperationCoordinationServicesTable oculta coordinaciones sin ítems por gest
         ->toContain('use App\\Filament\\Operations\\Resources\\OperationCoordinationServices\\Tables\\OperationCoordinationServicesTable;')
         ->toContain("'todas' => Tab::make('Todas')")
         ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query)')
-        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope(OperationsSupplierScope::coordinationServiceQuery())->count()');
+        // El conteo de «Todas» sigue usando el mismo scope, ahora dentro de
+        // tabCounts(), que resuelve las siete pestañas en dos consultas.
+        ->toContain('protected function tabCounts(): array')
+        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope(')
+        ->toContain("->badge(\$counts['todas'])");
 });
 
 it('OperationCoordinationServicesTable muestra código de caso TM con badge y enlace a vista', function (): void {

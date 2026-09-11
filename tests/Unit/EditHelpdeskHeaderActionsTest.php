@@ -9,5 +9,6 @@ it('EditHelpdesk registra acciones de nota, estado y prioridad en el encabezado 
     expect($contents)->toContain('HelpdeskTicketModalActions::makeAddNoteAction')
         ->toContain('HelpdeskTicketModalActions::makeUpdateStatusAction')
         ->toContain('HelpdeskTicketModalActions::makeUpdatePriorityAction')
+        ->toContain('HelpdeskTicketModalActions::makeReassignAction')
         ->toContain('getHeaderActions');
 })->with(['Business', 'Administration', 'Marketing', 'Operations']);

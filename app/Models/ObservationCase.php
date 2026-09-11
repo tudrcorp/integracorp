@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Observers\OperationServiceStatisticObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 
+#[ObservedBy([OperationServiceStatisticObserver::class])]
 class ObservationCase extends Model
 {
     protected $table = 'observation_cases';

@@ -9,6 +9,7 @@ use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Models\User;
 use App\Support\SecurityAudit;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
@@ -100,6 +101,76 @@ final class HelpdeskTicketAssigneeWhatsAppService
         {$description}
 
         Debe conectarse al sistema INTEGRACORP con su usuario y contraseña para continuar la gestión.
+        TEXT;
+    }
+
+    public static function buildReassignedToNewAssigneeBody(
+        HelpDesk $ticket,
+        string $reassignedBy,
+        ?string $explanationHtml = null,
+    ): string {
+        $tz = (string) config('app.timezone');
+        $updatedAt = now()->timezone($tz)->format('d/m/Y H:i');
+        $ticketNo = (string) $ticket->getKey();
+        $priorityLabel = self::priorityLabelForWhatsApp((string) $ticket->priority);
+        $explanation = trim(html_entity_decode(strip_tags((string) $explanationHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if (mb_strlen($explanation) > 350) {
+            $explanation = mb_substr($explanation, 0, 347).'...';
+        }
+        $explanationBlock = $explanation !== ''
+            ? "Motivo: {$explanation}\n"
+            : '';
+
+        return <<<TEXT
+        Le reasignaron un ticket de soporte en INTEGRACORP.
+
+        Ticket N.º {$ticketNo}
+        Reasignado por: {$reassignedBy}
+        Fecha y hora: {$updatedAt}
+        Estado actual: {$ticket->status}
+        *Prioridad: {$priorityLabel}*
+        {$explanationBlock}
+        Debe conectarse al sistema INTEGRACORP con su usuario y contraseña para dar inicio a la gestión del ticket.
+        TEXT;
+    }
+
+    public static function buildUnassignedBody(HelpDesk $ticket, string $reassignedBy): string
+    {
+        $tz = (string) config('app.timezone');
+        $updatedAt = now()->timezone($tz)->format('d/m/Y H:i');
+        $ticketNo = (string) $ticket->getKey();
+
+        return <<<TEXT
+        Ya no figura como responsable de un ticket de soporte en INTEGRACORP.
+
+        Ticket N.º {$ticketNo}
+        Reasignado por: {$reassignedBy}
+        Fecha y hora: {$updatedAt}
+        Estado actual: {$ticket->status}
+
+        El caso quedó a cargo de otro colaborador. Si necesita el historial, conéctese a INTEGRACORP.
+        TEXT;
+    }
+
+    public static function buildReassignedToCreatorBody(
+        HelpDesk $ticket,
+        string $reassignedBy,
+        string $newAssigneesLabel,
+    ): string {
+        $tz = (string) config('app.timezone');
+        $updatedAt = now()->timezone($tz)->format('d/m/Y H:i');
+        $ticketNo = (string) $ticket->getKey();
+
+        return <<<TEXT
+        Su ticket de soporte fue reasignado en INTEGRACORP.
+
+        Ticket N.º {$ticketNo}
+        Reasignado por: {$reassignedBy}
+        Nuevos responsables: {$newAssigneesLabel}
+        Fecha y hora: {$updatedAt}
+        Estado actual: {$ticket->status}
+
+        Conéctese al sistema INTEGRACORP para revisar el seguimiento.
         TEXT;
     }
 
@@ -479,8 +550,40 @@ final class HelpdeskTicketAssigneeWhatsAppService
     ): array {
         $ticket = HelpdeskTicketAssigneeMailService::loadTicketWithAssigneesForNotifications($ticket);
 
+        return self::dispatchCustomMessageToColaboradoresWithReport(
+            ticket: $ticket,
+            colaboradores: $ticket->rrhhColaboradores,
+            requestedByUserId: $requestedByUserId,
+            panel: $panel,
+            body: $body,
+            source: $source,
+            auditRoute: $auditRoute,
+        );
+    }
+
+    /**
+     * @param  Collection<int, RrhhColaborador>  $colaboradores
+     * @return array{
+     *     total_assignees:int,
+     *     attempted:int,
+     *     dispatched:int,
+     *     failed:int,
+     *     skipped_no_phone:int,
+     *     failures:list<array<string,mixed>>,
+     *     recipients:list<array<string,mixed>>
+     * }
+     */
+    public static function dispatchCustomMessageToColaboradoresWithReport(
+        HelpDesk $ticket,
+        Collection $colaboradores,
+        ?int $requestedByUserId,
+        string $panel,
+        string $body,
+        string $source,
+        string $auditRoute
+    ): array {
         $report = [
-            'total_assignees' => (int) $ticket->rrhhColaboradores->count(),
+            'total_assignees' => (int) $colaboradores->count(),
             'attempted' => 0,
             'dispatched' => 0,
             'failed' => 0,
@@ -489,7 +592,7 @@ final class HelpdeskTicketAssigneeWhatsAppService
             'recipients' => [],
         ];
 
-        if ($ticket->rrhhColaboradores->isEmpty()) {
+        if ($colaboradores->isEmpty()) {
             return $report;
         }
 
@@ -511,7 +614,7 @@ final class HelpdeskTicketAssigneeWhatsAppService
             return $report;
         }
 
-        foreach ($ticket->rrhhColaboradores as $colaborador) {
+        foreach ($colaboradores as $colaborador) {
             $rawPhone = $colaborador->telefonoCorporativo ?: $colaborador->telefono;
             $phone = self::normalizePhoneForWhatsApp(is_string($rawPhone) ? trim($rawPhone) : null);
 

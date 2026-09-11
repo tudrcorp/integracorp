@@ -7,5 +7,5 @@ it('HelpdeskTicketAssigneeMailService envía un mailable por cada colaborador as
     $src = file_get_contents($path);
     expect($src)->toContain('function sendToEachAssignee')
         ->toContain('rrhhColaboradores')
-        ->toContain('SendEmailCreateTicketAndAssigned::fromTicket($ticket, $colaborador)');
+        ->toContain('SendEmailCreateTicketAndAssigned::fromTicket($ticket, $colaborador, $isReassignment)');
 });
