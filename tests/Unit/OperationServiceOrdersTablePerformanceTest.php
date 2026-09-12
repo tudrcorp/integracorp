@@ -150,6 +150,13 @@ it('indexa las columnas por las que se filtra, ordena y caduca', function (strin
     'operation_service_orders_supplier_id_index',
 ]);
 
+it('indexa el número de referencia del servicio de coordinación', function (): void {
+    expect(Schema::hasIndex(
+        'operation_coordination_services',
+        'operation_coordination_services_reference_number_index',
+    ))->toBeTrue();
+});
+
 it('difiere la carga de la tabla para pintar la estructura de inmediato', function (): void {
     $tabla = file_get_contents(base_path('app/Filament/Operations/Resources/OperationServiceOrders/Tables/OperationServiceOrdersTable.php'));
 

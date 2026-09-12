@@ -108,6 +108,19 @@ it('deja el monto en guion cuando no hay cotización', function (): void {
         ->and(OperationServiceOrderListDisplay::quoteAmountLabel($order))->toBe('—');
 });
 
+it('muestra el número de referencia del servicio de coordinación', function (): void {
+    $withReference = serviceOrderWithCoordination([], ['reference_number' => 'REF-31599']);
+    $withoutReference = serviceOrderWithCoordination([], ['reference_number' => null]);
+    $blankReference = serviceOrderWithCoordination([], ['reference_number' => '   ']);
+    $orphan = new OperationServiceOrder;
+    $orphan->setRelation('operationCoordinationService', null);
+
+    expect(OperationServiceOrderListDisplay::serviceReferenceNumber($withReference))->toBe('REF-31599')
+        ->and(OperationServiceOrderListDisplay::serviceReferenceNumber($withoutReference))->toBe('—')
+        ->and(OperationServiceOrderListDisplay::serviceReferenceNumber($blankReference))->toBe('—')
+        ->and(OperationServiceOrderListDisplay::serviceReferenceNumber($orphan))->toBe('—');
+});
+
 it('formatea el código de cotización y resuelve la ruta del PDF', function (): void {
     $order = serviceOrderWithCoordination(['associated_quote_pdf_path' => 'quotes/from-order.pdf']);
     $quote = new OperationQuoteGenerator([

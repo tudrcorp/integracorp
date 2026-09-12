@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\OperationAccountsPayables\Pages;
 
+use App\Filament\Operations\Resources\OperationAccountsPayables\Actions\AccountsPayablePaymentReceiptActions;
 use App\Filament\Operations\Resources\OperationAccountsPayables\OperationAccountsPayableResource;
 use App\Models\OperationAccountsPayable;
 use Filament\Actions\DeleteAction;
@@ -34,6 +35,7 @@ class EditOperationAccountsPayable extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            AccountsPayablePaymentReceiptActions::makeRecordAction(),
             ViewAction::make()
                 ->label('Ver factura')
                 ->url(fn (OperationAccountsPayable $record): string => $this->getResource()::getUrl('view', ['record' => $record]))

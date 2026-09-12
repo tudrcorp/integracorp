@@ -166,6 +166,10 @@ Route::get('operations/export-operation-service-orders-csv', App\Http\Controller
     ->middleware(['web', 'auth'])
     ->name('operations.operation-service-orders.export-csv');
 
+Route::get('operations/export-cuentas-por-pagar-csv', App\Http\Controllers\OperationAccountsPayableExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.operation-accounts-payables.export-csv');
+
 Route::get('operations/telemedicine-patients/siniestralidad/preview', [App\Http\Controllers\TelemedicinePatientSiniestralidadReportController::class, 'previewPdf'])
     ->middleware(['web', 'auth'])
     ->name('operations.telemedicine-patients.siniestralidad.preview');

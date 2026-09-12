@@ -9,7 +9,9 @@ use App\Models\BusinessUnit;
 use App\Models\OperationAccountsPayable;
 use App\Models\Supplier;
 use App\Support\BankCatalog;
+use App\Support\Operations\AccountsPayablePaymentReceiptRegistrar;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -163,7 +165,7 @@ class OperationAccountsPayableForm
                     ]),
 
                 Section::make('Pago')
-                    ->description('Al marcar la factura como pagada se exigen la referencia, la fecha y el monto.')
+                    ->description('Al marcar la factura como pagada se exigen la referencia, la fecha, el monto y el comprobante.')
                     ->icon('heroicon-o-banknotes')
                     ->columns(2)
                     ->columnSpanFull()
@@ -218,6 +220,19 @@ class OperationAccountsPayableForm
                             ->step('0.01')
                             ->visible(fn (Get $get): bool => ! self::isPending($get))
                             ->required(fn (Get $get): bool => self::isPaid($get) && blank($get('payment_amount_usd'))),
+                        FileUpload::make('payment_receipt_path')
+                            ->label('Comprobante de pago')
+                            ->disk(AccountsPayablePaymentReceiptRegistrar::DISK)
+                            ->directory(AccountsPayablePaymentReceiptRegistrar::DIRECTORY)
+                            ->visibility('public')
+                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+                            ->maxSize(5120)
+                            ->downloadable()
+                            ->openable()
+                            ->visible(fn (Get $get): bool => ! self::isPending($get))
+                            ->required(fn (Get $get): bool => self::isPaid($get))
+                            ->helperText('Imagen o PDF del comprobante. Hasta 5 MB.')
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('Observaciones')

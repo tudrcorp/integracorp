@@ -24,6 +24,13 @@ final class OperationServiceOrderListDisplay
         ];
     }
 
+    public static function serviceReferenceNumber(OperationServiceOrder $record): string
+    {
+        $reference = trim((string) ($record->operationCoordinationService?->reference_number ?? ''));
+
+        return $reference !== '' ? $reference : '—';
+    }
+
     public static function patientFullName(OperationServiceOrder $record): string
     {
         $name = TelemedicinePatientDisplayName::forCoordination($record->operationCoordinationService);
