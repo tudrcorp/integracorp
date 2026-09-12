@@ -5,14 +5,20 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\OperationAccountsPayables\Tables;
 
 use App\Enums\StatusCuentaPorPagar;
+use App\Filament\Operations\Resources\OperationAccountsPayables\Actions\AccountsPayablePaymentReceiptActions;
+use App\Http\Controllers\OperationAccountsPayableExportCsvController;
 use App\Models\BusinessUnit;
 use App\Models\OperationAccountsPayable;
+use App\Support\Filament\CsvExportDownloadTrigger;
 use App\Support\Operations\AccountsPayableInvoicePreview;
+use App\Support\Operations\AccountsPayablePaymentReceiptPreview;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -20,6 +26,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class OperationAccountsPayablesTable
 {
@@ -132,6 +139,13 @@ class OperationAccountsPayablesTable
                     ->alignEnd()
                     ->sortable()
                     ->summarize(Sum::make()->label('Total Bs.')->numeric(decimalPlaces: 2)),
+                TextColumn::make('payment_receipt_path')
+                    ->label('Comprobante de pago')
+                    ->state(fn (OperationAccountsPayable $record): string => $record->hasPaymentReceipt() ? 'Adjunto' : 'Sin adjuntar')
+                    ->badge()
+                    ->icon(fn (OperationAccountsPayable $record): string => $record->hasPaymentReceipt() ? 'heroicon-m-banknotes' : 'heroicon-m-exclamation-triangle')
+                    ->color(fn (OperationAccountsPayable $record): string => $record->hasPaymentReceipt() ? 'success' : 'gray')
+                    ->toggleable(),
                 TextColumn::make('invoice_file_path')
                     ->label('Documento')
                     ->state(fn (OperationAccountsPayable $record): string => $record->hasInvoiceDocument() ? 'Adjunto' : 'Sin adjuntar')
@@ -187,12 +201,40 @@ class OperationAccountsPayablesTable
                     }),
             ])
             ->recordActions([
+                AccountsPayablePaymentReceiptActions::makeRecordAction(),
                 AccountsPayableInvoicePreview::action(),
+                AccountsPayablePaymentReceiptPreview::action(),
                 ViewAction::make()->label('Ver'),
                 EditAction::make()->label('Editar'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('export_accounts_payables_csv')
+                        ->label('Exportar CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records, BulkAction $action): void {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una factura')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return;
+                            }
+
+                            $token = OperationAccountsPayableExportCsvController::storeIdsAndGetToken(
+                                $records->pluck('id')->all()
+                            );
+
+                            CsvExportDownloadTrigger::fromAction(
+                                $action,
+                                route('operations.operation-accounts-payables.export-csv', ['token' => $token]),
+                            );
+                        }),
+                    AccountsPayablePaymentReceiptActions::makeBulkAction(),
                     DeleteBulkAction::make()
                         ->label('Eliminar seleccionadas')
                         ->requiresConfirmation()

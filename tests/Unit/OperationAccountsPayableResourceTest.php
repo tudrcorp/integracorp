@@ -98,6 +98,7 @@ it('declara en el formulario los dieciséis campos pedidos', function (string $c
     'business_unit_id', 'invoice_number', 'invoice_control_number', 'invoice_amount',
     'payment_status', 'payment_reference', 'payment_date', 'national_bank',
     'international_bank', 'payment_amount_usd', 'payment_amount_ves', 'invoice_currency',
+    'payment_receipt_path',
 ]);
 
 it('declara en la tabla una columna por cada campo pedido', function (string $campo): void {
@@ -108,7 +109,7 @@ it('declara en la tabla una columna por cada campo pedido', function (string $ca
     'invoice_date', 'invoice_registration_date', 'supplier_name', 'supplier_rif',
     'invoice_number', 'invoice_control_number', 'invoice_amount', 'payment_status',
     'payment_reference', 'payment_date', 'national_bank', 'international_bank',
-    'payment_amount_usd', 'payment_amount_ves',
+    'payment_amount_usd', 'payment_amount_ves', 'payment_receipt_path',
 ]);
 
 /*

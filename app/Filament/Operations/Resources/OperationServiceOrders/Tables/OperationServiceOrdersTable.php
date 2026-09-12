@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationServiceOrders\Tables;
 
+use App\Filament\Operations\Resources\OperationServiceOrders\Actions\ServiceOrderBulkInvoiceActions;
 use App\Http\Controllers\ApiBcvController;
 use App\Http\Controllers\OperationServiceOrderExportCsvController;
 use App\Models\BusinessUnit;
@@ -57,7 +58,7 @@ class OperationServiceOrdersTable
     private const IOS_GRAY_BTN = 'ticket-btn-ios-gray shrink-0 inline-flex min-w-[7.5rem] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
     /**
-     * Búsqueda global: orden, paciente, cédula, unidad específica, caso, descripción y proveedor.
+     * Búsqueda global: orden, referencia del servicio, paciente, cédula, unidad específica, caso, descripción y proveedor.
      */
     public static function applyTableSearch(Builder $query, string $search): Builder
     {
@@ -84,7 +85,8 @@ class OperationServiceOrdersTable
                 )
                 ->orWhereHas('operationCoordinationService', function (Builder $coordinationQuery) use ($like): void {
                     $coordinationQuery
-                        ->whereRaw('LOWER(COALESCE(patient, \'\')) LIKE ?', [$like])
+                        ->whereRaw('LOWER(COALESCE(reference_number, \'\')) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(COALESCE(patient, \'\')) LIKE ?', [$like])
                         ->orWhereRaw('LOWER(COALESCE(ci_patient, \'\')) LIKE ?', [$like])
                         ->orWhereHas(
                             'telemedicinePatient',
@@ -382,7 +384,7 @@ class OperationServiceOrdersTable
             ->description('Órdenes generadas desde coordinación. Vigencia de 10 días desde la aprobación; vencidas pasan a CADUCADA. La franja lateral refleja la prioridad salvo en órdenes cerradas.')
             ->defaultSort('created_at', 'desc')
             ->searchable()
-            ->searchPlaceholder('Buscar por orden, paciente, cédula, unidad, caso, proveedor o descripción…')
+            ->searchPlaceholder('Buscar por orden, referencia, paciente, cédula, unidad, caso, proveedor o descripción…')
             ->persistSearchInSession()
             ->searchUsing(fn (Builder $query, string $search): Builder => self::applyTableSearch($query, $search))
             ->deferLoading()
@@ -400,6 +402,7 @@ class OperationServiceOrdersTable
                         'telemedicinePriority',
                         'supplier',
                         'telemedicineSupplier',
+                        'doctorNurse',
                         'approvedOperationQuote',
                         'operationCoordinationService.telemedicineCase',
                         'operationCoordinationService.telemedicinePatient',
@@ -427,6 +430,17 @@ class OperationServiceOrdersTable
                         'class' => 'cursor-pointer hover:opacity-90',
                     ])
                     ->action(self::previewOrderPdfAction()),
+                TextColumn::make('operationCoordinationService.reference_number')
+                    ->label('Nº referencia')
+                    ->badge()
+                    ->color('info')
+                    ->icon('heroicon-m-hashtag')
+                    ->sortable()
+                    ->placeholder('—')
+                    ->state(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::serviceReferenceNumber($record))
+                    ->tooltip(fn (OperationServiceOrder $record): ?string => ($reference = OperationServiceOrderListDisplay::serviceReferenceNumber($record)) !== '—'
+                        ? 'Referencia del servicio: '.$reference
+                        : 'Sin número de referencia del servicio'),
                 self::documentCodeColumn('approvedOperationQuote.id')
                     ->label('Código cotización')
                     ->placeholder('—')
@@ -1265,6 +1279,7 @@ class OperationServiceOrdersTable
                                 route('operations.operation-service-orders.export-csv', ['token' => $token]),
                             );
                         }),
+                    ServiceOrderBulkInvoiceActions::make(),
                     DeleteBulkAction::make(),
                 ]),
             ]);

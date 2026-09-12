@@ -72,6 +72,11 @@ class OperationAccountsPayableInfolist
                             ->state(fn (OperationAccountsPayable $record): string => $record->payment_amount_ves !== null
                                 ? self::money($record->payment_amount_ves, 'VES')
                                 : '—'),
+                        TextEntry::make('payment_receipt_path')
+                            ->label('Comprobante de pago')
+                            ->state(fn (OperationAccountsPayable $record): string => $record->hasPaymentReceipt() ? 'Adjunto' : 'Sin adjuntar')
+                            ->badge()
+                            ->color(fn (OperationAccountsPayable $record): string => $record->hasPaymentReceipt() ? 'success' : 'gray'),
                     ]),
 
                 Section::make('Registro')

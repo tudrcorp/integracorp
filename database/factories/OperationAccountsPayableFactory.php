@@ -40,6 +40,7 @@ class OperationAccountsPayableFactory extends Factory
             'international_bank' => null,
             'payment_amount_usd' => null,
             'payment_amount_ves' => null,
+            'payment_receipt_path' => null,
             'observations' => null,
             'created_by' => 'system',
             'updated_by' => null,

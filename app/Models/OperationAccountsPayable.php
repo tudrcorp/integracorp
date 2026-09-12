@@ -40,6 +40,7 @@ class OperationAccountsPayable extends Model
         'international_bank',
         'payment_amount_usd',
         'payment_amount_ves',
+        'payment_receipt_path',
         'observations',
         'created_by',
         'updated_by',
@@ -79,6 +80,11 @@ class OperationAccountsPayable extends Model
     public function hasInvoiceDocument(): bool
     {
         return filled($this->invoice_file_path);
+    }
+
+    public function hasPaymentReceipt(): bool
+    {
+        return filled($this->payment_receipt_path);
     }
 
     public function isPaid(): bool
