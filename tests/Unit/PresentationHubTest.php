@@ -84,7 +84,7 @@ it('expone la vista presentation-hub con liquid glass y lista de urls', function
 
     expect($catalogContents)
         ->toContain('Scrum (desarrollo de apps)')
-        ->toContain('Última presentación (avances tecnológicos)')
+        ->toContain('Avances Dpto. Tecnología y Sistemas Sep14-2026')
         ->toContain('Agencias TDEV (desarrollo)')
         ->toContain('Manuales de Tecnología')
         ->toContain('manualItems');
@@ -96,6 +96,7 @@ it('expone un catalogo escalable con presentaciones y manuales', function (): vo
     expect($sections)->toHaveCount(2)
         ->and(collect($sections)->pluck('id')->all())->toBe(['presentaciones', 'manuales'])
         ->and($sections[0]['items'])->toHaveCount(3)
+        ->and(collect($sections[0]['items'])->pluck('id')->all())->toBe(['scrum', 'agencias-tdev', 'avances'])
         ->and($sections[1]['items'])->toBeArray()
         ->and(PresentationHubGate::isAllowedPath('/scrum-desarrollo-apps'))->toBeTrue()
         ->and(PresentationHubGate::isAllowedPath('/avances-tecnologicos'))->toBeTrue()

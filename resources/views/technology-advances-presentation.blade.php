@@ -7,7 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#F5F5F7" data-theme-color>
     <meta name="color-scheme" content="light">
-    <title>Avances Tecnológicos — INTEGRACORP · tuDrGroup</title>
+    <title>Avances Dpto. Tecnología y Sistemas Sep14-2026 — INTEGRACORP · tuDrGroup</title>
         <script>
         (function () {
             try {
@@ -648,7 +648,9 @@
             .portal-devices,
             .mkt-devices,
             .sys-devices,
-            .intra-devices {
+            .intra-devices,
+            .mc-bridge,
+            .os-modals {
                 transform: scale(0.86);
                 transform-origin: top center;
             }
@@ -1660,6 +1662,503 @@
             user-select: none;
         }
 
+        .mc-bridge {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.15fr);
+            align-items: stretch;
+            gap: 0.85rem 1.1rem;
+            width: 100%;
+        }
+
+        .mc-brand {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 0.7rem;
+            min-height: 8.5rem;
+            padding: 1.1rem 1.25rem;
+            border-radius: 1.35rem;
+        }
+
+        .mc-brand__logo {
+            display: block;
+            object-fit: contain;
+            object-position: left center;
+        }
+
+        .mc-brand__logo--tdg {
+            height: 2.15rem;
+            width: auto;
+            max-width: 11rem;
+        }
+
+        .mc-brand__logo--dark {
+            display: none;
+        }
+
+        html[data-theme="dark"] .mc-brand__logo--light {
+            display: none;
+        }
+
+        html[data-theme="dark"] .mc-brand__logo--dark {
+            display: block;
+        }
+
+        .mc-brand__logo--mailchimp {
+            height: 2.35rem;
+            width: auto;
+            max-width: 14.5rem;
+        }
+
+        .mc-brand__name {
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--navy);
+        }
+
+        .mc-brand__hint {
+            margin-top: 0.12rem;
+            font-size: 0.75rem;
+            line-height: 1.35;
+            color: var(--ink-soft);
+        }
+
+        .mc-brand--mailchimp {
+            background: #FFE01B;
+            border: 1px solid rgba(36, 28, 21, 0.12);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.55),
+                0 16px 36px rgba(255, 224, 27, 0.28),
+                0 4px 14px rgba(20, 33, 61, 0.08);
+        }
+
+        .mc-brand--mailchimp .mc-brand__name,
+        .mc-brand--mailchimp .mc-brand__hint {
+            color: #241C15;
+        }
+
+        .mc-brand--mailchimp .mc-brand__hint {
+            opacity: 0.72;
+        }
+
+        .mc-connector {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            min-width: 6.5rem;
+            padding-top: 0.4rem;
+        }
+
+        .mc-connector__mark {
+            display: grid;
+            place-items: center;
+            width: 2.6rem;
+            height: 2.6rem;
+            border-radius: 999px;
+            color: #241C15;
+            background: #FFE01B;
+            box-shadow: 0 8px 20px rgba(255, 224, 27, 0.35);
+        }
+
+        .mc-connector__mark img {
+            width: 1.35rem;
+            height: 1.35rem;
+        }
+
+        .mc-connector__line {
+            width: 100%;
+            height: 2px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(255, 149, 0, 0.15), #FFE01B 48%, rgba(255, 149, 0, 0.15));
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mc-connector__line::after {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 28%;
+            background: linear-gradient(90deg, transparent, #241C15, transparent);
+            animation: mc-flow 1.8s ease-in-out infinite;
+        }
+
+        @keyframes mc-flow {
+            0% { transform: translateX(-120%); }
+            100% { transform: translateX(420%); }
+        }
+
+        .mc-connector__labels {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.15rem;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+        }
+
+        @media (max-width: 860px) {
+            .mc-bridge {
+                grid-template-columns: 1fr;
+            }
+
+            .mc-connector {
+                flex-direction: row;
+                min-width: 0;
+                padding: 0.15rem 0;
+            }
+
+            .mc-connector__line {
+                flex: 1;
+                max-width: 5rem;
+            }
+
+            .mc-connector__labels {
+                flex-direction: row;
+                gap: 0.55rem;
+            }
+
+            .mc-brand__logo--tdg,
+            .mc-brand__logo--mailchimp {
+                max-width: 12rem;
+            }
+        }
+
+        .os-flow {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.4rem;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .os-flow__step {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.4rem;
+            min-width: 0;
+            padding: 0.4rem 0.5rem;
+            border-radius: 0.75rem;
+            background: rgba(255, 255, 255, 0.55);
+            border: 1px solid rgba(20, 33, 61, 0.08);
+        }
+
+        .os-flow__num {
+            display: grid;
+            place-items: center;
+            width: 1.2rem;
+            height: 1.2rem;
+            border-radius: 999px;
+            flex-shrink: 0;
+            background: rgba(0, 122, 255, 0.12);
+            color: #007AFF;
+            font-size: 0.62rem;
+            font-weight: 800;
+        }
+
+        .os-flow__step strong {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 750;
+            color: var(--navy);
+            line-height: 1.15;
+        }
+
+        .os-flow__step p {
+            margin: 0.12rem 0 0;
+            font-size: 0.6rem;
+            line-height: 1.3;
+            color: var(--ink-soft);
+        }
+
+        .os-modals {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+            gap: 0.55rem 0.45rem;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .os-modal-frame {
+            margin: 0;
+            min-width: 0;
+        }
+
+        .os-bridge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.2rem;
+            text-align: center;
+            padding: 0.35rem 0.55rem;
+        }
+
+        .os-bridge__arrow {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #007AFF;
+            line-height: 1;
+        }
+
+        .os-bridge__label {
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            color: var(--navy);
+            white-space: nowrap;
+        }
+
+        .os-bridge__sub {
+            font-size: 0.58rem;
+            font-weight: 650;
+            color: var(--ink-soft);
+            white-space: nowrap;
+        }
+
+        .os-modal-frame .pwa-device__caption {
+            display: none;
+        }
+
+        @media (max-width: 720px) {
+            .os-flow {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .os-modals {
+                grid-template-columns: 1fr;
+            }
+
+            .os-bridge {
+                flex-direction: row;
+                gap: 0.45rem;
+            }
+
+            .os-bridge__arrow {
+                transform: rotate(90deg);
+            }
+        }
+
+        .os-modal {
+            border-radius: 1rem;
+            border: 1px solid rgba(20, 33, 61, 0.10);
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.9),
+                0 14px 28px rgba(20, 33, 61, 0.10);
+            padding: 0.6rem 0.7rem 0.55rem;
+            font-family: 'Instrument Sans', 'SF Pro Display', ui-sans-serif, sans-serif;
+            color: #14213D;
+            height: 100%;
+        }
+
+        .os-modal__head {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .os-modal__icon {
+            display: grid;
+            place-items: center;
+            width: 1.7rem;
+            height: 1.7rem;
+            border-radius: 0.55rem;
+            flex-shrink: 0;
+        }
+
+        .os-modal__icon--invoice {
+            color: #007AFF;
+            background: rgba(0, 122, 255, 0.12);
+        }
+
+        .os-modal__icon--receipt {
+            color: #248A3D;
+            background: rgba(52, 199, 89, 0.16);
+        }
+
+        .os-modal__title {
+            font-size: 0.82rem;
+            font-weight: 750;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .os-modal__desc {
+            margin-top: 0.1rem;
+            font-size: 0.6rem;
+            line-height: 1.3;
+            color: rgba(20, 33, 61, 0.58);
+        }
+
+        .os-modal__chip,
+        .os-modal__note {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem 0.55rem;
+            margin-bottom: 0.45rem;
+            padding: 0.32rem 0.5rem;
+            border-radius: 0.55rem;
+            font-size: 0.62rem;
+            line-height: 1.3;
+        }
+
+        .os-modal__chip {
+            background: rgba(0, 122, 255, 0.08);
+            border: 1px solid rgba(0, 122, 255, 0.16);
+            color: #0B4A8A;
+        }
+
+        .os-modal__note {
+            background: rgba(52, 199, 89, 0.10);
+            border: 1px solid rgba(52, 199, 89, 0.28);
+            color: #1F6B38;
+        }
+
+        .os-modal__grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.32rem 0.4rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .os-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+            min-width: 0;
+            padding: 0.28rem 0.4rem;
+            border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.78);
+            border: 1px solid rgba(20, 33, 61, 0.08);
+        }
+
+        .os-field--full {
+            grid-column: 1 / -1;
+        }
+
+        .os-field span {
+            font-size: 0.58rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: rgba(20, 33, 61, 0.48);
+        }
+
+        .os-field em {
+            font-style: normal;
+            font-size: 0.78rem;
+            font-weight: 650;
+            color: #14213D;
+        }
+
+        .os-status {
+            color: #248A3D !important;
+        }
+
+        .os-dropzone {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.45rem;
+            padding: 0.4rem 0.5rem;
+            border-radius: 0.6rem;
+            border: 1px dashed rgba(0, 122, 255, 0.38);
+            background: rgba(0, 122, 255, 0.05);
+        }
+
+        .os-dropzone--receipt {
+            border-color: rgba(52, 199, 89, 0.42);
+            background: rgba(52, 199, 89, 0.07);
+        }
+
+        .os-dropzone__file {
+            display: grid;
+            place-items: center;
+            width: 2.15rem;
+            height: 2.15rem;
+            border-radius: 0.5rem;
+            background: #007AFF;
+            color: #fff;
+            font-size: 0.58rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            flex-shrink: 0;
+        }
+
+        .os-dropzone__file--receipt {
+            background: #34C759;
+        }
+
+        .os-dropzone strong {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .os-dropzone small {
+            display: block;
+            margin-top: 0.1rem;
+            font-size: 0.62rem;
+            color: rgba(20, 33, 61, 0.52);
+        }
+
+        .os-modal__section {
+            margin: 0 0 0.4rem;
+            font-size: 0.62rem;
+            font-weight: 750;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(20, 33, 61, 0.5);
+        }
+
+        .os-modal__foot {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.4rem;
+            margin-top: 0.15rem;
+        }
+
+        .os-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 1.7rem;
+            padding: 0 0.75rem;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            font-weight: 700;
+        }
+
+        .os-btn--ghost {
+            background: rgba(20, 33, 61, 0.06);
+            color: rgba(20, 33, 61, 0.7);
+        }
+
+        .os-btn--invoice {
+            background: #007AFF;
+            color: #fff;
+        }
+
+        .os-btn--receipt {
+            background: #34C759;
+            color: #fff;
+        }
+
+        html[data-theme="dark"] .os-flow__step {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.10);
+        }
+
         .mkt-login {
             position: relative;
             overflow: hidden;
@@ -2422,7 +2921,8 @@
             .portal-devices,
             .mkt-devices,
             .sys-devices,
-            .intra-devices {
+            .intra-devices,
+            .os-modals {
                 gap: 1.1rem;
             }
 
@@ -2640,6 +3140,86 @@
                                         @include('partials.presentation-pwa-devices', ['slide' => $slide])
                                     @endif
                                 </div>
+                            </div>
+
+                        @elseif ($slide['type'] === 'integration')
+                            <div class="flex flex-col gap-3 sm:gap-3.5">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                        @foreach ($slide['tags'] as $tag)
+                                            <span class="reveal-item presentation-badge">{{ $tag }}</span>
+                                        @endforeach
+                                    </div>
+                                    @if (! empty($slide['data']['kicker']))
+                                        <span class="reveal-item presentation-badge presentation-badge--chip">{{ $slide['data']['kicker'] }}</span>
+                                    @endif
+                                </div>
+                                <div class="text-center max-w-3xl mx-auto">
+                                    <h2 class="reveal-item text-2xl sm:text-3xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
+                                    <p class="reveal-item mt-1 text-sm text-[var(--ink-soft)]">{{ $slide['subtitle'] }}</p>
+                                </div>
+                                <div class="reveal-item">
+                                    @include('partials.presentation-mailchimp-bridge', ['slide' => $slide])
+                                </div>
+                                <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                                    @foreach ($slide['data']['capabilities'] ?? [] as $i => $capability)
+                                        <button type="button" class="pillar-card liquid-glass liquid-glass--interactive text-left px-3.5 py-3 {{ $i === 0 ? 'is-active' : '' }}">
+                                            <div class="text-[10px] font-semibold uppercase tracking-wide mb-1" style="color: {{ $slide['color'] }}">0{{ $i + 1 }}</div>
+                                            <div class="font-semibold text-[var(--navy)] text-sm">{{ $capability['title'] }}</div>
+                                            <p class="pillar-detail mt-1.5 text-xs text-[var(--ink-soft)] leading-relaxed">{{ $capability['detail'] }}</p>
+                                        </button>
+                                    @endforeach
+                                </div>
+                                @if (! empty($slide['data']['promise']))
+                                    <div class="reveal-item liquid-glass liquid-glass--accent px-4 py-3 text-sm font-medium text-[var(--navy)]">
+                                        {{ $slide['data']['promise'] }}
+                                    </div>
+                                @endif
+                                @if ($slide['speaker_note'])
+                                    <button type="button" class="reveal-item text-left text-xs text-[var(--accent)] font-medium" data-toggle-note>Nota del presentador ▾</button>
+                                    <div class="speaker-note liquid-glass px-4 py-3 text-sm text-[var(--ink-soft)]">{{ $slide['speaker_note'] }}</div>
+                                @endif
+                            </div>
+
+                        @elseif ($slide['type'] === 'ops-admin')
+                            <div class="flex flex-col gap-2 sm:gap-2.5">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    @foreach ($slide['tags'] as $tag)
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
+                                    @endforeach
+                                </div>
+                                <div class="text-center max-w-4xl mx-auto">
+                                    <h2 class="reveal-item text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
+                                    <p class="reveal-item mt-1 text-xs sm:text-sm text-[var(--ink-soft)]">{{ $slide['subtitle'] }}</p>
+                                </div>
+                                @if (! empty($slide['data']['kicker']))
+                                    <div class="reveal-item flow-kicker text-center">{{ $slide['data']['kicker'] }}</div>
+                                @endif
+                                <ol class="reveal-item os-flow">
+                                    @foreach ($slide['data']['steps'] ?? [] as $i => $step)
+                                        <li class="os-flow__step">
+                                            <span class="os-flow__num" aria-hidden="true">{{ $i + 1 }}</span>
+                                            <div>
+                                                <strong>{{ $step['title'] }}</strong>
+                                                <p>{{ $step['detail'] }}</p>
+                                            </div>
+                                        </li>
+                                    @endforeach
+                                </ol>
+                                <div class="reveal-item">
+                                    @include('partials.presentation-ops-admin-modals', ['slide' => $slide])
+                                </div>
+                                @if (! empty($slide['data']['promise']))
+                                    <div class="reveal-item liquid-glass liquid-glass--accent px-4 py-3 text-sm font-medium text-[var(--navy)]">
+                                        {{ $slide['data']['promise'] }}
+                                    </div>
+                                @endif
+                                @if ($slide['speaker_note'])
+                                    <button type="button" class="reveal-item text-left text-xs text-[var(--accent)] font-medium" data-toggle-note>Nota del presentador ▾</button>
+                                    <div class="speaker-note liquid-glass px-4 py-3 text-sm text-[var(--ink-soft)]">{{ $slide['speaker_note'] }}</div>
+                                @endif
                             </div>
 
                         @elseif ($slide['type'] === 'lifecycle')

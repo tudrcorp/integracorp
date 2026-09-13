@@ -32,6 +32,10 @@ it('expone la vista technology-advances-presentation con navegación e interacti
     $sistemasDevicesPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-sistemas-devices.blade.php';
     $sistemasHubPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-sistemas-hub-screen.blade.php';
     $sistemasHeroImagePath = dirname(__DIR__, 2).'/public/image/presentaciones-sistemas-bg.png';
+    $mailchimpLogoPath = dirname(__DIR__, 2).'/public/image/brands/mailchimp-logo.svg';
+    $mailchimpMarkPath = dirname(__DIR__, 2).'/public/image/brands/mailchimp-freddie.svg';
+    $mailchimpBridgePartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-mailchimp-bridge.blade.php';
+    $opsAdminPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-ops-admin-modals.blade.php';
     $intraDevicesPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-intra-devices.blade.php';
     $intraIndexPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-intra-index-screen.blade.php';
 
@@ -50,6 +54,10 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->and(file_exists($sistemasDevicesPartialPath))->toBeTrue()
         ->and(file_exists($sistemasHubPartialPath))->toBeTrue()
         ->and(file_exists($sistemasHeroImagePath))->toBeTrue()
+        ->and(file_exists($mailchimpLogoPath))->toBeTrue()
+        ->and(file_exists($mailchimpMarkPath))->toBeTrue()
+        ->and(file_exists($mailchimpBridgePartialPath))->toBeTrue()
+        ->and(file_exists($opsAdminPartialPath))->toBeTrue()
         ->and(file_exists($intraDevicesPartialPath))->toBeTrue()
         ->and(file_exists($intraIndexPartialPath))->toBeTrue();
 
@@ -66,6 +74,8 @@ it('expone la vista technology-advances-presentation con navegación e interacti
     $sistemasHubPartial = file_get_contents($sistemasHubPartialPath);
     $intraDevicesPartial = file_get_contents($intraDevicesPartialPath);
     $intraIndexPartial = file_get_contents($intraIndexPartialPath);
+    $mailchimpBridgePartial = file_get_contents($mailchimpBridgePartialPath);
+    $opsAdminPartial = file_get_contents($opsAdminPartialPath);
 
     expect($controllerContents)
         ->toContain("return view('technology-advances-presentation'")
@@ -114,7 +124,14 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('partials.presentation-sistemas-devices')
         ->toContain('sys-devices')
         ->toContain('partials.presentation-intra-devices')
-        ->toContain('intra-devices');
+        ->toContain('intra-devices')
+        ->toContain("\$slide['type'] === 'integration'")
+        ->toContain('partials.presentation-mailchimp-bridge')
+        ->toContain('mc-bridge')
+        ->toContain("\$slide['type'] === 'ops-admin'")
+        ->toContain('partials.presentation-ops-admin-modals')
+        ->toContain('os-modals')
+        ->toContain('os-flow');
 
     expect($devicesPartial)
         ->toContain('pwa-device--phone')
@@ -182,6 +199,24 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('Tecnología y Sistemas')
         ->toContain('Integracorp App');
 
+    expect($mailchimpBridgePartial)
+        ->toContain('mc-brand__logo--light')
+        ->toContain('mc-brand__logo--dark')
+        ->toContain('logoNewTDG.png')
+        ->toContain('logoTDG.png');
+
+    expect($opsAdminPartial)
+        ->toContain('Cargar factura del proveedor')
+        ->toContain('Cargar comprobante de pago')
+        ->toContain('Documento de la factura')
+        ->toContain('Datos para cuentas por pagar')
+        ->toContain('Guardar factura')
+        ->toContain('Guardar comprobante')
+        ->toContain('os-modal--invoice')
+        ->toContain('os-modal--receipt')
+        ->toContain('os-bridge')
+        ->toContain('1 OS = 1 CxP');
+
     $themePath = dirname(__DIR__, 2).'/resources/views/partials/presentation-theme-styles.blade.php';
     $themeContents = file_get_contents($themePath);
 
@@ -189,7 +224,10 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('.presentation-badge')
         ->toContain('html[data-theme="dark"] .presentation-badge')
         ->toContain('.presentation-badge--module')
-        ->toContain('.presentation-badge--chip');
+        ->toContain('.presentation-badge--chip')
+        ->toContain('html[data-theme="dark"] .mc-brand--mailchimp')
+        ->toContain('html[data-theme="dark"] .mc-brand__logo--dark')
+        ->toContain('html[data-theme="dark"] .os-modal');
 
     expect($headerContents)
         ->toContain('id="btn-overview"')
@@ -202,18 +240,24 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('data-presentation-theme-toggle');
 });
 
-it('define nueve diapositivas estructuradas de avances tecnologicos', function (): void {
+it('define once diapositivas estructuradas de avances tecnologicos', function (): void {
     $slides = TechnologyAdvancesPresentationSlides::all();
 
-    expect($slides)->toHaveCount(9)
+    expect($slides)->toHaveCount(11)
         ->and($slides[0]['type'])->toBe('cover')
-        ->and($slides[2]['type'])->toBe('lifecycle')
-        ->and($slides[3]['id'])->toBe('panel-sistemas')
-        ->and($slides[3]['type'])->toBe('devices')
+        ->and($slides[1]['id'])->toBe('operaciones')
+        ->and($slides[2]['id'])->toBe('ops-cxp')
+        ->and($slides[2]['type'])->toBe('ops-admin')
+        ->and($slides[3]['type'])->toBe('lifecycle')
+        ->and($slides[4]['id'])->toBe('panel-sistemas')
         ->and($slides[4]['type'])->toBe('devices')
-        ->and($slides[7]['type'])->toBe('hub')
-        ->and($slides[8]['type'])->toBe('closing')
-        ->and(collect($slides)->pluck('id')->unique()->count())->toBe(9);
+        ->and($slides[5]['type'])->toBe('devices')
+        ->and($slides[7]['id'])->toBe('marketing')
+        ->and($slides[8]['id'])->toBe('mailchimp')
+        ->and($slides[8]['type'])->toBe('integration')
+        ->and($slides[9]['type'])->toBe('hub')
+        ->and($slides[10]['type'])->toBe('closing')
+        ->and(collect($slides)->pluck('id')->unique()->count())->toBe(11);
 
     foreach ($slides as $slide) {
         expect($slide)->toHaveKeys([
@@ -241,11 +285,13 @@ it('incluye el contenido clave de operaciones, planes, pwa, portal, marketing e 
     expect($byId->keys()->all())->toContain(
         'portada',
         'operaciones',
+        'ops-cxp',
         'generador-planes',
         'panel-sistemas',
         'pwa',
         'portal-paciente',
         'marketing',
+        'mailchimp',
         'intra',
         'cierre',
     );
@@ -262,6 +308,13 @@ it('incluye el contenido clave de operaciones, planes, pwa, portal, marketing e 
         )
         ->and($byId['operaciones']['data']['pillars'])->toHaveCount(4)
         ->and(collect($byId['operaciones']['data']['pillars'])->pluck('title')->all())->toContain('Cupos clínicos')
+        ->and($byId['ops-cxp']['type'])->toBe('ops-admin')
+        ->and($byId['ops-cxp']['title'])->toContain('de la OS al pago')
+        ->and($byId['ops-cxp']['data']['steps'])->toHaveCount(4)
+        ->and($byId['ops-cxp']['data']['invoice_modal']['heading'])->toBe('Cargar factura del proveedor')
+        ->and($byId['ops-cxp']['data']['receipt_modal']['heading'])->toBe('Cargar comprobante de pago')
+        ->and($byId['ops-cxp']['data']['invoice_modal']['file'])->toContain('factura-')
+        ->and($byId['ops-cxp']['data']['receipt_modal']['file'])->toContain('comprobante-')
         ->and($byId['generador-planes']['data']['steps'])->toHaveCount(4)
         ->and($byId['generador-planes']['title'])->toContain('carga desde el catálogo')
         ->and($byId['panel-sistemas']['type'])->toBe('devices')
@@ -296,6 +349,19 @@ it('incluye el contenido clave de operaciones, planes, pwa, portal, marketing e 
         ->and($byId['marketing']['data']['monitor_caption'])->toContain('Landing')
         ->and($byId['marketing']['data']['casa_image'])->toContain('tdg-casa-bg.jpg')
         ->and($byId['marketing']['data']['suites'])->toHaveCount(4)
+        ->and($byId['mailchimp']['type'])->toBe('integration')
+        ->and($byId['mailchimp']['title'])->toContain('Mailchimp')
+        ->and($byId['mailchimp']['data']['partner_logo'])->toContain('mailchimp-logo.svg')
+        ->and($byId['mailchimp']['data']['partner_mark'])->toContain('mailchimp-freddie.svg')
+        ->and($byId['mailchimp']['data']['tdg_logo'])->toContain('logoNewTDG.png')
+        ->and($byId['mailchimp']['data']['tdg_logo_dark'])->toContain('logoTDG.png')
+        ->and($byId['mailchimp']['data']['capabilities'])->toHaveCount(4)
+        ->and(collect($byId['mailchimp']['data']['capabilities'])->pluck('title')->all())->toBe([
+            'Masivos',
+            'Transaccional',
+            'Reportes',
+            'Cumplimiento',
+        ])
         ->and($byId['intra']['data']['url'])->toBe('https://intra.tudrgroup.com')
         ->and($byId['intra']['data']['device_set'])->toBe('intra')
         ->and($byId['intra']['data']['monitor_caption'])->toContain('PC · Índice')
@@ -312,7 +378,7 @@ it('responde la ruta de presentacion de avances tecnologicos con la vista liquid
         ],
     ])->get('/avances-tecnologicos')
         ->assertOk()
-        ->assertSee('Avances Tecnológicos', false)
+        ->assertSee('Avances Dpto. Tecnología y Sistemas Sep14-2026', false)
         ->assertSee('INTEGRACORP', false)
         ->assertSee('tuDrGroup', false)
         ->assertSee('liquid-glass', false)
@@ -323,6 +389,20 @@ it('responde la ruta de presentacion de avances tecnologicos con la vista liquid
         ->assertSee('Lo más difícil de ver es lo bueno', false)
         ->assertSee('En tu Doctor Group, lo bueno pesa muchísimo más', false)
         ->assertSee('Cupos clínicos', false)
+        ->assertSee('Operaciones × Administración', false)
+        ->assertSee('Cargar factura del proveedor', false)
+        ->assertSee('Cargar comprobante de pago', false)
+        ->assertSee('Datos para cuentas por pagar', false)
+        ->assertSee('factura-00012345.pdf', false)
+        ->assertSee('comprobante-banesco.pdf', false)
+        ->assertSee('Guardar factura', false)
+        ->assertSee('Guardar comprobante', false)
+        ->assertSee('Pendiente por pagar', false)
+        ->assertSee('os-modals', false)
+        ->assertSee('os-flow', false)
+        ->assertSee('1 OS = 1 CxP', false)
+        ->assertSee('Mismo documento, dos pantallas', false)
+        ->assertSee('Nace la CxP', false)
         ->assertSee('Generador de planes', false)
         ->assertSee('Cargar estructura', false)
         ->assertSee('Panel de Sistemas', false)
@@ -343,6 +423,14 @@ it('responde la ruta de presentacion de avances tecnologicos con la vista liquid
         ->assertSee('image/storefront/welcome', false)
         ->assertSee('image/storefront/plan-inicial', false)
         ->assertSee('Sistema de Marketing', false)
+        ->assertSee('TDG Marketing × Mailchimp', false)
+        ->assertSee('Mailchimp', false)
+        ->assertSee('image/brands/mailchimp-logo.svg', false)
+        ->assertSee('image/brands/mailchimp-freddie.svg', false)
+        ->assertSee('image/logoTDG.png', false)
+        ->assertSee('mc-brand__logo--dark', false)
+        ->assertSee('mc-bridge', false)
+        ->assertSee('Audience y segmento', false)
         ->assertSee('iPhone · Acceso', false)
         ->assertSee('iPad · Acceso', false)
         ->assertSee('PC · Landing', false)
