@@ -315,6 +315,102 @@
         color: rgba(245, 245, 247, 0.62);
     }
 
+    html[data-theme="dark"] .mc-brand--tdg {
+        background:
+            linear-gradient(
+                155deg,
+                rgba(255, 255, 255, 0.10) 0%,
+                rgba(255, 255, 255, 0.04) 100%
+            );
+    }
+
+    html[data-theme="dark"] .mc-brand__logo--light {
+        display: none;
+    }
+
+    html[data-theme="dark"] .mc-brand__logo--dark {
+        display: block;
+    }
+
+    html[data-theme="dark"] .mc-brand--mailchimp {
+        background: #FFE01B;
+        border-color: rgba(255, 224, 27, 0.85);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.35),
+            0 18px 40px rgba(255, 224, 27, 0.18);
+    }
+
+    html[data-theme="dark"] .mc-brand--mailchimp .mc-brand__name,
+    html[data-theme="dark"] .mc-brand--mailchimp .mc-brand__hint {
+        color: #241C15;
+    }
+
+    html[data-theme="dark"] .mc-connector__labels {
+        color: rgba(245, 245, 247, 0.62);
+    }
+
+    html[data-theme="dark"] .os-flow__step {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.10);
+    }
+
+    html[data-theme="dark"] .os-bridge__label {
+        color: #F5F5F7;
+    }
+
+    html[data-theme="dark"] .os-modal {
+        border-color: rgba(255, 255, 255, 0.10);
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.08),
+            0 18px 40px rgba(0, 0, 0, 0.35);
+        color: #F5F5F7;
+    }
+
+    html[data-theme="dark"] .os-modal__desc,
+    html[data-theme="dark"] .os-dropzone small,
+    html[data-theme="dark"] .os-field span,
+    html[data-theme="dark"] .os-modal__section {
+        color: rgba(245, 245, 247, 0.55);
+    }
+
+    html[data-theme="dark"] .os-field {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.10);
+    }
+
+    html[data-theme="dark"] .os-field em {
+        color: #F5F5F7;
+    }
+
+    html[data-theme="dark"] .os-modal__chip {
+        background: rgba(0, 122, 255, 0.16);
+        border-color: rgba(0, 122, 255, 0.28);
+        color: #9BCAFF;
+    }
+
+    html[data-theme="dark"] .os-modal__note {
+        background: rgba(52, 199, 89, 0.14);
+        border-color: rgba(52, 199, 89, 0.32);
+        color: #8DE0A4;
+    }
+
+    html[data-theme="dark"] .os-dropzone {
+        background: rgba(0, 122, 255, 0.10);
+        border-color: rgba(0, 122, 255, 0.32);
+    }
+
+    html[data-theme="dark"] .os-dropzone--receipt {
+        background: rgba(52, 199, 89, 0.10);
+        border-color: rgba(52, 199, 89, 0.32);
+    }
+
+    html[data-theme="dark"] .os-btn--ghost {
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(245, 245, 247, 0.78);
+    }
+
     @media (min-width: 768px) {
         .presentation-theme-toggle--float {
             top: calc(57px + 0.5rem);
