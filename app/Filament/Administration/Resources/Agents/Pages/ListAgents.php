@@ -41,6 +41,18 @@ class ListAgents extends ListRecords
         return AgentsTable::getTabs();
     }
 
+    /**
+     * Las pestañas son universos excluyentes por estatus: un agente marcado en «Activas» no está dentro de «Inactivas»,
+     * y la acción masiva la descartaría sin avisar aunque el contador siguiera mostrándola. La selección
+     * sobrevive a búsquedas, filtros y páginas (ver AgentsTable::configure), pero al cambiar de pestaña se reinicia.
+     */
+    public function updatedActiveTab(): void
+    {
+        parent::updatedActiveTab();
+
+        $this->deselectAllTableRecords();
+    }
+
     protected function getHeaderActions(): array
     {
         $reports = $this->agentReportModalItems();

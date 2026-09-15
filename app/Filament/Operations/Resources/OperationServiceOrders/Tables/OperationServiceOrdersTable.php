@@ -390,6 +390,11 @@ class OperationServiceOrdersTable
             ->deferLoading()
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(25)
+            // El analista arma la selección en tandas: busca, marca, vuelve a buscar y marca otra vez. Sin esto
+            // Filament la vacía en cada búsqueda o filtro. De paso apaga el modo «tracking» de selección
+            // (Table\Concerns\HasBulkActions::canTrackDeselectedRecords): «Seleccionar todos» pasa a guardar IDs
+            // concretos, así lo marcado nunca se reinterpreta contra la consulta nueva.
+            ->deselectAllRecordsWhenFiltered(false)
             ->emptyStateHeading('Sin órdenes de servicio')
             ->emptyStateDescription('Cuando se genere una orden desde coordinación aparecerá aquí. Use la búsqueda y los filtros para localizar registros.')
             ->modifyQueryUsing(function (Builder $query): Builder {

@@ -70,6 +70,11 @@ class AgenciesTable
             })
             ->defaultSort('created_at', 'desc')
             ->paginationPageOptions([10, 25, 50, 100])
+            // El analista arma la selección de agencias en tandas: busca, marca, vuelve a buscar y marca otra vez.
+            // Sin esto Filament la vacía en cada búsqueda o filtro. De paso apaga el modo «tracking» de selección
+            // (Table\Concerns\HasBulkActions::canTrackDeselectedRecords): «Seleccionar todos» pasa a guardar IDs
+            // concretos, así lo marcado nunca se reinterpreta contra la consulta nueva.
+            ->deselectAllRecordsWhenFiltered(false)
             ->heading('Agencias')
             ->description('Estructura comercial: jerarquía, contacto, comisiones y estatus. Las filas resaltan según el estado operativo.')
             ->striped()
