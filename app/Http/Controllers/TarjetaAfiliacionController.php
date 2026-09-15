@@ -32,7 +32,20 @@ class TarjetaAfiliacionController extends Controller
         $planId = isset($data['plan_id']) ? (int) $data['plan_id'] : null;
         $planDescription = (string) ($data['plan'] ?? '');
 
-        $data['plan_tarjeta_etiqueta'] = TarjetaAfiliacionQrPlanCatalog::displayTagForPlan($planId, $planDescription);
+        /**
+         * La etiqueta puede venir resuelta por la marca de una empresa aliada
+         * (WhiteCompanyDocumentBrand::planShortLabel). Solo se deriva del catálogo
+         * TDEC cuando no llega ninguna, porque el catálogo devuelve INICIAL/IDEAL/
+         * ESPECIAL fijos para los planes 1/2/3 y borraría el nombre de marca.
+         */
+        $providedTag = isset($data['plan_tarjeta_etiqueta']) && is_string($data['plan_tarjeta_etiqueta'])
+            ? trim($data['plan_tarjeta_etiqueta'])
+            : '';
+
+        $data['plan_tarjeta_etiqueta'] = $providedTag !== ''
+            ? $providedTag
+            : TarjetaAfiliacionQrPlanCatalog::displayTagForPlan($planId, $planDescription);
+
         $coberturaVal = $data['cobertura'] ?? null;
         $data['cobertura_display'] = match (true) {
             ! filled($coberturaVal) || $coberturaVal === '' => '',
