@@ -263,7 +263,7 @@ class TravelAgenciesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('exportCsvController')
-                        ->label('Exportar CSV')
+                        ->label('Exportar XLS')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
                         ->action(function (Collection $records) {
