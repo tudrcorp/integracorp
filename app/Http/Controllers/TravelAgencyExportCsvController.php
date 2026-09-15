@@ -138,25 +138,25 @@ class TravelAgencyExportCsvController extends Controller
             // datos bancarios nacionales (moneda local)
             (string) ($record->local_beneficiary_name ?? ''),
             (string) ($record->local_beneficiary_rif ?? ''),
-            (string) ($record->local_beneficiary_account_number ?? ''),
+            CsvExportStream::forceTextForExcel($record->local_beneficiary_account_number),
             (string) ($record->local_beneficiary_account_bank ?? ''),
             (string) ($record->local_beneficiary_account_type ?? ''),
-            (string) ($record->local_beneficiary_phone_pm ?? ''),
-            (string) ($record->local_beneficiary_account_number_mon_inter ?? ''),
+            CsvExportStream::forceTextForExcel($record->local_beneficiary_phone_pm),
+            CsvExportStream::forceTextForExcel($record->local_beneficiary_account_number_mon_inter),
             (string) ($record->local_beneficiary_account_bank_mon_inter ?? ''),
             (string) ($record->local_beneficiary_account_type_mon_inter ?? ''),
 
             // datos bancarios internacionales (moneda extranjera)
             (string) ($record->extra_beneficiary_name ?? ''),
             (string) ($record->extra_beneficiary_ci_rif ?? ''),
-            (string) ($record->extra_beneficiary_account_number ?? ''),
+            CsvExportStream::forceTextForExcel($record->extra_beneficiary_account_number),
             (string) ($record->extra_beneficiary_account_bank ?? ''),
             (string) ($record->extra_beneficiary_account_type ?? ''),
-            (string) ($record->extra_beneficiary_route ?? ''),
+            CsvExportStream::forceTextForExcel($record->extra_beneficiary_route),
             (string) ($record->extra_beneficiary_zelle ?? ''),
-            (string) ($record->extra_beneficiary_ach ?? ''),
+            CsvExportStream::forceTextForExcel($record->extra_beneficiary_ach),
             (string) ($record->extra_beneficiary_swift ?? ''),
-            (string) ($record->extra_beneficiary_aba ?? ''),
+            CsvExportStream::forceTextForExcel($record->extra_beneficiary_aba),
             (string) ($record->extra_beneficiary_address ?? ''),
         ];
     }
