@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Agency;
-use App\Support\CsvExportStream;
+use App\Support\CommercialStructureBankingExportColumns;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\XLSX\Writer;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AgencyExportCsvController extends Controller
 {
@@ -17,10 +19,17 @@ class AgencyExportCsvController extends Controller
     private const TOKEN_TTL_SECONDS = 120;
 
     /**
-     * Exporta las agencias seleccionadas a CSV.
+     * Exporta las agencias seleccionadas a Excel (.xlsx).
      * Requiere ?token=xxx (token generado por la acción de la tabla con los IDs en cache).
+     *
+     * Se genera un .xlsx real, no un CSV: el número de cuenta bancaria del beneficiario
+     * llega a tener 20 dígitos, y Excel interpreta cualquier cadena así de larga como un
+     * número al abrir un CSV plano (notación científica, pérdida de precisión más allá de
+     * los primeros 15 dígitos), sin importar el truco de escritura usado. El formato .xlsx
+     * declara el tipo de cada celda explícitamente, así que el número de cuenta llega
+     * siempre íntegro y legible, tal como ya hace `AdministrationAgencyReportsExportService`.
      */
-    public function __invoke(Request $request): StreamedResponse
+    public function __invoke(Request $request): BinaryFileResponse
     {
         $token = $request->query('token');
 
@@ -34,7 +43,41 @@ class AgencyExportCsvController extends Controller
             abort(400, 'Token de exportación no válido o expirado.');
         }
 
-        $headers = [
+        $filename = 'agencias_'.now()->format('Y-m-d_His').'.xlsx';
+        $path = tempnam(sys_get_temp_dir(), 'agency_export_');
+
+        if ($path === false) {
+            abort(500, 'No se pudo preparar el archivo temporal.');
+        }
+
+        $path .= '.xlsx';
+
+        $writer = new Writer;
+        $writer->openToFile($path);
+        $writer->addRow(Row::fromValues($this->headers()));
+
+        Agency::query()
+            ->with(['typeAgency', 'country', 'state', 'city'])
+            ->whereIn('id', $ids)
+            ->orderBy('id')
+            ->lazyById(100)
+            ->each(function (Agency $record) use ($writer): void {
+                $writer->addRow(Row::fromValues($this->buildRow($record)));
+            });
+
+        $writer->close();
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function headers(): array
+    {
+        return [
             'ID',
             'PERTENECE A:',
             'CÓDIGO AGENCIA',
@@ -60,57 +103,8 @@ class AgencyExportCsvController extends Controller
             'COMENTARIOS',
             'USUARIO TDEV',
             'NOMBRE REPRESENTANTE LEGAL',
-
-            // datos bancarios nacionales (moneda local)
-            'BENEFICIARIO NACIONAL: NOMBRE/RAZÓN SOCIAL',
-            'BENEFICIARIO NACIONAL: CI/RIF',
-            'BENEFICIARIO NACIONAL: Nº DE CUENTA',
-            'BENEFICIARIO NACIONAL: BANCO',
-            'BENEFICIARIO NACIONAL: TIPO DE CUENTA',
-            'BENEFICIARIO NACIONAL: TELÉFONO PAGO MÓVIL',
-            'BENEFICIARIO NACIONAL: Nº DE CUENTA (MONEDA INTERNACIONAL)',
-            'BENEFICIARIO NACIONAL: BANCO (MONEDA INTERNACIONAL)',
-            'BENEFICIARIO NACIONAL: TIPO DE CUENTA (MONEDA INTERNACIONAL)',
-
-            // datos bancarios internacionales (moneda extranjera)
-            'BENEFICIARIO INTERNACIONAL: NOMBRE/RAZÓN SOCIAL',
-            'BENEFICIARIO INTERNACIONAL: CI/RIF/ID/PASAPORTE',
-            'BENEFICIARIO INTERNACIONAL: Nº DE CUENTA',
-            'BENEFICIARIO INTERNACIONAL: BANCO',
-            'BENEFICIARIO INTERNACIONAL: TIPO DE CUENTA',
-            'BENEFICIARIO INTERNACIONAL: RUTA',
-            'BENEFICIARIO INTERNACIONAL: ZELLE',
-            'BENEFICIARIO INTERNACIONAL: ACH',
-            'BENEFICIARIO INTERNACIONAL: SWIFT',
-            'BENEFICIARIO INTERNACIONAL: ABA',
-            'BENEFICIARIO INTERNACIONAL: DIRECCIÓN',
+            ...CommercialStructureBankingExportColumns::csvHeaders(),
         ];
-
-        $filename = 'agencias_'.now()->format('Y-m-d_His').'.csv';
-
-        return new StreamedResponse(function () use ($ids, $headers): void {
-            $handle = CsvExportStream::openOutput();
-
-            if ($handle === false) {
-                return;
-            }
-
-            fputcsv($handle, $headers);
-
-            Agency::query()
-                ->with(['typeAgency', 'country', 'state', 'city'])
-                ->whereIn('id', $ids)
-                ->orderBy('id')
-                ->lazyById(100)
-                ->each(function (Agency $record) use ($handle): void {
-                    fputcsv($handle, $this->buildRow($record));
-                });
-
-            fclose($handle);
-        }, 200, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ]);
     }
 
     /**
@@ -144,30 +138,7 @@ class AgencyExportCsvController extends Controller
             (string) ($record->comments ?? ''),
             (string) ($record->user_tdev ?? ''),
             (string) ($record->name_representative ?? ''),
-
-            // datos bancarios nacionales (moneda local)
-            (string) ($record->local_beneficiary_name ?? ''),
-            (string) ($record->local_beneficiary_rif ?? ''),
-            CsvExportStream::forceTextForExcel($record->local_beneficiary_account_number),
-            (string) ($record->local_beneficiary_account_bank ?? ''),
-            (string) ($record->local_beneficiary_account_type ?? ''),
-            CsvExportStream::forceTextForExcel($record->local_beneficiary_phone_pm),
-            CsvExportStream::forceTextForExcel($record->local_beneficiary_account_number_mon_inter),
-            (string) ($record->local_beneficiary_account_bank_mon_inter ?? ''),
-            (string) ($record->local_beneficiary_account_type_mon_inter ?? ''),
-
-            // datos bancarios internacionales (moneda extranjera)
-            (string) ($record->extra_beneficiary_name ?? ''),
-            (string) ($record->extra_beneficiary_ci_rif ?? ''),
-            CsvExportStream::forceTextForExcel($record->extra_beneficiary_account_number),
-            (string) ($record->extra_beneficiary_account_bank ?? ''),
-            (string) ($record->extra_beneficiary_account_type ?? ''),
-            CsvExportStream::forceTextForExcel($record->extra_beneficiary_route),
-            (string) ($record->extra_beneficiary_zelle ?? ''),
-            CsvExportStream::forceTextForExcel($record->extra_beneficiary_ach),
-            (string) ($record->extra_beneficiary_swift ?? ''),
-            CsvExportStream::forceTextForExcel($record->extra_beneficiary_aba),
-            (string) ($record->extra_beneficiary_address ?? ''),
+            ...CommercialStructureBankingExportColumns::valuesFromModel($record),
         ];
     }
 

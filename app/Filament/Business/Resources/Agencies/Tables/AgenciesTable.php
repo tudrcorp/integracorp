@@ -824,7 +824,7 @@ class AgenciesTable
                         })
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
                     BulkAction::make('exportCsvController')
-                        ->label('Exportar CSV')
+                        ->label('Exportar XLS')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
                         ->action(function (Collection $records) {
