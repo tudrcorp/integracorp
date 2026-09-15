@@ -60,6 +60,30 @@ class AgencyExportCsvController extends Controller
             'COMENTARIOS',
             'USUARIO TDEV',
             'NOMBRE REPRESENTANTE LEGAL',
+
+            // datos bancarios nacionales (moneda local)
+            'BENEFICIARIO NACIONAL: NOMBRE/RAZÓN SOCIAL',
+            'BENEFICIARIO NACIONAL: CI/RIF',
+            'BENEFICIARIO NACIONAL: Nº DE CUENTA',
+            'BENEFICIARIO NACIONAL: BANCO',
+            'BENEFICIARIO NACIONAL: TIPO DE CUENTA',
+            'BENEFICIARIO NACIONAL: TELÉFONO PAGO MÓVIL',
+            'BENEFICIARIO NACIONAL: Nº DE CUENTA (MONEDA INTERNACIONAL)',
+            'BENEFICIARIO NACIONAL: BANCO (MONEDA INTERNACIONAL)',
+            'BENEFICIARIO NACIONAL: TIPO DE CUENTA (MONEDA INTERNACIONAL)',
+
+            // datos bancarios internacionales (moneda extranjera)
+            'BENEFICIARIO INTERNACIONAL: NOMBRE/RAZÓN SOCIAL',
+            'BENEFICIARIO INTERNACIONAL: CI/RIF/ID/PASAPORTE',
+            'BENEFICIARIO INTERNACIONAL: Nº DE CUENTA',
+            'BENEFICIARIO INTERNACIONAL: BANCO',
+            'BENEFICIARIO INTERNACIONAL: TIPO DE CUENTA',
+            'BENEFICIARIO INTERNACIONAL: RUTA',
+            'BENEFICIARIO INTERNACIONAL: ZELLE',
+            'BENEFICIARIO INTERNACIONAL: ACH',
+            'BENEFICIARIO INTERNACIONAL: SWIFT',
+            'BENEFICIARIO INTERNACIONAL: ABA',
+            'BENEFICIARIO INTERNACIONAL: DIRECCIÓN',
         ];
 
         $filename = 'agencias_'.now()->format('Y-m-d_His').'.csv';
@@ -120,6 +144,30 @@ class AgencyExportCsvController extends Controller
             (string) ($record->comments ?? ''),
             (string) ($record->user_tdev ?? ''),
             (string) ($record->name_representative ?? ''),
+
+            // datos bancarios nacionales (moneda local)
+            (string) ($record->local_beneficiary_name ?? ''),
+            (string) ($record->local_beneficiary_rif ?? ''),
+            (string) ($record->local_beneficiary_account_number ?? ''),
+            (string) ($record->local_beneficiary_account_bank ?? ''),
+            (string) ($record->local_beneficiary_account_type ?? ''),
+            (string) ($record->local_beneficiary_phone_pm ?? ''),
+            (string) ($record->local_beneficiary_account_number_mon_inter ?? ''),
+            (string) ($record->local_beneficiary_account_bank_mon_inter ?? ''),
+            (string) ($record->local_beneficiary_account_type_mon_inter ?? ''),
+
+            // datos bancarios internacionales (moneda extranjera)
+            (string) ($record->extra_beneficiary_name ?? ''),
+            (string) ($record->extra_beneficiary_ci_rif ?? ''),
+            (string) ($record->extra_beneficiary_account_number ?? ''),
+            (string) ($record->extra_beneficiary_account_bank ?? ''),
+            (string) ($record->extra_beneficiary_account_type ?? ''),
+            (string) ($record->extra_beneficiary_route ?? ''),
+            (string) ($record->extra_beneficiary_zelle ?? ''),
+            (string) ($record->extra_beneficiary_ach ?? ''),
+            (string) ($record->extra_beneficiary_swift ?? ''),
+            (string) ($record->extra_beneficiary_aba ?? ''),
+            (string) ($record->extra_beneficiary_address ?? ''),
         ];
     }
 
