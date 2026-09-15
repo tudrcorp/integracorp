@@ -116,3 +116,31 @@ it('la plantilla individual usa imagen completa FEDEVIP v2', function (): void {
         ->not->toContain('carnet-title')
         ->not->toContain('carnet-recommendation-inner');
 });
+
+it('respeta la etiqueta de plan de una empresa aliada y no la sustituye por la del catálogo TDEC', function () {
+    $data = TarjetaAfiliacionController::prepareDataForTarjetaPdfView([
+        'name' => 'Afiliado Viveplus',
+        'ci' => 'V-9',
+        'code' => 'TDEC-ALI-1',
+        'plan_id' => 2,
+        'plan' => 'PLAN BIENESTAR',
+        'plan_tarjeta_etiqueta' => 'BIENESTAR',
+        'card_layout' => 'individual-affiliation',
+        'template_key' => 'individual-affiliation-allied',
+    ]);
+
+    expect($data['plan_tarjeta_etiqueta'])->toBe('BIENESTAR');
+});
+
+it('deriva la etiqueta del catálogo TDEC cuando la etiqueta recibida viene vacía', function () {
+    $data = TarjetaAfiliacionController::prepareDataForTarjetaPdfView([
+        'name' => 'Titular Demo',
+        'ci' => 'V-1',
+        'code' => 'TDEC-IND-9',
+        'plan_id' => 2,
+        'plan' => 'PLAN IDEAL',
+        'plan_tarjeta_etiqueta' => '   ',
+    ]);
+
+    expect($data['plan_tarjeta_etiqueta'])->toBe('IDEAL');
+});
