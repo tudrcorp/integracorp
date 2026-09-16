@@ -6,6 +6,7 @@ use App\Filament\Business\Resources\Agencies\AgencyResource;
 use App\Filament\Business\Resources\Agencies\Concerns\QueuesAgencyFichaPdfEmail;
 use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
 use App\Filament\Shared\CommercialStructure\Actions\CommercialStructureIosActionsMenu;
+use App\Filament\Shared\CommercialStructure\Actions\DownloadHierarchyStructureAction;
 use App\Filament\Shared\CommercialStructure\Actions\ResetCommercialStructureUserPasswordAction;
 use App\Filament\Shared\CommercialStructure\Actions\UpdateCommercialStructureEmailAction;
 use App\Models\Agency;
@@ -111,6 +112,7 @@ class ViewAgency extends ViewRecord
                     ->color('primary'),
                 UpdateCommercialStructureEmailAction::make('agency', 'business'),
                 ResetCommercialStructureUserPasswordAction::make('agency', 'business'),
+                DownloadHierarchyStructureAction::forAgency(fn (): Agency => $this->getRecord()),
                 Action::make('agencyFichaPreview')
                     ->label('Ficha PDF')
                     ->icon('heroicon-o-document-text')

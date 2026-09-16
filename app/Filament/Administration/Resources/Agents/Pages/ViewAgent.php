@@ -6,6 +6,7 @@ namespace App\Filament\Administration\Resources\Agents\Pages;
 
 use App\Filament\Administration\Resources\Agents\AgentResource;
 use App\Filament\Shared\CommercialStructure\Actions\CommercialStructureIosActionsMenu;
+use App\Filament\Shared\CommercialStructure\Actions\DownloadHierarchyStructureAction;
 use App\Filament\Shared\CommercialStructure\Actions\ResetCommercialStructureUserPasswordAction;
 use App\Filament\Shared\CommercialStructure\Actions\UpdateCommercialStructureEmailAction;
 use Filament\Actions\Action;
@@ -81,6 +82,7 @@ class ViewAgent extends ViewRecord
                     ->color('primary'),
                 UpdateCommercialStructureEmailAction::make('agent', 'administration'),
                 ResetCommercialStructureUserPasswordAction::make('agent', 'administration'),
+                DownloadHierarchyStructureAction::forAgent(fn (): Agent => $this->getRecord()),
             ]),
         ];
     }

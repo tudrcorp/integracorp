@@ -6,6 +6,7 @@ use App\Models\Sale;
 use App\Models\Commission;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
+use App\Support\CommercialStructure\MasterPanelAffiliationCorporateScope;
 use Illuminate\Support\Facades\Auth;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -20,7 +21,7 @@ class StatsOverview extends StatsOverviewWidget
                 ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
-            Stat::make('Afiliaciones Corporativas', '+' . AffiliationCorporate::where('owner_code', Auth::user()->code_agency)->where('status', 'ACTIVA')->count())
+            Stat::make('Afiliaciones Corporativas', '+'.MasterPanelAffiliationCorporateScope::apply(AffiliationCorporate::query())->where('status', 'ACTIVA')->count())
                 ->icon('fontisto-persons')
                 ->description('Incremento')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')

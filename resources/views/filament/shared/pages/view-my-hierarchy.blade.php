@@ -9,7 +9,9 @@
                 </p>
                 <p class="text-sm text-slate-600 dark:text-slate-300">
                     Master → General → Agente → Subagente. Despliega equipos de master, generales o subagentes en fila
-                    horizontal; desliza cuando hay más de cinco nodos.
+                    horizontal; desliza cuando hay más de cinco nodos. Usa
+                    <strong class="font-semibold text-slate-700 dark:text-slate-200">Descargar estructura (Excel)</strong>
+                    para obtener el listado de agencias y agentes bajo tu red.
                 </p>
             </div>
 

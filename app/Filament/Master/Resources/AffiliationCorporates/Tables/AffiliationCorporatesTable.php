@@ -3,10 +3,9 @@
 namespace App\Filament\Master\Resources\AffiliationCorporates\Tables;
 
 use App\Models\User;
-use App\Models\Agent;
-use App\Models\Agency;
 use Filament\Tables\Table;
 use App\Mail\UploadPayment;
+use App\Support\CommercialStructure\MasterPanelAffiliationCorporateScope;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -40,8 +39,7 @@ class AffiliationCorporatesTable
     public static function configure(Table $table): Table
     {
         return $table
-            // ->query(AffiliationCorporate::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
-            ->query(AffiliationCorporate::query()->where('owner_code', Auth::user()->code_agency))
+            ->query(MasterPanelAffiliationCorporateScope::apply(AffiliationCorporate::query()))
             ->defaultSort('created_at', 'desc')
             ->heading('AFILIACIONES CORPORATIVAS')
             ->description('Lista de afiliaciones corporativas registradas en el sistema')

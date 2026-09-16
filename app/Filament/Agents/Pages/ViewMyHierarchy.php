@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Agents\Pages;
 
 use App\Filament\Shared\CommercialStructure\CommercialHierarchyFlowchart;
+use App\Filament\Shared\CommercialStructure\Concerns\DownloadsCommercialHierarchyStructure;
 use App\Models\Agent;
 use BackedEnum;
 use Filament\Pages\Page;
@@ -14,6 +15,8 @@ use Illuminate\Support\HtmlString;
 
 class ViewMyHierarchy extends Page
 {
+    use DownloadsCommercialHierarchyStructure;
+
     protected static ?string $navigationLabel = 'Ver Jerarquía';
 
     protected static ?string $title = 'Mi jerarquía comercial';
@@ -32,6 +35,11 @@ class ViewMyHierarchy extends Page
     public static function canAccess(): bool
     {
         return filled(Auth::user()?->agent_id);
+    }
+
+    protected function hierarchyExportSubjectIsAgent(): bool
+    {
+        return true;
     }
 
     public function getHierarchyDiagram(): HtmlString

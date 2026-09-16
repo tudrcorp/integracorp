@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\General\Pages;
 
 use App\Filament\Shared\CommercialStructure\CommercialHierarchyFlowchart;
+use App\Filament\Shared\CommercialStructure\Concerns\DownloadsCommercialHierarchyStructure;
 use App\Models\Agency;
 use BackedEnum;
 use Filament\Pages\Page;
@@ -14,6 +15,8 @@ use Illuminate\Support\HtmlString;
 
 class ViewMyHierarchy extends Page
 {
+    use DownloadsCommercialHierarchyStructure;
+
     protected static ?string $navigationLabel = 'Ver Jerarquía';
 
     protected static ?string $title = 'Mi jerarquía comercial';

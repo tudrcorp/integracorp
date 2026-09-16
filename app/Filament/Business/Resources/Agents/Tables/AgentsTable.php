@@ -16,6 +16,7 @@ use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
 use App\Models\User;
 use App\Support\AgentActivity\AgentActivityQuery;
+use App\Support\CommercialStructure\CommercialVipFacturacion;
 use App\Support\HelpdeskObservationHtmlRenderer;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
@@ -45,6 +46,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 class AgentsTable
@@ -55,12 +57,16 @@ class AgentsTable
             ->query(function (Builder $query) {
                 if (Auth::user()->is_accountManagers) {
                     // dd(Auth::user()->id);
-                    return AgentActivityQuery::applyToAgentsQuery(
+                    $scoped = AgentActivityQuery::applyToAgentsQuery(
                         Agent::query()->where('ownerAccountManagers', Auth::user()->id)
                     );
+
+                    return CommercialVipFacturacion::appendAgentBillingSubquery($scoped);
                 }
 
-                return AgentActivityQuery::applyToAgentsQuery(Agent::query());
+                return CommercialVipFacturacion::appendAgentBillingSubquery(
+                    AgentActivityQuery::applyToAgentsQuery(Agent::query())
+                );
             })
             ->defaultSort('created_at', 'desc')
             ->paginationPageOptions([10, 25, 50, 100])
@@ -134,12 +140,34 @@ class AgentsTable
                     ->badge()
                     ->color('verde')
                     ->placeholder('—'),
+                TextColumn::make(CommercialVipFacturacion::BILLING_ATTRIBUTE)
+                    ->label('VIP (facturación)')
+                    ->alignCenter()
+                    ->badge()
+                    ->color(fn (Agent $record): string => match (CommercialVipFacturacion::starCountFromAmount(CommercialVipFacturacion::billingAmountFromRecord($record))) {
+                        0 => 'gray',
+                        1, 2 => 'warning',
+                        3 => 'success',
+                        default => 'amber',
+                    })
+                    ->icon('heroicon-s-star')
+                    ->state(fn (Agent $record): string => CommercialVipFacturacion::starsGlyphLine(
+                        CommercialVipFacturacion::starCountFromAmount(CommercialVipFacturacion::billingAmountFromRecord($record))
+                    ) ?: '—')
+                    ->tooltip(fn (Agent $record): string => CommercialVipFacturacion::billingTooltip(
+                        CommercialVipFacturacion::billingAmountFromRecord($record),
+                        CommercialVipFacturacion::starCountFromAmount(CommercialVipFacturacion::billingAmountFromRecord($record)),
+                    ))
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => CommercialVipFacturacion::orderByBillingAttribute($query, $direction)),
                 TextColumn::make('name')
                     ->label('Razón social')
                     ->searchable()
                     ->sortable()
-                    ->badge()
-                    ->color('verde')
+                    ->html()
+                    ->formatStateUsing(fn (?string $state, Agent $record): HtmlString => CommercialVipFacturacion::nameWithVipStarsHtml(
+                        (string) ($state ?? ''),
+                        CommercialVipFacturacion::billingAmountFromRecord($record),
+                    ))
                     ->wrap()
                     ->placeholder('—'),
                 TextColumn::make('ci')

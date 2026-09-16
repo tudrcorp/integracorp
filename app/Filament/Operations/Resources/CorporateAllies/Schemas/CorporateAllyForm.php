@@ -92,6 +92,8 @@ class CorporateAllyForm
             'BANCO GENERAL' => 'BANCO GENERAL',
             'GLOBAL BANK' => 'GLOBAL BANK',
             'BANESCO PANAMÁ' => 'BANESCO PANAMÁ',
+            'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+            'ENCORE BANK' => 'ENCORE BANK',
             'METROBANK' => 'METROBANK',
             'BANCAMIGA' => 'BANCAMIGA',
             'BANCO DEL TESORO' => 'BANCO DEL TESORO',

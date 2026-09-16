@@ -22,14 +22,16 @@ it('expone Ver Jerarquía en el panel de agencias generales', function (): void 
     expect($pageSource)
         ->toContain('CommercialHierarchyFlowchart::renderForAgency')
         ->toContain("protected static ?string \$slug = 'ver-jerarquia'")
-        ->toContain('code_agency');
+        ->toContain('code_agency')
+        ->toContain('DownloadsCommercialHierarchyStructure');
 
     expect($themeSource)
         ->toContain("@import '../shared/hierarchy-flowchart.css';");
 
     expect($sharedViewSource)
         ->toContain('getHierarchyDiagram()')
-        ->toContain('Jerarquía comercial');
+        ->toContain('Jerarquía comercial')
+        ->toContain('Descargar estructura (Excel)');
 });
 
 it('expone Ver Jerarquía en el panel de agencias master', function (): void {
@@ -48,7 +50,8 @@ it('expone Ver Jerarquía en el panel de agencias master', function (): void {
     expect($pageSource)
         ->toContain('CommercialHierarchyFlowchart::renderForAgency')
         ->toContain("protected static ?string \$slug = 'ver-jerarquia'")
-        ->toContain('code_agency');
+        ->toContain('code_agency')
+        ->toContain('DownloadsCommercialHierarchyStructure');
 });
 
 it('marca Esta agencia en nodos de agencia resaltados del diagrama', function (): void {
