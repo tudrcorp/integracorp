@@ -35,6 +35,22 @@ class CommercialHierarchyFlowchart
         return self::renderDiagramShell($tree, self::resolveInitialExpandState($tree));
     }
 
+    /**
+     * El mismo árbol que dibuja el diagrama, en datos. Lo consumen las exportaciones a PDF
+     * y Excel para que el reporte refleje exactamente lo que el usuario ve en pantalla.
+     *
+     * @return array{
+     *     headquarters?: array<string, mixed>|null,
+     *     master?: array<string, mixed>|null,
+     *     master_direct_agents?: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>,
+     *     generals?: list<array{agency: array<string, mixed>, agents: list<array{agent: array<string, mixed>, subagents: list<array<string, mixed>>}>}>
+     * }
+     */
+    public static function hierarchyTreeForAgency(Agency $agency): array
+    {
+        return self::buildInteractiveHierarchyTree($agency);
+    }
+
     public static function commercialCodeSequenceForAgent(Agent $agent, string $viewerContext = self::VIEWER_FULL): string
     {
         $agentTypeId = (int) ($agent->agent_type_id ?? 0);
@@ -263,7 +279,7 @@ class CommercialHierarchyFlowchart
 
             if ($ownerCode !== '') {
                 $masterAgency = Agency::query()
-                    ->select(['code', 'name_corporative', 'agency_type_id', 'status', 'owner_code'])
+                    ->select(['id', 'code', 'name_corporative', 'agency_type_id', 'status', 'owner_code'])
                     ->whereRaw('UPPER(TRIM(code)) = ?', [strtoupper($ownerCode)])
                     ->where('agency_type_id', self::AGENCY_TYPE_MASTER)
                     ->first();
@@ -1295,7 +1311,7 @@ class CommercialHierarchyFlowchart
     }
 
     /**
-     * @return array{kind: string, title: string, name: string, subtitle: string, status: string, tone: string, structure: string|null, is_highlighted: bool}
+     * @return array{kind: string, title: string, name: string, subtitle: string, status: string, tone: string, structure: string|null, is_highlighted: bool, entity_type: string, entity_id: int|null}
      */
     private static function hierarchyAgentNodePayload(Agent $agent, ?int $highlightAgentId = null): array
     {
@@ -1317,11 +1333,14 @@ class CommercialHierarchyFlowchart
             'tone' => $agentTypeId === 3 ? 'slate' : 'violet',
             'structure' => null,
             'is_highlighted' => $highlightAgentId !== null && $agentId === $highlightAgentId,
+            /** Identidad del registro real: las exportaciones la usan para traer la ficha completa. */
+            'entity_type' => 'agent',
+            'entity_id' => $agentId > 0 ? $agentId : null,
         ];
     }
 
     /**
-     * @return array{kind: string, title: string, name: string, subtitle: string, status: string, tone: string, structure: string|null, is_highlighted: bool}
+     * @return array{kind: string, title: string, name: string, subtitle: string, status: string, tone: string, structure: string|null, is_highlighted: bool, entity_type: string, entity_id: int|null}
      */
     private static function hierarchyNodePayload(
         string $title,
@@ -1348,6 +1367,9 @@ class CommercialHierarchyFlowchart
             'tone' => $tone,
             'structure' => $structure ?? ($agency instanceof Agency ? self::structureSummaryForAgency($agency) : null),
             'is_highlighted' => $isHighlighted,
+            /** La casa matriz es un nodo sintético sin registro propio: va sin id. */
+            'entity_type' => 'agency',
+            'entity_id' => $agency instanceof Agency ? (int) $agency->getKey() : null,
         ];
     }
 
@@ -1644,7 +1666,7 @@ class CommercialHierarchyFlowchart
         }
 
         return Agency::query()
-            ->select(['code', 'name_corporative', 'agency_type_id', 'status', 'owner_code'])
+            ->select(['id', 'code', 'name_corporative', 'agency_type_id', 'status', 'owner_code'])
             ->where('agency_type_id', self::AGENCY_TYPE_GENERAL)
             ->whereRaw('UPPER(TRIM(owner_code)) = ?', [$normalizedMasterCode])
             ->orderBy('code')
