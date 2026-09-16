@@ -20,6 +20,14 @@ function certificateBladeCode(): string
     return (string) preg_replace('#\{\{--.*?--\}\}#s', '', $src);
 }
 
+/** El markup de un bloque de beneficios vive en su propio partial para poder envolverlo sin duplicarlo. */
+function certificateBenefitsPartialCode(): string
+{
+    $src = (string) file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/partials/certificate-benefits-section.blade.php');
+
+    return (string) preg_replace('#\{\{--.*?--\}\}#s', '', $src);
+}
+
 it('el certificado pagina en vez de recortarse: nada del contenido va en posición absoluta', function (): void {
     $src = certificateBladeCode();
 
@@ -51,6 +59,32 @@ it('el contenido termina antes de la línea azul del marco', function (): void {
     expect($finDelContenido)->toBeLessThan($lineaAzulEnPx);
 });
 
+it('las tablas con borde terminan antes de las marcas de agua del fondo', function (): void {
+    /**
+     * El fondo dibuja los logos de marca de agua desde x=677 de los 794px de ancho de la
+     * página. El margen de `@page` deja el contenido llegar hasta x≈704, así que una tabla
+     * al 100% se monta sobre ellos: por eso las cajas con borde se recortan.
+     */
+    $marcaDeAguaEnPx = 677;
+    $anchoPaginaEnPx = 794;
+
+    $src = certificateBladeCode();
+
+    preg_match('/margin:\s*(\d+)px\s+(\d+)px\s+(\d+)px\s+(\d+)px;/', $src, $m);
+    expect($m)->not->toBeEmpty('no se pudo leer el margen de @page');
+
+    $margenDerecho = (int) $m[2];
+    $margenIzquierdo = (int) $m[4];
+    $anchoDelContenido = $anchoPaginaEnPx - $margenDerecho - $margenIzquierdo;
+
+    preg_match('/\.table-people,\s*\.table-benefits,\s*\.benefit-note\s*\{\s*width:\s*(\d+(?:\.\d+)?)%/', $src, $w);
+    expect($w)->not->toBeEmpty('las tablas con borde deben compartir un ancho recortado');
+
+    $finDeLaTabla = $margenIzquierdo + ($anchoDelContenido * ((float) $w[1] / 100));
+
+    expect($finDeLaTabla)->toBeLessThan($marcaDeAguaEnPx);
+});
+
 it('repite la cabecera de la tabla de afiliados en cada página y evita cortar filas', function (): void {
     $src = certificateBladeSource();
 
@@ -73,11 +107,15 @@ it('numera las páginas con contadores CSS porque el motor corre sin PHP', funct
 it('imprime un bloque de beneficios por plan y la columna Plan cuando hay más de uno', function (): void {
     $src = certificateBladeCode();
 
+    $partial = certificateBenefitsPartialCode();
+
     expect($src)
-        ->toContain('@foreach ($benefitSections as $section)')
-        ->and($src)->toContain("Beneficios del {{ \$section['plan_label'] }}")
+        ->toContain('@foreach ($sections as $sectionIndex => $section)')
+        ->and($src)->toContain("'Beneficios del '.\$section['plan_label']")
         ->and($src)->toContain('@if ($showPlanColumn)')
         ->and($src)->toContain("{{ \$celda['plan_label'] ?? '' }}")
+        ->and($partial)->toContain('{{ $sectionTitle }}')
+        ->and($partial)->toContain("@foreach (\$section['rows'] as \$row)")
         // La nota legal ya no depende del número mágico del plan.
         ->and($src)->not->toContain("\$pagador['plan_id'] == 3");
 });

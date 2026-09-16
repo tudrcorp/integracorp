@@ -78,6 +78,19 @@
             border-collapse: collapse;
         }
 
+        /*
+         * Las cajas con borde se quedan cortas a propósito. El margen derecho de `@page`
+         * (90px) las deja terminar en x≈704, pero las marcas de agua del fondo arrancan en
+         * x=677, así que una tabla al 100% se monta sobre los logos. Al 95% termina en
+         * x≈672 y los respeta. El texto suelto (la tabla de datos principales) no necesita
+         * el recorte porque no dibuja caja.
+         */
+        .table-people,
+        .table-benefits,
+        .benefit-note {
+            width: 95%;
+        }
+
         /* Datos principales de la afiliación */
         .table-info td {
             padding: 3px 6px 3px 0;
@@ -186,6 +199,18 @@
             content: "Página " counter(page);
         }
 
+        /*
+         * Envoltorio de un bloque de beneficios. DomPDF no parte una celda entre páginas:
+         * al meter título, tabla, nota y firma en una sola celda, el bloque salta entero a
+         * la hoja siguiente en vez de cortarse. Solo se usa cuando el bloque cabe en una
+         * página (`CertificateBenefitsBlockFit`); si no cupiera, dejaría una hoja en blanco.
+         */
+        .keep-together-cell {
+            padding: 0;
+            border: 0;
+            vertical-align: top;
+        }
+
         .signature {
             margin-top: 26px;
             page-break-inside: avoid;
@@ -211,6 +236,8 @@
 
 <body>
     @php
+        use App\Support\Affiliations\CertificateBenefitsBlockFit;
+
         $brandColor = $brandColor ?? '#26b2ca';
         $logoDataUri = $logoDataUri ?? '';
         $signatureDataUri = $signatureDataUri ?? '';
@@ -298,7 +325,8 @@
         <thead>
             <tr>
                 @foreach ($peopleHeaders as $header)
-                    <th @if ($loop->first) style="width: 34%;" @endif>{{ $header }}</th>
+                    {{-- 31% y no 34%: con la tabla recortada al 95% el reparto anterior partía en dos líneas la cabecera «Documento de identidad». --}}
+                    <th @if ($loop->first) style="width: 31%;" @endif>{{ $header }}</th>
                 @endforeach
             </tr>
         </thead>
@@ -317,51 +345,58 @@
         </tbody>
     </table>
 
-    @foreach ($benefitSections as $section)
-        @continue(empty($section['rows']))
+    @php
+        $sections = array_values(array_filter($benefitSections, fn (array $section): bool => ! empty($section['rows'])));
+        $hasSignature = ! $isAlliedCertificate || $signatureDataUri !== '';
+        $signatureInLastBlock = false;
 
-        <div class="benefits-block">
-            <h2 class="section-title" style="color: {{ $brandColor }};">
-                @if (filled($section['plan_label'] ?? '') && count($benefitSections) > 1)
-                    Beneficios del {{ $section['plan_label'] }}
-                @else
-                    Beneficios del plan seleccionado
-                @endif
-            </h2>
+        if ($hasSignature && $sections !== []) {
+            $lastSection = $sections[count($sections) - 1];
 
-            <table class="table-benefits">
+            $signatureInLastBlock = CertificateBenefitsBlockFit::fitsInOnePage(
+                $lastSection['rows'],
+                filled($lastSection['note'] ?? null),
+                true,
+            );
+        }
+    @endphp
+
+    @foreach ($sections as $sectionIndex => $section)
+        @php
+            $isLastSection = $sectionIndex === count($sections) - 1;
+            $renderSignature = $isLastSection && $signatureInLastBlock;
+            $keepTogether = $renderSignature || CertificateBenefitsBlockFit::fitsInOnePage(
+                $section['rows'],
+                filled($section['note'] ?? null),
+                false,
+            );
+            $sectionTitle = filled($section['plan_label'] ?? '') && count($sections) > 1
+                ? 'Beneficios del '.$section['plan_label']
+                : 'Beneficios del plan seleccionado';
+            $sectionData = [
+                'section' => $section,
+                'sectionTitle' => $sectionTitle,
+                'renderSignature' => $renderSignature,
+            ];
+        @endphp
+
+        @if ($keepTogether)
+            <table class="keep-together">
                 <tbody>
-                    @foreach ($section['rows'] as $row)
-                        <tr>
-                            <td>{{ $row['text'] }}</td>
-                            <td class="mark">
-                                @if ($row['show_cobertura'])
-                                    <span class="amount" style="color: {{ $isAlliedCertificate ? $brandColor : '#000000' }};">US$ {{ $coberturaFormatted }}</span>
-                                @else
-                                    <img src="{{ public_path('storage/certificados/check-beneficios.png') }}" style="width: 12px; height: 12px;" alt="">
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
+                    <tr>
+                        <td class="keep-together-cell">
+                            @include('documents.partials.certificate-benefits-section', $sectionData)
+                        </td>
+                    </tr>
                 </tbody>
             </table>
-
-            @if (filled($section['note'] ?? null))
-                <p class="benefit-note">{{ $section['note'] }}</p>
-            @endif
-        </div>
+        @else
+            @include('documents.partials.certificate-benefits-section', $sectionData)
+        @endif
     @endforeach
 
-    @if ($isAlliedCertificate)
-        @if ($signatureDataUri !== '')
-            <div class="signature allied">
-                <img src="{{ $signatureDataUri }}" alt="Firma {{ $companyName }}">
-            </div>
-        @endif
-    @else
-        <div class="signature">
-            <img src="{{ public_path('storage/certificados/firmaHC-Certificados.png') }}" alt="Firma autorizada">
-        </div>
+    @if ($hasSignature && ! $signatureInLastBlock)
+        @include('documents.partials.certificate-signature')
     @endif
 </body>
 
