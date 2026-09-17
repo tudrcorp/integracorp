@@ -143,6 +143,8 @@ it('paymentExpirationDetailsValue usa exclusivamente next_payment_date', functio
         ->toContain("rawColumnForDisplay(\$upcomingRows[0], 'next_payment_date')")
         ->toContain('fi-global-search-payment-badge--overdue')
         ->toContain('fi-global-search-payment-badge--upcoming')
+        ->toContain('Sin cobranza pendiente')
+        ->not->toContain('Sin cobranzas POR PAGAR')
         ->not->toContain('rawNextPaymentDateForDisplay')
         ->not->toContain('paymentDateForCollection');
 });
