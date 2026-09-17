@@ -213,7 +213,7 @@ final class GlobalSearchAffiliationCollectionExpirations
             ->get(['id', 'sale_id', 'next_payment_date', 'payment_frequency']);
 
         if ($rows->isEmpty()) {
-            return 'Sin cobranzas POR PAGAR';
+            return 'Sin cobranza pendiente';
         }
 
         $today = now();
