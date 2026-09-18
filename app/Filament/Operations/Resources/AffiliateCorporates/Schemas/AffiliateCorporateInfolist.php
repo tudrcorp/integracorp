@@ -8,6 +8,7 @@ use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\AffiliateCorporate;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\ClinicalEntitlements\OperationsAffiliatePlanBenefitsCard;
+use App\Support\Operations\AffiliateStatusPresentation;
 use App\Support\Operations\OperationsMapSearchAddress;
 use Carbon\Carbon;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -70,12 +71,7 @@ class AffiliateCorporateInfolist
 
     private static function statusColor(?string $state): string
     {
-        return match (strtoupper((string) $state)) {
-            'ACTIVO', 'ACTIVA' => 'success',
-            'PENDIENTE' => 'warning',
-            'EXCLUIDO', 'INACTIVO' => 'danger',
-            default => 'gray',
-        };
+        return AffiliateStatusPresentation::filamentColor($state);
     }
 
     private static function billingCollectionStatusColor(?string $state): string
@@ -379,7 +375,8 @@ class AffiliateCorporateInfolist
                                                 TextEntry::make('status')
                                                     ->label('Estatus afiliado')
                                                     ->badge()
-                                                    ->color(fn (?string $state): string => self::statusColor($state)),
+                                                    ->state(fn (AffiliateCorporate $record): string => AffiliateStatusPresentation::label($record->status))
+                                                    ->color(fn (AffiliateCorporate $record): string => self::statusColor($record->status)),
                                             ]),
                                         RepeatableEntry::make('affiliationCorporate.billingCollections')
                                             ->label('Próximos pagos y estatus de cobranza')

@@ -309,7 +309,9 @@ it('formulario generador incluye matrices alineadas con columnas compartidas', f
 it('editor de beneficios usa select con catalogo, evita duplicados y permite crear', function (): void {
     $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Schemas/PlanGeneratorForm.php');
     $stacked = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/plan-generators/stacked-matrices-editor.blade.php');
-    $trait = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Pages/Concerns/InteractsWithPlanGeneratorMatrix.php');
+    // Las acciones del editor viven en el trait de filas, compartido con la
+    // modal que deriva cotizaciones desde la tabla.
+    $trait = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Pages/Concerns/InteractsWithPlanGeneratorMatrixRows.php');
 
     expect($form)
         ->toContain('use App\Models\Benefit;')
@@ -318,7 +320,10 @@ it('editor de beneficios usa select con catalogo, evita duplicados y permite cre
 
     expect($stacked)
         ->toContain('<select')
-        ->toContain('data.rows.{{ $rowKey }}.benefit_label')
+        // El editor se comparte con la modal que deriva cotizaciones, así que
+        // la ruta del estado es un parámetro y no `data` fijo (ver
+        // PlanGeneratorDerivedQuotationTest).
+        ->toContain('{{ $matrixStatePath }}.rows.{{ $rowKey }}.benefit_label')
         ->toContain('Seleccione un beneficio')
         ->toContain('benefitsUsedByOtherRows')
         ->toContain('createPlanGeneratorBenefit')

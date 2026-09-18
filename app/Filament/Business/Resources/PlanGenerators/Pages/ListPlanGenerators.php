@@ -4,12 +4,20 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\PlanGenerators\Pages;
 
+use App\Filament\Business\Resources\PlanGenerators\Pages\Concerns\InteractsWithPlanGeneratorMatrixRows;
 use App\Filament\Business\Resources\PlanGenerators\PlanGeneratorResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListPlanGenerators extends ListRecords
 {
+    /**
+     * La modal «Generar cotización desde plantilla» monta el mismo editor de
+     * matrices que las páginas de Crear y Editar, y sus botones llaman a estas
+     * acciones sobre el estado de la acción montada.
+     */
+    use InteractsWithPlanGeneratorMatrixRows;
+
     protected static string $resource = PlanGeneratorResource::class;
 
     /**

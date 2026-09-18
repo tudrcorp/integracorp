@@ -75,12 +75,17 @@ final class PlanGeneratorMatrixState
     }
 
     /**
-     * @return array{rate_amount: null}
+     * `base_rate_amount` es la tarifa original congelada por el ajuste global
+     * de tarifas (ver PlanGeneratorRateAdjustment). Es dato interno: la
+     * cotización solo muestra `rate_amount`.
+     *
+     * @return array{rate_amount: null, base_rate_amount: null}
      */
     public static function emptyRateCell(): array
     {
         return [
             'rate_amount' => null,
+            'base_rate_amount' => null,
         ];
     }
 
@@ -122,7 +127,7 @@ final class PlanGeneratorMatrixState
 
     /**
      * @param  array<int, mixed>  $columns
-     * @return list<array{column_key: string, header_label: string}>
+     * @return list<array{column_key: string, header_label: string, rate_adjustment_percent: float|null}>
      */
     public static function normalizeColumns(array $columns): array
     {
@@ -140,10 +145,51 @@ final class PlanGeneratorMatrixState
             $normalized[] = [
                 'column_key' => (string) $column['column_key'],
                 'header_label' => (string) $column['header_label'],
+                'rate_adjustment_percent' => self::parseAdjustmentPercent($column['rate_adjustment_percent'] ?? null),
             ];
         }
 
         return $normalized;
+    }
+
+    /**
+     * Porcentaje del ajuste global de tarifas de una columna. Es dato interno y
+     * nunca llega al PDF: las plantillas solo leen `header_label`.
+     */
+    public static function parseAdjustmentPercent(mixed $percent): ?float
+    {
+        return is_numeric($percent) ? (float) $percent : null;
+    }
+
+    /**
+     * Columnas listas para pintar cuando el analista puede renombrarlas en el
+     * propio editor.
+     *
+     * A diferencia de `normalizeColumns()`, conserva las columnas sin
+     * encabezado: si se descartaran, borrar el texto del input haría
+     * desaparecer la columna de la pantalla y el analista no tendría forma de
+     * volver a nombrarla. El descarte sigue ocurriendo al guardar.
+     *
+     * @param  array<int, mixed>  $columns
+     * @return list<array{column_key: string, header_label: string, rate_adjustment_percent: float|null}>
+     */
+    public static function keyedColumns(array $columns): array
+    {
+        $keyed = [];
+
+        foreach ($columns as $column) {
+            if (! is_array($column) || ! filled($column['column_key'] ?? null)) {
+                continue;
+            }
+
+            $keyed[] = [
+                'column_key' => (string) $column['column_key'],
+                'header_label' => (string) ($column['header_label'] ?? ''),
+                'rate_adjustment_percent' => self::parseAdjustmentPercent($column['rate_adjustment_percent'] ?? null),
+            ];
+        }
+
+        return $keyed;
     }
 
     /**
@@ -154,7 +200,9 @@ final class PlanGeneratorMatrixState
         $normalized = self::normalizeColumns($columns);
 
         $parts = array_map(
-            fn (array $column): string => $column['column_key'].'|'.$column['header_label'],
+            fn (array $column): string => $column['column_key']
+                .'|'.$column['header_label']
+                .'|'.($column['rate_adjustment_percent'] ?? ''),
             $normalized,
         );
 
@@ -187,7 +235,7 @@ final class PlanGeneratorMatrixState
     /**
      * @param  array<string, mixed>  $cells
      * @param  array<int, mixed>  $columns
-     * @return array<string, array{rate_amount: mixed}>
+     * @return array<string, array{rate_amount: mixed, base_rate_amount: mixed}>
      */
     public static function orderRateCellsForColumns(array $cells, array $columns): array
     {
@@ -197,7 +245,10 @@ final class PlanGeneratorMatrixState
             $cell = $cells[$columnKey] ?? null;
 
             $ordered[$columnKey] = is_array($cell)
-                ? ['rate_amount' => $cell['rate_amount'] ?? null]
+                ? [
+                    'rate_amount' => $cell['rate_amount'] ?? null,
+                    'base_rate_amount' => $cell['base_rate_amount'] ?? null,
+                ]
                 : self::emptyRateCell();
         }
 

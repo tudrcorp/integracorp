@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\PlanGenerators\Schemas;
 
 use App\Enums\PlanGeneratorPopulationUnit;
+use App\Filament\Business\Resources\PlanGenerators\Actions\AdjustRateAmountsAction;
 use App\Models\Benefit;
 use App\Models\Plan;
 use App\Support\PlanGenerators\PlanGeneratorBrandColor;
@@ -588,6 +589,14 @@ class PlanGeneratorForm
                                                     ])
                                                     ->columnSpanFull(),
                                                 View::make('filament.business.plan-generators.stacked-matrices-editor')
+                                                    // La clave es obligatoria: Filament resuelve una acción
+                                                    // registrada en un componente a través de ella.
+                                                    ->key('planGeneratorMatrixEditor')
+                                                    // Pinta el botón de ajuste global de tarifas dentro de
+                                                    // la propia tabla de tarifas del editor.
+                                                    ->registerActions([
+                                                        AdjustRateAmountsAction::make(),
+                                                    ])
                                                     ->viewData(fn (Get $get): array => [
                                                         'columns' => PlanGeneratorMatrixState::normalizeColumns((array) ($get('columns') ?? [])),
                                                         'rows' => (array) ($get('rows') ?? []),

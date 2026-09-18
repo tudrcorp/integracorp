@@ -46,6 +46,9 @@ final class PlanGeneratorPersistence
                 $column = $planGenerator->columns()->create([
                     'column_key' => $columnKey,
                     'header_label' => (string) $columnRow['header_label'],
+                    'rate_adjustment_percent' => PlanGeneratorMatrixState::parseAdjustmentPercent(
+                        $columnRow['rate_adjustment_percent'] ?? null,
+                    ),
                     'sort_order' => $columnSortOrder++,
                 ]);
 
@@ -126,6 +129,7 @@ final class PlanGeneratorPersistence
             $planGenerator->columns->map(fn (PlanGeneratorColumn $column): array => [
                 'column_key' => $column->column_key,
                 'header_label' => $column->header_label,
+                'rate_adjustment_percent' => $column->rate_adjustment_percent,
             ])->all(),
         );
 
@@ -180,6 +184,9 @@ final class PlanGeneratorPersistence
                 $cells[$columnKey] = [
                     'rate_amount' => $cell->rate_amount !== null
                         ? (float) $cell->rate_amount
+                        : null,
+                    'base_rate_amount' => $cell->base_rate_amount !== null
+                        ? (float) $cell->base_rate_amount
                         : null,
                 ];
             }
@@ -243,9 +250,16 @@ final class PlanGeneratorPersistence
                 ? (float) $cellData['rate_amount']
                 : null;
 
+            // La tarifa base es el original congelado por el ajuste global de
+            // tarifas. Es interna: no la lee ninguna plantilla del PDF.
+            $baseRateAmount = filled($cellData['base_rate_amount'] ?? null)
+                ? (float) $cellData['base_rate_amount']
+                : null;
+
             $rateRow->cells()->create([
                 'plan_generator_column_id' => $columnIdByKey[$columnKey],
                 'rate_amount' => $rateAmount,
+                'base_rate_amount' => $baseRateAmount,
             ]);
         }
     }
