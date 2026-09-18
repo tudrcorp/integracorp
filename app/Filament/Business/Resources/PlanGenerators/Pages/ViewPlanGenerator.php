@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\PlanGenerators\Pages;
 
-use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Business\Resources\Affiliations\AffiliationResource;
 use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
 use App\Filament\Business\Resources\PlanGenerators\PlanGeneratorResource;
 use App\Models\PlanGenerator;
+use App\Support\PlanGenerators\PlanGeneratorPreAffiliationOptions;
 use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\HtmlString;
@@ -115,7 +120,7 @@ class ViewPlanGenerator extends ViewRecord
             'destination' => $destination,
         ]);
 
-        if ($destination === 'new_business') {
+        if ($destination === PlanGeneratorPreAffiliationSession::TYPE_NEW_BUSINESS) {
             PlanGeneratorPreAffiliationSession::store($plan, PlanGeneratorPreAffiliationSession::TYPE_NEW_BUSINESS);
 
             Notification::make()
@@ -129,23 +134,216 @@ class ViewPlanGenerator extends ViewRecord
             return;
         }
 
-        PlanGeneratorPreAffiliationSession::store($plan, $destination);
+        // Individual y corporativo necesitan que el analista elija la cobertura
+        // antes de abrir el formulario: la matriz tiene una tarifa por
+        // (cobertura × rango etario) y el sistema no puede decidir cuál va.
+        // `replaceMountedAction` cambia el contenido de esta misma modal.
+        if ($destination === PlanGeneratorPreAffiliationSession::TYPE_INDIVIDUAL) {
+            if (! $this->assertPreAffiliationOptionsExist(PlanGeneratorPreAffiliationOptions::individualRows($plan))) {
+                return;
+            }
 
-        $redirectUrl = $destination === PlanGeneratorPreAffiliationSession::TYPE_INDIVIDUAL
-            ? AffiliationResource::getUrl('create', panel: 'business')
-            : AffiliationCorporateResource::getUrl('create', panel: 'business');
+            $this->replaceMountedAction('chooseIndividualCoverage');
 
-        $affiliationLabel = $destination === PlanGeneratorPreAffiliationSession::TYPE_INDIVIDUAL
-            ? 'individual'
-            : 'corporativa';
+            return;
+        }
+
+        if ($destination === PlanGeneratorPreAffiliationSession::TYPE_CORPORATE) {
+            if (! $this->assertPreAffiliationOptionsExist(PlanGeneratorPreAffiliationOptions::corporateRows($plan))) {
+                return;
+            }
+
+            $this->replaceMountedAction('chooseCorporateCoverages');
+
+            return;
+        }
+    }
+
+    /**
+     * Una matriz sin tarifas no produce ninguna opción afiliable. Se avisa y se
+     * deja la modal abierta en vez de abrir un selector vacío.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private function assertPreAffiliationOptionsExist(array $rows): bool
+    {
+        if ($rows !== []) {
+            return true;
+        }
 
         Notification::make()
-            ->title('Pre-afiliación iniciada')
-            ->body("El plan permanece en estatus PRE-APROBADO. Complete la pre-afiliación {$affiliationLabel}.")
-            ->success()
+            ->title('La cotización no tiene tarifas')
+            ->body('Cargue al menos una tarifa individual anual en la matriz del plan antes de pre-afiliar.')
+            ->warning()
+            ->persistent()
             ->send();
 
-        $this->redirect($redirectUrl);
+        return false;
+    }
+
+    /**
+     * Paso 2 del flujo individual: elegir la cobertura y el rango etario del
+     * titular. Una sola opción, igual que la tabla «Detalles de la cotización»
+     * de Negocios, que rechaza la selección múltiple.
+     */
+    protected function chooseIndividualCoverageAction(): Action
+    {
+        return Action::make('chooseIndividualCoverage')
+            ->label('Elegir cobertura')
+            ->icon('heroicon-o-user')
+            ->color('success')
+            ->modalWidth(Width::ThreeExtraLarge)
+            ->modalIcon('heroicon-o-user')
+            ->modalHeading('Pre-afiliación individual · elija la cobertura')
+            ->modalDescription(fn (): string => 'Tarifas calculadas en la cotización '.((string) $this->getRecord()->control_number).'. Marque la cobertura y el rango etario del titular.')
+            ->modalSubmitActionLabel('Continuar a la afiliación')
+            ->modalCancelActionLabel('Cancelar')
+            ->closeModalByClickingAway(false)
+            ->schema([
+                Radio::make('option_key')
+                    ->label('Cobertura y rango etario')
+                    ->options(fn (): array => PlanGeneratorPreAffiliationOptions::individualOptions($this->getRecord()))
+                    ->descriptions(fn (): array => PlanGeneratorPreAffiliationOptions::individualDescriptions($this->getRecord()))
+                    ->required()
+                    ->live()
+                    ->columns(1)
+                    ->validationMessages([
+                        'required' => 'Marque la cobertura que desea afiliar.',
+                    ])
+                    ->helperText('Tarifas de la matriz del plan; el ajuste interno de tarifas ya está aplicado.'),
+                TextInput::make('people')
+                    ->label('Personas a afiliar')
+                    ->helperText('Titular más beneficiarios de esta afiliación. No es la población que el rango lleva cotizada.')
+                    ->numeric()
+                    ->required()
+                    ->default(1)
+                    ->minValue(1)
+                    ->maxValue(fn (Get $get): int => max(
+                        1,
+                        (int) (PlanGeneratorPreAffiliationOptions::findIndividualRow(
+                            $this->getRecord(),
+                            $get('option_key'),
+                        )['population'] ?? 1),
+                    ))
+                    ->live(onBlur: true)
+                    ->visible(fn (Get $get): bool => filled($get('option_key')))
+                    ->validationMessages([
+                        'required' => 'Indique cuántas personas entran en esta afiliación.',
+                        'max' => 'No puede afiliar más personas de las que el rango tiene cotizadas.',
+                    ]),
+                Placeholder::make('individual_totals')
+                    ->label('Total a pagar')
+                    ->visible(fn (Get $get): bool => filled($get('option_key')))
+                    ->content(fn (Get $get): string => PlanGeneratorPreAffiliationOptions::individualTotalsLine(
+                        PlanGeneratorPreAffiliationOptions::findIndividualRow($this->getRecord(), $get('option_key')),
+                        (int) ($get('people') ?? 1),
+                    )),
+            ])
+            ->action(function (array $data): void {
+                /** @var PlanGenerator $plan */
+                $plan = $this->getRecord();
+
+                $row = PlanGeneratorPreAffiliationOptions::findIndividualRow($plan, $data['option_key'] ?? null);
+
+                if ($row === null) {
+                    Notification::make()
+                        ->title('La cobertura ya no existe')
+                        ->body('La matriz del plan cambió mientras elegía. Vuelva a abrir «Aprobar cotización».')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                $people = max(1, (int) ($data['people'] ?? 1));
+
+                PlanGeneratorPreAffiliationSession::storeIndividual($plan, $row, $people);
+
+                SecurityAudit::log('AUDIT_BUSINESS_PLAN_GENERATOR_PRE_AFFILIATION_COVERAGE_CHOSEN', 'business.plan-generators.pre-affiliation-coverage', [
+                    'plan_generator_id' => $plan->getKey(),
+                    'destination' => PlanGeneratorPreAffiliationSession::TYPE_INDIVIDUAL,
+                    'column_label' => $row['column_label'],
+                    'age_range_label' => $row['age_range_label'],
+                    'fee' => $row['fee'],
+                    'people' => $people,
+                    'subtotal_anual' => PlanGeneratorPreAffiliationOptions::amountsForPeople($row, $people)['subtotal_anual'],
+                ]);
+
+                $amounts = PlanGeneratorPreAffiliationOptions::amountsForPeople($row, $people);
+
+                Notification::make()
+                    ->title('Cobertura seleccionada')
+                    ->body($row['column_label'].' · rango '.$row['age_range_label'].' · '
+                        .$amounts['people'].' '.($amounts['people'] === 1 ? 'persona' : 'personas').' · '
+                        .PlanGeneratorPreAffiliationOptions::money($amounts['subtotal_anual']).' anual. Complete la pre-afiliación individual.')
+                    ->success()
+                    ->send();
+
+                $this->redirect(AffiliationResource::getUrl('create', panel: 'business'));
+            });
+    }
+
+    /**
+     * Paso 2 del flujo corporativo: elegir las coberturas. Una cobertura cubre
+     * todos sus rangos etarios, así que acá se marca la columna completa y se
+     * admite más de una (preafiliación múltiple).
+     */
+    protected function chooseCorporateCoveragesAction(): Action
+    {
+        return Action::make('chooseCorporateCoverages')
+            ->label('Elegir coberturas')
+            ->icon('heroicon-o-building-office-2')
+            ->color('info')
+            ->modalWidth(Width::ThreeExtraLarge)
+            ->modalIcon('heroicon-o-building-office-2')
+            ->modalHeading('Pre-afiliación corporativa · elija las coberturas')
+            ->modalDescription(fn (): string => 'Paso 1 de 2. Totales grupales de la cotización '.((string) $this->getRecord()->control_number).'. Después se carga la población por importación.')
+            ->modalSubmitActionLabel('Continuar a la población')
+            ->modalCancelActionLabel('Cancelar')
+            ->closeModalByClickingAway(false)
+            ->schema([
+                CheckboxList::make('column_keys')
+                    ->label('Coberturas a pre-afiliar')
+                    ->options(fn (): array => PlanGeneratorPreAffiliationOptions::corporateOptions($this->getRecord()))
+                    ->descriptions(fn (): array => PlanGeneratorPreAffiliationOptions::corporateDescriptions($this->getRecord()))
+                    ->required()
+                    ->bulkToggleable()
+                    ->columns(1)
+                    ->validationMessages([
+                        'required' => 'Marque al menos una cobertura.',
+                    ])
+                    ->helperText('Con una cobertura la pre-afiliación es simple; con dos o más, múltiple. Los totales ya incluyen el ajuste interno de tarifas.'),
+            ])
+            ->action(function (array $data): void {
+                /** @var PlanGenerator $plan */
+                $plan = $this->getRecord();
+
+                $rows = PlanGeneratorPreAffiliationOptions::findCorporateRows(
+                    $plan,
+                    (array) ($data['column_keys'] ?? []),
+                );
+
+                if ($rows === []) {
+                    Notification::make()
+                        ->title('Las coberturas ya no existen')
+                        ->body('La matriz del plan cambió mientras elegía. Vuelva a abrir «Aprobar cotización».')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                PlanGeneratorPreAffiliationSession::storeCorporate($plan, $rows);
+
+                SecurityAudit::log('AUDIT_BUSINESS_PLAN_GENERATOR_PRE_AFFILIATION_COVERAGE_CHOSEN', 'business.plan-generators.pre-affiliation-coverage', [
+                    'plan_generator_id' => $plan->getKey(),
+                    'destination' => PlanGeneratorPreAffiliationSession::TYPE_CORPORATE,
+                    'columns' => array_column($rows, 'column_label'),
+                    'subtotal_anual' => array_sum(array_column($rows, 'subtotal_anual')),
+                ]);
+
+                $this->redirect(PlanGeneratorResource::getUrl('pre-affiliation-population', ['record' => $plan->getKey()]));
+            });
     }
 
     public function getTitle(): string|Htmlable

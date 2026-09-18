@@ -12,8 +12,8 @@
         selected: null,
         messageFor(option) {
             return {
-                individual: 'Cargando afiliación individual y tarifas del plan…',
-                corporate: 'Cargando afiliación corporativa y columnas del plan…',
+                individual: 'Cargando las coberturas y tarifas de la cotización…',
+                corporate: 'Cargando las coberturas y totales grupales de la cotización…',
                 new_business: 'Abriendo registro de empresa en Nuevos Negocios…',
             }[option] ?? 'Preparando pre-afiliación…';
         },
@@ -145,10 +145,10 @@
             <span class="min-w-0 flex-1">
                 <span class="block text-sm font-bold text-slate-900 dark:text-white">
                     <span x-show="selected !== 'individual'">Pre-afiliar Individual</span>
-                    <span x-show="selected === 'individual'" x-cloak>Redirigiendo…</span>
+                    <span x-show="selected === 'individual'" x-cloak>Abriendo coberturas…</span>
                 </span>
                 <span class="mt-0.5 block text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                    Abre el formulario de afiliación individual con las tarifas del plan en sesión.
+                    Elija la cobertura y el rango etario del titular con las tarifas ya calculadas.
                 </span>
             </span>
             <svg
@@ -202,10 +202,10 @@
             <span class="min-w-0 flex-1">
                 <span class="block text-sm font-bold text-slate-900 dark:text-white">
                     <span x-show="selected !== 'corporate'">Pre-afiliar Grupo Corporativo</span>
-                    <span x-show="selected === 'corporate'" x-cloak>Redirigiendo…</span>
+                    <span x-show="selected === 'corporate'" x-cloak>Abriendo coberturas…</span>
                 </span>
                 <span class="mt-0.5 block text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                    Redirige a afiliación corporativa con columnas y tarifas del plan cargadas.
+                    Dos pasos: elija las coberturas del grupo y cargue la población por importación.
                 </span>
             </span>
             <svg

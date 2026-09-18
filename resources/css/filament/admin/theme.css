@@ -10420,3 +10420,44 @@
     border-radius: 9999px !important;
   }
 }
+
+
+/*
+ * Generador de Planes — familias de cotizaciones.
+ *
+ * La tabla agrupa cada registro base con sus cotizaciones derivadas. Dos ajustes
+ * para que el analista no se equivoque al tildar:
+ *
+ *   1. La cabecera del grupo no lleva check. Su casilla seleccionaba la familia
+ *      completa, lo que choca con la acción «Generar cotización desde plantilla»,
+ *      que trabaja sobre un solo registro. La celda se conserva para no
+ *      desalinear las columnas.
+ *   2. El registro base se resalta con una barra y un fondo violeta —color libre
+ *      en esta tabla, donde gris es «Base», azul «Derivada», ámbar
+ *      «PRE-APROBADO» y verde «ACTIVO»—, y las derivadas quedan indentadas.
+ */
+@layer components {
+  .fi-resource-plan-generators .fi-ta-group-checkbox {
+    @apply hidden;
+  }
+
+  .fi-resource-plan-generators .fi-ta-row.pg-family-base-row > .fi-ta-cell:first-child {
+    box-shadow: inset 3px 0 0 0 theme(colors.violet.500);
+  }
+
+  .fi-resource-plan-generators .fi-ta-row.pg-family-base-row {
+    @apply bg-violet-50/70 dark:bg-violet-500/10;
+  }
+
+  .fi-resource-plan-generators .fi-ta-row.pg-family-base-row:hover {
+    @apply bg-violet-100/70 dark:bg-violet-500/15;
+  }
+
+  .fi-resource-plan-generators .fi-ta-row.pg-family-derived-row > .fi-ta-cell:first-child {
+    box-shadow: inset 3px 0 0 0 theme(colors.slate.300);
+  }
+
+  .dark .fi-resource-plan-generators .fi-ta-row.pg-family-derived-row > .fi-ta-cell:first-child {
+    box-shadow: inset 3px 0 0 0 theme(colors.white / 15%);
+  }
+}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Filament\Actions\Imports\Models\Import;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +15,7 @@ class PlanGenerator extends Model
         'name',
         'parent_id',
         'plan_id',
+        'catalog_plan_id',
         'control_number',
         'client_data',
         'issued_at',
@@ -24,6 +26,7 @@ class PlanGenerator extends Model
         'brand_color',
         'quotation_page_count',
         'plan_page_number',
+        'population_import_id',
         'status',
         'created_by',
     ];
@@ -36,9 +39,11 @@ class PlanGenerator extends Model
         return [
             'parent_id' => 'integer',
             'plan_id' => 'integer',
+            'catalog_plan_id' => 'integer',
             'issued_at' => 'date',
             'quotation_page_count' => 'integer',
             'plan_page_number' => 'integer',
+            'population_import_id' => 'integer',
             'include_monthly_total' => 'boolean',
         ];
     }
@@ -90,6 +95,19 @@ class PlanGenerator extends Model
         return $this->belongsTo(Plan::class, 'plan_id', 'id');
     }
 
+    /**
+     * Plan del catálogo que materializa esta matriz.
+     *
+     * Se crea al cerrar la pre-afiliación (ver PlanGeneratorCatalogPublisher) y
+     * es lo que da a la afiliación un `plan_id`, `coverage_id` y `age_range_id`
+     * reales. A diferencia de `plan()` —el plan del que se importó la
+     * estructura— este es el plan que el generador produjo.
+     */
+    public function catalogPlan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class, 'catalog_plan_id', 'id');
+    }
+
     public function columns(): HasMany
     {
         return $this->hasMany(PlanGeneratorColumn::class)
@@ -116,5 +134,24 @@ class PlanGenerator extends Model
         return $this->hasMany(PlanGeneratorQuotationPage::class)
             ->orderBy('sort_order')
             ->orderBy('page_number');
+    }
+
+    /**
+     * Padrón importado para la pre-afiliación corporativa.
+     */
+    public function populations(): HasMany
+    {
+        return $this->hasMany(PlanGeneratorPopulation::class)
+            ->orderBy('last_name')
+            ->orderBy('first_name');
+    }
+
+    /**
+     * Último import de población encolado, para mostrar su progreso y no dejar
+     * crear la afiliación mientras siga corriendo.
+     */
+    public function populationImport(): BelongsTo
+    {
+        return $this->belongsTo(Import::class, 'population_import_id');
     }
 }

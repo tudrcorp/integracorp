@@ -32,6 +32,7 @@ use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierPro
 use App\Filament\Shared\Renovations\Widgets\CorporateRenovationKpisWidget;
 use App\Filament\Shared\Renovations\Widgets\IndividualRenovationKpisWidget;
 use App\Listeners\LogFilamentImportActivity;
+use App\Listeners\StampPlanGeneratorPopulationImport;
 use App\Models\ObservationCommercialStructure;
 use App\Models\PlanGenerator;
 use App\Observers\ObservationCommercialStructureObserver;
@@ -80,6 +81,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(Logout::class, [UserSessionAuditTracker::class, 'onLogout']);
 
         Event::listen(ImportStarted::class, [LogFilamentImportActivity::class, 'handleStarted']);
+        Event::listen(ImportStarted::class, [StampPlanGeneratorPopulationImport::class, 'handle']);
         Event::listen(ImportChunkProcessed::class, [LogFilamentImportActivity::class, 'handleChunkProcessed']);
         Event::listen(ImportCompleted::class, [LogFilamentImportActivity::class, 'handleCompleted']);
         Event::listen(JobFailed::class, [LogFilamentImportActivity::class, 'handleJobFailed']);
