@@ -19,6 +19,8 @@ final class PlanGeneratorPersistence
     public static function syncFromFormState(PlanGenerator $planGenerator, array $formState): void
     {
         DB::transaction(function () use ($planGenerator, $formState): void {
+            $planGenerator->load(['columns', 'rateRows']);
+
             $planGenerator->rows()->each(function (PlanGeneratorRow $row): void {
                 $row->cells()->delete();
             });
@@ -28,6 +30,20 @@ final class PlanGeneratorPersistence
                 $rateRow->cells()->delete();
             });
             $planGenerator->rateRows()->delete();
+
+            // Los enlaces al catálogo se guardan antes de borrar: esta función
+            // recrea columnas y rangos en cada guardado, y perderlos haría que
+            // la próxima publicación duplique coberturas y rangos de edad en
+            // vez de actualizar los que ya existen.
+            $coverageIdByColumnKey = $planGenerator->columns
+                ->pluck('coverage_id', 'column_key')
+                ->filter()
+                ->all();
+
+            $ageRangeIdByLabel = $planGenerator->rateRows
+                ->pluck('age_range_id', 'age_range_label')
+                ->filter()
+                ->all();
 
             $planGenerator->columns()->delete();
 
@@ -49,6 +65,7 @@ final class PlanGeneratorPersistence
                     'rate_adjustment_percent' => PlanGeneratorMatrixState::parseAdjustmentPercent(
                         $columnRow['rate_adjustment_percent'] ?? null,
                     ),
+                    'coverage_id' => $coverageIdByColumnKey[$columnKey] ?? null,
                     'sort_order' => $columnSortOrder++,
                 ]);
 
@@ -77,8 +94,11 @@ final class PlanGeneratorPersistence
                     continue;
                 }
 
+                $ageRangeLabel = (string) $rateRow['age_range_label'];
+
                 $rateRowModel = $planGenerator->rateRows()->create([
-                    'age_range_label' => (string) $rateRow['age_range_label'],
+                    'age_range_label' => $ageRangeLabel,
+                    'age_range_id' => $ageRangeIdByLabel[$ageRangeLabel] ?? null,
                     'population' => filled($rateRow['population'] ?? null)
                         ? (int) $rateRow['population']
                         : null,

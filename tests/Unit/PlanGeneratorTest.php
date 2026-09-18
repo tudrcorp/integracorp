@@ -63,16 +63,22 @@ it('aprobar cotizacion mantiene PRE-APROBADO y ofrece destinos de preafiliacion'
         ->toContain('public function approveQuote(string $destination): void')
         ->not->toContain('\'status\' => \'APROBADA\'')
         ->toContain('AUDIT_BUSINESS_PLAN_GENERATOR_PRE_AFFILIATION_STARTED')
-        ->toContain('PlanGeneratorPreAffiliationSession::store($plan, $destination)')
+        // Individual y corporativo abren primero el selector de cobertura en la
+        // misma modal (ver PlanGeneratorPreAffiliationFlowTest); solo Nuevos
+        // Negocios guarda la sesión y redirige de una.
+        ->toContain('PlanGeneratorPreAffiliationSession::store($plan, PlanGeneratorPreAffiliationSession::TYPE_NEW_BUSINESS)')
+        ->toContain("\$this->replaceMountedAction('chooseIndividualCoverage')")
+        ->toContain("\$this->replaceMountedAction('chooseCorporateCoverages')")
         ->toContain('AffiliationResource::getUrl(\'create\'')
-        ->toContain('AffiliationCorporateResource::getUrl(\'create\'')
         ->toContain('PlanGeneratorResource::getUrl(\'register-company\'')
+        ->toContain("PlanGeneratorResource::getUrl('pre-affiliation-population'")
         ->toContain('permanece en estatus PRE-APROBADO')
         ->toContain('=== \'PRE-APROBADO\'');
 
     expect($resource)
         ->toContain('RegisterCompany')
-        ->toContain('\'register-company\' => RegisterCompany::route(\'/{record}/register-company\')');
+        ->toContain('\'register-company\' => RegisterCompany::route(\'/{record}/register-company\')')
+        ->toContain("'pre-affiliation-population' => PreAffiliationPopulation::route('/{record}/pre-affiliation-population')");
 
     expect($session)
         ->toContain('SESSION_KEY = \'plan_generator_pre_affiliation\'')

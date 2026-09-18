@@ -13,6 +13,7 @@ class PlanGeneratorRateRow extends Model
     protected $fillable = [
         'plan_generator_id',
         'age_range_label',
+        'age_range_id',
         'population',
         'sort_order',
     ];
@@ -23,6 +24,7 @@ class PlanGeneratorRateRow extends Model
     protected function casts(): array
     {
         return [
+            'age_range_id' => 'integer',
             'population' => 'integer',
         ];
     }

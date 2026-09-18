@@ -213,6 +213,17 @@ class PlanGeneratorsTable
                 ]),
             ])
             ->defaultGroup(self::familyGroup())
+            // Resalta el registro base frente a sus derivadas. El check de la
+            // cabecera del grupo se oculta por CSS (theme.css del panel): su
+            // casilla seleccionaba la familia completa y la acción de derivar
+            // trabaja sobre un solo registro.
+            ->recordClasses(fn (PlanGenerator $record): string => $record->isDerivedQuotation()
+                ? 'pg-family-derived-row'
+                : 'pg-family-base-row')
+            // Las familias arrancan cerradas: la tabla se lee de un golpe como
+            // una lista de cotizaciones base y el analista abre solo la que le
+            // interesa.
+            ->collapsedGroupsByDefault()
             ->filters([
                 TernaryFilter::make('derived')
                     ->label('Tipo de registro')

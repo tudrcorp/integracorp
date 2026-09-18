@@ -353,6 +353,9 @@ it('la tabla muestra el registro base con sus derivadas debajo, agrupadas y en o
         ->assertSee('CLIENTE BASE AGRUPADO PEST')
         // La columna «Origen» distingue el base de sus derivadas.
         ->assertSee('↳ Derivada')
+        // Y el registro base va resaltado para no confundirse al tildar.
+        ->assertSeeHtml('pg-family-base-row')
+        ->assertSeeHtml('pg-family-derived-row')
         ->html();
 
     // El registro base va primero dentro de su familia; las derivadas debajo.
@@ -362,6 +365,18 @@ it('la tabla muestra el registro base con sus derivadas debajo, agrupadas y en o
     // El eager load de `parent` evita que cada derivada consulte a su base para
     // armar el título y el conteo de la cabecera.
     expect($consultas)->toBeLessThan(40);
+});
+
+it('la cabecera de familia no ofrece check de selección', function (): void {
+    $theme = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
+
+    // Filament pinta la casilla de la cabecera de grupo siempre que la tabla
+    // tenga selección, y la única palanca nativa es `maxSelectableRecords(1)`,
+    // que rompería el borrado masivo. Se oculta por CSS y se conserva la celda
+    // para no desalinear las columnas.
+    expect($theme)
+        ->toContain('.fi-resource-plan-generators .fi-ta-group-checkbox')
+        ->toContain('.fi-resource-plan-generators .fi-ta-row.pg-family-base-row');
 });
 
 it('la tabla agrupa por familia y ofrece la acción de derivar', function (): void {
@@ -376,6 +391,13 @@ it('la tabla agrupa por familia y ofrece la acción de derivar', function (): vo
         ->toContain('COALESCE(plan_generators.parent_id, plan_generators.id)')
         ->toContain('->collapsible()')
         ->toContain('->defaultGroup(self::familyGroup())')
+        // Las familias arrancan cerradas.
+        ->toContain('->collapsedGroupsByDefault()')
+        // El base se resalta y las derivadas se indentan; el estilo y el
+        // ocultado del check de la cabecera del grupo viven en el theme.css
+        // del panel, porque Filament no expone esa casilla como opción.
+        ->toContain("'pg-family-derived-row'")
+        ->toContain("'pg-family-base-row'")
         ->toContain("TextColumn::make('origin')")
         ->toContain("TernaryFilter::make('derived')");
 

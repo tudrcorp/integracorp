@@ -14,6 +14,7 @@ class PlanGeneratorColumn extends Model
         'column_key',
         'header_label',
         'rate_adjustment_percent',
+        'coverage_id',
         'sort_order',
     ];
 
@@ -24,6 +25,7 @@ class PlanGeneratorColumn extends Model
     {
         return [
             'rate_adjustment_percent' => 'decimal:2',
+            'coverage_id' => 'integer',
         ];
     }
 
