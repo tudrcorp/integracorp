@@ -33,7 +33,9 @@ use App\Filament\Shared\Renovations\Widgets\CorporateRenovationKpisWidget;
 use App\Filament\Shared\Renovations\Widgets\IndividualRenovationKpisWidget;
 use App\Listeners\LogFilamentImportActivity;
 use App\Models\ObservationCommercialStructure;
+use App\Models\PlanGenerator;
 use App\Observers\ObservationCommercialStructureObserver;
+use App\Observers\PlanGeneratorObserver;
 use App\Support\UserSessionAuditTracker;
 use Filament\Actions\Imports\Events\ImportChunkProcessed;
 use Filament\Actions\Imports\Events\ImportCompleted;
@@ -122,6 +124,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         ObservationCommercialStructure::observe(ObservationCommercialStructureObserver::class);
+        PlanGenerator::observe(PlanGeneratorObserver::class);
 
         FilamentColor::register([
             'azulOscuro' => Color::hex('#052F60'),

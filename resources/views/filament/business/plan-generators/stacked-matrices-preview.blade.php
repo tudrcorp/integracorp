@@ -9,10 +9,24 @@
     $populationUnitLabel = (string) ($populationUnitLabel ?? 'Población');
     $includeMonthlyTotal = (bool) ($includeMonthlyTotal ?? false);
     $columnCount = count($columns);
+
+    // Ajuste global de tarifas vigente. Esta vista previa solo se usa en la
+    // ficha del panel (PlanGeneratorInfolist); el PDF se arma con
+    // `documents/plan-generator-plan-body`, donde el porcentaje no aparece.
+    $rateAdjustmentSummary = \App\Support\PlanGenerators\PlanGeneratorRateAdjustment::summary($columns);
 @endphp
 
 <div class="pg-stacked-matrices space-y-4">
     @include('filament.business.plan-generators.partials.matrix-alignment-styles', ['columns' => $columns])
+
+    @if ($rateAdjustmentSummary !== null)
+        <div class="flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/70 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+            <x-filament::icon icon="heroicon-m-eye-slash" class="size-4 shrink-0" />
+            <span class="font-semibold">Ajuste interno vigente:</span>
+            <span>{{ $rateAdjustmentSummary }}</span>
+            <span class="text-amber-700/80 dark:text-amber-200/70">— las tarifas ya lo incluyen; el porcentaje no sale en la cotización.</span>
+        </div>
+    @endif
 
     <div>
         <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">

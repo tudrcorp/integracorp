@@ -4,115 +4,27 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\PlanGenerators\Pages\Concerns;
 
-use App\Models\Benefit;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorQuotationState;
-use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
+/**
+ * Puente entre el editor de matrices y el guardado de una página del recurso.
+ *
+ * Las acciones del editor (agregar/quitar beneficios, rangos y columnas) viven
+ * en `InteractsWithPlanGeneratorMatrixRows`, porque también las necesita la
+ * tabla para derivar una cotización en una modal. Acá queda solo lo que es
+ * propio de un formulario de página: normalizar el estado y prepararlo para
+ * `PlanGeneratorPersistence`.
+ */
 trait InteractsWithPlanGeneratorMatrix
 {
-    public function addMatrixRow(): void
-    {
-        $rowKey = PlanGeneratorMatrixState::newRowKey();
-        $columns = (array) ($this->data['columns'] ?? []);
+    use InteractsWithPlanGeneratorMatrixRows;
 
-        $this->data['rows'][$rowKey] = [
-            'benefit_label' => '',
-            'cells' => PlanGeneratorMatrixState::emptyCellsForColumns($columns),
-        ];
-    }
-
-    public function createPlanGeneratorBenefit(string $rowKey, ?string $description): void
-    {
-        $description = strtoupper(trim((string) $description));
-
-        if ($description === '') {
-            return;
-        }
-
-        if (! array_key_exists($rowKey, (array) ($this->data['rows'] ?? []))) {
-            return;
-        }
-
-        $alreadyUsed = collect($this->data['rows'] ?? [])
-            ->reject(fn (mixed $row, string $key): bool => $key === $rowKey)
-            ->contains(fn (mixed $row): bool => strtoupper(trim((string) ($row['benefit_label'] ?? ''))) === $description);
-
-        if ($alreadyUsed) {
-            Notification::make()
-                ->title('Beneficio duplicado')
-                ->body('Ese beneficio ya está asignado a otra fila del plan.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
-        $benefit = Benefit::query()->firstOrCreate(
-            ['description' => $description],
-            [
-                'code' => 'TDEC-BN-'.str_pad((string) ((Benefit::max('id') ?? 0) + 1), 4, '0', STR_PAD_LEFT),
-                'status' => 'ACTIVO',
-                'created_by' => Auth::user()?->name,
-            ],
-        );
-
-        $this->data['rows'][$rowKey]['benefit_label'] = (string) $benefit->description;
-    }
-
-    public function removeMatrixRow(string $rowKey): void
-    {
-        $rows = (array) ($this->data['rows'] ?? []);
-
-        if (! array_key_exists($rowKey, $rows)) {
-            return;
-        }
-
-        unset($rows[$rowKey]);
-        $this->data['rows'] = $rows;
-    }
-
-    public function addRateRow(): void
-    {
-        $rowKey = PlanGeneratorMatrixState::newRowKey();
-        $columns = (array) ($this->data['columns'] ?? []);
-
-        $this->data['rate_rows'][$rowKey] = [
-            'age_range_label' => '',
-            'population' => null,
-            'cells' => PlanGeneratorMatrixState::emptyRateCellsForColumns($columns),
-        ];
-    }
-
-    public function removeRateRow(string $rowKey): void
-    {
-        $rateRows = (array) ($this->data['rate_rows'] ?? []);
-
-        if (! array_key_exists($rowKey, $rateRows)) {
-            return;
-        }
-
-        unset($rateRows[$rowKey]);
-        $this->data['rate_rows'] = $rateRows;
-    }
-
-    public function syncMatrixCellsFromColumns(): void
-    {
-        $columns = (array) ($this->data['columns'] ?? []);
-
-        $this->data['rows'] = PlanGeneratorMatrixState::ensureRowsHaveCells(
-            (array) ($this->data['rows'] ?? []),
-            $columns,
-        );
-
-        $this->data['rate_rows'] = PlanGeneratorMatrixState::ensureRateRowsHaveCells(
-            (array) ($this->data['rate_rows'] ?? []),
-            $columns,
-        );
-    }
-
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
     protected function normalizeMatrixFormState(array $data): array
     {
         $columns = (array) ($data['columns'] ?? []);

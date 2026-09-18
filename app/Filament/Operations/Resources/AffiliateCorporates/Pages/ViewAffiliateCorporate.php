@@ -7,6 +7,7 @@ use App\Filament\Operations\Resources\AffiliateCorporates\AffiliateCorporateReso
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Models\AffiliateCorporate;
 use App\Services\AssociateAffiliateCorporateWithTelemedicinePatientService;
+use App\Support\Operations\AffiliateStatusPresentation;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -155,10 +156,14 @@ class ViewAffiliateCorporate extends ViewRecord
 
     public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
     {
+        /** @var AffiliateCorporate $affiliate */
         $affiliate = $this->getRecord();
 
         // Definimos el nombre del afiliado de forma segura
         $fullName = $affiliate->first_name ?? 'Sin Nombre';
+
+        $statusLabel = AffiliateStatusPresentation::label($affiliate->status);
+        $badgeStyle = AffiliateStatusPresentation::headerBadgeStyle($affiliate->status);
 
         return new \Illuminate\Support\HtmlString(
             '<div style="display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; gap: 2px; padding: 12px 0;">'.
@@ -169,13 +174,13 @@ class ViewAffiliateCorporate extends ViewRecord
 
                 // Subtítulo (Nombre del Paciente)
                 '<span class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">'.
-                $fullName.
+                e($fullName).
                 '</span>'.
 
-                // Estatus Estilo Badge iOS Resaltado
+                // Estatus Estilo Badge iOS Resaltado: mismo origen que el infolist
                 '<div style="display: flex; align-items: center; margin-top: 8px;">'.
                 '<span style="'.
-                'background-color: #28cd41; '. // Verde iOS vibrante
+                'background-color: '.$badgeStyle['bg'].'; '.
                 'color: #ffffff; '.
                 'padding: 6px 16px; '.
                 'border-radius: 50px; '.
@@ -184,10 +189,10 @@ class ViewAffiliateCorporate extends ViewRecord
                 'display: inline-flex; '.
                 'align-items: center; '.
                 'gap: 6px; '.
-                'box-shadow: 0 4px 12px rgba(40, 205, 65, 0.35); '.
+                'box-shadow: '.$badgeStyle['shadow'].'; '.
                 'border: 1px solid rgba(255, 255, 255, 0.2);'.
                 '">'.
-                '<span style="font-size: 10px;">●</span> ACTIVO'.
+                '<span style="font-size: 10px;">●</span> '.e($statusLabel).
                 '</span>'.
                 '</div>'.
                 '</div>'
