@@ -66,7 +66,7 @@ class SupplierIntegracorpPortalUsersPanel extends Component implements HasSchema
 
         SecurityAudit::log('AUDIT_OPERATIONS_SUPPLIER_PORTAL_USERS_SAVED', 'operations.suppliers.portal-users.save', [
             'supplier_id' => $this->supplier->id,
-            'users_count' => $this->supplier->integracorpUsers()->count(),
+            'users_count' => $this->supplier->integracorpAnalysts()->count(),
         ]);
 
         Notification::make()

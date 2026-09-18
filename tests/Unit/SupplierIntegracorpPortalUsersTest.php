@@ -10,8 +10,8 @@ it('define el repeater de usuarios en la tabla users', function (): void {
     $path = dirname(__DIR__, 2).'/app/Support/Filament/Operations/SupplierIntegracorpManagement.php';
 
     expect(file_get_contents($path))
-        ->toContain("Repeater::make('integracorpUsers')")
-        ->toContain("->relationship('integracorpUsers')")
+        ->toContain("Repeater::make('integracorpAnalysts')")
+        ->toContain("->relationship('integracorpAnalysts')")
         ->toContain("table: 'users'")
         ->toContain("TextInput::make('name')")
         ->toContain("TextInput::make('email')")
@@ -56,7 +56,17 @@ it('normaliza datos de usuario al crear y al editar', function (): void {
         ->toMatchArray([
             'departament' => ['OPERACIONES'],
             'is_proveedor_amd' => true,
+            'doctor_id' => null,
         ]);
+});
+
+it('limita la relación de analistas a los usuarios de portal del proveedor', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Models/Supplier.php';
+
+    expect(file_get_contents($path))
+        ->toContain('public function integracorpAnalysts()')
+        ->toContain("->where('is_proveedor_amd', true)")
+        ->toContain("->whereNull('doctor_id')");
 });
 
 it('elimina la tabla intermedia de usuarios portal', function (): void {
