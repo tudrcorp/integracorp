@@ -287,6 +287,19 @@ class Supplier extends Model
     }
 
     /**
+     * Analistas del proveedor con acceso al panel de Operaciones.
+     * Excluye a los medicos del proveedor, que conservan su panel de telemedicina.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<User, $this>
+     */
+    public function integracorpAnalysts(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(User::class, 'supplier_id')
+            ->where('is_proveedor_amd', true)
+            ->whereNull('doctor_id');
+    }
+
+    /**
      * @return \Illuminate\Database\Eloquent\Relations\HasMany<TelemedicineDoctor, $this>
      */
     public function telemedicineDoctors(): \Illuminate\Database\Eloquent\Relations\HasMany

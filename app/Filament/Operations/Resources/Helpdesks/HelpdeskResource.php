@@ -30,7 +30,7 @@ class HelpdeskResource extends Resource
 
     protected static ?string $model = HelpDesk::class;
 
-    protected static ?string $navigationLabel = 'Helpdesk';
+    protected static ?string $navigationLabel = 'HELPDESK';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-ticket';
 

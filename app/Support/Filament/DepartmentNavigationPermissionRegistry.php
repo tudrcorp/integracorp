@@ -115,7 +115,9 @@ use App\Filament\Metrics\Pages\Proyectos as MetricsProyectos;
 use App\Filament\Operations\Pages\AgendaCorporativa as OperationsAgendaCorporativa;
 use App\Filament\Operations\Pages\BitacoraDeCaso;
 use App\Filament\Operations\Pages\CalendariosTdg as OperationsCalendariosTdg;
+use App\Filament\Operations\Pages\Dashboard as OperationsEscritorio;
 use App\Filament\Operations\Pages\DashboardOperaciones;
+use App\Filament\Operations\Pages\DashboardProveedor;
 use App\Filament\Operations\Pages\ManageOperationInventoryParameters;
 use App\Filament\Operations\Resources\AccountsPayables\AccountsPayableResource;
 use App\Filament\Operations\Resources\AccountsReceivables\AccountsReceivableResource;
@@ -319,7 +321,9 @@ final class DepartmentNavigationPermissionRegistry
         OperationsHelpdeskResource::class => ['helpdesks'],
         IndicadoresDeDesempenoResource::class => ['indicadores-desempeno'],
         CorporateAllyResource::class => ['aliados-corporativos'],
+        OperationsEscritorio::class => ['escritorio'],
         DashboardOperaciones::class => ['dashboard-operaciones'],
+        DashboardProveedor::class => ['dashboard-proveedor'],
 
         // PROYECTOS
         ProjectResource::class => ['proyectos'],

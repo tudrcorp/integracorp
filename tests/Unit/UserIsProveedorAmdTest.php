@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Supplier;
 use App\Models\User;
 use Filament\Panel;
 
@@ -29,6 +30,8 @@ it('permite acceso al panel operations a usuarios proveedor con el flag', functi
         'is_proveedor_amd' => true,
         'email' => 'proveedor@externo.com',
     ]);
+
+    $user->setRelation('supplier', new Supplier(['gestion_integracorp' => true]));
 
     expect($user->canAccessPanel($panel))->toBeTrue();
 });

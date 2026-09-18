@@ -76,6 +76,11 @@ class User extends Authenticatable implements FilamentUser
     ];
 
     /**
+     * Cache por instancia del interruptor de gestion Integracorp del proveedor.
+     */
+    protected ?bool $supplierIntegracorpManagementEnabled = null;
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -93,6 +98,35 @@ class User extends Authenticatable implements FilamentUser
     public function isProveedorAmd(): bool
     {
         return (bool) $this->is_proveedor_amd;
+    }
+
+    /**
+     * Analista registrado en la ficha de un proveedor juridico (pestana
+     * "Gestion de Procesos en Integracorp"). No es medico del proveedor.
+     */
+    public function isSupplierOperationsAnalyst(): bool
+    {
+        return $this->supplier_id !== null
+            && $this->doctor_id === null
+            && $this->isProveedorAmd();
+    }
+
+    /**
+     * El proveedor del usuario mantiene habilitada la gestion en Integracorp.
+     */
+    public function supplierHasIntegracorpManagementEnabled(): bool
+    {
+        if ($this->supplier_id === null) {
+            return false;
+        }
+
+        if ($this->relationLoaded('supplier')) {
+            return (bool) $this->supplier?->gestion_integracorp;
+        }
+
+        return $this->supplierIntegracorpManagementEnabled ??= (bool) Supplier::query()
+            ->whereKey($this->supplier_id)
+            ->value('gestion_integracorp');
     }
 
     public function getFilamentAvatarUrl(): ?string
@@ -132,6 +166,11 @@ class User extends Authenticatable implements FilamentUser
      */
     public function canAccessPanel(Panel $panel): bool
     {
+        if ($this->isSupplierOperationsAnalyst()) {
+            return $panel->getId() === 'operations'
+                && $this->status === 'ACTIVO'
+                && $this->supplierHasIntegracorpManagementEnabled();
+        }
 
         if ($panel->getId() === 'admin') {
             return str_ends_with($this->email, '@tudrencasa.com') && $this->is_admin;

@@ -59,7 +59,7 @@ final class SupplierIntegracorpManagementForm
     public static function stripUnauthorizedFormData(array $data): array
     {
         if (! OperationsSuperAdmin::check()) {
-            unset($data['gestion_integracorp'], $data['integracorpUsers']);
+            unset($data['gestion_integracorp'], $data['integracorpUsers'], $data['integracorpAnalysts']);
         }
 
         return $data;

@@ -34,9 +34,9 @@ final class SupplierIntegracorpManagement
 
     public static function portalUsersRepeater(string $repeaterCardClass = self::REPEATER_CARD): Repeater
     {
-        return Repeater::make('integracorpUsers')
+        return Repeater::make('integracorpAnalysts')
             ->label('Usuarios de acceso a módulos')
-            ->relationship('integracorpUsers')
+            ->relationship('integracorpAnalysts')
             ->visible(fn (Get $get): bool => (bool) $get('gestion_integracorp'))
             ->disabled(fn (): bool => ! OperationsSuperAdmin::check())
             ->dehydrated(fn (): bool => OperationsSuperAdmin::check())
@@ -117,6 +117,7 @@ final class SupplierIntegracorpManagement
     {
         $data['departament'] = self::portalUserDepartaments();
         $data['is_proveedor_amd'] = true;
+        $data['doctor_id'] = null;
         $data['status'] = 'ACTIVO';
         $data['updated_by'] = Auth::user()?->name;
 

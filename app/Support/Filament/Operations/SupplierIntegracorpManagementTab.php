@@ -42,7 +42,7 @@ final class SupplierIntegracorpManagementTab
                                 ])->render()
                             ))
                             ->columnSpanFull(),
-                        RepeatableEntry::make('integracorpUsers')
+                        RepeatableEntry::make('integracorpAnalysts')
                             ->label('Usuarios de acceso')
                             ->visible(fn (Supplier $record): bool => (bool) $record->gestion_integracorp)
                             ->placeholder('No hay usuarios de acceso registrados.')
