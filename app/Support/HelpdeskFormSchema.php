@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Models\RrhhColaborador;
+use App\Models\User;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
@@ -17,6 +18,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 
@@ -26,7 +28,44 @@ final class HelpdeskFormSchema
 
     private const IOS_INNER_CLASS = 'fi-helpdesk-ios-inset';
 
+    /**
+     * Departamentos de RRHH que atienden los tickets del panel de Operaciones.
+     *
+     * @var list<string>
+     */
+    public const OPERATIONS_SUPPORT_DEPARTMENTS = ['OPERACIONES', 'SISTEMAS'];
+
     private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
+
+    /**
+     * El analista de un proveedor solo puede involucrar al personal que atiende
+     * sus tickets: Operaciones y Sistemas.
+     */
+    public static function restrictsColaboradoresToOperationsSupport(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && $user->isSupplierOperationsAnalyst();
+    }
+
+    /**
+     * @param  Builder<RrhhColaborador>  $query
+     * @return Builder<RrhhColaborador>
+     */
+    public static function applySupplierAnalystColaboradorScope(Builder $query): Builder
+    {
+        if (! self::restrictsColaboradoresToOperationsSupport()) {
+            return $query;
+        }
+
+        return $query->whereHas(
+            'departamento',
+            fn (Builder $departamento): Builder => $departamento->whereIn(
+                'description',
+                self::OPERATIONS_SUPPORT_DEPARTMENTS
+            )
+        );
+    }
 
     /**
      * @return array<int, string>
@@ -36,6 +75,8 @@ final class HelpdeskFormSchema
         $query = RrhhColaborador::query()
             ->whereNotNull('user_id')
             ->orderBy('fullName');
+
+        self::applySupplierAnalystColaboradorScope($query);
 
         return $query
             ->pluck('fullName', $query->getModel()->getQualifiedKeyName())
@@ -195,7 +236,8 @@ final class HelpdeskFormSchema
                                 ->relationship(
                                     name: 'rrhhColaboradores',
                                     titleAttribute: 'fullName',
-                                    modifyQueryUsing: fn ($query) => $query->orderBy('fullName')
+                                    modifyQueryUsing: fn (Builder $query): Builder => self::applySupplierAnalystColaboradorScope($query)
+                                        ->orderBy('fullName')
                                 )
                                 ->multiple()
                                 ->preload()

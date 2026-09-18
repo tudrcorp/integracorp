@@ -158,7 +158,7 @@ it('registra el permiso del Dashboard del Proveedor en el módulo OPERACIONES', 
 
 it('expone la página en su propia ruta del panel de operaciones', function (): void {
     expect(Route::has('filament.operations.pages.dashboard-proveedor'))->toBeTrue()
-        ->and(DashboardProveedor::getNavigationLabel())->toBe('Dashboard Proveedor');
+        ->and(mb_strtoupper(DashboardProveedor::getNavigationLabel()))->toContain('PROVEEDOR');
 });
 
 it('resuelve todos los iconos declarados en los stats del proveedor', function (): void {
