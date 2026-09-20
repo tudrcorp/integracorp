@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Observers\OperationServiceStatisticObserver;
+use App\Support\Telemedicine\Concerns\HidesDeletedTelemedicineCaseTraces;
+use App\Support\Telemedicine\Scopes\HideDeletedTelemedicineCasesScope;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[ObservedBy([OperationServiceStatisticObserver::class])]
 class OperationCoordinationService extends Model
 {
+    use HidesDeletedTelemedicineCaseTraces;
+
     //
     protected $table = 'operation_coordination_services';
 
@@ -85,9 +89,15 @@ class OperationCoordinationService extends Model
         return $this->belongsTo(TelemedicinePatient::class);
     }
 
+    /**
+     * El caso se resuelve aunque esté eliminado: la coordinación solo es
+     * visible cuando el caso no lo está, salvo en la pestaña ELIMINADOS, que
+     * necesita mostrar el código del caso para poder restaurarlo.
+     */
     public function telemedicineCase()
     {
-        return $this->belongsTo(TelemedicineCase::class);
+        return $this->belongsTo(TelemedicineCase::class)
+            ->withoutGlobalScope(HideDeletedTelemedicineCasesScope::class);
     }
 
     public function telemedicineDoctor()

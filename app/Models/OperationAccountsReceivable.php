@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Support\Telemedicine\Concerns\HidesDeletedTelemedicineCaseTraces;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OperationAccountsReceivable extends Model
 {
+    use HidesDeletedTelemedicineCaseTraces;
+
     public const STATUS_PENDING_TDG = 'PENDIENTE_GESTION_TDG';
 
     public const STATUS_QUOTE_ASSIGNED = 'COTIZACION_ASIGNADA';

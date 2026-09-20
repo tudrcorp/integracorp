@@ -153,7 +153,7 @@ final class OperationServiceStatisticSync
             return;
         }
 
-        OperationServiceStatistic::query()
+        OperationServiceStatistic::query()->withoutGlobalScopes()
             ->where('telemedicine_case_id', $caseId)
             ->update([
                 'case_denied' => self::YES,
@@ -672,7 +672,7 @@ final class OperationServiceStatisticSync
                 unset($payload['service_status']);
             }
 
-            OperationServiceStatistic::query()->updateOrCreate(
+            OperationServiceStatistic::query()->withoutGlobalScopes()->updateOrCreate(
                 [
                     'source_type' => $sourceType,
                     'source_id' => $sourceId,
@@ -690,7 +690,7 @@ final class OperationServiceStatisticSync
             return;
         }
 
-        OperationServiceStatistic::query()
+        OperationServiceStatistic::query()->withoutGlobalScopes()
             ->where('source_type', $sourceType)
             ->where('source_id', $sourceId)
             ->delete();
@@ -702,7 +702,7 @@ final class OperationServiceStatisticSync
             return;
         }
 
-        OperationServiceStatistic::query()
+        OperationServiceStatistic::query()->withoutGlobalScopes()
             ->where('source_id', $coordinationId)
             ->whereIn('source_type', [
                 OperationServiceStatistic::SOURCE_AMBULANCE,

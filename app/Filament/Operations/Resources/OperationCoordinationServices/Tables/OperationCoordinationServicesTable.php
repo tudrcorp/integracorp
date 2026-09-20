@@ -29,6 +29,7 @@ use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\AccountsReceivableManager;
 use App\Support\Operations\AssignCoordinationServiceToSupplier;
 use App\Support\Operations\CoordinationServiceBulkReversal;
+use App\Support\Operations\CoordinationServiceCaseDeletion;
 use App\Support\Operations\CoordinationServiceCourtesy;
 use App\Support\Operations\CoordinationServiceCourtesyActions;
 use App\Support\Operations\CoordinationServiceItemsManager;
@@ -44,7 +45,6 @@ use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -1699,7 +1699,8 @@ class OperationCoordinationServicesTable
                     CoordinationServiceCourtesyActions::makeMarkBulkAction(),
                     CoordinationServiceCourtesyActions::makeReverseBulkAction(),
                     CoordinationServiceBulkReversal::makeBulkAction(),
-                    DeleteBulkAction::make(),
+                    CoordinationServiceCaseDeletion::makeDeleteBulkAction(),
+                    CoordinationServiceCaseDeletion::makeRestoreBulkAction(),
                 ]),
             ]);
     }

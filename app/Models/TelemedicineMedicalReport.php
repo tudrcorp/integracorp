@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Support\Telemedicine\Concerns\HidesDeletedTelemedicineCaseTraces;
 use Illuminate\Database\Eloquent\Model;
 
 class TelemedicineMedicalReport extends Model
 {
+    use HidesDeletedTelemedicineCaseTraces;
+
     //
     protected $table = 'telemedicine_medical_reports';
 

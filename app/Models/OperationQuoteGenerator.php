@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Support\Telemedicine\Concerns\HidesDeletedTelemedicineCaseTraces;
 use Illuminate\Database\Eloquent\Model;
 
 class OperationQuoteGenerator extends Model
 {
+    use HidesDeletedTelemedicineCaseTraces;
+
     public const STATUS_PENDING = 'PENDIENTE POR APROBAR';
 
     public const STATUS_APPROVED = 'APROBADA';

@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Support\Telemedicine\Concerns\HidesDeletedTelemedicineCaseTraces;
 use Illuminate\Database\Eloquent\Model;
 
 class TelemedicineOperationsLog extends Model
 {
+    use HidesDeletedTelemedicineCaseTraces;
+
     protected $table = 'telemedicine_operations_logs';
 
     protected $fillable = [
@@ -34,5 +37,4 @@ class TelemedicineOperationsLog extends Model
     {
         return $this->belongsTo(TelemedicineConsultationPatient::class);
     }
-    
 }

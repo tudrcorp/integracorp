@@ -5,6 +5,7 @@ namespace App\Filament\Operations\Resources\OperationCoordinationServices\Pages;
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable;
 use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Operations\CoordinationServiceCaseDeletion;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Component;
@@ -136,6 +137,11 @@ class ListOperationCoordinationServices extends ListRecords
             'todas' => OperationCoordinationServicesTable::applyHideFullyFinalizedScope(
                 OperationsSupplierScope::coordinationServiceQuery()
             )->count(),
+            CoordinationServiceCaseDeletion::DELETED_TAB => CoordinationServiceCaseDeletion::userCanDeleteCases()
+                ? CoordinationServiceCaseDeletion::applyDeletedCasesScope(
+                    OperationsSupplierScope::coordinationServiceQuery()
+                )->count()
+                : 0,
             'en_gestion' => $sum(['EN GESTION']),
             'pendiente' => $sum(['PENDIENTE']),
             'pendiente_resultados' => $sum(['PENDIENTE POR RESULTADOS']),
@@ -152,7 +158,7 @@ class ListOperationCoordinationServices extends ListRecords
     {
         $counts = $this->tabCounts();
 
-        return [
+        $tabs = [
             'todas' => Tab::make('Todas')
                 ->badge($counts['todas'])
                 ->badgeColor('gray')
@@ -203,6 +209,22 @@ class ListOperationCoordinationServices extends ListRecords
                 ])
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereIn('status', ['NOVEDAD ADMON', 'NOVEDAD ADMON ESTUDIO'])),
         ];
+
+        /**
+         * Los casos eliminados solo existen para quien puede eliminarlos: el
+         * resto del panel no debe siquiera saber que la pestaña está ahí.
+         */
+        if (CoordinationServiceCaseDeletion::userCanDeleteCases()) {
+            $tabs[CoordinationServiceCaseDeletion::DELETED_TAB] = Tab::make('ELIMINADOS')
+                ->badge($counts[CoordinationServiceCaseDeletion::DELETED_TAB])
+                ->badgeColor('gray')
+                ->extraAttributes([
+                    'class' => 'fi-supplier-status-tab-pill',
+                ])
+                ->modifyQueryUsing(fn (Builder $query): Builder => CoordinationServiceCaseDeletion::applyDeletedCasesScope($query));
+        }
+
+        return $tabs;
     }
 
     public function getTabsContentComponent(): Component
