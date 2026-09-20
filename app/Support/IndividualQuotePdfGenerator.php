@@ -7,6 +7,8 @@ namespace App\Support;
 use App\Http\Controllers\IndividualQuoteController;
 use App\Models\Agency;
 use App\Models\IndividualQuote;
+use App\Support\TuDrQuote\QuoteDocumentLayout;
+use App\Support\TuDrQuote\QuoteServiceAttempt;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -29,6 +31,15 @@ class IndividualQuotePdfGenerator
 
         if ($details === null) {
             return false;
+        }
+
+        /**
+         * El microservicio dibuja la propuesta en menos de un segundo; si no
+         * está disponible o el plan no es de los que sabe dibujar, sigue el
+         * generador local de siempre.
+         */
+        if (QuoteServiceAttempt::generate((int) $record->id, QuoteDocumentLayout::SCOPE_INDIVIDUAL, $details)) {
+            return true;
         }
 
         IndividualQuoteController::generatePdf($details, Auth::id(), $layout);

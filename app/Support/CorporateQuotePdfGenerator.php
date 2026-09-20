@@ -7,6 +7,8 @@ namespace App\Support;
 use App\Http\Controllers\CorporateQuoteController;
 use App\Models\Agency;
 use App\Models\CorporateQuote;
+use App\Support\TuDrQuote\QuoteDocumentLayout;
+use App\Support\TuDrQuote\QuoteServiceAttempt;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -29,6 +31,15 @@ class CorporateQuotePdfGenerator
 
         if ($details === null) {
             return false;
+        }
+
+        /**
+         * La población corporativa va agregada por rango de edad: el servicio
+         * recibe las filas ya calculadas, no los 2.681 asegurados de una
+         * cotización grande.
+         */
+        if (QuoteServiceAttempt::generate((int) $record->id, QuoteDocumentLayout::SCOPE_CORPORATE, $details)) {
+            return true;
         }
 
         CorporateQuoteController::generatePdf($details, Auth::id(), $layout);

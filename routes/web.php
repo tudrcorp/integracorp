@@ -2167,3 +2167,26 @@ Route::get('/carta-bienvenida-agente', function () {
 
     return $pdf->download('carta-bienvenida-agente.pdf');
 })->name('carta-bienvenida-agente');
+
+/*
+|--------------------------------------------------------------------------
+| Propuesta Económica — microservicio de cotización
+|--------------------------------------------------------------------------
+|
+| El navegador nunca llama al microservicio: la clave vive en el backend.
+| `cotizar` devuelve el cálculo y la URL del PDF; `pdf` lo sirve inline solo a
+| quien puede verlo. Con TUDR_QUOTE_ENABLED=false responden 503 y el portal
+| sigue generando la propuesta como siempre.
+|
+*/
+
+Route::middleware(['auth', 'throttle:30,1'])->group(function () {
+    // POST /api/propuestas/cotizar
+    // Body validado por QuoteProposalRequest (titular, afiliados[nombre, edad], planes, cobertura).
+    Route::post('/api/propuestas/cotizar', [\App\Http\Controllers\QuoteProposalController::class, 'cotizar'])
+        ->name('propuestas.cotizar');
+
+    // GET /propuestas/{control}/pdf
+    Route::get('/propuestas/{control}/pdf', [\App\Http\Controllers\QuoteProposalController::class, 'pdf'])
+        ->name('propuestas.pdf');
+});
