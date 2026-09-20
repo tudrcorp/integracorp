@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\TuDrQuote;
 
+use App\Exceptions\IncompleteQuoteDetailException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -161,7 +162,21 @@ final class QuoteRenderPayload
                     fn (object $row): bool => (int) round((float) ($row->cobertura ?? 0)) === $cobertura
                 );
 
-                $tarifa = $match !== null ? round((float) $match->fee, 2) : 0.0;
+                /**
+                 * Un hueco significaría dibujar «0 US$» en una casilla de
+                 * precio. Antes que mentirle al cliente, se devuelve el
+                 * documento al generador local.
+                 */
+                if ($match === null) {
+                    throw new IncompleteQuoteDetailException(
+                        $planId,
+                        (string) $first->rango,
+                        $coberturas->count(),
+                        $rangeRows->count(),
+                    );
+                }
+
+                $tarifa = round((float) $match->fee, 2);
                 $tarifas[] = $tarifa;
                 $grupalAnual[$index] += $tarifa * $poblacion;
             }
