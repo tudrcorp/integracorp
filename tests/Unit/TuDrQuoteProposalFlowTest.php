@@ -208,3 +208,152 @@ it('no llama al servicio con planes que no sabe dibujar ni con el interruptor ap
 
     Http::assertNothingSent();
 });
+
+/**
+ * Cotización multiplan: Inicial y Especial en el mismo documento.
+ *
+ * @return array{id: int, code: string}
+ */
+function crearCotizacionMultiplanDePrueba(): array
+{
+    $code = 'COT-IND-TEST-'.substr((string) microtime(true), -6);
+
+    $quoteId = (int) DB::table('individual_quotes')->insertGetId([
+        'code' => $code,
+        'full_name' => 'TITULAR MULTIPLAN',
+        'created_by' => 'TEST',
+        'plan' => 'CM',
+        'status' => 'PRE-APROBADA',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    foreach ([1, 3] as $planId) {
+        $tarifas = DB::table('fees')->where('plan_id', $planId)->get(['age_range_id', 'coverage_id', 'price']);
+
+        foreach ($tarifas as $tarifa) {
+            DB::table('detail_individual_quotes')->insert([
+                'individual_quote_id' => $quoteId,
+                'plan_id' => $planId,
+                'age_range_id' => $tarifa->age_range_id,
+                'coverage_id' => $tarifa->coverage_id,
+                'total_persons' => 2,
+                'fee' => $tarifa->price,
+                'subtotal_anual' => $tarifa->price * 2,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    return ['id' => $quoteId, 'code' => $code];
+}
+
+/**
+ * @return list<array<string, mixed>>
+ */
+function detallesMultiplanDePrueba(string $code, array $planIds = [1, 3]): array
+{
+    return array_map(static fn (int $planId): array => [
+        'plan' => $planId,
+        'code' => $code,
+        'name' => 'TITULAR MULTIPLAN',
+        'agent_name' => 'Agente de prueba',
+        'date' => '20-09-2026',
+    ], $planIds);
+}
+
+it('manda los dos planes de una cotización multiplan en un solo documento', function (): void {
+    ['id' => $quoteId, 'code' => $code] = crearCotizacionMultiplanDePrueba();
+
+    Http::fake([
+        '*/render' => Http::response('%PDF-1.4 propuesta multiplan', 200, ['Content-Type' => 'application/pdf']),
+    ]);
+
+    $generado = app(QuoteProposalPdfService::class)->generateMultiple(
+        $quoteId,
+        QuoteDocumentLayout::SCOPE_INDIVIDUAL,
+        detallesMultiplanDePrueba($code),
+    );
+
+    expect($generado)->toBeTrue()
+        ->and(file_exists(public_path('storage/quotes/'.$code.'.pdf')))->toBeTrue();
+
+    Http::assertSent(function (Illuminate\Http\Client\Request $request): bool {
+        $planes = $request->data()['planes'] ?? [];
+
+        /** Un plan por página de cálculos, en orden ascendente. */
+        expect($planes)->toHaveCount(2)
+            ->and($planes[0]['plan'])->toBe('inicial')
+            ->and($planes[1]['plan'])->toBe('especial')
+            ->and($planes[1]['filas'])->toHaveCount(2);
+
+        return true;
+    });
+});
+
+it('no dibuja ceros cuando a la cotización le falta una tarifa', function (): void {
+    ['id' => $quoteId, 'code' => $code] = crearCotizacionMultiplanDePrueba();
+
+    Http::fake([
+        '*/render' => Http::response('%PDF-1.4 no debería llegar aquí', 200),
+    ]);
+
+    /** Una cobertura del Especial desaparece: el rango queda incompleto. */
+    DB::table('detail_individual_quotes')
+        ->where('individual_quote_id', $quoteId)
+        ->where('plan_id', 3)
+        ->limit(1)
+        ->delete();
+
+    $generado = app(QuoteProposalPdfService::class)->generateMultiple(
+        $quoteId,
+        QuoteDocumentLayout::SCOPE_INDIVIDUAL,
+        detallesMultiplanDePrueba($code),
+    );
+
+    expect($generado)->toBeFalse()
+        ->and(file_exists(public_path('storage/quotes/'.$code.'.pdf')))->toBeFalse();
+
+    Http::assertNothingSent();
+});
+
+it('devuelve el documento entero al generador local si un plan no es dibujable', function (): void {
+    ['id' => $quoteId, 'code' => $code] = crearCotizacionMultiplanDePrueba();
+
+    Http::fake();
+
+    /** El plan 11 no está entre los que el servicio sabe dibujar. */
+    $generado = app(QuoteProposalPdfService::class)->generateMultiple(
+        $quoteId,
+        QuoteDocumentLayout::SCOPE_INDIVIDUAL,
+        detallesMultiplanDePrueba($code, [1, 3, 11]),
+    );
+
+    expect($generado)->toBeFalse();
+
+    Http::assertNothingSent();
+});
+
+it('ordena los planes aunque lleguen desordenados', function (): void {
+    ['id' => $quoteId, 'code' => $code] = crearCotizacionMultiplanDePrueba();
+
+    Http::fake([
+        '*/render' => Http::response('%PDF-1.4 propuesta multiplan', 200),
+    ]);
+
+    app(QuoteProposalPdfService::class)->generateMultiple(
+        $quoteId,
+        QuoteDocumentLayout::SCOPE_INDIVIDUAL,
+        detallesMultiplanDePrueba($code, [3, 1]),
+    );
+
+    Http::assertSent(function (Illuminate\Http\Client\Request $request): bool {
+        $planes = $request->data()['planes'] ?? [];
+
+        expect($planes[0]['plan'])->toBe('inicial')
+            ->and($planes[1]['plan'])->toBe('especial');
+
+        return true;
+    });
+});

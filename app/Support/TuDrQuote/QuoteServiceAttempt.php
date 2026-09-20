@@ -23,9 +23,45 @@ use Throwable;
 final class QuoteServiceAttempt
 {
     /**
+     * Cotización de un solo plan.
+     *
      * @param  array<string, mixed>  $details
      */
     public static function generate(int $quoteId, string $scope, array $details): bool
+    {
+        return self::run(
+            $quoteId,
+            $scope,
+            $details,
+            static fn (QuoteProposalPdfService $service): bool => $service->generate($quoteId, $scope, $details),
+        );
+    }
+
+    /**
+     * Cotización multiplan: un solo documento con la página de cálculos de
+     * cada plan, en vez de la propuesta múltiple que armaba DomPDF.
+     *
+     * @param  list<array<string, mixed>>  $groupDetails
+     */
+    public static function generateMultiple(int $quoteId, string $scope, array $groupDetails): bool
+    {
+        if ($groupDetails === []) {
+            return false;
+        }
+
+        return self::run(
+            $quoteId,
+            $scope,
+            $groupDetails[0],
+            static fn (QuoteProposalPdfService $service): bool => $service->generateMultiple($quoteId, $scope, $groupDetails),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $details
+     * @param  callable(QuoteProposalPdfService): bool  $generator
+     */
+    private static function run(int $quoteId, string $scope, array $details, callable $generator): bool
     {
         $service = app(QuoteProposalPdfService::class);
 
@@ -34,7 +70,7 @@ final class QuoteServiceAttempt
         }
 
         try {
-            $generated = $service->generate($quoteId, $scope, $details);
+            $generated = $generator($service);
         } catch (TarifaNoDisponibleException $exception) {
             /** No es un fallo del sistema: el usuario debe leer el motivo. */
             self::notify(

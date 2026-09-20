@@ -166,3 +166,30 @@ it('acota la configuración para que los cálculos nunca queden fuera del docume
         ->and(QuoteDocumentLayout::sanitize(0, 0))->toBe(['total_pages' => 1, 'calculations_page' => 1])
         ->and(QuoteDocumentLayout::sanitize(99, 2))->toBe(['total_pages' => QuoteDocumentLayout::MAX_TOTAL_PAGES, 'calculations_page' => 2]);
 });
+
+it('engancha el multiplan en los dos generadores del panel de negocios', function (): void {
+    foreach ([
+        'app/Support/IndividualQuotePdfGenerator.php',
+        'app/Support/CorporateQuotePdfGenerator.php',
+    ] as $generador) {
+        $codigo = (string) file_get_contents(dirname(__DIR__, 2).'/'.$generador);
+
+        expect($codigo)
+            ->toContain('QuoteServiceAttempt::generateMultiple(')
+            ->toContain('generatePdfMultiple(');
+    }
+});
+
+it('registra el motivo cada vez que descarta el microservicio', function (): void {
+    $servicio = (string) file_get_contents(dirname(__DIR__, 2).'/app/Services/TuDr/QuoteProposalPdfService.php');
+
+    /** El fallback silencioso costó cuatro rondas de diagnóstico en producción. */
+    expect($servicio)
+        ->toContain('quote-pdf: integración desactivada')
+        ->toContain('quote-pdf: la cotización no tiene código')
+        ->toContain('quote-pdf: hay planes que el servicio no dibuja')
+        ->toContain('quote-pdf: la cotización no tiene líneas de detalle')
+        ->toContain('quote-pdf: detalle incompleto')
+        ->toContain('quote-pdf: no disponible')
+        ->toContain('quote-pdf: no se pudo escribir la propuesta en disco');
+});

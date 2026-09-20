@@ -71,11 +71,34 @@ pedido, con FPDI. Reglas:
 | `POST /api/propuestas/cotizar` | Vista previa: calcula y devuelve `{control, planes, resumen, pdf_url}`. Requiere sesión, token CSRF y admite 30 llamadas por minuto. Máximo 20 afiliados. |
 | `GET /propuestas/{control}/pdf` | Sirve el PDF `inline`, solo a quien lo generó o puede abrir esa cotización. |
 
+## Diagnóstico
+
+Cada vez que el portal descarta el microservicio deja el motivo en el log
+(`quote-pdf: …`): integración desactivada, plan no dibujable, detalle
+incompleto, servicio no disponible o error de escritura. Si no aparece nada y
+las propuestas salen por el camino viejo, revisa antes que nada que PHP-FPM se
+haya recargado tras el último `config:cache` (ver más abajo).
+
+El tamaño del PDF es el diagnóstico más rápido: **600 KB–1,4 MB** lo dibujó el
+microservicio; **2,4–3 MB** lo hizo DomPDF.
+
 ## Activar y desactivar
 
 `TUDR_QUOTE_ENABLED=false` deja el sistema **exactamente como estaba**: el
 endpoint responde `503`, no se hace ninguna llamada saliente y las propuestas
-se generan con DomPDF. Tras cambiar el `.env`, `php artisan config:clear`.
+se generan con DomPDF.
+
+Tras cambiar el `.env` en producción:
+
+```bash
+php artisan config:clear && php artisan config:cache
+systemctl reload php8.3-fpm     # imprescindible
+```
+
+Sin recargar PHP-FPM, el panel sigue usando la configuración anterior aunque
+`php artisan tinker` informe del valor nuevo: OPcache sirve el
+`bootstrap/cache/config.php` viejo. Es el fallo que costó cuatro rondas de
+diagnóstico el 20/09/2026.
 
 ## Ejecutar el microservicio
 
@@ -127,8 +150,13 @@ Salud del servicio (no lleva clave): `curl $TUDR_QUOTE_URL/health` → `{"ok":tr
 ## Límites conocidos
 
 - Solo se envían al servicio los planes **Inicial, Ideal y Especial** (ids 1, 2
-  y 3). Las cotizaciones multiplan (`CM`) y los planes armados con el asistente
-  siguen por el generador local.
+  y 3), tanto en cotizaciones de un plan como **multiplan** (`CM`, una página de
+  cálculos por plan en el mismo documento). Si alguno de los planes de la
+  cotización no es de esos tres, el documento **entero** lo arma el generador
+  local: nunca se entrega una propuesta a la que le falte un plan.
+- Si a un rango de edad le faltan coberturas —cotizaciones antiguas cuyo plan
+  ganó coberturas después, ~5 % del histórico— también se usa el generador
+  local, para no dibujar «0 US$» en una casilla de precio.
 - `cotizador.tudrgroup.com` aún no resuelve (NXDOMAIN): hasta publicarlo, la
   integración se prueba contra el servicio en local.
 - El servicio trae sus propias tarifas en `tariffs.json`, que **no** cubren todos

@@ -101,6 +101,16 @@ class CorporateQuotePdfGenerator
 
         usort($groupDetails, fn (array $a, array $b): int => (int) $a['plan'] <=> (int) $b['plan']);
 
+        /**
+         * La propuesta multiplan también la dibuja el microservicio: una
+         * página de cálculos por plan dentro del mismo documento. Si no está
+         * disponible o algún plan no es de los que sabe dibujar, la arma
+         * entera el generador local, nunca a medias.
+         */
+        if (QuoteServiceAttempt::generateMultiple((int) $record->id, QuoteDocumentLayout::SCOPE_CORPORATE, $groupDetails)) {
+            return true;
+        }
+
         CorporateQuoteController::generatePdfMultiple($groupDetails, Auth::id());
 
         return true;
