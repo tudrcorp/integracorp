@@ -2,10 +2,10 @@
 
 namespace App\Filament\Business\Resources\CorporateQuotes\Tables;
 
+use App\Enums\QuoteWhatsAppNotification;
 use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
 use App\Http\Controllers\CorporateQuoteExportCsvController;
 use App\Http\Controllers\LogController;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
 use App\Jobs\ResendEmailPropuestaEconomica;
 use App\Jobs\SendNotificacionUploadDataCorporate;
@@ -13,6 +13,7 @@ use App\Mail\MailLinkIndividualQuote;
 use App\Models\CorporateQuote;
 use App\Models\User;
 use App\Support\CorporateQuotePdfGenerator;
+use App\Support\Quotes\QuoteWhatsAppDispatcher;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -309,7 +310,14 @@ class CorporateQuotesTable
                                         ->sendToDatabase($user);
                                 }
 
-                                NotificationController::sendUploadDataCorporate(Auth::user()->name, $record->code);
+                                QuoteWhatsAppDispatcher::queue(
+                                    QuoteWhatsAppNotification::CorporateDataUploaded,
+                                    [
+                                        'code' => $record->code,
+                                        'agent' => Auth::user()->name,
+                                    ],
+                                    CorporateQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'business'),
+                                );
                                 SendNotificacionUploadDataCorporate::dispatch($record->data_doc, Auth::user()->name, $record->code);
 
                                 SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_DATA_UPLOADED', 'business.corporate-quotes.upload-data', [
@@ -405,7 +413,14 @@ class CorporateQuotesTable
                                         ->sendToDatabase($user);
                                 }
 
-                                NotificationController::sendUploadDataCorporate($userName, $record->code);
+                                QuoteWhatsAppDispatcher::queue(
+                                    QuoteWhatsAppNotification::CorporateDataUploaded,
+                                    [
+                                        'code' => $record->code,
+                                        'agent' => $userName,
+                                    ],
+                                    CorporateQuoteResource::getUrl('edit', ['record' => $record->id], panel: 'business'),
+                                );
                                 SendNotificacionUploadDataCorporate::dispatch($record->data_doc, $userName, $record->code);
 
                                 SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_APPROVED_DATA_UPLOADED', 'business.corporate-quotes.approve-upload-data', [
@@ -649,12 +664,14 @@ class CorporateQuotesTable
 
                                 if (isset($data['email'])) {
                                     $email = $data['email'];
+
+                                    /** El correo también sale por cola: la acción no espera al SMTP. */
                                     Mail::to($email)
                                         ->cc('cotizacionestdg.ve@gmail.com')
                                         ->bcc('solrodriguez@tudrencasa.com')
-                                        ->send(new MailLinkIndividualQuote($link));
+                                        ->queue(new MailLinkIndividualQuote($link));
 
-                                    SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_EMAIL_SENT', 'business.corporate-quotes.interactive-link', [
+                                    SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_EMAIL_QUEUED', 'business.corporate-quotes.interactive-link', [
                                         'panel' => 'business',
                                         'corporate_quote_id' => $record->id,
                                         'code' => $record->code,
@@ -663,52 +680,48 @@ class CorporateQuotesTable
                                     ]);
 
                                     Notification::make()
-                                        ->title('ENVIADO EXITOSO')
-                                        ->body('El link fue enviado por email exitosamente.')
-                                        ->icon('heroicon-s-check-circle')
-                                        ->iconColor('verde')
-                                        ->success()
+                                        ->title('ENVÍO EN PROCESO')
+                                        ->body('El link se está enviando por correo a '.$email.'.')
+                                        ->icon('heroicon-o-paper-airplane')
+                                        ->iconColor('info')
+                                        ->info()
                                         ->send();
                                 }
 
                                 if (isset($data['phone'])) {
                                     $phone = $data['phone'];
-                                    $wp = NotificationController::sendLinkIndividualQuote($phone, $link);
-                                    if ($wp) {
-                                        SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_WHATSAPP_SENT', 'business.corporate-quotes.interactive-link', [
-                                            'panel' => 'business',
-                                            'corporate_quote_id' => $record->id,
+
+                                    /**
+                                     * El envío se encola: la acción responde al
+                                     * instante y el resultado real —entregado o
+                                     * no— llega a la campana del analista.
+                                     */
+                                    QuoteWhatsAppDispatcher::queue(
+                                        QuoteWhatsAppNotification::InteractiveLinkSent,
+                                        [
                                             'code' => $record->code,
+                                            'agent' => Auth::user()->name,
                                             'phone' => $phone,
                                             'link' => $link,
-                                        ]);
+                                        ],
+                                        CorporateQuoteResource::getUrl('view', ['record' => $record->id], panel: 'business'),
+                                    );
 
-                                        Notification::make()
-                                            ->title('ENVIADO EXITOSO')
-                                            ->body('El link fue enviado por whatsapp exitosamente.')
-                                            ->icon('heroicon-s-check-circle')
-                                            ->iconColor('verde')
-                                            ->success()
-                                            ->send();
-                                    } else {
+                                    SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_WHATSAPP_QUEUED', 'business.corporate-quotes.interactive-link', [
+                                        'panel' => 'business',
+                                        'corporate_quote_id' => $record->id,
+                                        'code' => $record->code,
+                                        'phone' => $phone,
+                                        'link' => $link,
+                                    ]);
 
-                                        Notification::make()
-                                            ->title('ERROR')
-                                            ->body('El link no pudo ser enviado por whatsapp. Por favor, contacte con el administrador del Sistema.')
-                                            ->icon('heroicon-s-x-circle')
-                                            ->iconColor('danger')
-                                            ->danger()
-                                            ->send();
-
-                                        SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_WHATSAPP_FAILED', 'business.corporate-quotes.interactive-link', [
-                                            'panel' => 'business',
-                                            'corporate_quote_id' => $record->id,
-                                            'code' => $record->code,
-                                            'phone' => $phone,
-                                            'link' => $link,
-                                            'reason' => 'whatsapp_delivery_failed',
-                                        ]);
-                                    }
+                                    Notification::make()
+                                        ->title('ENVÍO EN PROCESO')
+                                        ->body('El link se está enviando por WhatsApp al cliente. Le avisaremos aquí mismo en cuanto se entregue.')
+                                        ->icon('heroicon-o-paper-airplane')
+                                        ->iconColor('info')
+                                        ->info()
+                                        ->send();
                                 }
                             } catch (\Throwable $th) {
                                 SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_FAILED', 'business.corporate-quotes.interactive-link', [
@@ -766,7 +779,15 @@ class CorporateQuotesTable
                                     ->success()
                                     ->send();
 
-                                $notoficationWp = NotificationController::saddObervationToCorporateQuote($record->code, Auth::user()->name, $data['description']);
+                                QuoteWhatsAppDispatcher::queue(
+                                    QuoteWhatsAppNotification::CorporateObservationAdded,
+                                    [
+                                        'code' => $record->code,
+                                        'agent' => Auth::user()->name,
+                                        'observation' => (string) ($data['description'] ?? ''),
+                                    ],
+                                    CorporateQuoteResource::getUrl('view', ['record' => $record->id], panel: 'business'),
+                                );
                             } catch (\Throwable $th) {
                                 SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_QUOTE_OBSERVATION_ADD_FAILED', 'business.corporate-quotes.observations', [
                                     'panel' => 'business',

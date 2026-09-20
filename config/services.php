@@ -111,4 +111,17 @@ return [
         'max_later_retries' => (int) env('VIVEPLUS_DOCUMENTS_WEBHOOK_MAX_LATER_RETRIES', 5),
     ],
 
+    /*
+     * Microservicio quote-pdf: calcula la Propuesta Económica de Tu Dr En Casa
+     * y devuelve el PDF con el formato oficial. La clave la valida el servicio,
+     * así que vive solo en el `.env` de ambos lados, nunca en el repositorio.
+     * Con `enabled` en false el portal genera la propuesta como siempre.
+     */
+    'tudr_quote' => [
+        'url' => env('TUDR_QUOTE_URL', 'https://cotizador.tudrgroup.com'),
+        'key' => env('TUDR_QUOTE_KEY'),
+        'timeout' => (int) env('TUDR_QUOTE_TIMEOUT', 10),
+        'enabled' => (bool) env('TUDR_QUOTE_ENABLED', false),
+    ],
+
 ];
