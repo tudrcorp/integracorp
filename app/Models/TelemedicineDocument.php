@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Support\Telemedicine\Concerns\HidesDeletedTelemedicineCaseTraces;
 use Illuminate\Database\Eloquent\Model;
 
 class TelemedicineDocument extends Model
 {
+    use HidesDeletedTelemedicineCaseTraces;
+
     protected $table = 'telemedicine_documents';
 
     protected $fillable = [
@@ -30,5 +33,4 @@ class TelemedicineDocument extends Model
     {
         return $this->belongsTo(TelemedicinePatient::class);
     }
-
 }

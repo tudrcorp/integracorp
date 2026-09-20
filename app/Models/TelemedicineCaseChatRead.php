@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Telemedicine\Concerns\HidesDeletedTelemedicineCaseTraces;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TelemedicineCaseChatRead extends Model
 {
+    use HidesDeletedTelemedicineCaseTraces;
+
     protected $table = 'telemedicine_case_chat_reads';
 
     protected $fillable = [

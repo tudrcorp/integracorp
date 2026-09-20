@@ -4,11 +4,14 @@ namespace App\Models;
 
 use App\Observers\OperationServiceStatisticObserver;
 use App\Observers\TelemedicineCaseObserver;
+use App\Support\Telemedicine\Scopes\HideDeletedTelemedicineCasesScope;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[ObservedBy([TelemedicineCaseObserver::class, OperationServiceStatisticObserver::class])]
+#[ScopedBy([HideDeletedTelemedicineCasesScope::class])]
 class TelemedicineCase extends Model
 {
     protected $table = 'telemedicine_cases';
@@ -36,7 +39,22 @@ class TelemedicineCase extends Model
         'managed_by',
         'supplier_id',
         'doctor_id_first_accompaniment',
+        'deletion_status_before',
+        'deletion_reason',
+        'deleted_by_user_id',
+        'deleted_by_name',
+        'logically_deleted_at',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'logically_deleted_at' => 'datetime',
+        ];
+    }
 
     public function telemedicinePatient()
     {

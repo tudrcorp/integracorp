@@ -20,6 +20,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const REASSIGN_HELPDESK_TICKET = 'reasignar-tickets-helpdesk';
 
+    public const DELETE_TELEMEDICINE_CASE = 'eliminar-caso-servicios-medicos';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -70,6 +72,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Reasignar tickets',
                 'group' => 'HELPDESK',
                 'modules' => [self::OWNER_MODULE, 'ADMINISTRACION', 'OPERACIONES', 'MARKETING'],
+            ],
+            self::DELETE_TELEMEDICINE_CASE => [
+                'name' => 'Eliminar caso de servicios médicos',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
             ],
         ];
     }
