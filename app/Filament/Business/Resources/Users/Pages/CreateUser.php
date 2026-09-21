@@ -26,7 +26,7 @@ class CreateUser extends CreateRecord
         foreach (UserForm::allPermissionFieldKeys() as $permissionFieldKey) {
             unset($data[$permissionFieldKey]);
         }
-        unset($data['permissions']);
+        unset($data['permissions'], $data[UserForm::MODULE_FOCUS_FIELD]);
 
         return $data;
     }

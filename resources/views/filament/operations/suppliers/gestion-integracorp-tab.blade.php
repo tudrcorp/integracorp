@@ -24,7 +24,7 @@
                         Habilitar gestión en Integracorp
                     </span>
                     <span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">
-                        El cambio se guarda de inmediato. Solo rol SUPERADMIN.
+                        El cambio se guarda de inmediato.
                     </span>
                 </span>
                 <input

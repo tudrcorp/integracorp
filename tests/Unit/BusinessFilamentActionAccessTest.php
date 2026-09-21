@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\CommercialStructure\ReferidorAccess;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
+use App\Support\Filament\Operations\SupplierIntegracorpManagement;
 use App\Support\Filament\PermissionNavigationGroupResolver;
 use App\Support\Filament\UserNavigationAccess;
 use Filament\Facades\Filament;
@@ -283,6 +284,60 @@ it('niega reasignar tickets helpdesk sin el permiso asignado', function (): void
         'OPERACIONES',
         BusinessFilamentActionPermissionRegistry::REASSIGN_HELPDESK_TICKET,
     ))->toBeFalse();
+});
+
+it('registra el permiso de gestion integracorp solo en operaciones', function (): void {
+    $slug = BusinessFilamentActionPermissionRegistry::MANAGE_SUPPLIER_INTEGRACORP_PROCESSES;
+    $definition = BusinessFilamentActionPermissionRegistry::all()[$slug];
+
+    expect($slug)->toBe('gestionar-procesos-integracorp-proveedores')
+        ->and($definition['name'])->toBe('Gestión de Procesos en Integracorp')
+        ->and($definition['group'])->toBe('PROVEEDORES JURÍDICOS')
+        ->and(BusinessFilamentActionPermissionRegistry::modulesForSlug($slug))->toBe(['OPERACIONES'])
+        ->and(BusinessFilamentActionPermissionRegistry::slugIsAvailableInModule($slug, 'OPERACIONES'))->toBeTrue()
+        ->and(BusinessFilamentActionPermissionRegistry::slugIsAvailableInModule($slug, 'NEGOCIOS'))->toBeFalse();
+});
+
+it('agrupa el permiso de gestion integracorp con proveedores juridicos', function (): void {
+    $permission = new Permission([
+        'slug' => BusinessFilamentActionPermissionRegistry::MANAGE_SUPPLIER_INTEGRACORP_PROCESSES,
+        'module' => 'OPERACIONES',
+        'name' => 'Gestión de Procesos en Integracorp',
+    ]);
+
+    expect(PermissionNavigationGroupResolver::groupForPermission($permission))->toBe('PROVEEDORES JURÍDICOS');
+});
+
+it('permite gestionar procesos integracorp a superadmin', function (): void {
+    $user = makeActionUser(['SUPERADMIN', 'OPERACIONES']);
+
+    expect(UserNavigationAccess::canPerformModuleAction(
+        $user,
+        'OPERACIONES',
+        BusinessFilamentActionPermissionRegistry::MANAGE_SUPPLIER_INTEGRACORP_PROCESSES,
+    ))->toBeTrue();
+});
+
+it('permite gestionar procesos integracorp con el permiso asignado', function (): void {
+    $user = makeActionUser(
+        ['OPERACIONES'],
+        [BusinessFilamentActionPermissionRegistry::MANAGE_SUPPLIER_INTEGRACORP_PROCESSES],
+        'OPERACIONES',
+    );
+
+    Auth::login($user);
+    Filament::setCurrentPanel(Filament::getPanel('operations'));
+
+    expect(SupplierIntegracorpManagement::userCanManage())->toBeTrue();
+});
+
+it('niega gestionar procesos integracorp sin el permiso asignado', function (): void {
+    $user = makeActionUser(['OPERACIONES'], ['proveedores-juridicos'], 'OPERACIONES');
+
+    Auth::login($user);
+    Filament::setCurrentPanel(Filament::getPanel('operations'));
+
+    expect(SupplierIntegracorpManagement::userCanManage())->toBeFalse();
 });
 
 it('permite gestionar referidor al analista de administracion en su panel', function (): void {

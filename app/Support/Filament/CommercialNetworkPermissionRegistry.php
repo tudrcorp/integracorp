@@ -34,28 +34,56 @@ final class CommercialNetworkPermissionRegistry
     }
 
     /**
+     * Ids de los permisos de la red comercial, por slug, resueltos una sola
+     * vez por petición.
+     *
+     * El formulario de usuario pedía opciones y descripciones varias veces por
+     * render, y cada llamada revalidaba la existencia de los permisos y
+     * consultaba uno por uno: veinte consultas para dos permisos.
+     *
+     * @var array<string, int>|null
+     */
+    private static ?array $permissionIdsBySlug = null;
+
+    private static bool $permissionsEnsured = false;
+
+    /**
+     * Olvida lo memoizado. Para tests y para quien cree permisos en caliente.
+     */
+    public static function flush(): void
+    {
+        self::$permissionIdsBySlug = null;
+        self::$permissionsEnsured = false;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private static function permissionIdsBySlug(): array
+    {
+        if (self::$permissionIdsBySlug !== null) {
+            return self::$permissionIdsBySlug;
+        }
+
+        self::ensurePermissionsExist();
+
+        /** @var array<string, int> $ids */
+        $ids = Permission::query()
+            ->where('module', self::MODULE)
+            ->whereIn('slug', array_keys(self::all()))
+            ->pluck('id', 'slug')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+
+        return self::$permissionIdsBySlug = $ids;
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function options(): array
     {
-        self::ensurePermissionsExist();
-
-        $options = [];
-
-        foreach (self::all() as $slug => $definition) {
-            $permission = Permission::query()
-                ->where('module', self::MODULE)
-                ->where('slug', $slug)
-                ->first();
-
-            if ($permission === null) {
-                continue;
-            }
-
-            $options[(int) $permission->id] = $definition['name'];
-        }
-
-        return $options;
+        return self::mapDefinitions('name');
     }
 
     /**
@@ -63,24 +91,26 @@ final class CommercialNetworkPermissionRegistry
      */
     public static function optionDescriptions(): array
     {
-        self::ensurePermissionsExist();
+        return self::mapDefinitions('description');
+    }
 
-        $descriptions = [];
+    /**
+     * @return array<int, string>
+     */
+    private static function mapDefinitions(string $field): array
+    {
+        $ids = self::permissionIdsBySlug();
+        $mapped = [];
 
         foreach (self::all() as $slug => $definition) {
-            $permission = Permission::query()
-                ->where('module', self::MODULE)
-                ->where('slug', $slug)
-                ->first();
-
-            if ($permission === null) {
+            if (! isset($ids[$slug])) {
                 continue;
             }
 
-            $descriptions[(int) $permission->id] = $definition['description'];
+            $mapped[$ids[$slug]] = (string) $definition[$field];
         }
 
-        return $descriptions;
+        return $mapped;
     }
 
     /**
@@ -88,19 +118,17 @@ final class CommercialNetworkPermissionRegistry
      */
     public static function permissionIds(): array
     {
-        self::ensurePermissionsExist();
-
-        return Permission::query()
-            ->where('module', self::MODULE)
-            ->whereIn('slug', array_keys(self::all()))
-            ->pluck('id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->values()
-            ->all();
+        return array_values(self::permissionIdsBySlug());
     }
 
     public static function ensurePermissionsExist(): void
     {
+        if (self::$permissionsEnsured) {
+            return;
+        }
+
+        self::$permissionsEnsured = true;
+
         foreach (self::all() as $slug => $definition) {
             $permission = Permission::query()->firstOrNew([
                 'slug' => $slug,

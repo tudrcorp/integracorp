@@ -5,7 +5,6 @@ namespace App\Filament\Operations\Resources\Suppliers\Pages;
 use App\Filament\Operations\Concerns\AppliesOperationsAddressFromMaps;
 use App\Filament\Operations\Resources\Suppliers\SupplierResource;
 use App\Models\Supplier;
-use App\Support\Filament\Operations\OperationsSuperAdmin;
 use App\Support\Filament\Operations\SupplierIntegracorpManagement;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
@@ -43,14 +42,14 @@ class ViewSupplier extends ViewRecord
 
     public function updatedGestionIntegracorp(bool $value): void
     {
-        if (! OperationsSuperAdmin::check()) {
+        if (! SupplierIntegracorpManagement::userCanManage()) {
             /** @var Supplier $supplier */
             $supplier = $this->getRecord();
             $this->gestionIntegracorp = (bool) $supplier->gestion_integracorp;
 
             Notification::make()
                 ->title('Acción no permitida')
-                ->body('Solo un analista con rol SUPERADMIN puede modificar la gestión Integracorp del proveedor.')
+                ->body('No tienes permiso para modificar esta pestaña. Un SUPERADMIN puede asignártela en Permisos → Operaciones → Gestión de Procesos en Integracorp.')
                 ->danger()
                 ->send();
 
