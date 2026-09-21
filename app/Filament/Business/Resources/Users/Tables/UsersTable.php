@@ -43,8 +43,13 @@ class UsersTable
             ->emptyStateHeading('No hay usuarios registrados')
             ->emptyStateDescription('Crea el primer usuario para comenzar a asignar módulos y permisos.')
             ->emptyStateIcon(Heroicon::OutlinedUserGroup)
+            /**
+             * La página aparece antes de consultar: con 15 columnas, avatares
+             * y badges calculados, el primer render enviaba 732 KB de HTML.
+             */
+            ->deferLoading()
             ->paginated([10, 25, 50, 100])
-            ->defaultPaginationPageOption(25)
+            ->defaultPaginationPageOption(10)
             ->columns([
                 ColumnGroup::make('Usuario', [
                     ImageColumn::make('avatar')

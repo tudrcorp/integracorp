@@ -22,6 +22,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const DELETE_TELEMEDICINE_CASE = 'eliminar-caso-servicios-medicos';
 
+    public const MANAGE_SUPPLIER_INTEGRACORP_PROCESSES = 'gestionar-procesos-integracorp-proveedores';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -76,6 +78,11 @@ final class BusinessFilamentActionPermissionRegistry
             self::DELETE_TELEMEDICINE_CASE => [
                 'name' => 'Eliminar caso de servicios médicos',
                 'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::MANAGE_SUPPLIER_INTEGRACORP_PROCESSES => [
+                'name' => 'Gestión de Procesos en Integracorp',
+                'group' => 'PROVEEDORES JURÍDICOS',
                 'modules' => ['OPERACIONES'],
             ],
         ];

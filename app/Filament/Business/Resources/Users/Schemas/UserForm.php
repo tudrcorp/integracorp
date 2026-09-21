@@ -20,6 +20,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -220,70 +221,199 @@ class UserForm
     /**
      * @return list<Section>
      */
+    /**
+     * Campo auxiliar: qué módulo se está editando. No se persiste.
+     */
+    public const MODULE_FOCUS_FIELD = 'permission_module_focus';
+
+    /**
+     * @return list<mixed>
+     */
     public static function permissionModuleSections(): array
     {
-        return collect(self::getPermissionAssignableModules())
-            ->map(function (string $module): Section {
-                $total = UserFormPermissionOptions::countForModule($module);
-                $groupedOptions = UserFormPermissionOptions::groupedOptionsForModule($module);
-                $groupCount = count($groupedOptions);
+        return [
+            self::permissionModuleFocusSelector(),
+            ...collect(self::getPermissionAssignableModules())
+                ->map(fn (string $module): Section => self::permissionModuleSection($module))
+                ->all(),
+        ];
+    }
 
-                return Section::make(UserPermissionFormUi::moduleDisplayLabel($module))
-                    ->description(UserPermissionFormUi::moduleMenuSubtitle($module))
-                    ->icon(UserPermissionFormUi::moduleIcon($module))
-                    ->collapsible()
-                    ->collapsed()
-                    ->visible(fn (Get $get): bool => in_array($module, $get('departament') ?? [], true))
+    /**
+     * Selector del módulo que se está editando.
+     *
+     * Un usuario con los ocho módulos renderizaba 54 listas y 180 casillas de
+     * una sola vez: 899 KB de HTML que el navegador tiene que montar y que
+     * Livewire reenvía en cada interacción. Mostrando un módulo cada vez, el
+     * documento baja a una fracción y las marcas de los demás siguen intactas
+     * en el estado del formulario.
+     */
+    private static function permissionModuleFocusSelector(): ToggleButtons
+    {
+        return ToggleButtons::make(self::MODULE_FOCUS_FIELD)
+            ->label('Módulo a configurar')
+            ->helperText('Se muestran los permisos de un módulo a la vez. Lo que marque en los demás se conserva.')
+            ->inline()
+            ->live()
+            ->dehydrated(false)
+            ->options(fn (Get $get): array => self::assignedModuleOptions($get))
+            ->visible(fn (Get $get): bool => count(self::assignedModules($get)) > 1)
+            ->afterStateHydrated(function (ToggleButtons $component, Get $get, mixed $state): void {
+                $modules = self::assignedModules($get);
+
+                if ($modules === []) {
+                    return;
+                }
+
+                if (! is_string($state) || ! in_array($state, $modules, true)) {
+                    $component->state($modules[0]);
+                }
+            });
+    }
+
+    /**
+     * Módulos que el usuario tiene asignados, en el orden del formulario.
+     *
+     * @return list<string>
+     */
+    private static function assignedModules(Get $get): array
+    {
+        $departments = $get('departament') ?? [];
+
+        if (! is_array($departments)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            self::getPermissionAssignableModules(),
+            fn (string $module): bool => in_array($module, $departments, true),
+        ));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function assignedModuleOptions(Get $get): array
+    {
+        $options = [];
+
+        foreach (self::assignedModules($get) as $module) {
+            $options[$module] = UserPermissionFormUi::moduleDisplayLabel($module);
+        }
+
+        return $options;
+    }
+
+    /**
+     * Sección de permisos de un módulo.
+     *
+     * El contenido —cabecera, grupos y casillas— se construye **solo cuando el
+     * módulo está asignado al usuario**. Antes se armaban los ocho módulos y
+     * sus 53 listas de casillas en cada render, aunque el usuario tuviera uno:
+     * 205 KB de HTML y una reconstrucción completa en cada clic, porque el
+     * selector de módulos es `live()`.
+     */
+    private static function permissionModuleSection(string $module): Section
+    {
+        $moduleIsAssigned = function (Get $get) use ($module): bool {
+            $modules = self::assignedModules($get);
+
+            if (! in_array($module, $modules, true)) {
+                return false;
+            }
+
+            /** Con un solo módulo no hay selector: se muestra siempre. */
+            if (count($modules) === 1) {
+                return true;
+            }
+
+            $focus = $get(self::MODULE_FOCUS_FIELD);
+
+            return is_string($focus) && $focus !== ''
+                ? $focus === $module
+                : $module === $modules[0];
+        };
+
+        return Section::make(UserPermissionFormUi::moduleDisplayLabel($module))
+            ->description(UserPermissionFormUi::moduleMenuSubtitle($module))
+            ->icon(UserPermissionFormUi::moduleIcon($module))
+            ->collapsible()
+            ->collapsed()
+            ->visible($moduleIsAssigned)
+            ->extraAttributes([
+                'class' => UserPermissionFormUi::moduleSectionClass($module),
+            ])
+            ->schema(fn (Get $get): array => $moduleIsAssigned($get)
+                ? self::permissionModuleContent($module)
+                : []);
+    }
+
+    /**
+     * @return list<mixed>
+     */
+    private static function permissionModuleContent(string $module): array
+    {
+        $groupedOptions = UserFormPermissionOptions::groupedOptionsForModule($module);
+
+        return [
+            Placeholder::make('permission_module_header_'.Str::slug($module, '_'))
+                ->hiddenLabel()
+                ->content(UserPermissionFormUi::moduleHeaderHtml(
+                    $module,
+                    UserFormPermissionOptions::countForModule($module),
+                    count($groupedOptions),
+                )),
+            Grid::make(1)
+                ->extraAttributes([
+                    'class' => 'user-perm-groups-stack',
+                ])
+                ->schema(
+                    collect($groupedOptions)
+                        ->map(fn (array $options, string $navigationGroup): Section => self::permissionGroupSection(
+                            $module,
+                            $navigationGroup,
+                            $options,
+                        ))
+                        ->values()
+                        ->all()
+                ),
+        ];
+    }
+
+    /**
+     * @param  array<int|string, string>  $options
+     */
+    private static function permissionGroupSection(string $module, string $navigationGroup, array $options): Section
+    {
+        $optionCount = count($options);
+
+        return Section::make()
+            ->key('user_perm_'.Str::slug($module, '_').'_'.Str::slug($navigationGroup, '_'))
+            ->heading(UserPermissionFormUi::groupHeaderHtml($navigationGroup, $optionCount, $module))
+            ->collapsible()
+            ->collapsed($optionCount > 8)
+            ->compact()
+            ->extraAttributes([
+                'class' => UserPermissionFormUi::groupCardClass($module),
+            ])
+            ->schema([
+                Grid::make(1)
                     ->extraAttributes([
-                        'class' => UserPermissionFormUi::moduleSectionClass($module),
+                        'class' => 'user-perm-checkbox-shell',
                     ])
                     ->schema([
-                        Placeholder::make('permission_module_header_'.Str::slug($module, '_'))
+                        CheckboxList::make(self::permissionGroupFieldKey($module, $navigationGroup))
                             ->hiddenLabel()
-                            ->content(UserPermissionFormUi::moduleHeaderHtml($module, $total, $groupCount)),
-                        Grid::make(1)
+                            ->options($options)
+                            ->bulkToggleable()
+                            ->searchable($optionCount >= 5)
+                            ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
+                            ->gridDirection('row')
                             ->extraAttributes([
-                                'class' => 'user-perm-groups-stack',
-                            ])
-                            ->schema(
-                                collect($groupedOptions)
-                                    ->map(function (array $options, string $navigationGroup) use ($module): Section {
-                                        $optionCount = count($options);
-
-                                        return Section::make()
-                                            ->key('user_perm_'.Str::slug($module, '_').'_'.Str::slug($navigationGroup, '_'))
-                                            ->heading(UserPermissionFormUi::groupHeaderHtml($navigationGroup, $optionCount, $module))
-                                            ->collapsible()
-                                            ->collapsed($optionCount > 8)
-                                            ->compact()
-                                            ->extraAttributes([
-                                                'class' => UserPermissionFormUi::groupCardClass($module),
-                                            ])
-                                            ->schema([
-                                                Grid::make(1)
-                                                    ->extraAttributes([
-                                                        'class' => 'user-perm-checkbox-shell',
-                                                    ])
-                                                    ->schema([
-                                                        CheckboxList::make(self::permissionGroupFieldKey($module, $navigationGroup))
-                                                            ->hiddenLabel()
-                                                            ->options($options)
-                                                            ->bulkToggleable()
-                                                            ->searchable($optionCount >= 5)
-                                                            ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
-                                                            ->gridDirection('row')
-                                                            ->extraAttributes([
-                                                                'class' => 'user-perm-checkbox-list',
-                                                            ]),
-                                                    ]),
-                                            ]);
-                                    })
-                                    ->values()
-                                    ->all()
-                            ),
-                    ]);
-            })
-            ->all();
+                                'class' => 'user-perm-checkbox-list',
+                            ]),
+                    ]),
+            ]);
     }
 
     /**

@@ -122,16 +122,50 @@ class UserFormPermissionOptions
     ];
 
     /**
+     * Memoria por petición de lo que el formulario de usuario consulta una y
+     * otra vez.
+     *
+     * Abrir «Editar usuario» lanzaba 24 veces la misma consulta de permisos:
+     * el schema recorre los ocho módulos desde `allPermissionFieldKeys()`,
+     * `groupedOptionsForModule()`, `groupedPermissionsForModule()` y el
+     * guardado. Los permisos no cambian dentro de una misma petición.
+     *
+     * @var array<string, Collection<int, Permission>>
+     */
+    private static array $permissionsByModule = [];
+
+    /**
+     * @var array<string, array<string, array<int|string, string>>>
+     */
+    private static array $groupedOptionsByModule = [];
+
+    /**
+     * @var array<string, array<string, Collection<int, Permission>>>
+     */
+    private static array $groupedPermissionsByModule = [];
+
+    /**
+     * Olvida lo memoizado. Solo hace falta tras crear o borrar permisos en la
+     * misma petición —el comando `permissions:sync-navigation`— y en tests.
+     */
+    public static function flush(): void
+    {
+        self::$permissionsByModule = [];
+        self::$groupedOptionsByModule = [];
+        self::$groupedPermissionsByModule = [];
+    }
+
+    /**
      * @return Collection<int, Permission>
      */
     public static function forModule(string $module): Collection
     {
-        $permissions = Permission::query()
-            ->where('module', $module)
-            ->orderBy('name')
-            ->get();
-
-        return self::filterAssignable($permissions);
+        return self::$permissionsByModule[$module] ??= self::filterAssignable(
+            Permission::query()
+                ->where('module', $module)
+                ->orderBy('name')
+                ->get()
+        );
     }
 
     /**
@@ -149,6 +183,10 @@ class UserFormPermissionOptions
      */
     public static function groupedOptionsForModule(string $module): array
     {
+        if (isset(self::$groupedOptionsByModule[$module])) {
+            return self::$groupedOptionsByModule[$module];
+        }
+
         $grouped = [];
 
         foreach (self::forModule($module) as $permission) {
@@ -163,7 +201,7 @@ class UserFormPermissionOptions
             $grouped[$group] = $options;
         }
 
-        return $grouped;
+        return self::$groupedOptionsByModule[$module] = $grouped;
     }
 
     /**
@@ -171,6 +209,10 @@ class UserFormPermissionOptions
      */
     public static function groupedPermissionsForModule(string $module): array
     {
+        if (isset(self::$groupedPermissionsByModule[$module])) {
+            return self::$groupedPermissionsByModule[$module];
+        }
+
         $grouped = [];
 
         foreach (self::forModule($module) as $permission) {
@@ -181,7 +223,7 @@ class UserFormPermissionOptions
 
         uksort($grouped, fn (string $left, string $right): int => self::sortNavigationGroups($left, $right));
 
-        return $grouped;
+        return self::$groupedPermissionsByModule[$module] = $grouped;
     }
 
     private static function sortNavigationGroups(string $left, string $right): int
