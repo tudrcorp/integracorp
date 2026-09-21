@@ -395,8 +395,8 @@ class TelemedicineCaseInfolist
                                             ->table([
                                                 TableColumn::make('#')->width('6%'),
                                                 TableColumn::make('Fecha y hora')->width('14%'),
-                                                TableColumn::make('Observación')->width('46%'),
-                                                TableColumn::make('Registrado por')->width('18%'),
+                                                TableColumn::make('Observación')->width('44%'),
+                                                TableColumn::make('Registrado por')->width('20%'),
                                                 TableColumn::make('Actualización')->width('16%'),
                                             ])
                                             ->schema([
@@ -422,6 +422,9 @@ class TelemedicineCaseInfolist
                                                         : null),
                                                 TextEntry::make('createdBy.name')
                                                     ->label('Registrado por')
+                                                    ->extraEntryWrapperAttributes([
+                                                        'class' => 'fi-bitacora-author',
+                                                    ])
                                                     ->icon(Heroicon::OutlinedUserCircle)
                                                     ->weight('medium')
                                                     ->placeholder('—')

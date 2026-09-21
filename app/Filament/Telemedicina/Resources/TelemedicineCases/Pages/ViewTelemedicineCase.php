@@ -40,12 +40,13 @@ class ViewTelemedicineCase extends ViewRecord
                 ])
                 ->action(function () {
                     if (session()->has('historyCasesToDetails')) {
-                        // retunr back page
                         session()->forget('historyCasesToDetails');
                         $patient = session()->get('patient');
+                        $case = session()->get('case');
 
-                        return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
-                        // session()->forget('historyCasesToDetails');
+                        if ($patient) {
+                            return redirect()->to(\App\Support\Telemedicine\ConsultationCreateRoute::url($patient, $case instanceof \App\Models\TelemedicineCase ? $case : null));
+                        }
                     }
                 })
                 ->hidden(function () {

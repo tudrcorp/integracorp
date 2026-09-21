@@ -33,11 +33,15 @@ it('muestra la leyenda solo cuando la afiliacion tiene neta congelada', function
         ->toBe('Neta total: 192,00 US$ · Cuota 2 de 4');
 });
 
-it('conecta la leyenda bajo el monto total de la tabla de ventas de administracion', function (): void {
+it('conecta la leyenda bajo la neta aliada de la tabla de ventas de administracion', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Sales/Tables/SalesTable.php');
+    $netaPos = strpos($source, "TextColumn::make('white_company_neta')");
+    $legendPos = strpos($source, 'WhiteCompanySaleAmountLegend::forSale');
 
     expect($source)
         ->toContain('WhiteCompanySaleAmountLegend::forSale')
+        ->toContain("TextColumn::make('white_company_neta')")
         ->toContain("TextColumn::make('total_amount')")
-        ->toContain("->with('affiliationByCode')");
+        ->toContain("->with('affiliationByCode')")
+        ->and($legendPos)->toBeGreaterThan($netaPos);
 });

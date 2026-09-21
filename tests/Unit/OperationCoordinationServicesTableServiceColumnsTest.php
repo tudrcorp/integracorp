@@ -392,7 +392,11 @@ it('OperationCoordinationServicesTable oculta coordinaciones sin ítems por gest
         ->toContain('use App\\Filament\\Operations\\Resources\\OperationCoordinationServices\\Tables\\OperationCoordinationServicesTable;')
         ->toContain("'todas' => Tab::make('Todas')")
         ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query)')
-        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope(OperationsSupplierScope::coordinationServiceQuery())->count()');
+        // El conteo de «Todas» sigue usando el mismo scope, ahora dentro de
+        // tabCounts(), que resuelve las siete pestañas en dos consultas.
+        ->toContain('protected function tabCounts(): array')
+        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope(')
+        ->toContain("->badge(\$counts['todas'])");
 });
 
 it('OperationCoordinationServicesTable muestra código de caso TM con badge y enlace a vista', function (): void {
@@ -413,11 +417,36 @@ it('OperationCoordinationServicesTable muestra linea y unidad de negocio del pac
     expect($contents)
         ->toContain("TextColumn::make('patient_business_line')")
         ->toContain("TextColumn::make('patient_business_unit')")
+        ->toContain("TextColumn::make('patient_specific_business_unit')")
+        ->toContain("->label('Unidad de negocio específica')")
         ->toContain('patientBusinessLineLabel')
         ->toContain('patientBusinessUnitLabel')
+        ->toContain('patientSpecificBusinessUnitLabel')
         ->toContain('telemedicinePatient.businessLine')
         ->toContain('telemedicinePatient.businessUnit')
+        ->toContain('specific_business_unit')
         ->not->toContain("TextColumn::make('businessLine.definition')");
+});
+
+it('resuelve la unidad de negocio especifica desde el paciente de telemedicina', function (): void {
+    $method = new ReflectionMethod(
+        \App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable::class,
+        'patientSpecificBusinessUnitLabel'
+    );
+    $method->setAccessible(true);
+
+    $withValue = new \App\Models\OperationCoordinationService;
+    $withValue->setRelation('telemedicinePatient', new \App\Models\TelemedicinePatient([
+        'specific_business_unit' => ' Banco Provincial ',
+    ]));
+
+    $empty = new \App\Models\OperationCoordinationService;
+    $empty->setRelation('telemedicinePatient', new \App\Models\TelemedicinePatient([
+        'specific_business_unit' => null,
+    ]));
+
+    expect($method->invoke(null, $withValue))->toBe('Banco Provincial')
+        ->and($method->invoke(null, $empty))->toBe('—');
 });
 
 it('deshabilita medicamentos y laboratorios cubiertos para TDG salvo que la coordinación sea gestionada por TDG', function (): void {
@@ -439,7 +468,8 @@ it('deshabilita medicamentos y laboratorios cubiertos para TDG salvo que la coor
     expect(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', true))->toBeFalse()
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Laboratorio', true))->toBeFalse()
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Medicamento', true))->toBeTrue()
-        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Laboratorio', true))->toBeTrue();
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Laboratorio', true))->toBeTrue()
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', true, true))->toBeTrue();
 
     \Illuminate\Support\Facades\Auth::logout();
 });
@@ -470,8 +500,10 @@ it('permite gestionar a TDG los items no cubiertos y los cubiertos de otras cate
 it('CoordinationServiceItemsManager aplica la regla de acceso por rol al construir items', function (): void {
     $manager = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CoordinationServiceItemsManager.php');
 
-    expect(substr_count($manager, 'CoordinationServiceAccess::itemIsManageableByUser($record, $category, $coverage)'))->toBeGreaterThanOrEqual(4)
-        ->and(substr_count($manager, 'CoordinationServiceAccess::itemIsVisibleToUser($record, $category, $coverage)'))->toBeGreaterThanOrEqual(4);
+    expect($manager)
+        ->toContain('CoordinationServiceAccess::itemIsManageableByUser')
+        ->toContain('isCoveredWithoutInventory')
+        ->toContain('coveredItemIsManageableByTdg');
 });
 
 it('OperationCoordinationServicesTable define acción TDG para asignar coordinación a proveedor', function (): void {
@@ -486,6 +518,27 @@ it('OperationCoordinationServicesTable define acción TDG para asignar coordinac
         ->toContain("Textarea::make('assignment_observation')")
         ->toContain('authenticatedUserIsTdgAnalyst()')
         ->toContain('$assignCoordinationToSupplierAction');
+});
+
+it('mejora el header visual del cuadro de control de servicios médicos', function (): void {
+    $table = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php');
+    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ListOperationCoordinationServices.php');
+    $theme = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
+
+    expect($table)
+        ->toContain('fi-coordination-control-table')
+        ->toContain("->heading('Cuadro de control')")
+        ->toContain('Coordinaciones médicas del sistema');
+
+    expect($page)
+        ->toContain('Cuadro de Control de Servicios Médicos')
+        ->toContain('fi-coordination-control-page')
+        ->toContain('getPageClasses');
+
+    expect($theme)
+        ->toContain('.fi-coordination-control-table .fi-ta-header-heading')
+        ->toContain('.fi-coordination-control-table .fi-ta-grouping-settings')
+        ->toContain('.fi-coordination-control-table .fi-ta-header-cell');
 });
 
 it('incluye migración de assigned_to_supplier_by_tdg en operation_coordination_services', function (): void {

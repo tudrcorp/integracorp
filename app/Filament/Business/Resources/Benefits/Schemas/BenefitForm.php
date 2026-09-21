@@ -78,7 +78,7 @@ class BenefitForm
                                                                 ->default(function () {
                                                                     $maxId = Limit::max('id') ?? 0;
 
-                                                                    return 'TDEC-LIM-' . str_pad((string) ($maxId + 1), 4, '0', STR_PAD_LEFT);
+                                                                    return 'TDEC-LIM-'.str_pad((string) ($maxId + 1), 4, '0', STR_PAD_LEFT);
                                                                 })
                                                                 ->required()
                                                                 ->disabled()
@@ -109,7 +109,7 @@ class BenefitForm
                                                                 ->maxLength(255),
                                                         ])->columnSpanFull(),
                                                     ])->columnSpanFull(),
-                                                            ]),
+                                            ]),
                                         TextInput::make('status')
                                             ->label('Estatus')
                                             ->prefixIcon('heroicon-m-shield-check')
@@ -141,7 +141,8 @@ class BenefitForm
                             ])
                             ->columnSpanFull(),
 
-                        
+                        ...\App\Support\ClinicalEntitlements\PlanBenefitClinicalFormSchema::fields(),
+
                     ])
                     ->columnSpanFull(),
             ]);

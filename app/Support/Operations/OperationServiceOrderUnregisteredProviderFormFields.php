@@ -15,6 +15,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\HtmlString;
+use Livewire\Component;
 
 final class OperationServiceOrderUnregisteredProviderFormFields
 {
@@ -83,20 +84,19 @@ final class OperationServiceOrderUnregisteredProviderFormFields
             ->helperText('Si activa esta opción, el asistente abrirá un paso adicional para registrar el proveedor.')
             ->live()
             ->columnSpanFull()
-            ->afterStateUpdated(function (mixed $state, Set $set): void {
+            ->afterStateUpdated(function (mixed $state, Set $set, Get $get, Component $livewire) use ($afterStateUpdated): void {
                 if (! $state) {
                     self::clearUnregisteredFields($set);
-
-                    return;
+                } else {
+                    $set('doctor_nurse_id', null);
+                    $set('supplier_id', null);
+                    OperationServiceOrderProviderContacts::clearForm($set);
                 }
 
-                $set('doctor_nurse_id', null);
-                $set('supplier_id', null);
+                if ($afterStateUpdated !== null) {
+                    $afterStateUpdated($livewire, $get, $set);
+                }
             });
-
-        if ($afterStateUpdated !== null) {
-            $toggle->afterStateUpdated($afterStateUpdated);
-        }
 
         return $toggle;
     }

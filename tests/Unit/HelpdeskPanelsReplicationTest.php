@@ -52,7 +52,8 @@ it('acciones modales de todos los paneles incluyen nota obligatoria al cambiar e
 
         expect(file_get_contents($path))
             ->toContain('SharedHelpdeskTicketModalActions')
-            ->toContain('makeUpdateStatusAction');
+            ->toContain('makeUpdateStatusAction')
+            ->toContain('makeReassignAction');
     }
 });
 

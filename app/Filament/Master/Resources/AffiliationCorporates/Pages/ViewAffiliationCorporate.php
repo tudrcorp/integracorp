@@ -3,7 +3,7 @@
 namespace App\Filament\Master\Resources\AffiliationCorporates\Pages;
 
 use App\Filament\Master\Resources\AffiliationCorporates\AffiliationCorporateResource;
-use Filament\Actions\EditAction;
+use App\Filament\Shared\CommercialTelemedicine\Actions\ViewAffiliationTelemedicinePatientsAction;
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewAffiliationCorporate extends ViewRecord
@@ -13,7 +13,7 @@ class ViewAffiliationCorporate extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            // EditAction::make(),
+            ViewAffiliationTelemedicinePatientsAction::forRecord($this->getRecord()),
         ];
     }
 }

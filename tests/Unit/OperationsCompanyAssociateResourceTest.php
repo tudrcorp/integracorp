@@ -41,7 +41,10 @@ it('ViewCompanyAssociate expone acción de asociar asociado como paciente con co
         ->toContain('ticket-btn-ios')
         ->toContain('ticket-btn-ios-gray')
         ->toContain('modalSubmitAction')
-        ->toContain('modalCancelAction');
+        ->toContain('modalCancelAction')
+        ->toContain('TelemedicinePatientIdentity::needsSexPrompt')
+        ->toContain("Select::make('sex')")
+        ->toContain('sexOverride:');
 });
 
 it('AssociateCompanyAssociateWithTelemedicinePatientService valida empresa y usa tipo NUEVOS NEGOCIOS', function (): void {
@@ -58,5 +61,7 @@ it('AssociateCompanyAssociateWithTelemedicinePatientService valida empresa y usa
         ->toContain("'supplier_id' => Auth::user()?->supplier_id")
         ->toContain("'status_affiliation' => 'ACTIVO'")
         ->toContain("'country_id' => \$countryId")
-        ->toContain("'region' => \$regionId");
+        ->toContain("'region' => \$regionId")
+        ->toContain('TelemedicinePatientIdentity::normalizeSex')
+        ->toContain('persistCanonicalSexIfSourceMissing');
 });

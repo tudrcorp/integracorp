@@ -3,6 +3,7 @@
 namespace App\Filament\General\Resources\Agents\Tables;
 
 use App\Filament\Shared\CommercialStructure\CommercialHierarchyFlowchart;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
 use App\Models\Agent;
@@ -201,6 +202,11 @@ class AgentsTable
                     ->label('TDEV')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: false),
+                IconColumn::make('is_referidor')
+                    ->label('Es Referidor')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                ReferidorPercentageField::column(),
                 TextColumn::make('commission_tdec')
                     ->label('Comisión TDEC %')
                     ->alignCenter()

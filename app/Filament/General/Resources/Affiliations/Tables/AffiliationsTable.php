@@ -263,6 +263,8 @@ class AffiliationsTable
             ])
             ->recordActions([
                 ActionGroup::make([
+                    \App\Filament\Shared\CommercialTelemedicine\Actions\ViewAffiliationTelemedicinePatientsAction::make(),
+                    \App\Filament\Shared\Affiliations\Actions\ListAffiliationAffiliatesAction::make(),
                     /**EDIT */
 
                     /**UPLOAD */

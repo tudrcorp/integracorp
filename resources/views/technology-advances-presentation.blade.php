@@ -7,7 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#F5F5F7" data-theme-color>
     <meta name="color-scheme" content="light">
-    <title>Avances Tecnológicos — INTEGRACORP · tuDrGroup</title>
+    <title>Avances Dpto. Tecnología y Sistemas Sep14-2026 — INTEGRACORP · tuDrGroup</title>
         <script>
         (function () {
             try {
@@ -26,7 +26,7 @@
     </script>
     <link rel="icon" href="{{ asset('image/imagotipo.png') }}" type="image/png">
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700|dm-sans:400,500,600,700" rel="stylesheet">
+    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700|instrument-serif:400,400i|dm-sans:400,500,600,700" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         :root {
@@ -315,11 +315,132 @@
             color: var(--navy);
         }
 
-        .pillar-detail, .value-detail, .suite-detail, .future-detail { display: none; }
+        .pillar-detail, .value-detail, .suite-detail, .future-detail, .lifecycle-detail { display: none; }
         .pillar-card.is-active .pillar-detail,
         .value-card.is-active .value-detail,
         .suite-card.is-active .suite-detail,
-        .future-card.is-active .future-detail { display: block; }
+        .future-card.is-active .future-detail,
+        .lifecycle-step.is-active .lifecycle-detail { display: block; }
+
+        .cover-tracks {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.55rem;
+        }
+
+        @media (min-width: 420px) {
+            .cover-tracks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+
+        .cover-track {
+            border-radius: 0.95rem;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.72);
+            padding: 0.7rem 0.75rem;
+            text-align: left;
+            min-height: 4.4rem;
+        }
+
+        .cover-track__label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--navy);
+            letter-spacing: -0.01em;
+        }
+
+        .cover-track__hint {
+            margin-top: 0.2rem;
+            font-size: 0.65rem;
+            line-height: 1.35;
+            color: var(--ink-soft);
+        }
+
+        .flow-kicker {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .flow-rail {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.65rem;
+        }
+
+        @media (min-width: 768px) {
+            .flow-rail {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 0.55rem;
+            }
+        }
+
+        .lifecycle-step {
+            position: relative;
+            min-height: 6.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .lifecycle-step { min-height: 8.25rem; }
+        }
+
+        .lifecycle-step__num {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: white;
+            background: var(--accent);
+            box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 28%, transparent);
+        }
+
+        .hub-url {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .hub-url__link {
+            font-size: clamp(1rem, 2.6vw, 1.55rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: var(--navy);
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .hub-url__link:hover,
+        .hub-url__link:focus-visible {
+            color: var(--accent);
+        }
+
+        .hub-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border-radius: 9999px;
+            padding: 0.35rem 0.75rem;
+            font-size: 11px;
+            font-weight: 700;
+            background: color-mix(in srgb, #34C759 14%, white);
+            color: #1F7A3A;
+            border: 1px solid color-mix(in srgb, #34C759 28%, white);
+        }
+
+        .hub-status__dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 9999px;
+            background: #34C759;
+            box-shadow: 0 0 0 4px rgba(52, 199, 89, 0.18);
+        }
 
         .speaker-note {
             max-height: 0;
@@ -513,6 +634,2335 @@
                 top: 3.75rem;
                 bottom: 5.75rem;
             }
+
+            .cover-track {
+                min-height: 0;
+                padding: 0.5rem 0.65rem;
+            }
+
+            .lifecycle-step {
+                min-height: 0;
+            }
+
+            .pwa-devices,
+            .portal-devices,
+            .mkt-devices,
+            .sys-devices,
+            .intra-devices,
+            .mc-bridge,
+            .os-modals {
+                transform: scale(0.86);
+                transform-origin: top center;
+            }
+
+            .intra-devices {
+                transform: scale(0.78);
+            }
+        }
+
+        .pwa-devices {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 1.75rem 2.25rem;
+            flex-wrap: wrap;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .pwa-device {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.7rem;
+        }
+
+        .pwa-device__caption {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+        }
+
+        .pwa-device__frame {
+            position: relative;
+            background: linear-gradient(160deg, #3a3a3c 0%, #1c1c1e 42%, #0b0b0d 100%);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.28),
+                inset 0 -2px 6px rgba(0, 0, 0, 0.45),
+                0 26px 56px rgba(2, 9, 20, 0.3);
+        }
+
+        .pwa-device__frame--phone {
+            width: 256px;
+            padding: 12px 11px 14px;
+            border-radius: 2.7rem;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+
+        .pwa-device__side {
+            position: absolute;
+            background: #2a2a2c;
+            border-radius: 1px;
+        }
+
+        .pwa-device__side--silent {
+            left: -2px;
+            top: 92px;
+            width: 3px;
+            height: 20px;
+        }
+
+        .pwa-device__side--volume {
+            left: -2px;
+            top: 126px;
+            width: 3px;
+            height: 62px;
+        }
+
+        .pwa-device__side--power {
+            right: -2px;
+            top: 138px;
+            width: 3px;
+            height: 50px;
+        }
+
+        .pwa-device__screen {
+            position: relative;
+            overflow: hidden;
+            background: #020914;
+        }
+
+        .pwa-device__screen--phone {
+            width: 234px;
+            height: 506px;
+            border-radius: 2.05rem;
+        }
+
+        .pwa-device__island {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            z-index: 6;
+            width: 78px;
+            height: 20px;
+            transform: translateX(-50%);
+            border-radius: 999px;
+            background: #050505;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        }
+
+        .pwa-device__home {
+            position: absolute;
+            left: 50%;
+            bottom: 9px;
+            z-index: 6;
+            width: 96px;
+            height: 5px;
+            transform: translateX(-50%);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.42);
+        }
+
+        .pwa-scale {
+            transform-origin: top left;
+        }
+
+        .pwa-scale--phone {
+            width: 390px;
+            height: 844px;
+            transform: scale(calc(234 / 390));
+        }
+
+        .pwa-welcome {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            width: 390px;
+            height: 844px;
+            overflow: hidden;
+            color: #e8f1ff;
+            background: #020914;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Instrument Sans', sans-serif;
+            padding: 28px 22px 22px;
+        }
+
+        .pwa-welcome__photo {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 30%;
+        }
+
+        .pwa-welcome__shade {
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(2, 9, 20, 0.28) 0%, rgba(2, 9, 20, 0.18) 28%, rgba(2, 9, 20, 0.55) 62%, rgba(2, 9, 20, 0.9) 100%);
+        }
+
+        .pwa-welcome__brand,
+        .pwa-welcome__hero,
+        .pwa-welcome__dock {
+            position: relative;
+            z-index: 2;
+        }
+
+        .pwa-welcome__brand img {
+            height: 38px;
+            width: auto;
+            mix-blend-mode: screen;
+        }
+
+        .pwa-welcome__hero {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding-bottom: 28px;
+        }
+
+        .pwa-welcome__kicker {
+            margin: 0 0 10px;
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(232, 241, 255, 0.62);
+        }
+
+        .pwa-welcome__title {
+            margin: 0;
+            font-family: 'Instrument Serif', 'Times New Roman', serif;
+            font-size: 46px;
+            font-weight: 400;
+            line-height: 0.94;
+            letter-spacing: -0.04em;
+            text-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+        }
+
+        .pwa-welcome__title em {
+            font-style: italic;
+        }
+
+        .pwa-welcome__dock {
+            display: grid;
+            gap: 12px;
+        }
+
+        .pwa-welcome__btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 54px;
+            border-radius: 999px;
+            font-size: 17px;
+            font-weight: 620;
+        }
+
+        .pwa-welcome__btn--plans {
+            color: #041428;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(219, 234, 254, 0.92));
+        }
+
+        .pwa-welcome__btn--google {
+            color: #111827;
+            background: #fff;
+        }
+
+        .pwa-welcome__register {
+            margin: 4px 0 18px;
+            text-align: center;
+            font-size: 14px;
+            color: rgba(232, 241, 255, 0.72);
+        }
+
+        .pwa-plans {
+            position: relative;
+            width: 390px;
+            height: 844px;
+            overflow: hidden;
+            color: #e8f1ff;
+            background: #020914;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Instrument Sans', sans-serif;
+            padding: 28px 18px 22px;
+        }
+
+        .pwa-plans__atmosphere {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(120% 80% at 10% -10%, rgba(14, 116, 188, 0.55), transparent 55%),
+                radial-gradient(90% 60% at 110% 10%, rgba(45, 212, 191, 0.22), transparent 50%),
+                linear-gradient(180deg, #020914 0%, #041428 48%, #020914 100%);
+        }
+
+        .pwa-plans__header,
+        .pwa-plans__hero,
+        .pwa-plans__list {
+            position: relative;
+            z-index: 2;
+        }
+
+        .pwa-plans__header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 44px;
+            margin-bottom: 6px;
+        }
+
+        .pwa-plans__brand img {
+            height: 30px;
+            width: auto;
+            mix-blend-mode: screen;
+        }
+
+        .pwa-plans__menu {
+            width: 22px;
+            height: 14px;
+            position: relative;
+        }
+
+        .pwa-plans__menu span {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            border-radius: 99px;
+            background: white;
+        }
+
+        .pwa-plans__menu span:nth-child(1) { top: 0; }
+        .pwa-plans__menu span:nth-child(2) { top: 6px; }
+        .pwa-plans__menu span:nth-child(3) { top: 12px; }
+
+        .pwa-plans__kicker {
+            margin: 0;
+            font-size: 13px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: rgba(232, 241, 255, 0.62);
+        }
+
+        .pwa-plans__title {
+            margin: 6px 0 12px;
+            font-size: 26px;
+            font-weight: 720;
+            letter-spacing: -0.05em;
+            line-height: 1.05;
+        }
+
+        .pwa-plans__lead {
+            display: none;
+        }
+
+        .pwa-plans__list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .pwa-plan-card {
+            position: relative;
+            min-height: 188px;
+            overflow: hidden;
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: #061428;
+        }
+
+        .pwa-plan-card__media,
+        .pwa-plan-card__photo,
+        .pwa-plan-card__shade {
+            position: absolute;
+            inset: 0;
+        }
+
+        .pwa-plan-card__photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 28%;
+        }
+
+        .pwa-plan-card__shade {
+            background:
+                linear-gradient(180deg, rgba(2, 9, 20, 0.12) 0%, rgba(2, 9, 20, 0.18) 32%, rgba(2, 9, 20, 0.78) 72%, rgba(2, 9, 20, 0.94) 100%);
+        }
+
+        .pwa-plan-card__body {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 188px;
+            padding: 14px 14px 14px;
+        }
+
+        .pwa-plan-card__title {
+            margin: 0 0 4px;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+        }
+
+        .pwa-plan-card__promise {
+            margin: 0 0 10px;
+            font-size: 12px;
+            line-height: 1.3;
+            color: rgba(255, 255, 255, 0.78);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .pwa-plan-card__meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .pwa-plan-card__meta span {
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .portal-devices {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 1.75rem 2.4rem;
+            flex-wrap: wrap;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .portal-monitor {
+            gap: 0.55rem;
+        }
+
+        .portal-monitor__body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .portal-monitor__frame {
+            position: relative;
+            width: 620px;
+            padding: 16px 16px 18px;
+            border-radius: 1.15rem;
+            background: linear-gradient(165deg, #4a4a4e 0%, #1d1d20 46%, #0c0c0e 100%);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.28),
+                inset 0 -2px 8px rgba(0, 0, 0, 0.45),
+                0 28px 56px rgba(2, 9, 20, 0.28);
+        }
+
+        .portal-monitor__camera {
+            position: absolute;
+            top: 6px;
+            left: 50%;
+            z-index: 2;
+            width: 8px;
+            height: 8px;
+            transform: translateX(-50%);
+            border-radius: 999px;
+            background: radial-gradient(circle at 35% 35%, #5b7a9a 0%, #0b1220 70%);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+        }
+
+        .portal-monitor__screen {
+            overflow: hidden;
+            width: 588px;
+            height: 368px;
+            border-radius: 0.45rem;
+            background: #020914;
+        }
+
+        .portal-monitor__chrome {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            height: 28px;
+            padding: 0 10px;
+            background: linear-gradient(180deg, #eceff3 0%, #d9dee6 100%);
+            border-bottom: 1px solid rgba(3, 30, 54, 0.12);
+        }
+
+        .portal-monitor__dots {
+            display: flex;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+
+        .portal-monitor__dots i {
+            display: block;
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #ff5f57;
+        }
+
+        .portal-monitor__dots i:nth-child(2) { background: #febc2e; }
+        .portal-monitor__dots i:nth-child(3) { background: #28c840; }
+
+        .portal-monitor__url {
+            flex: 1;
+            min-width: 0;
+            height: 16px;
+            padding: 0 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.92);
+            color: #4b5563;
+            font-size: 9px;
+            font-weight: 650;
+            letter-spacing: 0.02em;
+            line-height: 16px;
+            text-align: center;
+        }
+
+        .portal-monitor__viewport {
+            position: relative;
+            width: 588px;
+            height: 340px;
+            overflow: hidden;
+        }
+
+        .portal-monitor__neck {
+            width: 78px;
+            height: 26px;
+            background: linear-gradient(180deg, #3a3a3e 0%, #1a1a1c 100%);
+            clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
+        }
+
+        .portal-monitor__base {
+            width: 196px;
+            height: 8px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #3f3f44 0%, #161618 100%);
+            box-shadow: 0 8px 16px rgba(2, 9, 20, 0.28);
+        }
+
+        .portal-login {
+            position: relative;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Instrument Sans', sans-serif;
+            color: #031e36;
+        }
+
+        .portal-login--phone {
+            width: 390px;
+            height: 844px;
+        }
+
+        .portal-login--desktop {
+            width: 588px;
+            height: 340px;
+        }
+
+        .portal-login__photo {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 18%;
+        }
+
+        .portal-login__veil {
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(4, 51, 90, 0.16) 48%, rgba(3, 30, 54, 0.34) 100%),
+                rgba(68, 116, 163, 0.06);
+        }
+
+        .portal-login__stage {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding: 72px 28px 48px;
+            box-sizing: border-box;
+        }
+
+        .portal-login--desktop .portal-login__stage {
+            padding: 22px 28px;
+        }
+
+        .portal-login__card {
+            position: relative;
+            width: 100%;
+            max-width: 318px;
+            padding: 22px 20px 18px;
+            border-radius: 28px;
+            background: linear-gradient(155deg, rgba(255, 255, 255, 0.58) 0%, rgba(255, 255, 255, 0.28) 46%, rgba(196, 212, 230, 0.18) 100%);
+            backdrop-filter: blur(18px) saturate(160%);
+            -webkit-backdrop-filter: blur(18px) saturate(160%);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                0 18px 40px rgba(3, 30, 54, 0.22);
+        }
+
+        .portal-login--desktop .portal-login__card {
+            max-width: 268px;
+            padding: 14px 16px 12px;
+            border-radius: 20px;
+        }
+
+        .portal-login__logo {
+            display: block;
+            height: 32px;
+            width: auto;
+            margin: 0 auto 14px;
+        }
+
+        .portal-login--desktop .portal-login__logo {
+            height: 22px;
+            margin-bottom: 8px;
+        }
+
+        .portal-login__title {
+            margin: 0;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 720;
+            letter-spacing: -0.04em;
+            line-height: 1.15;
+        }
+
+        .portal-login--desktop .portal-login__title {
+            font-size: 16px;
+        }
+
+        .portal-login__lead {
+            margin: 6px 0 16px;
+            text-align: center;
+            font-size: 13px;
+            line-height: 1.35;
+            color: rgba(3, 30, 54, 0.72);
+        }
+
+        .portal-login--desktop .portal-login__lead {
+            margin: 4px 0 10px;
+            font-size: 10px;
+        }
+
+        .portal-login__label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 650;
+            color: #031e36;
+        }
+
+        .portal-login--desktop .portal-login__label {
+            margin-bottom: 4px;
+            font-size: 9px;
+        }
+
+        .portal-login__label-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .portal-login--desktop .portal-login__label-row {
+            margin-top: 8px;
+        }
+
+        .portal-login__link,
+        .portal-login__contact {
+            color: #031e36;
+            font-weight: 700;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .portal-login__link {
+            font-size: 11px;
+        }
+
+        .portal-login--desktop .portal-login__link {
+            font-size: 8px;
+        }
+
+        .portal-login__input {
+            display: flex;
+            align-items: center;
+            min-height: 42px;
+            padding: 0 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(3, 30, 54, 0.14);
+            background: rgba(255, 255, 255, 0.78);
+            color: rgba(3, 30, 54, 0.42);
+            font-size: 14px;
+        }
+
+        .portal-login--desktop .portal-login__input {
+            min-height: 28px;
+            padding: 0 10px;
+            border-radius: 8px;
+            font-size: 11px;
+        }
+
+        .portal-login__input--secret {
+            letter-spacing: 0.18em;
+            color: #031e36;
+        }
+
+        .portal-login__btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 16px;
+            min-height: 44px;
+            border-radius: 12px;
+            background: #031e36;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .portal-login--desktop .portal-login__btn {
+            margin-top: 10px;
+            min-height: 30px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        .portal-login__contact {
+            margin: 16px 0 0;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .portal-login--desktop .portal-login__contact {
+            margin-top: 10px;
+            font-size: 10px;
+        }
+
+        .pwa-device__frame--tablet {
+            width: 280px;
+            padding: 11px;
+            border-radius: 1.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+
+        .pwa-device__screen--tablet {
+            width: 258px;
+            height: 344px;
+            border-radius: 1.2rem;
+        }
+
+        .pwa-device__camera--tablet {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            z-index: 6;
+            width: 9px;
+            height: 9px;
+            transform: translateX(-50%);
+            border-radius: 999px;
+            background: radial-gradient(circle at 35% 35%, #6b7c94 0%, #0b1220 70%);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+        }
+
+        .pwa-device__home--tablet {
+            width: 72px;
+            bottom: 8px;
+        }
+
+        .portal-monitor__frame--compact {
+            width: 500px;
+            padding: 12px 12px 14px;
+        }
+
+        .portal-monitor__screen--compact {
+            width: 476px;
+            height: 298px;
+        }
+
+        .portal-monitor__viewport--compact {
+            width: 476px;
+            height: 270px;
+        }
+
+        .portal-monitor__frame--wide {
+            width: 760px;
+        }
+
+        .portal-monitor__screen--wide {
+            width: 728px;
+            height: 430px;
+        }
+
+        .portal-monitor__viewport--wide {
+            width: 728px;
+            height: 402px;
+        }
+
+        .intra-devices {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .intra-index {
+            box-sizing: border-box;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            padding: 14px 18px 12px;
+            color: #0d1620;
+            background:
+                radial-gradient(520px 240px at 50% -18%, rgba(0, 48, 96, 0.07), transparent 68%),
+                linear-gradient(180deg, #edf1f6 0%, #f7f8fa 42%);
+            font-family: Verdana, Geneva, 'DejaVu Sans', sans-serif;
+        }
+
+        .intra-index__mast {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .intra-index__logo {
+            display: block;
+            height: 22px;
+            width: auto;
+            margin-bottom: 8px;
+            opacity: 0.86;
+        }
+
+        .intra-index__mast h3 {
+            margin: 0;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+            color: #0d1620;
+        }
+
+        .intra-index__mast p {
+            margin: 5px 0 0;
+            max-width: 46ch;
+            font-size: 10px;
+            line-height: 1.4;
+            color: #647889;
+        }
+
+        .intra-index__stamp {
+            flex: none;
+            margin: 0 !important;
+            text-align: right;
+            font-size: 9px;
+            line-height: 1.55;
+            color: #647889;
+        }
+
+        .intra-index__stamp strong {
+            display: block;
+            color: #33455a;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .intra-index__bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 12px -18px 0;
+            padding: 8px 18px;
+            background: rgba(247, 248, 250, 0.78);
+            box-shadow: inset 0 -1px 0 rgba(13, 22, 32, 0.06);
+        }
+
+        .intra-index__search {
+            flex: 1;
+            min-width: 0;
+            height: 26px;
+            padding: 0 10px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: inset 0 0 0 1px rgba(13, 22, 32, 0.1);
+            color: #8b9cac;
+            font-size: 10px;
+            line-height: 26px;
+        }
+
+        .intra-index__chip {
+            flex: none;
+            height: 26px;
+            padding: 0 10px;
+            border-radius: 8px;
+            color: #647889;
+            font-size: 9px;
+            font-weight: 600;
+            line-height: 26px;
+        }
+
+        .intra-index__chip.is-active {
+            color: #0d1620;
+            font-weight: 700;
+            background: #fff;
+            box-shadow: inset 0 0 0 1px rgba(13, 22, 32, 0.1);
+        }
+
+        .intra-index__chip--ok::before,
+        .intra-index__chip--warn::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            margin-right: 6px;
+            border-radius: 999px;
+            vertical-align: middle;
+        }
+
+        .intra-index__chip--ok::before { background: #0e8a59; }
+        .intra-index__chip--warn::before { background: #9a5a00; }
+
+        .intra-index__cols {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 18px;
+            margin-top: 6px;
+        }
+
+        .intra-index__head {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 10px 0 6px;
+            border-bottom: 1px solid rgba(13, 22, 32, 0.1);
+        }
+
+        .intra-index__head h4 {
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #0d1620;
+        }
+
+        .intra-index__head span {
+            font-size: 9px;
+            font-weight: 700;
+            color: #003060;
+        }
+
+        .intra-index__dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+        }
+
+        .intra-index__dot--ok { background: #0e8a59; }
+        .intra-index__dot--warn { background: #9a5a00; }
+
+        .intra-index__rows {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .intra-index__rows li {
+            display: grid;
+            grid-template-columns: 16px minmax(0, 1fr) auto;
+            grid-template-rows: auto auto;
+            column-gap: 8px;
+            padding: 7px 4px 7px 0;
+            border-bottom: 1px solid rgba(13, 22, 32, 0.055);
+        }
+
+        .intra-index__rows b {
+            grid-row: 1 / span 2;
+            font-size: 9px;
+            font-weight: 700;
+            color: #8b9cac;
+            line-height: 1.35;
+        }
+
+        .intra-index__rows span {
+            min-width: 0;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #0d1620;
+            line-height: 1.2;
+        }
+
+        .intra-index__rows em {
+            justify-self: end;
+            align-self: start;
+            padding: 1px 6px;
+            border-radius: 999px;
+            background: rgba(0, 48, 96, 0.075);
+            color: #003060;
+            font-size: 8px;
+            font-style: normal;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .intra-index__rows code {
+            grid-column: 2 / span 2;
+            overflow: hidden;
+            color: #647889;
+            font-family: Verdana, Geneva, 'DejaVu Sans', sans-serif;
+            font-size: 8px;
+            line-height: 1.35;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .intra-index__rows strong {
+            color: #0d1620;
+            font-weight: 700;
+        }
+
+        .mkt-devices {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 1.15rem 1.5rem;
+            flex-wrap: wrap;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .mc-bridge {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.15fr);
+            align-items: stretch;
+            gap: 0.85rem 1.1rem;
+            width: 100%;
+        }
+
+        .mc-brand {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 0.7rem;
+            min-height: 8.5rem;
+            padding: 1.1rem 1.25rem;
+            border-radius: 1.35rem;
+        }
+
+        .mc-brand__logo {
+            display: block;
+            object-fit: contain;
+            object-position: left center;
+        }
+
+        .mc-brand__logo--tdg {
+            height: 2.15rem;
+            width: auto;
+            max-width: 11rem;
+        }
+
+        .mc-brand__logo--dark {
+            display: none;
+        }
+
+        html[data-theme="dark"] .mc-brand__logo--light {
+            display: none;
+        }
+
+        html[data-theme="dark"] .mc-brand__logo--dark {
+            display: block;
+        }
+
+        .mc-brand__logo--mailchimp {
+            height: 2.35rem;
+            width: auto;
+            max-width: 14.5rem;
+        }
+
+        .mc-brand__name {
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--navy);
+        }
+
+        .mc-brand__hint {
+            margin-top: 0.12rem;
+            font-size: 0.75rem;
+            line-height: 1.35;
+            color: var(--ink-soft);
+        }
+
+        .mc-brand--mailchimp {
+            background: #FFE01B;
+            border: 1px solid rgba(36, 28, 21, 0.12);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.55),
+                0 16px 36px rgba(255, 224, 27, 0.28),
+                0 4px 14px rgba(20, 33, 61, 0.08);
+        }
+
+        .mc-brand--mailchimp .mc-brand__name,
+        .mc-brand--mailchimp .mc-brand__hint {
+            color: #241C15;
+        }
+
+        .mc-brand--mailchimp .mc-brand__hint {
+            opacity: 0.72;
+        }
+
+        .mc-connector {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            min-width: 6.5rem;
+            padding-top: 0.4rem;
+        }
+
+        .mc-connector__mark {
+            display: grid;
+            place-items: center;
+            width: 2.6rem;
+            height: 2.6rem;
+            border-radius: 999px;
+            color: #241C15;
+            background: #FFE01B;
+            box-shadow: 0 8px 20px rgba(255, 224, 27, 0.35);
+        }
+
+        .mc-connector__mark img {
+            width: 1.35rem;
+            height: 1.35rem;
+        }
+
+        .mc-connector__line {
+            width: 100%;
+            height: 2px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(255, 149, 0, 0.15), #FFE01B 48%, rgba(255, 149, 0, 0.15));
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mc-connector__line::after {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 28%;
+            background: linear-gradient(90deg, transparent, #241C15, transparent);
+            animation: mc-flow 1.8s ease-in-out infinite;
+        }
+
+        @keyframes mc-flow {
+            0% { transform: translateX(-120%); }
+            100% { transform: translateX(420%); }
+        }
+
+        .mc-connector__labels {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.15rem;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+        }
+
+        @media (max-width: 860px) {
+            .mc-bridge {
+                grid-template-columns: 1fr;
+            }
+
+            .mc-connector {
+                flex-direction: row;
+                min-width: 0;
+                padding: 0.15rem 0;
+            }
+
+            .mc-connector__line {
+                flex: 1;
+                max-width: 5rem;
+            }
+
+            .mc-connector__labels {
+                flex-direction: row;
+                gap: 0.55rem;
+            }
+
+            .mc-brand__logo--tdg,
+            .mc-brand__logo--mailchimp {
+                max-width: 12rem;
+            }
+        }
+
+        .os-flow {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.4rem;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .os-flow__step {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.4rem;
+            min-width: 0;
+            padding: 0.4rem 0.5rem;
+            border-radius: 0.75rem;
+            background: rgba(255, 255, 255, 0.55);
+            border: 1px solid rgba(20, 33, 61, 0.08);
+        }
+
+        .os-flow__num {
+            display: grid;
+            place-items: center;
+            width: 1.2rem;
+            height: 1.2rem;
+            border-radius: 999px;
+            flex-shrink: 0;
+            background: rgba(0, 122, 255, 0.12);
+            color: #007AFF;
+            font-size: 0.62rem;
+            font-weight: 800;
+        }
+
+        .os-flow__step strong {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 750;
+            color: var(--navy);
+            line-height: 1.15;
+        }
+
+        .os-flow__step p {
+            margin: 0.12rem 0 0;
+            font-size: 0.6rem;
+            line-height: 1.3;
+            color: var(--ink-soft);
+        }
+
+        .os-modals {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+            gap: 0.55rem 0.45rem;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .os-modal-frame {
+            margin: 0;
+            min-width: 0;
+        }
+
+        .os-bridge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.2rem;
+            text-align: center;
+            padding: 0.35rem 0.55rem;
+        }
+
+        .os-bridge__arrow {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #007AFF;
+            line-height: 1;
+        }
+
+        .os-bridge__label {
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            color: var(--navy);
+            white-space: nowrap;
+        }
+
+        .os-bridge__sub {
+            font-size: 0.58rem;
+            font-weight: 650;
+            color: var(--ink-soft);
+            white-space: nowrap;
+        }
+
+        .os-modal-frame .pwa-device__caption {
+            display: none;
+        }
+
+        @media (max-width: 720px) {
+            .os-flow {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .os-modals {
+                grid-template-columns: 1fr;
+            }
+
+            .os-bridge {
+                flex-direction: row;
+                gap: 0.45rem;
+            }
+
+            .os-bridge__arrow {
+                transform: rotate(90deg);
+            }
+        }
+
+        .os-modal {
+            border-radius: 1rem;
+            border: 1px solid rgba(20, 33, 61, 0.10);
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.9),
+                0 14px 28px rgba(20, 33, 61, 0.10);
+            padding: 0.6rem 0.7rem 0.55rem;
+            font-family: 'Instrument Sans', 'SF Pro Display', ui-sans-serif, sans-serif;
+            color: #14213D;
+            height: 100%;
+        }
+
+        .os-modal__head {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .os-modal__icon {
+            display: grid;
+            place-items: center;
+            width: 1.7rem;
+            height: 1.7rem;
+            border-radius: 0.55rem;
+            flex-shrink: 0;
+        }
+
+        .os-modal__icon--invoice {
+            color: #007AFF;
+            background: rgba(0, 122, 255, 0.12);
+        }
+
+        .os-modal__icon--receipt {
+            color: #248A3D;
+            background: rgba(52, 199, 89, 0.16);
+        }
+
+        .os-modal__title {
+            font-size: 0.82rem;
+            font-weight: 750;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .os-modal__desc {
+            margin-top: 0.1rem;
+            font-size: 0.6rem;
+            line-height: 1.3;
+            color: rgba(20, 33, 61, 0.58);
+        }
+
+        .os-modal__chip,
+        .os-modal__note {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem 0.55rem;
+            margin-bottom: 0.45rem;
+            padding: 0.32rem 0.5rem;
+            border-radius: 0.55rem;
+            font-size: 0.62rem;
+            line-height: 1.3;
+        }
+
+        .os-modal__chip {
+            background: rgba(0, 122, 255, 0.08);
+            border: 1px solid rgba(0, 122, 255, 0.16);
+            color: #0B4A8A;
+        }
+
+        .os-modal__note {
+            background: rgba(52, 199, 89, 0.10);
+            border: 1px solid rgba(52, 199, 89, 0.28);
+            color: #1F6B38;
+        }
+
+        .os-modal__grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.32rem 0.4rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .os-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+            min-width: 0;
+            padding: 0.28rem 0.4rem;
+            border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.78);
+            border: 1px solid rgba(20, 33, 61, 0.08);
+        }
+
+        .os-field--full {
+            grid-column: 1 / -1;
+        }
+
+        .os-field span {
+            font-size: 0.58rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: rgba(20, 33, 61, 0.48);
+        }
+
+        .os-field em {
+            font-style: normal;
+            font-size: 0.78rem;
+            font-weight: 650;
+            color: #14213D;
+        }
+
+        .os-status {
+            color: #248A3D !important;
+        }
+
+        .os-dropzone {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.45rem;
+            padding: 0.4rem 0.5rem;
+            border-radius: 0.6rem;
+            border: 1px dashed rgba(0, 122, 255, 0.38);
+            background: rgba(0, 122, 255, 0.05);
+        }
+
+        .os-dropzone--receipt {
+            border-color: rgba(52, 199, 89, 0.42);
+            background: rgba(52, 199, 89, 0.07);
+        }
+
+        .os-dropzone__file {
+            display: grid;
+            place-items: center;
+            width: 2.15rem;
+            height: 2.15rem;
+            border-radius: 0.5rem;
+            background: #007AFF;
+            color: #fff;
+            font-size: 0.58rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            flex-shrink: 0;
+        }
+
+        .os-dropzone__file--receipt {
+            background: #34C759;
+        }
+
+        .os-dropzone strong {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .os-dropzone small {
+            display: block;
+            margin-top: 0.1rem;
+            font-size: 0.62rem;
+            color: rgba(20, 33, 61, 0.52);
+        }
+
+        .os-modal__section {
+            margin: 0 0 0.4rem;
+            font-size: 0.62rem;
+            font-weight: 750;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(20, 33, 61, 0.5);
+        }
+
+        .os-modal__foot {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.4rem;
+            margin-top: 0.15rem;
+        }
+
+        .os-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 1.7rem;
+            padding: 0 0.75rem;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            font-weight: 700;
+        }
+
+        .os-btn--ghost {
+            background: rgba(20, 33, 61, 0.06);
+            color: rgba(20, 33, 61, 0.7);
+        }
+
+        .os-btn--invoice {
+            background: #007AFF;
+            color: #fff;
+        }
+
+        .os-btn--receipt {
+            background: #34C759;
+            color: #fff;
+        }
+
+        html[data-theme="dark"] .os-flow__step {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.10);
+        }
+
+        .mkt-login {
+            position: relative;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Instrument Sans', sans-serif;
+            color: #2d3250;
+            background:
+                radial-gradient(ellipse 65% 50% at 12% -8%, rgba(249, 177, 122, 0.22), transparent 58%),
+                radial-gradient(ellipse 50% 40% at 92% 4%, rgba(103, 111, 157, 0.16), transparent 52%),
+                linear-gradient(180deg, #f4f5fb 0%, #e8ebf4 100%);
+        }
+
+        .mkt-login--phone {
+            width: 390px;
+            height: 844px;
+        }
+
+        .mkt-login--tablet {
+            width: 258px;
+            height: 344px;
+        }
+
+        .mkt-login__orb {
+            position: absolute;
+            border-radius: 999px;
+            filter: blur(42px);
+        }
+
+        .mkt-login__orb--a {
+            top: 8%;
+            left: -18%;
+            width: 180px;
+            height: 180px;
+            background: rgba(249, 177, 122, 0.38);
+        }
+
+        .mkt-login__orb--b {
+            right: -16%;
+            bottom: 12%;
+            width: 200px;
+            height: 200px;
+            background: rgba(103, 111, 157, 0.28);
+        }
+
+        .mkt-login__stage {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding: 88px 28px 48px;
+            box-sizing: border-box;
+        }
+
+        .mkt-login--tablet .mkt-login__stage {
+            padding: 28px 18px 22px;
+        }
+
+        .mkt-login__card {
+            width: 100%;
+            max-width: 318px;
+            padding: 26px 22px 22px;
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.9),
+                0 18px 40px rgba(45, 50, 80, 0.12);
+        }
+
+        .mkt-login--tablet .mkt-login__card {
+            max-width: 228px;
+            padding: 16px 14px 14px;
+            border-radius: 20px;
+        }
+
+        .mkt-login__logo {
+            display: block;
+            height: 34px;
+            width: auto;
+            margin: 0 auto 14px;
+        }
+
+        .mkt-login--tablet .mkt-login__logo {
+            height: 22px;
+            margin-bottom: 8px;
+        }
+
+        .mkt-login__title {
+            margin: 0;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .mkt-login--tablet .mkt-login__title {
+            font-size: 15px;
+        }
+
+        .mkt-login__pill {
+            display: table;
+            margin: 10px auto 0;
+            padding: 4px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(213, 217, 232, 0.9);
+            background: rgba(213, 217, 232, 0.65);
+            color: #2d3250;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .mkt-login--tablet .mkt-login__pill {
+            margin-top: 6px;
+            padding: 3px 8px;
+            font-size: 7px;
+        }
+
+        .mkt-login__rule {
+            display: block;
+            width: 40px;
+            height: 1px;
+            margin: 14px auto 16px;
+            background: linear-gradient(90deg, transparent, #d5d9e8, transparent);
+        }
+
+        .mkt-login--tablet .mkt-login__rule {
+            margin: 8px auto 10px;
+        }
+
+        .mkt-login__label {
+            display: block;
+            margin: 0 0 6px 6px;
+            font-size: 10px;
+            font-weight: 650;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #565d87;
+        }
+
+        .mkt-login--tablet .mkt-login__label {
+            margin-bottom: 4px;
+            font-size: 8px;
+        }
+
+        .mkt-login__field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 42px;
+            margin-bottom: 12px;
+            padding: 0 6px 0 6px;
+            border-radius: 999px;
+            border: 1px solid rgba(103, 111, 157, 0.28);
+            background: #fff;
+            color: rgba(45, 50, 80, 0.45);
+            font-size: 13px;
+        }
+
+        .mkt-login--tablet .mkt-login__field {
+            min-height: 28px;
+            margin-bottom: 8px;
+            font-size: 10px;
+        }
+
+        .mkt-login__icon {
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+            border-radius: 999px;
+            background: rgba(213, 217, 232, 0.9);
+            box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .mkt-login--tablet .mkt-login__icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .mkt-login__secret {
+            letter-spacing: 0.16em;
+            color: #2d3250;
+        }
+
+        .mkt-login__remember {
+            margin: 2px 0 14px 8px;
+            font-size: 12px;
+            color: #565d87;
+        }
+
+        .mkt-login--tablet .mkt-login__remember {
+            margin: 0 0 8px 6px;
+            font-size: 9px;
+        }
+
+        .mkt-login__btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #fab98a 0%, #f9b17a 100%);
+            color: #2d3250;
+            font-size: 15px;
+            font-weight: 700;
+            box-shadow: 0 8px 20px rgba(249, 177, 122, 0.32);
+        }
+
+        .mkt-login--tablet .mkt-login__btn {
+            min-height: 30px;
+            font-size: 11px;
+        }
+
+        .mkt-landing {
+            position: relative;
+            width: 476px;
+            height: 270px;
+            overflow: hidden;
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #2d3250;
+            background:
+                radial-gradient(ellipse 70% 55% at 8% -8%, rgba(249, 177, 122, 0.28), transparent 58%),
+                radial-gradient(ellipse 55% 45% at 96% 0%, rgba(103, 111, 157, 0.2), transparent 52%),
+                linear-gradient(180deg, #f7f8fc 0%, #eef0f7 100%);
+        }
+
+        .mkt-landing__orb {
+            position: absolute;
+            border-radius: 999px;
+            filter: blur(28px);
+            pointer-events: none;
+        }
+
+        .mkt-landing__orb--a {
+            top: 18%;
+            left: -8%;
+            width: 120px;
+            height: 120px;
+            background: rgba(249, 177, 122, 0.32);
+        }
+
+        .mkt-landing__orb--b {
+            right: -6%;
+            top: 8%;
+            width: 130px;
+            height: 130px;
+            background: rgba(103, 111, 157, 0.22);
+        }
+
+        .mkt-landing__header {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 36px;
+            padding: 0 14px;
+            background: rgba(255, 255, 255, 0.82);
+            border-bottom: 1px solid rgba(213, 217, 232, 0.55);
+        }
+
+        .mkt-landing__logo {
+            height: 16px;
+            width: auto;
+        }
+
+        .mkt-landing__nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 8px;
+            font-weight: 650;
+            color: #565d87;
+        }
+
+        .mkt-landing__nav strong {
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #fab98a 0%, #f9b17a 100%);
+            color: #2d3250;
+            font-weight: 750;
+        }
+
+        .mkt-landing__hero {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 12px;
+            height: calc(100% - 36px);
+            padding: 12px 14px 12px;
+            box-sizing: border-box;
+        }
+
+        .mkt-landing__eyebrow {
+            margin: 0 0 6px;
+            font-size: 7px;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: #676f9d;
+        }
+
+        .mkt-landing__title {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 720;
+            letter-spacing: -0.04em;
+            line-height: 1.12;
+        }
+
+        .mkt-landing__title em {
+            font-style: normal;
+            background: linear-gradient(118deg, #e87d2f 0%, #f9b17a 38%, #676f9d 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .mkt-landing__lead {
+            margin: 6px 0 0;
+            font-size: 8px;
+            line-height: 1.35;
+            color: #565d87;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .mkt-landing__actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .mkt-landing__cta {
+            display: inline-flex;
+            align-items: center;
+            min-height: 18px;
+            padding: 0 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(213, 217, 232, 0.95);
+            background: rgba(255, 255, 255, 0.55);
+            font-size: 7px;
+            font-weight: 700;
+        }
+
+        .mkt-landing__cta--primary {
+            border: 0;
+            background: linear-gradient(180deg, #fab98a 0%, #f9b17a 100%);
+            color: #2d3250;
+        }
+
+        .mkt-landing__stack {
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .mkt-landing__card {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 0;
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+        }
+
+        .mkt-landing__card-bg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .mkt-landing__card--casa .mkt-landing__card-bg { object-position: center 30%; }
+        .mkt-landing__card--viajes .mkt-landing__card-bg { object-position: center 40%; }
+
+        .mkt-landing__card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(45, 50, 80, 0.08) 0%, rgba(45, 50, 80, 0.72) 100%);
+        }
+
+        .mkt-landing__kicker,
+        .mkt-landing__card h4 {
+            position: relative;
+            z-index: 1;
+            margin: 0;
+            color: #fff;
+        }
+
+        .mkt-landing__kicker {
+            font-size: 7px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0.85;
+        }
+
+        .mkt-landing__card h4 {
+            margin-top: 2px;
+            font-size: 11px;
+            font-weight: 720;
+            letter-spacing: -0.03em;
+        }
+
+        .sys-devices {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 1.75rem 2.25rem;
+            flex-wrap: wrap;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .sys-hub {
+            position: relative;
+            overflow: hidden;
+            font-family: 'Plus Jakarta Sans', 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+            color: #14213D;
+            background: linear-gradient(160deg, #ffffff 0%, #f4f5f7 45%, #e8ecf3 100%);
+        }
+
+        .sys-hub--phone {
+            display: flex;
+            flex-direction: column;
+            width: 390px;
+            height: 844px;
+        }
+
+        .sys-hub--desktop {
+            display: grid;
+            grid-template-columns: 0.92fr 1.08fr;
+            width: 100%;
+            height: 100%;
+        }
+
+        .sys-hub__visual {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 0;
+            padding: 18px;
+        }
+
+        .sys-hub--desktop .sys-hub__visual {
+            height: 100%;
+        }
+
+        .sys-hub--phone .sys-hub__visual {
+            flex: 0 0 46%;
+            padding: 28px 22px 20px;
+        }
+
+        .sys-hub__photo {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 35%;
+        }
+
+        .sys-hub__shade {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 0, 0, 0.68) 100%);
+        }
+
+        .sys-hub__chip,
+        .sys-hub__copy {
+            position: relative;
+            z-index: 1;
+        }
+
+        .sys-hub__chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .sys-hub__chip img {
+            width: 16px;
+            height: 16px;
+            object-fit: contain;
+        }
+
+        .sys-hub--phone .sys-hub__chip {
+            font-size: 11px;
+            padding: 8px 12px;
+        }
+
+        .sys-hub--phone .sys-hub__chip img {
+            width: 20px;
+            height: 20px;
+        }
+
+        .sys-hub__copy {
+            color: #fff;
+            text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+        }
+
+        .sys-hub__copy h3 {
+            margin: 0 0 6px;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+        }
+
+        .sys-hub--phone .sys-hub__copy h3 {
+            font-size: 26px;
+        }
+
+        .sys-hub__copy p {
+            margin: 0;
+            font-size: 9px;
+            line-height: 1.35;
+            color: rgba(255, 255, 255, 0.88);
+        }
+
+        .sys-hub--phone .sys-hub__copy p {
+            font-size: 14px;
+        }
+
+        .sys-hub__login {
+            flex: 1;
+            padding: 22px 22px 28px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), #f4f5f7);
+        }
+
+        .sys-hub__login h3 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .sys-hub__login > p {
+            margin: 8px 0 0;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #5b657a;
+        }
+
+        .sys-hub__tabs {
+            display: flex;
+            gap: 8px;
+            margin: 16px 0 12px;
+        }
+
+        .sys-hub__tabs span {
+            padding: 7px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(20, 33, 61, 0.12);
+            background: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            font-weight: 700;
+            color: #5b657a;
+        }
+
+        .sys-hub__tabs span.is-active {
+            color: #111;
+            background: linear-gradient(135deg, #fca311, #ffd28a);
+            border-color: transparent;
+        }
+
+        .sys-hub__field {
+            display: flex;
+            align-items: center;
+            min-height: 48px;
+            padding: 0 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(20, 33, 61, 0.12);
+            background: rgba(255, 255, 255, 0.86);
+            color: rgba(20, 33, 61, 0.42);
+            font-size: 16px;
+        }
+
+        .sys-hub__hint {
+            margin: 8px 0 16px;
+            font-size: 12px;
+            color: #5b657a;
+        }
+
+        .sys-hub__btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 48px;
+            padding: 0 14px 0 16px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #e5e5e5, #fff 45%, #d4d4d8);
+            color: #111;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .sys-hub__btn::after {
+            content: '→';
+            display: grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            background: #111;
+            color: #fff;
+            font-size: 13px;
+        }
+
+        .sys-hub__panel {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            padding: 14px 14px 10px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.18));
+        }
+
+        .sys-hub__eyebrow {
+            margin: 0;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #fca311;
+        }
+
+        .sys-hub__panel > h3 {
+            margin: 4px 0 0;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+        }
+
+        .sys-hub__lead {
+            margin: 4px 0 0;
+            font-size: 9px;
+            line-height: 1.35;
+            color: #5b657a;
+        }
+
+        .sys-hub__meta {
+            margin: 8px 0;
+            font-size: 8px;
+            color: #5b657a;
+        }
+
+        .sys-hub__card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            padding: 8px 10px;
+            border-radius: 12px;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.42));
+            border: 1px solid rgba(255, 255, 255, 0.78);
+            box-shadow: 0 8px 18px rgba(20, 33, 61, 0.06);
+        }
+
+        .sys-hub__card span {
+            display: grid;
+            place-items: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            background: rgba(20, 33, 61, 0.08);
+            font-size: 8px;
+            font-weight: 800;
+        }
+
+        .sys-hub__card strong {
+            display: block;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .sys-hub__card small {
+            display: block;
+            margin-top: 1px;
+            font-size: 8px;
+            color: #5b657a;
+        }
+
+        .sys-hub__footer {
+            margin: auto 0 0;
+            font-size: 7px;
+            letter-spacing: 0.04em;
+            color: #5b657a;
+        }
+
+        @media (max-width: 1100px) {
+            .portal-monitor__frame {
+                width: 500px;
+                padding: 12px 12px 14px;
+            }
+
+            .portal-monitor__screen,
+            .portal-monitor__viewport,
+            .portal-login--desktop {
+                width: 476px;
+            }
+
+            .portal-monitor__screen {
+                height: 300px;
+            }
+
+            .portal-monitor__viewport,
+            .portal-login--desktop {
+                height: 272px;
+            }
+
+            .portal-monitor__frame--wide {
+                width: 620px;
+            }
+
+            .portal-monitor__screen--wide {
+                width: 588px;
+                height: 360px;
+            }
+
+            .portal-monitor__viewport--wide {
+                width: 588px;
+                height: 332px;
+            }
+
+            .intra-index__cols {
+                grid-template-columns: 1fr;
+                gap: 4px;
+            }
+
+            .intra-index__mast h3 {
+                font-size: 18px;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .pwa-devices,
+            .portal-devices,
+            .mkt-devices,
+            .sys-devices,
+            .intra-devices,
+            .os-modals {
+                gap: 1.1rem;
+            }
+
+            .portal-monitor__frame {
+                width: 320px;
+            }
+
+            .portal-monitor__screen,
+            .portal-monitor__viewport,
+            .portal-login--desktop {
+                width: 296px;
+            }
+
+            .portal-monitor__screen {
+                height: 198px;
+            }
+
+            .portal-monitor__viewport,
+            .portal-login--desktop {
+                height: 170px;
+            }
+
+            .portal-monitor__frame--wide,
+            .portal-monitor__screen--wide,
+            .portal-monitor__viewport--wide {
+                width: 296px;
+            }
+
+            .portal-monitor__screen--wide {
+                height: 198px;
+            }
+
+            .portal-monitor__viewport--wide {
+                height: 170px;
+            }
+
+            .portal-login--desktop .portal-login__card {
+                max-width: 210px;
+                padding: 8px 10px;
+            }
         }
     </style>
     @include('partials.presentation-app-chrome-styles')
@@ -554,9 +3004,9 @@
                             <div class="grid lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-10 items-center">
                                 <div class="flex flex-col gap-5">
                                     <div class="flex flex-wrap gap-2">
-                                        <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass text-[var(--accent)]">{{ $slide['data']['eyebrow'] ?? $slide['module'] }}</span>
+                                        <span class="reveal-item presentation-badge presentation-badge--module">{{ $slide['data']['eyebrow'] ?? $slide['module'] }}</span>
                                         @foreach ($slide['tags'] as $tag)
-                                            <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                            <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                         @endforeach
                                     </div>
                                     <h1 class="reveal-item text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[var(--navy)] leading-[1.08]">
@@ -578,12 +3028,15 @@
                                     <div class="liquid-glass liquid-glass--accent p-8 sm:p-10 float-y w-full max-w-md">
                                         <div class="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)] mb-3">{{ $slide['data']['badge'] ?? 'Presentación' }}</div>
                                         <div class="text-2xl font-bold text-[var(--navy)] mb-2">Departamento de Tecnología</div>
-                                        <p class="text-sm text-[var(--ink-soft)] leading-relaxed mb-6">
+                                        <p class="text-sm text-[var(--ink-soft)] leading-relaxed mb-5">
                                             Robustez · Interactividad · Escalabilidad. El trabajo que sostiene Operaciones, Negocios, Marketing y la experiencia del paciente.
                                         </p>
-                                        <div class="grid grid-cols-3 gap-2">
-                                            @foreach (['Ops', 'API', 'CX'] as $chip)
-                                                <div class="rounded-xl bg-white/70 border border-white/80 px-2 py-3 text-center text-xs font-semibold text-[var(--navy)]">{{ $chip }}</div>
+                                        <div class="cover-tracks">
+                                            @foreach ($slide['data']['tracks'] ?? [] as $track)
+                                                <div class="cover-track">
+                                                    <div class="cover-track__label">{{ $track['label'] }}</div>
+                                                    <div class="cover-track__hint">{{ $track['hint'] }}</div>
+                                                </div>
                                             @endforeach
                                         </div>
                                     </div>
@@ -593,9 +3046,9 @@
                         @elseif ($slide['type'] === 'pillars')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -631,8 +3084,8 @@
                         @elseif ($slide['type'] === 'preview')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
-                                    <span class="reveal-item text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[color-mix(in_srgb,var(--accent)_12%,white)] text-[var(--accent)] border border-[color-mix(in_srgb,var(--accent)_25%,white)]">{{ $slide['data']['status'] ?? 'Preview' }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module">{{ $slide['data']['status'] ?? 'Preview' }}</span>
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
                                 <p class="reveal-item text-sm sm:text-base text-[var(--ink-soft)] max-w-3xl">{{ $slide['subtitle'] }}</p>
@@ -657,12 +3110,191 @@
                                 </div>
                             </div>
 
+                        @elseif ($slide['type'] === 'devices')
+                            <div class="flex flex-col gap-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                        @foreach ($slide['tags'] as $tag)
+                                            <span class="reveal-item presentation-badge">{{ $tag }}</span>
+                                        @endforeach
+                                    </div>
+                                    <div class="reveal-item hidden sm:flex flex-wrap gap-2">
+                                        @foreach ($slide['data']['steps'] ?? [] as $step)
+                                            <span class="presentation-badge presentation-badge--chip">{{ $step['title'] }}</span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                <div class="text-center max-w-3xl mx-auto">
+                                    <h2 class="reveal-item text-2xl sm:text-3xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
+                                    <p class="reveal-item mt-1 text-sm text-[var(--ink-soft)]">{{ $slide['subtitle'] }}</p>
+                                </div>
+                                <div class="reveal-item">
+                                    @if (($slide['data']['device_set'] ?? 'pwa') === 'portal')
+                                        @include('partials.presentation-portal-login-devices', ['slide' => $slide])
+                                    @elseif (($slide['data']['device_set'] ?? 'pwa') === 'marketing')
+                                        @include('partials.presentation-marketing-devices', ['slide' => $slide])
+                                    @elseif (($slide['data']['device_set'] ?? 'pwa') === 'sistemas')
+                                        @include('partials.presentation-sistemas-devices', ['slide' => $slide])
+                                    @else
+                                        @include('partials.presentation-pwa-devices', ['slide' => $slide])
+                                    @endif
+                                </div>
+                            </div>
+
+                        @elseif ($slide['type'] === 'integration')
+                            <div class="flex flex-col gap-3 sm:gap-3.5">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                        @foreach ($slide['tags'] as $tag)
+                                            <span class="reveal-item presentation-badge">{{ $tag }}</span>
+                                        @endforeach
+                                    </div>
+                                    @if (! empty($slide['data']['kicker']))
+                                        <span class="reveal-item presentation-badge presentation-badge--chip">{{ $slide['data']['kicker'] }}</span>
+                                    @endif
+                                </div>
+                                <div class="text-center max-w-3xl mx-auto">
+                                    <h2 class="reveal-item text-2xl sm:text-3xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
+                                    <p class="reveal-item mt-1 text-sm text-[var(--ink-soft)]">{{ $slide['subtitle'] }}</p>
+                                </div>
+                                <div class="reveal-item">
+                                    @include('partials.presentation-mailchimp-bridge', ['slide' => $slide])
+                                </div>
+                                <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                                    @foreach ($slide['data']['capabilities'] ?? [] as $i => $capability)
+                                        <button type="button" class="pillar-card liquid-glass liquid-glass--interactive text-left px-3.5 py-3 {{ $i === 0 ? 'is-active' : '' }}">
+                                            <div class="text-[10px] font-semibold uppercase tracking-wide mb-1" style="color: {{ $slide['color'] }}">0{{ $i + 1 }}</div>
+                                            <div class="font-semibold text-[var(--navy)] text-sm">{{ $capability['title'] }}</div>
+                                            <p class="pillar-detail mt-1.5 text-xs text-[var(--ink-soft)] leading-relaxed">{{ $capability['detail'] }}</p>
+                                        </button>
+                                    @endforeach
+                                </div>
+                                @if (! empty($slide['data']['promise']))
+                                    <div class="reveal-item liquid-glass liquid-glass--accent px-4 py-3 text-sm font-medium text-[var(--navy)]">
+                                        {{ $slide['data']['promise'] }}
+                                    </div>
+                                @endif
+                                @if ($slide['speaker_note'])
+                                    <button type="button" class="reveal-item text-left text-xs text-[var(--accent)] font-medium" data-toggle-note>Nota del presentador ▾</button>
+                                    <div class="speaker-note liquid-glass px-4 py-3 text-sm text-[var(--ink-soft)]">{{ $slide['speaker_note'] }}</div>
+                                @endif
+                            </div>
+
+                        @elseif ($slide['type'] === 'ops-admin')
+                            <div class="flex flex-col gap-2 sm:gap-2.5">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    @foreach ($slide['tags'] as $tag)
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
+                                    @endforeach
+                                </div>
+                                <div class="text-center max-w-4xl mx-auto">
+                                    <h2 class="reveal-item text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
+                                    <p class="reveal-item mt-1 text-xs sm:text-sm text-[var(--ink-soft)]">{{ $slide['subtitle'] }}</p>
+                                </div>
+                                @if (! empty($slide['data']['kicker']))
+                                    <div class="reveal-item flow-kicker text-center">{{ $slide['data']['kicker'] }}</div>
+                                @endif
+                                <ol class="reveal-item os-flow">
+                                    @foreach ($slide['data']['steps'] ?? [] as $i => $step)
+                                        <li class="os-flow__step">
+                                            <span class="os-flow__num" aria-hidden="true">{{ $i + 1 }}</span>
+                                            <div>
+                                                <strong>{{ $step['title'] }}</strong>
+                                                <p>{{ $step['detail'] }}</p>
+                                            </div>
+                                        </li>
+                                    @endforeach
+                                </ol>
+                                <div class="reveal-item">
+                                    @include('partials.presentation-ops-admin-modals', ['slide' => $slide])
+                                </div>
+                                @if (! empty($slide['data']['promise']))
+                                    <div class="reveal-item liquid-glass liquid-glass--accent px-4 py-3 text-sm font-medium text-[var(--navy)]">
+                                        {{ $slide['data']['promise'] }}
+                                    </div>
+                                @endif
+                                @if ($slide['speaker_note'])
+                                    <button type="button" class="reveal-item text-left text-xs text-[var(--accent)] font-medium" data-toggle-note>Nota del presentador ▾</button>
+                                    <div class="speaker-note liquid-glass px-4 py-3 text-sm text-[var(--ink-soft)]">{{ $slide['speaker_note'] }}</div>
+                                @endif
+                            </div>
+
+                        @elseif ($slide['type'] === 'lifecycle')
+                            <div class="flex flex-col gap-4">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    @foreach ($slide['tags'] as $tag)
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
+                                    @endforeach
+                                </div>
+                                <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
+                                <p class="reveal-item text-sm sm:text-base text-[var(--ink-soft)] max-w-3xl">{{ $slide['subtitle'] }}</p>
+                                @if (! empty($slide['data']['kicker']))
+                                    <div class="reveal-item flow-kicker">{{ $slide['data']['kicker'] }}</div>
+                                @endif
+                                <div class="flow-rail">
+                                    @foreach ($slide['data']['steps'] ?? [] as $i => $step)
+                                        <button type="button" class="lifecycle-step liquid-glass liquid-glass--interactive text-left px-4 py-4 {{ $i === 0 ? 'is-active' : '' }}">
+                                            <div class="flex items-center gap-2.5 mb-2">
+                                                <span class="lifecycle-step__num" aria-hidden="true">{{ $i + 1 }}</span>
+                                                <div class="font-semibold text-[var(--navy)] leading-snug">{{ $step['title'] }}</div>
+                                            </div>
+                                            <p class="lifecycle-detail text-sm text-[var(--ink-soft)] leading-relaxed">{{ $step['detail'] }}</p>
+                                        </button>
+                                    @endforeach
+                                </div>
+                                @if (! empty($slide['data']['promise']))
+                                    <div class="reveal-item liquid-glass liquid-glass--accent px-4 py-3 text-sm font-medium text-[var(--navy)]">
+                                        {{ $slide['data']['promise'] }}
+                                    </div>
+                                @endif
+                                @if ($slide['speaker_note'])
+                                    <button type="button" class="reveal-item text-left text-xs text-[var(--accent)] font-medium" data-toggle-note>Nota del presentador ▾</button>
+                                    <div class="speaker-note liquid-glass px-4 py-3 text-sm text-[var(--ink-soft)]">{{ $slide['speaker_note'] }}</div>
+                                @endif
+                            </div>
+
+                        @elseif ($slide['type'] === 'hub')
+                            <div class="flex flex-col gap-3">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    @foreach ($slide['tags'] as $tag)
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
+                                    @endforeach
+                                </div>
+                                <h2 class="reveal-item text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
+                                <p class="reveal-item text-sm text-[var(--ink-soft)] max-w-3xl">{{ $slide['subtitle'] }}</p>
+                                <div class="reveal-item liquid-glass liquid-glass--accent px-5 py-3 hub-url">
+                                    <a class="hub-url__link" href="{{ $slide['data']['url'] ?? '#' }}" target="_blank" rel="noopener noreferrer">
+                                        {{ str_replace('https://', '', $slide['data']['url'] ?? '') }}
+                                    </a>
+                                    <span class="hub-status">
+                                        <span class="hub-status__dot pulse-soft" aria-hidden="true"></span>
+                                        {{ $slide['data']['status'] ?? 'En línea' }}
+                                    </span>
+                                </div>
+                                <div class="reveal-item">
+                                    @include('partials.presentation-intra-devices', ['slide' => $slide])
+                                </div>
+                                <div class="reveal-item flex flex-wrap items-center gap-2">
+                                    <span class="presentation-badge presentation-badge--chip">{{ $slide['data']['host'] ?? '' }}</span>
+                                    <span class="text-[11px] text-[var(--ink-soft)]">Hub interno · HTTPS · equipo de Tecnología</span>
+                                </div>
+                                @if ($slide['speaker_note'])
+                                    <button type="button" class="reveal-item text-left text-xs text-[var(--accent)] font-medium" data-toggle-note>Nota del presentador ▾</button>
+                                    <div class="speaker-note liquid-glass px-4 py-3 text-sm text-[var(--ink-soft)]">{{ $slide['speaker_note'] }}</div>
+                                @endif
+                            </div>
+
                         @elseif ($slide['type'] === 'value')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -695,9 +3327,9 @@
                         @elseif ($slide['type'] === 'tests')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -721,9 +3353,9 @@
                         @elseif ($slide['type'] === 'api')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -742,9 +3374,9 @@
                         @elseif ($slide['type'] === 'feature')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -766,9 +3398,9 @@
                         @elseif ($slide['type'] === 'infra')
                             <div class="flex flex-col gap-3 sm:gap-3.5">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass text-[var(--accent)]">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module">{{ $slide['module'] }}</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -932,7 +3564,7 @@
                                         </div>
                                         <div class="flex flex-wrap gap-2">
                                             @foreach (['Ambientes', 'Bases de datos', 'Integraciones'] as $chip)
-                                                <span class="rounded-full bg-white/75 border border-white/85 px-3 py-1 text-[11px] font-semibold text-[var(--navy)]">{{ $chip }}</span>
+                                                <span class="presentation-badge presentation-badge--chip">{{ $chip }}</span>
                                             @endforeach
                                         </div>
                                     </div>
@@ -944,10 +3576,10 @@
                         @elseif ($slide['type'] === 'future')
                             <div class="flex flex-col gap-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
-                                    <span class="reveal-item text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white/70 border border-white/80" style="color: {{ $slide['color'] }}">Próximo</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">{{ $slide['module'] }}</span>
+                                    <span class="reveal-item presentation-badge presentation-badge--module" style="color: {{ $slide['color'] }}">Próximo</span>
                                     @foreach ($slide['tags'] as $tag)
-                                        <span class="reveal-item text-[10px] px-2 py-1 rounded-full bg-white/55 border border-white/70 text-[var(--navy)]/55">{{ $tag }}</span>
+                                        <span class="reveal-item presentation-badge">{{ $tag }}</span>
                                     @endforeach
                                 </div>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
@@ -957,7 +3589,7 @@
                                         <button type="button" class="future-card liquid-glass liquid-glass--interactive text-left px-4 py-4 {{ $i === 0 ? 'is-active' : '' }}">
                                             <div class="flex items-center justify-between gap-2 mb-2">
                                                 <span class="text-xs font-semibold uppercase tracking-wide" style="color: {{ $slide['color'] }}">0{{ $i + 1 }} · {{ $item['tag'] }}</span>
-                                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/75 border border-white/85 text-[var(--navy)]/55">Roadmap</span>
+                                                <span class="presentation-badge">Roadmap</span>
                                             </div>
                                             <div class="font-semibold text-[var(--navy)]">{{ $item['title'] }}</div>
                                             <p class="future-detail mt-2 text-sm text-[var(--ink-soft)] leading-relaxed">{{ $item['detail'] }}</p>
@@ -975,7 +3607,7 @@
 
                         @elseif ($slide['type'] === 'closing')
                             <div class="flex flex-col items-center text-center gap-5 max-w-3xl mx-auto">
-                                <span class="reveal-item text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full liquid-glass text-[var(--accent)]">{{ $slide['module'] }}</span>
+                                <span class="reveal-item presentation-badge presentation-badge--module">{{ $slide['module'] }}</span>
                                 <h2 class="reveal-item text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[var(--navy)]">{{ $slide['title'] }}</h2>
                                 <p class="reveal-item text-sm sm:text-base text-[var(--ink-soft)]">{{ $slide['subtitle'] }}</p>
                                 <div class="reveal-item liquid-glass liquid-glass--accent px-6 sm:px-10 py-8 w-full">
@@ -1101,6 +3733,14 @@
                     card.dataset.ready = '1';
                     card.addEventListener('click', () => {
                         setExclusiveActive(slideEl.querySelectorAll('.future-card'), card);
+                    });
+                });
+
+                slideEl.querySelectorAll('.lifecycle-step').forEach((card) => {
+                    if (card.dataset.ready) return;
+                    card.dataset.ready = '1';
+                    card.addEventListener('click', () => {
+                        setExclusiveActive(slideEl.querySelectorAll('.lifecycle-step'), card);
                     });
                 });
 

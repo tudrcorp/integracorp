@@ -49,10 +49,23 @@ return [
         'default_lng' => (float) env('GOOGLE_MAPS_DEFAULT_LNG', -66.9036),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI') ?: rtrim((string) env('APP_URL', ''), '/').'/app/entrar/google/callback',
+    ],
+
     'chat_agent_registration' => [
         'portal_login_url' => env('CHAT_AGENT_PORTAL_URL', 'https://integracorp.tudrgroup.com/agents/login'),
         'business_whatsapp_phone' => env('CHAT_BUSINESS_WHATSAPP_PHONE', '584127018390'),
         'default_owner_code' => env('CHAT_AGENT_DEFAULT_OWNER_CODE', 'TDG-100'),
+    ],
+
+    'storefront' => [
+        'whatsapp' => [
+            'business' => env('STOREFRONT_WHATSAPP_BUSINESS', env('CHAT_BUSINESS_WHATSAPP_PHONE', '584127018390')),
+            'quotes' => env('STOREFRONT_WHATSAPP_QUOTES', '584127018390'),
+        ],
     ],
 
     'chat_agency_master_registration' => [
@@ -96,6 +109,19 @@ return [
         'max_file_bytes' => (int) env('VIVEPLUS_DOCUMENTS_WEBHOOK_MAX_FILE_BYTES', 10485760),
         'later_retry_delay_seconds' => (int) env('VIVEPLUS_DOCUMENTS_WEBHOOK_LATER_RETRY_DELAY', 120),
         'max_later_retries' => (int) env('VIVEPLUS_DOCUMENTS_WEBHOOK_MAX_LATER_RETRIES', 5),
+    ],
+
+    /*
+     * Microservicio quote-pdf: calcula la Propuesta Económica de Tu Dr En Casa
+     * y devuelve el PDF con el formato oficial. La clave la valida el servicio,
+     * así que vive solo en el `.env` de ambos lados, nunca en el repositorio.
+     * Con `enabled` en false el portal genera la propuesta como siempre.
+     */
+    'tudr_quote' => [
+        'url' => env('TUDR_QUOTE_URL', 'https://cotizador.tudrgroup.com'),
+        'key' => env('TUDR_QUOTE_KEY'),
+        'timeout' => (int) env('TUDR_QUOTE_TIMEOUT', 10),
+        'enabled' => (bool) env('TUDR_QUOTE_ENABLED', false),
     ],
 
 ];

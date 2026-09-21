@@ -45,12 +45,50 @@ it('normaliza cédulas quitando espacios y puntos', function (): void {
         ->toBeTrue();
 });
 
+it('normaliza alias de sexo a MASCULINO o FEMENINO', function (): void {
+    expect(TelemedicinePatientIdentity::normalizeSex('m'))->toBe('MASCULINO')
+        ->and(TelemedicinePatientIdentity::normalizeSex('F'))->toBe('FEMENINO')
+        ->and(TelemedicinePatientIdentity::normalizeSex('femenino'))->toBe('FEMENINO')
+        ->and(TelemedicinePatientIdentity::normalizeSex(null))->toBeNull()
+        ->and(TelemedicinePatientIdentity::normalizeSex('  '))->toBeNull()
+        ->and(TelemedicinePatientIdentity::isCanonicalSex('M'))->toBeTrue()
+        ->and(TelemedicinePatientIdentity::needsSexPrompt(null))->toBeTrue()
+        ->and(TelemedicinePatientIdentity::needsSexPrompt('NO ESPECIFICADO'))->toBeTrue()
+        ->and(TelemedicinePatientIdentity::needsSexPrompt('FEMENINO'))->toBeFalse();
+});
+
+it('persiste el sexo canónico en el padrón solo cuando falta', function (): void {
+    $record = new class
+    {
+        public mixed $sex = null;
+
+        public function forceFill(array $attributes): self
+        {
+            $this->sex = $attributes['sex'] ?? $this->sex;
+
+            return $this;
+        }
+
+        public function save(): bool
+        {
+            return true;
+        }
+    };
+
+    TelemedicinePatientIdentity::persistCanonicalSexIfSourceMissing($record, 'FEMENINO');
+    expect($record->sex)->toBe('FEMENINO');
+
+    TelemedicinePatientIdentity::persistCanonicalSexIfSourceMissing($record, 'MASCULINO');
+    expect($record->sex)->toBe('FEMENINO');
+});
+
 it('asocia familiares con el mismo email como pacientes distintos por cédula', function (): void {
     $ana = TelemedicinePatientAssociationResolver::upsertByDocument([
         'full_name' => 'Ana Caren Sotillo Jerez',
         'nro_identificacion' => '16242686',
         'email' => 'asotillo@semitech.com.ve',
         'phone' => '0424-4964601',
+        'sex' => 'FEMENINO',
         'created_by' => 'Tester',
     ]);
 
@@ -59,6 +97,7 @@ it('asocia familiares con el mismo email como pacientes distintos por cédula', 
         'nro_identificacion' => '4128740',
         'email' => 'asotillo@semitech.com.ve',
         'phone' => '416-6483741',
+        'sex' => 'F',
         'created_by' => 'Tester',
     ]);
 
@@ -67,7 +106,8 @@ it('asocia familiares con el mismo email como pacientes distintos por cédula', 
         ->and($ana['patient']->id)->not->toBe($barta['patient']->id)
         ->and(TelemedicinePatient::query()->count())->toBe(2)
         ->and($ana['patient']->fresh()->nro_identificacion)->toBe('16242686')
-        ->and($barta['patient']->fresh()->nro_identificacion)->toBe('4128740');
+        ->and($barta['patient']->fresh()->nro_identificacion)->toBe('4128740')
+        ->and($barta['patient']->fresh()->sex)->toBe('FEMENINO');
 });
 
 it('actualiza el mismo paciente al reasociar la misma cédula sin crear duplicado', function (): void {
@@ -76,6 +116,7 @@ it('actualiza el mismo paciente al reasociar la misma cédula sin crear duplicad
         'nro_identificacion' => '16242686',
         'email' => 'asotillo@semitech.com.ve',
         'phone' => '0424-0000000',
+        'sex' => 'M',
     ]);
 
     $second = TelemedicinePatientAssociationResolver::upsertByDocument([
@@ -83,12 +124,23 @@ it('actualiza el mismo paciente al reasociar la misma cédula sin crear duplicad
         'nro_identificacion' => '16.242.686',
         'email' => 'asotillo@semitech.com.ve',
         'phone' => '0424-4964601',
+        'sex' => null,
     ]);
 
     expect($second['was_recently_created'])->toBeFalse()
         ->and($second['patient']->id)->toBe($first['patient']->id)
         ->and($second['patient']->phone)->toBe('0424-4964601')
+        ->and($second['patient']->sex)->toBe('MASCULINO')
         ->and(TelemedicinePatient::query()->count())->toBe(1);
+});
+
+it('rechaza el alta de paciente sin sexo para no violar el NOT NULL de producción', function (): void {
+    expect(fn () => TelemedicinePatientAssociationResolver::upsertByDocument([
+        'full_name' => 'Ana',
+        'nro_identificacion' => '16242686',
+        'email' => 'ana@example.com',
+        'sex' => null,
+    ]))->toThrow(ValidationException::class);
 });
 
 it('exige cédula para asociar y no permite matchear solo por email', function (): void {
@@ -96,6 +148,7 @@ it('exige cédula para asociar y no permite matchear solo por email', function (
         'full_name' => 'Ana',
         'nro_identificacion' => '16242686',
         'email' => 'shared@example.com',
+        'sex' => 'FEMENINO',
     ]);
 
     expect(fn () => TelemedicinePatientAssociationResolver::upsertByDocument([

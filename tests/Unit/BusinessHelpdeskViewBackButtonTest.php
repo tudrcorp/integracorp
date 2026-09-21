@@ -17,6 +17,7 @@ it('ViewHelpdesk incluye botón volver junto a actualizar estado', function (): 
             ->not->toBeFalse()
             ->toContain('HelpdeskTicketModalActions::makeAddNoteAction()')
             ->toContain('HelpdeskTicketModalActions::makeUpdateStatusAction()')
+            ->toContain('HelpdeskTicketModalActions::makeReassignAction()')
             ->toContain("Action::make('back')")
             ->toContain("->label('Volver')")
             ->toContain("->icon('heroicon-o-arrow-left')")

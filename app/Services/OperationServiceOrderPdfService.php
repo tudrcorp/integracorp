@@ -16,8 +16,12 @@ class OperationServiceOrderPdfService
         $order->loadMissing([
             'operationCoordinationService.state',
             'operationCoordinationService.city',
-            'supplier',
+            'operationCoordinationService.telemedicinePatient',
+            'supplier.state',
+            'supplier.city',
             'doctorNurse',
+            'approvedOperationQuote',
+            'medicalAppointment',
             'telemedicinePriority',
             'operationInventoryUbication',
             'operationServiceOrderItems',

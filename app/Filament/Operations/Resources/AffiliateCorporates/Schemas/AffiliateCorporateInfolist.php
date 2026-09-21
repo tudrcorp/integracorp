@@ -6,6 +6,9 @@ namespace App\Filament\Operations\Resources\AffiliateCorporates\Schemas;
 
 use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\AffiliateCorporate;
+use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
+use App\Support\ClinicalEntitlements\OperationsAffiliatePlanBenefitsCard;
+use App\Support\Operations\AffiliateStatusPresentation;
 use App\Support\Operations\OperationsMapSearchAddress;
 use Carbon\Carbon;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -15,6 +18,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
@@ -67,12 +71,7 @@ class AffiliateCorporateInfolist
 
     private static function statusColor(?string $state): string
     {
-        return match (strtoupper((string) $state)) {
-            'ACTIVO', 'ACTIVA' => 'success',
-            'PENDIENTE' => 'warning',
-            'EXCLUIDO', 'INACTIVO' => 'danger',
-            default => 'gray',
-        };
+        return AffiliateStatusPresentation::filamentColor($state);
     }
 
     private static function billingCollectionStatusColor(?string $state): string
@@ -153,6 +152,12 @@ class AffiliateCorporateInfolist
                                                             ->label('Sexo')
                                                             ->badge()
                                                             ->color('gray'),
+                                                        TextEntry::make('relationship')
+                                                            ->label('Parentesco')
+                                                            ->badge()
+                                                            ->color('info')
+                                                            ->formatStateUsing(fn (?string $state): ?string => CorporateAffiliateRelationship::label($state))
+                                                            ->placeholder('—'),
                                                         TextEntry::make('phone')
                                                             ->label('Teléfono')
                                                             ->icon(Heroicon::OutlinedPhone)
@@ -341,6 +346,10 @@ class AffiliateCorporateInfolist
                                                     ->label('Unidad de negocio')
                                                     ->badge()
                                                     ->color('gray'),
+                                                TextEntry::make('affiliationCorporate.specific_business_unit')
+                                                    ->label('Unidad de negocio específica')
+                                                    ->placeholder('—')
+                                                    ->wrap(),
                                                 TextEntry::make('coverage.price')
                                                     ->label('Cobertura')
                                                     ->money('USD'),
@@ -366,7 +375,8 @@ class AffiliateCorporateInfolist
                                                 TextEntry::make('status')
                                                     ->label('Estatus afiliado')
                                                     ->badge()
-                                                    ->color(fn (?string $state): string => self::statusColor($state)),
+                                                    ->state(fn (AffiliateCorporate $record): string => AffiliateStatusPresentation::label($record->status))
+                                                    ->color(fn (AffiliateCorporate $record): string => self::statusColor($record->status)),
                                             ]),
                                         RepeatableEntry::make('affiliationCorporate.billingCollections')
                                             ->label('Próximos pagos y estatus de cobranza')
@@ -447,29 +457,17 @@ class AffiliateCorporateInfolist
                             ->icon(Heroicon::OutlinedQueueList)
                             ->schema([
                                 Section::make('Beneficios del plan')
+                                    ->description('Uso clínico y límite comercial en una sola lista.')
                                     ->icon(Heroicon::OutlinedQueueList)
                                     ->extraAttributes([
                                         'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
-                                        Grid::make(['default' => 1, 'lg' => 2])
-                                            ->extraAttributes([
-                                                'class' => self::IOS_INNER_CLASS,
-                                            ])
-                                            ->schema([
-                                                TextEntry::make('plan.benefitPlans.description')
-                                                    ->label('Beneficios')
-                                                    ->badge()
-                                                    ->color('success')
-                                                    ->listWithLineBreaks()
-                                                    ->columnSpan(1),
-                                                TextEntry::make('plan.benefitPlans.limit.description')
-                                                    ->label('Límites por beneficio')
-                                                    ->badge()
-                                                    ->color('gray')
-                                                    ->listWithLineBreaks()
-                                                    ->columnSpan(1),
-                                            ]),
+                                        View::make('filament.operations.affiliates.plan-benefits-clinical')
+                                            ->viewData(fn (mixed $record): array => OperationsAffiliatePlanBenefitsCard::viewData(
+                                                $record instanceof AffiliateCorporate ? $record : null
+                                            ))
+                                            ->columnSpanFull(),
                                     ]),
                             ]),
                     ]),

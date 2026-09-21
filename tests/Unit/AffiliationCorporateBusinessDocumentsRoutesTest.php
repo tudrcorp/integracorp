@@ -11,7 +11,9 @@ it('registra rutas de documentos de afiliación corporativa en business', functi
     expect($contents)
         ->toContain('business.affiliation-corporate-documents.regenerate-async')
         ->toContain('business.affiliation-corporate-documents.status')
+        ->toContain('business.affiliation-corporate-documents.tarjetas')
         ->toContain('business.affiliation-corporate-documents.send-email')
+        ->toContain('business.affiliation-corporate-documents.send-carnet-emails')
         ->toContain('business.affiliation-corporate-tarjeta-qr.associate-plan');
 });
 
@@ -23,7 +25,31 @@ it('renderiza la vista modal de documentos de afiliación corporativa', function
         ->toContain('affiliationDocumentsPanel')
         ->toContain('regenerate()')
         ->toContain('statusUrlTemplate')
-        ->toContain('regenerate-async');
+        ->toContain('tarjetasUrl')
+        ->toContain('searchTarjetas()')
+        ->toContain('backgroundWorking')
+        ->toContain('regenerate-async')
+        ->toContain('sendCarnetEmails()')
+        ->toContain('Enviar carnets a afiliados')
+        ->toContain('en segundo plano')
+        ->toContain('Puede cerrar esta ventana apenas pulse enviar');
+});
+
+it('el panel compartido conserva la vista previa abierta mientras hace polling', function (): void {
+    $scriptPath = dirname(__DIR__, 2).'/resources/views/filament/business/partials/affiliation-documents-panel-script.blade.php';
+    $script = file_get_contents($scriptPath);
+
+    expect($script)
+        ->toContain('previewUrl: existing ||')
+        ->toContain('loadTarjetas()')
+        ->toContain('goToTarjetaPage(')
+        ->toContain('this.backgroundWorking = this.regenerated;')
+        ->toContain('async sendCarnetEmails()')
+        ->toContain('sendCarnetEmailsUrl')
+        ->toContain('notifyAnalystToast(')
+        ->toContain('carnetEmailsQueued')
+        ->toContain('Los carnets se envían en segundo plano')
+        ->not->toContain('window.confirm');
 });
 
 it('el servicio corporativo normaliza lotes anidados de tarjetas', function (): void {

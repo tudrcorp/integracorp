@@ -44,6 +44,7 @@ it('jobs de generacion de PDF de telemedicina usan el trait Batchable', function
     $jobFiles = [
         'GeneratePdfInformeMedicoCorto.php',
         'GeneratePdfInformeMedicoLargo.php',
+        'GeneratePdfInformeSeguimiento.php',
         'GeneratePdfMedicamentos.php',
         'GeneratePdfLaboratorio.php',
         'GeneratePdfImagenologia.php',
@@ -55,7 +56,7 @@ it('jobs de generacion de PDF de telemedicina usan el trait Batchable', function
 
         expect($contents)
             ->toContain('use Illuminate\Bus\Batchable;')
-            ->toContain('use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;');
+            ->toContain('use Batchable, Dispatchable, InteractsWithQueue, LogsTelemedicineJobFailures, Queueable, SerializesModels;');
     }
 });
 
@@ -68,16 +69,18 @@ it('CreateTelemedicineConsultationPatient encadena generacion de PDFs con envio 
         ->toContain("new GeneratePdfMedicamentos(\$dataMedicamentos, Auth::user(), 'medicamentos')")
         ->toContain("new GeneratePdfLaboratorio(\$dataLaboratorios, Auth::user(), 'laboratorios')")
         ->toContain("new GeneratePdfImagenologia(\$dataEstudios, Auth::user(), 'imagenologia')")
-        ->toContain("new GeneratePdfEspecialista(\$dataEspecialistas, Auth::user(), 'especialista')");
+        ->toContain("new GeneratePdfEspecialista(\$dataEspecialistas, Auth::user(), 'especialista')")
+        ->toContain('TelemedicineFollowUpReportDocument::makeJob')
+        ->toContain('TelemedicineFollowUpReportDocument::payloadFromCreateData');
 });
 
 it('NotificationController envia documentos de telemedicina al telefono indicado', function (): void {
     $contents = file_get_contents(dirname(__DIR__, 2).'/app/Http/Controllers/NotificationController.php');
 
     expect($contents)
-        ->toContain('public static function sendTelemedicineDocumentWhatsApp(string $phone, string $namePdf, string $caption): bool')
-        ->toContain('HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone)')
-        ->toContain('TelemedicineConsultationDocumentsNotificationService::telemedicineDocumentPublicUrl($namePdf)')
+        ->toContain('public static function sendTelemedicineDocumentWhatsApp(string $phone, string $namePdf, string $caption, ?string $relativePath = null): bool')
+        ->toContain("telemedicina-doc/'")
+        ->toContain('return self::sendWhatsAppDocument($phone, $caption, $relativePath, $namePdf);')
         ->toContain('whatsAppApiResponseSucceeded')
         ->not->toContain("'to' => '04127018390',");
 });

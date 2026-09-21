@@ -86,12 +86,13 @@ class NegotiatedFeesRelationManager extends RelationManager
             ->emptyStateHeading('Sin tarifas pactadas')
             ->emptyStateDescription('Cargue la neta y el precio de venta para cada tarifa del catálogo que venda esta empresa aliada.')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'fee.ageRange.plan',
+                'fee.plan',
+                'fee.ageRange',
                 'fee.coverageRecord',
             ]))
             ->striped()
             ->columns([
-                TextColumn::make('fee.ageRange.plan.description')
+                TextColumn::make('fee.plan.description')
                     ->label('Plan')
                     ->badge()
                     ->color('success')
@@ -225,7 +226,7 @@ class NegotiatedFeesRelationManager extends RelationManager
                 $this->mountedNegotiatedFeeId(),
             ))
             ->getSearchResultsUsing(function (string $search): array {
-                $fees = WhiteCompanyCatalogFeeOptions::catalogFees();
+                $fees = WhiteCompanyCatalogFeeOptions::catalogFeesForCompany($this->ownerCompany());
                 $options = WhiteCompanyCatalogFeeOptions::forCompany(
                     $this->ownerCompany(),
                     $this->mountedNegotiatedFeeId(),

@@ -44,7 +44,7 @@ class TelemedicineCaseIdentity
 
         return [
             'telemedicine_patient_id' => (int) $patient->id,
-            'patient_name' => trim((string) $patient->full_name),
+            'patient_name' => TelemedicinePatientDisplayName::fromPatient($patient),
             'patient_age' => $patient->age,
             'patient_sex' => $patient->sex,
             'patient_phone' => $patient->phone,
@@ -121,7 +121,9 @@ class TelemedicineCaseIdentity
             ? $patient->toArray()
             : $patient;
 
-        $canonicalName = trim((string) ($patientData['full_name'] ?? ''));
+        $canonicalName = $patient instanceof TelemedicinePatient
+            ? TelemedicinePatientDisplayName::fromPatient($patient)
+            : TelemedicinePatientDisplayName::fromPatientArray($patientData);
         $consultationName = trim((string) ($consultationRecord['full_name'] ?? ''));
 
         if ($consultationName !== '' && $canonicalName !== '' && ! self::namesMatch($consultationName, $canonicalName)) {

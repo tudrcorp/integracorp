@@ -53,15 +53,29 @@ final class CoordinationServiceQuoteEditForm
                                             'edit_quote_supplier_address',
                                             CoordinationServiceItemsManager::resolveManageQuoteSupplierAddress($state)
                                         );
+                                        $set(
+                                            'edit_quote_supplier_phone',
+                                            CoordinationServiceItemsManager::resolveManageQuoteSupplierPhone($state)
+                                        );
                                     })
                                     ->helperText('Seleccione el proveedor. Si no aparece en la lista, créelo con la acción del campo.'),
                             ),
-                            TextInput::make('edit_quote_supplier_address')
-                                ->label('Dirección del proveedor')
-                                ->readOnly()
-                                ->dehydrated()
-                                ->placeholder('Se completa al seleccionar el proveedor')
-                                ->prefixIcon(Heroicon::OutlinedMapPin),
+                            Grid::make(['default' => 1, 'md' => 2])
+                                ->schema([
+                                    TextInput::make('edit_quote_supplier_address')
+                                        ->label('Dirección del proveedor')
+                                        ->readOnly()
+                                        ->dehydrated()
+                                        ->placeholder('Se completa al seleccionar el proveedor')
+                                        ->prefixIcon(Heroicon::OutlinedMapPin),
+                                    TextInput::make('edit_quote_supplier_phone')
+                                        ->label('Teléfono del proveedor')
+                                        ->tel()
+                                        ->readOnly()
+                                        ->dehydrated()
+                                        ->placeholder('Se completa al seleccionar el proveedor')
+                                        ->prefixIcon(Heroicon::OutlinedPhone),
+                                ]),
                         ])
                         ->columnSpanFull(),
                     TextInput::make('edit_quote_bcv_rate')
@@ -173,6 +187,7 @@ final class CoordinationServiceQuoteEditForm
             'edit_quote_supplier_id' => $quote->supplier_id,
             'edit_quote_supplier_address' => $quote->supplier_address
                 ?? CoordinationServiceItemsManager::resolveManageQuoteSupplierAddress($quote->supplier_id),
+            'edit_quote_supplier_phone' => CoordinationServiceItemsManager::resolveManageQuoteSupplierPhone($quote->supplier_id),
             'edit_quote_line_items' => collect($items)
                 ->map(fn (array $item): array => [
                     'key' => $item['key'] ?? null,

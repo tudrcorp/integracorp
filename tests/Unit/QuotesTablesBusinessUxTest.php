@@ -35,7 +35,7 @@ it('incluye mejoras de UX en las tablas de cotizaciones del panel business', fun
         ->toContain('AUDIT_BUSINESS_CORPORATE_QUOTE_FORWARD_SENT')
         ->toContain('CorporateQuotePdfGenerator::regenerateIfMissing')
         ->toContain('business.corporate-quotes.pdf.download')
-        ->toContain('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_EMAIL_SENT')
+        ->toContain('AUDIT_BUSINESS_CORPORATE_QUOTE_INTERACTIVE_LINK_EMAIL_QUEUED')
         ->toContain('AUDIT_BUSINESS_CORPORATE_QUOTE_OBSERVATION_ADDED')
         ->not->toContain('dd($th)');
 });

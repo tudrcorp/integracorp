@@ -166,6 +166,10 @@ Route::get('operations/export-operation-service-orders-csv', App\Http\Controller
     ->middleware(['web', 'auth'])
     ->name('operations.operation-service-orders.export-csv');
 
+Route::get('operations/export-cuentas-por-pagar-csv', App\Http\Controllers\OperationAccountsPayableExportCsvController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.operation-accounts-payables.export-csv');
+
 Route::get('operations/telemedicine-patients/siniestralidad/preview', [App\Http\Controllers\TelemedicinePatientSiniestralidadReportController::class, 'previewPdf'])
     ->middleware(['web', 'auth'])
     ->name('operations.telemedicine-patients.siniestralidad.preview');
@@ -590,6 +594,13 @@ Route::post('business/affiliations/documents/send-email/{affiliation}', [
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-documents.send-email');
 
+Route::post('business/affiliations/documents/send-carnet-emails/{affiliation}', [
+    AffiliationBusinessDocumentsController::class,
+    'sendCarnetEmails',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-documents.send-carnet-emails');
+
 Route::post('business/affiliations/tarjeta-qr/associate-plan', [
     TarjetaAfiliacionController::class,
     'associatePlanQr',
@@ -629,12 +640,43 @@ Route::get('business/affiliation-corporates/documents/status/{affiliationCorpora
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-corporate-documents.status');
 
+Route::get('reporte-aliada/verificar/{key?}', \App\Http\Controllers\WhiteCompanySalesReportVerificationController::class)
+    ->name('white-company-sales-report.verify');
+
+Route::post('administration/white-companies/{whiteCompany}/sales-report/preview', [
+    \App\Http\Controllers\WhiteCompanySalesReportController::class,
+    'preview',
+])
+    ->middleware(['web', 'auth'])
+    ->name('administration.white-companies.sales-report.preview');
+
+Route::post('administration/white-companies/{whiteCompany}/sales-report/send', [
+    \App\Http\Controllers\WhiteCompanySalesReportController::class,
+    'send',
+])
+    ->middleware(['web', 'auth'])
+    ->name('administration.white-companies.sales-report.send');
+
+Route::get('business/affiliation-corporates/documents/tarjetas/{affiliationCorporate}', [
+    AffiliationCorporateBusinessDocumentsController::class,
+    'tarjetas',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporate-documents.tarjetas');
+
 Route::post('business/affiliation-corporates/documents/send-email/{affiliationCorporate}', [
     AffiliationCorporateBusinessDocumentsController::class,
     'sendEmail',
 ])
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-corporate-documents.send-email');
+
+Route::post('business/affiliation-corporates/documents/send-carnet-emails/{affiliationCorporate}', [
+    AffiliationCorporateBusinessDocumentsController::class,
+    'sendCarnetEmails',
+])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporate-documents.send-carnet-emails');
 
 Route::post('business/helpdesk-tickets/{helpDesk}/mark-in-progress', MarkHelpdeskTicketInProgressController::class)
     ->middleware(['web', 'auth'])
@@ -2125,3 +2167,26 @@ Route::get('/carta-bienvenida-agente', function () {
 
     return $pdf->download('carta-bienvenida-agente.pdf');
 })->name('carta-bienvenida-agente');
+
+/*
+|--------------------------------------------------------------------------
+| Propuesta Económica — microservicio de cotización
+|--------------------------------------------------------------------------
+|
+| El navegador nunca llama al microservicio: la clave vive en el backend.
+| `cotizar` devuelve el cálculo y la URL del PDF; `pdf` lo sirve inline solo a
+| quien puede verlo. Con TUDR_QUOTE_ENABLED=false responden 503 y el portal
+| sigue generando la propuesta como siempre.
+|
+*/
+
+Route::middleware(['auth', 'throttle:30,1'])->group(function () {
+    // POST /api/propuestas/cotizar
+    // Body validado por QuoteProposalRequest (titular, afiliados[nombre, edad], planes, cobertura).
+    Route::post('/api/propuestas/cotizar', [\App\Http\Controllers\QuoteProposalController::class, 'cotizar'])
+        ->name('propuestas.cotizar');
+
+    // GET /propuestas/{control}/pdf
+    Route::get('/propuestas/{control}/pdf', [\App\Http\Controllers\QuoteProposalController::class, 'pdf'])
+        ->name('propuestas.pdf');
+});

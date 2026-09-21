@@ -240,7 +240,6 @@ class UtilsController extends Controller
             $err = curl_error($curl);
 
             curl_close($curl);
-
         } catch (\Throwable $th) {
             dd($th);
             Log::error($th->getMessage());
@@ -495,7 +494,6 @@ class UtilsController extends Controller
                     'plan' => $record->plan,
                 ]);
             }
-
         } catch (\Throwable $th) {
             Log::error('Error al calcular edades: '.$th->getMessage());
 
@@ -876,7 +874,6 @@ class UtilsController extends Controller
         } catch (\Throwable $th) {
             dd($th);
         }
-
     }
 
     public static function formatMount($amount)
@@ -899,9 +896,10 @@ class UtilsController extends Controller
      * @param  $record  [Data de la cotizacion guardada en la base de dastos]
      * @param  $array_form  [Data del formulario]
      * @param  $array_details  [Data del detalle de la cotizacion]
-     * @return void
+     * @param  bool  $generatePdf  Si es false, solo persiste las líneas (la PWA arma el PDF de una hoja al descargar).
+     * @return bool
      */
-    public static function storeDetailsIndividualQuote($record, $array_form, $array_details, $details_quote)
+    public static function storeDetailsIndividualQuote($record, $array_form, $array_details, $details_quote, bool $generatePdf = true)
     {
 
         try {
@@ -961,14 +959,16 @@ class UtilsController extends Controller
 
             session()->forget('details_quote');
 
-            $pdfGenerated = IndividualQuotePdfGenerator::generateForQuote($record, $details_quote);
+            if ($generatePdf) {
+                $pdfGenerated = IndividualQuotePdfGenerator::generateForQuote($record, $details_quote);
 
-            if (! $pdfGenerated) {
-                Log::warning('storeDetailsIndividualQuote: PDF no generado', [
-                    'individual_quote_id' => $record->id,
-                    'code' => $record->code,
-                    'plan' => $record->plan,
-                ]);
+                if (! $pdfGenerated) {
+                    Log::warning('storeDetailsIndividualQuote: PDF no generado', [
+                        'individual_quote_id' => $record->id,
+                        'code' => $record->code,
+                        'plan' => $record->plan,
+                    ]);
+                }
             }
 
             return true;
@@ -977,7 +977,6 @@ class UtilsController extends Controller
 
             return false;
         }
-
     }
 
     /**PRUEBA DE NOTIFICACION MASIVA */
@@ -1150,7 +1149,6 @@ class UtilsController extends Controller
         $soloDiaMes = $fecha->format('d/m');
 
         return $soloDiaMes;
-
     }
 
     public static function generateCaseCode()
@@ -1165,7 +1163,6 @@ class UtilsController extends Controller
             }
 
             return random_int(11111, 99999).'-0'.$parteEntera;
-
         } catch (\Throwable $th) {
             Log::error($th);
         }
@@ -1238,7 +1235,6 @@ class UtilsController extends Controller
             Log::info("Sesión cerrada para el usuario: {$user->name}");
 
             return true;
-
         } catch (\Exception $e) {
             Log::error("Error al cerrar sesión del usuario {$user->id}: ".$e->getMessage());
 
@@ -1261,7 +1257,6 @@ class UtilsController extends Controller
             Carbon::createFromFormat('d/m/Y', $date);
 
             return true;
-
         } catch (\Exception $e) {
             return false;
         }
@@ -1334,7 +1329,6 @@ class UtilsController extends Controller
 
             return false;
         }
-
     }
 
     public static function notificacionSesionDuplicada($user_id)
@@ -1382,7 +1376,6 @@ class UtilsController extends Controller
             } else {
                 Log::warning('INTEGRACORP: Falla presentada en la autenticacion de la Instancia de WhatsApp');
             }
-
         } catch (\Throwable $th) {
             Log::error('INTEGRACORP: '.$th->getMessage());
         }
@@ -1464,7 +1457,6 @@ class UtilsController extends Controller
                 'amount' => $transaction->amount,
                 'plan_name' => $transaction->plan_name,
             ]);
-
         } catch (ModelNotFoundException $e) {
             // Error 404: La transacción no existe o ya fue pagada/cancelada
             Log::warning("Intento de acceso a link de pago inválido o usado: ID {$transaction_id}");

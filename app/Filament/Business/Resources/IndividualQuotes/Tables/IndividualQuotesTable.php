@@ -11,6 +11,7 @@ use App\Models\IndividualQuote;
 use App\Models\Plan;
 use App\Support\IndividualQuotePdfGenerator;
 use App\Support\IndividualQuotes\IndividualQuotePdf;
+use App\Support\Plans\PlanQuotability;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -664,13 +665,7 @@ class IndividualQuotesTable
      */
     private static function planFilterOptions(): array
     {
-        $options = Plan::query()
-            ->where('type', 'BASICO')
-            ->where('status', 'ACTIVO')
-            ->orderBy('description')
-            ->pluck('description', 'id')
-            ->all();
-
+        $options = PlanQuotability::optionsForIndividual()->all();
         $options['CM'] = 'MultiPlan';
 
         return $options;

@@ -35,13 +35,19 @@
                     <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-700 ring-1 ring-emerald-500/25 dark:bg-emerald-500/25 dark:text-emerald-300 dark:ring-emerald-400/40">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
                     </span>
-                    <span><strong class="font-semibold text-gray-900 dark:text-white">Inventario TDC:</strong> puede elegir el medicamento en el primer campo si está en el inventario.</span>
+                    <span><strong class="font-semibold text-gray-900 dark:text-white">Inventario TDC:</strong> elija el medicamento si está en el almacén. Se descuenta existencia cuando aplica.</span>
+                </li>
+                <li class="flex gap-4">
+                    <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-sky-800 ring-1 ring-sky-500/30 dark:bg-sky-500/20 dark:text-sky-200 dark:ring-sky-400/50">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                    </span>
+                    <span><strong class="font-semibold text-gray-900 dark:text-white">Cubierto (Operaciones):</strong> escriba el nombre si el plan lo cubre pero <strong class="font-semibold">no está en inventario</strong>. Lo gestiona el equipo de analistas de Operaciones; no descuenta stock.</span>
                 </li>
                 <li class="flex gap-4">
                     <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-800 ring-1 ring-amber-500/30 dark:bg-amber-500/20 dark:text-amber-200 dark:ring-amber-400/50">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                     </span>
-                    <span><strong class="font-semibold text-gray-900 dark:text-white">No está en inventario:</strong> escriba el nombre del medicamento en el campo de texto.</span>
+                    <span><strong class="font-semibold text-gray-900 dark:text-white">No cubierto:</strong> escriba el nombre si el paciente debe costearlo. Tampoco descuenta inventario.</span>
                 </li>
             </ul>
         </div>
@@ -57,7 +63,7 @@
                 </svg>
             </span>
             <p class="text-[0.8125rem] font-medium leading-snug text-amber-950 dark:text-amber-50">
-                No complete <strong class="font-semibold">ambos</strong> campos a la vez. Use <strong class="font-semibold">solo inventario</strong> o <strong class="font-semibold">solo nombre manual</strong>.
+                En cada fila use <strong class="font-semibold">una sola fuente</strong>: inventario TDC, cubierto (Operaciones) o no cubierto. No mezcle campos.
             </p>
         </div>
     </div>

@@ -26,12 +26,19 @@ final class TelemedicinePatientAssociationResolver
         }
 
         $attributes['nro_identificacion'] = $document;
+        $attributes = self::normalizeSexAttribute($attributes);
 
         $existing = TelemedicinePatient::query()
             ->where('nro_identificacion', $document)
             ->first();
 
         if ($existing === null) {
+            if (blank($attributes['sex'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'sex' => ['El sexo es obligatorio para registrar el paciente de telemedicina. Indíquelo e intente de nuevo.'],
+                ]);
+            }
+
             $patient = TelemedicinePatient::query()->create($attributes);
 
             return [
@@ -42,6 +49,10 @@ final class TelemedicinePatientAssociationResolver
 
         $createdBy = $attributes['created_by'] ?? null;
         unset($attributes['created_by']);
+
+        if (blank($attributes['sex'] ?? null)) {
+            unset($attributes['sex']);
+        }
 
         $existing->fill($attributes);
 
@@ -57,5 +68,16 @@ final class TelemedicinePatientAssociationResolver
             'patient' => $existing->refresh(),
             'was_recently_created' => false,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private static function normalizeSexAttribute(array $attributes): array
+    {
+        $attributes['sex'] = TelemedicinePatientIdentity::normalizeSex($attributes['sex'] ?? null);
+
+        return $attributes;
     }
 }

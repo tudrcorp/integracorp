@@ -23,7 +23,10 @@ final class ConsultationCreateWizardDefaults
     ): array {
         $state = [
             'telemedicine_case_id' => $case->id,
-            'telemedicine_doctor_id' => $case->telemedicine_doctor_id,
+            // El firmante es quien atiende, no el asignado al caso: en el pool TDG
+            // no son el mismo médico. Ver TelemedicineConsultationSigningDoctor.
+            'telemedicine_doctor_id' => TelemedicineConsultationSigningDoctor::idForUserId($assignedByUserId)
+                ?? $case->telemedicine_doctor_id,
             'telemedicine_patient_id' => $case->telemedicine_patient_id,
             'assigned_by' => $assignedByUserId,
             'status' => $countCase < 1 ? 'CONSULTA INICIAL' : 'EN SEGUIMIENTO',

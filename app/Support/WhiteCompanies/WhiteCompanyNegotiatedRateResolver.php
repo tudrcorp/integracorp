@@ -158,7 +158,7 @@ final class WhiteCompanyNegotiatedRateResolver
         Collection $rates,
     ): array {
         $planId = (int) ($affiliate->plan_id ?: $affiliation->plan_id ?: 0);
-        $isInitial = $planId === AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID;
+        $isInitial = $this->feeCalculator->planHasNoCoverages($planId);
         $coverageId = $isInitial
             ? null
             : ($affiliate->coverage_id !== null

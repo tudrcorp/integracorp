@@ -1,0 +1,28 @@
+---
+description: Mandatos IntegraCorp — español, robustez, integridad, rendimiento y UX
+alwaysApply: true
+---
+
+# Mandatos IntegraCorp (siempre)
+
+Estas reglas prevalecen sobre Laravel Boost u otras guías genéricas. El detalle del dominio está en `CLAUDE.md`.
+
+## Idioma
+
+Todas las respuestas al usuario deben estar en **español**. Código e identificadores siguen las convenciones del archivo hermano.
+
+## Base de datos
+
+Prohibido eliminar, truncar, wipe, `migrate:fresh`, `migrate:refresh`, `migrate:reset`, `db:wipe` o vaciar tablas de la base de desarrollo. Ver `.cursor/rules/agent-no-refresh-database.mdc`.
+
+## Robustez 200 % e integridad
+
+Toda mejora, actualización o desarrollo nuevo debe ser extremadamente robusto: transacciones, validación, autorización real, jobs idempotentes, sin N+1, migraciones aditivas, sin romper cotización → afiliación → cobranza → renovación → operaciones → telemedicina.
+
+## Rendimiento
+
+El trabajo pesado (PDF, Excel, WhatsApp, CSV, certificados) va en cola. Tablas paginadas, debounce, eager load. La experiencia de cara al usuario final debe sentirse inmediata.
+
+## UX 100 %
+
+Textos en español claros, loading states, confirmaciones destructivas, formularios Filament v4 (`Schemas`), coherencia visual con el panel hermano. No entregar flujos a medias ni pantallas más lentas o más confusas que antes.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Administration\Resources\Agents\Tables;
 
 use App\Filament\Administration\Resources\Agents\AgentResource;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Http\Controllers\AgentExportCsvController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
@@ -25,9 +26,11 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColumnGroup;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -71,6 +74,11 @@ class AgentsTable
             })
             ->defaultSort('created_at', 'desc')
             ->paginationPageOptions([10, 25, 50, 100])
+            // El analista arma la selección de agentes en tandas: busca, marca, vuelve a buscar y marca otra vez.
+            // Sin esto Filament la vacía en cada búsqueda o filtro. De paso apaga el modo «tracking» de selección
+            // (Table\Concerns\HasBulkActions::canTrackDeselectedRecords): «Seleccionar todos» pasa a guardar IDs
+            // concretos, así lo marcado nunca se reinterpreta contra la consulta nueva.
+            ->deselectAllRecordsWhenFiltered(false)
             ->heading('Agentes')
             ->description('Corredores y subagentes: jerarquía, contacto, comisiones y estatus. Use pestañas y filtros para priorizar activaciones.')
             ->striped()
@@ -197,6 +205,12 @@ class AgentsTable
                 ])
                     ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
                 ColumnGroup::make('Gestión', [
+                    IconColumn::make('is_referidor')
+                        ->label('Es Referidor')
+                        ->boolean()
+                        ->alignCenter()
+                        ->sortable(),
+                    ReferidorPercentageField::column(),
                     TextColumn::make('status')
                         ->label('Estatus')
                         ->icon(fn (?string $state): Heroicon => self::statusIcon($state))
@@ -243,6 +257,11 @@ class AgentsTable
                     ->searchable()
                     ->preload()
                     ->native(false),
+                TernaryFilter::make('is_referidor')
+                    ->label('Es Referidor')
+                    ->placeholder('Todos')
+                    ->trueLabel('Sí')
+                    ->falseLabel('No'),
                 Filter::make('created_at')
                     ->label('Fecha de alta')
                     ->form([

@@ -2,8 +2,10 @@
 
 namespace App\Filament\Operations\Resources\AffiliateCorporates\Schemas;
 
-use Filament\Forms\Components\TextInput;
+use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
 class AffiliateCorporateForm
@@ -20,6 +22,10 @@ class AffiliateCorporateForm
                 TextInput::make('birth_date'),
                 TextInput::make('age'),
                 TextInput::make('sex'),
+                Select::make('relationship')
+                    ->label('Parentesco')
+                    ->options(CorporateAffiliateRelationship::options())
+                    ->native(false),
                 TextInput::make('phone')
                     ->tel(),
                 TextInput::make('email')

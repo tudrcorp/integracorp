@@ -31,6 +31,8 @@ function catalogFeeForOptions(
         'status' => 'ACTIVO',
     ]);
     $fee->id = $id;
+    $fee->plan_id = $planId;
+    $fee->setRelation('plan', $plan);
     $fee->setRelation('ageRange', $ageRange);
     $fee->setRelation(
         'coverageRecord',

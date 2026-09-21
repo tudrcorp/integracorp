@@ -2,6 +2,9 @@
 
 namespace App\Filament\General\Resources\Agencies\Schemas;
 
+use App\Filament\Shared\CommercialStructure\ReferidorAssignmentFields;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Filament\Shared\CommercialStructure\ReferidorToggle;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use App\Models\City;
@@ -59,7 +62,7 @@ class AgencyForm
                                                     $parte_entera = 100 + Agency::max('id');
                                                 }
 
-                                                return 'TDG-' . $parte_entera + 1;
+                                                return 'TDG-'.$parte_entera + 1;
                                             })
                                             ->required()
                                             ->disabled()
@@ -260,7 +263,7 @@ class AgencyForm
                                                 $countryCode = $get('country_code_ti');
                                                 if ($countryCode) {
                                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone_ti', $countryCode . $cleanNumber);
+                                                    $set('phone_ti', $countryCode.$cleanNumber);
                                                 }
                                             }),
 
@@ -334,7 +337,7 @@ class AgencyForm
                                                         $set('city_id', null);
                                                         $set('region', null);
                                                     })
-                                                    ->options(fn(): array => CountrySelectOptions::exceptVenezuelaInSpanish())
+                                                    ->options(fn (): array => CountrySelectOptions::exceptVenezuelaInSpanish())
                                                     ->searchable()
                                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
                                                 TextInput::make('state_other_country')
@@ -384,7 +387,10 @@ class AgencyForm
                                             ->default('sistema')
                                             ->maxLength(255)
                                             ->hiddenOn('edit'),
+                                        ReferidorToggle::make(),
+                                        ReferidorPercentageField::make(),
                                     ])->columns(4)->columnSpanFull(),
+                                ReferidorAssignmentFields::section(self::SECTION_CARD),
                             ]),
                         Tab::make('Contacto Secuendario')
                             ->icon('heroicon-o-phone')
@@ -501,7 +507,7 @@ class AgencyForm
                                                 $countryCode = $get('country_code_2');
                                                 if ($countryCode) {
                                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                                    $set('phone_contact_2', $countryCode . $cleanNumber);
+                                                    $set('phone_contact_2', $countryCode.$cleanNumber);
                                                 }
                                             }),
                                         TextInput::make('email_contact_2')

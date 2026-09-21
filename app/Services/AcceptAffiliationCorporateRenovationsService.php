@@ -206,7 +206,7 @@ final class AcceptAffiliationCorporateRenovationsService
             }
 
             $age = $this->calculator->resolveAffiliateCorporateAgeForRenewal($affiliate, $acceptanceDate);
-            $isInitial = $planId === AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID;
+            $isInitial = $this->calculator->planHasNoCoverages($planId);
             $canRecalculate = $isInitial || $coverageId !== null;
 
             if ($canRecalculate && $age !== null) {

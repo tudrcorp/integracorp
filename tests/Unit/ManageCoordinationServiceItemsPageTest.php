@@ -14,6 +14,8 @@ it('registra la página dedicada de gestión de ítems en el recurso', function 
     expect($page)
         ->toContain('CoordinationServiceItemsManager::formDefaults')
         ->toContain('CoordinationServiceItemsManager::save')
+        ->toContain("OperationServiceOrderResource::getUrl('view'")
+        ->toContain("['record' => \$createdOrderId]")
         ->toContain('fi-coordination-manage-items-page');
 
     expect($table)
@@ -25,5 +27,8 @@ it('centraliza la lógica de gestión de ítems en CoordinationServiceItemsManag
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CoordinationServiceItemsManager.php'))
         ->toContain('final class CoordinationServiceItemsManager')
         ->toContain('function save(')
+        ->toContain(': ?int')
+        ->toContain('return $createdOrderId')
+        ->toContain('function createServiceOrderFromManageModal')
         ->toContain('function manageServiceActionIsDisabled');
 });

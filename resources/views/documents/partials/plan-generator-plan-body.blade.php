@@ -95,16 +95,17 @@
                             $cell = (array) data_get($row, "cells.{$columnKey}", []);
                             $isSelected = (bool) ($cell['is_selected'] ?? false);
                             $coverage = $cell['coverage_amount'] ?? null;
-                            $coverageLabel = is_numeric($coverage)
+                            $display = PlanGeneratorPreviewBuilder::benefitCellDisplay($isSelected, $coverage);
+                            $coverageLabel = $display === 'amount'
                                 ? PlanGeneratorPreviewBuilder::formatCoverageAmount((float) $coverage)
                                 : '';
                         @endphp
                         <td style="text-align: center;">
-                            @if ($isSelected)
+                            {{-- Con tope se muestra solo el monto: el check encima sería redundante. --}}
+                            @if ($display === 'amount')
+                                <span class="amount">US$ {{ $coverageLabel }}</span>
+                            @elseif ($display === 'check')
                                 <span class="check">✓</span>
-                                @if ($coverageLabel !== '')
-                                    <br><span class="amount">US$ {{ $coverageLabel }}</span>
-                                @endif
                             @else
                                 <span class="dash">—</span>
                             @endif

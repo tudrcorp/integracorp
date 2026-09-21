@@ -16,7 +16,9 @@ it('aplica el estilo ios a las tablas de antecedentes de la historia clínica', 
         ->toContain('recordActionsColumnLabel')
         ->toContain("->extraCellAttributes(['class' => 'py-3'])")
         ->toContain('FilamentIosButton::extraClassForFilamentColor')
-        ->not->toContain('->modalButton(');
+        ->toContain('TelemedicineHistoryRelatedRecordsSync::handleRelationCreate')
+        ->not->toContain('->modalButton(')
+        ->not->toContain('dd($th)');
 })->with([
     'FamilyHistoriesRelationManager.php',
     'GynecologicalHistoriesRelationManager.php',

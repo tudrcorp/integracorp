@@ -15,7 +15,10 @@ it('ViewAffiliate expone acción de asociar afiliado como paciente con confirmac
         ->toContain('ticket-btn-ios')
         ->toContain('ticket-btn-ios-gray')
         ->toContain('modalSubmitAction')
-        ->toContain('modalCancelAction');
+        ->toContain('modalCancelAction')
+        ->toContain('TelemedicinePatientIdentity::needsSexPrompt')
+        ->toContain("Select::make('sex')")
+        ->toContain('sexOverride:');
 });
 
 it('AssociateAffiliateWithTelemedicinePatientService valida afiliación y estado activo', function (): void {
@@ -27,5 +30,7 @@ it('AssociateAffiliateWithTelemedicinePatientService valida afiliación y estado
         ->toContain("if (\$affiliate->status !== 'ACTIVO')")
         ->toContain('TelemedicinePatientAssociationResolver::upsertByDocument')
         ->toContain("'type_affiliation' => 'INDIVIDUAL'")
-        ->toContain("'supplier_id' => Auth::user()?->supplier_id");
+        ->toContain("'supplier_id' => Auth::user()?->supplier_id")
+        ->toContain('TelemedicinePatientIdentity::normalizeSex')
+        ->toContain('persistCanonicalSexIfSourceMissing');
 });

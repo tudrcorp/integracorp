@@ -101,6 +101,17 @@ class TelemedicinePatientsTable
                     ->searchable()
                     ->toggleable()
                     ->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst()),
+                TextColumn::make('specific_business_unit')
+                    ->label('Unidad de negocio específica')
+                    ->wrap()
+                    ->limit(32)
+                    ->tooltip(fn (TelemedicinePatient $record): ?string => filled($record->specific_business_unit)
+                        ? (string) $record->specific_business_unit
+                        : null)
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable()
+                    ->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst()),
                 TextColumn::make('businessLine.definition')
                     ->label('Línea de servicio')
                     ->badge()

@@ -5,6 +5,7 @@ namespace App\Filament\Operations\Resources\TelemedicinePatients\Pages;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Models\TelemedicinePatient;
 use App\Support\Filament\Operations\OperationsSupplierScope;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateTelemedicinePatient extends CreateRecord
@@ -33,6 +34,19 @@ class CreateTelemedicinePatient extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
-        return TelemedicinePatientResource::getUrl('view', ['record' => $this->getRecord()]);
+        return TelemedicinePatientResource::getUrl('index');
+    }
+
+    protected function getCreatedNotification(): ?Notification
+    {
+        $name = trim((string) ($this->getRecord()?->full_name ?? ''));
+
+        return Notification::make()
+            ->success()
+            ->icon('heroicon-o-check-circle')
+            ->title('Paciente registrado')
+            ->body($name !== ''
+                ? 'Se registró a '.$name.'. Ya aparece en el listado de pacientes.'
+                : 'El paciente se registró y ya aparece en el listado.');
     }
 }

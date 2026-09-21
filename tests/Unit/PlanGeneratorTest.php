@@ -63,16 +63,22 @@ it('aprobar cotizacion mantiene PRE-APROBADO y ofrece destinos de preafiliacion'
         ->toContain('public function approveQuote(string $destination): void')
         ->not->toContain('\'status\' => \'APROBADA\'')
         ->toContain('AUDIT_BUSINESS_PLAN_GENERATOR_PRE_AFFILIATION_STARTED')
-        ->toContain('PlanGeneratorPreAffiliationSession::store($plan, $destination)')
+        // Individual y corporativo abren primero el selector de cobertura en la
+        // misma modal (ver PlanGeneratorPreAffiliationFlowTest); solo Nuevos
+        // Negocios guarda la sesión y redirige de una.
+        ->toContain('PlanGeneratorPreAffiliationSession::store($plan, PlanGeneratorPreAffiliationSession::TYPE_NEW_BUSINESS)')
+        ->toContain("\$this->replaceMountedAction('chooseIndividualCoverage')")
+        ->toContain("\$this->replaceMountedAction('chooseCorporateCoverages')")
         ->toContain('AffiliationResource::getUrl(\'create\'')
-        ->toContain('AffiliationCorporateResource::getUrl(\'create\'')
         ->toContain('PlanGeneratorResource::getUrl(\'register-company\'')
+        ->toContain("PlanGeneratorResource::getUrl('pre-affiliation-population'")
         ->toContain('permanece en estatus PRE-APROBADO')
         ->toContain('=== \'PRE-APROBADO\'');
 
     expect($resource)
         ->toContain('RegisterCompany')
-        ->toContain('\'register-company\' => RegisterCompany::route(\'/{record}/register-company\')');
+        ->toContain('\'register-company\' => RegisterCompany::route(\'/{record}/register-company\')')
+        ->toContain("'pre-affiliation-population' => PreAffiliationPopulation::route('/{record}/pre-affiliation-population')");
 
     expect($session)
         ->toContain('SESSION_KEY = \'plan_generator_pre_affiliation\'')
@@ -272,6 +278,8 @@ it('formulario generador incluye matrices alineadas con columnas compartidas', f
         ->toContain('quotation-page-gallery-button')
         ->toContain('quotation-gallery-modal')
         ->toContain('Agregar columna')
+        ->toContain('->collapsible()')
+        ->toContain('->collapsed()')
         ->toContain('stacked-matrices-editor')
         ->toContain('include_monthly_total')
         ->toContain('Matrices del plan')
@@ -307,7 +315,9 @@ it('formulario generador incluye matrices alineadas con columnas compartidas', f
 it('editor de beneficios usa select con catalogo, evita duplicados y permite crear', function (): void {
     $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Schemas/PlanGeneratorForm.php');
     $stacked = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/plan-generators/stacked-matrices-editor.blade.php');
-    $trait = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Pages/Concerns/InteractsWithPlanGeneratorMatrix.php');
+    // Las acciones del editor viven en el trait de filas, compartido con la
+    // modal que deriva cotizaciones desde la tabla.
+    $trait = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Pages/Concerns/InteractsWithPlanGeneratorMatrixRows.php');
 
     expect($form)
         ->toContain('use App\Models\Benefit;')
@@ -316,7 +326,10 @@ it('editor de beneficios usa select con catalogo, evita duplicados y permite cre
 
     expect($stacked)
         ->toContain('<select')
-        ->toContain('data.rows.{{ $rowKey }}.benefit_label')
+        // El editor se comparte con la modal que deriva cotizaciones, así que
+        // la ruta del estado es un parámetro y no `data` fijo (ver
+        // PlanGeneratorDerivedQuotationTest).
+        ->toContain('{{ $matrixStatePath }}.rows.{{ $rowKey }}.benefit_label')
         ->toContain('Seleccione un beneficio')
         ->toContain('benefitsUsedByOtherRows')
         ->toContain('createPlanGeneratorBenefit')

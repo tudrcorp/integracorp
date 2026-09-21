@@ -1151,12 +1151,27 @@ class AffiliationsTable
                             try {
 
                                 /**
-                                 * LIGICA DE DESCARGA O REENVIO DEL KIT DE BIENVENIDA VIA EMAIL
+                                 * LOGICA DE DESCARGA O REENVIO DEL KIT DE BIENVENIDA VIA EMAIL
                                  *
-                                 * @version 2.0
+                                 * El controlador verifica los tres documentos antes de actuar y solo
+                                 * reporta éxito si la operación ocurrió: la auditoría se registra
+                                 * después del hecho, nunca por adelantado.
+                                 *
+                                 * @version 3.0
                                  */
                                 if ($data['option'] == 'DESCARGAR') {
                                     $path = AffiliationController::downloadResendKit($record, $data);
+
+                                    if (! is_string($path) || $path === '') {
+                                        self::audit('AUDIT_BUSINESS_AFFILIATION_WELCOME_KIT_FAILED', 'business.affiliations.welcome-kit', [
+                                            'affiliation_id' => $record->id,
+                                            'affiliation_code' => $record->code,
+                                            'option' => $data['option'],
+                                            'error' => 'Kit incompleto o ZIP no generado',
+                                        ]);
+
+                                        return null;
+                                    }
 
                                     self::audit('AUDIT_BUSINESS_AFFILIATION_WELCOME_KIT_DOWNLOADED', 'business.affiliations.welcome-kit', [
                                         'affiliation_id' => $record->id,
@@ -1165,15 +1180,25 @@ class AffiliationsTable
                                     ]);
 
                                     return response()->download($path);
-                                } else {
-                                    AffiliationController::downloadResendKit($record, $data);
-                                    self::audit('AUDIT_BUSINESS_AFFILIATION_WELCOME_KIT_RESENT', 'business.affiliations.welcome-kit', [
+                                }
+
+                                $sent = AffiliationController::downloadResendKit($record, $data) === true;
+
+                                self::audit(
+                                    $sent
+                                        ? 'AUDIT_BUSINESS_AFFILIATION_WELCOME_KIT_RESENT'
+                                        : 'AUDIT_BUSINESS_AFFILIATION_WELCOME_KIT_FAILED',
+                                    'business.affiliations.welcome-kit',
+                                    [
                                         'affiliation_id' => $record->id,
                                         'affiliation_code' => $record->code,
                                         'option' => $data['option'],
                                         'email' => $data['email'] ?? null,
-                                    ]);
-                                }
+                                        ...($sent ? [] : ['error' => 'Kit incompleto o envío fallido']),
+                                    ]
+                                );
+
+                                return null;
                             } catch (\Throwable $th) {
                                 self::audit('AUDIT_BUSINESS_AFFILIATION_WELCOME_KIT_FAILED', 'business.affiliations.welcome-kit', [
                                     'affiliation_id' => $record->id,
@@ -1190,6 +1215,8 @@ class AffiliationsTable
                                     ->iconColor('danger')
                                     ->danger()
                                     ->send();
+
+                                return null;
                             }
                         })
                         ->hidden(fn (Affiliation $record) => Auth::user()->is_business_admin != 1 || $record->status != 'ACTIVA'),

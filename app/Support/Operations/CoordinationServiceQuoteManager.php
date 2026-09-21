@@ -830,10 +830,10 @@ final class CoordinationServiceQuoteManager
         $shouldCreateOrder = $quotesPendingOrder !== [];
 
         if ($shouldCreateOrder) {
-            if (blank($data['order_number'] ?? null) || blank($data['service_order_description'] ?? null)) {
+            if (blank($data['order_number'] ?? null)) {
                 Notification::make()
                     ->title('Orden de servicio')
-                    ->body('Complete número y descripción de la orden para las cotizaciones aprobadas.')
+                    ->body('Complete el número de la orden para las cotizaciones aprobadas.')
                     ->warning()
                     ->send();
 

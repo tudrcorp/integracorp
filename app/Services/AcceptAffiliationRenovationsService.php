@@ -164,7 +164,7 @@ final class AcceptAffiliationRenovationsService
         Carbon $acceptanceDate,
     ): void {
         $affiliation->plan_id = $manualOptions->planId;
-        $affiliation->coverage_id = $manualOptions->planId === AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID
+        $affiliation->coverage_id = $this->calculator->planHasNoCoverages($manualOptions->planId)
             ? null
             : $manualOptions->coverageId;
         $affiliation->payment_frequency = $manualOptions->paymentFrequency;
@@ -304,7 +304,7 @@ final class AcceptAffiliationRenovationsService
     ): Affiliation {
         $snapshot = $affiliation->replicate();
         $snapshot->plan_id = $manualOptions->planId;
-        $snapshot->coverage_id = $manualOptions->planId === AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID
+        $snapshot->coverage_id = $this->calculator->planHasNoCoverages($manualOptions->planId)
             ? null
             : $manualOptions->coverageId;
         $snapshot->payment_frequency = $manualOptions->paymentFrequency;

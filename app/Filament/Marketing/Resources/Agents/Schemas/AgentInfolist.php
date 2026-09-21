@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\Agents\Schemas;
 
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
@@ -56,6 +57,10 @@ class AgentInfolist
                     ->boolean(),
                 IconEntry::make('tdev')
                     ->boolean(),
+                IconEntry::make('is_referidor')
+                    ->label('Es Referidor')
+                    ->boolean(),
+                ReferidorPercentageField::entry(),
                 TextEntry::make('commission_tdec')
                     ->numeric(),
                 TextEntry::make('commission_tdec_renewal')

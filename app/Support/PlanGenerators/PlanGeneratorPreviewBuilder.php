@@ -65,6 +65,34 @@ final class PlanGeneratorPreviewBuilder
         return self::fullMatrixFromModel($planGenerator)['rate_rows'];
     }
 
+    /**
+     * Cómo se dibuja una celda de la matriz de beneficios. La decisión vive acá
+     * y no en las plantillas porque la misma celda se pinta en dos superficies
+     * —el PDF de la cotización y la vista previa del panel— y antes cada una
+     * tenía su copia de la regla.
+     *
+     * Tres estados, excluyentes:
+     *
+     *   'dash'   el beneficio no está incluido en esa cobertura
+     *   'amount' está incluido con un tope: se muestra solo el monto, sin check,
+     *            porque el monto ya comunica que está cubierto
+     *   'check'  está incluido sin tope
+     *
+     * Un límite en cero cuenta como "sin tope": lleva check, no `US$ 0.00`.
+     */
+    public static function benefitCellDisplay(bool $isSelected, mixed $coverageAmount): string
+    {
+        if (! $isSelected) {
+            return 'dash';
+        }
+
+        if (! is_numeric($coverageAmount)) {
+            return 'check';
+        }
+
+        return ((float) $coverageAmount) === 0.0 ? 'check' : 'amount';
+    }
+
     public static function formatCoverageAmount(?float $amount): string
     {
         if ($amount === null) {

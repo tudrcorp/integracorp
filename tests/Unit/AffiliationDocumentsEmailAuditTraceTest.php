@@ -11,7 +11,9 @@ it('registra auditoría para envío de documentos de afiliación individual por 
         ->and($contents)->toContain('AUDIT_AFFILIATION_DOCUMENTS_EMAIL_FAILED')
         ->and($contents)->toContain('business.affiliation-documents.send-email')
         ->and($contents)->toContain("->cc('afiliaciones@tudrencasa.com')")
-        ->and($contents)->toContain("->bcc('solrodriguez@tudrencasa.com')");
+        ->and($contents)->toContain("->bcc('solrodriguez@tudrencasa.com')")
+        ->and($contents)->toContain('AUDIT_AFFILIATION_CARNET_EMAILS_QUEUED')
+        ->and($contents)->toContain('business.affiliation-documents.send-carnet-emails');
 });
 
 it('registra auditoría para envío de documentos de afiliación corporativa por correo', function (): void {
@@ -23,5 +25,7 @@ it('registra auditoría para envío de documentos de afiliación corporativa por
         ->and($contents)->toContain('AUDIT_AFFILIATION_CORPORATE_DOCUMENTS_EMAIL_FAILED')
         ->and($contents)->toContain('business.affiliation-corporate-documents.send-email')
         ->and($contents)->toContain("->cc('afiliaciones@tudrencasa.com')")
-        ->and($contents)->toContain("->bcc('solrodriguez@tudrencasa.com')");
+        ->and($contents)->toContain("->bcc('solrodriguez@tudrencasa.com')")
+        ->and($contents)->toContain('AUDIT_AFFILIATION_CORPORATE_CARNET_EMAILS_QUEUED')
+        ->and($contents)->toContain('business.affiliation-corporate-documents.send-carnet-emails');
 });

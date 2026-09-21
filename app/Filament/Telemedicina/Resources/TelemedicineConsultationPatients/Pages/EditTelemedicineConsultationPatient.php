@@ -5,31 +5,28 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\P
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasInformAmdModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasMedicamentosStepInfoModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
-use App\Jobs\GeneratePdfEspecialista;
-use App\Jobs\GeneratePdfImagenologia;
-use App\Jobs\GeneratePdfLaboratorio;
-use App\Jobs\GeneratePdfMedicamentos;
-use App\Jobs\SendTelemedicinaDocument;
-use App\Models\OperationInventory;
-use App\Models\TelemedicineCase;
+use App\Jobs\GeneratePdfInformeSeguimiento;
 use App\Models\TelemedicineConsultationPatient;
-use App\Models\TelemedicineDoctor;
-use App\Models\TelemedicineListLaboratory;
-use App\Models\TelemedicineListSpecialist;
-use App\Models\TelemedicineListStudy;
-use App\Models\TelemedicinePatient;
-use App\Models\TelemedicinePatientLab;
-use App\Models\TelemedicinePatientMedications;
-use App\Models\TelemedicinePatientSpecialty;
-use App\Models\TelemedicinePatientStudy;
-use App\Services\TelemedicineMedicationInventoryDeductor;
-use App\Support\Telemedicine\TelemedicineMedicationCoverage;
-use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
+use App\Models\User;
+use App\Services\TelemedicineSupplyConsumptionRecorder;
+use App\Support\Telemedicine\TelemedicineFollowUpReportDocument;
+use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
+/**
+ * Edición de una consulta ya registrada.
+ *
+ * Editar **no** regenera recetas ni órdenes clínicas: para eso está
+ * {@see \App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationService}.
+ * El informe de seguimiento sí se vuelve a generar: es el documento de este
+ * acto clínico y debe quedar alineado con el diagnóstico, la historia actual
+ * y la evolución que el médico acaba de guardar.
+ */
 class EditTelemedicineConsultationPatient extends EditRecord
 {
     use HasInformAmdModal;
@@ -53,339 +50,102 @@ class EditTelemedicineConsultationPatient extends EditRecord
     }
 
     /**
-     * Creamos el registro de los medicamentos
-     * asignados por el medico en la consulta
-     *
-     * @author TuDrEnCasa
-     *
-     * @since 1.0
-     *
-     * @version 1.0
-     *
-     * @param  array  $data,  array $medications
-     * @return void
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
      */
-    protected function afterCreate()
+    protected function mutateFormDataBeforeFill(array $data): array
     {
+        $caseId = (int) ($data['telemedicine_case_id'] ?? $this->getRecord()->telemedicine_case_id ?? 0);
+        $status = (string) ($data['status'] ?? $this->getRecord()->status ?? '');
+
+        if ($caseId > 0 && $status !== TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS) {
+            $data = array_merge($data, TelemedicineInitialDiagnosisUpdater::formStateForCase($caseId));
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return TelemedicineInitialDiagnosisUpdater::mergeIntoConsultationFormData($data);
+    }
+
+    protected function afterSave(): void
+    {
+        $record = $this->getRecord();
+
+        if (! $record instanceof TelemedicineConsultationPatient) {
+            return;
+        }
+
+        app(TelemedicineSupplyConsumptionRecorder::class)
+            ->recordAndNotify($record, $this->data['medical_supplies'] ?? []);
+
+        if ((string) $record->status === TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS) {
+            return;
+        }
+
         try {
+            TelemedicineInitialDiagnosisUpdater::syncFromFollowUp(
+                (int) $record->telemedicine_case_id,
+                (string) ($record->diagnostic_impression ?? $this->data[TelemedicineInitialDiagnosisUpdater::FORM_FIELD] ?? ''),
+                Auth::user() instanceof User ? Auth::user() : null,
+                filled($record->code_reference) ? (string) $record->code_reference : null,
+            );
+        } catch (\Throwable $diagnosisException) {
+            Log::error('Error al actualizar el diagnóstico principal de la consulta inicial: '.$diagnosisException->getMessage(), [
+                'telemedicine_case_id' => $record->telemedicine_case_id,
+                'telemedicine_consultation_id' => $record->id,
+                'exception' => $diagnosisException,
+            ]);
 
-            $record = $this->getRecord()->toArray();
-            // dd($record, $this->data);
+            Notification::make()
+                ->title('No se pudo actualizar el diagnóstico principal')
+                ->body('La consulta se guardó, pero el diagnóstico de la consulta inicial no se actualizó. Revise la bitácora e intente de nuevo.')
+                ->danger()
+                ->send();
+        }
 
-            $doctor = TelemedicineDoctor::where('id', $record['telemedicine_doctor_id'])->first()->toArray();
+        $this->dispatchFollowUpReportDocument($record);
+    }
 
-            $patient = TelemedicinePatient::where('id', $record['telemedicine_patient_id'])->first()->toArray();
-            // dd($patient);
+    private function dispatchFollowUpReportDocument(TelemedicineConsultationPatient $record): void
+    {
+        if (! TelemedicineFollowUpReportDocument::appliesTo((string) $record->status)) {
+            return;
+        }
 
-            $feedbackOne = session()->get('feedbackOne');
+        try {
+            $payload = TelemedicineFollowUpReportDocument::payloadFromSavedConsultation(
+                $record,
+                Auth::user() instanceof User ? Auth::user() : null,
+            );
 
-            $medicationsArr = TelemedicineMedicationsPdfRows::normalize(session()->get('medications') ?? []);
-            $labsArr = session()->get('labs') ?? [];
-            $otherLabsArr = session()->get('other_labs') ?? [];
-            $studiesArr = session()->get('studies') ?? [];
-            $otherStudiesArr = session()->get('other_studies') ?? [];
-            $consultSpecialistArr = session()->get('consult_specialist') ?? [];
-            $otherSpecialistArr = session()->get('other_specialist') ?? [];
-
-            if ($feedbackOne != true) {
-                $finalArrLabs = array_merge($labsArr, $otherLabsArr);
-                $finalArrStudies = array_merge($studiesArr, $otherStudiesArr);
-                $finalArrSpecialist = array_merge($consultSpecialistArr, $otherSpecialistArr);
+            if ($payload === null) {
+                throw new \RuntimeException('No se encontró el médico o el paciente para firmar el informe de seguimiento.');
             }
 
-            // dd($finalArrLabs, $finalArrStudies, $finalArrSpecialist);
+            GeneratePdfInformeSeguimiento::dispatch(
+                $payload,
+                Auth::user(),
+                TelemedicineFollowUpReportDocument::TYPE_DOCUMENT,
+            );
+        } catch (\Throwable $exception) {
+            Log::error('Error al generar el informe de seguimiento: '.$exception->getMessage(), [
+                'telemedicine_case_id' => $record->telemedicine_case_id,
+                'telemedicine_consultation_id' => $record->id,
+                'exception' => $exception,
+            ]);
 
-            // Arreglo de medicamento
-            if (! empty($medicationsArr)) {
-                $caseForInventory = TelemedicineCase::query()
-                    ->with('telemedicineDoctor')
-                    ->find($record['telemedicine_case_id']);
-                $doctorModel = TelemedicineDoctor::query()->find($record['telemedicine_doctor_id']);
-                $patientModel = TelemedicinePatient::query()->find($record['telemedicine_patient_id']);
-                $consultationModel = TelemedicineConsultationPatient::query()->find($record['id']);
-                $inventoryDeductor = app(TelemedicineMedicationInventoryDeductor::class);
-
-                for ($i = 0; $i < count($medicationsArr); $i++) {
-                    $row = $medicationsArr[$i];
-
-                    if (! is_array($row)) {
-                        continue;
-                    }
-
-                    $inventoryId = filled($row['operation_inventory_id'] ?? null)
-                        ? (int) $row['operation_inventory_id']
-                        : null;
-                    $manualMedicine = filled($row['medicines'] ?? null) ? (string) $row['medicines'] : null;
-
-                    if ($manualMedicine === null && $inventoryId === null) {
-                        continue;
-                    }
-
-                    $medications = new TelemedicinePatientMedications;
-                    $medications->telemedicine_consultation_patient_id = $record['id'];
-                    $medications->telemedicine_patient_id = $record['telemedicine_patient_id'];
-                    $medications->telemedicine_case_id = $record['telemedicine_case_id'];
-                    $medications->telemedicine_doctor_id = $record['telemedicine_doctor_id'];
-                    $medications->medicine = $manualMedicine ?? OperationInventory::query()->whereKey($inventoryId)->value('name');
-                    $medications->indications = $row['indications'];
-                    $medications->duration = $row['duration'];
-                    $medications->quantity = TelemedicineMedicationsPdfRows::quantityFromRow($row);
-                    $medications->telemedicine_priority_id = $record['telemedicine_priority_id'];
-                    $medications->operation_inventory_id = $inventoryId;
-                    $medications->is_covered = TelemedicineMedicationCoverage::coverageForPersist($inventoryId);
-                    $medications->assigned_by = Auth::user()->id;
-                    $medications->save();
-
-                    if ($consultationModel !== null && $inventoryId !== null) {
-                        $inventoryDeductor->deductIfApplicable(
-                            $inventoryId,
-                            $consultationModel,
-                            $caseForInventory,
-                            $doctorModel,
-                            $patientModel,
-                            TelemedicineMedicationsPdfRows::quantityForInventoryDeduction($row),
-                        );
-                    }
-                }
-
-                /**
-                 * Informacion para el pdf
-                 * -------------------------------------------------------------------------------------------
-                 *
-                 * @typeDoc = Tipo de documento a generar
-                 *
-                 * @doctor = Informacion del doctor
-                 *
-                 * @recod = Informacion de la consulta
-                 */
-                $typeDoc = 'medicamentos';
-
-                $data = [
-                    'fecha' => now()->format('d/m/Y'),
-                    'code_reference' => $record['code_reference'],
-                    'name_patiente' => $record['full_name'],
-                    'ci_patiente' => $record['nro_identificacion'],
-                    'age_patiente' => $patient['age'],
-                    'medicationsArr' => $medicationsArr,
-                    'code_cm' => $doctor['code_cm'],
-                    'code_mpps' => $doctor['code_mpps'],
-                    'signature' => $doctor['signature'],
-                    'telemedicine_case_id' => $record['telemedicine_case_id'],
-                    'telemedicine_consultation_id' => $record['id'],
-                    'telemedicine_patient_id' => $record['telemedicine_patient_id'],
-                    'signature' => $doctor['signature'],
-                ];
-
-                GeneratePdfMedicamentos::dispatch($data, Auth::user(), $typeDoc)->onQueue('telemedicina');
-            }
-
-            // Arreglo de Laboratorios
-            if (! empty($finalArrLabs)) {
-                // Log::info('Lab: ' . json_encode($medicationsArr));
-                for ($i = 0; $i < count($finalArrLabs); $i++) {
-                    $labs = new TelemedicinePatientLab;
-                    $labs->telemedicine_consultation_patient_id = $record['id'];
-                    $labs->telemedicine_patient_id = $record['telemedicine_patient_id'];
-                    $labs->telemedicine_case_id = $record['telemedicine_case_id'];
-                    $labs->telemedicine_doctor_id = $record['telemedicine_doctor_id'];
-                    $labs->laboratory = $finalArrLabs[$i];
-                    $labs->type = TelemedicineListLaboratory::where('name', $finalArrLabs[$i])->first()->type;
-                    $labs->assigned_by = Auth::user()->id;
-                    $labs->save();
-                }
-
-                /**
-                 * Informacion para el pdf
-                 * -------------------------------------------------------------------------------------------
-                 *
-                 * @typeDoc = Tipo de documento a generar
-                 *
-                 * @doctor = Informacion del doctor
-                 *
-                 * @recod = Informacion de la consulta
-                 */
-                $typeDoc = 'laboratorios';
-
-                $data = [
-                    'fecha' => now()->format('d/m/Y'),
-                    'code_reference' => $record['code_reference'],
-                    'name_patiente' => $record['full_name'],
-                    'ci_patiente' => $record['nro_identificacion'],
-                    'age_patiente' => $patient['age'],
-                    'labs' => $record['labs'],
-                    'code_cm' => $doctor['code_cm'],
-                    'code_mpps' => $doctor['code_mpps'],
-                    'signature' => $doctor['signature'],
-                    'telemedicine_case_id' => $record['telemedicine_case_id'],
-                    'telemedicine_consultation_id' => $record['id'],
-                    'telemedicine_patient_id' => $record['telemedicine_patient_id'],
-                    'signature' => $doctor['signature'],
-                ];
-
-                GeneratePdfLaboratorio::dispatch($data, Auth::user(), $typeDoc)->onQueue('telemedicina');
-            }
-
-            // Arreglo de Estudios
-            if (! empty($finalArrStudies)) {
-                // Log::info('Estudios: ' . json_encode($medicationsArr));
-                for ($i = 0; $i < count($finalArrStudies); $i++) {
-                    $study = new TelemedicinePatientStudy;
-                    $study->telemedicine_consultation_patient_id = $record['id'];
-                    $study->telemedicine_patient_id = $record['telemedicine_patient_id'];
-                    $study->telemedicine_case_id = $record['telemedicine_case_id'];
-                    $study->telemedicine_doctor_id = $record['telemedicine_doctor_id'];
-                    $study->study = $finalArrStudies[$i];
-                    $study->assigned_by = Auth::user()->id;
-                    $study->type = TelemedicineListStudy::where('name', $finalArrStudies[$i])->first()->type;
-                    $study->save();
-                }
-
-                /**
-                 * Informacion para el pdf
-                 * -------------------------------------------------------------------------------------------
-                 *
-                 * @typeDoc = Tipo de documento a generar
-                 *
-                 * @doctor = Informacion del doctor
-                 *
-                 * @recod = Informacion de la consulta
-                 */
-                $typeDoc = 'imagenologia';
-
-                $data = [
-                    'fecha' => now()->format('d/m/Y'),
-                    'code_reference' => $record['code_reference'],
-                    'name_patiente' => $record['full_name'],
-                    'ci_patiente' => $record['nro_identificacion'],
-                    'age_patiente' => $patient['age'],
-                    'studies' => $record['studies'],
-                    'code_cm' => $doctor['code_cm'],
-                    'code_mpps' => $doctor['code_mpps'],
-                    'signature' => $doctor['signature'],
-                    'telemedicine_case_id' => $record['telemedicine_case_id'],
-                    'telemedicine_consultation_id' => $record['id'],
-                    'telemedicine_patient_id' => $record['telemedicine_patient_id'],
-                    'phone' => $patient['phone'],
-                    'signature' => $doctor['signature'],
-                ];
-
-                // Bus::chain([
-
-                //     new GeneratePdfImagenologia($data, Auth::user(), $typeDoc),
-
-                //     new SendTelemedicinaDocument($data['telemedicine_patient_id'], $data['telemedicine_case_id'], Auth::user(), $patient['phone'], $typeDoc),
-
-                // ])->onQueue('telemedicina')->dispatch();
-
-                GeneratePdfImagenologia::dispatch($data, Auth::user(), $typeDoc)->onQueue('telemedicina');
-            }
-
-            // Arreglo Especialistas
-            if (! empty($finalArrSpecialist)) {
-                // Log::info('Especialista: ' . json_encode($medicationsArr));
-                for ($i = 0; $i < count($finalArrSpecialist); $i++) {
-                    $specialist = new TelemedicinePatientSpecialty;
-                    $specialist->telemedicine_consultation_patient_id = $record['id'];
-                    $specialist->telemedicine_patient_id = $record['telemedicine_patient_id'];
-                    $specialist->telemedicine_case_id = $record['telemedicine_case_id'];
-                    $specialist->telemedicine_doctor_id = $record['telemedicine_doctor_id'];
-                    $specialist->specialty = $finalArrSpecialist[$i];
-                    $specialist->assigned_by = Auth::user()->id;
-                    $specialist->type = TelemedicineListSpecialist::where('name', $finalArrSpecialist[$i])->first()->type;
-                    $specialist->save();
-                }
-
-                /**
-                 * Informacion para el pdf
-                 * -------------------------------------------------------------------------------------------
-                 *
-                 * @typeDoc = Tipo de documento a generar
-                 *
-                 * @doctor = Informacion del doctor
-                 *
-                 * @recod = Informacion de la consulta
-                 */
-                $typeDoc = 'especialista';
-
-                $data = [
-                    'fecha' => now()->format('d/m/Y'),
-                    'code_reference' => $record['code_reference'],
-                    'name_patiente' => $record['full_name'],
-                    'ci_patiente' => $record['nro_identificacion'],
-                    'age_patiente' => $patient['age'],
-                    'consultSpecialistArr' => $consultSpecialistArr,
-                    'code_cm' => $doctor['code_cm'],
-                    'code_mpps' => $doctor['code_mpps'],
-                    'signature' => $doctor['signature'],
-                    'telemedicine_case_id' => $record['telemedicine_case_id'],
-                    'telemedicine_consultation_id' => $record['id'],
-                    'telemedicine_patient_id' => $record['telemedicine_patient_id'],
-                    'signature' => $doctor['signature'],
-                ];
-                // dd($data);
-
-                GeneratePdfEspecialista::dispatch($data, Auth::user(), $typeDoc)->onQueue('telemedicina');
-            }
-
-            // ...Limpio la variable de sesion
-            session()->forget('medications');
-            session()->forget('labs');
-            session()->forget('other_labs');
-            session()->forget('studies');
-            session()->forget('other_studies');
-            session()->forget('consult_specialist');
-            session()->forget('other_specialist');
-
-            // ...Activacion de la clave roja
-            session()->forget('redCode');
-
-            // ...Limpio la variable de sesion que se generar al momento acceder al caso para la primera consulta
-            session()->forget('case');
-            session()->forget('patient');
-            session()->forget('redCode');
-
-            // ...Limpio la variable de sesion que se crea cuando asociamos algun antecedente de la lista
-            session()->forget('patologicalHistorySelected');
-
-            // Actualizo el estatus del
-
-            if (isset($feedbackOne) && $feedbackOne == true) {
-                dd($record);
-                // Actualizamos la informacion en la tabla de casos
-                $case = TelemedicineCase::where('id', $record['telemedicine_case_id'])->first();
-                $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
-                // $case->telemedicine_service_list_id = isset($record['telemedicine_service_list_id']) ? $record['telemedicine_service_list_id'] : null;
-                $case->telemedicine_service_list_id = isset($record['telemedicine_service_list_drift_id']) ? $record['telemedicine_service_list_drift_id'] : null;
-                $case->updated_at = now();
-                $case->status = 'ALTA MEDICA';
-                $case->save();
-
-                // Actualizamos la informacion en la tabla de consultas
-                $consult = TelemedicineConsultationPatient::where('id', $record['id'])->first();
-                $consult->updated_at = now();
-                $consult->status = 'ALTA MEDICA';
-                $consult->save();
-
-                session()->forget('feedbackOne');
-            } else {
-                $case = TelemedicineCase::where('id', $record['telemedicine_case_id'])->first();
-                $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
-                $case->updated_at = now();
-                $case->status = 'EN SEGUIMIENTO';
-                $case->save();
-            }
-
-            // Si el servicio es una telemedicina estandar enviamos la notificacion y el documento
-            if ($this->data['telemedicine_service_list_id'] == 1) {
-
-                $this->sendNotifications($record);
-
-                SendTelemedicinaDocument::dispatch($data['telemedicine_patient_id'], $data['telemedicine_case_id'], Auth::user(), $patient['phone'], $typeDoc)->onQueue('telemedicina');
-            }
-
-            // code...
-        } catch (\Throwable $th) {
-            dd($th);
+            Notification::make()
+                ->title('No se pudo generar el informe de seguimiento')
+                ->body('El seguimiento se guardó, pero el PDF no se encoló. Intente de nuevo o use «Generar documentos» en el caso.')
+                ->danger()
+                ->send();
         }
     }
 }

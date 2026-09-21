@@ -17,7 +17,7 @@ final class SupplierIntegracorpManagementForm
     {
         return Tab::make('Gestion de Procesos en Integracorp')
             ->icon(Heroicon::OutlinedCog6Tooth)
-            ->visible(fn (): bool => OperationsSuperAdmin::check())
+            ->visible(fn (): bool => SupplierIntegracorpManagement::userCanManage())
             ->schema([
                 Section::make('Acceso a módulos de Operaciones')
                     ->description('Habilita al proveedor para operar en telemedicina, servicios médicos y órdenes de servicio.')
@@ -58,8 +58,8 @@ final class SupplierIntegracorpManagementForm
      */
     public static function stripUnauthorizedFormData(array $data): array
     {
-        if (! OperationsSuperAdmin::check()) {
-            unset($data['gestion_integracorp'], $data['integracorpUsers']);
+        if (! SupplierIntegracorpManagement::userCanManage()) {
+            unset($data['gestion_integracorp'], $data['integracorpUsers'], $data['integracorpAnalysts']);
         }
 
         return $data;

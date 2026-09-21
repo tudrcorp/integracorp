@@ -44,6 +44,7 @@ class TelemedicinePatient extends Model
         'code',
         'code_affiliation',
         'business_unit_id',
+        'specific_business_unit',
         'business_line_id',
         'name_corporate',
         'managed_by',

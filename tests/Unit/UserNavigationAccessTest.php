@@ -109,7 +109,13 @@ it('registra mapeos para cotizaciones y afiliaciones individuales de negocios', 
     ))->toBe(['cotizador-individual'])
         ->and(\App\Support\Filament\DepartmentNavigationPermissionRegistry::slugsFor(
             \App\Filament\Business\Resources\Affiliations\AffiliationResource::class
-        ))->toBe(['afiliaciones-individuales']);
+        ))->toBe(['afiliaciones-individuales'])
+        ->and(\App\Support\Filament\DepartmentNavigationPermissionRegistry::slugsFor(
+            \App\Filament\Business\Resources\Affiliates\AffiliateResource::class
+        ))->toBe(['afiliaciones-individuales'])
+        ->and(\App\Support\Filament\DepartmentNavigationPermissionRegistry::slugsFor(
+            \App\Filament\Business\Resources\AffiliateCorporates\AffiliateCorporateResource::class
+        ))->toBe(['afiliaciones-corporativas']);
 });
 
 it('aplica el trait de navegacion en recursos business clave', function (): void {

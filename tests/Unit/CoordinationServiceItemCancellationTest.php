@@ -66,7 +66,7 @@ it('expone cancelación de ítems en el infolist de coordinación', function ():
 
     expect($infolist)
         ->toContain('CoordinationServiceItemCancellation')
-        ->toContain('cancelAssociatedItemSuffixActions')
+        ->toContain('associatedItemSuffixActions')
         ->toContain('medicationsItemsState')
         ->toContain('laboratoriesItemsState')
         ->toContain('studiesItemsState')

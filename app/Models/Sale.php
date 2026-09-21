@@ -31,6 +31,7 @@ class Sale extends Model
         'persons',
         'created_by',
         'total_amount',
+        'white_company_neta',
         'total_amount_ves',
         'type',
         'payment_method',
@@ -49,6 +50,16 @@ class Sale extends Model
         'invoice_generated',
         'is_payment_link',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'white_company_neta' => 'decimal:2',
+        ];
+    }
 
     public function affiliation(): BelongsTo
     {

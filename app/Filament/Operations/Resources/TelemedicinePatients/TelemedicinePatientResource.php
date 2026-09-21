@@ -34,6 +34,10 @@ class TelemedicinePatientResource extends Resource
 
     protected static ?string $navigationLabel = 'Pacientes';
 
+    protected static ?string $modelLabel = 'paciente';
+
+    protected static ?string $recordTitleAttribute = 'full_name';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema
@@ -76,10 +80,14 @@ class TelemedicinePatientResource extends Resource
             ->with([
                 'plan.benefitPlans.limit',
                 'plan.businessUnit',
+                'plan.clinicalSettings.benefit:id,description',
+                'plan.clinicalSettings.telemedicineServiceList:id,name',
                 'coverage',
                 'city',
                 'country',
                 'state',
+                'afilliation:id,effective_date',
+                'afilliationCorporate:id,effective_date',
             ]);
     }
 

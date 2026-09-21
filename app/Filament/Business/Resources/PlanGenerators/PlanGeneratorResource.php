@@ -7,6 +7,7 @@ namespace App\Filament\Business\Resources\PlanGenerators;
 use App\Filament\Business\Resources\PlanGenerators\Pages\CreatePlanGenerator;
 use App\Filament\Business\Resources\PlanGenerators\Pages\EditPlanGenerator;
 use App\Filament\Business\Resources\PlanGenerators\Pages\ListPlanGenerators;
+use App\Filament\Business\Resources\PlanGenerators\Pages\PreAffiliationPopulation;
 use App\Filament\Business\Resources\PlanGenerators\Pages\RegisterCompany;
 use App\Filament\Business\Resources\PlanGenerators\Pages\ViewPlanGenerator;
 use App\Filament\Business\Resources\PlanGenerators\Schemas\PlanGeneratorForm;
@@ -20,6 +21,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use UnitEnum;
 
 class PlanGeneratorResource extends Resource
@@ -58,7 +60,11 @@ class PlanGeneratorResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->withCount(['columns', 'rows', 'rateRows']);
+            ->withCount(['columns', 'rows', 'rateRows', 'derivedQuotations'])
+            // La cabecera de familia de la tabla se arma con los datos del
+            // registro base y con cuántas derivadas tiene. Sin este eager load
+            // cada fila derivada dispararía dos consultas extra.
+            ->with(['parent' => fn (BelongsTo $query): BelongsTo => $query->withCount('derivedQuotations')]);
     }
 
     public static function getRelations(): array
@@ -74,6 +80,7 @@ class PlanGeneratorResource extends Resource
             'view' => ViewPlanGenerator::route('/{record}'),
             'edit' => EditPlanGenerator::route('/{record}/edit'),
             'register-company' => RegisterCompany::route('/{record}/register-company'),
+            'pre-affiliation-population' => PreAffiliationPopulation::route('/{record}/pre-affiliation-population'),
         ];
     }
 }

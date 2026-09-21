@@ -14,7 +14,7 @@ it('expone en negocios la accion de aprobar y cargar data de poblacion como en a
         ->toContain("FileUpload::make('data_doc')")
         ->toContain("'status' => 'APROBADA-DATA-ENVIADA'")
         ->toContain('SendNotificacionUploadDataCorporate::dispatch')
-        ->toContain('NotificationController::sendUploadDataCorporate')
+        ->toContain('QuoteWhatsAppNotification::CorporateDataUploaded')
         ->toContain('AUDIT_BUSINESS_CORPORATE_QUOTE_APPROVED_DATA_UPLOADED')
         ->toContain('observation_dress_tailor != null');
 });

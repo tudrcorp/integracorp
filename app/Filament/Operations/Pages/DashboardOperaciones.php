@@ -7,6 +7,9 @@ namespace App\Filament\Operations\Pages;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Widgets\Dashboard\FinishedServicesMonthlyChart;
 use App\Filament\Operations\Widgets\Dashboard\OperationsDashboardStatsOverview;
+use App\Filament\Operations\Widgets\Dashboard\ServicesByBusinessLineChart;
+use App\Filament\Operations\Widgets\Dashboard\ServicesByServiceTypeChart;
+use App\Filament\Operations\Widgets\Dashboard\ServicesByStatusChart;
 use App\Filament\Operations\Widgets\Dashboard\TopPatientsMedicalDischargeChart;
 use BackedEnum;
 use Filament\Pages\Dashboard;
@@ -35,6 +38,9 @@ class DashboardOperaciones extends Dashboard
             OperationsDashboardStatsOverview::class,
             TopPatientsMedicalDischargeChart::class,
             FinishedServicesMonthlyChart::class,
+            ServicesByStatusChart::class,
+            ServicesByBusinessLineChart::class,
+            ServicesByServiceTypeChart::class,
         ];
     }
 
@@ -43,6 +49,9 @@ class DashboardOperaciones extends Dashboard
      */
     public function getColumns(): int|array
     {
-        return 1;
+        return [
+            'default' => 1,
+            'lg' => 3,
+        ];
     }
 }

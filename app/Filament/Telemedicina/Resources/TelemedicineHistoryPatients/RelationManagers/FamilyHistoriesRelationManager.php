@@ -4,6 +4,7 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Relati
 
 use App\Models\FamilyHistory;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Telemedicine\TelemedicineHistoryRelatedRecordsSync;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -98,17 +99,12 @@ class FamilyHistoriesRelationManager extends RelationManager
                             ->required(),
                         Hidden::make('created_by')->default(Auth::user()->name),
                     ])
-                    ->action(function (RelationManager $livewire, array $data) {
-                        try {
-                            $record = new FamilyHistory;
-                            $record->telemedicine_history_patient_id = $livewire->ownerRecord->id;
-                            $record->telemedicine_patient_id = $livewire->ownerRecord->telemedicine_patient_id;
-                            $record->observations = $data['observations'];
-                            $record->created_by = $data['created_by'];
-                            $record->save();
-                        } catch (\Throwable $th) {
-                            dd($th);
-                        }
+                    ->action(function (RelationManager $livewire, array $data): void {
+                        TelemedicineHistoryRelatedRecordsSync::handleRelationCreate(
+                            FamilyHistory::class,
+                            $livewire->getOwnerRecord(),
+                            $data,
+                        );
                     }),
             ]);
     }

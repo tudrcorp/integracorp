@@ -89,7 +89,8 @@ it('el formulario de gestión incluye DateTimePicker de cita solo presencial', f
         ->toContain('serviceTypeRequiresAppointment')
         ->toContain("TextInput::make('supplier_notify_email')")
         ->toContain("TextInput::make('supplier_notify_phone')")
-        ->toContain('supplierNeedsManualNotifyContacts');
+        ->toContain("TextInput::make('supplier_notify_address')")
+        ->toContain('OperationServiceOrderProviderContacts::hasCatalogSelection');
 });
 
 it('persiste appointment_at al crear OS y sincroniza cita', function (): void {

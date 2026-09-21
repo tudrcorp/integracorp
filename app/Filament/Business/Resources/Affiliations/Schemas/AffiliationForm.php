@@ -347,6 +347,12 @@ class AffiliationForm
                                             ->searchable()
                                             ->prefixIcon('heroicon-c-building-library')
                                             ->preload(),
+                                        TextInput::make('specific_business_unit')
+                                            ->label('Unidad de Negocio específica')
+                                            ->placeholder('Escriba la unidad de negocio específica')
+                                            ->helperText('Nombre o detalle concreto de la unidad, según lo identifique el analista.')
+                                            ->maxLength(255)
+                                            ->prefixIcon('heroicon-o-pencil-square'),
                                         Select::make('business_line_id')
                                             ->label('Lineas de Servicio')
                                             ->options(function (Get $get) {
@@ -377,7 +383,7 @@ class AffiliationForm
                                                 ])
                                                 ->requiresConfirmation()
                                                 ->modalHeading('Sincronizar unidad y línea de servicio')
-                                                ->modalDescription('Se actualizarán la unidad de negocio y la línea de servicio en todos los afiliados individuales vinculados a esta afiliación, usando los valores seleccionados arriba.')
+                                                ->modalDescription('Se actualizarán la unidad de negocio, la unidad de negocio específica y la línea de servicio en todos los afiliados individuales vinculados a esta afiliación, usando los valores indicados arriba.')
                                                 ->modalSubmitActionLabel('Sincronizar')
                                                 ->modalSubmitAction(
                                                     fn (Action $action) => $action
@@ -410,6 +416,7 @@ class AffiliationForm
                                                             $affiliation,
                                                             $get('business_unit_id'),
                                                             $get('business_line_id'),
+                                                            $get('specific_business_unit'),
                                                         );
                                                     } catch (\InvalidArgumentException $exception) {
                                                         Notification::make()
@@ -426,7 +433,7 @@ class AffiliationForm
                                                         ->title('Afiliados sincronizados')
                                                         ->body($updatedCount === 0
                                                             ? 'No hay afiliados vinculados a esta afiliación.'
-                                                            : "Se actualizaron {$updatedCount} afiliado(s) con la unidad de negocio y línea de servicio seleccionadas.")
+                                                            : "Se actualizaron {$updatedCount} afiliado(s) con la unidad de negocio, la unidad específica y la línea de servicio indicadas.")
                                                         ->send();
                                                 }),
                                         ])
@@ -831,8 +838,21 @@ class AffiliationForm
                                             ->live()
                                             ->boolean()
                                             ->inline()
-                                            ->inlineLabel(false),
-                                    ])->hiddenOn('edit'),
+                                            ->inlineLabel(false)
+                                            ->helperText(fn (string $operation): ?string => $operation === 'edit'
+                                                ? 'En edición puede corregir el responsable de pago y sus datos, aunque coincidan con el titular.'
+                                                : null)
+                                            ->afterStateUpdated(function (mixed $state, Set $set, Get $get): void {
+                                                if (! $state) {
+                                                    return;
+                                                }
+
+                                                $set('full_name_payer', $get('full_name_ti'));
+                                                $set('nro_identificacion_payer', $get('nro_identificacion_ti'));
+                                                $set('email_payer', $get('email_ti'));
+                                                $set('phone_payer', $get('phone_ti'));
+                                            }),
+                                    ]),
                                 Fieldset::make('Datos principales del pagador')
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
@@ -974,7 +994,13 @@ class AffiliationForm
                                                 'HIJO' => 'HIJO',
                                                 'HIJA' => 'HIJA',
                                             ]),
-                                    ])->columns(3)->hidden(fn (Get $get) => $get('feedback_dos')),
+                                    ])->columns(3)->hidden(function (Get $get, string $operation): bool {
+                                        if ($operation === 'edit') {
+                                            return false;
+                                        }
+
+                                        return (bool) $get('feedback_dos');
+                                    }),
                             ]),
                         Tab::make('Acuerdo y condiciones')
                             ->icon('heroicon-o-document-check')

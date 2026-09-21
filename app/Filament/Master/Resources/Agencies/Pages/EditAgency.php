@@ -3,6 +3,7 @@
 namespace App\Filament\Master\Resources\Agencies\Pages;
 
 use App\Filament\Master\Resources\Agencies\AgencyResource;
+use App\Filament\Shared\CommercialStructure\Concerns\SyncsReferidorAssignments;
 use App\Models\Agency;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -19,6 +20,8 @@ use Livewire\Component;
 
 class EditAgency extends EditRecord
 {
+    use SyncsReferidorAssignments;
+
     protected static string $resource = AgencyResource::class;
 
     /**
@@ -42,6 +45,29 @@ class EditAgency extends EditRecord
         }
 
         return sprintf('Perfil de la agencia · %s', e($displayName));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        return $this->fillReferidorAssignmentState($data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return $this->captureReferidorAssignments($data);
+    }
+
+    protected function afterSave(): void
+    {
+        $this->persistCapturedReferidorAssignments();
     }
 
     public function getSubheading(): string|Htmlable|null

@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Widgets\Dashboard;
 
 use App\Support\Operations\OperationsDashboardMetrics;
-use Carbon\Carbon;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
-use Flowframe\Trend\Trend;
-use Flowframe\Trend\TrendValue;
 
 class FinishedServicesMonthlyChart extends ChartWidget
 {
@@ -19,7 +16,7 @@ class FinishedServicesMonthlyChart extends ChartWidget
 
     protected ?string $heading = 'SERVICIOS ATENDIDOS (FINALIZADOS)';
 
-    protected ?string $description = 'Total mensual de coordinaciones de servicio finalizadas en el año seleccionado.';
+    protected ?string $description = 'Total mensual de servicios finalizados según la tabla de estadísticas, en el año seleccionado.';
 
     protected ?string $maxHeight = '420px';
 
@@ -54,20 +51,9 @@ class FinishedServicesMonthlyChart extends ChartWidget
     protected function getData(): array
     {
         $year = (int) ($this->filter ?? now()->year);
-
-        $dataTrend = Trend::query(
-            OperationsDashboardMetrics::coordinationServicesQuery()
-                ->where('status', 'FINALIZADO')
-        )
-            ->between(
-                start: Carbon::create($year)->startOfYear(),
-                end: Carbon::create($year)->endOfYear()
-            )
-            ->perMonth()
-            ->count();
+        $values = OperationsDashboardMetrics::finishedServicesMonthlyCounts($year);
 
         $labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-        $values = $dataTrend->map(fn (TrendValue $value): int => (int) $value->aggregate)->toArray();
 
         return [
             'datasets' => [

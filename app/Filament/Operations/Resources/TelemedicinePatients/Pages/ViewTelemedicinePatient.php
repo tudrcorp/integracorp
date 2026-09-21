@@ -7,8 +7,11 @@ use App\Filament\Operations\Resources\TelemedicinePatients\Actions\AssignDoctorA
 use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRetailServicesAction;
 use App\Filament\Operations\Resources\TelemedicinePatients\Actions\ReportSiniestralidadAction;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
+use App\Models\TelemedicinePatient;
+use App\Support\Filament\TelemedicinePatientPageHeader;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View as ViewContract;
 
 class ViewTelemedicinePatient extends ViewRecord
@@ -22,7 +25,14 @@ class ViewTelemedicinePatient extends ViewRecord
         return view('filament.operations.shared.location-maps-loader');
     }
 
-    protected static ?string $title = 'Ficha del Paciente';
+    public function getTitle(): string|Htmlable
+    {
+        $patient = $this->getRecord();
+
+        return $patient instanceof TelemedicinePatient
+            ? TelemedicinePatientPageHeader::forPatient($patient)
+            : 'Ficha del paciente';
+    }
 
     /**
      * Mismo estilo iOS gris que cancelar modal (theme.css .ticket-btn-ios-gray).

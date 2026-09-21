@@ -42,13 +42,19 @@ final class CompanyAssociatesTableActions
                 fn (CompanyAssociate $record): bool => blank($record->document_ils),
             ))
             ->visible(fn (CompanyAssociate $record): bool => ! $record->isAnnulled())
-            ->action(function (CompanyAssociate $record, array $data): void {
-                CompanyAssociateVoucherIlsUpdater::save($record, $data);
-            })
-            ->successNotification(fn (CompanyAssociate $record): Notification => Notification::make()
-                ->success()
-                ->title('Voucher ILS guardado')
-                ->body('El voucher de '.$record->full_name.' se registró correctamente. El estatus pasó a ACTIVO.'));
+            ->successNotification(null)
+            ->action(function (CompanyAssociate $record, array $data, ListCompanyAssociates $livewire): void {
+                // El formulario ya está validado en este punto. En lugar de guardar,
+                // se remonta la confirmación de cobertura: es ella la que persiste
+                // y dispara el aviso con el voucher adjunto.
+                $livewire->replaceMountedAction(
+                    ListCompanyAssociates::CONFIRM_ILS_COVERAGE_ACTION,
+                    [
+                        'associateId' => (int) $record->getKey(),
+                        'voucher' => CompanyAssociateVoucherIlsUpdater::argumentsForConfirmation($data),
+                    ],
+                );
+            });
     }
 
     public static function annulAssociateAction(): Action

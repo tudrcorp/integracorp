@@ -77,6 +77,15 @@ class WhiteCompany extends Model
         return $this->hasMany(WhiteCompanyFee::class);
     }
 
+    /**
+     * Planes habilitados para esta aliada. Es el paso previo a pactar netas:
+     * la matriz de negociación solo ofrece tarifas de estos planes.
+     */
+    public function assignedPlans(): HasMany
+    {
+        return $this->hasMany(WhiteCompanyPlan::class);
+    }
+
     public function creditReconciliations(): HasMany
     {
         return $this->hasMany(CreditReconciliation::class);

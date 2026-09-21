@@ -97,6 +97,9 @@ class GeneralPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('ZONA DE DESCARGA')
                     ->icon('heroicon-c-arrow-down-tray'),
+                NavigationGroup::make()
+                    ->label('SEGUIMIENTO')
+                    ->icon('heroicon-s-heart'),
             ])
             ->breadcrumbs(false)
             ->registerErrorNotification(

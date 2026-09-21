@@ -8,6 +8,8 @@ use App\Filament\Administration\Resources\Sales\Widgets\SaleYearChart;
 
 class DashboardSaleYearChart extends SaleYearChart
 {
+    protected static bool $isDiscovered = false;
+
     protected static ?int $sort = 1;
 
     /**

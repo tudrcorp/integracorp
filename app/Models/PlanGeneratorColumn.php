@@ -13,8 +13,21 @@ class PlanGeneratorColumn extends Model
         'plan_generator_id',
         'column_key',
         'header_label',
+        'rate_adjustment_percent',
+        'coverage_id',
         'sort_order',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'rate_adjustment_percent' => 'decimal:2',
+            'coverage_id' => 'integer',
+        ];
+    }
 
     public function planGenerator(): BelongsTo
     {

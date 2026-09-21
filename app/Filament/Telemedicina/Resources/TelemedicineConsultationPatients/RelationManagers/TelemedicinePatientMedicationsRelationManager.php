@@ -66,15 +66,23 @@ class TelemedicinePatientMedicationsRelationManager extends RelationManager
                 TextColumn::make('coverage_display')
                     ->label('Cobertura')
                     ->badge()
-                    ->getStateUsing(fn (TelemedicinePatientMedications $record): string => TelemedicineMedicationCoverage::isCovered($record)
-                        ? 'Cubierto'
-                        : 'No cubierto')
+                    ->getStateUsing(fn (TelemedicinePatientMedications $record): string => TelemedicineMedicationCoverage::coverageLabel($record))
                     ->color(fn (TelemedicinePatientMedications $record): string => TelemedicineMedicationCoverage::isCovered($record)
                         ? 'success'
                         : 'danger')
                     ->icon(fn (TelemedicinePatientMedications $record): Heroicon => TelemedicineMedicationCoverage::isCovered($record)
                         ? Heroicon::OutlinedShieldCheck
                         : Heroicon::OutlinedXCircle)
+                    ->extraCellAttributes(['class' => 'py-3']),
+                TextColumn::make('origin_display')
+                    ->label('Origen')
+                    ->badge()
+                    ->getStateUsing(fn (TelemedicinePatientMedications $record): string => TelemedicineMedicationCoverage::originLabel($record))
+                    ->color(fn (TelemedicinePatientMedications $record): string => match (true) {
+                        TelemedicineMedicationCoverage::hasLinkedInventory($record) => 'info',
+                        TelemedicineMedicationCoverage::isCoveredWithoutInventory($record) => 'success',
+                        default => 'gray',
+                    })
                     ->extraCellAttributes(['class' => 'py-3']),
                 TextColumn::make('created_at')
                     ->label('Fecha de registro')

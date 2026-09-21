@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\Console\Command\Command as CommandAlias;
 use Throwable;
 
@@ -194,10 +195,14 @@ class RemediateSharedEmailPatientIdentityCommand extends Command
                 ->first();
 
             if ($corporate !== null) {
-                return AssociateAffiliateCorporateWithTelemedicinePatientService::run(
-                    $corporate,
-                    'Remediación identidad telemedicina',
-                )['patient'];
+                try {
+                    return AssociateAffiliateCorporateWithTelemedicinePatientService::run(
+                        $corporate,
+                        'Remediación identidad telemedicina',
+                    )['patient'];
+                } catch (ValidationException) {
+                    // Padrón incompleto (p. ej. sin sexo); se crea el placeholder más abajo.
+                }
             }
         }
 
@@ -207,10 +212,14 @@ class RemediateSharedEmailPatientIdentityCommand extends Command
                 ->first();
 
             if ($individual !== null) {
-                return AssociateAffiliateWithTelemedicinePatientService::run(
-                    $individual,
-                    'Remediación identidad telemedicina',
-                )['patient'];
+                try {
+                    return AssociateAffiliateWithTelemedicinePatientService::run(
+                        $individual,
+                        'Remediación identidad telemedicina',
+                    )['patient'];
+                } catch (ValidationException) {
+                    // Padrón incompleto (p. ej. sin sexo); se crea el placeholder más abajo.
+                }
             }
         }
 

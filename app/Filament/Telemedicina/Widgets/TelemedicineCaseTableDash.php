@@ -11,6 +11,8 @@ use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
+use App\Support\Telemedicine\ConsultationCreateRoute;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
@@ -141,38 +143,10 @@ class TelemedicineCaseTableDash extends TableWidget
             return null;
         }
 
-        session()->forget('case');
-        session()->forget('patient');
-        session()->forget('exit_record');
-        session()->forget('action');
-        session()->forget('status');
-        session()->forget('consultation');
-
-        $exitRecord = TelemedicineHistoryPatient::query()
-            ->where('telemedicine_patient_id', $patient->id)
-            ->exists();
-
-        session(['case' => $case]);
-        session(['patient' => $patient]);
-        session(['exit_record' => $exitRecord]);
-
-        $consultationForSession = TelemedicineConsultationPatient::query()
-            ->whereKey($last->id)
-            ->with([
-                'telemedicineServiceList',
-                'telemedicineServiceListDrift',
-                'telemedicinePriority',
-            ])
-            ->first();
-
-        if ($consultationForSession !== null) {
-            session(['consultation' => $consultationForSession]);
-        }
-
         $this->unmountAction();
 
         return $this->redirect(
-            route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id])
+            LabImagingResultsFollowUpRegistrar::startDoctorFollowUp($case, $patient, $last)
         );
     }
 
@@ -269,7 +243,7 @@ class TelemedicineCaseTableDash extends TableWidget
         $this->unmountAction();
 
         return $this->redirect(
-            route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id])
+            ConsultationCreateRoute::url($patient, $case)
         );
     }
 

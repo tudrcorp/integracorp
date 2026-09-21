@@ -122,6 +122,21 @@
         )
     @endif
 
+    @if(App\Support\IndividualQuotePdfLayout::usesPlanStructure($layout))
+        @livewire(
+            'planes-cotizacion-estructura',
+            [
+                'data' => $group_collect,
+                'name' => $details['name'],
+                'name_user' => $name_user,
+                'number_control' => Str::contains($details['code'], 'COT-IND-') ?
+                                    str_replace('COT-IND-', '', $details['code']) :
+                                    str_replace('COT-CORP-', '', $details['code']),
+                'planId' => $details['plan'],
+            ]
+        )
+    @endif
+
     @if($layout === 'especial')
         @livewire(
             'planes-cotizacion-individual-especial',

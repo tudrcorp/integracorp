@@ -16,7 +16,7 @@ class AccountsPayablesTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->heading('Cuentas por pagar')
+            ->heading('Cotizaciones por pagar')
             ->description('Cotizaciones generadas para servicios coordinados, con montos en US$ y Bs. según tasa BCV.')
             ->defaultSort('created_at', 'desc')
             ->modifyQueryUsing(function (Builder $query): Builder {

@@ -25,4 +25,7 @@ it('recursos principales del panel telemedicina pertenecen al grupo gestion tele
         expect(file_get_contents($path))
             ->toContain("navigationGroup = 'GESTIÓN TELEMÉDICA'");
     }
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Pages/BitacoraDeCaso.php'))
+        ->toContain("navigationGroup = 'GESTIÓN TELEMÉDICA'");
 });

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Agents\Schemas;
 
+use App\Filament\Shared\CommercialStructure\ReferidorAssignmentFields;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Filament\Shared\CommercialStructure\ReferidorToggle;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use App\Models\Agent;
@@ -172,8 +175,16 @@ class AgentForm
                                                     //     'required' => 'Campo requerido',
                                                     // ])
                                                     ->preload(),
+                                                ReferidorToggle::make('Marca si este agente opera como referidor.')
+                                                    ->inline(false)
+                                                    ->onIcon('heroicon-s-check')
+                                                    ->onColor('success'),
+                                                ReferidorPercentageField::make(),
                                             ]),
                                     ])
+                                    ->collapsible(),
+
+                                ReferidorAssignmentFields::section(self::SECTION_CARD)
                                     ->collapsible(),
 
                                 Section::make('Identificación y datos personales')

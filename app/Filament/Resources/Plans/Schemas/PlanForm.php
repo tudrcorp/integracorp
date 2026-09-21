@@ -2,19 +2,19 @@
 
 namespace App\Filament\Resources\Plans\Schemas;
 
+use App\Models\Benefit;
+use App\Models\BusinessUnit;
+use App\Models\Coverage;
 use App\Models\Fee;
 use App\Models\Plan;
-use App\Models\Benefit;
-use App\Models\Coverage;
-use App\Models\BusinessUnit;
+use App\Support\Plans\PlanQuotabilityFormSchema;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
-use Filament\Forms\Components\CheckboxList;
-use Filament\Schemas\Components\Utilities\Set;
 
 class PlanForm
 {
@@ -36,7 +36,8 @@ class PlanForm
                                     } else {
                                         $parte_entera = Plan::max('id');
                                     }
-                                    return 'TDEC-PL-000' . $parte_entera + 1;
+
+                                    return 'TDEC-PL-000'.$parte_entera + 1;
                                 })
                                 ->required()
                                 ->disabled()
@@ -53,8 +54,8 @@ class PlanForm
                             ->required()
                             ->maxLength(255),
 
-                        //UNIDAD DE NEGOCIOS
-                        //-------------------------------------------------
+                        // UNIDAD DE NEGOCIOS
+                        // -------------------------------------------------
                         Select::make('business_unit_id')
                             ->label('Unidad de Negocio')
                             ->options(BusinessUnit::all()->pluck('definition', 'id'))
@@ -76,7 +77,8 @@ class PlanForm
                                                     } else {
                                                         $parte_entera = BusinessUnit::max('id');
                                                     }
-                                                    return 'TDEC-UN-000' . $parte_entera + 1;
+
+                                                    return 'TDEC-UN-000'.$parte_entera + 1;
                                                 })
                                                 ->required()
                                                 ->disabled()
@@ -118,7 +120,11 @@ class PlanForm
                             ->helperText('DRESS-TAILOR, son los planes que se utilizaran para las cotizaciones hechas a la medida del cliente.')
                             ->prefixIcon('heroicon-m-pencil')
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                PlanQuotabilityFormSchema::syncTypeChange($set, $state);
+                            }),
                         TextInput::make('status')
                             ->label('Estatus')
                             ->prefixIcon('heroicon-m-shield-check')
@@ -134,6 +140,7 @@ class PlanForm
                             ->default(Auth::user()->name)
                             ->maxLength(255),
                     ])->columnSpanFull()->columns(4),
+                ...PlanQuotabilityFormSchema::section(),
                 Section::make('ASOCIACION DE BENEFICIOS')
                     ->collapsible()
                     ->description('Seleccion multiple de beneficios')
@@ -144,7 +151,7 @@ class PlanForm
                             ->multiple()
                             ->relationship(name: 'benefitPlans', titleAttribute: 'description')
                             ->preload()
-                            ->getOptionLabelFromRecordUsing(fn(Benefit $record) => "{$record->code} - {$record->description}")
+                            ->getOptionLabelFromRecordUsing(fn (Benefit $record) => "{$record->code} - {$record->description}")
                             ->searchable(),
                     ])->columnSpanFull()->columns(1),
                 Section::make('ASOCIACION DE COBERTURAS')
@@ -157,7 +164,7 @@ class PlanForm
                             ->relationship(name: 'coveragePlans', titleAttribute: 'price')
                             ->multiple()
                             ->preload()
-                            ->getOptionLabelFromRecordUsing(fn(Coverage $record) => "{$record->price} US$ - Plan: {$record->plan->description}")
+                            ->getOptionLabelFromRecordUsing(fn (Coverage $record) => "{$record->price} US$ - Plan: {$record->plan->description}")
                             ->searchable(),
                     ])->columnSpanFull()->columns(1),
 
@@ -171,7 +178,7 @@ class PlanForm
                             ->relationship(name: 'feePlans', titleAttribute: 'range')
                             ->multiple()
                             ->preload()
-                            ->getOptionLabelFromRecordUsing(fn(Fee $record) => "{$record->range}años - Covertura: {$record->coverage} US$ - Tarifa: {$record->price} US$")
+                            ->getOptionLabelFromRecordUsing(fn (Fee $record) => "{$record->range}años - Covertura: {$record->coverage} US$ - Tarifa: {$record->price} US$")
                             ->searchable(),
                     ])->columnSpanFull()->columns(1),
             ]);

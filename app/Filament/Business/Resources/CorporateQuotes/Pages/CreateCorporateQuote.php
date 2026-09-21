@@ -2,10 +2,11 @@
 
 namespace App\Filament\Business\Resources\CorporateQuotes\Pages;
 
+use App\Enums\QuoteWhatsAppNotification;
 use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
 use App\Models\Agency;
+use App\Support\Quotes\QuoteWhatsAppDispatcher;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -134,8 +135,18 @@ class CreateCorporateQuote extends CreateRecord
                 UtilsController::createCorporateQuoteEspecific($record, $array_form, $array_details, $details_quote);
             }
 
-            // Notificacion por whatsapp al telefono de cotizaciones
-            $sendNotificationWp = NotificationController::createdCorporateQuote($record->code, Auth::user()->name);
+            /**
+             * Aviso al equipo de análisis por cola: la pantalla ya no espera a
+             * UltraMsg para mostrar el detalle de la cotización.
+             */
+            QuoteWhatsAppDispatcher::queue(
+                QuoteWhatsAppNotification::CorporateQuoteCreated,
+                [
+                    'code' => $record->code,
+                    'agent' => Auth::user()->name,
+                ],
+                CorporateQuoteResource::getUrl('view', ['record' => $record->id], panel: 'business'),
+            );
 
         } catch (\Throwable $th) {
             Notification::make()

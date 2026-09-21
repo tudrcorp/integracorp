@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\User;
 use App\Services\TelemedicineConsultationDocumentsNotificationService;
+use App\Support\Telemedicine\Concerns\LogsTelemedicineJobFailures;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,7 +20,7 @@ use Throwable;
 
 class SendTelemedicineConsultationDocuments implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, LogsTelemedicineJobFailures, Queueable, SerializesModels;
 
     public int $tries = 5;
 
@@ -35,57 +36,56 @@ class SendTelemedicineConsultationDocuments implements ShouldQueue
 
     public function handle(): void
     {
-        $consultation = TelemedicineConsultationPatient::query()->find($this->consultationId);
+        $this->runWithTelemedicineFailureLogging(function (): void {
+            $consultation = TelemedicineConsultationPatient::query()->find($this->consultationId);
 
-        if ($consultation === null) {
-            Log::warning('TELEMEDICINA: No se encontró la consulta para enviar documentos.', [
-                'consultation_id' => $this->consultationId,
-            ]);
+            if ($consultation === null) {
+                Log::warning('TELEMEDICINA: No se encontró la consulta para enviar documentos.', [
+                    'consultation_id' => $this->consultationId,
+                ]);
 
-            return;
-        }
+                return;
+            }
 
-        $uploadedDocuments = is_array($consultation->uploaded_documents)
-            ? $consultation->uploaded_documents
-            : [];
+            $uploadedDocuments = is_array($consultation->uploaded_documents)
+                ? $consultation->uploaded_documents
+                : [];
 
-        $pdfFilenames = collect($uploadedDocuments)
-            ->pluck('document_name')
-            ->filter(fn ($name): bool => is_string($name) && $name !== '')
-            ->values()
-            ->all();
+            $pdfFilenames = collect($uploadedDocuments)
+                ->pluck('document_name')
+                ->filter(fn ($name): bool => is_string($name) && $name !== '')
+                ->values()
+                ->all();
 
-        TelemedicineConsultationDocumentsNotificationService::notify(
-            $this->patientPhone,
-            $this->patientEmail,
-            $this->patientName,
-            $pdfFilenames,
-        );
+            TelemedicineConsultationDocumentsNotificationService::notify(
+                $this->patientPhone,
+                $this->patientEmail,
+                $this->patientName,
+                $pdfFilenames,
+            );
 
-        $user = User::query()->find($this->userId);
+            $user = User::query()->find($this->userId);
 
-        if ($user === null) {
-            return;
-        }
+            if ($user === null) {
+                return;
+            }
 
-        Notification::make()
-            ->title('¡TAREA COMPLETADA!')
-            ->body('Los documentos de la consulta fueron enviados al paciente por WhatsApp y correo electrónico.')
-            ->success()
-            ->actions([
-                Action::make('view_consultation')
-                    ->label('Ver consulta')
-                    ->url('/telemedicina/telemedicine-consultation-patients/'.$this->consultationId),
-            ])
-            ->sendToDatabase($user);
+            Notification::make()
+                ->title('¡TAREA COMPLETADA!')
+                ->body('Los documentos de la consulta fueron enviados al paciente por WhatsApp y correo electrónico.')
+                ->success()
+                ->actions([
+                    Action::make('view_consultation')
+                        ->label('Ver consulta')
+                        ->url('/telemedicina/telemedicine-consultation-patients/'.$this->consultationId),
+                ])
+                ->sendToDatabase($user);
+        }, $this->telemedicineJobFailureContext());
     }
 
     public function failed(?Throwable $exception): void
     {
-        Log::error('SendTelemedicineConsultationDocuments: FAILED', [
-            'consultation_id' => $this->consultationId,
-            'message' => $exception?->getMessage(),
-        ]);
+        $this->logTelemedicineJobFailure($exception, $this->telemedicineJobFailureContext());
 
         $user = User::query()->find($this->userId);
 
@@ -98,5 +98,19 @@ class SendTelemedicineConsultationDocuments implements ShouldQueue
             ->body('Hubo un error al enviar los documentos de la consulta al paciente. Por favor, contacte con el administrador del sistema.')
             ->danger()
             ->sendToDatabase($user);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function telemedicineJobFailureContext(): array
+    {
+        return [
+            'telemedicine_consultation_id' => $this->consultationId,
+            'patient_phone' => $this->patientPhone,
+            'patient_email' => $this->patientEmail,
+            'patient_name' => $this->patientName,
+            'user_id' => $this->userId,
+        ];
     }
 }

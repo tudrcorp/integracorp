@@ -96,7 +96,7 @@ it('expone la acción para colocar servicios cubiertos en gestión cambiando de 
     expect($support)
         ->toContain('makePlaceCoveredItemsInManagementAction')
         ->toContain("Action::make('placeCoveredItemsInManagement')")
-        ->toContain("->label('Colocar cubiertos en gestión')")
+        ->toContain("->label('Activar gestión')")
         ->toContain('hasCoveredItemsPendingManagement')
         ->toContain('coveredPendingManagementOptions')
         ->toContain('placeCoveredItemsInManagement')
@@ -125,7 +125,8 @@ it('expone la acción de cargar documentos y finalizar servicios cubiertos con a
         ->toContain("'uploaded_documents'")
         ->toContain('finalizeCoveredItems')
         ->toContain("'status' => 'FINALIZADO'")
-        ->toContain('OperationServiceOrderCoordinationSync::refreshCoordinationStatus');
+        ->toContain('OperationServiceOrderCoordinationSync::refreshCoordinationStatus')
+        ->toContain('LabImagingResultsFollowUpRegistrar::register');
 });
 
 it('el infolist de coordinación enlaza la acción de finalizar cubiertos en la pestaña de ítems asociados', function (): void {

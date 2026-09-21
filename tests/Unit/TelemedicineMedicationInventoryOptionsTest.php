@@ -11,6 +11,10 @@ it('mapea belongs_to del caso al almacén de inventario', function (): void {
         ->toBe('DIAGNOMOVIL')
         ->and(TelemedicineMedicationInventoryOptions::warehouseNameForBelongsTo('Centro Diagnostico 3 de Febrero'))
         ->toBe('3 DE FEBRERO')
+        ->and(TelemedicineMedicationInventoryOptions::warehouseNameForBelongsTo('DIAGNO-MOVIL - MENE GRANDE'))
+        ->toBe('DIAGNOMOVIL')
+        ->and(TelemedicineMedicationInventoryOptions::warehouseNameForBelongsTo('DIAGNO-CENTER - 3 DE FERBERO'))
+        ->toBe('3 DE FEBRERO')
         ->and(TelemedicineMedicationInventoryOptions::warehouseNameForBelongsTo('Otro proveedor'))
         ->toBeNull();
 });
@@ -39,6 +43,21 @@ it('solo descuenta inventario cuando el doctor es TDG y belongs_to apunta a un a
         ->and(TelemedicineMedicationInventoryOptions::shouldDeductInventory($provider, $diagnomovilCase))->toBeFalse();
 });
 
+it('reconoce nombres reales de almacén aunque no coincidan con la clave canónica', function (): void {
+    expect(TelemedicineMedicationInventoryOptions::ubicationMatchesWarehouse('DIAGNO-MOVIL - MENE GRANDE', 'DIAGNOMOVIL'))
+        ->toBeTrue()
+        ->and(TelemedicineMedicationInventoryOptions::ubicationMatchesWarehouse('DIAGNOMOVIL', 'DIAGNOMOVIL'))
+        ->toBeTrue()
+        ->and(TelemedicineMedicationInventoryOptions::ubicationMatchesWarehouse('DIAGNO-CENTER - 3 DE FERBERO', '3 DE FEBRERO'))
+        ->toBeTrue()
+        ->and(TelemedicineMedicationInventoryOptions::ubicationMatchesWarehouse('3 DE FEBRERO', '3 DE FEBRERO'))
+        ->toBeTrue()
+        ->and(TelemedicineMedicationInventoryOptions::ubicationMatchesWarehouse('DIAGNO-CENTER - 3 DE FERBERO', 'DIAGNOMOVIL'))
+        ->toBeFalse()
+        ->and(TelemedicineMedicationInventoryOptions::ubicationMatchesWarehouse('OTRO ALMACEN', 'DIAGNOMOVIL'))
+        ->toBeFalse();
+});
+
 it('el formulario de consulta usa opciones filtradas de inventario de medicamentos', function (): void {
     $form = file_get_contents(
         dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Schemas/TelemedicineConsultationPatientForm.php'
@@ -46,6 +65,8 @@ it('el formulario de consulta usa opciones filtradas de inventario de medicament
 
     expect($form)
         ->toContain('TelemedicineMedicationInventoryOptions::optionsForCase')
+        ->toContain('TelemedicineMedicationInventoryOptions::searchOptionsForCase')
+        ->toContain('->preload()')
         ->not->toContain('OperationInventory::all()->pluck');
 });
 
@@ -58,5 +79,19 @@ it('la consulta de medicamentos TDG exige categoría Medicamento y existencia ma
         ->toContain("UPPER(name) LIKE ?', ['MEDICAMENTO%']")
         ->toContain('uniqueMedicationCatalogOptions')
         ->toContain('WAREHOUSE_DIAGNOMOVIL')
-        ->toContain('WAREHOUSE_3_DE_FEBRERO');
+        ->toContain('WAREHOUSE_3_DE_FEBRERO')
+        ->toContain('ubicationMatchesWarehouse')
+        ->toContain('constrainInventoryToWarehouse')
+        ->toContain('%DIAGNO%MOVIL%')
+        ->toContain('%3 DE FERB%');
+});
+
+it('arma patrones SQL que cubren los nombres reales de almacén', function (): void {
+    expect(TelemedicineMedicationInventoryOptions::warehouseSqlLikePatterns('DIAGNOMOVIL'))
+        ->toContain('%DIAGNO%MOVIL%')
+        ->toContain('%DIAGNOMOVIL%')
+        ->and(TelemedicineMedicationInventoryOptions::warehouseSqlLikePatterns('3 DE FEBRERO'))
+        ->toContain('%3 DE FEB%')
+        ->toContain('%3 DE FERB%')
+        ->toContain('%DIAGNO%CENTER%');
 });

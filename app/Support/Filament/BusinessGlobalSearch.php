@@ -38,7 +38,31 @@ final class BusinessGlobalSearch
             return false;
         }
 
-        return (bool) preg_match('/^[JEVPjevP]?\d{5,}$/', $normalized);
+        return (bool) preg_match('/^[JEVPGCjevpgc]?\d{5,}$/', $normalized);
+    }
+
+    /**
+     * Variantes de CI/RIF para comparar contra valores con o sin prefijo (V/E/J/G/P/C).
+     *
+     * @return list<string>
+     */
+    public static function documentSearchVariants(string $term): array
+    {
+        $raw = trim($term);
+        $normalized = self::normalizeDocument($raw);
+        $variants = [];
+
+        foreach ([$raw, $normalized] as $value) {
+            if ($value !== '') {
+                $variants[] = $value;
+            }
+        }
+
+        if (preg_match('/^[JEVPGCjevpgc](\d{5,})$/', $normalized, $matches) === 1) {
+            $variants[] = $matches[1];
+        }
+
+        return array_values(array_unique($variants));
     }
 
     /**
@@ -81,20 +105,22 @@ final class BusinessGlobalSearch
      */
     public static function applyNormalizedDocumentMatch(Builder $query, array $columns, string $term): void
     {
-        $normalized = self::normalizeDocument($term);
+        $variants = self::documentSearchVariants($term);
 
-        if ($normalized === '' || $columns === []) {
+        if ($variants === [] || $columns === []) {
             return;
         }
 
-        $like = '%'.$normalized.'%';
-
         foreach ($columns as $column) {
-            $query->orWhere($column, 'like', '%'.trim($term).'%');
-            $query->orWhereRaw(
-                'REPLACE(REPLACE(REPLACE(UPPER('.$column."), '-', ''), ' ', ''), '.', '') LIKE ?",
-                [$like],
-            );
+            foreach ($variants as $variant) {
+                $query->orWhere($column, '=', $variant);
+                $query->orWhere($column, 'like', $variant.'%');
+                $query->orWhere($column, 'like', '%'.$variant.'%');
+                $query->orWhereRaw(
+                    'REPLACE(REPLACE(REPLACE(UPPER('.$column."), '-', ''), ' ', ''), '.', '') LIKE ?",
+                    ['%'.$variant.'%'],
+                );
+            }
         }
     }
 

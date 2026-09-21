@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\PlanPricingMode;
 use App\Models\Affiliate;
 use App\Models\AffiliateCorporate;
 use App\Models\Affiliation;
 use App\Models\AgeRange;
 use App\Models\Fee;
+use App\Models\Plan;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -21,6 +23,14 @@ final class AffiliationAffiliateFeeCalculator
     public const SPECIAL_PLAN_ID = 3;
 
     public const NEGOTIATION_MESSAGE_IDEAL_OUT_OF_RANGE = 'La edad de uno o más afiliados está fuera de los rangos del Plan Ideal. Negocie con el cliente la adquisición del Plan Especial.';
+
+    /**
+     * Planes ya resueltos, para no repetir la consulta dentro de los bucles de
+     * renovación, que recorren miles de afiliados.
+     *
+     * @var array<int, bool>
+     */
+    private array $benefitPackageCache = [];
 
     public function resolveAffiliateAge(Affiliate $affiliate): ?int
     {
@@ -68,9 +78,42 @@ final class AffiliationAffiliateFeeCalculator
         return null;
     }
 
+    /**
+     * Un paquete de beneficios no tiene coberturas: agrupa beneficios como un
+     * todo y su tarifa depende solo del rango de edad.
+     *
+     * Antes esto era `plan_id === 1`. El número mágico dejaba fuera a cualquier
+     * otro plan armado como paquete, que quedaba sin tarifa posible; ahora el
+     * modo es una propiedad del plan (`plans.pricing_mode`). Se conserva el
+     * plan 1 como respaldo por si la columna todavía no está poblada en algún
+     * entorno.
+     */
+    public function planHasNoCoverages(?int $planId): bool
+    {
+        if ($planId === null) {
+            return false;
+        }
+
+        if (array_key_exists($planId, $this->benefitPackageCache)) {
+            return $this->benefitPackageCache[$planId];
+        }
+
+        $mode = PlanPricingMode::fromStored(
+            Plan::query()->whereKey($planId)->value('pricing_mode'),
+        );
+
+        return $this->benefitPackageCache[$planId] = $mode !== null
+            ? $mode === PlanPricingMode::Paquete
+            : $planId === self::INITIAL_PLAN_ID;
+    }
+
+    /**
+     * @deprecated Usar planHasNoCoverages(). Se mantiene porque lo llaman las
+     *             afiliaciones, las renovaciones y las tarifas negociadas.
+     */
     public function isInitialPlanWithoutCoverage(Affiliation $affiliation): bool
     {
-        return (int) $affiliation->plan_id === self::INITIAL_PLAN_ID;
+        return $this->planHasNoCoverages((int) $affiliation->plan_id);
     }
 
     public function isIdealPlan(Affiliation $affiliation): bool
@@ -168,10 +211,19 @@ final class AffiliationAffiliateFeeCalculator
         int $affiliateAge,
         bool $isInitialPlanWithoutCoverage = false,
     ): ?Fee {
-        $query = Fee::query()->with('ageRange');
+        // El plan se filtra en SQL contra `fees.plan_id`, la columna canónica del
+        // catálogo. Antes se traían todas las tarifas de la cobertura y se
+        // descartaban en PHP mirando `age_ranges.plan_id`, que además dejaba
+        // pasar cualquier plan cuando el rango de edad no existía.
+        $query = Fee::query()
+            ->with('ageRange')
+            ->forPlan($planId);
 
-        if ($isInitialPlanWithoutCoverage || $planId === self::INITIAL_PLAN_ID) {
-            $query->where('age_range_id', 1);
+        if ($isInitialPlanWithoutCoverage || $this->planHasNoCoverages($planId)) {
+            // En un paquete de beneficios la tarifa es plana por rango de edad,
+            // y se guarda sin cobertura. Antes esto filtraba por
+            // `age_range_id = 1`, lo que ataba el plan a un único rango.
+            $query->whereNull('coverage_id');
         } else {
             if ($coverageId === null) {
                 return null;
@@ -509,23 +561,28 @@ final class AffiliationAffiliateFeeCalculator
         return $query->get();
     }
 
+    /**
+     * Una tarifa sirve para un plan solo si `fees.plan_id` lo dice. Se comprueba
+     * igual que en SQL para que el método siga siendo correcto cuando se lo
+     * llama sobre tarifas que no vinieron de resolveFeeForPlanCoverageAndAge().
+     *
+     * Antes esto miraba `$fee->ageRange->plan_id` y devolvía true cuando el
+     * rango de edad no existía, con lo cual una tarifa huérfana entraba en
+     * cualquier plan que compartiera su cobertura y podía cobrarse el precio
+     * equivocado. Sin plan_id la tarifa ahora no participa de ningún cálculo.
+     */
+    public function feeBelongsToPlan(Fee $fee, int $planId): bool
+    {
+        return $fee->plan_id !== null && (int) $fee->plan_id === $planId;
+    }
+
     private function feeMatchesAffiliateAgeForPlan(int $affiliateAge, Fee $fee, int $planId): bool
     {
-        if (! $this->affiliateAgeMatchesFeeRange($affiliateAge, $fee)) {
+        if (! $this->feeBelongsToPlan($fee, $planId)) {
             return false;
         }
 
-        if ($planId === self::INITIAL_PLAN_ID) {
-            return true;
-        }
-
-        $ageRange = $fee->ageRange;
-
-        if ($ageRange === null) {
-            return true;
-        }
-
-        return (int) $ageRange->plan_id === $planId;
+        return $this->affiliateAgeMatchesFeeRange($affiliateAge, $fee);
     }
 
     private function affiliateAgeMatchesFeeRange(int $affiliateAge, Fee $fee): bool

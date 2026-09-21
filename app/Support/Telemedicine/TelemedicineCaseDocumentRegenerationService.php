@@ -8,6 +8,7 @@ use App\Jobs\GeneratePdfEspecialista;
 use App\Jobs\GeneratePdfImagenologia;
 use App\Jobs\GeneratePdfInformeMedicoCorto;
 use App\Jobs\GeneratePdfInformeMedicoLargo;
+use App\Jobs\GeneratePdfInformeSeguimiento;
 use App\Jobs\GeneratePdfLaboratorio;
 use App\Jobs\GeneratePdfMedicamentos;
 use App\Models\TelemedicineCase;
@@ -20,14 +21,17 @@ use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Models\User;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Throwable;
 
 class TelemedicineCaseDocumentRegenerationService
 {
     public const DOCUMENT_INFORME_CORTO = 'informe-corto';
 
     public const DOCUMENT_INFORME_LARGO = 'informe-largo';
+
+    public const DOCUMENT_INFORME_SEGUIMIENTO = 'informe-seguimiento';
 
     public const DOCUMENT_MEDICAMENTOS = 'medicamentos';
 
@@ -58,6 +62,10 @@ class TelemedicineCaseDocumentRegenerationService
             }
         }
 
+        if ($this->latestFollowUpConsultation($case) !== null) {
+            $options[self::DOCUMENT_INFORME_SEGUIMIENTO] = 'Informe de seguimiento';
+        }
+
         if ($this->medicationsForCase($case)->isNotEmpty()) {
             $options[self::DOCUMENT_MEDICAMENTOS] = 'Recipe de medicamentos';
         }
@@ -81,7 +89,18 @@ class TelemedicineCaseDocumentRegenerationService
      * @param  list<string>  $documentKeys
      * @return list<string>
      */
-    public function regenerate(TelemedicineCase $case, array $documentKeys, User $user): array
+    /**
+     * Regenera los documentos seleccionados **dentro del request**, sin pasar por
+     * la cola.
+     *
+     * Esta acción es el plan B del médico justo cuando la cola de documentos ha
+     * fallado: encolar aquí reproduciría el fallo que se quiere sortear. Se
+     * ejecuta cada job de forma aislada para que un documento roto no impida los
+     * demás, y se devuelve el detalle de lo que salió y lo que no.
+     *
+     * @param  list<string>  $documentKeys
+     */
+    public function regenerate(TelemedicineCase $case, array $documentKeys, User $user): TelemedicineCaseDocumentRegenerationResult
     {
         $documentKeys = array_values(array_unique(array_filter($documentKeys, static fn (mixed $key): bool => is_string($key) && $key !== '')));
 
@@ -105,8 +124,8 @@ class TelemedicineCaseDocumentRegenerationService
             throw new InvalidArgumentException('El caso no tiene consultas para regenerar documentos.');
         }
 
-        $doctor = TelemedicineDoctor::query()->find($consultation->telemedicine_doctor_id ?? $case->telemedicine_doctor_id);
-        $patient = TelemedicinePatient::query()->find($consultation->telemedicine_patient_id ?? $case->telemedicine_patient_id);
+        $doctor = $this->resolveDoctor($consultation, $case);
+        $patient = $this->resolvePatient($consultation, $case);
 
         if ($doctor === null || $patient === null) {
             throw new InvalidArgumentException('No se encontró el médico o el paciente del caso.');
@@ -126,6 +145,7 @@ class TelemedicineCaseDocumentRegenerationService
                     $user,
                     self::DOCUMENT_INFORME_LARGO,
                 ),
+                self::DOCUMENT_INFORME_SEGUIMIENTO => $this->makeFollowUpReportJob($case, $doctor, $patient, $user),
                 self::DOCUMENT_MEDICAMENTOS => new GeneratePdfMedicamentos(
                     $this->buildMedicamentosPayload($consultation, $doctor, $patient, $case),
                     $user,
@@ -150,7 +170,7 @@ class TelemedicineCaseDocumentRegenerationService
             };
 
             if ($job !== null) {
-                $jobs[] = $job;
+                $jobs[$documentKey] = $job;
             }
         }
 
@@ -158,12 +178,59 @@ class TelemedicineCaseDocumentRegenerationService
             throw new InvalidArgumentException('No se pudieron preparar los documentos seleccionados.');
         }
 
-        Bus::batch($jobs)
-            ->name('telemedicina-case-docs-regenerate-'.$case->id.'-'.now()->timestamp)
-            ->onQueue('telemedicina')
-            ->dispatch();
+        return $this->runJobsSynchronously($jobs, $case, $available);
+    }
 
-        return $selected;
+    /**
+     * Ejecuta los jobs en el propio request, uno a uno y sin cola.
+     *
+     * @param  array<string, object>  $jobs  Clave de documento => job.
+     * @param  array<string, string>  $labels
+     */
+    protected function runJobsSynchronously(array $jobs, TelemedicineCase $case, array $labels): TelemedicineCaseDocumentRegenerationResult
+    {
+        // Hasta seis PDF en un mismo request: el límite por defecto se queda corto.
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(300);
+        }
+
+        $generated = [];
+        $failed = [];
+
+        foreach ($jobs as $documentKey => $job) {
+            try {
+                $this->runJob($job);
+                $generated[] = $documentKey;
+            } catch (Throwable $exception) {
+                $failed[$documentKey] = $exception->getMessage();
+
+                Log::error('TelemedicineCaseDocumentRegenerationService: documento no generado', [
+                    'telemedicine_case_id' => $case->id,
+                    'document' => $documentKey,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return new TelemedicineCaseDocumentRegenerationResult($generated, $failed, $labels);
+    }
+
+    /**
+     * Aislado para que las pruebas puedan sustituir la ejecución del job.
+     */
+    protected function runJob(object $job): void
+    {
+        dispatch_sync($job);
+    }
+
+    protected function resolveDoctor(TelemedicineConsultationPatient $consultation, TelemedicineCase $case): ?TelemedicineDoctor
+    {
+        return TelemedicineDoctor::query()->find($consultation->telemedicine_doctor_id ?? $case->telemedicine_doctor_id);
+    }
+
+    protected function resolvePatient(TelemedicineConsultationPatient $consultation, TelemedicineCase $case): ?TelemedicinePatient
+    {
+        return TelemedicinePatient::query()->find($consultation->telemedicine_patient_id ?? $case->telemedicine_patient_id);
     }
 
     public function resolveConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
@@ -182,6 +249,42 @@ class TelemedicineCaseDocumentRegenerationService
             ->where('telemedicine_case_id', $case->id)
             ->orderBy('id')
             ->first();
+    }
+
+    protected function latestFollowUpConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
+    {
+        return TelemedicineConsultationPatient::query()
+            ->where('telemedicine_case_id', $case->id)
+            ->where('status', '!=', TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS)
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    protected function makeFollowUpReportJob(
+        TelemedicineCase $case,
+        TelemedicineDoctor $doctor,
+        TelemedicinePatient $patient,
+        User $user,
+    ): ?GeneratePdfInformeSeguimiento {
+        $followUp = $this->latestFollowUpConsultation($case);
+
+        if ($followUp === null) {
+            return null;
+        }
+
+        $followUpDoctor = $this->resolveDoctor($followUp, $case) ?? $doctor;
+        $followUpPatient = $this->resolvePatient($followUp, $case) ?? $patient;
+        $payload = TelemedicineFollowUpReportDocument::payloadFromConsultation(
+            $followUp,
+            $followUpDoctor,
+            $followUpPatient,
+        );
+
+        if ($payload === null) {
+            return null;
+        }
+
+        return TelemedicineFollowUpReportDocument::makeJob($payload, $user);
     }
 
     protected function canGenerateInforme(TelemedicineConsultationPatient $consultation): bool
@@ -203,6 +306,7 @@ class TelemedicineCaseDocumentRegenerationService
     protected function medicationsForCase(TelemedicineCase $case): Collection
     {
         return TelemedicinePatientMedications::query()
+            ->with('operationInventory')
             ->where('telemedicine_case_id', $case->id)
             ->orderBy('id')
             ->get();
@@ -299,6 +403,146 @@ class TelemedicineCaseDocumentRegenerationService
     }
 
     /**
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    protected function labsSplitForCase(TelemedicineCase $case): array
+    {
+        $fromRelation = TelemedicinePatientLab::query()
+            ->where('telemedicine_case_id', $case->id)
+            ->orderBy('id')
+            ->get(['laboratory', 'type']);
+
+        if ($fromRelation->isNotEmpty()) {
+            return $this->partitionByCoverageType($fromRelation, 'laboratory');
+        }
+
+        $consultation = $this->resolveConsultation($case);
+
+        if ($consultation === null) {
+            return [[], []];
+        }
+
+        return [
+            $this->stringList($consultation->labs),
+            $this->stringList($consultation->other_labs),
+        ];
+    }
+
+    /**
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    protected function studiesSplitForCase(TelemedicineCase $case): array
+    {
+        $fromRelation = TelemedicinePatientStudy::query()
+            ->where('telemedicine_case_id', $case->id)
+            ->orderBy('id')
+            ->get(['study', 'type']);
+
+        if ($fromRelation->isNotEmpty()) {
+            return $this->partitionByCoverageType($fromRelation, 'study');
+        }
+
+        $consultation = $this->resolveConsultation($case);
+
+        if ($consultation === null) {
+            return [[], []];
+        }
+
+        return [
+            $this->stringList($consultation->studies),
+            $this->stringList($consultation->other_studies),
+        ];
+    }
+
+    /**
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    protected function specialistsSplitForCase(TelemedicineCase $case): array
+    {
+        $fromRelation = TelemedicinePatientSpecialty::query()
+            ->where('telemedicine_case_id', $case->id)
+            ->orderBy('id')
+            ->get(['specialty', 'type']);
+
+        if ($fromRelation->isNotEmpty()) {
+            return $this->partitionByCoverageType($fromRelation, 'specialty');
+        }
+
+        $consultation = $this->resolveConsultation($case);
+
+        if ($consultation === null) {
+            return [[], []];
+        }
+
+        return [
+            $this->stringList($consultation->consult_specialist),
+            $this->stringList($consultation->other_specialist),
+        ];
+    }
+
+    /**
+     * @param  Collection<int, object>  $rows
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    protected function partitionByCoverageType(Collection $rows, string $nameAttribute): array
+    {
+        $covered = [];
+        $other = [];
+
+        foreach ($rows as $row) {
+            $name = trim((string) ($row->{$nameAttribute} ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
+            $type = isset($row->type) ? (string) $row->type : null;
+
+            if (TelemedicineCoverageCatalog::itemIsCoveredFromCatalogType($type !== '' ? $type : null)) {
+                $covered[] = $name;
+            } else {
+                $other[] = $name;
+            }
+        }
+
+        return [$covered, $other];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function stringList(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $labels = [];
+
+        foreach ($value as $item) {
+            $label = is_array($item)
+                ? trim((string) ($item['name'] ?? $item['specialty'] ?? $item['study'] ?? $item['laboratory'] ?? ''))
+                : trim((string) $item);
+
+            if ($label !== '') {
+                $labels[] = $label;
+            }
+        }
+
+        return $labels;
+    }
+
+    private function documentPatientName(
+        TelemedicineConsultationPatient $consultation,
+        TelemedicinePatient $patient,
+        TelemedicineCase $case,
+    ): string {
+        return TelemedicinePatientDisplayName::fromPatientOrFallback(
+            $patient,
+            $consultation->full_name ?? $case->patient_name ?? $patient->full_name,
+        );
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function buildInformePayload(
@@ -320,11 +564,10 @@ class TelemedicineCaseDocumentRegenerationService
         $labsArr = $this->labsForCase($case);
         $studiesArr = $this->studiesForCase($case);
         $consultSpecialistArr = $this->specialistsForCase($case);
-
         $payload = [
             'fecha' => now()->format('d/m/Y'),
             'code_reference' => $consultation->code_reference,
-            'name_patient' => $consultation->full_name ?? $case->patient_name ?? $patient->full_name,
+            'name_patient' => $this->documentPatientName($consultation, $patient, $case),
             'ci_patient' => $consultation->nro_identificacion ?? $patient->nro_identificacion,
             'age_patient' => $patient->age ?? $case->patient_age,
             'reason' => $consultation->reason_consultation,
@@ -342,6 +585,7 @@ class TelemedicineCaseDocumentRegenerationService
             'otherStudiesArr' => [],
             'consultSpecialistArr' => $consultSpecialistArr,
             'otherSpecialistArr' => [],
+            'doctor_name' => $doctor->full_name,
             'code_cm' => $doctor->code_cm,
             'code_mpps' => $doctor->code_mpps,
             'signature' => $doctor->signature,
@@ -375,6 +619,8 @@ class TelemedicineCaseDocumentRegenerationService
                 'medicines' => (string) ($medication->medicine ?? ''),
                 'indications' => (string) ($medication->indications ?? ''),
                 'duration' => (string) ($medication->duration ?? ''),
+                'operation_inventory_id' => $medication->operation_inventory_id,
+                'is_covered' => TelemedicineMedicationCoverage::isCovered($medication),
             ])
             ->values()
             ->all();
@@ -382,10 +628,11 @@ class TelemedicineCaseDocumentRegenerationService
         return [
             'fecha' => now()->format('d/m/Y'),
             'code_reference' => $consultation->code_reference,
-            'name_patiente' => $consultation->full_name ?? $case->patient_name ?? $patient->full_name,
+            'name_patiente' => $this->documentPatientName($consultation, $patient, $case),
             'ci_patiente' => $consultation->nro_identificacion ?? $patient->nro_identificacion,
             'age_patiente' => $patient->age ?? $case->patient_age,
             'medicationsArr' => $medicationsArr,
+            'doctor_name' => $doctor->full_name,
             'code_cm' => $doctor->code_cm,
             'code_mpps' => $doctor->code_mpps,
             'signature' => $doctor->signature,
@@ -404,13 +651,17 @@ class TelemedicineCaseDocumentRegenerationService
         TelemedicinePatient $patient,
         TelemedicineCase $case,
     ): array {
+        [$labs, $otherLabs] = $this->labsSplitForCase($case);
+
         return [
             'fecha' => now()->format('d/m/Y'),
             'code_reference' => $consultation->code_reference,
-            'name_patiente' => $consultation->full_name ?? $case->patient_name ?? $patient->full_name,
+            'name_patiente' => $this->documentPatientName($consultation, $patient, $case),
             'ci_patiente' => $consultation->nro_identificacion ?? $patient->nro_identificacion,
             'age_patiente' => $patient->age ?? $case->patient_age,
-            'labs' => $this->labsForCase($case),
+            'labs' => $labs,
+            'other_labs' => $otherLabs,
+            'doctor_name' => $doctor->full_name,
             'code_cm' => $doctor->code_cm,
             'code_mpps' => $doctor->code_mpps,
             'signature' => $doctor->signature,
@@ -429,13 +680,17 @@ class TelemedicineCaseDocumentRegenerationService
         TelemedicinePatient $patient,
         TelemedicineCase $case,
     ): array {
+        [$studies, $otherStudies] = $this->studiesSplitForCase($case);
+
         return [
             'fecha' => now()->format('d/m/Y'),
             'code_reference' => $consultation->code_reference,
-            'name_patiente' => $consultation->full_name ?? $case->patient_name ?? $patient->full_name,
+            'name_patiente' => $this->documentPatientName($consultation, $patient, $case),
             'ci_patiente' => $consultation->nro_identificacion ?? $patient->nro_identificacion,
             'age_patiente' => $patient->age ?? $case->patient_age,
-            'studies' => $this->studiesForCase($case),
+            'studies' => $studies,
+            'other_studies' => $otherStudies,
+            'doctor_name' => $doctor->full_name,
             'code_cm' => $doctor->code_cm,
             'code_mpps' => $doctor->code_mpps,
             'signature' => $doctor->signature,
@@ -455,13 +710,17 @@ class TelemedicineCaseDocumentRegenerationService
         TelemedicinePatient $patient,
         TelemedicineCase $case,
     ): array {
+        [$specialists, $otherSpecialists] = $this->specialistsSplitForCase($case);
+
         return [
             'fecha' => now()->format('d/m/Y'),
             'code_reference' => $consultation->code_reference,
-            'name_patiente' => $consultation->full_name ?? $case->patient_name ?? $patient->full_name,
+            'name_patiente' => $this->documentPatientName($consultation, $patient, $case),
             'ci_patiente' => $consultation->nro_identificacion ?? $patient->nro_identificacion,
             'age_patiente' => $patient->age ?? $case->patient_age,
-            'consultSpecialistArr' => $this->specialistsForCase($case),
+            'consultSpecialistArr' => $specialists,
+            'other_specialist' => $otherSpecialists,
+            'doctor_name' => $doctor->full_name,
             'code_cm' => $doctor->code_cm,
             'code_mpps' => $doctor->code_mpps,
             'signature' => $doctor->signature,

@@ -2,14 +2,15 @@
 
 namespace App\Filament\Resources\Agencies\Pages;
 
-use App\Models\User;
-use Filament\Actions\ViewAction;
-use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 use App\Filament\Resources\Agencies\AgencyResource;
+use App\Filament\Shared\CommercialStructure\Concerns\SyncsReferidorAssignments;
+use App\Models\User;
+use Filament\Resources\Pages\EditRecord;
 
 class EditAgency extends EditRecord
 {
+    use SyncsReferidorAssignments;
+
     protected static string $resource = AgencyResource::class;
 
     protected static ?string $title = 'EDITAR AGENCIA';
@@ -19,8 +20,28 @@ class EditAgency extends EditRecord
         return $this->getResource()::getUrl('index');
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        return $this->fillReferidorAssignmentState($data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return $this->captureReferidorAssignments($data);
+    }
+
     protected function AfterSave()
     {
+        $this->persistCapturedReferidorAssignments();
+
         if ($this->record->agency_type_id == 1) {
             $this->record->update([
                 'owner_code' => 'TDG-100',
@@ -29,13 +50,13 @@ class EditAgency extends EditRecord
 
         /**
          * Actualizo el usuario de la agencia
-         * para que pueda acceder al portal 
+         * para que pueda acceder al portal
          * de las agencias tipo master
          */
         User::select('id', 'code_agency', 'agency_type')
             ->where('code_agency', $this->record->code)
             ->update([
-                'agency_type' => 'MASTER'
+                'agency_type' => 'MASTER',
             ]);
     }
 }

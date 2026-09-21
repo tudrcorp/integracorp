@@ -3,6 +3,8 @@
 namespace App\Filament\Operations\Resources\OperationServiceOrders\Schemas;
 
 use App\Models\OperationServiceOrder;
+use App\Support\Operations\OperationServiceOrderListDisplay;
+use App\Support\Operations\OperationServiceOrderProviderSummary;
 use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Operations\OperationServiceOrderViewActions;
 use Filament\Forms\Components\Repeater\TableColumn;
@@ -74,6 +76,12 @@ class OperationServiceOrderInfolist
                                                         default => 'warning',
                                                     })
                                                     ->placeholder('-'),
+                                                TextEntry::make('administrative_status')
+                                                    ->label('Estatus administrativo')
+                                                    ->badge()
+                                                    ->state(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::administrativeStatus($record))
+                                                    ->color(fn (?string $state): string => OperationServiceOrderListDisplay::administrativeStatusColor($state))
+                                                    ->placeholder('-'),
                                                 TextEntry::make('approved_at')
                                                     ->label('Fecha de aprobación')
                                                     ->dateTime('d/m/Y H:i')
@@ -103,6 +111,7 @@ class OperationServiceOrderInfolist
                                             ->columns(2),
                                     ])
                                     ->footerActions([
+                                        OperationServiceOrderViewActions::makeVoidForRegenerationAction(),
                                         OperationServiceOrderViewActions::makeCancelAction(),
                                     ])
                                     ->footerActionsAlignment(Alignment::End)
@@ -376,40 +385,12 @@ class OperationServiceOrderInfolist
 
     private static function resolveSupplierName(OperationServiceOrder $record): ?string
     {
-        $record->loadMissing(['supplier', 'doctorNurse']);
-
-        if (filled($record->supplier?->name)) {
-            return (string) $record->supplier->name;
-        }
-
-        if (filled($record->doctorNurse?->name)) {
-            return (string) $record->doctorNurse->name;
-        }
-
-        if (filled($record->supplier_external)) {
-            return (string) $record->supplier_external;
-        }
-
-        return null;
+        return OperationServiceOrderProviderSummary::name($record);
     }
 
     private static function resolveSupplierAddress(OperationServiceOrder $record): ?string
     {
-        $record->loadMissing(['supplier', 'doctorNurse', 'approvedOperationQuote']);
-
-        if (filled($record->approvedOperationQuote?->supplier_address)) {
-            return trim((string) $record->approvedOperationQuote->supplier_address);
-        }
-
-        if (filled($record->supplier?->ubicacion_principal)) {
-            return trim((string) $record->supplier->ubicacion_principal);
-        }
-
-        if (filled($record->doctorNurse?->ubicacion_principal)) {
-            return trim((string) $record->doctorNurse->ubicacion_principal);
-        }
-
-        return null;
+        return OperationServiceOrderProviderSummary::address($record);
     }
 
     private static function renderDocumentNameCell(mixed $state, mixed $record): string

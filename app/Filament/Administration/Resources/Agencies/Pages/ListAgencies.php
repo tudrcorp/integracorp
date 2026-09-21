@@ -41,6 +41,18 @@ class ListAgencies extends ListRecords
         return AgenciesTable::getTabs();
     }
 
+    /**
+     * Las pestañas son universos excluyentes por estatus: una agencia marcada en «Activas» no está dentro de «Inactivas»,
+     * y la acción masiva la descartaría sin avisar aunque el contador siguiera mostrándola. La selección
+     * sobrevive a búsquedas, filtros y páginas (ver AgenciesTable::configure), pero al cambiar de pestaña se reinicia.
+     */
+    public function updatedActiveTab(): void
+    {
+        parent::updatedActiveTab();
+
+        $this->deselectAllTableRecords();
+    }
+
     protected function getHeaderActions(): array
     {
         $reports = $this->agencyReportModalItems();
@@ -104,7 +116,7 @@ class ListAgencies extends ListRecords
     private function agencyReportModalItems(): array
     {
         $descriptions = [
-            AdministrationAgencyReportsExportService::REPORT_COMMISSION_PERCENTAGES => 'Listado con porcentajes TDEC/TDEV, renovaciones, estatus y datos bancarios nacionales e internacionales por agencia.',
+            AdministrationAgencyReportsExportService::REPORT_COMMISSION_PERCENTAGES => 'Listado con porcentajes TDEC/TDEV, renovaciones, correo, teléfono, estatus y datos bancarios nacionales e internacionales por agencia.',
             AdministrationAgencyReportsExportService::REPORT_COMMISSION_HIERARCHY => 'Jerarquía lineal por agencia (casa matriz, master, general) con agentes/subagentes y % TDEC/TDEV de cada integrante.',
             AdministrationAgencyReportsExportService::REPORT_GEO_SUMMARY => 'Totales agrupados por estado, región y ciudad.',
             AdministrationAgencyReportsExportService::REPORT_AGENCY_TYPES => 'Conteo de agencias según su tipo comercial.',

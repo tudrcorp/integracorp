@@ -62,6 +62,11 @@ class TravelAgenciesTable
             ->description('Directorio comercial: identidad, ubicación, clasificación y montos de crédito.')
             ->defaultSort('created_at', 'desc')
             ->striped()
+            // El analista arma la selección de agencias de viaje en tandas: busca, marca, vuelve a buscar y marca otra vez.
+            // Sin esto Filament la vacía en cada búsqueda o filtro. De paso apaga el modo «tracking» de selección
+            // (Table\Concerns\HasBulkActions::canTrackDeselectedRecords): «Seleccionar todos» pasa a guardar IDs
+            // concretos, así lo marcado nunca se reinterpreta contra la consulta nueva.
+            ->deselectAllRecordsWhenFiltered(false)
             ->emptyStateHeading('Sin agencias de viaje')
             ->emptyStateDescription('Crea la primera agencia o ajusta los filtros para ver resultados.')
             ->columns([
@@ -258,7 +263,7 @@ class TravelAgenciesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('exportCsvController')
-                        ->label('Exportar CSV')
+                        ->label('Exportar XLS')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
                         ->action(function (Collection $records) {

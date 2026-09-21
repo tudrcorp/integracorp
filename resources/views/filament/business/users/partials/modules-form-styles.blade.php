@@ -28,6 +28,18 @@
         color: rgb(254 202 202);
     }
 
+    .user-modules-summary--optional {
+        border-color: rgb(186 230 253);
+        background: rgb(240 249 255);
+        color: rgb(12 74 110);
+    }
+
+    .dark .user-modules-summary--optional {
+        border-color: rgb(56 189 248 / 0.25);
+        background: rgb(8 47 73 / 0.35);
+        color: rgb(186 230 253);
+    }
+
     .user-modules-summary--active {
         border-color: rgb(186 230 253);
         background: rgb(240 249 255);

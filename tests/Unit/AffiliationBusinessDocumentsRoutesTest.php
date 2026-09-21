@@ -9,7 +9,8 @@ uses(Tests\TestCase::class);
 
 it('registra rutas de documentos de afiliación en business', function (): void {
     expect(Route::has('business.affiliation-documents.regenerate-async'))->toBeTrue()
-        ->and(Route::has('business.affiliation-documents.send-email'))->toBeTrue();
+        ->and(Route::has('business.affiliation-documents.send-email'))->toBeTrue()
+        ->and(Route::has('business.affiliation-documents.send-carnet-emails'))->toBeTrue();
 });
 
 it('renderiza la vista modal de documentos de afiliación', function (): void {
@@ -25,5 +26,9 @@ it('renderiza la vista modal de documentos de afiliación', function (): void {
     expect($html)
         ->toContain('affiliationDocumentsPanel')
         ->toContain('regenerate()')
-        ->toContain('regenerate-async');
+        ->toContain('regenerate-async')
+        ->toContain('sendCarnetEmails()')
+        ->toContain('Enviar carnets a afiliados')
+        ->toContain('en segundo plano')
+        ->toContain('Puede cerrar esta ventana apenas pulse enviar');
 });

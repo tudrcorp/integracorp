@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicinePatient;
+use App\Models\User;
 use App\Support\Telemedicine\ConsultationCreateWizardDefaults;
 
 uses(Tests\TestCase::class);
@@ -32,12 +33,16 @@ it('arma el paso datos del paciente desde caso y paciente', function (): void {
         'age' => '45',
     ]);
 
-    $state = ConsultationCreateWizardDefaults::formStatePatientStepFromCaseAndPatient($case, $patient, 7, 0);
+    // Id de usuario inexistente: sin médico vinculado el firmante cae al del caso.
+    // El caso con vínculo lo cubre TelemedicineConsultationSigningDoctorTest.
+    $usuarioSinMedicoVinculado = ((int) User::query()->max('id')) + 5000;
+
+    $state = ConsultationCreateWizardDefaults::formStatePatientStepFromCaseAndPatient($case, $patient, $usuarioSinMedicoVinculado, 0);
 
     expect($state['telemedicine_case_id'])->toBe(10)
         ->and($state['telemedicine_doctor_id'])->toBe(30)
         ->and($state['telemedicine_patient_id'])->toBe(20)
-        ->and($state['assigned_by'])->toBe(7)
+        ->and($state['assigned_by'])->toBe($usuarioSinMedicoVinculado)
         ->and($state['status'])->toBe('CONSULTA INICIAL')
         ->and($state['telemedicine_case_code'])->toBe('CASO-99')
         ->and($state['full_name'])->toBe('María Paciente')

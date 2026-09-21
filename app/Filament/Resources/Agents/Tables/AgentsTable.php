@@ -2,31 +2,32 @@
 
 namespace App\Filament\Resources\Agents\Tables;
 
-use Carbon\Carbon;
-use App\Models\User;
-use App\Models\Agent;
-use App\Models\Agency;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
-use Filament\Actions\BulkAction;
-use Filament\Actions\ActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Filament\Actions\BulkActionGroup;
-use Illuminate\Support\Facades\Crypt;
-use Filament\Actions\DeleteBulkAction;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Http\Controllers\LogController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UtilsController;
+use App\Models\Agency;
+use App\Models\Agent;
+use App\Models\User;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Notifications\Notification;
-use App\Http\Controllers\UtilsController;
-use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Hash;
 
 class AgentsTable
 {
@@ -45,7 +46,7 @@ class AgentsTable
                             ->with('typeAgency')
                             ->first();
 
-                        return isset($agency_type) ? $agency_type->typeAgency->definition . ' - ' : 'MASTER - ';
+                        return isset($agency_type) ? $agency_type->typeAgency->definition.' - ' : 'MASTER - ';
                     })
                     ->alignCenter()
                     ->badge()
@@ -197,8 +198,6 @@ class AgentsTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-
-
                 IconColumn::make('tdec')
                     ->label('TDEC')
                     ->boolean()
@@ -207,6 +206,11 @@ class AgentsTable
                     ->label('TDEV')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: false),
+                IconColumn::make('is_referidor')
+                    ->label('Es Referidor')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                ReferidorPercentageField::column(),
                 TextColumn::make('commission_tdec')
                     ->label('(%) TDEC')
                     ->suffix('%')
@@ -216,6 +220,7 @@ class AgentsTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
@@ -230,6 +235,7 @@ class AgentsTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
@@ -244,6 +250,7 @@ class AgentsTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
@@ -258,6 +265,7 @@ class AgentsTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
@@ -301,20 +309,20 @@ class AgentsTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
@@ -332,7 +340,7 @@ class AgentsTable
                     ]),
             ])
             ->filtersTriggerAction(
-                fn(Action $action) => $action
+                fn (Action $action) => $action
                     ->button()
                     ->label('Filtros'),
             )
@@ -359,15 +367,15 @@ class AgentsTable
                                 $record->save();
                                 LogController::log(Auth::user()->id, 'ACTIVACION DE AGENTE', 'AgentResource:Action:Activate()', $record->save());
 
-                                //4. creamos el usuario en la tabla users (AGENTES)
-                                $user = new User();
+                                // 4. creamos el usuario en la tabla users (AGENTES)
+                                $user = new User;
                                 $user->name = $record->name;
                                 $user->email = $record->email;
                                 $user->password = Hash::make('12345678');
                                 $user->is_agent = true;
                                 $user->code_agency = $record->code_agency;
-                                $user->code_agent = 'AGT-000' . $record->id;
-                                $user->link_agent = env('APP_URL') . '/at/lk/' . Crypt::encryptString($record->code_agent);
+                                $user->code_agent = 'AGT-000'.$record->id;
+                                $user->link_agent = env('APP_URL').'/at/lk/'.Crypt::encryptString($record->code_agent);
                                 $user->agent_id = $record->id;
                                 $user->status = 'ACTIVO';
                                 $user->save();
@@ -375,10 +383,10 @@ class AgentsTable
                                 /**
                                  * Notificacion por correo electronico
                                  * CARTA DE BIENVENIDA
-                                 * @param Agent $record
+                                 *
+                                 * @param  Agent  $record
                                  */
                                 $record->sendCartaBienvenida($record->id, $record->name, $record->email);
-
 
                                 $phone = $record->phone;
                                 $email = $record->email;
@@ -415,26 +423,25 @@ class AgentsTable
                         ->color('success')
                         ->requiresConfirmation(),
                     Action::make('Inactivate')
-                        ->action(fn(Agent $record) => $record->update(['status' => 'INACTIVO']))
+                        ->action(fn (Agent $record) => $record->update(['status' => 'INACTIVO']))
                         ->icon('heroicon-s-x-circle')
                         ->color('danger'),
                     DeleteAction::make()
-                        ->color('danger')
-                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro')
+                        ->color('danger'),
+                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('format_phone')
-                    ->label('Formatear Teléfonos')
-                    ->action(function (Collection $records) {
-                        foreach ($records as $record) {
-                            $record->phone = UtilsController::normalizeVenezuelanPhone($record->phone);
-                            $record->save();
-                        }
-                    })
-                    ->requiresConfirmation()
-                    ->color('azulOscuro'),
-                    
+                        ->label('Formatear Teléfonos')
+                        ->action(function (Collection $records) {
+                            foreach ($records as $record) {
+                                $record->phone = UtilsController::normalizeVenezuelanPhone($record->phone);
+                                $record->save();
+                            }
+                        })
+                        ->requiresConfirmation()
+                        ->color('azulOscuro'),
 
                     DeleteBulkAction::make(),
                 ]),

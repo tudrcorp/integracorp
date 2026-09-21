@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicinePatient;
 use App\Support\Charts\SvgLineChartRenderer;
+use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as PdfDocument;
 use Carbon\Carbon;
@@ -94,11 +95,13 @@ final class PatientDetailedSiniestralidadReportService
             ->values()
             ->all();
 
+        $resolvedName = TelemedicinePatientDisplayName::fromPatient($patient);
+
         return [
             'patient' => [
                 'id' => (int) $patient->id,
-                'full_name' => filled($patient->full_name)
-                    ? mb_strtoupper(trim((string) $patient->full_name))
+                'full_name' => $resolvedName !== ''
+                    ? mb_strtoupper($resolvedName)
                     : 'PACIENTE #'.$patient->id,
                 'nro_identificacion' => filled($patient->nro_identificacion) ? (string) $patient->nro_identificacion : '—',
                 'code' => filled($patient->code) ? (string) $patient->code : '—',

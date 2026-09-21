@@ -39,10 +39,10 @@ it('filtra planes activos por tipo basico o dress tylor', function (): void {
     $source = file_get_contents($path);
 
     expect($source)
-        ->toContain("Checkbox::make('quote_type_basico')")
-        ->toContain("Checkbox::make('quote_type_dress_tylor')")
+        ->toContain("Radio::make('type')")
         ->toContain('planOptionsForQuoteType')
-        ->toContain("->where('status', 'ACTIVO')")
+        ->toContain('PlanQuotability::optionsForCorporateType')
+        ->toContain('PlanQuotability::descriptionsForCorporateType')
         ->toContain("normalizeQuotePlanType(\$get('type'))")
         ->not->toContain("->hidden(fn (Get \$get) => \$get('type') == 'DRESS-TAILOR')");
 });

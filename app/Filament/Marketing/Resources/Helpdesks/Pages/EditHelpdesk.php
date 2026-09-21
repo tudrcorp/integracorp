@@ -84,6 +84,11 @@ class EditHelpdesk extends EditRecord
                 ->after(function (): void {
                     $this->getRecord()->refresh();
                 }),
+            HelpdeskTicketModalActions::makeReassignAction()
+                ->record(fn (): HelpDesk => $this->getRecord())
+                ->after(function (): void {
+                    $this->getRecord()->refresh();
+                }),
         ];
     }
 

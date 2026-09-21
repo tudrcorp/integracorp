@@ -6,6 +6,8 @@ namespace App\Support\Filament\Operations;
 
 use App\Models\Supplier;
 use App\Models\User;
+use App\Support\Filament\BusinessFilamentActionAccess;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
@@ -32,14 +34,25 @@ final class SupplierIntegracorpManagement
         return self::PORTAL_USER_DEPARTAMENTS;
     }
 
+    /**
+     * SUPERADMIN siempre puede. Un analista de Operaciones solo si el permiso
+     * le fue asignado desde el formulario de usuarios.
+     */
+    public static function userCanManage(): bool
+    {
+        return BusinessFilamentActionAccess::userCan(
+            BusinessFilamentActionPermissionRegistry::MANAGE_SUPPLIER_INTEGRACORP_PROCESSES
+        );
+    }
+
     public static function portalUsersRepeater(string $repeaterCardClass = self::REPEATER_CARD): Repeater
     {
-        return Repeater::make('integracorpUsers')
+        return Repeater::make('integracorpAnalysts')
             ->label('Usuarios de acceso a módulos')
-            ->relationship('integracorpUsers')
+            ->relationship('integracorpAnalysts')
             ->visible(fn (Get $get): bool => (bool) $get('gestion_integracorp'))
-            ->disabled(fn (): bool => ! OperationsSuperAdmin::check())
-            ->dehydrated(fn (): bool => OperationsSuperAdmin::check())
+            ->disabled(fn (): bool => ! self::userCanManage())
+            ->dehydrated(fn (): bool => self::userCanManage())
             ->addActionLabel('Agregar usuario')
             ->defaultItems(0)
             ->collapsible()
@@ -117,6 +130,7 @@ final class SupplierIntegracorpManagement
     {
         $data['departament'] = self::portalUserDepartaments();
         $data['is_proveedor_amd'] = true;
+        $data['doctor_id'] = null;
         $data['status'] = 'ACTIVO';
         $data['updated_by'] = Auth::user()?->name;
 
@@ -152,7 +166,7 @@ final class SupplierIntegracorpManagement
     {
         return new HtmlString(
             '<p class="rounded-xl border border-amber-200/80 bg-amber-50/90 px-3.5 py-2.5 text-xs leading-relaxed text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">'
-            .'Solo un analista con rol <span class="font-semibold">SUPERADMIN</span> puede modificar esta configuración.'
+            .'Solo un SUPERADMIN o un analista de Operaciones con el permiso <span class="font-semibold">Gestión de Procesos en Integracorp</span> puede modificar esta configuración.'
             .'</p>'
         );
     }

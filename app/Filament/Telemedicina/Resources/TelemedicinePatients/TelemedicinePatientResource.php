@@ -30,6 +30,10 @@ class TelemedicinePatientResource extends Resource
 
     protected static ?string $navigationLabel = 'Ficha del Paciente';
 
+    protected static ?string $modelLabel = 'paciente';
+
+    protected static ?string $recordTitleAttribute = 'full_name';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema

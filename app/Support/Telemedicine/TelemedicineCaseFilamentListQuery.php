@@ -93,6 +93,36 @@ final class TelemedicineCaseFilamentListQuery
     }
 
     /**
+     * Bitácora del panel médico: mismos casos asignados que el recurso,
+     * incluyendo alta médica para poder descargar el expediente cerrado.
+     *
+     * @param  Builder<TelemedicineCase>  $query
+     * @return Builder<TelemedicineCase>
+     */
+    public static function applyTelemedicinaBitacoraConstraints(Builder $query): Builder
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        if (self::userIsInTdgTelemedicinaContext($user)) {
+            return self::constrainToTdgDoctorsCases($query);
+        }
+
+        if ($user->doctor_id !== null) {
+            $query->where('telemedicine_doctor_id', $user->doctor_id);
+        }
+
+        if (self::userIsInAtenmediTelemedicinaContext($user)) {
+            $query->where('managed_by', 'ATENMEDI');
+        }
+
+        return $query;
+    }
+
+    /**
      * Casos del pool TDG: gestión TDG o asignados a un médico con {@see TelemedicineDoctor::$managed_by} = TDG.
      */
     public static function constrainToTdgDoctorsCases(Builder $query): Builder

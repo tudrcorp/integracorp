@@ -121,6 +121,7 @@ class UserRoleProfiles
                     ->label(UserRoleFormUi::toggleLabelHtml($role))
                     ->inline(true)
                     ->onColor('success')
+                    ->live(in_array($role['field'], ['is_agent', 'is_agency'], true))
                     ->extraFieldWrapperAttributes([
                         'class' => UserRoleFormUi::toggleCardClass($groupLabel, $role['field']),
                     ]);

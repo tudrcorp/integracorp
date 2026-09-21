@@ -23,7 +23,7 @@ final class SupplierIntegracorpManagementTab
     {
         return Tab::make('Gestion de Procesos en Integracorp')
             ->icon(Heroicon::OutlinedCog6Tooth)
-            ->visible(fn (): bool => OperationsSuperAdmin::check())
+            ->visible(fn (): bool => SupplierIntegracorpManagement::userCanManage())
             ->schema([
                 Section::make('Acceso a módulos de Operaciones')
                     ->description('Habilita al proveedor para operar en telemedicina, servicios médicos y órdenes de servicio.')
@@ -42,7 +42,7 @@ final class SupplierIntegracorpManagementTab
                                 ])->render()
                             ))
                             ->columnSpanFull(),
-                        RepeatableEntry::make('integracorpUsers')
+                        RepeatableEntry::make('integracorpAnalysts')
                             ->label('Usuarios de acceso')
                             ->visible(fn (Supplier $record): bool => (bool) $record->gestion_integracorp)
                             ->placeholder('No hay usuarios de acceso registrados.')

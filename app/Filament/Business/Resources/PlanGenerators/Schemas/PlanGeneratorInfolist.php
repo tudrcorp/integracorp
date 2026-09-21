@@ -62,6 +62,16 @@ class PlanGeneratorInfolist
                                                             ->label('Estatus')
                                                             ->badge()
                                                             ->color(fn (string $state): string => $state === 'ACTIVO' ? 'success' : 'gray'),
+                                                        TextEntry::make('origin')
+                                                            ->label('Origen')
+                                                            ->badge()
+                                                            ->state(fn (PlanGenerator $record): string => $record->isDerivedQuotation()
+                                                                ? 'Derivada de # '.((string) $record->templateBase()->control_number)
+                                                                : 'Registro base')
+                                                            ->color(fn (PlanGenerator $record): string => $record->isDerivedQuotation() ? 'info' : 'gray')
+                                                            ->helperText(fn (PlanGenerator $record): string => $record->isDerivedQuotation()
+                                                                ? 'Se armó a partir de la matriz de «'.((string) $record->templateBase()->name).'».'
+                                                                : 'Puede usarse como plantilla desde la tabla para generar cotizaciones derivadas.'),
                                                         TextEntry::make('created_by')
                                                             ->label('Creado por')
                                                             ->icon(Heroicon::OutlinedUser)

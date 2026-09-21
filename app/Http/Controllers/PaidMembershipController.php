@@ -15,10 +15,12 @@ use App\Models\Commission;
 use App\Models\Sale;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use App\Support\CreditReconciliations\WhiteCompanyCreditMovementRecorder;
+use App\Support\PaidMemberships\AffiliationQuoteNumber;
 use App\Support\PaidMemberships\AgencyTypeForCommission;
 use App\Support\SecurityAudit;
 use App\Support\WhiteCompanies\WhiteCompanyNegotiatedRateResolver;
 use App\Support\WhiteCompanies\WhiteCompanyPaymentSettlement;
+use App\Support\WhiteCompanies\WhiteCompanySaleAmounts;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
@@ -50,9 +52,12 @@ class PaidMembershipController extends Controller
 
             $alliedSettlement = (new WhiteCompanyNegotiatedRateResolver)
                 ->settlementForAffiliation($record->affiliation);
-            $settledAmount = $alliedSettlement instanceof WhiteCompanyPaymentSettlement
-                ? $alliedSettlement->installmentNeta()
-                : $record->total_amount;
+            $saleAmounts = WhiteCompanySaleAmounts::fromApproval(
+                $record->total_amount,
+                $alliedSettlement instanceof WhiteCompanyPaymentSettlement ? $alliedSettlement : null,
+            );
+            $saleAmount = $saleAmounts['total_amount'];
+            $alliedNeta = $saleAmounts['white_company_neta'];
 
             /**
              * LOGICA PARA LA CARGA Y GESTION DEL PRIMER PAGO O LA PRIMERA CUOTA
@@ -106,7 +111,8 @@ class PaidMembershipController extends Controller
                 $sales->affiliate_email = $record->affiliation->email_ti;
                 $sales->service = 'servicio';
                 $sales->persons = $record->affiliation->family_members;
-                $sales->total_amount = $settledAmount;
+                $sales->total_amount = $saleAmount;
+                $sales->white_company_neta = $alliedNeta;
                 $sales->type = 'AFILIACION INDIVIDUAL';
                 $sales->payment_method = $record->payment_method;
                 $sales->payment_frequency = $record->affiliation->payment_frequency;
@@ -161,7 +167,7 @@ class PaidMembershipController extends Controller
                     $collections->coverage_id = $record->affiliation->coverage_id ?? null;
                     $collections->agent_id = $record->affiliation->agent_id;
                     $collections->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumberCollection[0]['collection_invoice_number']);
-                    $collections->quote_number = $record->affiliation->individual_quote->code;
+                    $collections->quote_number = AffiliationQuoteNumber::forIndividual($record->affiliation);
                     $collections->affiliation_code = $record->affiliation->code;
                     $collections->affiliate_full_name = $record->affiliation->full_name_ti;
                     $collections->affiliate_contact = $record->affiliation->full_name_con;
@@ -172,7 +178,7 @@ class PaidMembershipController extends Controller
                     $collections->type = 'AFILIACION INDIVIDUAL';
                     $collections->service = 'servicio';
                     $collections->persons = $record->affiliation->family_members;
-                    $collections->total_amount = $settledAmount;
+                    $collections->total_amount = $saleAmount;
                     $collections->payment_method = $record->payment_method;
                     $collections->pay_amount_usd = 0.00;
                     $collections->pay_amount_ves = 0.00;
@@ -201,9 +207,9 @@ class PaidMembershipController extends Controller
                         'address_ti' => $record->affiliation->adress_ti,
                         'phone_ti' => $sales->affiliate_phone,
                         'email_ti' => $sales->affiliate_email,
-                        'total_amount' => $settledAmount,
-                        'plan' => $record->plan->description,
-                        'coverage' => $record->coverage->price ?? null,
+                        'total_amount' => $saleAmount,
+                        'plan' => $record->plan?->description,
+                        'coverage' => $record->coverage?->price,
                         'frequency' => $record->affiliation->payment_frequency,
                         'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($record->affiliation),
                     ];
@@ -237,7 +243,7 @@ class PaidMembershipController extends Controller
                         $collections->coverage_id = $record->affiliation->coverage_id ?? null;
                         $collections->agent_id = $record->affiliation->agent_id;
                         $collections->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumberCollection[0]['collection_invoice_number']);
-                        $collections->quote_number = $record->affiliation->individual_quote->code;
+                        $collections->quote_number = AffiliationQuoteNumber::forIndividual($record->affiliation);
                         $collections->affiliation_code = $record->affiliation->code;
                         $collections->affiliate_full_name = $record->affiliation->full_name_ti;
                         $collections->affiliate_contact = $record->affiliation->full_name_con;
@@ -248,7 +254,7 @@ class PaidMembershipController extends Controller
                         $collections->type = 'AFILIACION INDIVIDUAL';
                         $collections->service = 'servicio';
                         $collections->persons = $record->affiliation->family_members;
-                        $collections->total_amount = $settledAmount;
+                        $collections->total_amount = $saleAmount;
                         $collections->payment_method = $record->payment_method;
 
                         $collections->pay_amount_usd = 0.00;
@@ -278,9 +284,9 @@ class PaidMembershipController extends Controller
                             'address_ti' => $record->affiliation->adress_ti,
                             'phone_ti' => $sales->affiliate_phone,
                             'email_ti' => $sales->affiliate_email,
-                            'total_amount' => $settledAmount,
-                            'plan' => $record->plan->description,
-                            'coverage' => $record->coverage->price ?? null,
+                            'total_amount' => $saleAmount,
+                            'plan' => $record->plan?->description,
+                            'coverage' => $record->coverage?->price,
                             'frequency' => $record->affiliation->payment_frequency,
                             'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($record->affiliation),
                         ];
@@ -311,7 +317,7 @@ class PaidMembershipController extends Controller
                     $collections->coverage_id = $record->affiliation->coverage_id ?? null;
                     $collections->agent_id = $record->affiliation->agent_id;
                     $collections->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumberCollection[0]['collection_invoice_number']);
-                    $collections->quote_number = $record->affiliation->individual_quote->code;
+                    $collections->quote_number = AffiliationQuoteNumber::forIndividual($record->affiliation);
                     $collections->affiliation_code = $record->affiliation->code;
                     $collections->affiliate_full_name = $record->affiliation->full_name_ti;
                     $collections->affiliate_contact = $record->affiliation->full_name_con;
@@ -322,7 +328,7 @@ class PaidMembershipController extends Controller
                     $collections->type = 'AFILIACION INDIVIDUAL';
                     $collections->service = 'servicio';
                     $collections->persons = $record->affiliation->family_members;
-                    $collections->total_amount = $settledAmount;
+                    $collections->total_amount = $saleAmount;
                     $collections->payment_method = $record->payment_method;
 
                     $collections->pay_amount_usd = 0.00;
@@ -356,9 +362,9 @@ class PaidMembershipController extends Controller
                         'address_ti' => $record->affiliation->adress_ti,
                         'phone_ti' => $sales->affiliate_phone,
                         'email_ti' => $sales->affiliate_email,
-                        'total_amount' => $settledAmount,
-                        'plan' => $record->plan->description,
-                        'coverage' => $record->coverage->price ?? null,
+                        'total_amount' => $saleAmount,
+                        'plan' => $record->plan?->description,
+                        'coverage' => $record->coverage?->price,
                         'frequency' => $record->affiliation->payment_frequency,
                         'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($record->affiliation),
                     ];
@@ -384,7 +390,7 @@ class PaidMembershipController extends Controller
                         $collections->coverage_id = $record->affiliation->coverage_id ?? null;
                         $collections->agent_id = $record->affiliation->agent_id;
                         $collections->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumber->invoice_number);
-                        $collections->quote_number = $record->affiliation->individual_quote->code;
+                        $collections->quote_number = AffiliationQuoteNumber::forIndividual($record->affiliation);
                         $collections->affiliation_code = $record->affiliation->code;
                         $collections->affiliate_full_name = $record->affiliation->full_name_ti;
                         $collections->affiliate_contact = $record->affiliation->full_name_con;
@@ -395,7 +401,7 @@ class PaidMembershipController extends Controller
                         $collections->type = 'AFILIACION INDIVIDUAL';
                         $collections->service = 'servicio';
                         $collections->persons = $record->affiliation->family_members;
-                        $collections->total_amount = $settledAmount;
+                        $collections->total_amount = $saleAmount;
                         $collections->payment_method = $record->payment_method;
 
                         $collections->pay_amount_usd = 0.00;
@@ -424,9 +430,9 @@ class PaidMembershipController extends Controller
                             'address_ti' => $record->affiliation->adress_ti,
                             'phone_ti' => $sales->affiliate_phone,
                             'email_ti' => $sales->affiliate_email,
-                            'total_amount' => $settledAmount,
-                            'plan' => $record->plan->description,
-                            'coverage' => $record->coverage->price ?? null,
+                            'total_amount' => $saleAmount,
+                            'plan' => $record->plan?->description,
+                            'coverage' => $record->coverage?->price,
                             'frequency' => $record->affiliation->payment_frequency,
                             'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($record->affiliation),
                         ];
@@ -452,10 +458,10 @@ class PaidMembershipController extends Controller
                     'address_ti' => $record->affiliation->adress_ti,
                     'phone_ti' => $sales->affiliate_phone,
                     'email_ti' => $sales->affiliate_email,
-                    'total_amount' => $settledAmount,
+                    'total_amount' => $saleAmount,
                     'currency' => $record->currency,
-                    'plan' => $record->plan->description,
-                    'coverage' => $record->coverage->price ?? null,
+                    'plan' => $record->plan?->description,
+                    'coverage' => $record->coverage?->price,
                     'frequency' => $record->affiliation->payment_frequency,
                     'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($record->affiliation),
                 ];
@@ -491,9 +497,7 @@ class PaidMembershipController extends Controller
                  */
                 $data_afiliaciones = $record->affiliation->toArray();
 
-                if ($alliedSettlement instanceof WhiteCompanyPaymentSettlement) {
-                    $alliedSettlement->storeCommission($sales, $record);
-                } else {
+                if (! ($alliedSettlement instanceof WhiteCompanyPaymentSettlement)) {
 
                     $comisionAgent = 0;
                     $comisionSubAgent = 0;
@@ -727,9 +731,9 @@ class PaidMembershipController extends Controller
                     'name' => $record->affiliation->full_name_ti,
                     'ci' => $record->affiliation->nro_identificacion_ti,
                     'code' => $record->affiliation->code,
-                    'plan' => $record->affiliation->plan->description,
+                    'plan' => $record->affiliation->plan?->description,
                     'frecuencia' => $record->payment_frequency,
-                    'cobertura' => $record->affiliation->coverage->price ?? '',
+                    'cobertura' => $record->affiliation->coverage?->price ?? '',
                     'desde' => Carbon::now()->format('d/m/Y'),
                     'hasta' => Carbon::now()->addYear()->format('d/m/Y'),
                 ];
@@ -751,7 +755,9 @@ class PaidMembershipController extends Controller
                 TarjetaAfiliacionController::generateTarjetaAfiliacion($data_tarjeta_afiliado);
 
                 $array_correos = [
-                    'agente' => $data_afiliaciones['agent_id'] != null ? Agent::where('id', $data_afiliaciones['agent_id'])->first()->email : Agency::where('code', $data_afiliaciones['code_agency'])->first()->email,
+                    'agente' => $data_afiliaciones['agent_id'] != null
+                        ? Agent::where('id', $data_afiliaciones['agent_id'])->first()?->email
+                        : Agency::where('code', $data_afiliaciones['code_agency'])->first()?->email,
                     'afiliaciones' => 'afiliaciones@tudrencasa.com',
                 ];
 
@@ -805,7 +811,8 @@ class PaidMembershipController extends Controller
                 $sales->affiliate_email = $record->affiliation->email_ti;
                 $sales->service = 'servicio';
                 $sales->persons = $record->affiliation->family_members;
-                $sales->total_amount = $settledAmount;
+                $sales->total_amount = $saleAmount;
+                $sales->white_company_neta = $alliedNeta;
                 $sales->type = 'AFILIACION INDIVIDUAL';
                 $sales->payment_method = $record->payment_method;
                 $sales->payment_frequency = $record->affiliation->payment_frequency;
@@ -875,10 +882,10 @@ class PaidMembershipController extends Controller
                     'address_ti' => $record->affiliation->adress_ti,
                     'phone_ti' => $sales->affiliate_phone,
                     'email_ti' => $sales->affiliate_email,
-                    'total_amount' => $settledAmount,
+                    'total_amount' => $saleAmount,
                     'currency' => $record->currency,
-                    'plan' => $record->plan->description,
-                    'coverage' => $record->coverage->price ?? null,
+                    'plan' => $record->plan?->description,
+                    'coverage' => $record->coverage?->price,
                     'frequency' => $record->affiliation->payment_frequency,
                     'affiliates_count' => AffiliationDocumentAffiliatesCount::forIndividual($record->affiliation),
                 ];
@@ -903,9 +910,7 @@ class PaidMembershipController extends Controller
                  */
                 $data_afiliaciones = $record->affiliation->toArray();
 
-                if ($alliedSettlement instanceof WhiteCompanyPaymentSettlement) {
-                    $alliedSettlement->storeCommission($sales, $record);
-                } else {
+                if (! ($alliedSettlement instanceof WhiteCompanyPaymentSettlement)) {
 
                     $comisionAgent = 0;
                     $comisionAgencyMaster = 0;

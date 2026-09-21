@@ -26,7 +26,7 @@
                                 {{ config('app.name') }}
                             </p>
                             <h1 style="margin: 8px 0 0 0; font-size: 22px; font-weight: 700; color: #1c1c1e; letter-spacing: -0.02em;">
-                                Nuevo ticket asignado
+                                {{ $isReassignment ?? false ? 'Ticket reasignado' : 'Nuevo ticket asignado' }}
                             </h1>
                         </td>
                     </tr>
@@ -36,7 +36,9 @@
                                 Hola{{ filled($assigneeName) ? ', '.$assigneeName : '' }},
                             </p>
                             <p style="margin: 12px 0 0 0; font-size: 15px; line-height: 1.5; color: #3a3a3c;">
-                                Se te ha asignado un ticket de soporte interno. Resumen a continuación.
+                                {{ ($isReassignment ?? false)
+                                    ? 'Se te reasignó un ticket de soporte interno. Resumen a continuación.'
+                                    : 'Se te ha asignado un ticket de soporte interno. Resumen a continuación.' }}
                             </p>
                         </td>
                     </tr>

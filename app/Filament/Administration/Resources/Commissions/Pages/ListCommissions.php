@@ -60,8 +60,8 @@ class ListCommissions extends ListRecords
         $startOfMonth = $now->copy()->startOfMonth();
         $endOfMonth = $now->copy()->endOfMonth();
 
-        $usdExpression = 'COALESCE(commission_agency_master_usd, 0) + COALESCE(commission_agency_general_usd, 0) + COALESCE(commission_agent_usd, 0)';
-        $vesExpression = 'COALESCE(commission_agency_master_ves, 0) + COALESCE(commission_agency_general_ves, 0) + COALESCE(commission_agent_ves, 0)';
+        $usdExpression = 'COALESCE(commission_agency_master_usd, 0) + COALESCE(commission_agency_general_usd, 0) + COALESCE(commission_agent_usd, 0) + COALESCE(commission_sub_agent_usd, 0) + COALESCE(commission_referidor_usd, 0)';
+        $vesExpression = 'COALESCE(commission_agency_master_ves, 0) + COALESCE(commission_agency_general_ves, 0) + COALESCE(commission_agent_ves, 0) + COALESCE(commission_sub_agent_ves, 0) + COALESCE(commission_referidor_ves, 0)';
 
         return [
             'year' => (int) $now->year,

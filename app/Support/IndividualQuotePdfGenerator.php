@@ -7,6 +7,8 @@ namespace App\Support;
 use App\Http\Controllers\IndividualQuoteController;
 use App\Models\Agency;
 use App\Models\IndividualQuote;
+use App\Support\TuDrQuote\QuoteDocumentLayout;
+use App\Support\TuDrQuote\QuoteServiceAttempt;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -31,9 +33,35 @@ class IndividualQuotePdfGenerator
             return false;
         }
 
+        /**
+         * El microservicio dibuja la propuesta en menos de un segundo; si no
+         * está disponible o el plan no es de los que sabe dibujar, sigue el
+         * generador local de siempre.
+         */
+        if (QuoteServiceAttempt::generate((int) $record->id, QuoteDocumentLayout::SCOPE_INDIVIDUAL, $details)) {
+            return true;
+        }
+
         IndividualQuoteController::generatePdf($details, Auth::id(), $layout);
 
         return true;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public static function detailsPayload(
+        IndividualQuote $record,
+        int $planId,
+        string $layout,
+        ?string $agentName = null,
+    ): ?array {
+        return self::buildDetailsPayload(
+            $record,
+            $planId,
+            $layout,
+            $agentName ?? self::resolveAgentName($record),
+        );
     }
 
     public static function regenerateIfMissing(IndividualQuote $record): bool
@@ -89,6 +117,16 @@ class IndividualQuotePdfGenerator
         }
 
         usort($groupDetails, fn (array $a, array $b): int => (int) $a['plan'] <=> (int) $b['plan']);
+
+        /**
+         * La propuesta multiplan también la dibuja el microservicio: una
+         * página de cálculos por plan dentro del mismo documento. Si no está
+         * disponible o algún plan no es de los que sabe dibujar, la arma
+         * entera el generador local, nunca a medias.
+         */
+        if (QuoteServiceAttempt::generateMultiple((int) $record->id, QuoteDocumentLayout::SCOPE_INDIVIDUAL, $groupDetails)) {
+            return true;
+        }
 
         IndividualQuoteController::generatePdfMultiple($groupDetails, Auth::id());
 

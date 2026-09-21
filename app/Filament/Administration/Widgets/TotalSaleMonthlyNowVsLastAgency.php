@@ -35,6 +35,8 @@ class TotalSaleMonthlyNowVsLastAgency extends ChartWidget
 
     public bool $monthlyChartExpanded = false;
 
+    public bool $yearChartExpanded = false;
+
     /**
      * @var list<array{border: string, background: string}>
      */
@@ -199,6 +201,11 @@ class TotalSaleMonthlyNowVsLastAgency extends ChartWidget
     public function toggleMonthlyChart(): void
     {
         $this->monthlyChartExpanded = ! $this->monthlyChartExpanded;
+    }
+
+    public function toggleYearChart(): void
+    {
+        $this->yearChartExpanded = ! $this->yearChartExpanded;
     }
 
     public function isComparisonMonthActive(string $monthKey): bool

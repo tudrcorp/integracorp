@@ -2,6 +2,7 @@
     /** @var \App\Models\OperationServiceOrder $order */
     $coord = $order->operationCoordinationService;
     $brandCyan = '#00ADEF';
+    $patientName = \App\Support\Telemedicine\TelemedicinePatientDisplayName::forCoordination($coord);
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -55,7 +56,7 @@
             </td>
             <td>
                 <div class="label">Paciente</div>
-                <div class="value">{{ $coord?->patient ?? '—' }}</div>
+                <div class="value">{{ $patientName }}</div>
             </td>
             <td>
                 <div class="label">Referencia</div>
@@ -63,13 +64,9 @@
             </td>
         </tr>
         <tr>
-            <td colspan="2">
+            <td colspan="3">
                 <div class="label">Proveedor</div>
                 <div class="value">{{ $quoteMeta['supplier_name'] ?? '—' }}</div>
-            </td>
-            <td>
-                <div class="label">Tasa BCV</div>
-                <div class="value">{{ number_format((float) ($quoteMeta['bcv_rate'] ?? 0), 2, ',', '.') }} Bs./US$</div>
             </td>
         </tr>
     </table>
@@ -98,11 +95,13 @@
 
     <div class="summary">
         <div class="summary-row"><strong>Total USD:</strong> US$ {{ number_format((float) ($quoteMeta['total_amount_usd'] ?? 0), 2, ',', '.') }}</div>
-        <div class="summary-row"><strong>Total Bs.:</strong> Bs. {{ number_format((float) ($quoteMeta['total_amount_ves'] ?? 0), 2, ',', '.') }}</div>
     </div>
 
     <div class="footer">
-        Documento generado automáticamente por el módulo de operaciones.
+        <strong>TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1</strong><br>
+        Dirección Comercial: Av. Francisco de Miranda, Centro Lido, Torre A, Piso 12, Oficina 124. El Rosal, Caracas.<br>
+        Teléfono MediChat atención 24 horas: (0424) 213 21 12- Celular Coordinación de servicios: (0414) 901 03 52<br>
+        Correo: 24H@tudrencasa.com IG: @tudrencasa WEB: https://tudrencasa.com/
     </div>
 </body>
 </html>

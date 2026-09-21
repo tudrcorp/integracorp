@@ -179,6 +179,28 @@ final class HelpdeskTimelineBuilder
             ];
         }
 
+        if (preg_match('/Ticket reasignado\. Responsables anteriores: <strong>([^<]*)<\/strong>\. Nuevos responsables: <strong>([^<]*)<\/strong>/iu', $noteBody, $reassign) === 1) {
+            $from = trim(html_entity_decode($reassign[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            $to = trim(html_entity_decode($reassign[2], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+
+            return [
+                'type' => 'assignment_change',
+                'title' => 'Reasignación del ticket',
+                'summary' => $presentation['display_name'].' reasignó el caso: los responsables pasaron de «'.$from.'» a «'.$to.'». '
+                    .'Quien queda asignado es quien ejecuta el ticket. Registro en bitácora: '.$datetimeFull
+                    .' (referencia relativa: '.$relative.').',
+                'actor' => $actor,
+                'display_name' => $presentation['display_name'],
+                'initials' => $presentation['initials'],
+                'avatar_url' => $presentation['avatar_url'],
+                'at' => $at,
+                'datetime_full' => $datetimeFull,
+                'relative' => $relative,
+                'side' => $side,
+                'body_html' => self::renderBodyHtml($noteBody),
+            ];
+        }
+
         $plain = trim(html_entity_decode(strip_tags($noteBody), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 
         if (preg_match('/Prioridad actualizada de\s*(.+?)\s+a\s+(.+)$/u', $plain, $prioPlain) === 1) {

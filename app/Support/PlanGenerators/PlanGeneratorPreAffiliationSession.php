@@ -18,13 +18,120 @@ final class PlanGeneratorPreAffiliationSession
 
     public static function store(PlanGenerator $plan, string $type): void
     {
-        self::forget();
+        self::put(self::buildPayload($plan, $type));
+    }
 
-        $payload = self::buildPayload($plan, $type);
+    /**
+     * Guarda la sesión con la cobertura y el rango etario que eligió el
+     * analista, en vez de adivinar la primera columna de la matriz.
+     *
+     * `$people` es la cantidad de personas de **esta** afiliación (titular más
+     * beneficiarios), no la población que el rango lleva cotizada: el
+     * formulario individual abre un bloque de afiliado por persona y con la
+     * población del rango —que puede ser de cientos— la pantalla se vuelve
+     * inusable.
+     *
+     * @param  array<string, mixed>  $individualRow  fila de PlanGeneratorPreAffiliationOptions::individualRows()
+     */
+    public static function storeIndividual(PlanGenerator $plan, array $individualRow, int $people = 1): void
+    {
+        $payload = self::buildPayload($plan, self::TYPE_INDIVIDUAL);
+        $amounts = PlanGeneratorPreAffiliationOptions::amountsForPeople($individualRow, $people);
+
+        $payload['selection'] = [
+            'column_key' => $individualRow['column_key'] ?? null,
+            'column_label' => $individualRow['column_label'] ?? null,
+            'age_range_label' => $individualRow['age_range_label'] ?? null,
+            'people' => $amounts['people'],
+        ];
+        $payload['total_persons'] = $amounts['people'];
+        $payload['data_records'] = [self::dataRecordFromRow(
+            $plan,
+            [...$individualRow, ...$amounts, 'population' => $amounts['people']],
+            self::TYPE_INDIVIDUAL,
+        )];
+
+        self::put($payload);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $corporateRows  filas de PlanGeneratorPreAffiliationOptions::corporateRows()
+     */
+    public static function storeCorporate(PlanGenerator $plan, array $corporateRows): void
+    {
+        $payload = self::buildPayload($plan, self::TYPE_CORPORATE);
+
+        $records = [];
+        $population = 0;
+
+        foreach ($corporateRows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $records[] = self::dataRecordFromRow($plan, $row, self::TYPE_CORPORATE);
+            // Cada columna cubre a la misma población; se toma el mayor por si
+            // alguna cobertura no tarifa todos los rangos etarios.
+            $population = max($population, (int) ($row['population'] ?? 0));
+        }
+
+        $payload['selection'] = [
+            'column_keys' => array_values(array_map(
+                static fn (array $row): mixed => $row['column_key'] ?? null,
+                array_filter($corporateRows, 'is_array'),
+            )),
+        ];
+        $payload['total_persons'] = max(1, $population);
+        $payload['data_records'] = $records;
+
+        self::put($payload);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private static function put(array $payload): void
+    {
+        self::forget();
 
         session()->put(self::SESSION_KEY, $payload);
         session()->put('data_records', $payload['data_records']);
         session()->put('persons', $payload['total_persons']);
+    }
+
+    /**
+     * Registro que consumen los formularios de afiliación.
+     *
+     * `plan_id`, `coverage_id` y `age_range_id` van en cero o nulos a propósito:
+     * la matriz de un plan generado no referencia el catálogo de planes ni de
+     * coberturas, es su propia copia congelada. Lo que importa es la tarifa y
+     * los subtotales.
+     *
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private static function dataRecordFromRow(PlanGenerator $plan, array $row, string $type): array
+    {
+        $isCorporate = $type !== self::TYPE_INDIVIDUAL;
+
+        return [
+            'source' => 'plan_generator',
+            'plan_generator_id' => $plan->getKey(),
+            'column_key' => $row['column_key'] ?? null,
+            'header_label' => $row['column_label'] ?? null,
+            'age_range_label' => $row['age_range_label'] ?? null,
+            'individual_quote_id' => null,
+            'corporate_quote_id' => $isCorporate ? 0 : null,
+            'plan_id' => $isCorporate ? 0 : null,
+            'coverage_id' => null,
+            'age_range_id' => $isCorporate ? 0 : null,
+            'total_persons' => max(1, (int) ($row['population'] ?? 1)),
+            'fee' => (float) ($row['fee'] ?? 0),
+            'subtotal_anual' => (float) ($row['subtotal_anual'] ?? 0),
+            'subtotal_biannual' => (float) ($row['subtotal_biannual'] ?? 0),
+            'subtotal_quarterly' => (float) ($row['subtotal_quarterly'] ?? 0),
+            'subtotal_monthly' => (float) ($row['subtotal_monthly'] ?? 0),
+        ];
     }
 
     public static function isActive(): bool
@@ -57,6 +164,11 @@ final class PlanGeneratorPreAffiliationSession
         ]);
     }
 
+    /**
+     * Resumen de lo que el analista eligió pre-afiliar, para mostrarlo en el
+     * formulario de afiliación. Se arma desde `data_records` —lo elegido— y no
+     * desde todas las columnas de la matriz.
+     */
     public static function ratesSummary(): string
     {
         $payload = self::get();
@@ -66,23 +178,22 @@ final class PlanGeneratorPreAffiliationSession
         }
 
         $lines = [];
-        $columns = is_array($payload['columns'] ?? null) ? $payload['columns'] : [];
-        $groupTotals = is_array($payload['group_totals'] ?? null) ? $payload['group_totals'] : [];
 
-        foreach ($columns as $column) {
-            if (! is_array($column)) {
+        foreach (is_array($payload['data_records'] ?? null) ? $payload['data_records'] : [] as $record) {
+            if (! is_array($record)) {
                 continue;
             }
 
-            $columnKey = $column['column_key'] ?? null;
-            $label = (string) ($column['header_label'] ?? 'Plan');
+            $label = (string) ($record['header_label'] ?? 'Plan');
+            $ageRange = $record['age_range_label'] ?? null;
 
-            if (! is_string($columnKey) || $columnKey === '') {
-                continue;
+            if (is_string($ageRange) && $ageRange !== '') {
+                $label .= ' ('.$ageRange.')';
             }
 
-            $annual = (float) ($groupTotals['annual'][$columnKey] ?? 0);
-            $lines[] = $label.': '.PlanGeneratorGroupTotalCalculator::formatGroupTotal($annual).' anual';
+            $lines[] = $label.': '
+                .PlanGeneratorGroupTotalCalculator::formatGroupTotal((float) ($record['subtotal_anual'] ?? 0))
+                .' anual';
         }
 
         return $lines === [] ? '—' : implode(' · ', $lines);

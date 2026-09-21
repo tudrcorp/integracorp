@@ -5,11 +5,15 @@
 @php
     $regenerateAsyncUrl = $affiliationCorporate ? route('business.affiliation-corporate-documents.regenerate-async', $affiliationCorporate) : '';
     $sendEmailUrl = $affiliationCorporate ? route('business.affiliation-corporate-documents.send-email', $affiliationCorporate) : '';
+    $sendCarnetEmailsUrl = $affiliationCorporate ? route('business.affiliation-corporate-documents.send-carnet-emails', $affiliationCorporate) : '';
     $statusUrlTemplate = $affiliationCorporate ? route('business.affiliation-corporate-documents.status', ['affiliationCorporate' => $affiliationCorporate, 'taskId' => '__TASK_ID__']) : '';
+    $tarjetasUrl = $affiliationCorporate ? route('business.affiliation-corporate-documents.tarjetas', $affiliationCorporate) : '';
     $panelConfig = \Illuminate\Support\Js::from([
         'regenerateUrl' => $regenerateAsyncUrl,
         'sendEmailUrl' => $sendEmailUrl,
+        'sendCarnetEmailsUrl' => $sendCarnetEmailsUrl,
         'statusUrlTemplate' => $statusUrlTemplate,
+        'tarjetasUrl' => $tarjetasUrl,
     ]);
 @endphp
 
@@ -44,10 +48,10 @@
                 </svg>
                 <div>
                     <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                        Generando certificado y tarjetas corporativas...
+                        Generando certificado y carnets corporativos...
                     </p>
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        Si hay más de 3 afiliados, el sistema procesa por lotes automáticamente para mantener el rendimiento.
+                        El certificado y el PDF con todos los carnets aparecen apenas estén listos. Puede cerrar esta ventana: el proceso continúa en segundo plano.
                     </p>
                 </div>
                 <div x-show="progressPercentage !== null" x-cloak class="w-full max-w-md space-y-2">
@@ -81,32 +85,112 @@
         <p x-show="loadingMessage" x-cloak class="text-xs text-gray-500 dark:text-gray-400" x-text="loadingMessage"></p>
 
         <div x-show="regenerated" x-cloak x-transition class="space-y-4">
+            <div
+                x-show="backgroundWorking"
+                x-cloak
+                class="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-500/10"
+            >
+                <svg class="size-4 shrink-0 animate-spin text-amber-600 dark:text-amber-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-xs font-medium text-amber-800 dark:text-amber-200">
+                    Los carnets individuales se siguen generando en segundo plano.
+                    <span x-show="totalJobs" x-cloak x-text="`Lote ${processedJobs ?? 0} de ${totalJobs} — ETA ${formatEta(etaSeconds)}`"></span>
+                    Puede cerrar esta ventana.
+                </p>
+            </div>
+
             <article class="overflow-hidden rounded-3xl border border-gray-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-gray-900/70">
                 <div class="border-b border-gray-200/80 px-4 py-3 dark:border-white/10">
                     <p class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">Documentos generados</p>
                     <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                        Vista previa optimizada para lotes masivos
+                        Certificado y carnets en un solo PDF
                     </p>
                 </div>
 
                 <div class="space-y-3 bg-gray-50/80 p-3 dark:bg-gray-950/60">
-                    <div class="grid gap-2 md:grid-cols-2">
-                        <template x-for="(doc, index) in documents" :key="index">
+                    <div class="grid gap-2 md:grid-cols-3">
+                        <template x-for="(doc, index) in documents" :key="doc.filename">
                             <button
                                 type="button"
-                                @click="setActiveDocument(index)"
+                                @click="selectDocument(doc)"
                                 class="w-full rounded-2xl border px-3 py-2 text-left transition-colors"
-                                :class="activeDocumentIndex === index
+                                :class="isActiveDocument(doc)
                                     ? 'border-primary-500 bg-primary-50/80 text-primary-900 dark:border-primary-400 dark:bg-primary-900/20 dark:text-primary-100'
                                     : 'border-gray-200 bg-white/90 text-gray-700 hover:border-primary-300 dark:border-white/10 dark:bg-gray-900/70 dark:text-gray-200'"
                             >
                                 <p class="text-[0.68rem] uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                    <span x-text="doc.kind === 'certificate' ? 'Certificado' : 'Tarjeta'"></span>
+                                    <span x-text="doc.kind === 'certificate' ? 'Certificado' : (doc.kind === 'condicionado' ? 'Condiciones' : 'Carnets')"></span>
                                 </p>
                                 <p class="truncate text-sm font-semibold" x-text="doc.label"></p>
                                 <p class="truncate text-xs text-gray-500 dark:text-gray-400" x-text="doc.filename"></p>
                             </button>
                         </template>
+                    </div>
+
+                    <div class="space-y-2 rounded-2xl border border-gray-200/80 bg-white/90 p-3 dark:border-white/10 dark:bg-gray-900/70">
+                        <label
+                            class="block text-xs font-medium text-gray-600 dark:text-gray-400"
+                            for="affiliation-corporate-card-search-{{ $affiliationCorporate->getKey() }}"
+                        >
+                            Buscar un carnet individual por nombre o cédula
+                        </label>
+                        <input
+                            id="affiliation-corporate-card-search-{{ $affiliationCorporate->getKey() }}"
+                            type="search"
+                            x-model="tarjetaSearch"
+                            @input="searchTarjetas()"
+                            class="w-full rounded-2xl border border-gray-200/90 bg-white/95 px-4 py-2.5 text-sm text-gray-950 outline-none ring-1 ring-gray-950/5 placeholder:text-gray-400 focus:border-primary-400 focus:ring-2 focus:ring-primary-500/30 dark:border-white/10 dark:bg-gray-900/80 dark:text-white dark:placeholder:text-gray-500"
+                            placeholder="Ej.: Maria Lopez o V-12345678"
+                        />
+
+                        <p x-show="loadingTarjetas" x-cloak class="text-xs text-gray-500 dark:text-gray-400">Buscando carnets...</p>
+
+                        <p
+                            x-show="! loadingTarjetas && tarjetaDocuments.length === 0"
+                            x-cloak
+                            class="text-xs text-gray-500 dark:text-gray-400"
+                        >
+                            <span x-show="tarjetaSearch.trim() !== ''">No hay carnets que coincidan con la búsqueda.</span>
+                            <span x-show="tarjetaSearch.trim() === ''">Los carnets individuales aparecerán aquí a medida que se generen.</span>
+                        </p>
+
+                        <div class="grid gap-2 md:grid-cols-2">
+                            <template x-for="doc in tarjetaDocuments" :key="doc.filename">
+                                <button
+                                    type="button"
+                                    @click="selectDocument(doc)"
+                                    class="w-full rounded-2xl border px-3 py-2 text-left transition-colors"
+                                    :class="isActiveDocument(doc)
+                                        ? 'border-primary-500 bg-primary-50/80 text-primary-900 dark:border-primary-400 dark:bg-primary-900/20 dark:text-primary-100'
+                                        : 'border-gray-200 bg-white/90 text-gray-700 hover:border-primary-300 dark:border-white/10 dark:bg-gray-900/70 dark:text-gray-200'"
+                                >
+                                    <p class="truncate text-sm font-semibold" x-text="doc.label"></p>
+                                    <p class="truncate text-xs text-gray-500 dark:text-gray-400" x-text="doc.identification"></p>
+                                </button>
+                            </template>
+                        </div>
+
+                        <div x-show="tarjetaLastPage > 1" x-cloak class="flex items-center justify-between gap-3 pt-1">
+                            <button
+                                type="button"
+                                @click="goToTarjetaPage(tarjetaPage - 1)"
+                                :disabled="tarjetaPage <= 1"
+                                class="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-40 dark:border-white/10 dark:text-gray-200"
+                            >
+                                Anterior
+                            </button>
+                            <span class="text-xs text-gray-500 dark:text-gray-400" x-text="`Página ${tarjetaPage} de ${tarjetaLastPage} — ${tarjetaTotal} carnets`"></span>
+                            <button
+                                type="button"
+                                @click="goToTarjetaPage(tarjetaPage + 1)"
+                                :disabled="tarjetaPage >= tarjetaLastPage"
+                                class="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-40 dark:border-white/10 dark:text-gray-200"
+                            >
+                                Siguiente
+                            </button>
+                        </div>
                     </div>
 
                     <template x-if="activeDocument()">
@@ -146,7 +230,7 @@
                             type="email"
                             x-model="optionalEmail"
                             class="w-full rounded-2xl border border-gray-200/90 bg-white/95 px-4 py-2.5 text-sm text-gray-950 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)] outline-none ring-1 ring-gray-950/5 placeholder:text-gray-400 focus:border-primary-400 focus:ring-2 focus:ring-primary-500/30 dark:border-white/10 dark:bg-gray-900/80 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-primary-500"
-                            placeholder="Vacio = correo del agente o agencia (CC afiliaciones@tudrencasa.com; BCC solrodriguez@tudrencasa.com)"
+                            placeholder="Vacío = correo del agente o agencia (CC afiliaciones@tudrencasa.com; BCC solrodriguez@tudrencasa.com)"
                             autocomplete="email"
                         />
                     </div>
@@ -197,6 +281,75 @@
                     x-cloak
                     class="border-t border-gray-200/80 px-4 py-3 text-sm text-emerald-600 dark:border-white/10 dark:text-emerald-400"
                     x-text="emailMessage"
+                ></p>
+            </article>
+
+            <article
+                class="overflow-hidden rounded-3xl border border-gray-200/80 bg-white/80 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-gray-900/70"
+            >
+                <div class="border-b border-gray-200/80 px-4 py-3 dark:border-white/10">
+                    <p class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                        Envio a afiliados
+                    </p>
+                    <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                        Carnet a cada afiliado
+                    </p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        El envío sale en segundo plano para que pueda seguir trabajando. Cada afiliado recibe su carnet y el condicionado; el aviso llega a la campanita cuando termine.
+                    </p>
+                </div>
+                <div class="flex flex-col gap-3 bg-gray-50/80 p-4 dark:bg-gray-950/60 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                        No incluye el certificado. Solo carnet y condicionado, un correo por persona. Puede cerrar esta ventana apenas pulse enviar.
+                    </p>
+                    <button
+                        type="button"
+                        @click="sendCarnetEmails()"
+                        :disabled="sendingCarnetEmails || carnetEmailsQueued"
+                        class="aviso-btn-ios-primary inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98] disabled:opacity-60"
+                    >
+                        <svg
+                            x-show="! sendingCarnetEmails"
+                            class="size-5 shrink-0"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            aria-hidden="true"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+                            />
+                        </svg>
+                        <svg
+                            x-show="sendingCarnetEmails"
+                            x-cloak
+                            class="size-5 shrink-0 animate-spin"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                        >
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                        </svg>
+                        <span x-show="! sendingCarnetEmails && ! carnetEmailsQueued">Enviar carnets a afiliados</span>
+                        <span x-show="sendingCarnetEmails" x-cloak>Encolando...</span>
+                        <span x-show="carnetEmailsQueued && ! sendingCarnetEmails" x-cloak>Enviado a segundo plano</span>
+                    </button>
+                </div>
+                <p
+                    x-show="carnetEmailMessage"
+                    x-cloak
+                    class="border-t border-gray-200/80 px-4 py-3 text-sm text-emerald-600 dark:border-white/10 dark:text-emerald-400"
+                    x-text="carnetEmailMessage"
                 ></p>
             </article>
         </div>

@@ -23,6 +23,8 @@ final class HelpdeskEventRecorder
 
     public const TYPE_REOPEN = 'reopen';
 
+    public const TYPE_ASSIGNMENT_CHANGE = 'assignment_change';
+
     /**
      * @param  array<string, mixed>|null  $meta
      */

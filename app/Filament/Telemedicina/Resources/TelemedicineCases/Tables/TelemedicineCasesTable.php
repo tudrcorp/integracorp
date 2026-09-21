@@ -5,8 +5,8 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineCases\Tables;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\RegenerateTelemedicineCaseDocumentsAction;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\ReverseTelemedicineCaseAction;
 use App\Models\TelemedicineCase;
-use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
+use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
@@ -168,19 +168,7 @@ class TelemedicineCasesTable
                                 return null;
                             }
 
-                            $exitRecord = TelemedicineHistoryPatient::query()
-                                ->where('telemedicine_patient_id', $record->telemedicine_patient_id)
-                                ->exists();
-
-                            session()->forget('case');
-                            session()->forget('patient');
-                            session()->forget('exit_record');
-
-                            session(['case' => $case]);
-                            session(['patient' => $patient]);
-                            session(['exit_record' => $exitRecord]);
-
-                            return redirect()->route('filament.telemedicina.resources.telemedicine-consultation-patients.create', ['id' => $patient->id]);
+                            return redirect()->to(LabImagingResultsFollowUpRegistrar::startDoctorFollowUp($case, $patient));
                         })
                         ->hidden(fn (TelemedicineCase $record): bool => $record->status !== 'EN SEGUIMIENTO'),
                     RegenerateTelemedicineCaseDocumentsAction::make(),

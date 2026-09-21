@@ -2,30 +2,27 @@
 
 namespace App\Filament\Resources\Agencies\Tables;
 
-use Carbon\Carbon;
-use App\Models\User;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Http\Controllers\NotificationController;
 use App\Models\Agency;
 use App\Models\AgencyType;
-use Filament\Tables\Table;
+use App\Models\User;
+use Carbon\Carbon;
 use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Actions\ActionGroup;
-use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Filament\Actions\BulkActionGroup;
-use Illuminate\Support\Facades\Crypt;
 use Filament\Actions\DeleteBulkAction;
-use App\Http\Controllers\LogController;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Notifications\Notification;
-use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use App\Http\Controllers\AgencyController;
-use App\Http\Controllers\NotificationController;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class AgenciesTable
 {
@@ -54,7 +51,7 @@ class AgenciesTable
                             ->first()
                             ->definition;
 
-                        return $agency_type . ' - ';
+                        return $agency_type.' - ';
                     })
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -202,9 +199,7 @@ class AgenciesTable
                     ->label('MonEx-Direccion')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                //--------------------------------------------------------------------
-
-
+                // --------------------------------------------------------------------
 
                 IconColumn::make('tdec')
                     ->label('TDEC')
@@ -214,6 +209,11 @@ class AgenciesTable
                     ->label('TDEV')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: false),
+                IconColumn::make('is_referidor')
+                    ->label('Es Referidor')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                ReferidorPercentageField::column(),
                 TextColumn::make('commission_tdec')
                     ->label('(%) TDEC')
                     ->suffix('%')
@@ -223,6 +223,7 @@ class AgenciesTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
@@ -237,6 +238,7 @@ class AgenciesTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
@@ -251,6 +253,7 @@ class AgenciesTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
@@ -265,6 +268,7 @@ class AgenciesTable
                         if ($record->commission_tdec > 0) {
                             return 'success';
                         }
+
                         return 'warning';
                     })
                     ->numeric()
@@ -308,20 +312,20 @@ class AgenciesTable
                         return $query
                             ->when(
                                 $data['desde'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['hasta'] ?? null,
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde ' . Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta ' . Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
                         }
 
                         return $indicators;
@@ -351,7 +355,7 @@ class AgenciesTable
                                 $record->status = 'ACTIVO';
                                 $record->save();
 
-                                $user = new User();
+                                $user = new User;
                                 $user->name = $record->name_corporative;
                                 $user->email = $record->email;
                                 $user->password = Hash::make('12345678');
@@ -359,15 +363,16 @@ class AgenciesTable
                                 $user->phone = $record->phone;
                                 $user->code_agency = $record->code;
                                 $user->agency_type = $record->agency_type_id == 1 ? 'MASTER' : 'GENERAL';
-                                $user->link_agency = config('parameters.register_agency') . '/' . Crypt::encryptString($record->code);
+                                $user->link_agency = config('parameters.register_agency').'/'.Crypt::encryptString($record->code);
                                 $user->status = 'ACTIVO';
                                 $user->save();
 
                                 /**
-                                * Notificación por whatsapp
-                                * -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-                                * @param Agency $create_agency
-                                */
+                                 * Notificación por whatsapp
+                                 * -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                 *
+                                 * @param  Agency  $create_agency
+                                 */
                                 $phone = $record->phone;
                                 $email = $record->email;
                                 $nofitication = NotificationController::agency_activated($phone, $email, $record->agency_type_id == 1 ? config('parameters.PATH_MASTER') : config('parameters.PATH_GENERAL'));
@@ -376,10 +381,11 @@ class AgenciesTable
                                  * Notificacion por correo electronico
                                  * CARTA DE BIENVENIDA
                                  * ----------------------------------------------------------------------------------------------------------
-                                 * @param Agency $create_agency
+                                 *
+                                 * @param  Agency  $create_agency
                                  */
                                 $record->sendCartaBienvenida($record->code, $record->name_corporative, $record->email);
-                                
+
                             } catch (\Throwable $th) {
                                 Log::error($th);
                                 Notification::make()
@@ -395,12 +401,12 @@ class AgenciesTable
                         ->color('success')
                         ->requiresConfirmation(),
                     Action::make('Inactivate')
-                        ->action(fn(Agency $record) => $record->update(['status' => 'INACTIVO']))
+                        ->action(fn (Agency $record) => $record->update(['status' => 'INACTIVO']))
                         ->icon('heroicon-s-x-circle')
                         ->color('danger'),
                 ])
                     ->icon('heroicon-c-ellipsis-vertical')
-                    ->color('azulOscuro')
+                    ->color('azulOscuro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

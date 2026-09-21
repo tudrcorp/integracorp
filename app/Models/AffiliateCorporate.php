@@ -18,6 +18,7 @@ class AffiliateCorporate extends Model
         'birth_date',
         'age',
         'sex',
+        'relationship',
         'phone',
         'email',
         'condition_medical',
@@ -44,6 +45,7 @@ class AffiliateCorporate extends Model
         'document_ils',
         'document',
         'business_unit_id',
+        'specific_business_unit',
         'business_line_id',
     ];
 

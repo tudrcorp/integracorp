@@ -112,10 +112,27 @@ final class CoordinationServiceAccess
         string $category,
         ?bool $coverage,
         ?User $user = null,
+        bool $isCoveredWithoutInventory = false,
     ): bool {
         $user ??= Auth::user();
 
         if (! $user instanceof User) {
+            return false;
+        }
+
+        if (
+            $isCoveredWithoutInventory
+            && $category === 'Medicamento'
+            && $coverage === true
+        ) {
+            if (OperationsSupplierScope::authenticatedUserIsTdgAnalyst()) {
+                return true;
+            }
+
+            if (OperationsSupplierScope::currentSupplierId() === null) {
+                return true;
+            }
+
             return false;
         }
 

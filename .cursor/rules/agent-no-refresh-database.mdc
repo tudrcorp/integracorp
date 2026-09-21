@@ -1,9 +1,34 @@
 ---
-description: El agente no debe usar RefreshDatabase ni migrate:fresh en sus actividades
+description: Prohibido destruir, vaciar o truncar la base de datos de desarrollo
 alwaysApply: true
 ---
 
-# Base de datos en pruebas (agente)
+# Protección absoluta de la base de datos (desarrollo)
 
-- No ejecutes ni sugieras como solución habitual el trait `RefreshDatabase`, `DatabaseMigrations`, `migrate:fresh` ni `migrate:refresh` para correr o arreglar tests, salvo que el usuario lo pida de forma explícita.
-- Prefiere tests que no requieran recrear la base, filtros acotados (`--filter`, archivo concreto) y el entorno de test ya configurado en el proyecto.
+Está **prohibido** ejecutar, sugerir o encadenar cualquier comando, script, trait o SQL que elimine, vacíe, trunque o recree la base de datos de desarrollo. Los datos locales son irreemplazables y deben resguardarse siempre.
+
+## Comandos y acciones prohibidos (salvo petición explícita y consciente del usuario)
+
+- `php artisan migrate:fresh`
+- `php artisan migrate:refresh`
+- `php artisan migrate:reset`
+- `php artisan db:wipe`
+- `php artisan schema:dump` con recarga destructiva
+- `DROP DATABASE`, `DROP TABLE`, `TRUNCATE`, `DELETE FROM` masivos
+- Traits `RefreshDatabase`, `DatabaseMigrations`, `LazilyRefreshDatabase` usados contra la base real de desarrollo
+- Cualquier seed que borre tablas (`Model::truncate()`, `DB::table()->delete()`) sobre datos reales
+- Recrear el esquema de MySQL/MariaDB de Herd/local
+- Invocar `GET /truncate`, `/pp`, `/notify` u otras rutas de debug en `routes/web.php` que muten datos
+
+## Qué sí se permite
+
+- `php artisan migrate` (solo migraciones pendientes, nunca fresh/refresh/wipe)
+- Tests filtrados (`php artisan test --filter=...` o un archivo concreto)
+- El entorno de test ya configurado en `phpunit.xml` (SQLite en memoria `:memory:`). Eso no toca la base de desarrollo.
+- Lecturas (`SELECT`) y cambios puntuales de código/datos que el usuario pida
+
+## Pruebas
+
+- No uses `RefreshDatabase` / `migrate:fresh` como “solución” para hacer pasar tests contra la base de desarrollo.
+- Prefiere tests unitarios, SQLite en memoria cuando el test lo exige (`ensureSqliteInMemoryDatabaseOrSkip()`), y filtros acotados.
+- Nunca apuntes PHPUnit/Pest a la conexión MySQL de desarrollo para recrear el esquema.

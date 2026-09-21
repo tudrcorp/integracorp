@@ -7,6 +7,8 @@ namespace App\Support;
 use App\Http\Controllers\CorporateQuoteController;
 use App\Models\Agency;
 use App\Models\CorporateQuote;
+use App\Support\TuDrQuote\QuoteDocumentLayout;
+use App\Support\TuDrQuote\QuoteServiceAttempt;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -29,6 +31,15 @@ class CorporateQuotePdfGenerator
 
         if ($details === null) {
             return false;
+        }
+
+        /**
+         * La población corporativa va agregada por rango de edad: el servicio
+         * recibe las filas ya calculadas, no los 2.681 asegurados de una
+         * cotización grande.
+         */
+        if (QuoteServiceAttempt::generate((int) $record->id, QuoteDocumentLayout::SCOPE_CORPORATE, $details)) {
+            return true;
         }
 
         CorporateQuoteController::generatePdf($details, Auth::id(), $layout);
@@ -89,6 +100,16 @@ class CorporateQuotePdfGenerator
         }
 
         usort($groupDetails, fn (array $a, array $b): int => (int) $a['plan'] <=> (int) $b['plan']);
+
+        /**
+         * La propuesta multiplan también la dibuja el microservicio: una
+         * página de cálculos por plan dentro del mismo documento. Si no está
+         * disponible o algún plan no es de los que sabe dibujar, la arma
+         * entera el generador local, nunca a medias.
+         */
+        if (QuoteServiceAttempt::generateMultiple((int) $record->id, QuoteDocumentLayout::SCOPE_CORPORATE, $groupDetails)) {
+            return true;
+        }
 
         CorporateQuoteController::generatePdfMultiple($groupDetails, Auth::id());
 

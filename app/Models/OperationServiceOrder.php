@@ -2,11 +2,18 @@
 
 namespace App\Models;
 
+use App\Observers\OperationServiceStatisticObserver;
+use App\Support\Telemedicine\Scopes\HideDeletedTelemedicineCaseServiceOrdersScope;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Schema;
 
+#[ObservedBy([OperationServiceStatisticObserver::class])]
+#[ScopedBy([HideDeletedTelemedicineCaseServiceOrdersScope::class])]
 class OperationServiceOrder extends Model
 {
     //
@@ -28,6 +35,7 @@ class OperationServiceOrder extends Model
         'total_amount_ves',
         'payment_method',
         'status',
+        'administrative_status',
         'is_courtesy',
         'approved_at',
         'appointment_at',
@@ -40,6 +48,15 @@ class OperationServiceOrder extends Model
         'total_items_unit',
         'files',
         'status_payment',
+        'invoice_number',
+        'invoice_control_number',
+        'invoice_date',
+        'invoice_registration_date',
+        'invoice_amount_usd',
+        'invoice_amount_ves',
+        'invoice_file_path',
+        'invoice_uploaded_by',
+        'invoice_uploaded_at',
         'service_order_pdf_path',
         'associated_quote_pdf_path',
         'uploaded_documents',
@@ -50,6 +67,9 @@ class OperationServiceOrder extends Model
         return [
             'approved_at' => 'datetime',
             'appointment_at' => 'datetime',
+            'invoice_date' => 'date',
+            'invoice_registration_date' => 'date',
+            'invoice_uploaded_at' => 'datetime',
             'total_items' => 'integer',
             'total_items_unit' => 'integer',
             'files' => 'array',
@@ -117,6 +137,18 @@ class OperationServiceOrder extends Model
             if ($order->approved_at === null) {
                 $order->approved_at = now();
             }
+
+            if (! Schema::hasColumn($order->getTable(), 'administrative_status')) {
+                return;
+            }
+
+            if (! filled($order->administrative_status)) {
+                $order->administrative_status = 'PENDIENTE';
+
+                return;
+            }
+
+            $order->administrative_status = mb_strtoupper(trim((string) $order->administrative_status));
         });
     }
 }

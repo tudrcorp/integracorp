@@ -29,9 +29,14 @@ use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierAcc
 use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierNewProviderCreationChart;
 use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierObservationsChart;
 use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Widgets\SupplierProviderSystemUpdateChart;
+use App\Filament\Shared\Renovations\Widgets\CorporateRenovationKpisWidget;
+use App\Filament\Shared\Renovations\Widgets\IndividualRenovationKpisWidget;
 use App\Listeners\LogFilamentImportActivity;
+use App\Listeners\StampPlanGeneratorPopulationImport;
 use App\Models\ObservationCommercialStructure;
+use App\Models\PlanGenerator;
 use App\Observers\ObservationCommercialStructureObserver;
+use App\Observers\PlanGeneratorObserver;
 use App\Support\UserSessionAuditTracker;
 use Filament\Actions\Imports\Events\ImportChunkProcessed;
 use Filament\Actions\Imports\Events\ImportCompleted;
@@ -76,6 +81,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(Logout::class, [UserSessionAuditTracker::class, 'onLogout']);
 
         Event::listen(ImportStarted::class, [LogFilamentImportActivity::class, 'handleStarted']);
+        Event::listen(ImportStarted::class, [StampPlanGeneratorPopulationImport::class, 'handle']);
         Event::listen(ImportChunkProcessed::class, [LogFilamentImportActivity::class, 'handleChunkProcessed']);
         Event::listen(ImportCompleted::class, [LogFilamentImportActivity::class, 'handleCompleted']);
         Event::listen(JobFailed::class, [LogFilamentImportActivity::class, 'handleJobFailed']);
@@ -109,6 +115,8 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.supplier-provider-system-update-chart', SupplierProviderSystemUpdateChart::class);
         Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.supplier-new-provider-creation-chart', SupplierNewProviderCreationChart::class);
         Livewire::component('app.filament.operations.resources.indicadores-de-desempeno.widgets.supplier-acceptance-letters-chart', SupplierAcceptanceLettersChart::class);
+        Livewire::component('app.filament.shared.renovations.widgets.individual-renovation-kpis-widget', IndividualRenovationKpisWidget::class);
+        Livewire::component('app.filament.shared.renovations.widgets.corporate-renovation-kpis-widget', CorporateRenovationKpisWidget::class);
 
         FilamentTimezone::set('America/Caracas');
 
@@ -118,6 +126,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         ObservationCommercialStructure::observe(ObservationCommercialStructureObserver::class);
+        PlanGenerator::observe(PlanGeneratorObserver::class);
 
         FilamentColor::register([
             'azulOscuro' => Color::hex('#052F60'),

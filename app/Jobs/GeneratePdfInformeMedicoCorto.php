@@ -5,10 +5,12 @@ namespace App\Jobs;
 use App\Mail\SendMailPropuestaPlanInicial;
 use App\Models\OperationDocumentList;
 use App\Models\TelemedicineConsultationPatient;
-use App\Models\User;
 use App\Services\NotificationTelemedicinaService;
+use App\Support\Telemedicine\Concerns\LogsTelemedicineJobFailures;
 use App\Support\Telemedicine\TelemedicineCaseDocumentReadyNotification;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\Telemedicine\TelemedicineConsultationUploadedDocuments;
+use App\Support\Telemedicine\TelemedicineInformePdfRenderer;
+use App\Support\Telemedicine\TelemedicineJobFailureLogger;
 use Filament\Notifications\Notification;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,13 +18,12 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 class GeneratePdfInformeMedicoCorto implements ShouldQueue
 {
-    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, LogsTelemedicineJobFailures, Queueable, SerializesModels;
 
     protected $data = [];
 
@@ -65,20 +66,24 @@ class GeneratePdfInformeMedicoCorto implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->generatePDF($this->data);
+        $this->runWithTelemedicineFailureLogging(function (): void {
+            $this->generatePDF($this->data);
 
-        $name_pdf = $this->data['ci_patient'].'-'.$this->data['code_reference'].'-'.$this->type_document.'.pdf';
+            $name_pdf = $this->data['ci_patient'].'-'.$this->data['code_reference'].'-'.$this->type_document.'.pdf';
 
-        TelemedicineCaseDocumentReadyNotification::send($this->user, $this->data, $name_pdf);
+            TelemedicineCaseDocumentReadyNotification::send($this->user, $this->data, $name_pdf);
+        }, $this->telemedicineJobFailureContext());
     }
 
     private function generatePDF($data)
     {
-        ini_set('memory_limit', '2048M');
-
-        $pdf = Pdf::loadView('documents.informe-medico-corto', compact('data'));
         $name_pdf = $data['ci_patient'].'-'.$data['code_reference'].'-'.$this->type_document.'.pdf';
-        $pdf->save(public_path('storage/telemedicina-doc/'.$name_pdf));
+
+        TelemedicineInformePdfRenderer::save(
+            TelemedicineInformePdfRenderer::VIEW_CORTO,
+            $data,
+            'telemedicina-doc/'.$name_pdf,
+        );
 
         $this->syncConsultationUploadedDocuments($data, $name_pdf);
 
@@ -112,21 +117,17 @@ class GeneratePdfInformeMedicoCorto implements ShouldQueue
             $defaultDocumentTypeName = 'INFORME MEDICO CONSULTA INICIAL (CORTO)';
         }
 
-        $existingDocuments = is_array($consultation->uploaded_documents)
-            ? $consultation->uploaded_documents
-            : [];
-
-        $newDocument = [
+        // Reemplaza la entrada previa de este tipo en vez de acumularla: con
+        // array_merge cada regeneración dejaba un duplicado más, y el catálogo
+        // —que deduplica— acababa mostrando la copia más antigua, como si el
+        // documento no se hubiese vuelto a generar.
+        TelemedicineConsultationUploadedDocuments::sync($consultation, [
             'document_name' => $namePdf,
             'file_path' => 'telemedicina-doc/'.$namePdf,
             'document_type_ids' => [$defaultDocumentTypeId],
             'document_types' => [$defaultDocumentTypeName],
             'uploaded_at' => now()->toDateTimeString(),
-        ];
-
-        $consultation->update([
-            'uploaded_documents' => array_values(array_merge($existingDocuments, [$newDocument])),
-        ]);
+        ], $defaultDocumentTypeId);
     }
 
     private function sendNotifications($data)
@@ -141,16 +142,24 @@ class GeneratePdfInformeMedicoCorto implements ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
-        Log::info('GeneratePdfInformeMedicoCorto: FAILED');
-        Log::error($exception->getMessage());
+        $this->logTelemedicineJobFailure($exception, $this->telemedicineJobFailureContext());
 
         Notification::make()
             ->title('¡TAREA NO COMPLETADA!')
             ->body('Hubo un error en la creación la Referencia. Por favor, contacte con el administrador del Sistema.')
             ->danger()
             ->sendToDatabase($this->user);
+    }
 
-        // Send user notification of failure, etc...
-
+    /**
+     * @return array<string, mixed>
+     */
+    private function telemedicineJobFailureContext(): array
+    {
+        return TelemedicineJobFailureLogger::documentJobContext(
+            is_array($this->data) ? $this->data : [],
+            $this->user,
+            $this->type_document !== null ? (string) $this->type_document : null,
+        );
     }
 }

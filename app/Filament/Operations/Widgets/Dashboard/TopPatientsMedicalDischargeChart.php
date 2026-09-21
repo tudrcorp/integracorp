@@ -7,6 +7,7 @@ namespace App\Filament\Operations\Widgets\Dashboard;
 use App\Support\Operations\OperationsDashboardMetrics;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Contracts\Support\Htmlable;
 
 class TopPatientsMedicalDischargeChart extends ChartWidget
 {
@@ -24,47 +25,47 @@ class TopPatientsMedicalDischargeChart extends ChartWidget
 
     protected int|string|array $columnSpan = 'full';
 
-    public ?int $selectedPatientId = null;
+    public ?string $selectedPatientKey = null;
 
     public ?string $selectedPatientName = null;
 
     /**
-     * Índices del gráfico overview → ID de paciente (para el clic en barras).
+     * Índices del gráfico overview → clave del paciente en la tabla de hechos.
      *
-     * @var array<int, int>
+     * @var array<int, string>
      */
-    public array $chartPatientIds = [];
+    public array $chartPatientKeys = [];
 
     public function handleChartClick(array $payload): void
     {
-        if ($this->selectedPatientId !== null) {
+        if ($this->selectedPatientKey !== null) {
             return;
         }
 
         $index = (int) ($payload['index'] ?? -1);
-        $patientId = $this->chartPatientIds[$index] ?? null;
+        $patientKey = $this->chartPatientKeys[$index] ?? null;
 
-        if ($patientId === null || $patientId <= 0) {
+        if (! is_string($patientKey) || $patientKey === '') {
             return;
         }
 
         $patientName = OperationsDashboardMetrics::topPatientsByMedicalDischargeCases(20)
-            ->firstWhere('telemedicine_patient_id', $patientId)
+            ->firstWhere('patient_key', $patientKey)
             ?->full_name;
 
-        $this->selectedPatientId = $patientId;
+        $this->selectedPatientKey = $patientKey;
         $this->selectedPatientName = filled($patientName)
             ? (string) $patientName
-            : "Paciente #{$patientId}";
+            : 'Paciente';
 
         $this->refreshChart();
     }
 
     public function resetToPatientsOverview(): void
     {
-        $this->selectedPatientId = null;
+        $this->selectedPatientKey = null;
         $this->selectedPatientName = null;
-        $this->chartPatientIds = [];
+        $this->chartPatientKeys = [];
         $this->refreshChart();
     }
 
@@ -79,8 +80,8 @@ class TopPatientsMedicalDischargeChart extends ChartWidget
      */
     protected function getData(): array
     {
-        if ($this->selectedPatientId !== null) {
-            return $this->buildPatientCasesChart($this->selectedPatientId);
+        if ($this->selectedPatientKey !== null) {
+            return $this->buildPatientCasesChart($this->selectedPatientKey);
         }
 
         return $this->buildTopPatientsChart();
@@ -96,17 +97,17 @@ class TopPatientsMedicalDischargeChart extends ChartWidget
         $labels = [];
         $values = [];
         $names = [];
-        $this->chartPatientIds = [];
+        $this->chartPatientKeys = [];
 
         foreach ($topPatients as $row) {
             $name = filled($row->full_name)
                 ? (string) $row->full_name
-                : "Paciente #{$row->telemedicine_patient_id}";
+                : 'Paciente';
 
             $labels[] = mb_strlen($name) > 28 ? mb_substr($name, 0, 25).'…' : $name;
             $names[] = $name;
             $values[] = (int) $row->total;
-            $this->chartPatientIds[] = (int) $row->telemedicine_patient_id;
+            $this->chartPatientKeys[] = (string) $row->patient_key;
         }
 
         return [
@@ -119,24 +120,35 @@ class TopPatientsMedicalDischargeChart extends ChartWidget
         ];
     }
 
+    public function getDescription(): string|Htmlable|null
+    {
+        if ($this->selectedPatientKey !== null) {
+            return 'Pasa el cursor sobre cada barra para ver el resumen del caso.';
+        }
+
+        return $this->description;
+    }
+
     /**
      * @return array<string, mixed>
      */
-    protected function buildPatientCasesChart(int $patientId): array
+    protected function buildPatientCasesChart(string $patientKey): array
     {
-        $cases = OperationsDashboardMetrics::medicalDischargeCasesForPatient($patientId);
+        $cases = OperationsDashboardMetrics::medicalDischargeCasesForPatient($patientKey);
 
         $labels = [];
         $values = [];
         $names = [];
+        $summaries = [];
 
         foreach ($cases as $case) {
-            $label = filled($case->code) ? (string) $case->code : "Caso #{$case->id}";
-            $date = $case->updated_at?->format('d/m/Y') ?? $case->created_at?->format('d/m/Y') ?? '—';
+            $label = filled($case->code) ? (string) $case->code : 'Caso #'.$case->id;
+            $date = self::formatFactDate($case->service_on ?? $case->started_on);
 
             $labels[] = $label;
             $names[] = "{$label} · {$date}";
             $values[] = 1;
+            $summaries[] = OperationsDashboardMetrics::medicalDischargeCaseHoverLines($case);
         }
 
         return [
@@ -144,7 +156,10 @@ class TopPatientsMedicalDischargeChart extends ChartWidget
                 $this->makeBarDataset(
                     "Altas médicas · {$this->selectedPatientName}",
                     $values,
-                    ['names' => $names],
+                    [
+                        'names' => $names,
+                        'summaries' => $summaries,
+                    ],
                 ),
             ],
             'labels' => $labels,
@@ -192,18 +207,21 @@ class TopPatientsMedicalDischargeChart extends ChartWidget
 
     protected function getOptions(): RawJs
     {
-        $tooltipFooter = $this->selectedPatientId === null
-            ? 'Haz clic para ver los casos del paciente'
-            : '';
+        $isDetail = $this->selectedPatientKey !== null;
+        $tooltipFooter = $isDetail
+            ? ''
+            : 'Haz clic para ver los casos del paciente';
+        $displayColors = $isDetail ? 'false' : 'true';
+        $tooltipPadding = $isDetail ? '12' : '10';
 
-        $options = <<<'JS'
+        $options = <<<JS
         {
             onClick: (event, elements) => {
                 if (!elements || !elements.length) {
                     return;
                 }
 
-                $wire.handleChartClick({
+                \$wire.handleChartClick({
                     index: elements[0].index
                 });
             },
@@ -237,14 +255,18 @@ class TopPatientsMedicalDischargeChart extends ChartWidget
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: 'rgba(22, 22, 24, 0.56)',
+                    backgroundColor: 'rgba(22, 22, 24, 0.78)',
                     titleColor: '#f5f5f7',
-                    bodyColor: 'rgba(235, 235, 245, 0.88)',
+                    bodyColor: 'rgba(235, 235, 245, 0.92)',
                     footerColor: 'rgba(235, 235, 245, 0.7)',
                     borderColor: 'rgba(255, 255, 255, 0.2)',
                     borderWidth: 1,
-                    padding: 10,
+                    padding: {$tooltipPadding},
                     cornerRadius: 12,
+                    displayColors: {$displayColors},
+                    bodySpacing: 4,
+                    titleMarginBottom: 8,
+                    boxPadding: 6,
                     callbacks: {
                         title: function(context) {
                             const item = context[0];
@@ -257,7 +279,23 @@ class TopPatientsMedicalDischargeChart extends ChartWidget
                             return item.label;
                         },
                         label: function(context) {
+                            const dataset = context.dataset || {};
+
+                            if (dataset.summaries && dataset.summaries[context.dataIndex]) {
+                                return [];
+                            }
+
                             return ' Casos: ' + context.raw;
+                        },
+                        afterBody: function(context) {
+                            const item = context[0];
+                            const dataset = item.dataset || {};
+
+                            if (dataset.summaries && dataset.summaries[item.dataIndex]) {
+                                return dataset.summaries[item.dataIndex];
+                            }
+
+                            return [];
                         },
                         footer: () => '__TOOLTIP_FOOTER__'
                     }
@@ -298,5 +336,24 @@ class TopPatientsMedicalDischargeChart extends ChartWidget
     protected function getType(): string
     {
         return 'bar';
+    }
+
+    private static function formatFactDate(mixed $value): string
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('d/m/Y');
+        }
+
+        $text = trim((string) $value);
+
+        if ($text === '') {
+            return '—';
+        }
+
+        try {
+            return \Carbon\Carbon::parse($text)->format('d/m/Y');
+        } catch (\Throwable) {
+            return $text;
+        }
     }
 }

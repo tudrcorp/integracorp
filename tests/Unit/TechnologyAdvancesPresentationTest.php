@@ -20,13 +20,62 @@ it('expone la vista technology-advances-presentation con navegación e interacti
     $headerPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-app-header.blade.php';
     $controllerPath = dirname(__DIR__, 2).'/app/Http/Controllers/TechnologyAdvancesPresentationController.php';
 
+    $devicesPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-pwa-devices.blade.php';
+    $portalDevicesPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-portal-login-devices.blade.php';
+    $portalLoginPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-portal-login-screen.blade.php';
+    $portalLoginImagePath = dirname(__DIR__, 2).'/public/image/storefront/portal-paciente-login.jpg';
+    $marketingDevicesPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-marketing-devices.blade.php';
+    $marketingLoginPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-marketing-login-screen.blade.php';
+    $marketingLandingPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-marketing-landing-screen.blade.php';
+    $marketingCasaImagePath = dirname(__DIR__, 2).'/public/image/storefront/tdg-casa-bg.jpg';
+    $marketingViajesImagePath = dirname(__DIR__, 2).'/public/image/storefront/tdg-viajes-bg.jpg';
+    $sistemasDevicesPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-sistemas-devices.blade.php';
+    $sistemasHubPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-sistemas-hub-screen.blade.php';
+    $sistemasHeroImagePath = dirname(__DIR__, 2).'/public/image/presentaciones-sistemas-bg.png';
+    $mailchimpLogoPath = dirname(__DIR__, 2).'/public/image/brands/mailchimp-logo.svg';
+    $mailchimpMarkPath = dirname(__DIR__, 2).'/public/image/brands/mailchimp-freddie.svg';
+    $mailchimpBridgePartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-mailchimp-bridge.blade.php';
+    $opsAdminPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-ops-admin-modals.blade.php';
+    $intraDevicesPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-intra-devices.blade.php';
+    $intraIndexPartialPath = dirname(__DIR__, 2).'/resources/views/partials/presentation-intra-index-screen.blade.php';
+
     expect(file_exists($viewPath))->toBeTrue()
         ->and(file_exists($headerPath))->toBeTrue()
-        ->and(file_exists($controllerPath))->toBeTrue();
+        ->and(file_exists($controllerPath))->toBeTrue()
+        ->and(file_exists($devicesPartialPath))->toBeTrue()
+        ->and(file_exists($portalDevicesPartialPath))->toBeTrue()
+        ->and(file_exists($portalLoginPartialPath))->toBeTrue()
+        ->and(file_exists($portalLoginImagePath))->toBeTrue()
+        ->and(file_exists($marketingDevicesPartialPath))->toBeTrue()
+        ->and(file_exists($marketingLoginPartialPath))->toBeTrue()
+        ->and(file_exists($marketingLandingPartialPath))->toBeTrue()
+        ->and(file_exists($marketingCasaImagePath))->toBeTrue()
+        ->and(file_exists($marketingViajesImagePath))->toBeTrue()
+        ->and(file_exists($sistemasDevicesPartialPath))->toBeTrue()
+        ->and(file_exists($sistemasHubPartialPath))->toBeTrue()
+        ->and(file_exists($sistemasHeroImagePath))->toBeTrue()
+        ->and(file_exists($mailchimpLogoPath))->toBeTrue()
+        ->and(file_exists($mailchimpMarkPath))->toBeTrue()
+        ->and(file_exists($mailchimpBridgePartialPath))->toBeTrue()
+        ->and(file_exists($opsAdminPartialPath))->toBeTrue()
+        ->and(file_exists($intraDevicesPartialPath))->toBeTrue()
+        ->and(file_exists($intraIndexPartialPath))->toBeTrue();
 
     $viewContents = file_get_contents($viewPath);
     $headerContents = file_get_contents($headerPath);
     $controllerContents = file_get_contents($controllerPath);
+    $devicesPartial = file_get_contents($devicesPartialPath);
+    $portalDevicesPartial = file_get_contents($portalDevicesPartialPath);
+    $portalLoginPartial = file_get_contents($portalLoginPartialPath);
+    $marketingDevicesPartial = file_get_contents($marketingDevicesPartialPath);
+    $marketingLoginPartial = file_get_contents($marketingLoginPartialPath);
+    $marketingLandingPartial = file_get_contents($marketingLandingPartialPath);
+    $sistemasDevicesPartial = file_get_contents($sistemasDevicesPartialPath);
+    $sistemasHubPartial = file_get_contents($sistemasHubPartialPath);
+    $intraDevicesPartial = file_get_contents($intraDevicesPartialPath);
+    $intraIndexPartial = file_get_contents($intraIndexPartialPath);
+    $mailchimpBridgePartial = file_get_contents($mailchimpBridgePartialPath);
+    $opsAdminPartial = file_get_contents($opsAdminPartialPath);
 
     expect($controllerContents)
         ->toContain("return view('technology-advances-presentation'")
@@ -55,9 +104,130 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('Apps (fila 1) → API (fila 2) → BD (fila 3)')
         ->toContain('@json($slides)')
         ->toContain('partials.presentation-theme-styles')
+        ->toContain('presentation-badge')
+        ->toContain('presentation-badge--module')
+        ->toContain('presentation-badge--chip')
         ->toContain('partials.presentation-theme-script')
         ->toContain('data-theme')
-        ->toContain('color-scheme');
+        ->toContain('color-scheme')
+        ->toContain('cover-tracks')
+        ->toContain('lifecycle-step')
+        ->toContain('hub-url')
+        ->toContain('flow-rail')
+        ->toContain('pwa-devices')
+        ->toContain('partials.presentation-pwa-devices')
+        ->toContain('partials.presentation-portal-login-devices')
+        ->toContain('portal-devices')
+        ->toContain('portal-monitor')
+        ->toContain('partials.presentation-marketing-devices')
+        ->toContain('mkt-devices')
+        ->toContain('partials.presentation-sistemas-devices')
+        ->toContain('sys-devices')
+        ->toContain('partials.presentation-intra-devices')
+        ->toContain('intra-devices')
+        ->toContain("\$slide['type'] === 'integration'")
+        ->toContain('partials.presentation-mailchimp-bridge')
+        ->toContain('mc-bridge')
+        ->toContain("\$slide['type'] === 'ops-admin'")
+        ->toContain('partials.presentation-ops-admin-modals')
+        ->toContain('os-modals')
+        ->toContain('os-flow');
+
+    expect($devicesPartial)
+        ->toContain('pwa-device--phone')
+        ->not->toContain('pwa-device--tablet')
+        ->toContain('pwa-welcome')
+        ->toContain('pwa-plans')
+        ->toContain('image/storefront/welcome')
+        ->toContain('Tu propia')
+        ->toContain('iPhone · Planes');
+
+    expect($portalDevicesPartial)
+        ->toContain('pwa-device--phone')
+        ->toContain('portal-monitor')
+        ->toContain('iPhone · Login')
+        ->toContain('PC · Login')
+        ->not->toContain('iPad');
+
+    expect($portalLoginPartial)
+        ->toContain('Portal del paciente')
+        ->toContain('Entrar al portal')
+        ->toContain('Documento de Identificación')
+        ->toContain('image/storefront/portal-paciente-login.jpg');
+
+    expect($marketingDevicesPartial)
+        ->toContain('pwa-device--phone')
+        ->toContain('pwa-device--tablet')
+        ->toContain('portal-monitor')
+        ->toContain('iPhone · Acceso')
+        ->toContain('iPad · Acceso')
+        ->toContain('PC · Landing');
+
+    expect($marketingLoginPartial)
+        ->toContain('Iniciar sesión')
+        ->toContain('Aplicación de Marketing')
+        ->toContain('Correo electrónico');
+
+    expect($marketingLandingPartial)
+        ->toContain('Acceso al panel')
+        ->toContain('Tu Dr en Casa')
+        ->toContain('Tu Dr en Viajes')
+        ->toContain('tdg-casa-bg.jpg');
+
+    expect($sistemasDevicesPartial)
+        ->toContain('pwa-device--phone')
+        ->toContain('portal-monitor')
+        ->toContain('iPhone · Identidad')
+        ->toContain('PC · Panel')
+        ->toContain('dpto-tecnologia-sistemas');
+
+    expect($sistemasHubPartial)
+        ->toContain('Departamento de Sistemas')
+        ->toContain('Verifica tu identidad')
+        ->toContain('presentaciones-sistemas-bg.png')
+        ->toContain('Presentaciones');
+
+    expect($intraDevicesPartial)
+        ->toContain('portal-monitor')
+        ->toContain('intra.tudrgroup.com')
+        ->toContain('PC · Índice');
+
+    expect($intraIndexPartial)
+        ->toContain('Índice de portales')
+        ->toContain('Producción')
+        ->toContain('Desarrollo')
+        ->toContain('Tecnología y Sistemas')
+        ->toContain('Integracorp App');
+
+    expect($mailchimpBridgePartial)
+        ->toContain('mc-brand__logo--light')
+        ->toContain('mc-brand__logo--dark')
+        ->toContain('logoNewTDG.png')
+        ->toContain('logoTDG.png');
+
+    expect($opsAdminPartial)
+        ->toContain('Cargar factura del proveedor')
+        ->toContain('Cargar comprobante de pago')
+        ->toContain('Documento de la factura')
+        ->toContain('Datos para cuentas por pagar')
+        ->toContain('Guardar factura')
+        ->toContain('Guardar comprobante')
+        ->toContain('os-modal--invoice')
+        ->toContain('os-modal--receipt')
+        ->toContain('os-bridge')
+        ->toContain('1 OS = 1 CxP');
+
+    $themePath = dirname(__DIR__, 2).'/resources/views/partials/presentation-theme-styles.blade.php';
+    $themeContents = file_get_contents($themePath);
+
+    expect($themeContents)
+        ->toContain('.presentation-badge')
+        ->toContain('html[data-theme="dark"] .presentation-badge')
+        ->toContain('.presentation-badge--module')
+        ->toContain('.presentation-badge--chip')
+        ->toContain('html[data-theme="dark"] .mc-brand--mailchimp')
+        ->toContain('html[data-theme="dark"] .mc-brand__logo--dark')
+        ->toContain('html[data-theme="dark"] .os-modal');
 
     expect($headerContents)
         ->toContain('id="btn-overview"')
@@ -70,14 +240,24 @@ it('expone la vista technology-advances-presentation con navegación e interacti
         ->toContain('data-presentation-theme-toggle');
 });
 
-it('define doce diapositivas estructuradas de avances tecnologicos', function (): void {
+it('define once diapositivas estructuradas de avances tecnologicos', function (): void {
     $slides = TechnologyAdvancesPresentationSlides::all();
 
-    expect($slides)->toHaveCount(12)
+    expect($slides)->toHaveCount(11)
         ->and($slides[0]['type'])->toBe('cover')
-        ->and($slides[10]['type'])->toBe('future')
-        ->and($slides[11]['type'])->toBe('closing')
-        ->and(collect($slides)->pluck('id')->unique()->count())->toBe(12);
+        ->and($slides[1]['id'])->toBe('operaciones')
+        ->and($slides[2]['id'])->toBe('ops-cxp')
+        ->and($slides[2]['type'])->toBe('ops-admin')
+        ->and($slides[3]['type'])->toBe('lifecycle')
+        ->and($slides[4]['id'])->toBe('panel-sistemas')
+        ->and($slides[4]['type'])->toBe('devices')
+        ->and($slides[5]['type'])->toBe('devices')
+        ->and($slides[7]['id'])->toBe('marketing')
+        ->and($slides[8]['id'])->toBe('mailchimp')
+        ->and($slides[8]['type'])->toBe('integration')
+        ->and($slides[9]['type'])->toBe('hub')
+        ->and($slides[10]['type'])->toBe('closing')
+        ->and(collect($slides)->pluck('id')->unique()->count())->toBe(11);
 
     foreach ($slides as $slide) {
         expect($slide)->toHaveKeys([
@@ -99,54 +279,94 @@ it('define doce diapositivas estructuradas de avances tecnologicos', function ()
     }
 });
 
-it('incluye el contenido clave de paneles, portal, marketing, api, helpdesk e infraestructura', function (): void {
+it('incluye el contenido clave de operaciones, planes, pwa, portal, marketing e intra', function (): void {
     $byId = collect(TechnologyAdvancesPresentationSlides::all())->keyBy('id');
 
     expect($byId->keys()->all())->toContain(
         'portada',
         'operaciones',
-        'proyectos',
-        'metricas',
+        'ops-cxp',
+        'generador-planes',
+        'panel-sistemas',
+        'pwa',
         'portal-paciente',
         'marketing',
-        'api',
-        'helpdesk',
-        'notificaciones',
-        'infraestructura',
-        'futuro',
+        'mailchimp',
+        'intra',
         'cierre',
     );
 
-    expect($byId['operaciones']['data']['pillars'])->toHaveCount(4)
-        ->and($byId['proyectos']['data']['company_help'])->toHaveCount(4)
-        ->and($byId['metricas']['data']['status'])->toBe('En construcción')
-        ->and($byId['portal-paciente']['data']['for_analysts'])->toHaveCount(3)
-        ->and($byId['marketing']['data']['suites'])->toHaveCount(4)
-        ->and($byId['api']['data']['improvements'])->toHaveCount(4)
-        ->and($byId['helpdesk']['data']['upgrades'])->toHaveCount(4)
-        ->and($byId['notificaciones']['data']['upgrades'])->toHaveCount(4)
-        ->and($byId['infraestructura']['data']['prod'])->toHaveCount(5)
-        ->and($byId['infraestructura']['data']['layers'])->toHaveCount(3)
-        ->and($byId['infraestructura']['data']['layers'][0]['nodes'])->toHaveCount(3)
-        ->and(collect($byId['infraestructura']['data']['layers'][0]['nodes'])->pluck('id')->all())->toBe([
-            'SRV-PROD-INTEGRACORP',
-            'SRV-PROD-PORTALPACIENTE',
-            'SRV-PROD-MARKETING',
-        ])
-        ->and($byId['infraestructura']['data']['layers'][1]['nodes'][0]['id'])->toBe('SRV-PROD-INTEGRACORP-API')
-        ->and($byId['infraestructura']['data']['layers'][1]['nodes'][0]['kind'])->toBe('api')
-        ->and($byId['infraestructura']['data']['layers'][2]['nodes'][0]['id'])->toBe('SRV-PROD-BD')
-        ->and($byId['infraestructura']['data']['layers'][2]['nodes'][0]['kind'])->toBe('database')
-        ->and($byId['infraestructura']['data']['dev']['id'])->toBe('SRV-DES-INTEGRACORP')
-        ->and($byId['futuro']['data']['items'])->toHaveCount(4)
-        ->and($byId['futuro']['title'])->toBe('Un futuro muy cercano')
-        ->and(collect($byId['futuro']['data']['items'])->pluck('title')->all())->toContain(
-            'Mensajería Instantánea TuDrGroup',
-            'Red Social TuDrGroup',
-            'Seguimiento y auto-responder con IA + N8N',
-            'Automatización de procesos internos',
+    expect($byId['portada']['data']['tracks'])->toHaveCount(7)
+        ->and(collect($byId['portada']['data']['tracks'])->pluck('label')->all())->toContain(
+            'Operaciones',
+            'Planes',
+            'Hub',
+            'PWA',
+            'Portal',
+            'Marketing',
+            'Intra',
         )
-        ->and($byId['cierre']['data']['quote'])->toContain('voto de FE');
+        ->and($byId['operaciones']['data']['pillars'])->toHaveCount(4)
+        ->and(collect($byId['operaciones']['data']['pillars'])->pluck('title')->all())->toContain('Cupos clínicos')
+        ->and($byId['ops-cxp']['type'])->toBe('ops-admin')
+        ->and($byId['ops-cxp']['title'])->toContain('de la OS al pago')
+        ->and($byId['ops-cxp']['data']['steps'])->toHaveCount(4)
+        ->and($byId['ops-cxp']['data']['invoice_modal']['heading'])->toBe('Cargar factura del proveedor')
+        ->and($byId['ops-cxp']['data']['receipt_modal']['heading'])->toBe('Cargar comprobante de pago')
+        ->and($byId['ops-cxp']['data']['invoice_modal']['file'])->toContain('factura-')
+        ->and($byId['ops-cxp']['data']['receipt_modal']['file'])->toContain('comprobante-')
+        ->and($byId['generador-planes']['data']['steps'])->toHaveCount(4)
+        ->and($byId['generador-planes']['title'])->toContain('carga desde el catálogo')
+        ->and($byId['panel-sistemas']['type'])->toBe('devices')
+        ->and($byId['panel-sistemas']['data']['device_set'])->toBe('sistemas')
+        ->and($byId['panel-sistemas']['data']['url'])->toContain('dpto-tecnologia-sistemas')
+        ->and($byId['panel-sistemas']['data']['hero_image'])->toContain('presentaciones-sistemas-bg.png')
+        ->and($byId['panel-sistemas']['data']['phone_caption'])->toContain('iPhone')
+        ->and($byId['panel-sistemas']['data']['monitor_caption'])->toContain('PC')
+        ->and($byId['pwa']['data']['steps'])->toHaveCount(4)
+        ->and($byId['pwa']['type'])->toBe('devices')
+        ->and($byId['pwa']['data']['device_set'])->toBe('pwa')
+        ->and($byId['pwa']['title'])->toContain('PWA comercial')
+        ->and($byId['pwa']['data']['phone_caption'])->toContain('Bienvenida')
+        ->and($byId['pwa']['data']['plans_caption'])->toContain('Planes')
+        ->and($byId['pwa']['data']['plans'])->toHaveCount(3)
+        ->and(collect($byId['pwa']['data']['plans'])->pluck('title')->all())->toBe([
+            'Plan Inicial',
+            'Plan Ideal',
+            'Plan Especial',
+        ])
+        ->and($byId['portal-paciente']['type'])->toBe('devices')
+        ->and($byId['portal-paciente']['data']['device_set'])->toBe('portal')
+        ->and($byId['portal-paciente']['data']['phone_caption'])->toContain('iPhone')
+        ->and($byId['portal-paciente']['data']['monitor_caption'])->toContain('PC')
+        ->and($byId['portal-paciente']['data']['login_image'])->toContain('portal-paciente-login.jpg')
+        ->and($byId['portal-paciente']['data']['for_analysts'])->toHaveCount(3)
+        ->and($byId['marketing']['title'])->toBe('Sistema de Marketing')
+        ->and($byId['marketing']['type'])->toBe('devices')
+        ->and($byId['marketing']['data']['device_set'])->toBe('marketing')
+        ->and($byId['marketing']['data']['phone_caption'])->toContain('iPhone')
+        ->and($byId['marketing']['data']['tablet_caption'])->toContain('iPad')
+        ->and($byId['marketing']['data']['monitor_caption'])->toContain('Landing')
+        ->and($byId['marketing']['data']['casa_image'])->toContain('tdg-casa-bg.jpg')
+        ->and($byId['marketing']['data']['suites'])->toHaveCount(4)
+        ->and($byId['mailchimp']['type'])->toBe('integration')
+        ->and($byId['mailchimp']['title'])->toContain('Mailchimp')
+        ->and($byId['mailchimp']['data']['partner_logo'])->toContain('mailchimp-logo.svg')
+        ->and($byId['mailchimp']['data']['partner_mark'])->toContain('mailchimp-freddie.svg')
+        ->and($byId['mailchimp']['data']['tdg_logo'])->toContain('logoNewTDG.png')
+        ->and($byId['mailchimp']['data']['tdg_logo_dark'])->toContain('logoTDG.png')
+        ->and($byId['mailchimp']['data']['capabilities'])->toHaveCount(4)
+        ->and(collect($byId['mailchimp']['data']['capabilities'])->pluck('title')->all())->toBe([
+            'Masivos',
+            'Transaccional',
+            'Reportes',
+            'Cumplimiento',
+        ])
+        ->and($byId['intra']['data']['url'])->toBe('https://intra.tudrgroup.com')
+        ->and($byId['intra']['data']['device_set'])->toBe('intra')
+        ->and($byId['intra']['data']['monitor_caption'])->toContain('PC · Índice')
+        ->and($byId['intra']['data']['cards'])->toHaveCount(3)
+        ->and($byId['cierre']['data']['quote'])->toContain('Lo más difícil de ver es lo bueno');
 });
 
 it('responde la ruta de presentacion de avances tecnologicos con la vista liquid glass', function (): void {
@@ -158,7 +378,7 @@ it('responde la ruta de presentacion de avances tecnologicos con la vista liquid
         ],
     ])->get('/avances-tecnologicos')
         ->assertOk()
-        ->assertSee('Avances Tecnológicos', false)
+        ->assertSee('Avances Dpto. Tecnología y Sistemas Sep14-2026', false)
         ->assertSee('INTEGRACORP', false)
         ->assertSee('tuDrGroup', false)
         ->assertSee('liquid-glass', false)
@@ -166,13 +386,71 @@ it('responde la ruta de presentacion de avances tecnologicos con la vista liquid
         ->assertSee('Tester', false)
         ->assertSee('Cerrar sesión', false)
         ->assertSee('Desliza', false)
-        ->assertSee('SRV-PROD-INTEGRACORP-API', false)
-        ->assertSee('infra-hierarchy', false)
-        ->assertSee('infra-icon--server', false)
-        ->assertSee('infra-icon--api', false)
-        ->assertSee('infra-icon--database', false)
-        ->assertSee('Un futuro muy cercano', false)
-        ->assertSee('Mensajería Instantánea TuDrGroup', false)
-        ->assertSee('Red Social TuDrGroup', false)
-        ->assertSee('Todo en la vida comienza con un voto de FE', false);
+        ->assertSee('Lo más difícil de ver es lo bueno', false)
+        ->assertSee('En tu Doctor Group, lo bueno pesa muchísimo más', false)
+        ->assertSee('Cupos clínicos', false)
+        ->assertSee('Operaciones × Administración', false)
+        ->assertSee('Cargar factura del proveedor', false)
+        ->assertSee('Cargar comprobante de pago', false)
+        ->assertSee('Datos para cuentas por pagar', false)
+        ->assertSee('factura-00012345.pdf', false)
+        ->assertSee('comprobante-banesco.pdf', false)
+        ->assertSee('Guardar factura', false)
+        ->assertSee('Guardar comprobante', false)
+        ->assertSee('Pendiente por pagar', false)
+        ->assertSee('os-modals', false)
+        ->assertSee('os-flow', false)
+        ->assertSee('1 OS = 1 CxP', false)
+        ->assertSee('Mismo documento, dos pantallas', false)
+        ->assertSee('Nace la CxP', false)
+        ->assertSee('Generador de planes', false)
+        ->assertSee('Cargar estructura', false)
+        ->assertSee('Panel de Sistemas', false)
+        ->assertSee('iPhone · Identidad', false)
+        ->assertSee('PC · Panel', false)
+        ->assertSee('Verifica tu identidad', false)
+        ->assertSee('dpto-tecnologia-sistemas', false)
+        ->assertSee('presentaciones-sistemas-bg', false)
+        ->assertSee('PWA comercial', false)
+        ->assertSee('iPhone · Bienvenida', false)
+        ->assertSee('iPhone · Planes', false)
+        ->assertSee('Tu propia', false)
+        ->assertSee('Plan Inicial', false)
+        ->assertSee('Plan Ideal', false)
+        ->assertSee('Plan Especial', false)
+        ->assertSee('pwa-device--phone', false)
+        ->assertDontSee('iPad · Planes', false)
+        ->assertSee('image/storefront/welcome', false)
+        ->assertSee('image/storefront/plan-inicial', false)
+        ->assertSee('Sistema de Marketing', false)
+        ->assertSee('TDG Marketing × Mailchimp', false)
+        ->assertSee('Mailchimp', false)
+        ->assertSee('image/brands/mailchimp-logo.svg', false)
+        ->assertSee('image/brands/mailchimp-freddie.svg', false)
+        ->assertSee('image/logoTDG.png', false)
+        ->assertSee('mc-brand__logo--dark', false)
+        ->assertSee('mc-bridge', false)
+        ->assertSee('Audience y segmento', false)
+        ->assertSee('iPhone · Acceso', false)
+        ->assertSee('iPad · Acceso', false)
+        ->assertSee('PC · Landing', false)
+        ->assertSee('Aplicación de Marketing', false)
+        ->assertSee('Acceso al panel', false)
+        ->assertSee('tdg-casa-bg', false)
+        ->assertSee('pwa-device--tablet', false)
+        ->assertSee('intra.tudrgroup.com', false)
+        ->assertSee('Índice de portales', false)
+        ->assertSee('Tecnología y Sistemas', false)
+        ->assertSee('PC · Índice de portales', false)
+        ->assertSee('Portal del Paciente', false)
+        ->assertSee('iPhone · Login', false)
+        ->assertSee('PC · Login', false)
+        ->assertSee('Entrar al portal', false)
+        ->assertSee('portal-paciente-login', false)
+        ->assertSee('portal-monitor', false)
+        ->assertSee('Documento de Identificación', false)
+        ->assertSee('cover-tracks', false)
+        ->assertSee('presentation-badge', false)
+        ->assertSee('lifecycle-step', false)
+        ->assertSee('hub-url', false);
 });

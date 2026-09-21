@@ -4,11 +4,6 @@ declare(strict_types=1);
 
 namespace App\Support\WhiteCompanies;
 
-use App\Models\Commission;
-use App\Models\PaidMembership;
-use App\Models\Sale;
-use Illuminate\Support\Facades\Auth;
-
 final readonly class WhiteCompanyPaymentSettlement
 {
     public function __construct(
@@ -66,52 +61,68 @@ final readonly class WhiteCompanyPaymentSettlement
         return self::periodsForFrequency($this->paymentFrequency);
     }
 
+    public function installmentSalePrice(): float
+    {
+        return round($this->annualSalePrice / $this->periods(), 2);
+    }
+
     public function installmentNeta(): float
     {
         return round($this->annualNeta / $this->periods(), 2);
     }
 
-    public function installmentMasterCommission(): float
+    public function installmentPartner(): float
     {
-        return round($this->annualMargin() / $this->periods(), 2);
+        return round(($this->annualSalePrice - $this->annualNeta) / $this->periods(), 2);
     }
 
-    public function annualMargin(): float
+    /**
+     * @return array{sale_price: float, neta_tdg: float, neta_partner: float}
+     */
+    public function installmentReportAmounts(): array
     {
-        return round($this->annualSalePrice - $this->annualNeta, 2);
+        return [
+            'sale_price' => $this->installmentSalePrice(),
+            'neta_tdg' => $this->installmentNeta(),
+            'neta_partner' => $this->installmentPartner(),
+        ];
     }
 
-    public function storeCommission(Sale $sale, PaidMembership $membership): Commission
+    /**
+     * Recibido en cuenta = monto declarado en el comprobante. La neta TDG sigue
+     * siendo la cuota congelada; la neta de la aliada es el residual.
+     *
+     * @return array{sale_price: float, neta_tdg: float, neta_partner: float}
+     */
+    public function reportAmountsUsingDeclaredVoucher(mixed $declaredAmount): array
     {
-        $commission = new Commission;
-        $commission->code = $sale->invoice_number;
-        $commission->sale_id = $sale->id;
-        $commission->plan_id = $membership->plan_id;
-        $commission->coverage_id = $membership->coverage_id;
-        $commission->agent_id = $membership->agent_id;
-        $commission->code_agency = $membership->code_agency;
-        $commission->payment_frequency = $membership->payment_frequency;
-        $commission->affiliate_full_name = $sale->affiliate_full_name;
-        $commission->pay_amount_usd = $membership->pay_amount_usd;
-        $commission->pay_amount_ves = $membership->pay_amount_ves;
-        $commission->amount = $this->installmentNeta();
-        $commission->commission_agent_usd = 0;
-        $commission->commission_agent_ves = 0;
-        $commission->porcent_agente = 0;
-        $commission->porcent_sub_agente = 0;
-        $commission->commission_sub_agent_usd = 0;
-        $commission->commission_sub_agent_ves = 0;
-        $commission->porcent_agency_general = 0;
-        $commission->commission_agency_general_usd = 0;
-        $commission->commission_agency_general_ves = 0;
-        $commission->porcent_agency_master = 0;
-        $commission->commission_agency_master_usd = $this->installmentMasterCommission();
-        $commission->commission_agency_master_ves = 0;
-        $commission->payment_method = $sale->payment_method;
-        $commission->affiliation_code = $sale->affiliation_code;
-        $commission->created_by = Auth::user()?->name;
-        $commission->save();
+        $theoretical = $this->installmentReportAmounts();
+        $declared = round((float) $declaredAmount, 2);
 
-        return $commission;
+        if ($declared <= 0) {
+            return $theoretical;
+        }
+
+        return [
+            'sale_price' => $declared,
+            'neta_tdg' => $theoretical['neta_tdg'],
+            'neta_partner' => round($declared - $theoretical['neta_tdg'], 2),
+        ];
+    }
+
+    public static function fromFrozenAffiliationRates(
+        mixed $annualSalePrice,
+        mixed $annualNeta,
+        ?string $paymentFrequency,
+        int $whiteCompanyId = 0,
+    ): self {
+        return new self(
+            annualSalePrice: (float) $annualSalePrice,
+            annualNeta: (float) $annualNeta,
+            paymentFrequency: is_string($paymentFrequency) && trim($paymentFrequency) !== ''
+                ? $paymentFrequency
+                : 'ANUAL',
+            whiteCompanyId: $whiteCompanyId,
+        );
     }
 }

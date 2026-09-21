@@ -10,6 +10,7 @@ it('aplica menu desplegable iOS a las acciones del encabezado en ViewAffiliation
         ->toContain('FilamentIosButton::extraClassForFilamentColor')
         ->toContain("Action::make('back')")
         ->toContain("Action::make('attachDocuments')")
+        ->toContain('MergeFamilyGroupAction::make()')
         ->toContain('EditAction::make()')
         ->toContain('modalSubmitAction(')
         ->toContain('modalCancelAction(');

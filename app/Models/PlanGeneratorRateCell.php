@@ -13,6 +13,7 @@ class PlanGeneratorRateCell extends Model
         'plan_generator_rate_row_id',
         'plan_generator_column_id',
         'rate_amount',
+        'base_rate_amount',
     ];
 
     /**
@@ -22,6 +23,7 @@ class PlanGeneratorRateCell extends Model
     {
         return [
             'rate_amount' => 'decimal:2',
+            'base_rate_amount' => 'decimal:2',
         ];
     }
 

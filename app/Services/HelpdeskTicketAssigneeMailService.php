@@ -81,6 +81,7 @@ final class HelpdeskTicketAssigneeMailService
     /**
      * Envía correo a cada asignado y retorna un reporte detallado para auditoría operativa.
      *
+     * @param  list<int>|null  $onlyColaboradorIds
      * @return array{
      *     total_assignees:int,
      *     attempted:int,
@@ -91,12 +92,25 @@ final class HelpdeskTicketAssigneeMailService
      *     recipients:list<array<string,mixed>>
      * }
      */
-    public static function sendToEachAssigneeWithReport(HelpDesk $ticket, string $panel = 'unknown'): array
-    {
+    public static function sendToEachAssigneeWithReport(
+        HelpDesk $ticket,
+        string $panel = 'unknown',
+        ?array $onlyColaboradorIds = null,
+        bool $isReassignment = false,
+    ): array {
         $ticket = self::loadTicketWithAssigneesForNotifications($ticket);
 
+        $colaboradores = $ticket->rrhhColaboradores;
+
+        if ($onlyColaboradorIds !== null) {
+            $ids = array_map(static fn (int|string $id): int => (int) $id, $onlyColaboradorIds);
+            $colaboradores = $colaboradores->filter(
+                fn (RrhhColaborador $colaborador): bool => in_array((int) $colaborador->getKey(), $ids, true)
+            )->values();
+        }
+
         $report = [
-            'total_assignees' => (int) $ticket->rrhhColaboradores->count(),
+            'total_assignees' => (int) $colaboradores->count(),
             'attempted' => 0,
             'sent' => 0,
             'failed' => 0,
@@ -105,11 +119,11 @@ final class HelpdeskTicketAssigneeMailService
             'recipients' => [],
         ];
 
-        if ($ticket->rrhhColaboradores->isEmpty()) {
+        if ($colaboradores->isEmpty()) {
             return $report;
         }
 
-        foreach ($ticket->rrhhColaboradores as $colaborador) {
+        foreach ($colaboradores as $colaborador) {
             $emailCorporativo = $colaborador->emailCorporativo;
 
             if (blank($emailCorporativo)) {
@@ -140,7 +154,7 @@ final class HelpdeskTicketAssigneeMailService
 
                 Mail::to($emailCorporativo)
                     ->cc($ccList)
-                    ->send(SendEmailCreateTicketAndAssigned::fromTicket($ticket, $colaborador));
+                    ->send(SendEmailCreateTicketAndAssigned::fromTicket($ticket, $colaborador, $isReassignment));
                 $report['sent']++;
                 $report['recipients'][] = [
                     'rrhh_colaborador_id' => $colaborador->getKey(),

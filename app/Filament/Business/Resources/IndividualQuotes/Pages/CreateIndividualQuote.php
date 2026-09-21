@@ -2,10 +2,11 @@
 
 namespace App\Filament\Business\Resources\IndividualQuotes\Pages;
 
+use App\Enums\QuoteWhatsAppNotification;
 use App\Filament\Business\Resources\IndividualQuotes\IndividualQuoteResource;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
 use App\Models\Agency;
+use App\Support\Quotes\QuoteWhatsAppDispatcher;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -77,7 +78,19 @@ class CreateIndividualQuote extends CreateRecord
                 throw new \Exception('Error al guardar los detalles de la cotización.');
             }
 
-            NotificationController::createdIndividualQuote($record->code, Auth::user()->name);
+            /**
+             * El aviso al equipo de análisis sale por cola: son seis mensajes
+             * a UltraMsg que antes retenían la pantalla —y la transacción del
+             * panel— antes de redirigir al detalle.
+             */
+            QuoteWhatsAppDispatcher::queue(
+                QuoteWhatsAppNotification::IndividualQuoteCreated,
+                [
+                    'code' => $record->code,
+                    'agent' => Auth::user()->name,
+                ],
+                IndividualQuoteResource::getUrl('view', ['record' => $record->id], panel: 'business'),
+            );
         } catch (\Throwable $th) {
             Notification::make()
                 ->title('ERROR')

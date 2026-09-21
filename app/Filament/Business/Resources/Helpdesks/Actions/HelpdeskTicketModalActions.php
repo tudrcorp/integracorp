@@ -45,4 +45,9 @@ final class HelpdeskTicketModalActions
     {
         return SharedHelpdeskTicketModalActions::makeUpdatePriorityAction('business');
     }
+
+    public static function makeReassignAction(): Action
+    {
+        return SharedHelpdeskTicketModalActions::makeReassignAction('business');
+    }
 }

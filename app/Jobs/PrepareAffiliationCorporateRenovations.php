@@ -131,7 +131,7 @@ class PrepareAffiliationCorporateRenovations implements ShouldQueue
                                     $projectedPlanId = AffiliationAffiliateFeeCalculator::SPECIAL_PLAN_ID;
                                 }
 
-                                $isInitial = $projectedPlanId === AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID;
+                                $isInitial = $calculator->planHasNoCoverages($projectedPlanId);
                                 $canRecalculateFees = $isInRenewalPeriod
                                     && ($isInitial || $coverageId !== null);
 

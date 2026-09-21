@@ -23,6 +23,9 @@ final class TelemedicineMedicationInventoryDeductor
 
     public const OUTFLOW_TYPE = 'SALIDA TELEMEDICINA';
 
+    /** Consumo de insumos médicos registrado por el médico en consulta/seguimiento. */
+    public const MOVEMENT_TYPE_SUPPLY = 'SALIDA INSUMOS TELEMEDICINA';
+
     public const DEFAULT_QUANTITY = 1;
 
     public function deductIfApplicable(
@@ -32,7 +35,10 @@ final class TelemedicineMedicationInventoryDeductor
         TelemedicineDoctor|array|null $doctor = null,
         TelemedicinePatient|array|null $patient = null,
         int $quantity = self::DEFAULT_QUANTITY,
+        ?string $movementType = null,
+        string $itemLabel = 'medicamento',
     ): ?OperationInventoryMovement {
+        $movementType ??= self::MOVEMENT_TYPE;
         if ($operationInventoryId === null || $quantity < 1) {
             return null;
         }
@@ -61,11 +67,18 @@ final class TelemedicineMedicationInventoryDeductor
             throw new RuntimeException("Inventario #{$operationInventoryId} no encontrado.");
         }
 
-        $inventoryWarehouse = mb_strtoupper(trim((string) ($inventory->ubicationRelation?->name ?? $inventory->ubication ?? '')));
+        $relationWarehouse = (string) ($inventory->ubicationRelation?->name ?? '');
+        $columnWarehouse = (string) ($inventory->ubication ?? '');
 
-        if ($inventoryWarehouse !== mb_strtoupper(trim($warehouseName))) {
+        if (
+            ! TelemedicineMedicationInventoryOptions::ubicationMatchesWarehouse($relationWarehouse, $warehouseName)
+            && ! TelemedicineMedicationInventoryOptions::ubicationMatchesWarehouse($columnWarehouse, $warehouseName)
+        ) {
+            $shownWarehouse = filled($relationWarehouse) ? $relationWarehouse : $columnWarehouse;
+
             throw new RuntimeException(
-                "El medicamento «{$inventory->name}» no pertenece al almacén {$warehouseName}."
+                "El {$itemLabel} «{$inventory->name}» no pertenece al almacén {$warehouseName}".
+                (filled($shownWarehouse) ? " (está en {$shownWarehouse})." : '.')
             );
         }
 
@@ -116,7 +129,7 @@ final class TelemedicineMedicationInventoryDeductor
             'operation_inventory_ubication_id' => $inventory->operation_inventory_ubication_id,
             'operation_inventory_type_id' => $typeId,
             'quantity' => $quantity,
-            'type_entry' => self::OUTFLOW_TYPE,
+            'type_entry' => $movementType,
             'created_by' => Auth::user()?->name ?? 'system',
         ]);
 
@@ -132,7 +145,7 @@ final class TelemedicineMedicationInventoryDeductor
             'business_line_id' => (int) ($patientModel?->business_line_id ?? 0),
             'quantity' => $quantity,
             'unit' => (string) ($inventory->unit ?: 'UND'),
-            'type' => self::MOVEMENT_TYPE,
+            'type' => $movementType,
             'status' => 'DESPACHADO',
             'created_by' => Auth::user()?->name ?? 'system',
         ]);

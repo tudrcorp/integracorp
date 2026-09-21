@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Jobs\SendCartaBienvenidaAgenteAgenciaTwo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -91,6 +92,10 @@ class Agency extends Model
         'account_manager_id',
         'address_complement',
         'assigned_credit',
+        'is_referidor',
+        'referidor_percentage',
+        'referidor_id',
+        'referidor_agent_id',
 
     ];
 
@@ -102,6 +107,8 @@ class Agency extends Model
         return [
             'audit_items' => 'array',
             'assigned_credit' => 'decimal:2',
+            'is_referidor' => 'boolean',
+            'referidor_percentage' => 'decimal:2',
         ];
     }
 
@@ -207,5 +214,43 @@ class Agency extends Model
     public function observationCommercialStructures(): HasMany
     {
         return $this->hasMany(ObservationCommercialStructure::class)->orderByDesc('created_at');
+    }
+
+    public function referidor(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'referidor_id');
+    }
+
+    public function referidorAgent(): BelongsTo
+    {
+        return $this->belongsTo(Agent::class, 'referidor_agent_id');
+    }
+
+    public function referredGeneralAgencies(): BelongsToMany
+    {
+        return $this->belongsToMany(self::class, 'referidor_assignments', 'referrer_agency_id', 'referred_agency_id')
+            ->withTimestamps()
+            ->orderBy('agencies.name_corporative');
+    }
+
+    public function referredAgents(): BelongsToMany
+    {
+        return $this->belongsToMany(Agent::class, 'referidor_assignments', 'referrer_agency_id', 'referred_agent_id')
+            ->withTimestamps()
+            ->orderBy('agents.name');
+    }
+
+    public function referrerAgencies(): BelongsToMany
+    {
+        return $this->belongsToMany(self::class, 'referidor_assignments', 'referred_agency_id', 'referrer_agency_id')
+            ->withTimestamps()
+            ->orderBy('agencies.name_corporative');
+    }
+
+    public function referrerAgents(): BelongsToMany
+    {
+        return $this->belongsToMany(Agent::class, 'referidor_assignments', 'referred_agency_id', 'referrer_agent_id')
+            ->withTimestamps()
+            ->orderBy('agents.name');
     }
 }

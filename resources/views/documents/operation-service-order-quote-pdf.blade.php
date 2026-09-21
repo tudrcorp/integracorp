@@ -2,6 +2,7 @@
     /** @var \App\Models\OperationServiceOrder $order */
     $coord = $order->operationCoordinationService;
     $brandCyan = '#00ADEF';
+    $patientName = \App\Support\Telemedicine\TelemedicinePatientDisplayName::forCoordination($coord);
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -81,7 +82,7 @@
             <tr>
                 <td>
                     <div class="label">Paciente</div>
-                    <div class="value">{{ $coord?->patient ?? '—' }}</div>
+                    <div class="value">{{ $patientName }}</div>
                 </td>
                 <td>
                     <div class="label">Referencia</div>
@@ -103,12 +104,13 @@
 
     <div class="summary">
         <div><strong>Precio cotizado (USD):</strong> US$ {{ number_format((float) ($quoteData['price_usd'] ?? 0), 2, ',', '.') }}</div>
-        <div><strong>Tasa BCV aplicada:</strong> {{ number_format((float) ($quoteData['bcv_rate'] ?? 0), 2, ',', '.') }} Bs./US$</div>
-        <div><strong>Precio cotizado (Bs.):</strong> Bs. {{ number_format((float) ($quoteData['price_ves'] ?? 0), 2, ',', '.') }}</div>
     </div>
 
     <div class="footer">
-        Cotización generada automáticamente desde la modal de negociación de coordinación de servicios.
+        <strong>TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1</strong><br>
+        Dirección Comercial: Av. Francisco de Miranda, Centro Lido, Torre A, Piso 12, Oficina 124. El Rosal, Caracas.<br>
+        Teléfono MediChat atención 24 horas: (0424) 213 21 12- Celular Coordinación de servicios: (0414) 901 03 52<br>
+        Correo: 24H@tudrencasa.com IG: @tudrencasa WEB: https://tudrencasa.com/
     </div>
 </body>
 </html>

@@ -324,11 +324,10 @@
 
                             $plan = \App\Models\Plan::where('id', $planRow['plan_id'])->first()->description;
 
-                            if ($plan == 'PLAN INICIAL') {
-                                $coverage = '';
-                            } else {
-                                $coverage = \App\Models\Coverage::where('id', $planRow['coverage_id'])->first()->price;
-                            }
+                            $coverage = \App\Support\CorporateDocumentPlanCoverage::priceForLine(
+                                $planRow['plan_id'] ?? null,
+                                $planRow['coverage_id'] ?? null,
+                            );
 
                             $paymentFrequency = $planRow['payment_frequency'];
                             $subtotalAnual = (float) data_get($planRow, 'subtotal_anual', 0);
@@ -353,7 +352,7 @@
                         <tr>
                             <td class="desc-col">
                                 <p class="plan-line">
-                                    {{ $plan }}@if ($coverage !== ''), COBERTURA: US${{ round($coverage) }}@endif<br>
+                                    {{ $plan }}@if (filled($coverage)), COBERTURA: US${{ round($coverage) }}@endif<br>
                                     RANGO DE EDAD: {{ $age_range }} años<br>
                                     FRECUENCIA DE PAGO: {{ $paymentFrequency }}<br>
                                     COBERTURA GEOGRAFICA – LOCAL VENEZUELA

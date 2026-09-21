@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\Agencies\Tables;
 
 use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
+use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Http\Controllers\AgencyExportCsvController;
 use App\Http\Controllers\NotificationController;
 use App\Models\Affiliation;
@@ -32,9 +33,11 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -249,6 +252,13 @@ class AgenciesTable
                     ->searchable()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                IconColumn::make('is_referidor')
+                    ->label('Es Referidor')
+                    ->boolean()
+                    ->alignCenter()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                ReferidorPercentageField::column(),
                 TextColumn::make('created_by')
                     ->label('Creado por')
                     ->searchable()
@@ -272,6 +282,11 @@ class AgenciesTable
                     ->alignCenter(),
             ])
             ->filters([
+                TernaryFilter::make('is_referidor')
+                    ->label('Es Referidor')
+                    ->placeholder('Todos')
+                    ->trueLabel('Sí')
+                    ->falseLabel('No'),
                 Filter::make('created_at')
                     ->form([
                         DatePicker::make('desde'),
@@ -838,7 +853,7 @@ class AgenciesTable
                         })
                         ->hidden(fn () => ! in_array('SUPERADMIN', auth()->user()->departament)),
                     BulkAction::make('exportCsvController')
-                        ->label('Exportar CSV')
+                        ->label('Exportar XLS')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
                         ->action(function (Collection $records) {

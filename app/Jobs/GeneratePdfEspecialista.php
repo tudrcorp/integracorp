@@ -2,13 +2,12 @@
 
 namespace App\Jobs;
 
-use App\Mail\SendMailPropuestaPlanInicial;
-use App\Models\OperationDocumentList;
-use App\Models\TelemedicineConsultationPatient;
-use App\Models\User;
 use App\Services\NotificationTelemedicinaService;
+use App\Support\Telemedicine\Concerns\LogsTelemedicineJobFailures;
 use App\Support\Telemedicine\TelemedicineCaseDocumentReadyNotification;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\Telemedicine\TelemedicineCoverageDocumentSplit;
+use App\Support\Telemedicine\TelemedicineCoverageSplitPdfWriter;
+use App\Support\Telemedicine\TelemedicineJobFailureLogger;
 use Filament\Notifications\Notification;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,13 +15,11 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 class GeneratePdfEspecialista implements ShouldQueue
 {
-    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, LogsTelemedicineJobFailures, Queueable, SerializesModels;
 
     protected $data = [];
 
@@ -65,68 +62,31 @@ class GeneratePdfEspecialista implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->generatePDF($this->data);
-
-        $name_pdf = $this->data['ci_patiente'].'-'.$this->data['code_reference'].'-'.$this->type_document.'.pdf';
-
-        TelemedicineCaseDocumentReadyNotification::send($this->user, $this->data, $name_pdf);
+        $this->runWithTelemedicineFailureLogging(function (): void {
+            foreach ($this->generatePDF($this->data) as $name_pdf) {
+                TelemedicineCaseDocumentReadyNotification::send($this->user, $this->data, $name_pdf);
+            }
+        }, $this->telemedicineJobFailureContext());
     }
 
-    private function generatePDF($data)
+    /**
+     * @return list<string>
+     */
+    private function generatePDF($data): array
     {
         ini_set('memory_limit', '2048M');
 
-        $pdf = Pdf::loadView('documents.especialista', compact('data'));
-        $name_pdf = $data['ci_patiente'].'-'.$data['code_reference'].'-'.$this->type_document.'.pdf';
-        $pdf->save(public_path('storage/telemedicina-doc/'.$name_pdf));
+        $payload = is_array($data) ? $data : [];
 
-        $this->syncConsultationUploadedDocuments($data, $name_pdf);
-
-        /**
-         * Despues de guardar el pdf lo enviamos por email
-         * ----------------------------------------------------------------------------------------------------
-         */
-        // Mail::to($details['email'])->send(new SendMailPropuestaPlanInicial($details['name'], $name_pdf));
-    }
-
-    private function syncConsultationUploadedDocuments(array $data, string $namePdf): void
-    {
-        $consultationId = (int) ($data['telemedicine_consultation_id'] ?? 0);
-
-        if ($consultationId <= 0) {
-            return;
-        }
-
-        $consultation = TelemedicineConsultationPatient::query()->find($consultationId);
-
-        if (! $consultation) {
-            return;
-        }
-
-        $defaultDocumentTypeId = 13;
-        $defaultDocumentTypeName = trim((string) OperationDocumentList::query()
-            ->whereKey($defaultDocumentTypeId)
-            ->value('name'));
-
-        if ($defaultDocumentTypeName === '') {
-            $defaultDocumentTypeName = 'ORDEN CONSULTA CON ESPECIALISTA';
-        }
-
-        $existingDocuments = is_array($consultation->uploaded_documents)
-            ? $consultation->uploaded_documents
-            : [];
-
-        $newDocument = [
-            'document_name' => $namePdf,
-            'file_path' => 'telemedicina-doc/'.$namePdf,
-            'document_type_ids' => [$defaultDocumentTypeId],
-            'document_types' => [$defaultDocumentTypeName],
-            'uploaded_at' => now()->toDateTimeString(),
-        ];
-
-        $consultation->update([
-            'uploaded_documents' => array_values(array_merge($existingDocuments, [$newDocument])),
-        ]);
+        return TelemedicineCoverageSplitPdfWriter::write(
+            (string) $this->type_document,
+            'documents.especialista',
+            'portrait',
+            13,
+            'ORDEN CONSULTA CON ESPECIALISTA',
+            TelemedicineCoverageDocumentSplit::orderGroups('especialista', $payload),
+            $payload,
+        );
     }
 
     private function sendNotifications($data)
@@ -141,16 +101,24 @@ class GeneratePdfEspecialista implements ShouldQueue
      */
     public function failed(?Throwable $exception): void
     {
-        Log::info('GeneratePdfImagenologia: FAILED');
-        Log::error($exception->getMessage());
+        $this->logTelemedicineJobFailure($exception, $this->telemedicineJobFailureContext());
 
         Notification::make()
             ->title('¡TAREA NO COMPLETADA!')
             ->body('Hubo un error en la creación la Referencia. Por favor, contacte con el administrador del Sistema.')
             ->danger()
             ->sendToDatabase($this->user);
+    }
 
-        // Send user notification of failure, etc...
-
+    /**
+     * @return array<string, mixed>
+     */
+    private function telemedicineJobFailureContext(): array
+    {
+        return TelemedicineJobFailureLogger::documentJobContext(
+            is_array($this->data) ? $this->data : [],
+            $this->user,
+            $this->type_document !== null ? (string) $this->type_document : null,
+        );
     }
 }

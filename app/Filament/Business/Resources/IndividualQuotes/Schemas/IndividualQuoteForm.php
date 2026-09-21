@@ -5,9 +5,9 @@ namespace App\Filament\Business\Resources\IndividualQuotes\Schemas;
 use App\Http\Controllers\UtilsController;
 use App\Models\Agency;
 use App\Models\Agent;
-use App\Models\AgeRange;
 use App\Models\IndividualQuote;
-use App\Models\Plan;
+use App\Support\Plans\PlanQuotability;
+use App\Support\Quotes\QuoteAgeRangeSelection;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
@@ -65,31 +65,19 @@ class IndividualQuoteForm
      */
     private static function emptyQuoteDetailRows(int $planId): array
     {
-        $count = AgeRange::query()->where('plan_id', $planId)->count();
-
-        if ($count === 0) {
-            return [];
-        }
-
-        return array_map(
-            fn (): array => [
-                'plan_id' => $planId,
-                'age_range_id' => null,
-                'total_persons' => null,
-            ],
-            range(0, $count - 1),
-        );
+        return QuoteAgeRangeSelection::emptyRowsForPlan($planId);
     }
 
     private static function syncQuoteDetailsForPlan(Set $set, mixed $plan): void
     {
-        if ($plan === 'CM' || blank($plan)) {
+        $planId = QuoteAgeRangeSelection::selectedPlanId($plan);
+
+        if ($planId === null) {
             $set('details_quote', []);
 
             return;
         }
 
-        $planId = (int) $plan;
         $set('details_quote', self::emptyQuoteDetailRows($planId));
     }
 
@@ -224,32 +212,8 @@ class IndividualQuoteForm
                                             ->afterStateUpdated(function (Set $set, mixed $state): void {
                                                 self::syncQuoteDetailsForPlan($set, $state);
                                             })
-                                            ->options(function () {
-                                                $planesConBeneficios = Plan::query()
-                                                    ->where('type', 'BASICO')
-                                                    ->where('status', 'ACTIVO')
-                                                    ->get()
-                                                    ->pluck('description', 'id');
-
-                                                $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
-
-                                                return $planesConBeneficios;
-                                            })
-                                            ->descriptions(function (): array {
-                                                $descriptions = Plan::query()
-                                                    ->where('type', 'BASICO')
-                                                    ->where('status', 'ACTIVO')
-                                                    ->withCount('ageRanges')
-                                                    ->get()
-                                                    ->mapWithKeys(fn (Plan $plan): array => [
-                                                        $plan->id => $plan->age_ranges_count.' rango(s) de edad disponible(s).',
-                                                    ])
-                                                    ->all();
-
-                                                $descriptions['CM'] = 'Seleccione más de dos (2) planes.';
-
-                                                return $descriptions;
-                                            }),
+                                            ->options(fn () => PlanQuotability::optionsForIndividual(includeMultiple: true)->all())
+                                            ->descriptions(fn (): array => PlanQuotability::descriptionsForIndividual()),
                                     ]),
                             ]),
                         Tab::make('RANGO DE EDAD')
@@ -267,7 +231,16 @@ class IndividualQuoteForm
                                             ->deletable(false)
                                             ->reorderable(false)
                                             ->rules(self::requireQuoteDetailsRule())
-                                            ->visible(fn (Get $get): bool => filled($get('plan')) && $get('plan') !== 'CM')
+                                            ->visible(fn (Get $get): bool => QuoteAgeRangeSelection::selectedPlanId($get('plan')) !== null)
+                                            ->afterStateHydrated(function (Get $get, Set $set): void {
+                                                $rows = QuoteAgeRangeSelection::rowsIfMissing($get('plan'), $get('details_quote'));
+
+                                                if ($rows === null) {
+                                                    return;
+                                                }
+
+                                                $set('details_quote', $rows);
+                                            })
                                             ->table([
                                                 TableColumn::make('Rango de Edad')->width('300px'),
                                                 TableColumn::make('Total de personas'),
@@ -284,20 +257,13 @@ class IndividualQuoteForm
                                                             ->contains($value);
                                                     })
                                                     ->options(function (Get $get): array {
-                                                        $planId = (int) (
-                                                            $get('plan_id')
-                                                            ?? $get('../../plan')
-                                                            ?? 0
+                                                        $planId = QuoteAgeRangeSelection::selectedPlanId(
+                                                            $get('plan_id') ?? $get('../../plan'),
                                                         );
 
-                                                        if ($planId === 0) {
-                                                            return [];
-                                                        }
-
-                                                        return AgeRange::query()
-                                                            ->where('plan_id', $planId)
-                                                            ->pluck('range', 'id')
-                                                            ->all();
+                                                        return $planId === null
+                                                            ? []
+                                                            : QuoteAgeRangeSelection::optionsForPlan($planId);
                                                     })
                                                     ->columnSpan(4),
                                                 Select::make('total_persons')
@@ -330,14 +296,16 @@ class IndividualQuoteForm
 
                                                     ->inLine()
                                                     ->live()
-                                                    ->options(function (Get $get) {
-                                                        return Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->pluck('description', 'id');
-                                                    })->columnSpan(3),
+                                                    ->options(fn () => PlanQuotability::optionsForIndividual()->all())->columnSpan(3),
                                                 Select::make('age_range_id')
                                                     ->label('Rango de edad')
                                                     ->placeholder('Rango de edad')
                                                     ->options(function (Get $get) {
-                                                        return AgeRange::where('plan_id', $get('plan_id'))->pluck('range', 'id');
+                                                        $planId = QuoteAgeRangeSelection::selectedPlanId($get('plan_id'));
+
+                                                        return $planId === null
+                                                            ? []
+                                                            : QuoteAgeRangeSelection::optionsForPlan($planId);
                                                     })
                                                     ->live()
                                                     ->searchable()

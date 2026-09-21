@@ -52,6 +52,10 @@ it('devuelve csv de comisiones para usuario autenticado', function (): void {
         ->assertHeaderContains('content-type', 'text/csv');
 
     expect($response->streamedContent())->toContain('Estatus')
+        ->and($response->streamedContent())->toContain('Correo electrónico')
+        ->and($response->streamedContent())->toContain('Teléfono')
+        ->and($response->streamedContent())->toContain('Email secundario')
+        ->and($response->streamedContent())->toContain('Teléfono secundario')
         ->and($response->streamedContent())->toContain('Nat. nombre beneficiario');
 });
 

@@ -12,8 +12,12 @@ it('infolist de afiliado usa pestañas', function (): void {
         ->toContain('SECTION_CARD')
         ->toContain("Tab::make('Datos personales')")
         ->toContain("Tab::make('Afiliación')")
+        ->toContain("Tab::make('Beneficios del plan')")
         ->toContain("Tab::make('Cuestionario médico')")
-        ->toContain('affiliateInfolistTabs');
+        ->toContain('affiliateInfolistTabs')
+        ->toContain('OperationsAffiliatePlanBenefitsCard::viewData')
+        ->toContain("View::make('filament.operations.affiliates.plan-benefits-clinical')")
+        ->not->toContain("TextEntry::make('plan.benefitPlans.description')");
 });
 
 it('infolist de afiliado corporativo usa pestañas', function (): void {
@@ -25,6 +29,10 @@ it('infolist de afiliado corporativo usa pestañas', function (): void {
         ->toContain('TABS_CONTAINER')
         ->toContain('SECTION_CARD')
         ->toContain("Tab::make('Datos del afiliado')")
+        ->toContain("Tab::make('Beneficios del plan')")
         ->toContain('affiliateCorporateInfolistTabs')
-        ->toContain('IOS_ADDRESS_CARD');
+        ->toContain('IOS_ADDRESS_CARD')
+        ->toContain('OperationsAffiliatePlanBenefitsCard::viewData')
+        ->toContain("View::make('filament.operations.affiliates.plan-benefits-clinical')")
+        ->not->toContain("TextEntry::make('plan.benefitPlans.description')");
 });

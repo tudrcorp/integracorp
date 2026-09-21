@@ -7,11 +7,8 @@ it('GeneratePdfMedicamentos guarda metadata en uploaded_documents de la consulta
     $contents = file_get_contents($path);
 
     expect($contents)
-        ->toContain('syncConsultationUploadedDocuments')
-        ->toContain('TelemedicineConsultationPatient::query()->find($consultationId)')
-        ->toContain('OperationDocumentList::query()')
-        ->toContain('whereKey($defaultDocumentTypeId)')
+        ->toContain('TelemedicineCoverageSplitPdfWriter::write')
+        ->toContain('TelemedicineCoverageDocumentSplit::medicationGroups')
         ->toContain("'RECIPE DE MEDICAMENTOS'")
-        ->toContain("'document_type_ids' => [\$defaultDocumentTypeId]")
-        ->toContain("'uploaded_documents' => array_values(array_merge(\$existingDocuments, [\$newDocument]))");
+        ->toContain('10,');
 });

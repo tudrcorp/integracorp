@@ -49,4 +49,45 @@ final class TelemedicineConsultationUploadedDocuments
             'uploaded_documents' => array_values(array_merge($filtered, [$newDocument])),
         ]);
     }
+
+    /**
+     * Reemplaza todos los documentos de una familia (cubiertos / no cubiertos / legado).
+     *
+     * @param  list<array<string, mixed>>  $newDocuments
+     * @param  list<string>  $familyFilenames
+     */
+    public static function replaceFamily(
+        TelemedicineConsultationPatient $consultation,
+        int $documentTypeId,
+        array $newDocuments,
+        array $familyFilenames,
+    ): void {
+        $existingDocuments = is_array($consultation->uploaded_documents)
+            ? $consultation->uploaded_documents
+            : [];
+
+        $filtered = array_values(array_filter(
+            $existingDocuments,
+            static function (mixed $document) use ($documentTypeId, $familyFilenames): bool {
+                if (! is_array($document)) {
+                    return false;
+                }
+
+                $name = (string) ($document['document_name'] ?? '');
+                if ($name !== '' && in_array($name, $familyFilenames, true)) {
+                    return false;
+                }
+
+                $typeIds = is_array($document['document_type_ids'] ?? null)
+                    ? $document['document_type_ids']
+                    : [];
+
+                return ! in_array($documentTypeId, $typeIds, true);
+            },
+        ));
+
+        $consultation->update([
+            'uploaded_documents' => array_values(array_merge($filtered, $newDocuments)),
+        ]);
+    }
 }

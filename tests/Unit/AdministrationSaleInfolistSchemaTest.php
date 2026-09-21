@@ -21,5 +21,7 @@ it('incluye tabs de venta afiliacion y recibo de pago en el infolist', function 
         ->toContain('resolvePaidReceipt')
         ->toContain('paidReceiptTableName')
         ->toContain('SALE_HERO_SECTION')
-        ->toContain('dark:ring-0');
+        ->toContain('dark:ring-0')
+        ->toContain("TextEntry::make('white_company_neta')")
+        ->toContain("->label('Neta aliada')");
 });

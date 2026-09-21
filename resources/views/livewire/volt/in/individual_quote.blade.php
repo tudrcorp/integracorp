@@ -1,281 +1,390 @@
 <?php
 
-use Flux\Flux;
-use App\Models\Plan;
-use Barryvdh\DomPDF\PDF;
-use App\Models\BenefitPlan;
-use Livewire\Volt\Component;
+declare(strict_types=1);
+
 use App\Models\IndividualQuote;
-use Livewire\Attributes\Layout;
-use Illuminate\Support\Facades\DB;
+use App\Models\Plan;
+use App\Support\Quotes\InteractiveIndividualQuoteView;
+use Flux\Flux;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PdfController;
-use App\Filament\Agents\Widgets\IndividualQuoteChart;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
+use Livewire\Volt\Component;
 
-$h = 60;
-new #[Layout('components.layouts.interactive')] class extends Component {
-    //
-    public $quote;
+new #[Layout('components.layouts.interactive')] #[Title('Tu cotización')] class extends Component
+{
+    /**
+     * @var array<string, mixed>
+     */
+    public array $view = [];
 
-    public $data;
-
-    public $plan_id;
-
-    public $definition_plan;
-
-    public $benefits;
-
-    public $collect, $group_collect, $totalColumns;
-
-    public $prueba = 0;
-
-    public $show_inicial    = 'hidden';
-    public $show_ideal      = 'hidden';
-    public $show_especial   = 'hidden';
-
-    public $details = [];
-
-    public $agent;
-
-    public function mount()
+    public function mount(): void
     {
-        // Recibir el parámetro de la URL
-        $this->quote = Crypt::decryptString(Route::current()->parameter('quote'));
-        // dd($this->quote);
-        // Ahora puedes usar $this->quote para cargar datos
-        // Ej: $this->affiliates = Affiliate::where('corporate_quote_id', $this->quote)->get();
-
-        $record = IndividualQuote::where('id', $this->quote)->first();
-        // dd($record);
-
-        if ($record->plan == 1) {
-            $detalle = DB::table('detail_individual_quotes')
-                ->join('plans', 'detail_individual_quotes.plan_id', '=', 'plans.id')
-                ->join('age_ranges', 'detail_individual_quotes.age_range_id', '=', 'age_ranges.id')
-                ->select('detail_individual_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range')
-                ->where('individual_quote_id', $record->id)
-                ->get()
-                ->toArray();
-            $details = [
-                'plan' => $record->plan,
-                'code' => $record->code,
-                'name' => $record->full_name,
-                'email' => $record->email,
-                'phone' => $record->phone,
-                'date' => $record->created_at->format('d-m-Y'),
-                'data' => $detalle
-            ];
-
-            $this->collect = collect($details['data'][0]);
+        try {
+            $quoteId = (int) Crypt::decryptString((string) Route::current()->parameter('quote'));
+        } catch (\Throwable) {
+            abort(404);
         }
 
-        if ($record->plan != 1) {
-            $detalle = DB::table('detail_individual_quotes')
-                ->join('plans', 'detail_individual_quotes.plan_id', '=', 'plans.id')
-                ->join('age_ranges', 'detail_individual_quotes.age_range_id', '=', 'age_ranges.id')
-                ->join('coverages', 'detail_individual_quotes.coverage_id', '=', 'coverages.id')
-                ->select('detail_individual_quotes.*', 'plans.description as plan', 'age_ranges.range as age_range', 'coverages.price as coverage')
-                ->where('individual_quote_id', $this->quote)
-                ->get()
-                ->toArray();
+        $record = IndividualQuote::query()
+            ->with(['detailsQuote.ageRange', 'detailsQuote.coverage'])
+            ->find($quoteId);
 
-            $details = [
-                'plan' => $record->plan,
-                'code' => $record->code,
-                'name' => $record->full_name,
-                'email' => $record->email,
-                'phone' => $record->phone,
-                'date' => $record->created_at->format('d-m-Y'),
-                'data' => $detalle
-            ];
+        abort_unless($record instanceof IndividualQuote, 404);
 
-            $this->collect = collect($details['data']);
-        }
+        $plan = Plan::query()->find((int) $record->plan);
 
+        abort_unless($plan instanceof Plan, 404);
 
-        // dd($detalle);
-        /**
-         * Se envia el certificado del afiliado
-         * ----------------------------------------------------------------------------------------------------
-         */
-
-
-        $this->plan_id = $details['plan'];
-
-        $this->details = $details;
-
-        $this->benefits = BenefitPlan::where('plan_id', $this->plan_id)->get();
-
-        $this->definition_plan = Plan::where('id', $this->plan_id)->first()->description;
-
-        $this->group_collect = $this->collect->groupBy('age_range');
-
-        $this->agent = $record->created_by;
-
-
-        if ($this->plan_id == 2) {
-            $totalColumns = [0, 0, 0, 0, 0];
-        }
-        if ($this->plan_id == 3) {
-            $totalColumns = [0, 0, 0, 0, 0, 0];
-        }
-
-        // Recorrer los datos para sumar por columna
-        foreach ($this->group_collect as $key => $value) {
-            foreach ($value as $index => $item) {
-                if (isset($totalColumns[$index])) {
-                    $totalColumns[$index] += round($item->subtotal_anual);
-                    $this->totalColumns = $totalColumns;
-                }
-            }
-        }
+        $this->view = InteractiveIndividualQuoteView::from($record, $plan, $record->detailsQuote);
     }
 
     public function download()
     {
-        $id = $this->quote;
-        $individual_quote = IndividualQuote::where('id', $id)->first();
-        //descargo la cotizacion de mi carpeta storage
-        $file = public_path('storage/quotes/' . $individual_quote->code . '.pdf');
-        return response()->download($file);
+        $code = (string) ($this->view['code'] ?? '');
+        $file = public_path('storage/quotes/'.$code.'.pdf');
+
+        if ($code === '' || ! is_file($file)) {
+            Flux::toast(
+                heading: 'PDF no disponible',
+                text: 'La cotización aún no tiene el documento listo. Un asesor puede reenviártelo.',
+                variant: 'danger',
+            );
+
+            return;
+        }
+
+        return response()->download($file, $code.'.pdf');
     }
 }; ?>
 
 <div
-    class="container flex flex-col w-full transition-opacity opacity-100 duration-750 lg:grow starting:opacity-0 md:px-10">
+    class="iq-quote"
+    x-data="{ selected: @js($view['default_coverage_key']) }"
+>
+    <header class="iq-quote__top">
+        <img class="iq-quote__logo" src="{{ asset('image/logoNewTDG.png') }}" alt="Tu Dr En Casa">
+        <p class="iq-quote__kicker">Propuesta económica</p>
+        <h1 class="iq-quote__title">{{ $view['plan_title'] }}</h1>
+        <p class="iq-quote__meta">
+            {{ $view['client_name'] }}
+            @if ($view['date_label'] !== '')
+                · {{ $view['date_label'] }}
+            @endif
+        </p>
+        <p class="iq-quote__code">{{ $view['code'] }} · {{ $view['agent_label'] }}</p>
+    </header>
 
-    <div class="flex flex-col justify-center items-center mb-5 mt-5">
+    <section class="iq-hero" aria-label="Total cotizado">
+        <p class="iq-hero__label">{{ $view['mode'] === 'coverages' ? 'Costo según cobertura' : 'Total del grupo' }}</p>
+        <p class="iq-hero__amount">{{ $view['headline'] }}</p>
+        <p class="iq-hero__hint">{{ $view['persons_label'] }}. {{ $view['headline_hint'] }}</p>
+    </section>
 
-        <div class="flex justify-center items-center h-12">
-            <img class="h-12" src="{{ asset('image/logoNewTDG.png') }}" alt="Logo" />
-        </div>
-
-        <flux:text class="mt-2 mb-6 text-base text-center">
-            <div class="flex flex-col justify-center items-center text-md mb-5">
-                <p>PROPUESTA ECONÓMICA</p>
-                <p>Sr(a): {{ $details['name'] }}, Fecha: {{ $details['date'] }}</p>
-                <p>Agente: {{ $agent }}</p>
+    @if ($view['mode'] === 'coverages' && $view['coverages'] !== [])
+        <section class="iq-card" aria-label="Coberturas">
+            <h2>Coberturas</h2>
+            <p class="iq-card__lead">Toca una cobertura para ver cómo se paga. Abajo está el detalle por edad.</p>
+            <div class="iq-coverages">
+                @foreach ($view['coverages'] as $coverage)
+                    <button
+                        type="button"
+                        class="iq-choice"
+                        x-bind:class="selected === @js($coverage['key']) && 'is-on'"
+                        x-on:click="selected = @js($coverage['key'])"
+                    >
+                        <span>{{ $coverage['label'] }}</span>
+                        <strong>{{ $coverage['annual_label'] }} <small>al año</small></strong>
+                    </button>
+                @endforeach
             </div>
-        </flux:text>
-
-        <flux:separator variant=" subtle" class="mb-5" />
-
-        <flux:button wire:click="download()" class="mb-3 cursor-pointer" icon="arrow-down-tray">Descargar Cotización
-        </flux:button>
-    </div>
-
-    @if ($plan_id == 1)
-    <!-- Plan Beneficios -->
-    <div
-        class=" w-full lg:px-8 lg:py-4 overflow-x-auto p-5 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 mb-5">
-
-        <flux:table align="center">
-
-            @include('header_inicial')
-
-            @foreach ($benefits as $value)
-            <flux:table.rows>
-                <flux:table.row>
-                    <flux:table.cell align="left">{{ $value->description }}</flux:table.cell>
-                    <flux:table.cell align=" center">
-
-                        <div class="flex justify-center items-center text-green-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round"
-                                class="lucide lucide-square-check-big-icon lucide-square-check-big">
-                                <path d="M21 10.656V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.344" />
-                                <path d="m9 11 3 3L22 4" />
-                            </svg>
-
-                        </div>
-
-                    </flux:table.cell>
-                </flux:table.row>
-            </flux:table.rows>
-            @endforeach
-
-        </flux:table>
-
-    </div>
-    <!-- Plan Tarifas Generales -->
-    <div
-        class=" w-full lg:px-8 lg:py-4 overflow-x-auto p-5 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 mb-5 mt-5">
-        <flux:heading size="xl" level="1" class="text-center">Tarifas Generales
-        </flux:heading>
-        <flux:text class="mt-2 mb-6 text-base text-center">Calculo de tarifas de acuerdo con la frecuencia de
-            pago
-        </flux:text>
-
-        <flux:table align="center">
-            <flux:table.rows>
-                <flux:table.row>
-                    <flux:table.cell align="center">RANGO DE EDAD</flux:table.cell>
-                    <flux:table.cell align="center">
-                        <flux:badge variant="solid" color="green">
-                            {{ $collect['age_range'] }} US$
-                        </flux:badge>
-                    </flux:table.cell>
-                </flux:table.row>
-                <flux:table.row>
-                    <flux:table.cell align="center">POBLACIÓN</flux:table.cell>
-                    <flux:table.cell align="center">
-                        <flux:badge variant="solid" color="green">
-                            {{ $collect['total_persons'] }} Persona(s)
-                        </flux:badge>
-                    </flux:table.cell>
-                </flux:table.row>
-                <flux:table.row>
-                    <flux:table.cell align="center">TARIFA INDIVIDUAL</flux:table.cell>
-                    <flux:table.cell align="center">
-                        <flux:badge variant="solid" color="green">
-                            {{ $collect['fee'] }} US$
-                        </flux:badge>
-                    </flux:table.cell>
-                </flux:table.row>
-
-            </flux:table.rows>
-        </flux:table>
-
-        <flux:separator text="tarifa grupales" />
-
-        <flux:table align="center">
-            <flux:table.rows>
-                <flux:table.row>
-                    <flux:table.cell align="center">TARIFA ANUAL</flux:table.cell>
-                    <flux:table.cell align="center">
-                        <flux:badge variant="solid" color="green">
-                            {{ $collect['subtotal_anual'] }} US$
-                        </flux:badge>
-                    </flux:table.cell>
-                </flux:table.row>
-                <flux:table.row>
-                    <flux:table.cell align="center">TARIFA SEMESTRAL</flux:table.cell>
-                    <flux:table.cell align="center">
-                        <flux:badge variant="solid" color="green">
-                            {{ $collect['subtotal_biannual'] }} US$
-                        </flux:badge>
-                    </flux:table.cell>
-                </flux:table.row>
-                <flux:table.row>
-                    <flux:table.cell align="center">TARIFA TRIMESTRAL</flux:table.cell>
-                    <flux:table.cell align="center">
-                        <flux:badge variant="solid" color="green">
-                            {{ $collect['subtotal_quarterly'] }} US$
-                        </flux:badge>
-                    </flux:table.cell>
-                </flux:table.row>
-
-            </flux:table.rows>
-        </flux:table>
-
-
-
-    </div>
-
-    @else
-    @include('interative_quote_ideal_especial')
+        </section>
     @endif
 
+    <section class="iq-card" aria-label="Rangos de edad">
+        <h2>Rangos de edad</h2>
+        <p class="iq-card__lead">Cómo se calcula: tarifa de cada rango × personas cotizadas.</p>
+
+        @forelse ($view['ranges'] as $range)
+            <article class="iq-range" wire:key="range-{{ $range['key'] }}">
+                <header>
+                    <h3>{{ $range['age_label'] }}</h3>
+                    <p>{{ $range['persons_label'] }}</p>
+                </header>
+                <ul>
+                    @foreach ($range['cells'] as $cell)
+                        <li
+                            @if ($view['mode'] === 'coverages')
+                                x-bind:class="selected === @js($cell['coverage_key']) && 'is-on'"
+                            @endif
+                        >
+                            <div>
+                                <span>{{ $cell['coverage_label'] }}</span>
+                                <small>{{ $cell['unit_label'] }} c/u</small>
+                            </div>
+                            <strong>{{ $cell['annual_label'] }}</strong>
+                        </li>
+                    @endforeach
+                </ul>
+            </article>
+        @empty
+            <p class="iq-empty">No hay tarifas cargadas en esta cotización.</p>
+        @endforelse
+    </section>
+
+    <section class="iq-card" aria-label="Formas de pago">
+        <h2>Formas de pago</h2>
+        <p class="iq-card__lead">El anual es el precio de referencia. Semestral y trimestral son el mismo total, en cuotas.</p>
+
+        @if ($view['mode'] === 'coverages')
+            @foreach ($view['coverages'] as $coverage)
+                <div class="iq-pay" x-show="selected === @js($coverage['key'])" x-cloak>
+                    <p class="iq-pay__label">{{ $coverage['label'] }}</p>
+                    <ul>
+                        @foreach ($coverage['frequencies'] as $frequency)
+                            <li>
+                                <span>
+                                    {{ $frequency['label'] }}
+                                    <small>{{ $frequency['hint'] }}</small>
+                                </span>
+                                <strong>{{ $frequency['amount_label'] }}</strong>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endforeach
+        @else
+            <div class="iq-pay">
+                <ul>
+                    @foreach ($view['frequencies'] as $frequency)
+                        <li>
+                            <span>
+                                {{ $frequency['label'] }}
+                                <small>{{ $frequency['hint'] }}</small>
+                            </span>
+                            <strong>{{ $frequency['amount_label'] }}</strong>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+    </section>
+
+    <div class="iq-cta">
+        <button type="button" class="iq-cta__btn" wire:click="download" wire:loading.attr="disabled">
+            <span wire:loading.remove>Descargar cotización</span>
+            <span wire:loading>Preparando PDF…</span>
+        </button>
+    </div>
+
+    <style>
+    [x-cloak] { display: none !important; }
+
+    .iq-quote {
+        min-height: 100dvh;
+        max-width: 32rem;
+        margin: 0 auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(6.2rem + env(safe-area-inset-bottom, 0px));
+        color: #f3eee6;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Instrument Sans', system-ui, sans-serif;
+    }
+
+    .iq-quote__top {
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    .iq-quote__logo {
+        height: 2.5rem;
+        margin: 0 auto 0.85rem;
+    }
+
+    .iq-quote__kicker,
+    .iq-quote__code {
+        margin: 0;
+        font-size: 0.68rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(243, 238, 230, 0.62);
+    }
+
+    .iq-quote__title {
+        margin: 0.35rem 0 0.3rem;
+        font-size: 1.7rem;
+        font-weight: 720;
+        letter-spacing: -0.04em;
+        line-height: 1.1;
+    }
+
+    .iq-quote__meta {
+        margin: 0;
+        font-size: 0.92rem;
+        color: rgba(243, 238, 230, 0.78);
+    }
+
+    .iq-hero,
+    .iq-card {
+        background: #f3eee6;
+        color: #122033;
+        border-radius: 1.35rem;
+        padding: 1.05rem 1rem 1.1rem;
+        margin-bottom: 0.8rem;
+        box-shadow: 0 18px 40px rgba(2, 12, 28, 0.22);
+    }
+
+    .iq-hero__label,
+    .iq-card h2,
+    .iq-range header p,
+    .iq-pay__label {
+        margin: 0;
+        font-size: 0.68rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(18, 32, 51, 0.55);
+        font-weight: 650;
+    }
+
+    .iq-hero__amount {
+        margin: 0.25rem 0 0.35rem;
+        font-size: 1.65rem;
+        font-weight: 750;
+        letter-spacing: -0.045em;
+        line-height: 1.1;
+    }
+
+    .iq-hero__hint,
+    .iq-card__lead,
+    .iq-empty {
+        margin: 0.35rem 0 0;
+        font-size: 0.88rem;
+        line-height: 1.4;
+        color: rgba(18, 32, 51, 0.68);
+    }
+
+    .iq-card h2 {
+        font-size: 0.72rem;
+    }
+
+    .iq-coverages,
+    .iq-range ul,
+    .iq-pay ul {
+        list-style: none;
+        margin: 0.85rem 0 0;
+        padding: 0;
+        display: grid;
+        gap: 0.55rem;
+    }
+
+    .iq-choice,
+    .iq-range li,
+    .iq-pay li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        width: 100%;
+        text-align: left;
+        border: 1px solid rgba(18, 32, 51, 0.08);
+        background: rgba(255, 255, 255, 0.72);
+        border-radius: 1rem;
+        padding: 0.8rem 0.9rem;
+        color: inherit;
+    }
+
+    .iq-choice {
+        cursor: pointer;
+    }
+
+    .iq-choice.is-on,
+    .iq-range li.is-on {
+        border-color: #0d4f6e;
+        box-shadow: inset 0 0 0 1px #0d4f6e;
+        background: #fff;
+    }
+
+    .iq-choice span,
+    .iq-range li span,
+    .iq-pay li span {
+        display: grid;
+        gap: 0.12rem;
+        font-size: 0.92rem;
+        font-weight: 650;
+    }
+
+    .iq-choice small,
+    .iq-range li small,
+    .iq-pay li small {
+        font-size: 0.72rem;
+        font-weight: 500;
+        color: rgba(18, 32, 51, 0.55);
+    }
+
+    .iq-choice strong,
+    .iq-range li strong,
+    .iq-pay li strong {
+        font-size: 1rem;
+        font-weight: 750;
+        letter-spacing: -0.03em;
+        white-space: nowrap;
+    }
+
+    .iq-range {
+        margin-top: 0.85rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid rgba(18, 32, 51, 0.08);
+    }
+
+    .iq-range:first-of-type {
+        margin-top: 0.7rem;
+    }
+
+    .iq-range header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.55rem;
+    }
+
+    .iq-range h3 {
+        margin: 0;
+        font-size: 1.02rem;
+        font-weight: 720;
+        letter-spacing: -0.03em;
+    }
+
+    .iq-cta {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 5;
+        padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+        background: linear-gradient(180deg, rgba(11, 31, 74, 0), rgba(11, 31, 74, 0.92) 28%, #0b1f4a);
+    }
+
+    .iq-cta__btn {
+        display: flex;
+        width: 100%;
+        min-height: 3.2rem;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 1.1rem;
+        background: #f3eee6;
+        color: #122033;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        max-width: 32rem;
+        margin-inline: auto;
+    }
+
+    .iq-cta__btn[disabled] {
+        opacity: 0.6;
+    }
+    </style>
 </div>

@@ -32,20 +32,23 @@ final class UserModulesFormUi
         return $options;
     }
 
-    public static function modulesIntroHtml(): HtmlString
+    public static function modulesIntroHtml(bool $commercialNetworkUser = false): HtmlString
     {
+        $body = $commercialNetworkUser
+            ? 'Los módulos internos no son obligatorios para un agente o una agencia. Asígnalos solo si el administrador decide que también entre a paneles de INTEGRACORP. El acceso a su panel comercial se gestiona en <strong>Permisos de red</strong>.'
+            : 'Cada módulo habilita un panel de INTEGRACORP (Negocios, Administración, Operaciones, etc.). Después de elegirlos aquí, define las pantallas exactas en la pestaña <strong>Permisos</strong>.';
+
         return new HtmlString(
             '<div class="user-modules-intro rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 dark:border-sky-500/20 dark:bg-sky-950/30">'
             .'<p class="text-sm font-semibold text-slate-900 dark:text-slate-100">¿Qué son los módulos?</p>'
             .'<p class="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">'
-            .'Cada módulo habilita un panel de INTEGRACORP (Negocios, Administración, Operaciones, etc.). '
-            .'Después de elegirlos aquí, define las pantallas exactas en la pestaña <strong>Permisos</strong>.'
+            .$body
             .'</p>'
             .'</div>'
         );
     }
 
-    public static function selectionSummaryHtml(mixed $departments): HtmlString
+    public static function selectionSummaryHtml(mixed $departments, bool $commercialNetworkUser = false): HtmlString
     {
         $selected = is_array($departments)
             ? array_values(array_filter($departments, fn (mixed $item): bool => is_string($item) && trim($item) !== ''))
@@ -54,8 +57,13 @@ final class UserModulesFormUi
         $count = count($selected);
 
         if ($count === 0) {
-            $message = 'Ningún módulo seleccionado. El usuario no podrá ingresar a paneles internos.';
-            $class = 'user-modules-summary user-modules-summary--empty';
+            if ($commercialNetworkUser) {
+                $message = 'Ningún módulo interno seleccionado. El usuario seguirá usando su panel comercial; asignar paneles internos es opcional.';
+                $class = 'user-modules-summary user-modules-summary--optional';
+            } else {
+                $message = 'Ningún módulo seleccionado. El usuario no podrá ingresar a paneles internos.';
+                $class = 'user-modules-summary user-modules-summary--empty';
+            }
         } elseif ($count === 1) {
             $message = '1 módulo seleccionado: '.UserPermissionFormUi::moduleDisplayLabel($selected[0]).'.';
             $class = 'user-modules-summary user-modules-summary--active';

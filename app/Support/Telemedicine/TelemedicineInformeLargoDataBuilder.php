@@ -34,7 +34,7 @@ final class TelemedicineInformeLargoDataBuilder
         return [
             'fecha' => now()->format('d/m/Y'),
             'code_reference' => (string) ($clinicalData['code_reference'] ?? $context['code_reference'] ?? ''),
-            'name_patient' => (string) ($clinicalData['full_name'] ?? $context['full_name'] ?? ''),
+            'name_patient' => TelemedicinePatientDisplayName::fromContext($context, $clinicalData),
             'ci_patient' => (string) ($clinicalData['nro_identificacion'] ?? $context['nro_identificacion'] ?? ''),
             'age_patient' => $clinicalData['age'] ?? $context['age'] ?? null,
             'reason' => (string) ($clinicalData['reason_consultation'] ?? $context['reason_consultation'] ?? ''),
@@ -52,6 +52,7 @@ final class TelemedicineInformeLargoDataBuilder
             'studiesArr' => $studiesArr,
             'otherStudiesArr' => $otherStudiesArr,
             'otherSpecialistArr' => $otherSpecialistArr,
+            'doctor_name' => $doctor->full_name,
             'code_cm' => $doctor->code_cm,
             'code_mpps' => $doctor->code_mpps,
             'signature' => $doctor->signature,

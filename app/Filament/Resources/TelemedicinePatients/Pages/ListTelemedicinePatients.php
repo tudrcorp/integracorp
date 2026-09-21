@@ -141,6 +141,7 @@ class ListTelemedicinePatients extends ListRecords
 
                             // Unidad de Negocios
                             'business_unit_id' => $affiliation[0]['affiliation']['business_unit_id'] == null ? '----' : $affiliation[0]['affiliation']['business_unit_id'],
+                            'specific_business_unit' => $affiliation[0]['affiliation']['specific_business_unit'] ?? $affiliation[0]['specific_business_unit'] ?? null,
                             'business_line_id' => $affiliation[0]['affiliation']['business_line_id'] == null ? '----' : $affiliation[0]['affiliation']['business_line_id'],
                         ]);
 
@@ -182,6 +183,7 @@ class ListTelemedicinePatients extends ListRecords
 
                             // Unidad de Negocios
                             'business_unit_id' => $affiliation[0]['affiliation_corporate']['business_unit_id'] == null ? null : $affiliation[0]['affiliation_corporate']['business_unit_id'],
+                            'specific_business_unit' => $affiliation[0]['affiliation_corporate']['specific_business_unit'] ?? $affiliation[0]['specific_business_unit'] ?? null,
                             'business_line_id' => $affiliation[0]['affiliation_corporate']['business_line_id'] == null ? null : $affiliation[0]['affiliation_corporate']['business_line_id'],
                         ]);
 

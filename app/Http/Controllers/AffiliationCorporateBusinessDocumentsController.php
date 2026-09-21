@@ -6,8 +6,11 @@ use App\Http\Requests\SendAffiliationDocumentsEmailRequest;
 use App\Mail\AffiliationDocumentsGeneratedMail;
 use App\Models\AffiliationCorporate;
 use App\Services\AffiliationCorporateBusinessDocumentsService;
+use App\Support\AffiliateCard\AffiliateCarnetEmailDispatchService;
+use App\Support\Affiliations\AffiliationJobFailureLogger;
 use App\Support\SecurityAudit;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 
@@ -55,6 +58,31 @@ class AffiliationCorporateBusinessDocumentsController extends Controller
             'ok' => $payload['status'] !== 'failed',
             ...$payload,
         ], $payload['status'] === 'failed' ? 422 : 200);
+    }
+
+    /**
+     * Carnets individuales paginados para el buscador del modal. Se sirven aparte
+     * para que la respuesta de estado no crezca con miles de documentos.
+     */
+    public function tarjetas(Request $request, AffiliationCorporate $affiliationCorporate): JsonResponse
+    {
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:120'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $result = AffiliationCorporateBusinessDocumentsService::paginatedTarjetaDocuments(
+            $affiliationCorporate,
+            (string) ($validated['q'] ?? ''),
+            (int) ($validated['page'] ?? 1),
+            (int) ($validated['per_page'] ?? 20),
+        );
+
+        return response()->json([
+            'ok' => true,
+            ...$result,
+        ]);
     }
 
     public function sendEmail(
@@ -124,6 +152,14 @@ class AffiliationCorporateBusinessDocumentsController extends Controller
                 'attachments_count' => count($paths),
             ]);
         } catch (\Throwable $exception) {
+            AffiliationJobFailureLogger::dispatchFailed(AffiliationDocumentsGeneratedMail::class, $exception, [
+                'action' => 'send-documents-email',
+                'affiliation_corporate_id' => $affiliationCorporate->id,
+                'affiliation_code' => $affiliationCorporate->code,
+                'recipient_email' => $email,
+                'attachments_count' => count($paths),
+            ]);
+
             SecurityAudit::log('AUDIT_AFFILIATION_CORPORATE_DOCUMENTS_EMAIL_FAILED', 'business.affiliation-corporate-documents.send-email', [
                 'affiliation_corporate_id' => $affiliationCorporate->id,
                 'affiliation_code' => $affiliationCorporate->code,
@@ -141,6 +177,48 @@ class AffiliationCorporateBusinessDocumentsController extends Controller
         return response()->json([
             'ok' => true,
             'message' => 'Listo. Enviamos los documentos al correo indicado (copia a afiliaciones@tudrencasa.com; copia oculta a solrodriguez@tudrencasa.com).',
+        ]);
+    }
+
+    public function sendCarnetEmails(AffiliationCorporate $affiliationCorporate): JsonResponse
+    {
+        $userId = Auth::id();
+
+        if ($userId === null) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Debe iniciar sesión para enviar los carnets.',
+            ], 401);
+        }
+
+        $result = AffiliateCarnetEmailDispatchService::queueForCorporate($affiliationCorporate, (int) $userId);
+
+        if (! $result['ok']) {
+            SecurityAudit::log('AUDIT_AFFILIATION_CORPORATE_CARNET_EMAILS_FAILED', 'business.affiliation-corporate-documents.send-carnet-emails', [
+                'affiliation_corporate_id' => $affiliationCorporate->id,
+                'affiliation_code' => $affiliationCorporate->code,
+                'skipped' => $result['skipped'],
+                'reason' => $result['message'],
+            ]);
+
+            return response()->json([
+                'ok' => false,
+                'message' => $result['message'],
+            ], 422);
+        }
+
+        SecurityAudit::log('AUDIT_AFFILIATION_CORPORATE_CARNET_EMAILS_QUEUED', 'business.affiliation-corporate-documents.send-carnet-emails', [
+            'affiliation_corporate_id' => $affiliationCorporate->id,
+            'affiliation_code' => $affiliationCorporate->code,
+            'queued' => $result['queued'],
+            'skipped' => $result['skipped'],
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => $result['message'],
+            'queued' => $result['queued'],
+            'skipped' => $result['skipped'],
         ]);
     }
 }

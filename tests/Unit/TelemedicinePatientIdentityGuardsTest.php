@@ -24,7 +24,7 @@ it('CreateTelemedicineConsultationPatient fuerza identidad del paciente del caso
 
     expect($page)->not->toBeFalse()
         ->and($page)->toContain('TelemedicinePatientIdentity::enforceConsultationIdentity')
-        ->and($page)->toContain('La identidad de la sesión no coincide con el paciente del caso');
+        ->and($page)->toContain('La identidad de la consulta no coincide con el paciente del caso');
 });
 
 it('CreateTelemedicineConsultationPatient rehidrata caso y paciente entre requests Livewire', function (): void {
@@ -59,7 +59,8 @@ it('existe comando de remediación por identidad desplazada', function (): void 
         ->and($command)->toContain('--apply')
         ->and($command)->toContain('resolveOrCreatePatientForDocument')
         ->and($command)->toContain('AssociateAffiliateWithTelemedicinePatientService::run')
-        ->and($command)->toContain('Affiliate::query()');
+        ->and($command)->toContain('Affiliate::query()')
+        ->and($command)->toContain('ValidationException');
 });
 
 it('la auditoría diaria de identidad queda programada', function (): void {

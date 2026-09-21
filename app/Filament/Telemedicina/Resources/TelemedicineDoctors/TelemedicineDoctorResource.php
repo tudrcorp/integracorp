@@ -20,6 +20,12 @@ class TelemedicineDoctorResource extends Resource
 {
     protected static ?string $model = TelemedicineDoctor::class;
 
+    protected static ?string $modelLabel = 'médico';
+
+    protected static ?string $pluralModelLabel = 'Médicos';
+
+    protected static ?string $recordTitleAttribute = 'full_name';
+
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-doctor-male';
 
     protected static string|UnitEnum|null $navigationGroup = 'GESTIÓN TELEMÉDICA';

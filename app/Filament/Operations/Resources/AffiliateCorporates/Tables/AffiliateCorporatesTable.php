@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\AffiliateCorporates\Tables;
 
 use App\Http\Controllers\AffiliateCorporateExportCsvController;
+use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -81,6 +82,14 @@ class AffiliateCorporatesTable
                     ->badge()
                     ->color('gray')
                     ->searchable(),
+                TextColumn::make('relationship')
+                    ->label('Parentesco')
+                    ->badge()
+                    ->color('gray')
+                    ->formatStateUsing(fn (?string $state): ?string => CorporateAffiliateRelationship::label($state))
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('phone')
                     ->label('Teléfono')
                     ->icon(Heroicon::OutlinedPhone)
@@ -140,6 +149,16 @@ class AffiliateCorporatesTable
                     ->searchable(query: function (Builder $query, string $search): Builder {
                         return $query->whereHas('affiliationCorporate.businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"));
                     }),
+                TextColumn::make('affiliationCorporate.specific_business_unit')
+                    ->label('Unidad de negocio específica')
+                    ->wrap()
+                    ->limit(36)
+                    ->tooltip(fn ($record): ?string => filled($record->affiliationCorporate?->specific_business_unit)
+                        ? (string) $record->affiliationCorporate->specific_business_unit
+                        : null)
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
                     ->money('USD')

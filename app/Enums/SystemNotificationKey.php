@@ -17,6 +17,9 @@ enum SystemNotificationKey: string
     case BirthdayNotificationWitnessCopy = 'birthday_notification_witness_copy';
     case BirthdayNotificationSummary = 'birthday_notification_summary';
     case TdevRegistration = 'tdev_registration';
+    case CompanyAssociateIlsCoverage = 'company_associate_ils_coverage';
+    case TelemedicineServiceLimitOverride = 'telemedicine_service_limit_override';
+    case StorefrontQuotePaymentReceipt = 'storefront_quote_payment_receipt';
 
     public function label(): string
     {
@@ -32,6 +35,9 @@ enum SystemNotificationKey: string
             self::BirthdayNotificationWitnessCopy => 'Copia testigo cumpleaños',
             self::BirthdayNotificationSummary => 'Resumen cumpleaños',
             self::TdevRegistration => 'Registros TDEV',
+            self::CompanyAssociateIlsCoverage => 'Cobertura ILS confirmada',
+            self::TelemedicineServiceLimitOverride => 'Autorización de servicio fuera de límite',
+            self::StorefrontQuotePaymentReceipt => 'Comprobante de pago PWA',
         };
     }
 
@@ -49,6 +55,9 @@ enum SystemNotificationKey: string
             self::BirthdayNotificationWitnessCopy => 'Copias testigo de cada tarjeta de cumpleaños enviada (WhatsApp duplicado y CC en el correo). No incluye el resumen de la corrida.',
             self::BirthdayNotificationSummary => 'Destinatarios del resumen de ejecución de la tarea diaria de tarjetas de cumpleaños (totales, fallas y configuración). No reciben la copia de cada envío.',
             self::TdevRegistration => 'Destinatarios de las alertas cuando se registra una agencia nivel 3 o un agente TDEV (freelance de nivel 2 o asociado a nivel 3) desde los formularios públicos.',
+            self::CompanyAssociateIlsCoverage => 'Destinatarios del aviso que confirma que un asociado de nuevos negocios quedó cubierto en su totalidad, con el número de voucher ILS, su vigencia y el documento adjunto.',
+            self::TelemedicineServiceLimitOverride => 'Quienes reciben la clave OTP de 6 dígitos cuando un médico pide asignar un servicio clínico que ya agotó el cupo del plan. El médico no recibe la clave: se la dictan estos contactos.',
+            self::StorefrontQuotePaymentReceipt => 'Destinatarios de Administración (correo y WhatsApp) cuando un cliente carga el comprobante de una cotización desde la PWA.',
         };
     }
 
@@ -66,6 +75,9 @@ enum SystemNotificationKey: string
             self::BirthdayNotificationWitnessCopy => 'Copia testigo de cada envío',
             self::BirthdayNotificationSummary => 'Resumen de la corrida diaria',
             self::TdevRegistration => 'Alertas de registros TDEV',
+            self::CompanyAssociateIlsCoverage => 'Confirmación de cobertura del asociado',
+            self::TelemedicineServiceLimitOverride => 'Clave OTP fuera de límite clínico',
+            self::StorefrontQuotePaymentReceipt => 'Comprobante de cotización PWA',
         };
     }
 
@@ -83,6 +95,9 @@ enum SystemNotificationKey: string
             self::BirthdayNotificationWitnessCopy => 'Por cada tarjeta enviada al cumpleañero, estos contactos reciben una copia: WhatsApp duplicado (con demora) y CC en el correo. Sirve para auditar el contenido enviado, no el resultado de la tarea.',
             self::BirthdayNotificationSummary => 'Al terminar la corrida de las 8:00, estos contactos reciben el resumen operativo (validaciones, envíos encolados, fallas y tarjetas aprobadas). No reciben la tarjeta de cada persona.',
             self::TdevRegistration => 'Cada registro público de agencia nivel 3, agente de agencia nivel 3 o agente freelance de agencia nivel 2 dispara correo y WhatsApp con el detalle completo y branding TDEV.',
+            self::CompanyAssociateIlsCoverage => 'Cuando el analista guarda el voucher ILS de un asociado, el sistema le pide declarar que completó toda la gestión que garantiza la cobertura. Al confirmar se envía correo y WhatsApp con los datos del asociado, el número de voucher, la vigencia desde-hasta y el documento del voucher adjunto en ambos canales.',
+            self::TelemedicineServiceLimitOverride => 'Si el médico confirma que quiere continuar con un servicio agotado, el sistema envía en el acto (WhatsApp y correo) una clave de 6 dígitos con 5 minutos de vida. Sin destinatarios o con la alerta pausada no hay excepción.',
+            self::StorefrontQuotePaymentReceipt => 'Cuando el cliente adjunta el comprobante en la app, el sistema encola correo y WhatsApp a Administración con el número de cotización, el usuario que lo cargó y el canal PWA. El archivo viaja adjunto.',
         };
     }
 
@@ -158,6 +173,24 @@ enum SystemNotificationKey: string
                 '3. Email + WhatsApp',
                 '4. Revisar en AGENCIAS TDEV',
             ],
+            self::CompanyAssociateIlsCoverage => [
+                '1. Analista guarda voucher',
+                '2. Confirma la gestión',
+                '3. Cola asíncrona',
+                '4. Email + WhatsApp con voucher',
+            ],
+            self::TelemedicineServiceLimitOverride => [
+                '1. Cupo clínico agotado',
+                '2. Médico confirma y escribe motivo',
+                '3. OTP 6 dígitos / 5 min',
+                '4. Médico ingresa la clave',
+            ],
+            self::StorefrontQuotePaymentReceipt => [
+                '1. Cliente carga comprobante',
+                '2. Guardado en la cotización',
+                '3. Cola asíncrona',
+                '4. Email + WhatsApp a Administración',
+            ],
         };
     }
 
@@ -175,6 +208,9 @@ enum SystemNotificationKey: string
             self::BirthdayNotificationWitnessCopy => 'Copia testigo:',
             self::BirthdayNotificationSummary => 'Resumen de ejecución:',
             self::TdevRegistration => 'Acción requerida:',
+            self::CompanyAssociateIlsCoverage => 'Declaración del analista:',
+            self::TelemedicineServiceLimitOverride => 'Autorización excepcional:',
+            self::StorefrontQuotePaymentReceipt => 'Acción requerida para Administración:',
         };
     }
 
@@ -192,6 +228,9 @@ enum SystemNotificationKey: string
             self::BirthdayNotificationWitnessCopy => 'estos contactos reciben una copia de cada tarjeta enviada (WhatsApp y/o CC en email). El resumen consolidado de la corrida se configura en la pestaña «Resumen cumpleaños».',
             self::BirthdayNotificationSummary => 'estos contactos reciben solo el resumen de la corrida (totales y fallas). Las copias de cada tarjeta se configuran en la pestaña «Copia testigo cumpleaños».',
             self::TdevRegistration => 'al recibir la alerta revise INTEGRACORP → Estructura comercial → AGENCIAS TDEV para validar el registro (agencia nivel 3 o agente) y dar seguimiento comercial.',
+            self::CompanyAssociateIlsCoverage => 'el aviso solo se envía cuando el analista confirma expresamente que realizó toda la gestión que garantiza la cobertura del cliente. Quién confirmó y cuándo queda registrado en las trazas de seguridad.',
+            self::TelemedicineServiceLimitOverride => 'dicte la clave al médico por un canal interno. La clave vence en 5 minutos, es de un solo uso y no debe reenviarse al paciente. Sin esta clave el sistema no asigna el servicio extra.',
+            self::StorefrontQuotePaymentReceipt => 'revise el comprobante adjunto, concilie el pago y dé seguimiento a la cotización. El teléfono configurado aquí también es el que usa el cliente en la PWA para escribirle a Administración.',
         };
     }
 
@@ -209,6 +248,9 @@ enum SystemNotificationKey: string
             self::BirthdayNotificationWitnessCopy => 'heroicon-o-document-duplicate',
             self::BirthdayNotificationSummary => 'heroicon-o-chart-bar',
             self::TdevRegistration => 'heroicon-o-building-office-2',
+            self::CompanyAssociateIlsCoverage => 'heroicon-o-shield-check',
+            self::TelemedicineServiceLimitOverride => 'heroicon-o-key',
+            self::StorefrontQuotePaymentReceipt => 'heroicon-o-banknotes',
         };
     }
 
@@ -235,6 +277,9 @@ enum SystemNotificationKey: string
             ],
             self::BirthdayNotificationSummary => [],
             self::TdevRegistration => [],
+            self::CompanyAssociateIlsCoverage => [],
+            self::TelemedicineServiceLimitOverride => [],
+            self::StorefrontQuotePaymentReceipt => [],
         };
     }
 
@@ -273,6 +318,9 @@ enum SystemNotificationKey: string
                 '04143027250',
             ],
             self::TdevRegistration => [],
+            self::CompanyAssociateIlsCoverage => [],
+            self::TelemedicineServiceLimitOverride => [],
+            self::StorefrontQuotePaymentReceipt => [],
         };
     }
 
@@ -290,6 +338,9 @@ enum SystemNotificationKey: string
             self::BirthdayNotificationWitnessCopy => 'Sin copias testigo. Las tarjetas seguirán enviándose a los cumpleañeros, pero no habrá copia WhatsApp ni CC en el correo.',
             self::BirthdayNotificationSummary => 'Sin destinatarios de resumen. Las tarjetas se enviarán igual, pero no se notificará el resultado de la corrida.',
             self::TdevRegistration => 'Aún no hay destinatarios configurados. Agregue al menos un correo o un teléfono para activar las alertas de registros TDEV.',
+            self::CompanyAssociateIlsCoverage => 'Aún no hay destinatarios configurados. El analista podrá confirmar la cobertura, pero no se enviará el aviso con el voucher.',
+            self::TelemedicineServiceLimitOverride => 'Aún no hay destinatarios. El médico verá el cupo agotado, pero no podrá pedir autorización fuera de límite hasta que agregue al menos un correo o un teléfono.',
+            self::StorefrontQuotePaymentReceipt => 'Aún no hay destinatarios de Administración. El cliente podrá cargar el comprobante, pero no se enviará el aviso ni habrá WhatsApp de contacto en la PWA.',
         };
     }
 
@@ -331,6 +382,15 @@ enum SystemNotificationKey: string
             self::TdevRegistration => $empty
                 ? 'No hay destinatarios activos. Las notificaciones de registros TDEV quedarán en pausa hasta que agregue contactos.'
                 : 'Se notificará por correo y WhatsApp a los contactos configurados cuando haya un registro TDEV público.',
+            self::CompanyAssociateIlsCoverage => $empty
+                ? 'No hay destinatarios activos. El voucher se guardará igual, pero nadie recibirá la confirmación de cobertura.'
+                : 'Se notificará por correo y WhatsApp, con el voucher adjunto, a los contactos configurados cuando el analista confirme la cobertura.',
+            self::TelemedicineServiceLimitOverride => $empty
+                ? 'No hay destinatarios. El médico no podrá autorizar un servicio fuera de límite.'
+                : 'La clave OTP se enviará por correo y WhatsApp a estos contactos cuando un médico pida un servicio extra.',
+            self::StorefrontQuotePaymentReceipt => $empty
+                ? 'No hay destinatarios de Administración. El comprobante se guardará, pero nadie recibirá el aviso.'
+                : 'Se notificará por correo y WhatsApp a Administración cuando un cliente cargue el comprobante desde la PWA.',
         };
     }
 
@@ -342,6 +402,9 @@ enum SystemNotificationKey: string
             self::BirthdayNotificationWitnessCopy,
             self::BirthdayNotificationSummary,
             self::TdevRegistration,
+            self::CompanyAssociateIlsCoverage,
+            self::TelemedicineServiceLimitOverride,
+            self::StorefrontQuotePaymentReceipt,
         ], true);
     }
 
@@ -359,6 +422,9 @@ enum SystemNotificationKey: string
             self::BirthdayNotificationWitnessCopy => 'Si está inactiva, las tarjetas seguirán enviándose a los cumpleañeros, pero no se enviarán copias testigo.',
             self::BirthdayNotificationSummary => 'Si está inactiva, las tarjetas seguirán enviándose, pero no se enviará el resumen de la corrida.',
             self::TdevRegistration => 'Si está inactiva, los registros públicos TDEV seguirán guardándose, pero no se enviará correo ni WhatsApp.',
+            self::CompanyAssociateIlsCoverage => 'Si está inactiva, el analista podrá guardar el voucher y confirmar la cobertura, pero no se enviará el aviso por correo ni WhatsApp.',
+            self::TelemedicineServiceLimitOverride => 'Si está inactiva, el médico verá el cupo agotado y no podrá pedir la clave OTP. El servicio extra queda bloqueado.',
+            self::StorefrontQuotePaymentReceipt => 'Si está inactiva, el cliente podrá cargar el comprobante en la app, pero no se enviará correo ni WhatsApp a Administración.',
         };
     }
 
@@ -379,6 +445,9 @@ enum SystemNotificationKey: string
             self::BirthdayNotificationWitnessCopy,
             self::BirthdayNotificationSummary,
             self::TdevRegistration,
+            self::CompanyAssociateIlsCoverage,
+            self::TelemedicineServiceLimitOverride,
+            self::StorefrontQuotePaymentReceipt,
         ];
     }
 }

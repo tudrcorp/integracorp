@@ -12,10 +12,22 @@ final class PermissionNavigationGroupResolver
     /** @var array<string, class-string|null> */
     private static array $slugModuleToClass = [];
 
+    /**
+     * El grupo de navegación de un recurso sale de una llamada estática o de
+     * reflexión sobre la propiedad `$navigationGroup`. Es estable durante toda
+     * la petición y se consulta una vez por permiso.
+     *
+     * @var array<class-string, string|null>
+     */
+    private static array $groupByClass = [];
+
     public static function groupForPermission(Permission $permission): string
     {
-        if (strtoupper((string) $permission->module) === 'NEGOCIOS') {
-            $actionGroup = BusinessFilamentActionPermissionRegistry::navigationGroupForSlug((string) $permission->slug);
+        $slug = (string) $permission->slug;
+        $module = strtoupper((string) $permission->module);
+
+        if (BusinessFilamentActionPermissionRegistry::slugIsAvailableInModule($slug, $module)) {
+            $actionGroup = BusinessFilamentActionPermissionRegistry::navigationGroupForSlug($slug);
 
             if ($actionGroup !== null) {
                 return $actionGroup;
@@ -107,6 +119,15 @@ final class PermissionNavigationGroupResolver
      * @param  class-string  $class
      */
     private static function navigationGroupForClass(string $class): ?string
+    {
+        if (array_key_exists($class, self::$groupByClass)) {
+            return self::$groupByClass[$class];
+        }
+
+        return self::$groupByClass[$class] = self::resolveNavigationGroupForClass($class);
+    }
+
+    private static function resolveNavigationGroupForClass(string $class): ?string
     {
         if (method_exists($class, 'getNavigationGroup')) {
             $group = $class::getNavigationGroup();

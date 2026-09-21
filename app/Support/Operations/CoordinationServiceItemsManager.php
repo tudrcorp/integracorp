@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Support\Operations;
 
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceItems;
+use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ViewOperationCoordinationService;
+use App\Filament\Operations\Resources\OperationCoordinationServices\Schemas\OperationCoordinationServiceInfolist;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable;
 use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrderResource;
 use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRetailServicesAction;
@@ -42,7 +44,7 @@ final class CoordinationServiceItemsManager
             }
 
             if (! filled($row->operation_inventory_id ?? null)) {
-                return false;
+                return isset($row->is_covered) ? (bool) $row->is_covered : false;
             }
 
             return isset($row->is_covered) ? (bool) $row->is_covered : null;
@@ -83,24 +85,22 @@ final class CoordinationServiceItemsManager
     }
 
     /**
-     * Los medicamentos y laboratorios cubiertos son responsabilidad del proveedor.
-     * El equipo TDG puede verlos, pero solo gestionarlos cuando el analista del
-     * proveedor reasigna el servicio a TDG (managed_by = 'TDG').
+     * Delega en la matriz de acceso por rol. El cubierto sin inventario
+     * lo gestiona el analista TDG; el cubierto de inventario sigue la regla
+     * proveedor / managed_by = TDG.
      */
     public static function coveredItemIsManageableByTdg(
         OperationCoordinationService $record,
         string $category,
-        ?bool $coverage
+        ?bool $coverage,
+        bool $isCoveredWithoutInventory = false,
     ): bool {
-        if ($coverage !== true) {
-            return true;
-        }
-
-        if (! in_array($category, ['Medicamento', 'Laboratorio'], true)) {
-            return true;
-        }
-
-        return self::coordinationIsManagedByTdg($record);
+        return CoordinationServiceAccess::itemIsManageableByUser(
+            $record,
+            $category,
+            $coverage,
+            isCoveredWithoutInventory: $isCoveredWithoutInventory,
+        );
     }
 
     public static function hasManageServiceItems(OperationCoordinationService $record): bool
@@ -133,6 +133,34 @@ final class CoordinationServiceItemsManager
      *     selectable: bool
      * }>
      */
+    /**
+     * Ítems clínicos ya resueltos, por coordinación y por pasada de render.
+     *
+     * En el cuadro de control cada fila resuelve estos ítems dos veces: una para
+     * el color de la fila (`recordClasses`) y otra para la columna de ítems. La
+     * tabla vacía esta caché en `modifyQueryUsing`, que corre una sola vez por
+     * render, de modo que la memoria nunca sobrevive a una escritura.
+     *
+     * @var array<int, Collection<int, array<string, mixed>>>
+     */
+    private static array $clinicalItemsCache = [];
+
+    /**
+     * @var array<int, array<string, array<string, mixed>>>
+     */
+    private static array $serviceOrderLinksCache = [];
+
+    /**
+     * Vacía la memoria de ítems clínicos. La tabla la invoca al construir su
+     * consulta; los flujos que crean órdenes o cotizaciones deben invocarla si
+     * vuelven a pintar dentro de la misma petición.
+     */
+    public static function flushClinicalItemsCache(): void
+    {
+        self::$clinicalItemsCache = [];
+        self::$serviceOrderLinksCache = [];
+    }
+
     public static function associatedServiceItemsForManagement(OperationCoordinationService $record): Collection
     {
         TelemedicineCaseTdgReassignmentCoordination::ensureAmdManagementItem($record);
@@ -146,19 +174,22 @@ final class CoordinationServiceItemsManager
             ->get(['id', 'medicine', 'indications', 'status', 'courtesy_status', 'is_covered', 'operation_inventory_id'])
             ->each(function (TelemedicinePatientMedications $item) use ($items, $record): void {
                 $coverage = self::coverageValue('MEDICAMENTOS', $item);
+                $isCoveredWithoutInventory = TelemedicineMedicationCoverage::isCoveredWithoutInventory($item);
                 $items->push([
                     'key' => 'medication:'.$item->id,
                     'category' => 'Medicamento',
                     'label' => (string) ($item->medicine ?? 'Medicamento sin nombre'),
                     'detail' => (string) ($item->indications ?? '—'),
                     'coverage' => $coverage,
-                    'coverage_label' => self::coverageLabel($coverage),
+                    'coverage_label' => $isCoveredWithoutInventory
+                        ? TelemedicineMedicationCoverage::coverageLabel($item)
+                        : self::coverageLabel($coverage),
                     'status' => (string) ($item->status ?? '—'),
                     'courtesy_status' => CoordinationServiceCourtesy::itemIsCourtesy($item->courtesy_status ?? null)
                         ? CoordinationServiceCourtesy::STATUS
                         : null,
                     'selectable' => self::isManagementItemSelectable((string) ($item->status ?? ''))
-                        && self::coveredItemIsManageableByTdg($record, 'Medicamento', $coverage),
+                        && self::coveredItemIsManageableByTdg($record, 'Medicamento', $coverage, $isCoveredWithoutInventory),
                 ]);
             });
 
@@ -785,6 +816,26 @@ final class CoordinationServiceItemsManager
      */
     public static function clinicalItemsWithEffectiveDisplayStatus(OperationCoordinationService $record): Collection
     {
+        $cacheKey = $record->exists ? (int) $record->getKey() : null;
+
+        if ($cacheKey !== null && array_key_exists($cacheKey, self::$clinicalItemsCache)) {
+            return self::$clinicalItemsCache[$cacheKey];
+        }
+
+        $items = self::resolveClinicalItemsWithEffectiveDisplayStatus($record);
+
+        if ($cacheKey !== null) {
+            self::$clinicalItemsCache[$cacheKey] = $items;
+        }
+
+        return $items;
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private static function resolveClinicalItemsWithEffectiveDisplayStatus(OperationCoordinationService $record): Collection
+    {
         $orderLinks = self::serviceOrderLinksByClinicalItemKey($record);
 
         return self::associatedServiceItemsForManagement($record)
@@ -893,8 +944,8 @@ final class CoordinationServiceItemsManager
             $style = self::clinicalItemStatusCounterPillStyle($status);
             $label = self::clinicalItemStatusCounterLabel($status, $count);
 
-            $pills[] = '<span style="background:linear-gradient(180deg,'.$style['bg'].' 0%,'.$style['bg'].' 100%);color:#ffffff;padding:8px 16px;border-radius:9999px;font-size:.8rem;font-weight:800;letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;box-shadow:'.$style['shadow'].',inset 0 1px 0 rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.24);">'
-                .'<span style="font-size:10px;opacity:.95;">●</span> '.e($label)
+            $pills[] = '<span style="background:linear-gradient(180deg,'.$style['bg'].' 0%,'.$style['bg'].' 100%);color:#ffffff;padding:4px 12px;border-radius:9999px;font-size:.7rem;font-weight:800;letter-spacing:.02em;line-height:1.25;display:inline-flex;align-items:center;gap:5px;box-shadow:'.$style['shadow'].',inset 0 1px 0 rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.24);">'
+                .'<span style="font-size:8px;opacity:.95;">●</span> '.e($label)
                 .'</span>';
         }
 
@@ -902,7 +953,7 @@ final class CoordinationServiceItemsManager
             return '';
         }
 
-        return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">'.implode('', $pills).'</div>';
+        return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;">'.implode('', $pills).'</div>';
     }
 
     /**
@@ -994,6 +1045,26 @@ final class CoordinationServiceItemsManager
      * @return array<string, array{id: int, order_number: string, status: string, url: string}>
      */
     public static function serviceOrderLinksByClinicalItemKey(OperationCoordinationService $record): array
+    {
+        $cacheKey = $record->exists ? (int) $record->getKey() : null;
+
+        if ($cacheKey !== null && array_key_exists($cacheKey, self::$serviceOrderLinksCache)) {
+            return self::$serviceOrderLinksCache[$cacheKey];
+        }
+
+        $map = self::resolveServiceOrderLinksByClinicalItemKey($record);
+
+        if ($cacheKey !== null) {
+            self::$serviceOrderLinksCache[$cacheKey] = $map;
+        }
+
+        return $map;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private static function resolveServiceOrderLinksByClinicalItemKey(OperationCoordinationService $record): array
     {
         $map = [];
 
@@ -1098,10 +1169,17 @@ final class CoordinationServiceItemsManager
         $headerSummary = self::clinicalItemsCompactHeaderSummary($itemsForDisplay);
 
         $manageServiceUrl = ManageCoordinationServiceItems::getUrl(['record' => $record]);
-        $canShowManageLink = ! self::manageServiceActionIsDisabled($record)
+        $associatedItemsUrl = self::associatedItemsTabUrl($record);
+        /*
+         * `$itemsForDisplay` ya trae la bandera `selectable` de cada ítem, así que
+         * preguntar de nuevo a la base (manageServiceActionIsDisabled) repetiría
+         * cuatro consultas por fila. Los `ensure*` que aquella hace ya corrieron al
+         * construir la colección.
+         */
+        $canShowManageLink = $itemsForDisplay->contains(fn (array $item): bool => (bool) ($item['selectable'] ?? false))
             && ! in_array('ATENMEDI', Auth::user()?->departament ?? [], true);
 
-        $rows = $itemsForDisplay->map(function (array $item) use ($orderLinks, $quoteLinks, $manageServiceUrl, $canShowManageLink): string {
+        $rows = $itemsForDisplay->map(function (array $item) use ($orderLinks, $quoteLinks, $manageServiceUrl, $canShowManageLink, $associatedItemsUrl): string {
             $categoryAbbrev = self::clinicalItemCategoryAbbrev($item['category']);
             $categoryClass = self::managementCategoryBadgeClass($item['category']);
             $coverageAbbrev = self::clinicalItemCoverageAbbrev($item['coverage']);
@@ -1170,7 +1248,14 @@ final class CoordinationServiceItemsManager
                 .'<span class="fi-coordination-clinical-item__category">'
                 .'<span class="'.$categoryClass.'">'.e($categoryAbbrev).'</span>'
                 .'</span>'
-                .'<span class="fi-coordination-clinical-item__label">'.e($label).'</span>'
+                .'<span class="fi-coordination-clinical-item__label">'
+                .'<a href="'.e($associatedItemsUrl).'" '
+                .'class="fi-coordination-clinical-item__label-link" '
+                .'title="Abrir en Ítems asociados" '
+                .'onclick="event.stopPropagation();">'
+                .e($label)
+                .'</a>'
+                .'</span>'
                 .'</span>'
                 .'<span class="fi-coordination-clinical-item__trail">'
                 .'<span class="fi-coordination-clinical-item__meta">'
@@ -1196,6 +1281,18 @@ final class CoordinationServiceItemsManager
             .'<ul class="fi-coordination-clinical-items-list">'.$rows.'</ul>'
             .'</div>'
         );
+    }
+
+    /**
+     * Ficha de la coordinación abierta directamente en la pestaña de ítems asociados,
+     * donde el analista puede consultarlos y editarlos.
+     */
+    public static function associatedItemsTabUrl(OperationCoordinationService $record): string
+    {
+        return ViewOperationCoordinationService::getUrl([
+            'record' => $record,
+            'tab' => OperationCoordinationServiceInfolist::ASSOCIATED_ITEMS_TAB,
+        ]);
     }
 
     public static function manageServiceSelectedItemsTable(OperationCoordinationService $record, mixed $selectedKeys): HtmlString
@@ -1391,6 +1488,15 @@ final class CoordinationServiceItemsManager
         return filled($address) ? (string) $address : null;
     }
 
+    public static function resolveManageQuoteSupplierPhone(mixed $supplierId): ?string
+    {
+        if (! filled($supplierId)) {
+            return null;
+        }
+
+        return OperationServiceOrderProviderContacts::fromCatalogIds(null, (int) $supplierId)['phone'];
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -1416,12 +1522,14 @@ final class CoordinationServiceItemsManager
             'appointment_at' => null,
             'supplier_notify_email' => null,
             'supplier_notify_phone' => null,
+            'supplier_notify_address' => null,
             'service_order_bcv_rate' => OperationCoordinationServicesTable::referenciaTasaBcvDesdeApi(),
             'service_order_price_usd' => null,
             'service_order_price_ves' => null,
             'manage_quote_bcv_rate' => OperationCoordinationServicesTable::referenciaTasaBcvDesdeApi(),
             'manage_quote_supplier_id' => null,
             'manage_quote_supplier_address' => null,
+            'manage_quote_supplier_phone' => null,
             'manage_quote_observations' => null,
             'manage_quote_line_items' => [],
             'manage_quote_costo_dolares' => null,
@@ -1508,7 +1616,10 @@ final class CoordinationServiceItemsManager
         return self::manageServiceSelectedItemsTable($record, self::manageQuoteStepItemKeys($record, $get));
     }
 
-    public static function save(OperationCoordinationService $record, array $data): bool
+    /**
+     * @return int|null ID de la orden creada (> 0), 0 si guardó sin crear orden, null si falló.
+     */
+    public static function save(OperationCoordinationService $record, array $data): ?int
     {
         $selectedKeys = array_values(array_filter(
             (array) ($data['managed_service_item_keys'] ?? []),
@@ -1522,7 +1633,7 @@ final class CoordinationServiceItemsManager
                 ->warning()
                 ->send();
 
-            return false;
+            return null;
         }
 
         $coveredKeys = self::coveredSelectedManagementItemKeys($record, $selectedKeys);
@@ -1566,7 +1677,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
 
             $lineItems = (array) ($data['manage_quote_line_items'] ?? []);
@@ -1586,7 +1697,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
 
             $data['manage_quote_costo_dolares'] = $costoUsd;
@@ -1600,7 +1711,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
         }
 
@@ -1616,7 +1727,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
 
             $lineItems = (array) ($data['manage_quote_line_items'] ?? []);
@@ -1636,7 +1747,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
 
             $coveredBcvRate = OperationCoordinationServicesTable::decimalOrNull($data['manage_quote_bcv_rate'] ?? null);
@@ -1648,7 +1759,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
         }
 
@@ -1662,7 +1773,7 @@ final class CoordinationServiceItemsManager
                     ->warning()
                     ->send();
 
-                return false;
+                return null;
             }
         }
 
@@ -1737,7 +1848,7 @@ final class CoordinationServiceItemsManager
                 ->warning()
                 ->send();
 
-            return false;
+            return null;
         }
 
         $body = $managedCount === 1
@@ -1760,10 +1871,13 @@ final class CoordinationServiceItemsManager
                 : ($resolvedSupplierId !== null ? self::resolveManageQuoteSupplierAddress($resolvedSupplierId) : null);
         }
 
-        if ($shouldCreateServiceOrder && ! $shouldCreateCoveredQuote) {
-            $orderCreated = self::createServiceOrderFromManageModal($record, $data, $coveredKeys, $serviceOrderType);
+        $createdOrderId = 0;
 
-            if ($orderCreated) {
+        if ($shouldCreateServiceOrder && ! $shouldCreateCoveredQuote) {
+            $orderId = self::createServiceOrderFromManageModal($record, $data, $coveredKeys, $serviceOrderType);
+
+            if ($orderId !== null && $orderId > 0) {
+                $createdOrderId = $orderId;
                 $body .= ' Se creó la orden de servicio para los ítems cubiertos seleccionados.';
             }
         }
@@ -1802,7 +1916,7 @@ final class CoordinationServiceItemsManager
             ->success()
             ->send();
 
-        return true;
+        return $createdOrderId;
     }
 
     public static function existingServiceOrdersTable(OperationCoordinationService $record): HtmlString
@@ -1853,9 +1967,10 @@ final class CoordinationServiceItemsManager
         array $data,
         array $coveredKeys,
         string $serviceOrderType
-    ): bool {
+    ): ?int {
         $partitions = CoordinationServiceCourtesy::partitionKeysByCourtesy($record, $coveredKeys);
         $created = 0;
+        $createdOrderId = null;
         $bothGroups = $partitions['regular'] !== [] && $partitions['courtesy'] !== [];
 
         foreach (['regular' => false, 'courtesy' => true] as $group => $isCourtesy) {
@@ -1910,10 +2025,11 @@ final class CoordinationServiceItemsManager
                 ->first();
 
             if ($order instanceof OperationServiceOrder) {
+                $createdOrderId ??= (int) $order->id;
                 AccountsReceivableManager::syncFromServiceOrder($order);
                 MedicalAppointmentManager::createFromServiceOrder($order, [
-                    'email' => $data['supplier_notify_email'] ?? null,
-                    'phone' => $data['supplier_notify_phone'] ?? null,
+                    'email' => $data['supplier_notify_email'] ?? $data['unregistered_correo_principal'] ?? null,
+                    'phone' => $data['supplier_notify_phone'] ?? $data['unregistered_phone'] ?? null,
                 ]);
             }
 
@@ -1927,7 +2043,7 @@ final class CoordinationServiceItemsManager
                 ->warning()
                 ->send();
 
-            return false;
+            return null;
         }
 
         $record->service_order_number = $data['order_number'] ?? $record->service_order_number;
@@ -1942,7 +2058,7 @@ final class CoordinationServiceItemsManager
                 ->send();
         }
 
-        return true;
+        return $createdOrderId;
     }
 
     /**

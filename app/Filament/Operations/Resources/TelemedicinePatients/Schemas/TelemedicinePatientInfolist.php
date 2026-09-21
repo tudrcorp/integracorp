@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\TelemedicinePatients\Schemas;
 
 use App\Filament\Operations\Support\OperationsLocationMapAction;
-use App\Models\Benefit;
 use App\Models\TelemedicinePatient;
+use App\Support\ClinicalEntitlements\OperationsAffiliatePlanBenefitsCard;
 use App\Support\FilamentDateDisplay;
 use App\Support\Operations\OperationsMapSearchAddress;
 use Filament\Infolists\Components\TextEntry;
@@ -14,6 +14,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
@@ -59,52 +60,6 @@ class TelemedicinePatientInfolist
             'INACTIVO', 'INACTIVA', 'CANCELADO', 'CANCELADA' => 'danger',
             default => 'gray',
         };
-    }
-
-    /**
-     * @return array<int, string>|null
-     */
-    private static function benefitDescriptionsFromRecord(TelemedicinePatient $record): ?array
-    {
-        $plan = $record->plan;
-        if ($plan === null) {
-            return null;
-        }
-
-        $lines = $plan->benefitPlans
-            ->map(function (Benefit $benefit): string {
-                $text = $benefit->pivot->description ?? $benefit->description ?? '';
-
-                return trim((string) $text);
-            })
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-
-        return $lines === [] ? null : $lines;
-    }
-
-    /**
-     * @return array<int, string>|null
-     */
-    private static function benefitLimitDescriptionsFromRecord(TelemedicinePatient $record): ?array
-    {
-        $plan = $record->plan;
-        if ($plan === null) {
-            return null;
-        }
-
-        $lines = $plan->benefitPlans
-            ->map(fn (Benefit $benefit): ?string => filled($benefit->limit?->description)
-                ? trim((string) $benefit->limit->description)
-                : null)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-
-        return $lines === [] ? null : $lines;
     }
 
     public static function configure(Schema $schema): Schema
@@ -285,6 +240,11 @@ class TelemedicinePatientInfolist
                                                     ->badge()
                                                     ->color('gray')
                                                     ->placeholder('—'),
+                                                TextEntry::make('specific_business_unit')
+                                                    ->label('Unidad de negocio específica')
+                                                    ->icon(Heroicon::OutlinedPencilSquare)
+                                                    ->placeholder('—')
+                                                    ->wrap(),
                                                 TextEntry::make('coverage.price')
                                                     ->label('Cobertura (precio)')
                                                     ->icon(Heroicon::OutlinedBanknotes)
@@ -336,36 +296,20 @@ class TelemedicinePatientInfolist
                             ]),
                         Tab::make('Beneficios del plan')
                             ->icon(Heroicon::OutlinedClipboardDocumentCheck)
-                            ->hidden(fn (TelemedicinePatient $record): bool => $record->plan_id === null)
+                            ->hidden(fn (TelemedicinePatient $record): bool => ! in_array(mb_strtoupper((string) $record->type_affiliation), ['INDIVIDUAL', 'CORPORATIVO'], true))
                             ->schema([
-                                Section::make('Beneficios y límites del plan')
-                                    ->description('Resumen de beneficios vinculados al plan del paciente.')
+                                Section::make('Beneficios del plan')
+                                    ->description('Uso clínico y límite comercial en una sola lista.')
                                     ->icon(Heroicon::OutlinedClipboardDocumentCheck)
                                     ->extraAttributes([
                                         'class' => self::SECTION_CARD,
                                     ])
-                                    ->hidden(fn (TelemedicinePatient $record): bool => $record->plan_id === null)
                                     ->schema([
-                                        Grid::make(['default' => 1, 'lg' => 2])
-                                            ->extraAttributes([
-                                                'class' => self::IOS_INNER_CLASS,
-                                            ])
-                                            ->schema([
-                                                TextEntry::make('benefit_descriptions')
-                                                    ->label('Beneficios')
-                                                    ->icon(Heroicon::OutlinedCheckCircle)
-                                                    ->getStateUsing(fn (TelemedicinePatient $record): ?array => self::benefitDescriptionsFromRecord($record))
-                                                    ->listWithLineBreaks()
-                                                    ->placeholder('—')
-                                                    ->columnSpanFull(),
-                                                TextEntry::make('benefit_limits')
-                                                    ->label('Límites por beneficio')
-                                                    ->icon(Heroicon::OutlinedArrowsPointingOut)
-                                                    ->getStateUsing(fn (TelemedicinePatient $record): ?array => self::benefitLimitDescriptionsFromRecord($record))
-                                                    ->listWithLineBreaks()
-                                                    ->placeholder('—')
-                                                    ->columnSpanFull(),
-                                            ]),
+                                        View::make('filament.operations.affiliates.plan-benefits-clinical')
+                                            ->viewData(fn (mixed $record): array => OperationsAffiliatePlanBenefitsCard::viewDataForPatient(
+                                                $record instanceof TelemedicinePatient ? $record : null
+                                            ))
+                                            ->columnSpanFull(),
                                     ])
                                     ->columnSpanFull(),
                             ]),

@@ -6,7 +6,9 @@ namespace App\Filament\Business\Resources\Users\Pages;
 
 use App\Filament\Business\Resources\Users\Schemas\UserForm;
 use App\Filament\Business\Resources\Users\UserResource;
+use App\Models\Permission;
 use App\Models\User;
+use App\Support\Filament\CommercialNetworkPermissionRegistry;
 use App\Support\Filament\UserCredentialSynchronizer;
 use App\Support\Filament\UserFormPermissionOptions;
 use App\Support\Filament\UserPageHeader;
@@ -40,12 +42,25 @@ class EditUser extends EditRecord
     {
         $record = $this->getRecord();
 
-        foreach (UserForm::getPermissionAssignableModules() as $module) {
-            $modulePermissionIds = $record->permissions()
-                ->where('permissions.module', $module)
-                ->pluck('permissions.id')
+        /**
+         * Los permisos del usuario se traen de una vez y se agrupan en
+         * memoria: antes era una consulta por módulo, nueve para abrir la
+         * ficha de alguien que puede tener permisos en uno solo.
+         *
+         * @var array<string, list<int>> $permissionIdsByModule
+         */
+        $permissionIdsByModule = $record->permissions()
+            ->get(['permissions.id', 'permissions.module'])
+            ->groupBy(fn (Permission $permission): string => (string) $permission->module)
+            ->map(fn ($permissions): array => $permissions
+                ->pluck('id')
                 ->map(fn (mixed $id): int => (int) $id)
-                ->all();
+                ->values()
+                ->all())
+            ->all();
+
+        foreach (UserForm::getPermissionAssignableModules() as $module) {
+            $modulePermissionIds = $permissionIdsByModule[$module] ?? [];
 
             foreach (UserFormPermissionOptions::groupedPermissionsForModule($module) as $navigationGroup => $permissions) {
                 $groupPermissionIds = $permissions
@@ -58,6 +73,9 @@ class EditUser extends EditRecord
                 );
             }
         }
+
+        $data[CommercialNetworkPermissionRegistry::FIELD_KEY] =
+            $permissionIdsByModule[CommercialNetworkPermissionRegistry::MODULE] ?? [];
 
         return $data;
     }
@@ -95,10 +113,24 @@ class EditUser extends EditRecord
         }
 
         $this->pendingPermissionIds = UserForm::extractPermissionIdsFromState($state);
+
+        if (! array_key_exists(CommercialNetworkPermissionRegistry::FIELD_KEY, $state)) {
+            $existingCommercialIds = $this->record->permissions()
+                ->where('permissions.module', CommercialNetworkPermissionRegistry::MODULE)
+                ->pluck('permissions.id')
+                ->map(fn (mixed $id): int => (int) $id)
+                ->all();
+
+            $this->pendingPermissionIds = array_values(array_unique(array_merge(
+                $this->pendingPermissionIds,
+                $existingCommercialIds,
+            )));
+        }
+
         foreach (UserForm::allPermissionFieldKeys() as $permissionFieldKey) {
             unset($data[$permissionFieldKey]);
         }
-        unset($data['permissions']);
+        unset($data['permissions'], $data[UserForm::MODULE_FOCUS_FIELD]);
 
         return $data;
     }

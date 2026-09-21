@@ -10,7 +10,9 @@ use App\Models\Affiliate;
 use App\Models\Agency;
 use App\Models\DetailIndividualQuote;
 use App\Models\IndividualQuote;
+use App\Models\PlanGenerator;
 use App\Models\User;
+use App\Support\PlanGenerators\PlanGeneratorCatalogPublisher;
 use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -59,8 +61,47 @@ class CreateAffiliation extends CreateRecord
         ];
     }
 
+    /**
+     * Publica en el catálogo el plan que el analista armó en la cotización y
+     * deja la afiliación apuntando al plan y la cobertura reales.
+     *
+     * Sin esto la afiliación nacía con `plan_id` y `coverage_id` vacíos, porque
+     * la matriz del generador no existe en `plans`. Se hace antes de crear para
+     * que el certificado, que se genera en `afterCreate()`, ya vea el plan.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function publishPlanGeneratorCatalogPlan(array $data): array
+    {
+        $payload = PlanGeneratorPreAffiliationSession::get();
+
+        if (! is_array($payload) || ($payload['type'] ?? null) !== PlanGeneratorPreAffiliationSession::TYPE_INDIVIDUAL) {
+            return $data;
+        }
+
+        $generator = PlanGenerator::query()->find($payload['plan_generator_id'] ?? null);
+
+        if ($generator === null) {
+            return $data;
+        }
+
+        $published = PlanGeneratorCatalogPublisher::publish($generator, Auth::user()?->name);
+
+        $data['plan_id'] = $published['plan']->getKey();
+
+        $columnKey = (string) (($payload['data_records'][0]['column_key'] ?? null) ?? '');
+
+        if (isset($published['coverage_ids'][$columnKey])) {
+            $data['coverage_id'] = $published['coverage_ids'][$columnKey];
+        }
+
+        return $data;
+    }
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $data = $this->publishPlanGeneratorCatalogPlan($data);
 
         session()->put('affiliates', isset($data['affiliates']) ? $data['affiliates'] : []);
 
@@ -183,6 +224,9 @@ class CreateAffiliation extends CreateRecord
                         'city_id' => $record->city_id_ti,
                         'region' => $record->region_ti,
                         'status' => 'PRE-APROBADA',
+                        'business_unit_id' => $record->business_unit_id,
+                        'business_line_id' => $record->business_line_id,
+                        'specific_business_unit' => $record->specific_business_unit,
                     ]);
                 }
 
@@ -279,6 +323,9 @@ class CreateAffiliation extends CreateRecord
                     'region' => $record->region_ti,
                     'status' => 'PRE-APROBADA',
                     'relationship' => 'TITULAR',
+                    'business_unit_id' => $record->business_unit_id,
+                    'business_line_id' => $record->business_line_id,
+                    'specific_business_unit' => $record->specific_business_unit,
                 ]);
 
                 if (! $fromPlanGenerator) {

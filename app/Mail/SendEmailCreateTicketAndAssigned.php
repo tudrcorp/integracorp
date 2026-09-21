@@ -42,6 +42,7 @@ final class SendEmailCreateTicketAndAssigned extends Mailable implements ShouldQ
     public function __construct(
         public readonly HelpDesk $helpDesk,
         public readonly ?RrhhColaborador $emailRecipientColaborador = null,
+        public readonly bool $isReassignment = false,
     ) {
         if (! $this->helpDesk->exists) {
             throw HelpdeskTicketMailException::ticketNotPersisted();
@@ -55,14 +56,17 @@ final class SendEmailCreateTicketAndAssigned extends Mailable implements ShouldQ
      *
      * @throws HelpdeskTicketMailException
      */
-    public static function fromTicket(HelpDesk|int $ticket, ?RrhhColaborador $emailRecipientColaborador = null): self
-    {
+    public static function fromTicket(
+        HelpDesk|int $ticket,
+        ?RrhhColaborador $emailRecipientColaborador = null,
+        bool $isReassignment = false,
+    ): self {
         if ($ticket instanceof HelpDesk) {
             if (! $ticket->exists) {
                 throw HelpdeskTicketMailException::ticketNotPersisted();
             }
 
-            return new self($ticket, $emailRecipientColaborador);
+            return new self($ticket, $emailRecipientColaborador, $isReassignment);
         }
 
         $model = HelpDesk::query()
@@ -73,15 +77,18 @@ final class SendEmailCreateTicketAndAssigned extends Mailable implements ShouldQ
             throw HelpdeskTicketMailException::ticketNotFound($ticket);
         }
 
-        return new self($model, $emailRecipientColaborador);
+        return new self($model, $emailRecipientColaborador, $isReassignment);
     }
 
     public function envelope(): Envelope
     {
         $reference = $this->resolveTicketReference();
+        $label = $this->isReassignment
+            ? 'Ticket de soporte reasignado'
+            : 'Nuevo ticket de soporte asignado';
 
         return new Envelope(
-            subject: sprintf('[%s] Nuevo ticket de soporte asignado — %s', config('app.name'), $reference),
+            subject: sprintf('[%s] %s — %s', config('app.name'), $label, $reference),
             tags: [
                 'helpdesk',
                 'ticket:'.$this->helpDesk->getKey(),
@@ -124,6 +131,7 @@ final class SendEmailCreateTicketAndAssigned extends Mailable implements ShouldQ
             'createdBy' => (string) ($this->helpDesk->created_by ?? ''),
             'description' => $description !== '' ? $description : '—',
             'assigneeName' => $assigneeName,
+            'isReassignment' => $this->isReassignment,
         ];
     }
 

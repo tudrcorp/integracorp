@@ -12,5 +12,8 @@ it('redirige al dashboard de telemedicina tras crear la historia clínica', func
     expect($contents)
         ->toContain('function getRedirectUrl()')
         ->toContain("URL::route('filament.telemedicina.pages.dashboard')")
-        ->not->toContain('filament.telemedicina.resources.telemedicine-consultation-patients.create');
+        ->toContain('TelemedicineHistoryRelatedRecordsSync::syncFromHistory')
+        ->not->toContain('filament.telemedicina.resources.telemedicine-consultation-patients.create')
+        ->not->toContain('dd($th)')
+        ->not->toContain('observations_not_pathological');
 });

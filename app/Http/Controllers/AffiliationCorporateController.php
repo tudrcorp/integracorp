@@ -7,16 +7,33 @@ use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AffiliationCorporateController extends Controller
 {
-    public static function uploadPayment($record, $data, $type_roll)
+    /**
+     * @var list<string>
+     */
+    private const USD_PAYMENT_METHODS = [
+        'EFECTIVO US$',
+        'ZELLE',
+        'TRANSFERENCIA US$',
+        'LINK DE PAGO',
+    ];
+
+    public static function isUsdPaymentMethod(mixed $method): bool
+    {
+        return is_string($method) && in_array($method, self::USD_PAYMENT_METHODS, true);
+    }
+
+    public static function uploadPayment($record, $data, $type_roll): bool
     {
 
         try {
-            // dd($record, $data, $type_roll, AffiliateCorporate::select('affiliation_corporate_id')->where('affiliation_corporate_id', $record->id)->count());
-            // $validate = self::getValidation($record, $data);
+            DB::beginTransaction();
+
+            $latestMembershipIdBefore = $record->paid_membership_corporates()->max('id');
 
             // 1. Actualizamos la tabla de afiliaciones
             $record->update([
@@ -27,7 +44,7 @@ class AffiliationCorporateController extends Controller
             if ($record['payment_frequency'] == 'ANUAL') {
 
                 /** PAGO USD */
-                if ($data['payment_method'] == 'EFECTIVO US$' || $data['payment_method'] == 'ZELLE') {
+                if (self::isUsdPaymentMethod($data['payment_method'] ?? null)) {
 
                     $record->paid_membership_corporates()->create([
                         'affiliation_corporate_id' => $record->id,
@@ -54,6 +71,7 @@ class AffiliationCorporateController extends Controller
                         'renewal_date' => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by' => Auth::user()->name,
                         'type_roll' => $type_roll,
+                        'date_payment_voucher' => $data['date_payment_voucher'] ?? null,
                     ]);
                 }
 
@@ -86,6 +104,7 @@ class AffiliationCorporateController extends Controller
                         'renewal_date' => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by' => Auth::user()->name,
                         'type_roll' => $type_roll,
+                        'date_payment_voucher' => $data['date_payment_voucher'] ?? null,
                     ]);
                 }
 
@@ -118,6 +137,7 @@ class AffiliationCorporateController extends Controller
                         'renewal_date' => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by' => Auth::user()->name,
                         'type_roll' => $type_roll,
+                        'date_payment_voucher' => $data['date_payment_voucher'] ?? null,
                     ]);
                 }
             }
@@ -125,7 +145,7 @@ class AffiliationCorporateController extends Controller
             if ($record['payment_frequency'] == 'TRIMESTRAL') {
 
                 /** PAGO USD */
-                if ($data['payment_method'] == 'EFECTIVO US$' || $data['payment_method'] == 'ZELLE') {
+                if (self::isUsdPaymentMethod($data['payment_method'] ?? null)) {
 
                     $record->paid_membership_corporates()->create([
                         'affiliation_corporate_id' => $record->id,
@@ -150,6 +170,7 @@ class AffiliationCorporateController extends Controller
                         'renewal_date' => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by' => Auth::user()->name,
                         'type_roll' => $type_roll,
+                        'date_payment_voucher' => $data['date_payment_voucher'] ?? null,
                     ]);
                 }
 
@@ -180,6 +201,7 @@ class AffiliationCorporateController extends Controller
                         'renewal_date' => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by' => Auth::user()->name,
                         'type_roll' => $type_roll,
+                        'date_payment_voucher' => $data['date_payment_voucher'] ?? null,
                     ]);
                 }
 
@@ -212,6 +234,7 @@ class AffiliationCorporateController extends Controller
                         'renewal_date' => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by' => Auth::user()->name,
                         'type_roll' => $type_roll,
+                        'date_payment_voucher' => $data['date_payment_voucher'] ?? null,
                     ]);
                 }
             }
@@ -219,7 +242,7 @@ class AffiliationCorporateController extends Controller
             if ($record['payment_frequency'] == 'SEMESTRAL') {
 
                 /** PAGO USD */
-                if ($data['payment_method'] == 'EFECTIVO US$' || $data['payment_method'] == 'ZELLE') {
+                if (self::isUsdPaymentMethod($data['payment_method'] ?? null)) {
 
                     $record->paid_membership_corporates()->create([
                         'affiliation_corporate_id' => $record->id,
@@ -244,6 +267,7 @@ class AffiliationCorporateController extends Controller
                         'renewal_date' => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by' => Auth::user()->name,
                         'type_roll' => $type_roll,
+                        'date_payment_voucher' => $data['date_payment_voucher'] ?? null,
                     ]);
                 }
 
@@ -274,6 +298,7 @@ class AffiliationCorporateController extends Controller
                         'renewal_date' => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by' => Auth::user()->name,
                         'type_roll' => $type_roll,
+                        'date_payment_voucher' => $data['date_payment_voucher'] ?? null,
                     ]);
                 }
 
@@ -306,6 +331,7 @@ class AffiliationCorporateController extends Controller
                         'renewal_date' => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by' => Auth::user()->name,
                         'type_roll' => $type_roll,
+                        'date_payment_voucher' => $data['date_payment_voucher'] ?? null,
                     ]);
                 }
             }
@@ -313,7 +339,7 @@ class AffiliationCorporateController extends Controller
             if ($record['payment_frequency'] == 'MENSUAL') {
 
                 /** PAGO USD */
-                if ($data['payment_method'] == 'EFECTIVO US$' || $data['payment_method'] == 'ZELLE') {
+                if (self::isUsdPaymentMethod($data['payment_method'] ?? null)) {
 
                     $record->paid_membership_corporates()->create([
                         'affiliation_corporate_id' => $record->id,
@@ -338,6 +364,7 @@ class AffiliationCorporateController extends Controller
                         'renewal_date' => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by' => Auth::user()->name,
                         'type_roll' => $type_roll,
+                        'date_payment_voucher' => $data['date_payment_voucher'] ?? null,
                     ]);
                 }
 
@@ -368,6 +395,7 @@ class AffiliationCorporateController extends Controller
                         'renewal_date' => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by' => Auth::user()->name,
                         'type_roll' => $type_roll,
+                        'date_payment_voucher' => $data['date_payment_voucher'] ?? null,
                     ]);
                 }
 
@@ -400,9 +428,29 @@ class AffiliationCorporateController extends Controller
                         'renewal_date' => Carbon::createFromFormat('d-m-Y', now()->format('d-m-Y'))->addYear()->format('d-m-Y'),
                         'created_by' => Auth::user()->name,
                         'type_roll' => $type_roll,
+                        'date_payment_voucher' => $data['date_payment_voucher'] ?? null,
                     ]);
                 }
             }
+
+            $latestMembershipIdAfter = $record->paid_membership_corporates()->max('id');
+
+            if ($latestMembershipIdAfter === null || (int) $latestMembershipIdAfter === (int) $latestMembershipIdBefore) {
+                DB::rollBack();
+
+                SecurityAudit::log('AUDIT_AFFILIATION_CORPORATE_PAYMENT_VOUCHER_UPLOAD_FAILED', 'affiliation-corporates.upload-payment', [
+                    'affiliation_corporate_id' => $record->id,
+                    'affiliation_code' => $record->code,
+                    'payment_frequency' => $record['payment_frequency'] ?? null,
+                    'payment_method' => $data['payment_method'] ?? null,
+                    'type_roll' => $type_roll,
+                    'reason' => 'unsupported_payment_method_or_frequency',
+                ]);
+
+                return false;
+            }
+
+            DB::commit();
 
             SecurityAudit::log('AUDIT_AFFILIATION_CORPORATE_PAYMENT_VOUCHER_UPLOADED', 'affiliation-corporates.upload-payment', [
                 'affiliation_corporate_id' => $record->id,
@@ -410,27 +458,35 @@ class AffiliationCorporateController extends Controller
                 'payment_frequency' => $record['payment_frequency'] ?? null,
                 'payment_method' => $data['payment_method'] ?? null,
                 'type_roll' => $type_roll,
-                'latest_paid_membership_id' => $record->paid_membership_corporates()->latest('id')->value('id'),
+                'latest_paid_membership_id' => $latestMembershipIdAfter,
             ]);
 
             return true;
-
-            // code...
         } catch (\Throwable $th) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+
             SecurityAudit::log('AUDIT_AFFILIATION_CORPORATE_PAYMENT_VOUCHER_UPLOAD_FAILED', 'affiliation-corporates.upload-payment', [
                 'affiliation_corporate_id' => $record->id ?? null,
                 'affiliation_code' => $record->code ?? null,
+                'payment_method' => $data['payment_method'] ?? null,
                 'error' => $th->getMessage(),
             ]);
 
-            dd($th);
-            Log::error($th->getMessage());
+            Log::error($th->getMessage(), [
+                'exception' => $th,
+                'affiliation_corporate_id' => $record->id ?? null,
+            ]);
+
             Notification::make()
-                ->title('EXCEPTION')
+                ->title('No se pudo registrar el comprobante')
                 ->body($th->getMessage())
                 ->danger()
+                ->persistent()
                 ->send();
-            // throw $th;
+
+            return false;
         }
     }
 
@@ -440,6 +496,8 @@ class AffiliationCorporateController extends Controller
     public static function uploadPaymentMultipleAffiliationCorporates(iterable $records, array $data, string $type_roll): bool
     {
         try {
+            DB::beginTransaction();
+
             foreach ($records as $record) {
                 $paymentData = array_merge($data, [
                     'total_amount' => $record->total_amount,
@@ -448,13 +506,30 @@ class AffiliationCorporateController extends Controller
                 $uploaded = self::uploadPayment($record, $paymentData, $type_roll);
 
                 if ($uploaded !== true) {
+                    DB::rollBack();
+
                     return false;
                 }
             }
 
+            DB::commit();
+
             return true;
         } catch (\Throwable $th) {
-            Log::error($th->getMessage());
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+
+            Log::error($th->getMessage(), [
+                'exception' => $th,
+            ]);
+
+            Notification::make()
+                ->title('No se pudo registrar el comprobante')
+                ->body($th->getMessage())
+                ->danger()
+                ->persistent()
+                ->send();
 
             return false;
         }

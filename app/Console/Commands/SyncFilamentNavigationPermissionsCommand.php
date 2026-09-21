@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Models\Permission;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
+use App\Support\Filament\CommercialNetworkPermissionRegistry;
 use App\Support\Filament\DepartmentNavigationPermissionRegistry;
 use App\Support\Filament\InternalPanelDepartmentMap;
 use Filament\Facades\Filament;
@@ -93,6 +94,10 @@ class SyncFilamentNavigationPermissionsCommand extends Command
         $created += $actionCreated;
         $updated += $actionUpdated;
 
+        [$commercialCreated, $commercialUpdated] = $this->syncCommercialNetworkPermissions();
+        $created += $commercialCreated;
+        $updated += $commercialUpdated;
+
         $this->info("Permisos sincronizados: {$created} creados, {$updated} actualizados.");
 
         return self::SUCCESS;
@@ -107,20 +112,55 @@ class SyncFilamentNavigationPermissionsCommand extends Command
         $updated = 0;
 
         foreach (BusinessFilamentActionPermissionRegistry::all() as $slug => $definition) {
-            $permission = Permission::query()->firstOrNew([
-                'slug' => $slug,
-                'module' => 'NEGOCIOS',
-            ]);
+            foreach ($definition['modules'] as $module) {
+                $permission = Permission::query()->firstOrNew([
+                    'slug' => $slug,
+                    'module' => $module,
+                ]);
 
-            $isNew = ! $permission->exists;
-            $permission->name = $definition['name'];
-            $permission->created_by ??= 'system';
-            $permission->updated_by = 'system';
-            $permission->save();
+                $isNew = ! $permission->exists;
+                $permission->name = $definition['name'];
+                $permission->created_by ??= 'system';
+                $permission->updated_by = 'system';
+                $permission->save();
 
-            if ($isNew) {
+                if ($isNew) {
+                    $created++;
+                } else {
+                    $updated++;
+                }
+            }
+        }
+
+        return [$created, $updated];
+    }
+
+    /**
+     * @return array{0: int, 1: int}
+     */
+    private function syncCommercialNetworkPermissions(): array
+    {
+        $created = 0;
+        $updated = 0;
+
+        CommercialNetworkPermissionRegistry::ensurePermissionsExist();
+
+        foreach (CommercialNetworkPermissionRegistry::all() as $slug => $definition) {
+            $permission = Permission::query()
+                ->where('module', CommercialNetworkPermissionRegistry::MODULE)
+                ->where('slug', $slug)
+                ->first();
+
+            if ($permission === null) {
                 $created++;
-            } else {
+
+                continue;
+            }
+
+            if ($permission->name !== $definition['name']) {
+                $permission->name = $definition['name'];
+                $permission->updated_by = 'system';
+                $permission->save();
                 $updated++;
             }
         }

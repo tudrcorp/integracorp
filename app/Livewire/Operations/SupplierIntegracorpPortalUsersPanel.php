@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Operations;
 
 use App\Models\Supplier;
-use App\Support\Filament\Operations\OperationsSuperAdmin;
 use App\Support\Filament\Operations\SupplierIntegracorpManagement;
 use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
@@ -36,16 +35,16 @@ class SupplierIntegracorpPortalUsersPanel extends Component implements HasSchema
             ->components([
                 SupplierIntegracorpManagement::portalUsersRepeater()
                     ->visible(true)
-                    ->disabled(fn (): bool => ! OperationsSuperAdmin::check()),
+                    ->disabled(fn (): bool => ! SupplierIntegracorpManagement::userCanManage()),
             ]);
     }
 
     public function savePortalUsers(): void
     {
-        if (! OperationsSuperAdmin::check()) {
+        if (! SupplierIntegracorpManagement::userCanManage()) {
             Notification::make()
                 ->title('Acción no permitida')
-                ->body('Solo un analista con rol SUPERADMIN puede gestionar estos usuarios.')
+                ->body('No tienes permiso para gestionar estos usuarios. Un SUPERADMIN puede asignártelo en Permisos → Operaciones.')
                 ->danger()
                 ->send();
 
@@ -66,7 +65,7 @@ class SupplierIntegracorpPortalUsersPanel extends Component implements HasSchema
 
         SecurityAudit::log('AUDIT_OPERATIONS_SUPPLIER_PORTAL_USERS_SAVED', 'operations.suppliers.portal-users.save', [
             'supplier_id' => $this->supplier->id,
-            'users_count' => $this->supplier->integracorpUsers()->count(),
+            'users_count' => $this->supplier->integracorpAnalysts()->count(),
         ]);
 
         Notification::make()

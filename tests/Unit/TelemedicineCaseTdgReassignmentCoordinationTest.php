@@ -71,5 +71,9 @@ it('habilita gestion amd en tabla de coordinacion', function (): void {
 
     expect($manager)
         ->toContain('manageServiceActionIsDisabled')
+        ->toContain('use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;')
         ->toContain('TelemedicineCaseTdgReassignmentCoordination::ensureAmdManagementItem');
+
+    expect(class_exists(TelemedicineCaseTdgReassignmentCoordination::class))->toBeTrue()
+        ->and(class_exists('App\\Support\\Operations\\TelemedicineCaseTdgReassignmentCoordination'))->toBeFalse();
 });

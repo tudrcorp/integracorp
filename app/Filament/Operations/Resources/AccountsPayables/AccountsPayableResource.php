@@ -21,7 +21,7 @@ class AccountsPayableResource extends Resource
 
     protected static ?string $model = OperationQuoteGenerator::class;
 
-    protected static ?string $navigationLabel = 'Cuentas por pagar';
+    protected static ?string $navigationLabel = 'Cotizaciones por pagar';
 
     protected static ?string $modelLabel = 'cuenta por pagar';
 
@@ -34,6 +34,15 @@ class AccountsPayableResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = 'COORDINACIÓN DE SERVICIOS';
 
     protected static ?int $navigationSort = 30;
+
+    /**
+     * Se oculta del menú: las cuentas por pagar reales viven en su propio
+     * recurso. La ruta y el permiso se conservan para no revocar accesos.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     public static function canCreate(): bool
     {

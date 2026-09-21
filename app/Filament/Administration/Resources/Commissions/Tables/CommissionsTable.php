@@ -6,6 +6,7 @@ use App\Filament\Exports\CommissionExporter;
 use App\Http\Controllers\CommissionController;
 use App\Models\Agency;
 use App\Models\Commission;
+use App\Support\CommercialStructure\CommissionReferidorPercentage;
 use App\Tables\Columns\CommissionGeneral;
 use App\Tables\Columns\CommissionMaster;
 use Carbon\Carbon;
@@ -37,6 +38,7 @@ class CommissionsTable
             ->defaultSort('created_at', 'desc')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
                 'agency.masterAgency',
+                ...CommissionReferidorPercentage::eagerLoadRelations(),
                 'agent',
                 'plan',
                 'coverage',
@@ -66,7 +68,17 @@ class CommissionsTable
                             ->modalSubmitAction(false)
                             ->modalCancelActionLabel('Cerrar')
                             ->modalContent(function (Commission $record): ViewContract {
-                                $commission = $record->loadMissing(['sale.plan', 'sale.coverage', 'agency.accountManager', 'agency.masterAgency', 'agent.accountManager']);
+                                $commission = $record->loadMissing([
+                                    'sale.plan',
+                                    'sale.coverage',
+                                    'agency.accountManager',
+                                    'agency.masterAgency',
+                                    'agency.referidor',
+                                    'agency.referidorAgent',
+                                    'agent.accountManager',
+                                    'agent.referidor',
+                                    'agent.referidorAgent',
+                                ]);
 
                                 $masterAgency = null;
                                 if (filled($commission->agency?->owner_code)) {
@@ -157,6 +169,38 @@ class CommissionsTable
                     TextColumn::make('payment_method')
                         ->label('Metodo de pago')->badge()->color('info')
                         ->searchable(),
+                ]),
+
+                ColumnGroup::make('COMISIONES REFERIDOR USD - VES')->columns([
+                    TextColumn::make('porcent_referidor')
+                        ->default(fn ($record): string => $record->porcent_referidor == 0 || $record->porcent_referidor == null ? 0 : $record->porcent_referidor)
+                        ->label('% Referidor')
+                        ->badge()
+                        ->color('info')
+                        ->suffix('%')
+                        ->numeric()
+                        ->sortable(),
+                    TextColumn::make('commission_referidor_usd')
+                        ->label('Pago USD')
+                        ->badge()
+                        ->color('success')
+                        ->suffix(' US$')
+                        ->numeric()
+                        ->sortable()
+                        ->summarize(Sum::make()
+                            ->label(('Subtotal USD'))
+                            ->suffix(' US$')
+                            ->numeric()),
+                    TextColumn::make('commission_referidor_ves')
+                        ->label('Pago VES')
+                        ->badge()
+                        ->suffix(' VES')
+                        ->numeric()
+                        ->sortable()
+                        ->summarize(Sum::make()
+                            ->label(('Subtotal VES'))
+                            ->suffix(' VES')
+                            ->numeric()),
                 ]),
 
                 // ESTRUCTURA DE COMISIONES COMPLETA EN USD

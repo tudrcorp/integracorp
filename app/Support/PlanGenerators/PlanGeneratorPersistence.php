@@ -19,6 +19,8 @@ final class PlanGeneratorPersistence
     public static function syncFromFormState(PlanGenerator $planGenerator, array $formState): void
     {
         DB::transaction(function () use ($planGenerator, $formState): void {
+            $planGenerator->load(['columns', 'rateRows']);
+
             $planGenerator->rows()->each(function (PlanGeneratorRow $row): void {
                 $row->cells()->delete();
             });
@@ -28,6 +30,20 @@ final class PlanGeneratorPersistence
                 $rateRow->cells()->delete();
             });
             $planGenerator->rateRows()->delete();
+
+            // Los enlaces al catálogo se guardan antes de borrar: esta función
+            // recrea columnas y rangos en cada guardado, y perderlos haría que
+            // la próxima publicación duplique coberturas y rangos de edad en
+            // vez de actualizar los que ya existen.
+            $coverageIdByColumnKey = $planGenerator->columns
+                ->pluck('coverage_id', 'column_key')
+                ->filter()
+                ->all();
+
+            $ageRangeIdByLabel = $planGenerator->rateRows
+                ->pluck('age_range_id', 'age_range_label')
+                ->filter()
+                ->all();
 
             $planGenerator->columns()->delete();
 
@@ -46,6 +62,10 @@ final class PlanGeneratorPersistence
                 $column = $planGenerator->columns()->create([
                     'column_key' => $columnKey,
                     'header_label' => (string) $columnRow['header_label'],
+                    'rate_adjustment_percent' => PlanGeneratorMatrixState::parseAdjustmentPercent(
+                        $columnRow['rate_adjustment_percent'] ?? null,
+                    ),
+                    'coverage_id' => $coverageIdByColumnKey[$columnKey] ?? null,
                     'sort_order' => $columnSortOrder++,
                 ]);
 
@@ -74,8 +94,11 @@ final class PlanGeneratorPersistence
                     continue;
                 }
 
+                $ageRangeLabel = (string) $rateRow['age_range_label'];
+
                 $rateRowModel = $planGenerator->rateRows()->create([
-                    'age_range_label' => (string) $rateRow['age_range_label'],
+                    'age_range_label' => $ageRangeLabel,
+                    'age_range_id' => $ageRangeIdByLabel[$ageRangeLabel] ?? null,
                     'population' => filled($rateRow['population'] ?? null)
                         ? (int) $rateRow['population']
                         : null,
@@ -126,6 +149,7 @@ final class PlanGeneratorPersistence
             $planGenerator->columns->map(fn (PlanGeneratorColumn $column): array => [
                 'column_key' => $column->column_key,
                 'header_label' => $column->header_label,
+                'rate_adjustment_percent' => $column->rate_adjustment_percent,
             ])->all(),
         );
 
@@ -180,6 +204,9 @@ final class PlanGeneratorPersistence
                 $cells[$columnKey] = [
                     'rate_amount' => $cell->rate_amount !== null
                         ? (float) $cell->rate_amount
+                        : null,
+                    'base_rate_amount' => $cell->base_rate_amount !== null
+                        ? (float) $cell->base_rate_amount
                         : null,
                 ];
             }
@@ -243,9 +270,16 @@ final class PlanGeneratorPersistence
                 ? (float) $cellData['rate_amount']
                 : null;
 
+            // La tarifa base es el original congelado por el ajuste global de
+            // tarifas. Es interna: no la lee ninguna plantilla del PDF.
+            $baseRateAmount = filled($cellData['base_rate_amount'] ?? null)
+                ? (float) $cellData['base_rate_amount']
+                : null;
+
             $rateRow->cells()->create([
                 'plan_generator_column_id' => $columnIdByKey[$columnKey],
                 'rate_amount' => $rateAmount,
+                'base_rate_amount' => $baseRateAmount,
             ]);
         }
     }

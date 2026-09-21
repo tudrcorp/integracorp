@@ -23,7 +23,27 @@ final class WhiteCompanyCatalogFeeOptions
             ->values()
             ->all();
 
-        return self::labels(self::catalogFees(), $alreadyNegotiated);
+        return self::labels(self::catalogFeesForCompany($company), $alreadyNegotiated);
+    }
+
+    /**
+     * Tarifas que esta empresa aliada puede negociar: solo las de los planes que
+     * el analista le habilitó primero en "Planes asignados". Sin planes
+     * asignados no hay nada que pactar, y la lista sale vacía a propósito.
+     *
+     * @return Collection<int, Fee>
+     */
+    public static function catalogFeesForCompany(WhiteCompany $company): Collection
+    {
+        $feeIds = WhiteCompanyPlanAssignment::assignedFeeIds($company);
+
+        if ($feeIds === []) {
+            return collect();
+        }
+
+        return self::catalogFees()->filter(
+            fn (Fee $fee): bool => in_array((int) $fee->id, $feeIds, true),
+        )->values();
     }
 
     /**
@@ -92,7 +112,7 @@ final class WhiteCompanyCatalogFeeOptions
 
     public static function label(Fee $fee): string
     {
-        $plan = $fee->ageRange?->plan?->description ?: 'Plan';
+        $plan = $fee->plan?->description ?: 'Plan';
         $range = filled($fee->ageRange?->range) ? $fee->ageRange->range.' años' : 'sin rango';
         $amount = self::coverageAmount($fee);
         $coverage = $amount !== null
@@ -108,7 +128,7 @@ final class WhiteCompanyCatalogFeeOptions
     public static function catalogFees(): Collection
     {
         return Fee::query()
-            ->with(['ageRange.plan', 'coverageRecord'])
+            ->with(['plan', 'ageRange', 'coverageRecord'])
             ->where(function ($query): void {
                 $query->whereNull('status')
                     ->orWhere('status', 'ACTIVO');
@@ -121,7 +141,7 @@ final class WhiteCompanyCatalogFeeOptions
      */
     private static function sortKey(Fee $fee): array
     {
-        $planId = (int) ($fee->ageRange?->plan_id ?? $fee->ageRange?->plan?->id ?? 0);
+        $planId = (int) ($fee->plan_id ?? 0);
 
         $planPriority = match ($planId) {
             AffiliationAffiliateFeeCalculator::INITIAL_PLAN_ID => 1,
@@ -130,7 +150,7 @@ final class WhiteCompanyCatalogFeeOptions
             default => 100,
         };
 
-        $planName = mb_strtolower((string) ($fee->ageRange?->plan?->description ?? 'zzz'));
+        $planName = mb_strtolower((string) ($fee->plan?->description ?? 'zzz'));
 
         return [
             $planPriority,

@@ -2,10 +2,16 @@
 
 namespace App\Models;
 
+use App\Observers\OperationServiceStatisticObserver;
+use App\Support\Telemedicine\Concerns\HidesDeletedTelemedicineCaseTraces;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 
+#[ObservedBy([OperationServiceStatisticObserver::class])]
 class TelemedicinePatientSpecialty extends Model
 {
+    use HidesDeletedTelemedicineCaseTraces;
+
     protected $table = 'telemedicine_patient_specialties';
 
     protected $fillable = [
