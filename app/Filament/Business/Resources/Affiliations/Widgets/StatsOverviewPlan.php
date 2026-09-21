@@ -15,6 +15,8 @@ class StatsOverviewPlan extends StatsOverviewWidget
 {
     use InteractsWithPageTable;
 
+    protected int|string|array $columnSpan = 'full';
+
     /**
      * @var array{year?: int, month?: int}
      */

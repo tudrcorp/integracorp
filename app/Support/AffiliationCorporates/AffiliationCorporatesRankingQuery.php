@@ -73,6 +73,13 @@ class AffiliationCorporatesRankingQuery
             });
     }
 
+    public static function constrainWithoutAgent(Builder $query): Builder
+    {
+        return $query->where(function (Builder $inner): void {
+            $inner->whereNull('agent_id')->orWhere('agent_id', '');
+        });
+    }
+
     protected static function applyPeriod(Builder $query, ?int $year, ?int $month): Builder
     {
         if ($year === null) {

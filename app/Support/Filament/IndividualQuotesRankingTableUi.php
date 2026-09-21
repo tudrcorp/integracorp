@@ -17,6 +17,7 @@ class IndividualQuotesRankingTableUi
 {
     /**
      * @param  class-string<Model>  $modelClass
+     * @param  string|callable|false|null  $heading  `false` oculta el encabezado de Filament.
      */
     public static function apply(
         Table $table,
@@ -29,7 +30,7 @@ class IndividualQuotesRankingTableUi
         string $searchPlaceholder,
         string $emptyHeading,
         string $emptyDescription,
-        string|callable|null $heading = null,
+        string|callable|false|null $heading = null,
     ): Table {
         $tableClass = self::tableClass($variant);
 
@@ -42,8 +43,12 @@ class IndividualQuotesRankingTableUi
             self::totalColumn($variant),
         ];
 
+        $resolvedHeading = $heading === false
+            ? null
+            : ($heading ?? self::heading($variant));
+
         $table = $table
-            ->heading($heading ?? self::heading($variant))
+            ->heading($resolvedHeading)
             ->defaultSort('total_quotes', 'desc')
             ->searchPlaceholder($searchPlaceholder)
             ->striped()

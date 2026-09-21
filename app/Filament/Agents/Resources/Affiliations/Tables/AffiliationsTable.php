@@ -408,6 +408,8 @@ class AffiliationsTable
                                                     ->options([
                                                         'CHASE BANK' => 'CHASE BANK',
                                                         'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                        'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                        'ENCORE BANK' => 'ENCORE BANK',
                                                         'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                         'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                         'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
@@ -622,6 +624,8 @@ class AffiliationsTable
                                                             ->options([
                                                                 'CHASE BANK' => 'CHASE BANK',
                                                                 'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                                'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                                'ENCORE BANK' => 'ENCORE BANK',
                                                                 'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                                 'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                                 'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
@@ -1173,6 +1177,8 @@ class AffiliationsTable
                                                         ->options([
                                                             'CHASE BANK' => 'CHASE BANK',
                                                             'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                            'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                            'ENCORE BANK' => 'ENCORE BANK',
                                                             'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                             'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                             'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
@@ -1384,6 +1390,8 @@ class AffiliationsTable
                                                                 ->options([
                                                                     'CHASE BANK' => 'CHASE BANK',
                                                                     'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                                    'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                                    'ENCORE BANK' => 'ENCORE BANK',
                                                                     'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                                     'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                                     'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',

@@ -5,6 +5,7 @@ namespace App\Filament\Administration\Resources\Helpdesks\Pages;
 use App\Filament\Administration\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
 use App\Filament\Administration\Resources\Helpdesks\HelpdeskResource;
 use App\Models\HelpDesk;
+use App\Support\HelpdeskBusinessScrumWorkflow;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -34,6 +35,16 @@ class ViewHelpdesk extends ViewRecord
                 ->after(function (): void {
                     $this->getRecord()->refresh();
                 }),
+            HelpdeskTicketModalActions::makeRevertToAnalystAction()
+                ->record(fn (): HelpDesk => $this->getRecord())
+                ->after(function (): void {
+                    $this->getRecord()->refresh();
+                }),
+            HelpdeskTicketModalActions::makeAssignToSprintAction()
+                ->record(fn (): HelpDesk => $this->getRecord())
+                ->after(function (): void {
+                    $this->getRecord()->refresh();
+                }),
             HelpdeskTicketModalActions::makeUpdatePriorityAction()
                 ->record(fn (): HelpDesk => $this->getRecord())
                 ->after(function (): void {
@@ -45,6 +56,9 @@ class ViewHelpdesk extends ViewRecord
                     $this->getRecord()->refresh();
                 }),
             EditAction::make()
+                ->label(fn (): string => HelpdeskBusinessScrumWorkflow::ticketAllowsContentResubmit($this->getRecord())
+                    ? HelpdeskBusinessScrumWorkflow::creatorResubmitButtonLabel()
+                    : 'Editar')
                 ->visible(fn (): bool => HelpdeskResource::canEdit($this->getRecord())),
         ];
     }

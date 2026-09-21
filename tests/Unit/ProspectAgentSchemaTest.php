@@ -27,7 +27,14 @@ it('formulario ProspectAgent usa pestañas con estilos del sistema', function ()
         ->toContain("Tab::make('Datos del prospecto')")
         ->toContain("Tab::make('Embudo comercial')")
         ->toContain("Tab::make('Ubicación')")
-        ->toContain("Tab::make('Segmentación')");
+        ->toContain("Tab::make('Segmentación')")
+        ->toContain("TextInput::make('website')")
+        ->toContain("Textarea::make('social_networks')")
+        ->toContain("Textarea::make('address')")
+        ->toContain("Repeater::make('prospectAgentContacts')")
+        ->toContain('->maxItems(3)')
+        ->toContain("->addActionLabel('Agregar contacto')")
+        ->toContain('discardEmptyContact');
 });
 
 it('configura el infolist ProspectAgent sin error', function (): void {
@@ -49,7 +56,11 @@ it('infolist ProspectAgent usa pestañas con estilos del sistema', function (): 
         ->toContain("Tab::make('Información del prospecto')")
         ->toContain("Tab::make('Contacto')")
         ->toContain("Tab::make('Seguimiento')")
-        ->toContain("Tab::make('Auditoría')");
+        ->toContain("Tab::make('Auditoría')")
+        ->toContain("TextEntry::make('website')")
+        ->toContain("TextEntry::make('social_networks')")
+        ->toContain("TextEntry::make('address')")
+        ->toContain("RepeatableEntry::make('prospectAgentContacts')");
 });
 
 it('pagina ver prospecto usa botones con estilo iOS', function (): void {

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\Widgets;
 
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
 use App\Filament\Business\Resources\AffiliationCorporates\Widgets\Concerns\InteractsWithAffiliationCorporatesRankingTable;
 use App\Models\Agency;
 use App\Support\AffiliationCorporates\AffiliationCorporatesRankingQuery;
@@ -25,6 +26,8 @@ class AffiliationCorporatesByAgencyTable extends TableWidget
     protected int|string|array $columnSpan = 1;
 
     public ?int $selectedAgencyId = null;
+
+    public ?int $selectedAgencyIdForUnassignedAffiliations = null;
 
     protected function rankingTableVariant(): string
     {
@@ -86,6 +89,17 @@ class AffiliationCorporatesByAgencyTable extends TableWidget
         $this->selectedAgencyId = null;
     }
 
+    public function viewAgencyAffiliationsWithoutAgent(Agency $agency): void
+    {
+        $this->selectedAgencyIdForUnassignedAffiliations = $agency->id;
+
+        $this->dispatch(
+            'affiliation-corporates-filter-by-agency-without-agent',
+            agencyCode: $agency->code,
+            agencyName: $agency->name_corporative,
+        )->to(ListAffiliationCorporates::class);
+    }
+
     public function table(Table $table): Table
     {
         return AffiliationCorporatesRankingTableUi::apply(
@@ -112,8 +126,22 @@ class AffiliationCorporatesByAgencyTable extends TableWidget
                     ->color(fn (Agency $record): string => $this->selectedAgencyId === $record->id ? 'info' : 'gray')
                     ->extraAttributes(['class' => 'iq-ranking-filter-btn'])
                     ->action(fn (Agency $record): mixed => $this->selectAgency($record)),
+                Action::make('viewAffiliationsWithoutAgent')
+                    ->label('Ver afiliaciones sin agente')
+                    ->tooltip('Afiliaciones de esta agencia que no tienen un agente asignado')
+                    ->icon(Heroicon::OutlinedNoSymbol)
+                    ->color(fn (Agency $record): string => $this->selectedAgencyIdForUnassignedAffiliations === $record->id ? 'warning' : 'gray')
+                    ->extraAttributes(fn (Agency $record): array => [
+                        'class' => $this->selectedAgencyIdForUnassignedAffiliations === $record->id
+                            ? 'iq-ranking-unassigned-btn iq-ranking-unassigned-btn--active'
+                            : 'iq-ranking-unassigned-btn',
+                    ])
+                    ->action(fn (Agency $record): mixed => $this->viewAgencyAffiliationsWithoutAgent($record)),
             ])
-            ->recordClasses(fn (Agency $record): array => ($this->selectedAgencyId === $record->id)
+            ->recordClasses(fn (Agency $record): array => (
+                $this->selectedAgencyId === $record->id
+                || $this->selectedAgencyIdForUnassignedAffiliations === $record->id
+            )
                 ? ['iq-ranking-row--selected']
                 : []);
     }

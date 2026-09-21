@@ -11,6 +11,7 @@ use App\Filament\Shared\CommercialStructure\Actions\ResetCommercialStructureUser
 use App\Filament\Shared\CommercialStructure\Actions\UpdateCommercialStructureEmailAction;
 use App\Models\Agent;
 use App\Support\BusinessAgentFichaPdfAccess;
+use App\Support\CommercialStructure\CommercialVipFacturacion;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
@@ -423,17 +424,23 @@ class ViewAgent extends ViewRecord
         $agent = $this->getRecord();
 
         $code = (string) ($agent->code_agent ?? ('AGT-000'.$agent->id));
+        CommercialVipFacturacion::rememberOnRecord($agent);
         $name = (string) ($agent->name ?? 'Sin nombre');
         $status = strtoupper((string) ($agent->status ?? 'SIN ESTADO'));
         $email = (string) ($agent->email ?? 'Sin correo');
         $phone = (string) ($agent->phone ?? 'Sin teléfono');
         $badgeStyle = $this->badgeStyleForStatus($status);
+        $vipRow = CommercialVipFacturacion::pageTitleVipRowHtml(
+            CommercialVipFacturacion::billingAmountFromRecord($agent),
+            CommercialVipFacturacion::lineaDirectaFromRecord($agent),
+        );
 
         return new HtmlString(
             '<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;">'
             .'<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-white">'
             .'Agente: '.e($code)
             .'</span>'
+            .$vipRow
             .'<span class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">'
             .e($name)
             .'</span>'

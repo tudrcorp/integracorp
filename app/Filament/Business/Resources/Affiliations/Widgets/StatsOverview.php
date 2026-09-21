@@ -13,6 +13,8 @@ class StatsOverview extends StatsOverviewWidget
 {
     use InteractsWithPageTable;
 
+    protected int|string|array $columnSpan = 'full';
+
     private const CARD_TRANSITION = 'transition-[transform,box-shadow,border-color] duration-300';
 
     protected function getTablePage(): string

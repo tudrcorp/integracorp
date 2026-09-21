@@ -8,6 +8,7 @@ use App\Models\Agency;
 use App\Models\AgencyDocument;
 use App\Models\Country;
 use App\Models\ObservationCommercialStructure;
+use App\Support\CommercialStructure\CommercialVipFacturacion;
 use App\Support\CommercialStructure\ReferidorAssignmentService;
 use App\Support\CountrySelectOptions;
 use App\Support\Filament\CommercialStructure\AgencyAddressClipboardFormat;
@@ -131,10 +132,38 @@ class AgencyInfolist
                                                     ->columnSpanFull(),
                                                 TextEntry::make('name_corporative')
                                                     ->label('Razón social')
+                                                    ->html()
                                                     ->size('lg')
                                                     ->weight('semibold')
                                                     ->color('gray')
+                                                    ->formatStateUsing(fn (?string $state, Agency $record): HtmlString => CommercialVipFacturacion::nameWithVipStarsHtml(
+                                                        (string) ($state ?? ''),
+                                                        CommercialVipFacturacion::billingAmountFromRecord($record),
+                                                        CommercialVipFacturacion::lineaDirectaFromRecord($record),
+                                                    ))
                                                     ->placeholder('Sin razón social'),
+                                                TextEntry::make('vip_facturacion_display')
+                                                    ->label('VIP (facturación)')
+                                                    ->state(function (Agency $record): string {
+                                                        $billing = CommercialVipFacturacion::billingAmountFromRecord($record);
+                                                        $stars = CommercialVipFacturacion::starCountFromAmount($billing);
+                                                        $line = CommercialVipFacturacion::starsGlyphLine($stars);
+
+                                                        return ($line !== '' ? $line.' · ' : '').CommercialVipFacturacion::billingTooltip($billing, $stars);
+                                                    })
+                                                    ->badge()
+                                                    ->color(fn (Agency $record): string => CommercialVipFacturacion::vipBadgeColor(
+                                                        CommercialVipFacturacion::starCountFromAmount(CommercialVipFacturacion::billingAmountFromRecord($record))
+                                                    ))
+                                                    ->placeholder('Sin nivel VIP'),
+                                                TextEntry::make('vip_linea_directa_display')
+                                                    ->label('Línea directa')
+                                                    ->state(fn (Agency $record): string => CommercialVipFacturacion::lineaDirectaFromRecord($record)
+                                                        ? 'Prioridad · grupos corporativos facturando'
+                                                        : 'No')
+                                                    ->badge()
+                                                    ->color(fn (Agency $record): string => CommercialVipFacturacion::lineaDirectaFromRecord($record) ? 'warning' : 'gray')
+                                                    ->visible(fn (Agency $record): bool => CommercialVipFacturacion::lineaDirectaFromRecord($record)),
                                                 TextEntry::make('rif')
                                                     ->label('RIF')
                                                     ->icon('heroicon-m-identification')

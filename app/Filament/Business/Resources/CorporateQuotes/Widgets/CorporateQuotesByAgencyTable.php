@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\CorporateQuotes\Widgets;
 
+use App\Filament\Business\Resources\CorporateQuotes\Pages\ListCorporateQuotes;
 use App\Filament\Business\Resources\CorporateQuotes\Widgets\Concerns\InteractsWithCorporateQuotesRankingTable;
 use App\Models\Agency;
 use App\Support\CorporateQuotes\CorporateQuotesRankingQuery;
@@ -25,6 +26,8 @@ class CorporateQuotesByAgencyTable extends TableWidget
     protected int|string|array $columnSpan = 1;
 
     public ?int $selectedAgencyId = null;
+
+    public ?int $selectedAgencyIdForUnassignedQuotes = null;
 
     protected function rankingTableVariant(): string
     {
@@ -86,6 +89,17 @@ class CorporateQuotesByAgencyTable extends TableWidget
         $this->selectedAgencyId = null;
     }
 
+    public function viewAgencyQuotesWithoutAgent(Agency $agency): void
+    {
+        $this->selectedAgencyIdForUnassignedQuotes = $agency->id;
+
+        $this->dispatch(
+            'corporate-quotes-filter-by-agency-without-agent',
+            agencyCode: $agency->code,
+            agencyName: $agency->name_corporative,
+        )->to(ListCorporateQuotes::class);
+    }
+
     public function table(Table $table): Table
     {
         return CorporateQuotesRankingTableUi::apply(
@@ -112,8 +126,22 @@ class CorporateQuotesByAgencyTable extends TableWidget
                     ->color(fn (Agency $record): string => $this->selectedAgencyId === $record->id ? 'info' : 'gray')
                     ->extraAttributes(['class' => 'iq-ranking-filter-btn'])
                     ->action(fn (Agency $record): mixed => $this->selectAgency($record)),
+                Action::make('viewQuotesWithoutAgent')
+                    ->label('Ver cotizaciones sin agente')
+                    ->tooltip('Cotizaciones de esta agencia que no tienen un agente asignado')
+                    ->icon(Heroicon::OutlinedNoSymbol)
+                    ->color(fn (Agency $record): string => $this->selectedAgencyIdForUnassignedQuotes === $record->id ? 'warning' : 'gray')
+                    ->extraAttributes(fn (Agency $record): array => [
+                        'class' => $this->selectedAgencyIdForUnassignedQuotes === $record->id
+                            ? 'iq-ranking-unassigned-btn iq-ranking-unassigned-btn--active'
+                            : 'iq-ranking-unassigned-btn',
+                    ])
+                    ->action(fn (Agency $record): mixed => $this->viewAgencyQuotesWithoutAgent($record)),
             ])
-            ->recordClasses(fn (Agency $record): array => ($this->selectedAgencyId === $record->id)
+            ->recordClasses(fn (Agency $record): array => (
+                $this->selectedAgencyId === $record->id
+                || $this->selectedAgencyIdForUnassignedQuotes === $record->id
+            )
                 ? ['iq-ranking-row--selected']
                 : []);
     }

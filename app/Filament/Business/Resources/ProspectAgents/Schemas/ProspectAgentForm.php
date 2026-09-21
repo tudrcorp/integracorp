@@ -9,6 +9,7 @@ use App\Models\City;
 use App\Models\Country;
 use App\Models\State;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -45,7 +46,7 @@ class ProspectAgentForm
                             ->schema([
                                 Section::make('Datos del prospecto')
                                     ->icon(Heroicon::OutlinedUser)
-                                    ->description('Nombre completo y canales de contacto.')
+                                    ->description('Nombre completo, canales de contacto y personas de contacto.')
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
                                     ])
@@ -101,6 +102,69 @@ class ProspectAgentForm
                                                     ->placeholder('correo@ejemplo.com')
                                                     ->autocomplete('email')
                                                     ->columnSpanFull(),
+                                                Grid::make()
+                                                    ->columns(['default' => 1, 'lg' => 2])
+                                                    ->schema([
+                                                        TextInput::make('website')
+                                                            ->label('Página web')
+                                                            ->url()
+                                                            ->maxLength(255)
+                                                            ->prefixIcon(Heroicon::OutlinedGlobeAlt)
+                                                            ->placeholder('https://www.ejemplo.com')
+                                                            ->helperText('Opcional. Incluye https://'),
+                                                        Textarea::make('social_networks')
+                                                            ->label('Redes sociales')
+                                                            ->rows(3)
+                                                            ->maxLength(500)
+                                                            ->placeholder('Instagram, Facebook, LinkedIn, TikTok...')
+                                                            ->helperText('Puedes listar varias redes o enlaces.'),
+                                                    ]),
+                                                Repeater::make('prospectAgentContacts')
+                                                    ->relationship()
+                                                    ->label('Personas de contacto')
+                                                    ->helperText('Registra el contacto principal y, si aplica, una segunda o tercera persona.')
+                                                    ->schema([
+                                                        TextInput::make('name')
+                                                            ->label('Nombre del contacto')
+                                                            ->required(fn (Get $get): bool => filled($get('phone')) || filled($get('email')) || filled($get('position')))
+                                                            ->maxLength(255)
+                                                            ->prefixIcon(Heroicon::OutlinedUser)
+                                                            ->placeholder('Ej. Carlos Mendoza'),
+                                                        TextInput::make('position')
+                                                            ->label('Cargo')
+                                                            ->maxLength(255)
+                                                            ->prefixIcon(Heroicon::OutlinedBriefcase)
+                                                            ->placeholder('Ej. Gerente comercial'),
+                                                        TextInput::make('phone')
+                                                            ->label('Teléfono')
+                                                            ->tel()
+                                                            ->regex('/^[0-9]*$/')
+                                                            ->validationMessages([
+                                                                'regex' => 'Solo números, sin espacios ni signos.',
+                                                            ])
+                                                            ->placeholder('04125678909')
+                                                            ->autocomplete('tel-national'),
+                                                        TextInput::make('email')
+                                                            ->label('Correo del contacto')
+                                                            ->email()
+                                                            ->maxLength(255)
+                                                            ->prefixIcon(Heroicon::OutlinedEnvelope)
+                                                            ->placeholder('contacto@ejemplo.com'),
+                                                    ])
+                                                    ->columns(['default' => 1, 'lg' => 2])
+                                                    ->defaultItems(1)
+                                                    ->minItems(0)
+                                                    ->maxItems(3)
+                                                    ->addActionLabel('Agregar contacto')
+                                                    ->reorderable()
+                                                    ->orderColumn('sort_order')
+                                                    ->mutateRelationshipDataBeforeCreateUsing(self::discardEmptyContact(...))
+                                                    ->mutateRelationshipDataBeforeSaveUsing(self::discardEmptyContact(...))
+                                                    ->collapsible()
+                                                    ->itemLabel(fn (array $state): string => filled($state['name'] ?? null)
+                                                        ? (string) $state['name']
+                                                        : 'Nuevo contacto')
+                                                    ->columnSpanFull(),
                                             ]),
                                     ]),
                             ]),
@@ -142,7 +206,7 @@ class ProspectAgentForm
                             ->schema([
                                 Section::make('Ubicación')
                                     ->icon(Heroicon::OutlinedMapPin)
-                                    ->description('País, estado y ciudad del prospecto.')
+                                    ->description('País, estado, ciudad y dirección del prospecto.')
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
                                     ])
@@ -222,6 +286,13 @@ class ProspectAgentForm
                                                             ->preload()
                                                             ->native(false),
                                                     ]),
+                                                Textarea::make('address')
+                                                    ->label('Dirección')
+                                                    ->rows(3)
+                                                    ->maxLength(500)
+                                                    ->placeholder('Calle, edificio, urbanización, punto de referencia...')
+                                                    ->helperText('Dirección física o comercial del prospecto.')
+                                                    ->columnSpanFull(),
                                             ]),
                                     ]),
                             ]),
@@ -283,5 +354,19 @@ class ProspectAgentForm
                     ->dehydrated()
                     ->required(),
             ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    private static function discardEmptyContact(array $data): ?array
+    {
+        $hasContactData = filled($data['name'] ?? null)
+            || filled($data['position'] ?? null)
+            || filled($data['phone'] ?? null)
+            || filled($data['email'] ?? null);
+
+        return $hasContactData ? $data : null;
     }
 }

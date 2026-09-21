@@ -26,7 +26,6 @@ use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -278,6 +277,8 @@ class AffiliationCorporatesTable
                                                     ->options([
                                                         'CHASE BANK' => 'CHASE BANK',
                                                         'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                        'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                        'ENCORE BANK' => 'ENCORE BANK',
                                                         'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                         'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                         'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
@@ -456,6 +457,8 @@ class AffiliationCorporatesTable
                                                             ->options([
                                                                 'CHASE BANK' => 'CHASE BANK',
                                                                 'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                                'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                                'ENCORE BANK' => 'ENCORE BANK',
                                                                 'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                                 'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                                 'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',

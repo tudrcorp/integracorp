@@ -33,7 +33,35 @@ class ListIndividualQuotes extends ListRecords
         $this->tableFilters['agent_id'] = [
             'value' => (string) $agentId,
         ];
+        $this->tableFilters['without_agent'] = [
+            'isActive' => false,
+        ];
+        $this->tableFilters['code_agency'] = [
+            'value' => null,
+        ];
 
+        $this->applyIndividualQuoteTableFilters();
+    }
+
+    #[On('individual-quotes-filter-by-agency-without-agent')]
+    public function filterQuotesByAgencyWithoutAgent(string $agencyCode, string $agencyName): void
+    {
+        $this->tableFilters ??= [];
+        $this->tableFilters['code_agency'] = [
+            'value' => $agencyCode,
+        ];
+        $this->tableFilters['without_agent'] = [
+            'isActive' => true,
+        ];
+        $this->tableFilters['agent_id'] = [
+            'value' => null,
+        ];
+
+        $this->applyIndividualQuoteTableFilters();
+    }
+
+    protected function applyIndividualQuoteTableFilters(): void
+    {
         $this->getTableFiltersForm()->fill($this->tableFilters);
         $this->resetPage();
         $this->flushCachedTableRecords();

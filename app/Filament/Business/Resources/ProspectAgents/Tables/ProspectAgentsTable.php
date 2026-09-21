@@ -32,6 +32,7 @@ class ProspectAgentsTable
                 'state',
                 'city',
                 'country',
+                'prospectAgentContacts',
             ]))
             ->defaultSort('created_at', 'desc')
             ->striped()
@@ -119,6 +120,23 @@ class ProspectAgentsTable
                         ->copyMessageDuration(1500)
                         ->placeholder('—')
                         ->toggleable(isToggledHiddenByDefault: true),
+                    TextColumn::make('website')
+                        ->label('Página web')
+                        ->icon(Heroicon::OutlinedGlobeAlt)
+                        ->searchable()
+                        ->copyable()
+                        ->copyMessage('Enlace copiado')
+                        ->copyMessageDuration(1500)
+                        ->limit(32)
+                        ->placeholder('—')
+                        ->toggleable(isToggledHiddenByDefault: true),
+                    TextColumn::make('prospectAgentContacts.name')
+                        ->label('Contactos')
+                        ->icon(Heroicon::OutlinedUsers)
+                        ->listWithLineBreaks()
+                        ->limitList(3)
+                        ->placeholder('—')
+                        ->toggleable(isToggledHiddenByDefault: true),
                 ]),
                 ColumnGroup::make('Ubicación y seguimiento', [
                     TextColumn::make('location')
@@ -135,6 +153,13 @@ class ProspectAgentsTable
                         })
                         ->placeholder('—')
                         ->toggleable(),
+                    TextColumn::make('address')
+                        ->label('Dirección')
+                        ->icon(Heroicon::OutlinedMapPin)
+                        ->limit(40)
+                        ->tooltip(fn (ProspectAgent $record): string => (string) ($record->address ?? ''))
+                        ->placeholder('—')
+                        ->toggleable(isToggledHiddenByDefault: true),
                     TextColumn::make('reference_by')
                         ->label('Referido por')
                         ->badge()

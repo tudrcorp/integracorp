@@ -54,3 +54,62 @@ it('el mensaje whatsapp de desasignacion avisa que ya no es responsable', functi
         ->toContain('Ticket N.º 55')
         ->toContain('Reasignado por: Luis Mora');
 });
+
+it('el mensaje de reversión Scrum va dirigido al creador del ticket', function (): void {
+    $ticket = new HelpDesk;
+    $ticket->id = 441;
+    $ticket->created_by = 'Ana Pérez';
+
+    $message = HelpdeskTicketAssigneeWhatsAppService::buildRevertedToCreatorBody(
+        $ticket,
+        'Becky Acosta',
+        'Faltan capturas del error en producción.'
+    );
+
+    expect($message)
+        ->toContain('revirtió el ticket N.º 441 que usted creó')
+        ->toContain('*Motivo:* Faltan capturas del error en producción.')
+        ->toContain('vuelva a enviarlo para su evaluación');
+});
+
+it('el mensaje de reenvío Scrum avisa al Product Owner', function (): void {
+    $ticket = new HelpDesk;
+    $ticket->id = 443;
+    $ticket->created_by = 'Ana Pérez';
+
+    $message = HelpdeskTicketAssigneeWhatsAppService::buildResubmittedToProductOwnerBody(
+        $ticket,
+        'Ana Pérez',
+    );
+
+    expect($message)
+        ->toContain('corrigió y reenvió el ticket N.º 443 a su backlog')
+        ->toContain('evaluarlo de nuevo o asignarlo al sprint');
+});
+
+it('el mensaje de reasignación al sprint identifica al equipo', function (): void {
+    $ticket = new HelpDesk;
+    $ticket->id = 442;
+    $ticket->created_by = 'Ana Pérez';
+
+    $message = HelpdeskTicketAssigneeWhatsAppService::buildSprintReassignedBody(
+        $ticket,
+        'Becky Acosta',
+        'ANTHONY JESUS AULAR GUZMAN, GUSTAVO CAMACHO'
+    );
+
+    expect($message)
+        ->toContain('Le reasignaron un ticket de soporte')
+        ->toContain('Ticket N.º 442')
+        ->toContain('Reasignado por: Becky Acosta')
+        ->toContain('Equipo: ANTHONY JESUS AULAR GUZMAN, GUSTAVO CAMACHO');
+});
+
+it('resuelve el teléfono del creador del ticket por created_by_user_id', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Services/HelpdeskTicketAssigneeWhatsAppService.php';
+
+    expect(file_get_contents($path))
+        ->toContain('$ticket->created_by_user_id')
+        ->toContain('function resolveTicketCreatorPhoneData')
+        ->toContain('function buildRevertedToCreatorBody');
+});

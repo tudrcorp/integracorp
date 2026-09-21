@@ -6,6 +6,7 @@ use App\Enums\DressTaylorCompany;
 use App\Http\Controllers\CorporateQuoteRequestExportCsvController;
 use App\Models\Agency;
 use App\Models\CorporateQuoteRequest;
+use App\Support\CorporateQuoteRequests\CorporateQuoteRequestsRankingQuery;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
@@ -17,6 +18,7 @@ use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -168,12 +170,22 @@ class CorporateQuoteRequestsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('code_agency')
+                    ->label('Agencia')
+                    ->options(fn (): array => Agency::query()->orderBy('name_corporative')->pluck('name_corporative', 'code')->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
                 SelectFilter::make('agent_id')
                     ->label('Agente')
                     ->relationship('agent', 'name')
                     ->searchable()
                     ->preload()
                     ->native(false),
+                Filter::make('without_agent')
+                    ->label('Sin agente')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => CorporateQuoteRequestsRankingQuery::constrainWithoutAgent($query)),
                 SelectFilter::make('company')
                     ->label('Empresa')
                     ->options(DressTaylorCompany::options())

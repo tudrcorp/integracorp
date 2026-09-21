@@ -13,6 +13,7 @@ use App\Models\TdgCalendarDepartmentAssignment;
 use App\Models\TdgCalendarDepartmentColaboradorAssignment;
 use App\Models\TdgCalendarGuardAssignment;
 use App\Models\TdgCalendarOfficeAssignment;
+use App\Support\TdgCalendar\TdgCalendarOfficeAttendanceNotifier;
 use App\Support\TdgCalendarDepartmentCatalog;
 use App\Support\TdgCalendarOfficeCatalog;
 use Carbon\Carbon;
@@ -93,6 +94,26 @@ trait InteractsWithTdgHybridCalendar
 
     public string $departmentReplicationMonth = '';
 
+    /**
+     * @var array<int, int>
+     */
+    public array $pendingOfficeAttendanceColaboradorIds = [];
+
+    /**
+     * @var array<int, string>
+     */
+    public array $pendingOfficeAttendanceDates = [];
+
+    /**
+     * @var array<int, int>
+     */
+    public array $pendingOfficeAttendanceNewColaboradorIds = [];
+
+    /**
+     * @var array<int, string>
+     */
+    public array $pendingOfficeAttendanceNewDates = [];
+
     /** @var array<int, array{id:int,name:string,email:string|null,avatar_url:string|null,initials:string}>|null */
     protected ?array $collaboratorOptionsCache = null;
 
@@ -128,6 +149,10 @@ trait InteractsWithTdgHybridCalendar
         $this->guardReplicationMonth = now()->format('Y-m');
         $this->departmentReplicationDates = [];
         $this->departmentReplicationMonth = now()->format('Y-m');
+        $this->pendingOfficeAttendanceColaboradorIds = [];
+        $this->pendingOfficeAttendanceDates = [];
+        $this->pendingOfficeAttendanceNewColaboradorIds = [];
+        $this->pendingOfficeAttendanceNewDates = [];
     }
 
     public function calendarDayInteractionsEnabled(): bool
@@ -557,6 +582,9 @@ trait InteractsWithTdgHybridCalendar
             return;
         }
 
+        $targetDateStrings = $targetDates->values()->all();
+        $existingOfficeMapsByDate = $this->officeAssignmentMapsForDates($targetDateStrings);
+
         $replicatedCount = 0;
 
         DB::transaction(function () use ($targetDates, $officeSnapshot, &$replicatedCount): void {
@@ -578,11 +606,133 @@ trait InteractsWithTdgHybridCalendar
         $this->forgetTdgMonthDayPayloadCache();
         $this->officeReplicationDates = [];
 
+        $nextOfficeMap = collect($officeSnapshot)
+            ->flatMap(function (mixed $ids, string $office): array {
+                return collect(is_array($ids) ? $ids : [])
+                    ->map(fn (mixed $id): int => (int) $id)
+                    ->filter(fn (int $id): bool => $id > 0)
+                    ->mapWithKeys(fn (int $id): array => [$id => $office])
+                    ->all();
+            })
+            ->all();
+
+        foreach ($existingOfficeMapsByDate as $date => $previousOfficeMap) {
+            $this->recordOfficeAttendanceChanges((string) $date, $previousOfficeMap, $nextOfficeMap);
+        }
+
+        $body = $replicatedCount === 1
+            ? 'Las asignaciones de oficinas se copiaron a 1 día.'
+            : "Las asignaciones de oficinas se copiaron a {$replicatedCount} días.";
+
         Notification::make()
             ->title('Configuración replicada')
-            ->body($replicatedCount === 1
-                ? 'Las asignaciones de oficinas se copiaron a 1 día.'
-                : "Las asignaciones de oficinas se copiaron a {$replicatedCount} días.")
+            ->body($this->officeAttendancePendingHint($body))
+            ->success()
+            ->send();
+    }
+
+    public function shouldShowTdgOfficeAttendanceNotifyAction(): bool
+    {
+        return true;
+    }
+
+    public function hasPendingOfficeAttendanceModifications(): bool
+    {
+        return $this->pendingOfficeAttendanceColaboradorIds !== [];
+    }
+
+    public function hasPendingOfficeAttendanceNewAssignments(): bool
+    {
+        return $this->pendingOfficeAttendanceNewColaboradorIds !== [];
+    }
+
+    public function tdgOfficeAttendanceNotifyButtonLabel(): string
+    {
+        return $this->hasPendingOfficeAttendanceModifications()
+            ? 'Enviar asistencia por correo (modificaciones)'
+            : 'Enviar asistencia por correo';
+    }
+
+    public function tdgOfficeAttendanceNotifyConfirmMessage(): string
+    {
+        $hasMods = $this->hasPendingOfficeAttendanceModifications();
+        $hasNew = $this->hasPendingOfficeAttendanceNewAssignments();
+
+        if ($hasMods && $hasNew) {
+            return 'Se enviará la actualización al colaborador modificado y el horario nuevo a quienes se agregaron. ¿Continuar?';
+        }
+
+        if ($hasMods) {
+            return 'Se enviará la actualización solo a los colaboradores involucrados en las modificaciones. ¿Continuar?';
+        }
+
+        if ($hasNew) {
+            return 'Se enviará el horario nuevo a los colaboradores recién asignados. ¿Continuar?';
+        }
+
+        return 'Se enviará a cada colaborador su asistencia a oficina del mes visible. ¿Continuar?';
+    }
+
+    public function notifyMonthOfficeAttendance(): void
+    {
+        $notifier = app(TdgCalendarOfficeAttendanceNotifier::class);
+        $hasMods = $this->hasPendingOfficeAttendanceModifications();
+        $hasNew = $this->hasPendingOfficeAttendanceNewAssignments();
+        $hasPending = $hasMods || $hasNew;
+
+        $modReport = ['sent' => 0, 'skipped' => 0];
+        $newReport = ['sent' => 0, 'skipped' => 0];
+
+        if ($hasMods) {
+            $modReport = $notifier->notifyForDates(
+                $this->pendingOfficeAttendanceDates,
+                $this->pendingOfficeAttendanceColaboradorIds,
+                true,
+            );
+        }
+
+        $newIds = array_values(array_diff(
+            $this->pendingOfficeAttendanceNewColaboradorIds,
+            $this->pendingOfficeAttendanceColaboradorIds,
+        ));
+
+        if ($newIds !== []) {
+            $newReport = $notifier->notifyForDates(
+                $this->pendingOfficeAttendanceNewDates,
+                $newIds,
+                false,
+            );
+        } elseif (! $hasPending) {
+            $newReport = $notifier->notifyForMonth($this->resolveCorporateCalendarCursor());
+        }
+
+        $report = [
+            'sent' => (int) ($modReport['sent'] ?? 0) + (int) ($newReport['sent'] ?? 0),
+            'skipped' => (int) ($modReport['skipped'] ?? 0) + (int) ($newReport['skipped'] ?? 0),
+        ];
+        $body = $notifier->formatNotificationBody($report);
+
+        if (($report['sent'] ?? 0) === 0 && ($report['skipped'] ?? 0) === 0) {
+            Notification::make()
+                ->title($hasPending ? 'Sin colaboradores involucrados' : 'Sin asignaciones de oficina')
+                ->body($hasPending
+                    ? 'No hay colaboradores pendientes de notificar.'
+                    : 'No hay colaboradores asignados a oficinas en el mes visible.')
+                ->warning()
+                ->send();
+
+            if ($hasPending) {
+                $this->clearPendingOfficeAttendanceModifications();
+            }
+
+            return;
+        }
+
+        $this->clearPendingOfficeAttendanceModifications();
+
+        Notification::make()
+            ->title('Asistencia notificada')
+            ->body($body !== '' ? $body : 'Se procesó la notificación de asistencia a oficina.')
             ->success()
             ->send();
     }
@@ -842,6 +992,7 @@ trait InteractsWithTdgHybridCalendar
         }
 
         $calendarDate = (string) $validated['selectedDate'];
+        $previousOfficeMap = $this->officeAssignmentMapForDate($calendarDate);
 
         $duplicateColaboradorIds = collect($this->officeAssignmentsForm)
             ->flatMap(function (mixed $ids): array {
@@ -882,9 +1033,14 @@ trait InteractsWithTdgHybridCalendar
 
             $this->forgetTdgMonthDayPayloadCache();
 
+            $this->recordOfficeAttendanceModifications(
+                [$calendarDate],
+                array_map(intval(...), array_keys($previousOfficeMap)),
+            );
+
             Notification::make()
                 ->title('Día limpiado')
-                ->body('Se eliminaron las asignaciones del día seleccionado.')
+                ->body($this->officeAttendancePendingHint('Se eliminaron las asignaciones del día seleccionado.'))
                 ->success()
                 ->send();
 
@@ -906,9 +1062,12 @@ trait InteractsWithTdgHybridCalendar
         $this->forgetTdgMonthDayPayloadCache();
         $this->hydrateDayFormsFromDatabase();
 
+        $nextOfficeMap = $this->officeAssignmentMapForDate($calendarDate);
+        $this->recordOfficeAttendanceChanges($calendarDate, $previousOfficeMap, $nextOfficeMap);
+
         Notification::make()
             ->title('Agenda guardada')
-            ->body('Las asignaciones del día fueron actualizadas correctamente.')
+            ->body($this->officeAttendancePendingHint('Las asignaciones del día fueron actualizadas correctamente.'))
             ->success()
             ->send();
     }
@@ -2731,6 +2890,160 @@ trait InteractsWithTdgHybridCalendar
         }
 
         return $this->systemsCollaboratorOptionsByIdCache;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function officeAssignmentMapForDate(string $calendarDate): array
+    {
+        return $this->officeAssignmentMapsForDates([$calendarDate])[$calendarDate] ?? [];
+    }
+
+    /**
+     * @param  list<string>  $dates
+     * @return array<string, array<int, string>>
+     */
+    private function officeAssignmentMapsForDates(array $dates): array
+    {
+        $normalizedDates = collect($dates)
+            ->map(fn (string $date): string => Carbon::parse($date)->toDateString())
+            ->unique()
+            ->values();
+
+        $maps = $normalizedDates
+            ->mapWithKeys(fn (string $date): array => [$date => []])
+            ->all();
+
+        if ($normalizedDates->isEmpty()) {
+            return $maps;
+        }
+
+        $days = TdgCalendarDay::query()
+            ->whereIn('calendar_date', $normalizedDates->all())
+            ->with('officeAssignments')
+            ->get();
+
+        foreach ($days as $day) {
+            $dateKey = Carbon::parse($day->calendar_date)->toDateString();
+            $maps[$dateKey] = $day->officeAssignments
+                ->mapWithKeys(function (TdgCalendarOfficeAssignment $assignment): array {
+                    $office = $assignment->office;
+
+                    return [
+                        (int) $assignment->rrhh_colaborador_id => $office instanceof TdgCalendarOffice
+                            ? $office->value
+                            : (string) $office,
+                    ];
+                })
+                ->all();
+        }
+
+        return $maps;
+    }
+
+    /**
+     * @param  array<int, string>  $previous
+     * @param  array<int, string>  $next
+     */
+    private function recordOfficeAttendanceChanges(string $date, array $previous, array $next): void
+    {
+        $this->recordOfficeAttendanceModifications(
+            [$date],
+            TdgCalendarOfficeAttendanceNotifier::colaboradorIdsModified($previous, $next),
+        );
+        $this->recordOfficeAttendanceNewAssignments(
+            [$date],
+            TdgCalendarOfficeAttendanceNotifier::colaboradorIdsAdded($previous, $next),
+        );
+    }
+
+    /**
+     * @param  list<string>  $dates
+     * @param  list<int>  $colaboradorIds
+     */
+    private function recordOfficeAttendanceModifications(array $dates, array $colaboradorIds): void
+    {
+        $this->mergePendingOfficeAttendance(
+            $this->pendingOfficeAttendanceColaboradorIds,
+            $this->pendingOfficeAttendanceDates,
+            $dates,
+            $colaboradorIds,
+        );
+    }
+
+    /**
+     * @param  list<string>  $dates
+     * @param  list<int>  $colaboradorIds
+     */
+    private function recordOfficeAttendanceNewAssignments(array $dates, array $colaboradorIds): void
+    {
+        $this->mergePendingOfficeAttendance(
+            $this->pendingOfficeAttendanceNewColaboradorIds,
+            $this->pendingOfficeAttendanceNewDates,
+            $dates,
+            $colaboradorIds,
+        );
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     * @param  array<int, string>  $dates
+     * @param  list<string>  $incomingDates
+     * @param  list<int>  $incomingIds
+     */
+    private function mergePendingOfficeAttendance(array &$ids, array &$dates, array $incomingDates, array $incomingIds): void
+    {
+        $normalizedIds = collect($incomingIds)
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($normalizedIds->isEmpty()) {
+            return;
+        }
+
+        $ids = collect($ids)
+            ->merge($normalizedIds)
+            ->unique()
+            ->values()
+            ->all();
+
+        $dates = collect($dates)
+            ->merge($incomingDates)
+            ->map(fn (mixed $date): string => Carbon::parse((string) $date)->toDateString())
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function officeAttendancePendingHint(string $body): string
+    {
+        $hasMods = $this->hasPendingOfficeAttendanceModifications();
+        $hasNew = $this->hasPendingOfficeAttendanceNewAssignments();
+
+        if ($hasMods && $hasNew) {
+            return $body.' Usa el botón de asistencia: el modificado recibirá actualización y los horarios nuevos un correo aparte.';
+        }
+
+        if ($hasMods) {
+            return $body.' Usa el botón de asistencia para notificar a los colaboradores modificados.';
+        }
+
+        if ($hasNew) {
+            return $body.' Usa el botón de asistencia para notificar los horarios nuevos.';
+        }
+
+        return $body;
+    }
+
+    private function clearPendingOfficeAttendanceModifications(): void
+    {
+        $this->pendingOfficeAttendanceColaboradorIds = [];
+        $this->pendingOfficeAttendanceDates = [];
+        $this->pendingOfficeAttendanceNewColaboradorIds = [];
+        $this->pendingOfficeAttendanceNewDates = [];
     }
 
     private function forgetTdgMonthDayPayloadCache(): void

@@ -11,6 +11,7 @@ use App\Models\IndividualQuote;
 use App\Models\Plan;
 use App\Support\IndividualQuotePdfGenerator;
 use App\Support\IndividualQuotes\IndividualQuotePdf;
+use App\Support\IndividualQuotes\IndividualQuotesRankingQuery;
 use App\Support\Plans\PlanQuotability;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
@@ -188,6 +189,12 @@ class IndividualQuotesTable
                     ->sortable(),
             ])
             ->filters([
+                SelectFilter::make('code_agency')
+                    ->label('Agencia')
+                    ->options(fn (): array => Agency::query()->orderBy('name_corporative')->pluck('name_corporative', 'code')->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
                 SelectFilter::make('agent_id')
                     ->label('Agente')
                     ->relationship('agent', 'name')
@@ -195,6 +202,10 @@ class IndividualQuotesTable
                     ->preload()
                     ->native(false)
                     ->indicator('Agente'),
+                Filter::make('without_agent')
+                    ->label('Sin agente')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => IndividualQuotesRankingQuery::constrainWithoutAgent($query)),
                 Filter::make('created_at')
                     ->label('Fecha de cotización')
                     ->form([

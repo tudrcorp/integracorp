@@ -32,5 +32,7 @@ it('registra calendarios tdg en el panel business con el diseño de agenda corpo
         ->toContain('dark:bg-slate-900/70')
         ->toContain('department_badges')
         ->toContain('office_count')
-        ->toContain('tdg-calendar-day-avatars');
+        ->toContain('tdg-calendar-day-avatars')
+        ->toContain('notifyMonthOfficeAttendance')
+        ->toContain('tdgOfficeAttendanceNotifyButtonLabel');
 });

@@ -36,7 +36,14 @@ it('define el widget de cotizaciones por agencia con columnas requeridas', funct
         ->toContain("variant: 'agency'")
         ->toContain("nameAttribute: 'name_corporative'")
         ->toContain('IndividualQuotesRankingQuery::agencies')
-        ->toContain('fn (): Builder => IndividualQuotesRankingQuery::agencies');
+        ->toContain('resolvedRankingFilterYear')
+        ->toContain('resolvedRankingFilterMonth')
+        ->toContain("Action::make('filterAgents')")
+        ->toContain("->label('Filtrar')")
+        ->toContain("Action::make('viewQuotesWithoutAgent')")
+        ->toContain("->label('Ver cotizaciones sin agente')")
+        ->toContain('syncPeriodToAgentTable')
+        ->toContain('individual-quotes-period-changed');
 });
 
 it('define el widget de cotizaciones por agente con columnas requeridas', function (): void {
@@ -50,9 +57,12 @@ it('define el widget de cotizaciones por agente con columnas requeridas', functi
         ->toContain('IndividualQuotesRankingTableUi::apply')
         ->toContain("variant: 'agent'")
         ->toContain("nameAttribute: 'name'")
-        ->toContain('IndividualQuotesRankingQuery::agents')
+        ->toContain("Action::make('viewQuotes')")
+        ->toContain("->label('Ver cotizaciones')")
         ->toContain('flushCachedTableRecords')
-        ->toContain('fn (): Builder => $this->agentQuotesQuery()');
+        ->toContain('fn (): Builder => $this->agentQuotesQuery()')
+        ->toContain("#[On('individual-quotes-period-changed')]")
+        ->toContain('applyPeriodFilter');
 });
 
 it('coloca las tablas lado a lado en la misma fila', function (): void {
@@ -103,7 +113,13 @@ it('aplica UI iOS compacta con ranking y sin barra de progreso', function (): vo
         ->toContain('getRankingTableVariant')
         ->toContain('iq-ranking-filter-overlay')
         ->toContain('individual-quotes-agent-filter-start')
-        ->toContain('Preparando filtrado');
+        ->toContain('Preparando filtrado')
+        ->toContain('ac-ranking-agency-header')
+        ->toContain('ac-ranking-period-filters')
+        ->toContain('getRankingYearFilterOptions')
+        ->toContain('getRankingMonthFilterOptions')
+        ->toContain('wire:model.live="filterYear"')
+        ->toContain('wire:model.live="filterMonth"');
 
     expect(IndividualQuotesRankingTableUi::tableClass('agency'))
         ->toBe('individual-quotes-ranking-table-ios individual-quotes-ranking-table-ios--agency');
@@ -151,10 +167,15 @@ it('filtra agentes al seleccionar una agencia sin pasar por la página padre', f
 
     expect($listPage)->toContain('filterQuotesByAgent')
         ->toContain('#[On(\'individual-quotes-filter-by-agent\')]')
+        ->toContain('#[On(\'individual-quotes-filter-by-agency-without-agent\')]')
+        ->toContain('filterQuotesByAgencyWithoutAgent')
         ->toContain('individual-quotes-main-table')
         ->toContain('scrollIntoView');
 
     expect($quotesTable)->toContain("SelectFilter::make('agent_id')")
+        ->toContain("SelectFilter::make('code_agency')")
+        ->toContain("Filter::make('without_agent')")
+        ->toContain('IndividualQuotesRankingQuery::constrainWithoutAgent')
         ->toContain("'id' => 'individual-quotes-main-table'");
 });
 
@@ -199,7 +220,11 @@ it('construye queries de ranking optimizadas con subconsultas', function (): voi
     expect($queryClass)->toContain('joinSub')
         ->toContain('public static function agencies')
         ->toContain('public static function agents')
+        ->toContain('public static function constrainWithoutAgent')
         ->toContain("->where('owner_code', \$agencyCode)")
         ->toContain('groupBy(\'code_agency\')')
-        ->toContain('groupBy(\'agent_id\')');
+        ->toContain('groupBy(\'agent_id\')')
+        ->toContain('applyPeriod')
+        ->toContain("whereYear('created_at', \$year)")
+        ->toContain("whereMonth('created_at', \$month)");
 });

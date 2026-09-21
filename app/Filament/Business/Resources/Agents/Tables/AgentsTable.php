@@ -49,7 +49,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 class AgentsTable
@@ -64,17 +63,20 @@ class AgentsTable
                         Agent::query()->where('ownerAccountManagers', Auth::user()->id)
                     );
 
-                    return CommercialVipFacturacion::appendAgentBillingSubquery($scoped);
+                    return CommercialVipFacturacion::orderByPriorityThenCreatedAt(
+                        CommercialVipFacturacion::appendAgentBillingSubquery($scoped)
+                    );
                 }
 
-                return CommercialVipFacturacion::appendAgentBillingSubquery(
-                    AgentActivityQuery::applyToAgentsQuery(Agent::query())
+                return CommercialVipFacturacion::orderByPriorityThenCreatedAt(
+                    CommercialVipFacturacion::appendAgentBillingSubquery(
+                        AgentActivityQuery::applyToAgentsQuery(Agent::query())
+                    )
                 );
             })
-            ->defaultSort('created_at', 'desc')
             ->paginationPageOptions([10, 25, 50, 100])
             ->heading('Agentes')
-            ->description('Listado de agentes registrados en el sistema. Todas las columnas están visibles por defecto; puedes reorganizarlas desde el selector de columnas.')
+            ->description('Listado de agentes. El nivel VIP (1 a 5 estrellas) se calcula por facturación acumulada. Quien tiene grupos corporativos facturando aparece como línea directa y con prioridad.')
             ->columns([
                 TextColumn::make('last_interaction_at')
                     ->label('Días de inactividad')
@@ -143,17 +145,24 @@ class AgentsTable
                     ->badge()
                     ->color('verde')
                     ->placeholder('—'),
+                TextColumn::make(CommercialVipFacturacion::LINEA_DIRECTA_ATTRIBUTE)
+                    ->label('Línea directa')
+                    ->alignCenter()
+                    ->badge()
+                    ->color(fn (Agent $record): string => CommercialVipFacturacion::lineaDirectaFromRecord($record) ? 'warning' : 'gray')
+                    ->icon(fn (Agent $record): ?string => CommercialVipFacturacion::lineaDirectaFromRecord($record) ? 'heroicon-s-bolt' : null)
+                    ->state(fn (Agent $record): string => CommercialVipFacturacion::lineaDirectaFromRecord($record) ? 'Prioridad' : '—')
+                    ->tooltip(fn (Agent $record): string => CommercialVipFacturacion::lineaDirectaFromRecord($record)
+                        ? 'Tiene grupos corporativos y está facturando. Atención prioritaria.'
+                        : 'Sin grupos corporativos facturando.')
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => CommercialVipFacturacion::orderByLineaDirectaAttribute($query, $direction)),
                 TextColumn::make(CommercialVipFacturacion::BILLING_ATTRIBUTE)
                     ->label('VIP (facturación)')
                     ->alignCenter()
                     ->badge()
-                    ->color(fn (Agent $record): string => match (CommercialVipFacturacion::starCountFromAmount(CommercialVipFacturacion::billingAmountFromRecord($record))) {
-                        0 => 'gray',
-                        1, 2 => 'warning',
-                        3 => 'success',
-                        default => 'amber',
-                    })
-                    ->icon('heroicon-s-star')
+                    ->color(fn (Agent $record): string => CommercialVipFacturacion::vipBadgeColor(
+                        CommercialVipFacturacion::starCountFromAmount(CommercialVipFacturacion::billingAmountFromRecord($record))
+                    ))
                     ->state(fn (Agent $record): string => CommercialVipFacturacion::starsGlyphLine(
                         CommercialVipFacturacion::starCountFromAmount(CommercialVipFacturacion::billingAmountFromRecord($record))
                     ) ?: '—')
@@ -166,11 +175,6 @@ class AgentsTable
                     ->label('Razón social')
                     ->searchable()
                     ->sortable()
-                    ->html()
-                    ->formatStateUsing(fn (?string $state, Agent $record): HtmlString => CommercialVipFacturacion::nameWithVipStarsHtml(
-                        (string) ($state ?? ''),
-                        CommercialVipFacturacion::billingAmountFromRecord($record),
-                    ))
                     ->wrap()
                     ->placeholder('—'),
                 TextColumn::make('ci')
@@ -329,6 +333,33 @@ class AgentsTable
                     ->placeholder('Todos')
                     ->trueLabel('Sí')
                     ->falseLabel('No'),
+                Filter::make('linea_directa')
+                    ->label('Línea directa (prioridad)')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => CommercialVipFacturacion::constrainAgentToLineaDirecta($query)),
+                Filter::make('vip_stars')
+                    ->label('Nivel VIP')
+                    ->form([
+                        Select::make('value')
+                            ->label('Nivel VIP')
+                            ->options(CommercialVipFacturacion::starFilterOptions()),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $stars = (int) ($data['value'] ?? 0);
+                        if ($stars < 1) {
+                            return $query;
+                        }
+
+                        return CommercialVipFacturacion::constrainAgentBillingStarCount($query, $stars);
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $stars = (string) ($data['value'] ?? '');
+                        if ($stars === '') {
+                            return [];
+                        }
+
+                        return ['vip_stars' => CommercialVipFacturacion::starFilterOptions()[$stars] ?? 'VIP'];
+                    }),
             ])
             ->filtersTriggerAction(
                 fn (Action $action) => $action
@@ -1125,6 +1156,7 @@ class AgentsTable
                         }),
                 ]),
             ])
+            ->recordClasses(fn (Agent $record): array => CommercialVipFacturacion::recordRowClasses($record))
             ->striped();
     }
 

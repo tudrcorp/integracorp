@@ -91,7 +91,7 @@ class ProspectAgentInfolist
                             ->schema([
                                 Section::make('Contacto')
                                     ->icon(Heroicon::OutlinedPhone)
-                                    ->description('Teléfonos, correo e Instagram (puedes copiar o abrir enlace).')
+                                    ->description('Teléfonos, correo, web, redes y personas de contacto.')
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
                                     ])
@@ -152,7 +152,46 @@ class ProspectAgentInfolist
                                                             ->openUrlInNewTab()
                                                             ->columnSpan(['default' => 1, 'lg' => 2])
                                                             ->placeholder('—'),
+                                                        TextEntry::make('website')
+                                                            ->label('Página web')
+                                                            ->icon(Heroicon::OutlinedGlobeAlt)
+                                                            ->copyable()
+                                                            ->copyMessage('Copiado')
+                                                            ->url(fn (ProspectAgent $record): ?string => filled($record->website) ? (string) $record->website : null)
+                                                            ->openUrlInNewTab()
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('social_networks')
+                                                            ->label('Redes sociales')
+                                                            ->icon(Heroicon::OutlinedShare)
+                                                            ->copyable()
+                                                            ->copyMessage('Copiado')
+                                                            ->placeholder('—'),
                                                     ]),
+                                                RepeatableEntry::make('prospectAgentContacts')
+                                                    ->label('Personas de contacto')
+                                                    ->table([
+                                                        TableColumn::make('Nombre')->width('28%'),
+                                                        TableColumn::make('Cargo')->width('22%'),
+                                                        TableColumn::make('Teléfono')->width('22%'),
+                                                        TableColumn::make('Correo')->width('28%'),
+                                                    ])
+                                                    ->schema([
+                                                        TextEntry::make('name')
+                                                            ->weight('medium')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('position')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('phone')
+                                                            ->copyable()
+                                                            ->copyMessage('Copiado')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('email')
+                                                            ->copyable()
+                                                            ->copyMessage('Correo copiado')
+                                                            ->placeholder('—'),
+                                                    ])
+                                                    ->placeholder('Sin personas de contacto registradas.')
+                                                    ->columnSpanFull(),
                                             ]),
                                     ]),
                             ]),
@@ -161,7 +200,7 @@ class ProspectAgentInfolist
                             ->schema([
                                 Section::make('Ubicación')
                                     ->icon(Heroicon::OutlinedMapPin)
-                                    ->description('Datos geográficos asociados al prospecto.')
+                                    ->description('Datos geográficos y dirección asociada al prospecto.')
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
                                     ])
@@ -185,6 +224,11 @@ class ProspectAgentInfolist
                                                         TextEntry::make('city.definition')
                                                             ->label('Ciudad')
                                                             ->icon(Heroicon::OutlinedBuildingOffice2)
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('address')
+                                                            ->label('Dirección')
+                                                            ->icon(Heroicon::OutlinedMapPin)
+                                                            ->columnSpan(['default' => 1, 'md' => 3])
                                                             ->placeholder('—'),
                                                     ]),
                                             ]),

@@ -10,9 +10,11 @@ use App\Http\Controllers\UtilsController;
 use App\Jobs\ResendEmailPropuestaEconomica;
 use App\Jobs\SendNotificacionUploadDataCorporate;
 use App\Mail\MailLinkIndividualQuote;
+use App\Models\Agency;
 use App\Models\CorporateQuote;
 use App\Models\User;
 use App\Support\CorporateQuotePdfGenerator;
+use App\Support\CorporateQuotes\CorporateQuotesRankingQuery;
 use App\Support\Quotes\QuoteWhatsAppDispatcher;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
@@ -188,6 +190,12 @@ class CorporateQuotesTable
                     ->sortable(),
             ])
             ->filters([
+                SelectFilter::make('code_agency')
+                    ->label('Agencia')
+                    ->options(fn (): array => Agency::query()->orderBy('name_corporative')->pluck('name_corporative', 'code')->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
                 Filter::make('created_at')
                     ->label('Fecha de cotización')
                     ->form([
@@ -226,6 +234,10 @@ class CorporateQuotesTable
                     ->searchable()
                     ->preload()
                     ->native(false),
+                Filter::make('without_agent')
+                    ->label('Sin agente')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => CorporateQuotesRankingQuery::constrainWithoutAgent($query)),
                 SelectFilter::make('status')
                     ->label('Estatus')
                     ->options([

@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\AffiliationBusinessDocumentsService;
 use App\Support\AffiliationPaymentBcvRateCalculator;
 use App\Support\AffiliationPaymentTotalAdjustment;
+use App\Support\Affiliations\AffiliationsRankingQuery;
 use App\Support\AffiliationWhiteCompany;
 use App\Support\BcvOfficialRate;
 use App\Support\SecurityAudit;
@@ -90,6 +91,9 @@ class AffiliationsTable
             ->description('Listado completo: plan, titular, tomador, montos y estatus. Las filas con emisión hoy se resaltan en verde. Las de empresas aliadas, en violeta.')
             ->emptyStateHeading('Sin afiliaciones')
             ->emptyStateDescription('No hay registros o no coinciden con la búsqueda y los filtros aplicados.')
+            ->extraAttributes([
+                'id' => 'affiliations-main-table',
+            ])
             ->columns([
                 TextColumn::make('code')
                     ->label('Código')
@@ -372,6 +376,22 @@ class AffiliationsTable
                     }),
             ])
             ->filters([
+                SelectFilter::make('code_agency')
+                    ->label('Agencia')
+                    ->options(fn (): array => Agency::query()->orderBy('name_corporative')->pluck('name_corporative', 'code')->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                SelectFilter::make('agent_id')
+                    ->label('Agente')
+                    ->relationship('agent', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                Filter::make('without_agent')
+                    ->label('Sin agente')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => AffiliationsRankingQuery::constrainWithoutAgent($query)),
                 Filter::make('created_at')
                     ->form([
                         DatePicker::make('desde'),
@@ -599,6 +619,8 @@ class AffiliationsTable
                                                     ->options([
                                                         'CHASE BANK' => 'CHASE BANK',
                                                         'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                        'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                        'ENCORE BANK' => 'ENCORE BANK',
                                                         'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                         'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                         'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
@@ -779,6 +801,8 @@ class AffiliationsTable
                                                             ->options([
                                                                 'CHASE BANK' => 'CHASE BANK',
                                                                 'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                                'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                                'ENCORE BANK' => 'ENCORE BANK',
                                                                 'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                                 'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                                 'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
@@ -1650,6 +1674,8 @@ class AffiliationsTable
                                                         ->options([
                                                             'CHASE BANK' => 'CHASE BANK',
                                                             'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                            'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                            'ENCORE BANK' => 'ENCORE BANK',
                                                             'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                             'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                             'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
@@ -1861,6 +1887,8 @@ class AffiliationsTable
                                                                 ->options([
                                                                     'CHASE BANK' => 'CHASE BANK',
                                                                     'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                                    'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                                    'ENCORE BANK' => 'ENCORE BANK',
                                                                     'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                                     'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                                     'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',

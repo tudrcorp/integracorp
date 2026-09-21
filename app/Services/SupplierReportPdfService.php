@@ -6,19 +6,28 @@ namespace App\Services;
 
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as PdfDocument;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 
 class SupplierReportPdfService
 {
     public const FILENAME = 'reporte-proveedores.pdf';
 
+    public const HEADER_BANNER_PATH = 'image/suppliers-report-header.png';
+
+    public const FOOTER_BANNER_PATH = 'image/suppliers-report-footer.png';
+
     private const LOGO_CACHE_PREFIX = 'supplier_report_logo_uri:';
 
+    private const IMAGE_CACHE_PREFIX = 'supplier_report_img_uri:';
+
     /**
+     * v3: banners de cabecera/pie y fecha encriptada en el pie.
      * v2: valor en base64 en caché (tabla `cache` en MySQL es UTF-8; bytes del PDF disparan error 1366).
      */
-    private const PDF_CACHE_KEY_PREFIX = 'supplier_report_pdf:v2:';
+    private const PDF_CACHE_KEY_PREFIX = 'supplier_report_pdf:v3:';
 
     /**
      * TTL del PDF en caché. Tras muchos proveedores, DomPDF puede superar el max_execution_time del PHP;
@@ -123,14 +132,39 @@ class SupplierReportPdfService
         );
     }
 
+    public static function cachedHeaderBannerDataUri(): string
+    {
+        return self::cachedImageDataUri(self::HEADER_BANNER_PATH);
+    }
+
+    public static function cachedFooterBannerDataUri(): string
+    {
+        return self::cachedImageDataUri(self::FOOTER_BANNER_PATH);
+    }
+
+    public static function generatedAtLabel(Carbon $generatedAt): string
+    {
+        return $generatedAt->timezone(config('app.timezone'))->format('d/m/Y H:i');
+    }
+
+    public static function encryptGeneratedAt(Carbon $generatedAt): string
+    {
+        return Crypt::encryptString(self::generatedAtLabel($generatedAt));
+    }
+
     public static function make(): PdfDocument
     {
         $reportRows = self::reportRows();
+        $generatedAt = now();
 
         $pdf = Pdf::loadView('documents.suppliers-report', [
             'reportRows' => $reportRows,
-            'generatedAt' => now(),
+            'generatedAt' => $generatedAt,
+            'generatedAtLabel' => self::generatedAtLabel($generatedAt),
+            'encryptedGeneratedAt' => self::encryptGeneratedAt($generatedAt),
             'logoDataUri' => self::cachedLogoDataUri(),
+            'headerBannerDataUri' => self::cachedHeaderBannerDataUri(),
+            'footerBannerDataUri' => self::cachedFooterBannerDataUri(),
         ])
             ->setPaper('a4', 'portrait');
 
@@ -155,5 +189,37 @@ class SupplierReportPdfService
         $s = trim((string) $value);
 
         return $s;
+    }
+
+    private static function cachedImageDataUri(string $relativePublicPath): string
+    {
+        $path = public_path($relativePublicPath);
+
+        if (! is_file($path)) {
+            return '';
+        }
+
+        $mtime = @filemtime($path) ?: 0;
+
+        return Cache::remember(
+            self::IMAGE_CACHE_PREFIX.hash('xxh128', $relativePublicPath).':'.$mtime,
+            60 * 60 * 24 * 30,
+            static function () use ($path): string {
+                $raw = @file_get_contents($path);
+
+                if ($raw === false || $raw === '') {
+                    return '';
+                }
+
+                $mime = match (strtolower((string) pathinfo($path, PATHINFO_EXTENSION))) {
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'webp' => 'image/webp',
+                    'gif' => 'image/gif',
+                    default => 'image/png',
+                };
+
+                return 'data:'.$mime.';base64,'.base64_encode($raw);
+            }
+        );
     }
 }
