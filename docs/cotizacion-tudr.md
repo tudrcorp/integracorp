@@ -7,11 +7,11 @@ corporativas**; el resto de paneles no cambia.
 
 ## Variables de entorno
 
-| Variable | Para qué | Valor local |
+| Variable | Para qué | Valor |
 | --- | --- | --- |
-| `TUDR_QUOTE_URL` | URL base del servicio | `https://cotizador.tudrgroup.com` |
-| `TUDR_QUOTE_KEY` | Clave que viaja en `X-Api-Key`. **La valida el servicio**: la misma cadena debe estar configurada en quote-pdf | — (solo en `.env`) |
-| `TUDR_QUOTE_ENABLED` | Interruptor de la integración | `false` hasta que el servicio esté publicado |
+| `TUDR_QUOTE_URL` | URL base del servicio | `https://cotizador.tudrgroup.com` (en local, `http://127.0.0.1:8080`) |
+| `TUDR_QUOTE_KEY` | Clave que viaja en `X-Api-Key`. **La valida el servicio**: la misma cadena debe estar en la variable `QUOTE_API_KEY` del contenedor | — (solo en `.env`) |
+| `TUDR_QUOTE_ENABLED` | Interruptor de la integración | `true` en producción desde el 20/09/2026 |
 | `TUDR_QUOTE_TIMEOUT` | Segundos de espera | `10` |
 
 Se leen en `config/services.php → tudr_quote`, donde están los valores por
@@ -100,43 +100,158 @@ Sin recargar PHP-FPM, el panel sigue usando la configuración anterior aunque
 `bootstrap/cache/config.php` viejo. Es el fallo que costó cuatro rondas de
 diagnóstico el 20/09/2026.
 
-## Ejecutar el microservicio
+## Dónde corre el servicio
 
-El código vive fuera de este repositorio, en `~/whatsapp-sales-agent/deploy/quote-pdf`
-(Python 3.12 · Flask · ReportLab). Escucha en el puerto **8080** y lee la clave
-de la variable `QUOTE_API_KEY`.
+El microservicio (Python 3.12 · Flask · ReportLab) **no vive en este
+repositorio**. Su código fuente está en `~/whatsapp-sales-agent/deploy/quote-pdf`
+y en producción corre así:
 
-Con Docker:
+| | |
+| --- | --- |
+| Servidor | `srvapi` — 74.91.115.211 |
+| Ruta del código | `/opt/quote-pdf` |
+| Contenedor / imagen | `tudr-quote` |
+| Puerto | `127.0.0.1:8090` → `8080` del contenedor (no se expone a internet) |
+| Proxy | nginx, vhost `/etc/nginx/sites-available/cotizador`, TLS por certbot |
+| Acceso | `https://cotizador.tudrgroup.com`, restringido por IP a INTEGRACORP (74.91.112.83); `/health` abierto |
+| Variables | `QUOTE_API_KEY`, `AGENTE_DEFAULT`, `TZ_NAME` |
+
+Es **stateless** y no necesita base de datos: INTEGRACORP le envía sus tarifas
+en cada llamada.
+
+## Operación
+
+### Comprobar que Docker está sano
 
 ```bash
-cd ~/whatsapp-sales-agent/deploy/quote-pdf
-docker build -t quote-pdf .
-docker run -d --name quote-pdf -p 8080:8080 -e QUOTE_API_KEY="$TUDR_QUOTE_KEY" quote-pdf
+systemctl is-active docker                       # active
+docker info | grep -E "Server Version|Running"
+docker system df                                 # espacio de imágenes y contenedores
+df -h /var/lib/docker
 ```
 
-Sin Docker (entorno virtual):
+### Comprobar el contenedor
+
+```bash
+docker ps --filter name=tudr-quote --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+docker inspect -f '{{.State.Status}} | reinicios: {{.RestartCount}} | salida: {{.State.ExitCode}}' tudr-quote
+docker stats tudr-quote --no-stream
+docker logs --tail 50 tudr-quote
+docker logs -f tudr-quote            # en vivo
+```
+
+Esperado en `docker ps`: `Up X` y `127.0.0.1:8090->8080/tcp`.
+
+### Comprobar que el servicio responde
+
+```bash
+# 1. Directo al contenedor (descarta nginx y TLS)
+curl -s http://127.0.0.1:8090/health; echo
+
+# 2. A través de nginx con TLS
+curl -s https://cotizador.tudrgroup.com/health; echo
+
+# 3. El cierre por IP funciona: desde fuera debe dar 403
+curl -s -o /dev/null -w "%{http_code}\n" -X POST https://cotizador.tudrgroup.com/api/cotizar -d '{}'
+```
+
+`/health` debe responder `{"auth":true,"ok":true,"service":"quote-pdf"}`. **Si
+`auth` sale `false`, el contenedor arrancó sin clave y el servicio está
+abierto**: hay que recrearlo con `QUOTE_API_KEY`.
+
+Prueba funcional —valida también que las plantillas de `assets/` están sanas—:
+
+```bash
+curl -s -X POST http://127.0.0.1:8090/api/cotizar \
+  -H "X-Api-Key: $QUOTE_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"titular":"Chequeo","planes":"todos","edades":[25,50,70],"formato":"pdf"}' \
+  -o /tmp/chequeo.pdf
+
+ls -la /tmp/chequeo.pdf && head -c 4 /tmp/chequeo.pdf; echo    # cientos de KB y "%PDF"
+```
+
+Y desde INTEGRACORP, que es lo que de verdad importa:
+
+```bash
+php artisan tinker --execute="dd(app(App\Services\TuDr\QuoteApiClient::class)->health());"   # true
+```
+
+### Bajar, subir y reiniciar
+
+```bash
+docker stop tudr-quote       # bajar (el contenedor se conserva)
+docker start tudr-quote      # subir
+docker restart tudr-quote    # reiniciar
+```
+
+Tarda ~1 segundo en estar listo. **Mientras está abajo, INTEGRACORP no se
+rompe**: detecta que no responde y genera las propuestas con DomPDF. Para una
+parada planificada conviene apagar antes el flag en INTEGRACORP, para que ni
+siquiera intente la llamada (ver «Activar y desactivar»).
+
+### Recrear o actualizar el servicio
+
+Tras cambiar el código o los artes de `assets/`:
+
+```bash
+cd /opt/quote-pdf
+docker build -t tudr-quote .
+docker rm -f tudr-quote
+
+docker run -d --name tudr-quote \
+  --restart unless-stopped \
+  -p 127.0.0.1:8090:8080 \
+  -e QUOTE_API_KEY='<clave>' \
+  -e AGENTE_DEFAULT='Asesor Digital TuDr' \
+  -e TZ_NAME='America/Caracas' \
+  --memory=512m --cpus=1 \
+  tudr-quote
+
+curl -s http://127.0.0.1:8090/health; echo
+docker image prune -f        # limpiar imágenes viejas
+```
+
+Ver con qué variables quedó arrancado (sin mostrar la clave):
+
+```bash
+docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' tudr-quote | grep -v QUOTE_API_KEY
+```
+
+Opcional, para que Docker vigile la salud y `docker ps` muestre `(healthy)`,
+añade al `docker run`:
+
+```bash
+  --health-cmd='python -c "import urllib.request;urllib.request.urlopen(\"http://127.0.0.1:8080/health\").read()"' \
+  --health-interval=30s --health-retries=3 \
+```
+
+### Si algo falla, en este orden
+
+```bash
+systemctl is-active docker                        # 1. el daemon
+docker ps --filter name=tudr-quote                # 2. el contenedor
+curl -s http://127.0.0.1:8090/health              # 3. la app
+nginx -t && systemctl is-active nginx             # 4. el proxy
+curl -s https://cotizador.tudrgroup.com/health    # 5. TLS y DNS
+tail -20 /var/log/nginx/cotizador.error.log       # 6. errores del proxy
+docker logs --tail 50 tudr-quote                  # 7. errores de la app
+```
+
+El primero que falle señala dónde está el problema. Si todo lo anterior está
+bien y aun así las propuestas salen por el camino viejo, el sospechoso es
+PHP-FPM sin recargar (ver «Activar y desactivar»).
+
+### Ejecutarlo en local, para desarrollo
 
 ```bash
 cd ~/whatsapp-sales-agent/deploy/quote-pdf
 python3 -m venv .venv && .venv/bin/pip install "flask==3.*" "reportlab==4.*" pillow
-QUOTE_API_KEY="$TUDR_QUOTE_KEY" .venv/bin/python app.py
+QUOTE_API_KEY='<clave>' .venv/bin/python app.py        # escucha en 8080
 ```
 
-Para que INTEGRACORP lo use en local, en `.env`:
-`TUDR_QUOTE_URL=http://127.0.0.1:8080`, `TUDR_QUOTE_ENABLED=true`, y después
-`php artisan config:clear`.
-
-## Probar contra el servicio
-
-```bash
-curl -X POST "$TUDR_QUOTE_URL/api/cotizar" \
-  -H "X-Api-Key: $TUDR_QUOTE_KEY" \
-  -H 'Content-Type: application/json' \
-  -d '{"titular":"Prueba","planes":"todos","edades":[25,50,70],"formato":"pdf"}' \
-  -o Propuesta.pdf
-```
-
-Salud del servicio (no lleva clave): `curl $TUDR_QUOTE_URL/health` → `{"ok":true}`.
+En el `.env` de INTEGRACORP: `TUDR_QUOTE_URL=http://127.0.0.1:8080`,
+`TUDR_QUOTE_ENABLED=true` y `php artisan config:clear`.
 
 ## Errores esperables
 
@@ -157,8 +272,6 @@ Salud del servicio (no lleva clave): `curl $TUDR_QUOTE_URL/health` → `{"ok":tr
 - Si a un rango de edad le faltan coberturas —cotizaciones antiguas cuyo plan
   ganó coberturas después, ~5 % del histórico— también se usa el generador
   local, para no dibujar «0 US$» en una casilla de precio.
-- `cotizador.tudrgroup.com` aún no resuelve (NXDOMAIN): hasta publicarlo, la
-  integración se prueba contra el servicio en local.
 - El servicio trae sus propias tarifas en `tariffs.json`, que **no** cubren todos
   los rangos del Ideal. INTEGRACORP siempre envía las suyas (`fuente_tarifas:
   payload`), así que el Ideal se cotiza correctamente.

@@ -956,7 +956,7 @@ class AffiliationController extends Controller
                 'plan' => $record->plan->description ?? 'Plan Estándar',
                 'plan_id' => $record->plan_id,
                 'frecuencia_pago' => $record->payment_frequency ?? 'N/A',
-                'cobertura' => (float) ($record->coverage->price ?? 0),
+                'cobertura' => (float) ($record->coverage?->price ?? 0),
                 'fecha_afiliacion' => $record->activated_at ?? '',
                 'tarifa_periodo' => (float) ($record->total_amount ?? 0),
                 'fecha_vigencia' => $effectiveDate ?? '',
