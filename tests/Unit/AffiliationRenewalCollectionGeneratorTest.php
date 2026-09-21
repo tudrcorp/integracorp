@@ -50,5 +50,6 @@ it('integra generador de cobranzas al aceptar renovacion', function (): void {
         ->toContain('upcomingPaymentDates')
         ->toContain("'POR PAGAR'")
         ->not->toContain("'PAGADO'")
-        ->toContain('addMonthsNoOverflow');
+        ->toContain('addMonthsNoOverflow')
+        ->toContain('AffiliationQuoteNumber::forIndividual');
 });

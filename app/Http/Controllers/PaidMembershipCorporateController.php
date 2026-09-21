@@ -11,6 +11,7 @@ use App\Models\Commission;
 use App\Models\Sale;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use App\Support\CreditReconciliations\WhiteCompanyCreditMovementRecorder;
+use App\Support\PaidMemberships\AffiliationQuoteNumber;
 use App\Support\PaidMemberships\AgencyTypeForCommission;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
@@ -160,7 +161,7 @@ class PaidMembershipCorporateController extends Controller
                     $collections->coverage_id = $record->affiliation_corporate->coverage_id ?? null;
                     $collections->agent_id = $record->affiliation_corporate->agent_id;
                     $collections->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumberCollection[0]['collection_invoice_number']);
-                    $collections->quote_number = $record->affiliation_corporate->corporate_quote->code;
+                    $collections->quote_number = AffiliationQuoteNumber::forCorporate($record->affiliation_corporate);
                     $collections->affiliation_code = $record->affiliation_corporate->code;
                     $collections->affiliate_full_name = $record->affiliation_corporate->name_corporate;
                     $collections->affiliate_contact = $record->affiliation_corporate->full_name_contact;
@@ -205,7 +206,7 @@ class PaidMembershipCorporateController extends Controller
                         'email_ti' => $record->affiliation_corporate->email,
                         'total_amount' => $record->total_amount,
                         'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
-                        'coverage' => $record->coverage->price ?? null,
+                        'coverage' => $record->coverage?->price,
                         'frequency' => $record->affiliation_corporate->payment_frequency,
                         'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($record->affiliation_corporate),
                     ];
@@ -237,7 +238,7 @@ class PaidMembershipCorporateController extends Controller
                         $collections->coverage_id = $record->affiliation_corporate->coverage_id ?? null;
                         $collections->agent_id = $record->affiliation_corporate->agent_id;
                         $collections->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumberCollection[0]['collection_invoice_number']);
-                        $collections->quote_number = $record->affiliation_corporate->corporate_quote->code;
+                        $collections->quote_number = AffiliationQuoteNumber::forCorporate($record->affiliation_corporate);
                         $collections->affiliation_code = $record->affiliation_corporate->code;
                         $collections->affiliate_full_name = $record->affiliation_corporate->name_corporate;
                         $collections->affiliate_contact = $record->affiliation_corporate->full_name_contact;
@@ -279,7 +280,7 @@ class PaidMembershipCorporateController extends Controller
                             'email_ti' => $record->affiliation_corporate->email,
                             'total_amount' => $record->total_amount,
                             'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
-                            'coverage' => $record->coverage->price ?? null,
+                            'coverage' => $record->coverage?->price,
                             'frequency' => $record->affiliation_corporate->payment_frequency,
                             'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($record->affiliation_corporate),
                         ];
@@ -303,7 +304,7 @@ class PaidMembershipCorporateController extends Controller
                     $collections->coverage_id = $record->affiliation_corporate->coverage_id ?? null;
                     $collections->agent_id = $record->affiliation_corporate->agent_id;
                     $collections->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumberCollection[0]['collection_invoice_number']);
-                    $collections->quote_number = $record->affiliation_corporate->corporate_quote->code;
+                    $collections->quote_number = AffiliationQuoteNumber::forCorporate($record->affiliation_corporate);
                     $collections->affiliation_code = $record->affiliation_corporate->code;
                     $collections->affiliate_full_name = $record->affiliation_corporate->name_corporate;
                     $collections->affiliate_contact = $record->affiliation_corporate->full_name_contact;
@@ -345,7 +346,7 @@ class PaidMembershipCorporateController extends Controller
                         'email_ti' => $record->affiliation_corporate->email,
                         'total_amount' => $record->total_amount,
                         'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
-                        'coverage' => $record->coverage->price ?? null,
+                        'coverage' => $record->coverage?->price,
                         'frequency' => $record->affiliation_corporate->payment_frequency,
                         'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($record->affiliation_corporate),
                     ];
@@ -370,7 +371,7 @@ class PaidMembershipCorporateController extends Controller
                         $collections->coverage_id = $record->affiliation_corporate->coverage_id ?? null;
                         $collections->agent_id = $record->affiliation_corporate->agent_id;
                         $collections->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumber->invoice_number);
-                        $collections->quote_number = $record->affiliation_corporate->corporate_quote->code;
+                        $collections->quote_number = AffiliationQuoteNumber::forCorporate($record->affiliation_corporate);
                         $collections->affiliation_code = $record->affiliation_corporate->code;
                         $collections->affiliate_full_name = $record->affiliation_corporate->name_corporate;
                         $collections->affiliate_contact = $record->affiliation_corporate->full_name_contact;
@@ -412,7 +413,7 @@ class PaidMembershipCorporateController extends Controller
                             'email_ti' => $record->affiliation_corporate->email,
                             'total_amount' => $record->total_amount,
                             'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
-                            'coverage' => $record->coverage->price ?? null,
+                            'coverage' => $record->coverage?->price,
                             'frequency' => $record->affiliation_corporate->payment_frequency,
                             'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($record->affiliation_corporate),
                         ];
@@ -436,7 +437,7 @@ class PaidMembershipCorporateController extends Controller
                     'total_amount' => $record->total_amount,
                     'currency' => $record->currency,
                     'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
-                    'coverage' => $record->coverage->price ?? null,
+                    'coverage' => $record->coverage?->price,
                     'frequency' => $record->affiliation_corporate->payment_frequency,
                     'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($record->affiliation_corporate),
                 ];
@@ -777,7 +778,7 @@ class PaidMembershipCorporateController extends Controller
                     'total_amount' => $record->total_amount,
                     'currency' => $record->currency,
                     'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
-                    'coverage' => $record->coverage->price ?? null,
+                    'coverage' => $record->coverage?->price,
                     'frequency' => $record->affiliation_corporate->payment_frequency,
                     'affiliates_count' => AffiliationDocumentAffiliatesCount::forCorporate($record->affiliation_corporate),
                 ];

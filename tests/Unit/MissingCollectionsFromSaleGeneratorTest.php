@@ -46,9 +46,11 @@ it('el generador no crea ventas ni aprueba pagos', function (): void {
     expect($source)
         ->toContain('No crea ni duplica ventas')
         ->toContain("status = 'POR PAGAR'")
+        ->toContain('AffiliationQuoteNumber::forIndividual')
         ->not->toContain('new Sale')
         ->not->toContain('Sale::query()->create')
-        ->not->toContain('PaidMembership')
+        ->not->toContain('new PaidMembership')
+        ->not->toContain('PaidMembershipController')
         ->not->toContain('approvePayment');
 });
 

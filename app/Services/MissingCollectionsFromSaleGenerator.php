@@ -10,6 +10,7 @@ use App\Models\Affiliation;
 use App\Models\AnnualCollection;
 use App\Models\Collection;
 use App\Models\Sale;
+use App\Support\PaidMemberships\AffiliationQuoteNumber;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -127,7 +128,7 @@ final class MissingCollectionsFromSaleGenerator
                 $collection->coverage_id = $affiliation->coverage_id;
                 $collection->agent_id = $affiliation->agent_id;
                 $collection->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumber);
-                $collection->quote_number = (string) ($affiliation->individual_quote?->code ?? $affiliation->code_individual_quote ?? 'N/A');
+                $collection->quote_number = AffiliationQuoteNumber::forIndividual($affiliation);
                 $collection->affiliation_code = $affiliation->code;
                 $collection->affiliate_full_name = $affiliation->full_name_ti;
                 $collection->affiliate_contact = $affiliation->full_name_con ?: $affiliation->full_name_ti;

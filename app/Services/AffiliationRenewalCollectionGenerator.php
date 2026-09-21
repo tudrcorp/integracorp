@@ -8,6 +8,7 @@ use App\Http\Controllers\UtilsController;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\Collection;
+use App\Support\PaidMemberships\AffiliationQuoteNumber;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
@@ -78,7 +79,7 @@ final class AffiliationRenewalCollectionGenerator
             $collection->coverage_id = $affiliation->coverage_id;
             $collection->agent_id = $affiliation->agent_id;
             $collection->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumber);
-            $collection->quote_number = (string) ($affiliation->individual_quote?->code ?? $affiliation->code_individual_quote ?? 'N/A');
+            $collection->quote_number = AffiliationQuoteNumber::forIndividual($affiliation);
             $collection->affiliation_code = $affiliation->code;
             $collection->affiliate_full_name = $affiliation->full_name_ti;
             $collection->affiliate_contact = $affiliation->full_name_ti;
