@@ -6,6 +6,8 @@ use App\Models\HelpDesk;
 use App\Models\HelpDeskCsat;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\HelpdeskBusinessScrumRoles;
+use App\Support\HelpdeskBusinessScrumWorkflow;
 use App\Support\HelpdeskEventRecorder;
 use App\Support\HelpdeskFormSchema;
 use App\Support\HelpdeskObservationAppender;
@@ -527,6 +529,10 @@ final class HelpdeskTicketModalActions
                     ->send();
             })
             ->hidden(function (HelpDesk $record): bool {
+                if (HelpdeskBusinessScrumWorkflow::canCreatorResubmit($record)) {
+                    return true;
+                }
+
                 if (HelpdeskTicketVisibility::canViewGlobalQueue()
                     || HelpdeskTicketIdentity::isCreator($record, Auth::user())
                     || self::currentUserIsTicketAssignee($record)) {
@@ -706,7 +712,147 @@ final class HelpdeskTicketModalActions
                     ->send();
             })
             ->hidden(fn (HelpDesk $record): bool => ! HelpdeskTicketIdentity::isCreator($record, Auth::user())
-                || in_array($record->status, ['TERMINADO', 'CANCELADO'], true));
+                || in_array($record->status, HelpdeskTaskStatusOptions::terminalStatuses(), true));
+    }
+
+    public static function makeRevertToAnalystAction(string $panel = 'business'): Action
+    {
+        return Action::make('scrumRevertToAnalyst')
+            ->label('Revertir al analista')
+            ->icon('heroicon-m-arrow-uturn-left')
+            ->color('danger')
+            ->slideOver()
+            ->modalWidth(Width::ThreeExtraLarge)
+            ->modalHeading('Revertir ticket al analista')
+            ->modalDescription(fn (HelpDesk $record): string => 'Product Owner · Ticket #'.$record->getKey().' · '.$record->created_by)
+            ->modalSubmitActionLabel('Revertir ticket')
+            ->modalSubmitAction(
+                fn (Action $action): Action => $action
+                    ->extraAttributes([
+                        'class' => self::IOS_SUCCESS_BTN,
+                    ])
+            )
+            ->modalCancelAction(
+                fn (Action $action): Action => $action
+                    ->label('Cancelar')
+                    ->extraAttributes([
+                        'class' => self::IOS_GRAY_BTN,
+                    ])
+            )
+            ->form([
+                Section::make('Refinamiento Scrum')
+                    ->description('Devuelve el ticket al analista cuando falte información, no aplique o deba reformularse.')
+                    ->icon('heroicon-m-arrow-uturn-left')
+                    ->schema([
+                        Textarea::make('revert_reason')
+                            ->label('Motivo de la reversión')
+                            ->placeholder('Explique qué debe corregir o completar el analista…')
+                            ->required()
+                            ->minLength(8)
+                            ->rows(5)
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(1)
+                    ->columnSpanFull()
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ]),
+            ])
+            ->successNotification(null)
+            ->action(function (HelpDesk $record, array $data) use ($panel): void {
+                $user = Auth::user();
+                if (! $user instanceof \App\Models\User) {
+                    return;
+                }
+
+                $result = HelpdeskBusinessScrumWorkflow::revertToAnalyst(
+                    $record,
+                    $user,
+                    (string) ($data['revert_reason'] ?? ''),
+                    $panel
+                );
+
+                Notification::make()
+                    ->title($result['title'])
+                    ->body($result['body'])
+                    ->{$result['ok'] ? 'success' : 'warning'}()
+                    ->send();
+            })
+            ->hidden(fn (HelpDesk $record): bool => ! HelpdeskBusinessScrumWorkflow::canRevertToAnalyst($record));
+    }
+
+    public static function makeAssignToSprintAction(string $panel = 'business'): Action
+    {
+        return Action::make('scrumAssignToSprint')
+            ->label('Asignar al sprint')
+            ->icon('heroicon-m-user-group')
+            ->color('primary')
+            ->slideOver()
+            ->modalWidth(Width::ThreeExtraLarge)
+            ->modalHeading('Asignar ticket al sprint')
+            ->modalDescription(fn (HelpDesk $record): string => 'Product Owner · Ticket #'.$record->getKey().' · '.$record->created_by)
+            ->modalSubmitActionLabel('Asignar al equipo')
+            ->modalSubmitAction(
+                fn (Action $action): Action => $action
+                    ->extraAttributes([
+                        'class' => self::IOS_SUCCESS_BTN,
+                    ])
+            )
+            ->modalCancelAction(
+                fn (Action $action): Action => $action
+                    ->label('Cancelar')
+                    ->extraAttributes([
+                        'class' => self::IOS_GRAY_BTN,
+                    ])
+            )
+            ->form([
+                Section::make('Equipo de desarrollo')
+                    ->description('Reasigne el ticket a Anthony Aular y/o Gustavo Camacho para su solución. Ellos podrán cerrarlo al terminar.')
+                    ->icon('heroicon-m-user-group')
+                    ->schema([
+                        Select::make('developer_ids')
+                            ->label('Desarrolladores del sprint')
+                            ->options(fn (): array => HelpdeskBusinessScrumRoles::developerOptions())
+                            ->multiple()
+                            ->required()
+                            ->minItems(1)
+                            ->native(false)
+                            ->prefixIcon('heroicon-m-code-bracket')
+                            ->helperText('Puede elegir uno o ambos. El ticket saldrá del backlog del Product Owner.'),
+                    ])
+                    ->columns(1)
+                    ->columnSpanFull()
+                    ->extraAttributes([
+                        'class' => self::IOS_SECTION_CLASS,
+                    ]),
+            ])
+            ->successNotification(null)
+            ->action(function (HelpDesk $record, array $data) use ($panel): void {
+                $user = Auth::user();
+                if (! $user instanceof \App\Models\User) {
+                    return;
+                }
+
+                $developerIds = $data['developer_ids'] ?? [];
+                if (! is_array($developerIds)) {
+                    $developerIds = [];
+                }
+
+                $result = HelpdeskBusinessScrumWorkflow::assignToSprint(
+                    $record,
+                    $user,
+                    $developerIds,
+                    $panel
+                );
+
+                Notification::make()
+                    ->title($result['title'])
+                    ->body($result['body'])
+                    ->{$result['ok'] ? 'success' : 'warning'}()
+                    ->send();
+            })
+            ->hidden(fn (HelpDesk $record): bool => ! HelpdeskBusinessScrumWorkflow::canAssignToSprint($record)
+                || HelpdeskBusinessScrumRoles::developerOptions() === []);
     }
 
     public static function makeReassignAction(string $panel = 'business'): Action

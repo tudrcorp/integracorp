@@ -50,4 +50,14 @@ final class HelpdeskTicketModalActions
     {
         return SharedHelpdeskTicketModalActions::makeReassignAction('marketing');
     }
+
+    public static function makeRevertToAnalystAction(): Action
+    {
+        return SharedHelpdeskTicketModalActions::makeRevertToAnalystAction('marketing');
+    }
+
+    public static function makeAssignToSprintAction(): Action
+    {
+        return SharedHelpdeskTicketModalActions::makeAssignToSprintAction('marketing');
+    }
 }

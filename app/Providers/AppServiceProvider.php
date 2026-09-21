@@ -6,6 +6,8 @@ use App\Filament\Administration\Resources\Helpdesks\Widgets\HelpdeskStatusWeekly
 use App\Filament\Administration\Resources\Helpdesks\Widgets\StatsOverviewHelpdesk as AdministrationStatsOverviewHelpdesk;
 use App\Filament\Business\Resources\AffiliationCorporates\Widgets\AffiliationCorporatesByAgencyTable;
 use App\Filament\Business\Resources\AffiliationCorporates\Widgets\AffiliationCorporatesByAgentTable;
+use App\Filament\Business\Resources\Affiliations\Widgets\AffiliationsByAgencyTable;
+use App\Filament\Business\Resources\Affiliations\Widgets\AffiliationsByAgentTable;
 use App\Filament\Business\Resources\Agencies\Widgets\ControlActividadInteraccion as AgenciesControlActividadInteraccion;
 use App\Filament\Business\Resources\Agents\Widgets\ControlActividadInteraccion;
 use App\Filament\Business\Resources\CorporateQuoteRequests\Widgets\CorporateQuoteRequestChannelChart;
@@ -89,6 +91,8 @@ class AppServiceProvider extends ServiceProvider
         // Registro explícito para evitar fallos de auto-descubrimiento en Livewire (widgets fuera de rutas discoverWidgets).
         Livewire::component('app.filament.business.resources.agents.widgets.control-actividad-interaccion', ControlActividadInteraccion::class);
         Livewire::component('app.filament.business.resources.agencies.widgets.control-actividad-interaccion', AgenciesControlActividadInteraccion::class);
+        Livewire::component('app.filament.business.resources.affiliations.widgets.affiliations-by-agency-table', AffiliationsByAgencyTable::class);
+        Livewire::component('app.filament.business.resources.affiliations.widgets.affiliations-by-agent-table', AffiliationsByAgentTable::class);
         Livewire::component('app.filament.business.resources.affiliation-corporates.widgets.affiliation-corporates-by-agency-table', AffiliationCorporatesByAgencyTable::class);
         Livewire::component('app.filament.business.resources.affiliation-corporates.widgets.affiliation-corporates-by-agent-table', AffiliationCorporatesByAgentTable::class);
         Livewire::component('app.filament.business.resources.corporate-quotes.widgets.corporate-quotes-by-agency-table', CorporateQuotesByAgencyTable::class);

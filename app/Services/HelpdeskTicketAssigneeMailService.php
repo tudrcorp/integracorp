@@ -6,11 +6,14 @@ namespace App\Services;
 
 use App\Exceptions\HelpdeskTicketMailException;
 use App\Mail\SendEmailCreateTicketAndAssigned;
+use App\Mail\SendEmailHelpdeskTicketReverted;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
+use App\Models\User;
 use App\Support\SecurityAudit;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Throwable;
 
 final class HelpdeskTicketAssigneeMailService
@@ -231,5 +234,229 @@ final class HelpdeskTicketAssigneeMailService
         }
 
         return $report;
+    }
+
+    /**
+     * Envía el correo de reversión Scrum al creador del ticket.
+     *
+     * @return array{
+     *     attempted:int,
+     *     sent:int,
+     *     failed:int,
+     *     skipped_no_email:int,
+     *     failures:list<array<string,mixed>>,
+     *     recipient:array<string,mixed>|null
+     * }
+     */
+    public static function sendRevertedToCreatorWithReport(
+        HelpDesk $ticket,
+        string $revertedBy,
+        string $reason,
+        string $panel = 'unknown',
+    ): array {
+        $ticket = self::loadTicketWithAssigneesForNotifications($ticket);
+        $creator = self::resolveTicketCreatorEmailData($ticket);
+
+        $report = [
+            'attempted' => 0,
+            'sent' => 0,
+            'failed' => 0,
+            'skipped_no_email' => 0,
+            'failures' => [],
+            'recipient' => [
+                'creator_name' => $creator['creator_name'],
+                'user_id' => $creator['user_id'],
+                'rrhh_colaborador_id' => $creator['rrhh_colaborador_id'],
+                'resolution_source' => $creator['resolution_source'],
+            ],
+        ];
+
+        $email = $creator['email'];
+
+        if (blank($email)) {
+            $report['skipped_no_email'] = 1;
+
+            Log::warning('Helpdesk: creador del ticket sin correo; no se envía notificación de reversión.', [
+                'help_desk_id' => $ticket->getKey(),
+                'user_id' => $creator['user_id'],
+                'rrhh_colaborador_id' => $creator['rrhh_colaborador_id'],
+                'where' => 'HelpdeskTicketAssigneeMailService::sendRevertedToCreatorWithReport',
+            ]);
+
+            SecurityAudit::log('AUDIT_HELPDESK_EMAIL_SKIPPED', $panel.'.helpdesks.notifications.email.scrum-revert', [
+                'panel' => $panel,
+                'helpdesk_id' => $ticket->getKey(),
+                'creator_name' => $creator['creator_name'],
+                'user_id' => $creator['user_id'],
+                'rrhh_colaborador_id' => $creator['rrhh_colaborador_id'],
+                'reason' => 'creator_missing_email',
+                'where' => 'service.email.skip.creator.no-email',
+            ]);
+
+            return $report;
+        }
+
+        $report['attempted'] = 1;
+
+        try {
+            $ccList = self::buildCcEmailListForAssigneeMessage($ticket, $email);
+
+            Mail::to($email)
+                ->cc($ccList)
+                ->send(SendEmailHelpdeskTicketReverted::fromTicket(
+                    $ticket,
+                    $revertedBy,
+                    $reason,
+                    (string) $creator['creator_name'],
+                ));
+
+            $report['sent'] = 1;
+            $report['recipient']['email'] = $email;
+
+            SecurityAudit::log('AUDIT_HELPDESK_EMAIL_SENT', $panel.'.helpdesks.notifications.email.scrum-revert', [
+                'panel' => $panel,
+                'helpdesk_id' => $ticket->getKey(),
+                'creator_name' => $creator['creator_name'],
+                'user_id' => $creator['user_id'],
+                'rrhh_colaborador_id' => $creator['rrhh_colaborador_id'],
+                'to' => $email,
+                'cc_count' => count($ccList),
+                'where' => 'service.email.send.creator.revert',
+                'resolution_source' => $creator['resolution_source'],
+            ]);
+        } catch (HelpdeskTicketMailException $e) {
+            $report['failed'] = 1;
+            $report['failures'][] = [
+                'email' => $email,
+                'error' => $e->getMessage(),
+                'exception' => $e::class,
+                'where' => 'service.email.prepare.creator.revert',
+            ];
+
+            Log::error('Helpdesk: no se pudo preparar o enviar correo de reversión al creador.', array_merge(
+                $e->context,
+                [
+                    'message' => $e->getMessage(),
+                    'help_desk_id' => $ticket->getKey(),
+                    'where' => 'HelpdeskTicketAssigneeMailService::sendRevertedToCreatorWithReport',
+                ],
+            ));
+
+            SecurityAudit::log('AUDIT_HELPDESK_EMAIL_FAILED', $panel.'.helpdesks.notifications.email.scrum-revert', [
+                'panel' => $panel,
+                'helpdesk_id' => $ticket->getKey(),
+                'to' => $email,
+                'error' => $e->getMessage(),
+                'exception' => $e::class,
+                'where' => 'service.email.prepare.creator.revert',
+            ]);
+        } catch (Throwable $e) {
+            $report['failed'] = 1;
+            $report['failures'][] = [
+                'email' => $email,
+                'error' => $e->getMessage(),
+                'exception' => $e::class,
+                'where' => 'service.email.send.creator.revert',
+            ];
+
+            Log::error('Helpdesk: error al enviar correo de reversión al creador.', [
+                'message' => $e->getMessage(),
+                'help_desk_id' => $ticket->getKey(),
+                'exception' => $e::class,
+                'where' => 'HelpdeskTicketAssigneeMailService::sendRevertedToCreatorWithReport',
+            ]);
+
+            SecurityAudit::log('AUDIT_HELPDESK_EMAIL_FAILED', $panel.'.helpdesks.notifications.email.scrum-revert', [
+                'panel' => $panel,
+                'helpdesk_id' => $ticket->getKey(),
+                'to' => $email,
+                'error' => $e->getMessage(),
+                'exception' => $e::class,
+                'where' => 'service.email.send.creator.revert',
+            ]);
+        }
+
+        return $report;
+    }
+
+    /**
+     * @return array{
+     *     creator_name:string,
+     *     user_id:int|null,
+     *     rrhh_colaborador_id:int|null,
+     *     email:?string,
+     *     resolution_source:string
+     * }
+     */
+    public static function resolveTicketCreatorEmailData(HelpDesk $ticket): array
+    {
+        $creatorName = trim((string) ($ticket->created_by ?? ''));
+        $creatorNameNormalized = preg_replace('/\s+/', ' ', $creatorName) ?? $creatorName;
+        $creatorNameLower = Str::lower($creatorNameNormalized);
+
+        $creatorUser = null;
+        $creatorUserId = $ticket->created_by_user_id;
+        if (is_numeric($creatorUserId) && (int) $creatorUserId > 0) {
+            $creatorUser = User::query()->find((int) $creatorUserId, ['id', 'name', 'email']);
+        }
+
+        if ($creatorUser === null && $creatorNameNormalized !== '') {
+            if (is_numeric($creatorNameNormalized)) {
+                $creatorUser = User::query()->find((int) $creatorNameNormalized, ['id', 'name', 'email']);
+            }
+
+            if ($creatorUser === null) {
+                $creatorUser = User::query()
+                    ->where('email', $creatorNameNormalized)
+                    ->first(['id', 'name', 'email']);
+            }
+
+            if ($creatorUser === null) {
+                $creatorUser = User::query()
+                    ->whereRaw('LOWER(name) = ?', [$creatorNameLower])
+                    ->first(['id', 'name', 'email']);
+            }
+        }
+
+        $creatorColaborador = null;
+        if ($creatorUser !== null) {
+            $creatorColaborador = RrhhColaborador::query()
+                ->where('user_id', $creatorUser->id)
+                ->first(['id', 'fullName', 'emailCorporativo', 'emailPersonal', 'emailAlternativo']);
+        }
+
+        if ($creatorColaborador === null && $creatorNameNormalized !== '') {
+            $creatorColaborador = RrhhColaborador::query()
+                ->whereRaw('LOWER(fullName) = ?', [$creatorNameLower])
+                ->first(['id', 'fullName', 'emailCorporativo', 'emailPersonal', 'emailAlternativo']);
+        }
+
+        $candidates = [
+            'rrhh.emailCorporativo' => $creatorColaborador?->emailCorporativo,
+            'user.email' => $creatorUser?->email,
+            'rrhh.emailPersonal' => $creatorColaborador?->emailPersonal,
+            'rrhh.emailAlternativo' => $creatorColaborador?->emailAlternativo,
+        ];
+
+        foreach ($candidates as $source => $candidate) {
+            $email = is_string($candidate) ? strtolower(trim($candidate)) : '';
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
+                return [
+                    'creator_name' => $creatorNameNormalized,
+                    'user_id' => $creatorUser?->getKey() !== null ? (int) $creatorUser->getKey() : null,
+                    'rrhh_colaborador_id' => $creatorColaborador?->getKey() !== null ? (int) $creatorColaborador->getKey() : null,
+                    'email' => $email,
+                    'resolution_source' => $source,
+                ];
+            }
+        }
+
+        return [
+            'creator_name' => $creatorNameNormalized,
+            'user_id' => $creatorUser?->getKey() !== null ? (int) $creatorUser->getKey() : null,
+            'rrhh_colaborador_id' => $creatorColaborador?->getKey() !== null ? (int) $creatorColaborador->getKey() : null,
+            'email' => null,
+            'resolution_source' => 'none',
+        ];
     }
 }

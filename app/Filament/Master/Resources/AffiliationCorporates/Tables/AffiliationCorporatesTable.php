@@ -7,6 +7,7 @@ use App\Http\Controllers\AffiliationCorporateController;
 use App\Mail\UploadPayment;
 use App\Models\AffiliationCorporate;
 use App\Models\User;
+use App\Support\CommercialStructure\MasterPanelAffiliationCorporateScope;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -25,7 +26,6 @@ use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -34,8 +34,7 @@ class AffiliationCorporatesTable
     public static function configure(Table $table): Table
     {
         return $table
-            // ->query(AffiliationCorporate::query()->whereIn('owner_code', [Auth::user()->code_agency, 'TDG-100']))
-            ->query(AffiliationCorporate::query()->where('owner_code', Auth::user()->code_agency))
+            ->query(MasterPanelAffiliationCorporateScope::apply(AffiliationCorporate::query()))
             ->defaultSort('created_at', 'desc')
             ->heading('AFILIACIONES CORPORATIVAS')
             ->description('Lista de afiliaciones corporativas registradas en el sistema')
@@ -278,6 +277,8 @@ class AffiliationCorporatesTable
                                                     ->options([
                                                         'CHASE BANK' => 'CHASE BANK',
                                                         'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                        'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                        'ENCORE BANK' => 'ENCORE BANK',
                                                         'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                         'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                         'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
@@ -456,6 +457,8 @@ class AffiliationCorporatesTable
                                                             ->options([
                                                                 'CHASE BANK' => 'CHASE BANK',
                                                                 'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                                'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                                'ENCORE BANK' => 'ENCORE BANK',
                                                                 'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                                 'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                                 'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',

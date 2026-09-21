@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProspectAgent extends Model
 {
@@ -14,6 +15,9 @@ class ProspectAgent extends Model
         'phone_1',
         'phone_2',
         'email',
+        'address',
+        'website',
+        'social_networks',
         'state_id',
         'city_id',
         'country_id',
@@ -38,6 +42,14 @@ class ProspectAgent extends Model
     public function prospect_agent_tasks()
     {
         return $this->hasMany(ProspectAgentTask::class)->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * @return HasMany<ProspectAgentContact, $this>
+     */
+    public function prospectAgentContacts(): HasMany
+    {
+        return $this->hasMany(ProspectAgentContact::class)->orderBy('sort_order');
     }
 
     public function state()

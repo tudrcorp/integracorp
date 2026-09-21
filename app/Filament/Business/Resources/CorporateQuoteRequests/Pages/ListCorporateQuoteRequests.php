@@ -27,7 +27,35 @@ class ListCorporateQuoteRequests extends ListRecords
         $this->tableFilters['agent_id'] = [
             'value' => (string) $agentId,
         ];
+        $this->tableFilters['without_agent'] = [
+            'isActive' => false,
+        ];
+        $this->tableFilters['code_agency'] = [
+            'value' => null,
+        ];
 
+        $this->applyCorporateQuoteRequestTableFilters();
+    }
+
+    #[On('corporate-quote-requests-filter-by-agency-without-agent')]
+    public function filterRequestsByAgencyWithoutAgent(string $agencyCode, string $agencyName): void
+    {
+        $this->tableFilters ??= [];
+        $this->tableFilters['code_agency'] = [
+            'value' => $agencyCode,
+        ];
+        $this->tableFilters['without_agent'] = [
+            'isActive' => true,
+        ];
+        $this->tableFilters['agent_id'] = [
+            'value' => null,
+        ];
+
+        $this->applyCorporateQuoteRequestTableFilters();
+    }
+
+    protected function applyCorporateQuoteRequestTableFilters(): void
+    {
         $this->getTableFiltersForm()->fill($this->tableFilters);
         $this->resetPage();
         $this->flushCachedTableRecords();

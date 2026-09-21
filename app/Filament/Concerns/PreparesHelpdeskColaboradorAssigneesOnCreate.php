@@ -38,7 +38,7 @@ trait PreparesHelpdeskColaboradorAssigneesOnCreate
 
         $ids = $data['rrhhColaboradores'] ?? [];
         if (! is_array($ids)) {
-            $ids = [];
+            $ids = filled($ids) ? [$ids] : [];
         }
 
         $ids = array_values(array_unique(array_map(

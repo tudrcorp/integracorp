@@ -6,7 +6,7 @@ use App\Models\User;
 use App\Support\HelpdeskTicketVisibility;
 use App\Support\HelpdeskUserAccess;
 
-it('permite cola global a SISTEMAS y SUPERADMIN', function (): void {
+it('permite cola global a SISTEMAS, SUPERADMIN y al Product Owner Scrum', function (): void {
     $systems = new User;
     $systems->departament = ['SISTEMAS'];
 
@@ -16,8 +16,13 @@ it('permite cola global a SISTEMAS y SUPERADMIN', function (): void {
     $negocios = new User;
     $negocios->departament = ['NEGOCIOS'];
 
+    $productOwner = new User;
+    $productOwner->name = 'Becky Acosta';
+    $productOwner->departament = ['NEGOCIOS'];
+
     expect(HelpdeskTicketVisibility::canViewGlobalQueue($systems))->toBeTrue()
         ->and(HelpdeskTicketVisibility::canViewGlobalQueue($superAdmin))->toBeTrue()
+        ->and(HelpdeskTicketVisibility::canViewGlobalQueue($productOwner))->toBeTrue()
         ->and(HelpdeskTicketVisibility::canViewGlobalQueue($negocios))->toBeFalse()
         ->and(HelpdeskTicketVisibility::canViewGlobalQueue(null))->toBeFalse();
 });
@@ -66,6 +71,14 @@ it('export csv de helpdesk restringe ids a tickets visibles', function (): void 
     expect(file_get_contents($path))
         ->toContain('HelpdeskTicketVisibility::constrainVisible')
         ->toContain('whereIn(\'id\', $ids)');
+});
+
+it('oculta el inbox del Product Owner a la cola global de sistemas', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Support/HelpdeskTicketVisibility.php';
+
+    expect(file_get_contents($path))
+        ->toContain('hideProductOwnerInboxUnlessMine')
+        ->toContain('HelpdeskBusinessScrumRoles::isProductOwnerUser');
 });
 
 it('tabs de cola global solo se registran para SISTEMAS o SUPERADMIN', function (): void {

@@ -8,6 +8,7 @@ use App\Models\Agent;
 use App\Models\AgentDocument;
 use App\Models\Country;
 use App\Models\ObservationCommercialStructure;
+use App\Support\CommercialStructure\CommercialVipFacturacion;
 use App\Support\CommercialStructure\ReferidorAssignmentService;
 use App\Support\CountrySelectOptions;
 use App\Support\Filament\CommercialStructure\AgentAddressClipboardFormat;
@@ -88,10 +89,38 @@ class AgentInfolist
                                             ->schema([
                                                 TextEntry::make('name')
                                                     ->label('Nombre')
+                                                    ->html()
                                                     ->size('lg')
                                                     ->weight('semibold')
                                                     ->color('gray')
+                                                    ->formatStateUsing(fn (?string $state, Agent $record): HtmlString => CommercialVipFacturacion::nameWithVipStarsHtml(
+                                                        (string) ($state ?? ''),
+                                                        CommercialVipFacturacion::billingAmountFromRecord($record),
+                                                        CommercialVipFacturacion::lineaDirectaFromRecord($record),
+                                                    ))
                                                     ->placeholder('Sin nombre'),
+                                                TextEntry::make('vip_facturacion_display')
+                                                    ->label('VIP (facturación)')
+                                                    ->state(function (Agent $record): string {
+                                                        $billing = CommercialVipFacturacion::billingAmountFromRecord($record);
+                                                        $stars = CommercialVipFacturacion::starCountFromAmount($billing);
+                                                        $line = CommercialVipFacturacion::starsGlyphLine($stars);
+
+                                                        return ($line !== '' ? $line.' · ' : '').CommercialVipFacturacion::billingTooltip($billing, $stars);
+                                                    })
+                                                    ->badge()
+                                                    ->color(fn (Agent $record): string => CommercialVipFacturacion::vipBadgeColor(
+                                                        CommercialVipFacturacion::starCountFromAmount(CommercialVipFacturacion::billingAmountFromRecord($record))
+                                                    ))
+                                                    ->placeholder('Sin nivel VIP'),
+                                                TextEntry::make('vip_linea_directa_display')
+                                                    ->label('Línea directa')
+                                                    ->state(fn (Agent $record): string => CommercialVipFacturacion::lineaDirectaFromRecord($record)
+                                                        ? 'Prioridad · grupos corporativos facturando'
+                                                        : 'No')
+                                                    ->badge()
+                                                    ->color(fn (Agent $record): string => CommercialVipFacturacion::lineaDirectaFromRecord($record) ? 'warning' : 'gray')
+                                                    ->visible(fn (Agent $record): bool => CommercialVipFacturacion::lineaDirectaFromRecord($record)),
                                                 Grid::make(['default' => 1, 'sm' => 2, 'lg' => 4])
                                                     ->schema([
                                                         TextEntry::make('ci')
@@ -304,7 +333,7 @@ class AgentInfolist
                             ->icon('heroicon-o-squares-2x2')
                             ->schema([
                                 Section::make('Jerarquía comercial')
-                                    ->description('Master → General → Agente → Subagente. Despliega equipos de master, generales o subagentes en fila horizontal; desliza cuando hay más de cinco nodos.')
+                                    ->description('Master → General → Agente → Subagente. Despliega equipos de master, generales o subagentes en fila horizontal; desliza cuando hay más de cinco nodos. Descarga el listado Excel desde Acciones → Descargar estructura (Excel).')
                                     ->icon('heroicon-o-squares-2x2')
                                     ->extraAttributes([
                                         'class' => self::SECTION_CARD,

@@ -9,7 +9,7 @@ class HelpdeskForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return HelpdeskFormSchema::configure($schema, assigneesRequired: true);
+        return HelpdeskFormSchema::configure($schema, assigneesRequired: true, scrumProductOwnerInbox: true);
     }
 
     /**

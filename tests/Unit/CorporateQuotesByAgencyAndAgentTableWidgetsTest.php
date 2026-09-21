@@ -55,6 +55,8 @@ it('define el widget de cotizaciones por agencia con columnas y filtros de perio
         ->toContain('resolvedRankingFilterMonth')
         ->toContain("Action::make('filterAgents')")
         ->toContain("->label('Detalles')")
+        ->toContain("Action::make('viewQuotesWithoutAgent')")
+        ->toContain("->label('Ver cotizaciones sin agente')")
         ->toContain('syncPeriodToAgentTable')
         ->toContain('corporate-quotes-period-changed');
 });
@@ -97,12 +99,15 @@ it('filtra agentes al seleccionar una agencia y cotizaciones al seleccionar un a
     expect($listPage)
         ->toContain('#[On(\'corporate-quotes-filter-by-agent\')]')
         ->toContain('filterQuotesByAgent')
+        ->toContain('#[On(\'corporate-quotes-filter-by-agency-without-agent\')]')
+        ->toContain('filterQuotesByAgencyWithoutAgent')
         ->toContain('corporate-quotes-main-table');
 
     expect($agencyWidget)
         ->toContain('selectAgency')
         ->toContain('->to(CorporateQuotesByAgentTable::class)')
-        ->toContain('corporate-quotes-agent-filter-start');
+        ->toContain('corporate-quotes-agent-filter-start')
+        ->toContain("Action::make('viewQuotesWithoutAgent')");
 
     expect($agentWidget)
         ->toContain('filterAgentsByAgency')
@@ -112,10 +117,13 @@ it('filtra agentes al seleccionar una agencia y cotizaciones al seleccionar un a
     expect($query)
         ->toContain('CorporateQuote::query()')
         ->toContain("DB::raw('COUNT(*) as total_quotes')")
-        ->toContain('applyPeriod');
+        ->toContain('applyPeriod')
+        ->toContain('public static function constrainWithoutAgent');
 
     expect($quotesTable)
         ->toContain("SelectFilter::make('agent_id')")
+        ->toContain("SelectFilter::make('code_agency')")
+        ->toContain("Filter::make('without_agent')")
         ->toContain("'id' => 'corporate-quotes-main-table'");
 });
 

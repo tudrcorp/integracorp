@@ -8,6 +8,7 @@ use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
 use Filament\Widgets\ChartWidget;
 use App\Models\AffiliationCorporate;
+use App\Support\CommercialStructure\MasterPanelAffiliationCorporateScope;
 use Illuminate\Support\Facades\Auth;
 
 class AffiliationCorporateChart extends ChartWidget
@@ -53,7 +54,7 @@ class AffiliationCorporateChart extends ChartWidget
             $rangeEndDate       = now()->endOfYear();
         }
         
-        $data = Trend::query(AffiliationCorporate::where('owner_code', Auth::user()->code_agency))
+        $data = Trend::query(MasterPanelAffiliationCorporateScope::apply(AffiliationCorporate::query()))
             ->between(
                 start: $rangeStartDate,
                 end: $rangeEndDate,

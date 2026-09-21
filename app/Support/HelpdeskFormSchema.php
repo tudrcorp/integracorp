@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Models\User;
 use Filament\Forms\Components\Checkbox;
@@ -68,20 +69,23 @@ final class HelpdeskFormSchema
     }
 
     /**
+     * Directorio RRHH para CC (solo notificación): todos los colaboradores.
+     * No exige usuario de sistema; el aviso usa el correo corporativo.
+     *
      * @return array<int, string>
      */
     public static function rrhhColaboradorOptionsForHelpdeskMultiselect(): array
     {
-        $query = RrhhColaborador::query()
-            ->whereNotNull('user_id')
-            ->orderBy('fullName');
+        $query = RrhhColaborador::query()->orderBy('fullName');
 
         self::applySupplierAnalystColaboradorScope($query);
 
         return $query
-            ->pluck('fullName', $query->getModel()->getQualifiedKeyName())
+            ->get(['id', 'fullName'])
             ->mapWithKeys(
-                static fn (mixed $name, mixed $id): array => [(int) $id => (string) $name]
+                static fn (RrhhColaborador $colaborador): array => [
+                    (int) $colaborador->id => (string) $colaborador->fullName,
+                ]
             )
             ->all();
     }
@@ -116,7 +120,7 @@ final class HelpdeskFormSchema
         return str_contains($normalized, 'CAYETANO') && str_contains($normalized, 'BATRES');
     }
 
-    public static function configure(Schema $schema, bool $assigneesRequired = true): Schema
+    public static function configure(Schema $schema, bool $assigneesRequired = true, bool $scrumProductOwnerInbox = false): Schema
     {
         return $schema
             ->columns(1)
@@ -130,7 +134,7 @@ final class HelpdeskFormSchema
                     ->tabs([
                         Tab::make('Ticket')
                             ->icon('heroicon-o-ticket')
-                            ->schema(self::ticketTabSchema($assigneesRequired)),
+                            ->schema(self::ticketTabSchema($assigneesRequired, $scrumProductOwnerInbox)),
 
                         Tab::make('Tipo de ticket')
                             ->icon('heroicon-o-tag')
@@ -147,18 +151,31 @@ final class HelpdeskFormSchema
     /**
      * @return array<int, mixed>
      */
-    private static function ticketTabSchema(bool $assigneesRequired): array
+    private static function ticketTabSchema(bool $assigneesRequired, bool $scrumProductOwnerInbox = false): array
     {
+        $intro = $scrumProductOwnerInbox
+            ? '<p class="text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
+                .'<span class="font-semibold text-gray-900 dark:text-white">Paso 1 — Detalle del ticket.</span> '
+                .'Describe el problema, define la prioridad y asigne a una sola persona. Si elige a Becky Acosta, el ticket entra al backlog Scrum; cualquier otro colaborador lo atiende como tickera normal. '
+                .'Los campos marcados con <span class="text-danger-600 dark:text-danger-400">*</span> son obligatorios.'
+                .'</p>'
+            : '<p class="text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
+                .'<span class="font-semibold text-gray-900 dark:text-white">Paso 1 — Detalle del ticket.</span> '
+                .'Describe el problema con claridad, define prioridad y asigna responsables. '
+                .'Los campos marcados con <span class="text-danger-600 dark:text-danger-400">*</span> son obligatorios.'
+                .'</p>';
+
         return [
             Placeholder::make('ticket_form_intro')
                 ->hiddenLabel()
-                ->content(new HtmlString(
-                    '<p class="text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
-                    .'<span class="font-semibold text-gray-900 dark:text-white">Paso 1 — Detalle del ticket.</span> '
-                    .'Describe el problema con claridad, define prioridad y asigna responsables. '
-                    .'Los campos marcados con <span class="text-danger-600 dark:text-danger-400">*</span> son obligatorios.'
-                    .'</p>'
-                ))
+                ->content(new HtmlString($intro))
+                ->visible(fn (?HelpDesk $record): bool => ! HelpdeskBusinessScrumWorkflow::ticketAllowsContentResubmit($record))
+                ->columnSpanFull(),
+
+            Placeholder::make('ticket_resubmit_intro')
+                ->hiddenLabel()
+                ->content(fn (?HelpDesk $record): HtmlString => self::resubmitIntroHtml($record))
+                ->visible(fn (?HelpDesk $record): bool => HelpdeskBusinessScrumWorkflow::ticketAllowsContentResubmit($record))
                 ->columnSpanFull(),
 
             Section::make('Descripción del caso')
@@ -180,7 +197,7 @@ final class HelpdeskFormSchema
                                 ])
                                 ->helperText('Incluye pasos para reproducir, capturas en adjuntos y plazos si aplica.')
                                 ->columnSpanFull()
-                                ->disabledOn('edit'),
+                                ->disabled(self::disableOnEditUnlessRevertedResubmit()),
                         ]),
                 ])
                 ->columnSpanFull(),
@@ -206,7 +223,7 @@ final class HelpdeskFormSchema
                                 ->default('MEDIA')
                                 ->prefixIcon('heroicon-m-bolt')
                                 ->helperText('Alta: impacto operativo o cliente. Media: flujo normal. Baja: mejora o consulta.')
-                                ->disabledOn('edit'),
+                                ->disabled(self::disableOnEditUnlessRevertedResubmit()),
 
                             Select::make('status')
                                 ->label('Estado inicial')
@@ -223,7 +240,9 @@ final class HelpdeskFormSchema
                 ->columnSpanFull(),
 
             Section::make('Personas involucradas')
-                ->description('Quién ejecuta el ticket y quién solo recibe avisos.')
+                ->description($scrumProductOwnerInbox
+                    ? 'Asigne a una sola persona. Becky Acosta evalúa y reasigna; otro colaborador atiende el caso de inmediato.'
+                    : 'Quién ejecuta el ticket y quién solo recibe avisos.')
                 ->icon('heroicon-o-users')
                 ->iconColor('primary')
                 ->extraAttributes(['class' => self::IOS_SECTION_CLASS])
@@ -231,23 +250,43 @@ final class HelpdeskFormSchema
                     Grid::make(3)
                         ->extraAttributes(['class' => self::IOS_INNER_CLASS])
                         ->schema([
+                            Placeholder::make('scrum_product_owner_inbox')
+                                ->label('Flujo según asignado')
+                                ->content(new HtmlString(
+                                    '<p class="text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
+                                    .'Si asigna a <strong>Becky Acosta</strong>, el ticket entra al backlog Scrum: ella puede revertirlo o reasignarlo a <strong>Anthony Aular</strong> y/o <strong>Gustavo Camacho</strong>. '
+                                    .'Si elige a otra persona, el ticket sigue el flujo normal de la tickera.'
+                                    .'</p>'
+                                ))
+                                ->visible($scrumProductOwnerInbox)
+                                ->columnSpanFull(),
                             Select::make('rrhhColaboradores')
-                                ->label('Asignados (ejecutan el ticket)')
+                                ->label($scrumProductOwnerInbox ? 'Asignado (una persona)' : 'Asignados (ejecutan el ticket)')
                                 ->relationship(
                                     name: 'rrhhColaboradores',
                                     titleAttribute: 'fullName',
                                     modifyQueryUsing: fn (Builder $query): Builder => self::applySupplierAnalystColaboradorScope($query)
                                         ->orderBy('fullName')
                                 )
-                                ->multiple()
+                                ->multiple(! $scrumProductOwnerInbox)
                                 ->preload()
                                 ->searchable()
                                 ->native(false)
                                 ->prefixIcon('heroicon-m-user-plus')
                                 ->required($assigneesRequired)
-                                ->helperText($assigneesRequired
-                                    ? 'Seleccione uno o más colaboradores responsables de resolver el caso.'
-                                    : 'Opcional en este panel: puede dejar el ticket sin asignar y definirlo después.')
+                                ->helperText(function (?HelpDesk $record) use ($scrumProductOwnerInbox, $assigneesRequired): string {
+                                    if (HelpdeskBusinessScrumWorkflow::ticketAllowsContentResubmit($record)) {
+                                        return 'El ticket se reenviará a '.HelpdeskBusinessScrumRoles::PRODUCT_OWNER_NAME.' para una nueva evaluación. El asignado no se cambia aquí.';
+                                    }
+
+                                    if ($scrumProductOwnerInbox) {
+                                        return 'Solo una persona. Becky Acosta inicia Scrum; cualquier otro colaborador recibe el ticket directo.';
+                                    }
+
+                                    return $assigneesRequired
+                                        ? 'Seleccione uno o más colaboradores responsables de resolver el caso.'
+                                        : 'Opcional en este panel: puede dejar el ticket sin asignar y definirlo después.';
+                                })
                                 ->disabledOn('edit'),
 
                             Select::make('cc_colaboradores')
@@ -259,7 +298,7 @@ final class HelpdeskFormSchema
                                 ->preload()
                                 ->native(false)
                                 ->prefixIcon('heroicon-m-bell-alert')
-                                ->disabledOn('edit'),
+                                ->disabled(self::disableOnEditUnlessRevertedResubmit()),
 
                             TextInput::make('created_by')
                                 ->label('Creador del ticket')
@@ -304,7 +343,7 @@ final class HelpdeskFormSchema
                                 ->panelLayout('compact')
                                 ->helperText('Formatos: PDF, PPT/PPTX, JPG, PNG, WebP o GIF. Un archivo por ticket.')
                                 ->columnSpanFull()
-                                ->disabledOn('edit'),
+                                ->disabled(self::disableOnEditUnlessRevertedResubmit()),
                         ]),
                 ])
                 ->columnSpanFull(),
@@ -344,7 +383,7 @@ final class HelpdeskFormSchema
                                     'required' => 'Seleccione el tipo de ticket antes de continuar.',
                                 ])
                                 ->columnSpanFull()
-                                ->disabledOn('edit'),
+                                ->disabled(self::disableOnEditUnlessRevertedResubmit()),
                         ]),
                 ])
                 ->columnSpanFull(),
@@ -395,5 +434,39 @@ final class HelpdeskFormSchema
                 ])
                 ->columnSpanFull(),
         ];
+    }
+
+    /**
+     * @return \Closure(string, mixed): bool
+     */
+    private static function disableOnEditUnlessRevertedResubmit(): \Closure
+    {
+        return static function (string $operation, mixed $record): bool {
+            if ($operation !== 'edit') {
+                return false;
+            }
+
+            return ! HelpdeskBusinessScrumWorkflow::ticketAllowsContentResubmit(
+                $record instanceof HelpDesk ? $record : null
+            );
+        };
+    }
+
+    private static function resubmitIntroHtml(?HelpDesk $record): HtmlString
+    {
+        $reason = trim((string) ($record?->cancellation_reason ?? ''));
+        $reasonBlock = $reason !== ''
+            ? '<p class="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300"><span class="font-semibold text-gray-900 dark:text-white">Motivo de la reversión:</span> '.e($reason).'</p>'
+            : '';
+
+        return new HtmlString(
+            '<p class="text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
+            .'<span class="font-semibold text-gray-900 dark:text-white">Corrija y reenvíe el ticket.</span> '
+            .'Actualice la descripción, prioridad, tipo o adjuntos y reenvíelo a <strong>'
+            .e(HelpdeskBusinessScrumRoles::PRODUCT_OWNER_NAME)
+            .'</strong> para una nueva evaluación.'
+            .'</p>'
+            .$reasonBlock
+        );
     }
 }

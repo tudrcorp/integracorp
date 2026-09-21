@@ -237,13 +237,21 @@ final class HelpdeskTableConfigurator
             HelpdeskTaskStatusOptions::STATUS_QA => 'pruebas_qa',
             HelpdeskTaskStatusOptions::STATUS_WAITING => 'esperando_terceros',
             HelpdeskTaskStatusOptions::STATUS_DONE => 'terminado',
+            HelpdeskTaskStatusOptions::STATUS_REVERTED => 'revertido',
             HelpdeskTaskStatusOptions::STATUS_CANCELLED => 'cancelado',
         ];
 
         $definitions = [];
 
         foreach (HelpdeskTaskStatusOptions::all() as $status => $label) {
-            $definitions[$keys[$status]] = [$status, $label];
+            $tabKey = $keys[$status] ?? strtolower((string) preg_replace('/[^a-z0-9]+/i', '_', $status));
+            $tabKey = trim($tabKey, '_');
+
+            if ($tabKey === '') {
+                continue;
+            }
+
+            $definitions[$tabKey] = [$status, $label];
         }
 
         return $definitions;
@@ -416,13 +424,24 @@ final class HelpdeskTableConfigurator
             )
             ->action(fn (): null => null);
 
-        $actions[] = ActionGroup::make([
+        $groupActions = [
             $modalActionsClass::makeAddNoteAction(),
             $modalActionsClass::makeUpdateStatusAction(),
             $modalActionsClass::makeUpdatePriorityAction(),
             $modalActionsClass::makeReassignAction(),
-            self::makeViewNotesAction($modalActionsClass),
-        ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro');
+        ];
+
+        if (method_exists($modalActionsClass, 'makeRevertToAnalystAction')) {
+            $groupActions[] = $modalActionsClass::makeRevertToAnalystAction();
+        }
+
+        if (method_exists($modalActionsClass, 'makeAssignToSprintAction')) {
+            $groupActions[] = $modalActionsClass::makeAssignToSprintAction();
+        }
+
+        $groupActions[] = self::makeViewNotesAction($modalActionsClass);
+
+        $actions[] = ActionGroup::make($groupActions)->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro');
 
         return $actions;
     }

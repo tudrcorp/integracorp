@@ -95,12 +95,18 @@ it('filtra agentes al seleccionar una agencia y solicitudes al seleccionar un ag
     expect($listPage)
         ->toContain('#[On(\'corporate-quote-requests-filter-by-agent\')]')
         ->toContain('filterRequestsByAgent')
-        ->toContain('corporate-quote-requests-main-table');
+        ->toContain('corporate-quote-requests-main-table')
+        ->toContain('#[On(\'corporate-quote-requests-filter-by-agency-without-agent\')]')
+        ->toContain('filterRequestsByAgencyWithoutAgent');
 
     expect($agencyWidget)
         ->toContain('selectAgency')
         ->toContain('->to(CorporateQuoteRequestsByAgentTable::class)')
-        ->toContain('corporate-quote-requests-agent-filter-start');
+        ->toContain('corporate-quote-requests-agent-filter-start')
+        ->toContain("Action::make('viewRequestsWithoutAgent')")
+        ->toContain("->label('Ver solicitudes sin agente')")
+        ->toContain('viewAgencyRequestsWithoutAgent')
+        ->toContain('corporate-quote-requests-filter-by-agency-without-agent');
 
     expect($agentWidget)
         ->toContain('filterAgentsByAgency')
@@ -110,11 +116,25 @@ it('filtra agentes al seleccionar una agencia y solicitudes al seleccionar un ag
     expect($query)
         ->toContain('CorporateQuoteRequest::query()')
         ->toContain("DB::raw('COUNT(*) as total_requests')")
-        ->toContain('applyPeriod');
+        ->toContain('applyPeriod')
+        ->toContain('public static function constrainWithoutAgent');
 
     expect($requestsTable)
         ->toContain("SelectFilter::make('agent_id')")
+        ->toContain("SelectFilter::make('code_agency')")
+        ->toContain("Filter::make('without_agent')")
+        ->toContain('CorporateQuoteRequestsRankingQuery::constrainWithoutAgent')
         ->toContain("'id' => 'corporate-quote-requests-main-table'");
+});
+
+it('restringe solicitudes sin agente nulo o vacio', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Support/CorporateQuoteRequests/CorporateQuoteRequestsRankingQuery.php';
+    $code = file_get_contents($path);
+
+    expect($code)->not->toBeFalse()
+        ->toContain('public static function constrainWithoutAgent')
+        ->toContain("->whereNull('agent_id')")
+        ->toContain("->orWhere('agent_id', '')");
 });
 
 it('expone headings de ranking para solicitudes dress taylor', function (): void {
@@ -130,6 +150,7 @@ it('define el query de ranking de solicitudes con conteo y periodo', function ()
         ->toContain('class CorporateQuoteRequestsRankingQuery')
         ->toContain('public static function agencies')
         ->toContain('public static function agents')
+        ->toContain('public static function constrainWithoutAgent')
         ->toContain("DB::raw('COUNT(*) as total_requests')")
         ->toContain('protected static function applyPeriod')
         ->toContain("->whereYear('created_at', \$year)")

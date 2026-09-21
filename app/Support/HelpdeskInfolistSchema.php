@@ -46,8 +46,9 @@ final class HelpdeskInfolistSchema
             'PENDIENTE POR INICIAR' => 'warning',
             'EN PROCESO' => 'primary',
             'TERMINADO' => 'success',
+            'REVERTIDO' => 'danger',
             'CANCELADO' => 'danger',
-            default => 'gray',
+            default => HelpdeskTaskStatusOptions::badgeColor($state),
         };
     }
 

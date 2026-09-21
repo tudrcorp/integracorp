@@ -24,7 +24,8 @@ final class HelpdeskTicketVisibility
         }
 
         return HelpdeskUserAccess::hasSystemsDepartment($user)
-            || HelpdeskUserAccess::hasSuperAdminDepartment($user);
+            || HelpdeskUserAccess::hasSuperAdminDepartment($user)
+            || HelpdeskBusinessScrumRoles::isProductOwnerUser($user);
     }
 
     /**
@@ -41,8 +42,12 @@ final class HelpdeskTicketVisibility
             return $query->whereRaw('0 = 1');
         }
 
-        if (self::canViewGlobalQueue($user)) {
+        if (HelpdeskBusinessScrumRoles::isProductOwnerUser($user)) {
             return $query;
+        }
+
+        if (self::canViewGlobalQueue($user)) {
+            return self::hideProductOwnerInboxUnlessMine($query, $user);
         }
 
         return self::constrainToMine($query, $user);
@@ -86,6 +91,47 @@ final class HelpdeskTicketVisibility
     public static function constrainUnassigned(Builder $query): Builder
     {
         return $query->whereDoesntHave('rrhhColaboradores');
+    }
+
+    /**
+     * El backlog del Product Owner (solo Becky) no entra a la cola global de Sistemas
+     * hasta que se asigne a Anthony Aular y/o Gustavo Camacho.
+     *
+     * @param  Builder<HelpDesk>  $query
+     * @return Builder<HelpDesk>
+     */
+    public static function hideProductOwnerInboxUnlessMine(Builder $query, User $user): Builder
+    {
+        $productOwnerId = HelpdeskBusinessScrumRoles::productOwnerId();
+        $developerIds = HelpdeskBusinessScrumRoles::developerIds();
+
+        if ($productOwnerId === null) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $visible) use ($user, $productOwnerId, $developerIds): void {
+            $visible->where(function (Builder $mine) use ($user): void {
+                self::constrainToMine($mine, $user);
+            })->orWhere(function (Builder $notInbox) use ($productOwnerId, $developerIds): void {
+                $notInbox
+                    ->whereDoesntHave(
+                        'rrhhColaboradores',
+                        fn (Builder $sub): Builder => $sub->where('rrhh_colaboradors.id', $productOwnerId)
+                    )
+                    ->orWhereHas(
+                        'rrhhColaboradores',
+                        function (Builder $sub) use ($developerIds): void {
+                            if ($developerIds === []) {
+                                $sub->whereRaw('0 = 1');
+
+                                return;
+                            }
+
+                            $sub->whereIn('rrhh_colaboradors.id', $developerIds);
+                        }
+                    );
+            });
+        });
     }
 
     private static function currentUserOrNull(): ?Authenticatable

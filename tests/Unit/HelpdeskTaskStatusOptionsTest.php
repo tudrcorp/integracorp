@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Models\HelpDesk;
 use App\Support\HelpdeskTaskStatusOptions;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 it('el creador del ticket solo ve terminado y cancelado en el modal', function (): void {
     $record = new HelpDesk;
@@ -35,7 +38,7 @@ it('si es creador y asignado ve todos los estados', function (): void {
     $record->created_by = 'Ana';
     $record->status = 'EN PROCESO';
 
-    expect(HelpdeskTaskStatusOptions::forSelect($record, 'Ana', isAssignee: true))->toHaveCount(9);
+    expect(HelpdeskTaskStatusOptions::forSelect($record, 'Ana', isAssignee: true))->toHaveCount(10);
 });
 
 it('sanitize impide al asignado guardar terminado', function (): void {
@@ -76,4 +79,21 @@ it('sanitize impide al creador usar estados operativos', function (): void {
     $sanitized = HelpdeskTaskStatusOptions::sanitizeStatusForSave($record, 'EN DESARROLLO', 'Ana', isAssignee: false);
 
     expect($sanitized)->toBe('EN PROCESO');
+});
+
+it('el desarrollador del sprint puede cerrar el ticket como terminado', function (): void {
+    $developer = new \App\Models\User;
+    $developer->name = 'Anthony Aular';
+    \Illuminate\Support\Facades\Auth::setUser($developer);
+
+    $record = new HelpDesk;
+    $record->created_by = 'Ana';
+    $record->status = 'EN PROCESO';
+
+    $options = HelpdeskTaskStatusOptions::forSelect($record, 'Anthony Aular', isAssignee: true);
+    $sanitized = HelpdeskTaskStatusOptions::sanitizeStatusForSave($record, 'TERMINADO', 'Anthony Aular', isAssignee: true);
+
+    expect($options)->toHaveKey('TERMINADO')
+        ->and($options)->not->toHaveKey('CANCELADO')
+        ->and($sanitized)->toBe('TERMINADO');
 });

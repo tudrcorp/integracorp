@@ -10,5 +10,7 @@ it('EditHelpdesk registra acciones de nota, estado y prioridad en el encabezado 
         ->toContain('HelpdeskTicketModalActions::makeUpdateStatusAction')
         ->toContain('HelpdeskTicketModalActions::makeUpdatePriorityAction')
         ->toContain('HelpdeskTicketModalActions::makeReassignAction')
+        ->toContain('HelpdeskTicketModalActions::makeRevertToAnalystAction')
+        ->toContain('HelpdeskTicketModalActions::makeAssignToSprintAction')
         ->toContain('getHeaderActions');
 })->with(['Business', 'Administration', 'Marketing', 'Operations']);

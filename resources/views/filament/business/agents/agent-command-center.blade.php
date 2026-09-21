@@ -1,8 +1,19 @@
 @php
     /** @var \App\Models\Agent $record */
+    use App\Support\CommercialStructure\CommercialVipFacturacion;
+
     $code = 'AGT-000'.$record->id;
     $typeLabel = $record->typeAgent?->definition ?? '—';
     $affiliations = $record->relationLoaded('affiliations') ? $record->affiliations : collect();
+    $vipBilling = CommercialVipFacturacion::billingAmountFromRecord($record);
+    $vipStarsLine = CommercialVipFacturacion::starsGlyphLine(
+        CommercialVipFacturacion::starCountFromAmount($vipBilling)
+    );
+    $lineaDirecta = CommercialVipFacturacion::lineaDirectaFromRecord($record);
+    $vipTooltip = CommercialVipFacturacion::billingTooltip(
+        $vipBilling,
+        CommercialVipFacturacion::starCountFromAmount($vipBilling)
+    );
 @endphp
 
 <div class="agent-command-center-root space-y-6 overflow-x-hidden px-0.5 pb-6 sm:pb-8">
@@ -12,6 +23,16 @@
         <p class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Agente</p>
         <div class="mt-2 space-y-3">
             <div>
+                @if ($vipStarsLine !== '' || $lineaDirecta)
+                    <div class="mb-1 flex flex-wrap items-center gap-1.5">
+                        @if ($vipStarsLine !== '')
+                            <span class="text-base leading-none tracking-tight text-amber-500 dark:text-amber-400" title="{{ $vipTooltip }}">{{ $vipStarsLine }}</span>
+                        @endif
+                        @if ($lineaDirecta)
+                            <span class="inline-flex items-center rounded-full bg-amber-500 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-white">Línea directa</span>
+                        @endif
+                    </div>
+                @endif
                 <p class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{{ $record->name }}</p>
                 <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
                     <span class="font-semibold text-slate-800 dark:text-slate-100">Código</span><br />

@@ -6,10 +6,12 @@ use App\Filament\Business\Resources\Agencies\AgencyResource;
 use App\Filament\Business\Resources\Agencies\Concerns\QueuesAgencyFichaPdfEmail;
 use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions;
 use App\Filament\Shared\CommercialStructure\Actions\CommercialStructureIosActionsMenu;
+use App\Filament\Shared\CommercialStructure\Actions\DownloadHierarchyStructureAction;
 use App\Filament\Shared\CommercialStructure\Actions\ResetCommercialStructureUserPasswordAction;
 use App\Filament\Shared\CommercialStructure\Actions\UpdateCommercialStructureEmailAction;
 use App\Models\Agency;
 use App\Support\BusinessAgencyFichaPdfAccess;
+use App\Support\CommercialStructure\CommercialVipFacturacion;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
@@ -55,17 +57,23 @@ class ViewAgency extends ViewRecord
         $agency = $this->getRecord();
 
         $code = (string) ($agency->code ?? 'Sin código');
+        CommercialVipFacturacion::rememberOnRecord($agency);
         $name = (string) ($agency->name_corporative ?? 'Sin razón social');
         $status = strtoupper((string) ($agency->status ?? 'SIN ESTADO'));
         $email = (string) ($agency->email ?? 'Sin correo');
         $phone = (string) ($agency->phone ?? 'Sin teléfono');
         $badgeStyle = $this->badgeStyleForStatus($status);
+        $vipRow = CommercialVipFacturacion::pageTitleVipRowHtml(
+            CommercialVipFacturacion::billingAmountFromRecord($agency),
+            CommercialVipFacturacion::lineaDirectaFromRecord($agency),
+        );
 
         return new HtmlString(
             '<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;">'
             .'<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-white">'
             .'Agencia: '.e($code)
             .'</span>'
+            .$vipRow
             .'<span class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">'
             .e($name)
             .'</span>'
@@ -111,6 +119,7 @@ class ViewAgency extends ViewRecord
                     ->color('primary'),
                 UpdateCommercialStructureEmailAction::make('agency', 'business'),
                 ResetCommercialStructureUserPasswordAction::make('agency', 'business'),
+                DownloadHierarchyStructureAction::forAgency(fn (): Agency => $this->getRecord()),
                 Action::make('agencyFichaPreview')
                     ->label('Ficha PDF')
                     ->icon('heroicon-o-document-text')

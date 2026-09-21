@@ -71,6 +71,15 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain('colaboradorIdsAssignedToOtherOffices')
         ->toContain('removeColaboradorFromOtherOffices')
         ->toContain('replicateOfficeAssignmentsToSelectedDays')
+        ->toContain('notifyMonthOfficeAttendance')
+        ->toContain('TdgCalendarOfficeAttendanceNotifier')
+        ->toContain('recordOfficeAttendanceModifications')
+        ->toContain('recordOfficeAttendanceNewAssignments')
+        ->toContain('hasPendingOfficeAttendanceModifications')
+        ->toContain('hasPendingOfficeAttendanceNewAssignments')
+        ->toContain('tdgOfficeAttendanceNotifyButtonLabel')
+        ->toContain('pendingOfficeAttendanceColaboradorIds')
+        ->toContain('pendingOfficeAttendanceNewColaboradorIds')
         ->toContain('replicateGuardAssignmentsToSelectedDays')
         ->toContain('replicateDepartmentAssignmentsToSelectedDays')
         ->toContain('assignDepartmentCollaborator')
@@ -137,7 +146,10 @@ it('define enums catalogos y tablas para la agenda hibrida tdg', function (): vo
         ->toContain('$isTdgCalendar')
         ->toContain('display_label')
         ->toContain('Colaboradores de sistemas')
-        ->toContain('filled($day[\'task_primary\'])');
+        ->toContain('filled($day[\'task_primary\'])')
+        ->toContain('tdgOfficeAttendanceNotifyButtonLabel')
+        ->toContain('hasPendingOfficeAttendanceModifications')
+        ->toContain('notifyMonthOfficeAttendance');
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/TdgCalendarOfficeCatalog.php'))
         ->toContain('TdgCalendarOfficeCatalog')

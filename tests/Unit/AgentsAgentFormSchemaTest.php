@@ -18,6 +18,8 @@ it('usa pestañas con estilos en el formulario de agente del panel agents', func
         ->toContain("Tab::make('Comisiones')")
         ->toContain("Tab::make('Información Bancaria Local(VES)')")
         ->toContain("Tab::make('Información Bancaria Extra(US$)')")
+        ->toContain("'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ'")
+        ->toContain("'ENCORE BANK' => 'ENCORE BANK'")
         ->toContain("Tab::make('Acuerdo y condiciones')")
         ->toContain("Select::make('state_id')")
         ->toContain('->createOptionForm([')

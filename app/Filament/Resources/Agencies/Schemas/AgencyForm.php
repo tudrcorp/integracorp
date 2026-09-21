@@ -656,6 +656,8 @@ class AgencyForm
                                 'BANCO GENERAL' => 'BANCO GENERAL',
                                 'GLOBAL BANK' => 'GLOBAL BANK',
                                 'BANESCO PANAMÁ' => 'BANESCO PANAMÁ',
+                                'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                'ENCORE BANK' => 'ENCORE BANK',
                                 'METROBANK' => 'METROBANK',
                                 'BANCO LATINOAMERICANO DE COMERCIO EXTERIOR (BLADEX)' => 'BANCO LATINOAMERICANO DE COMERCIO EXTERIOR (BLADEX)',
                                 'HSBC BANK PANAMÁ' => 'HSBC BANK PANAMÁ',

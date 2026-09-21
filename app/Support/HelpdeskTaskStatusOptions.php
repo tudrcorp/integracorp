@@ -24,6 +24,8 @@ final class HelpdeskTaskStatusOptions
 
     public const STATUS_DONE = 'TERMINADO';
 
+    public const STATUS_REVERTED = 'REVERTIDO';
+
     public const STATUS_CANCELLED = 'CANCELADO';
 
     /**
@@ -33,6 +35,7 @@ final class HelpdeskTaskStatusOptions
     {
         return [
             self::STATUS_DONE,
+            self::STATUS_REVERTED,
             self::STATUS_CANCELLED,
         ];
     }
@@ -51,6 +54,7 @@ final class HelpdeskTaskStatusOptions
             self::STATUS_QA => 'Pruebas / QA',
             self::STATUS_WAITING => 'Esperando Terceros / En Pausa',
             self::STATUS_DONE => 'Terminado',
+            self::STATUS_REVERTED => 'Revertido al analista',
             self::STATUS_CANCELLED => 'Cancelado',
         ];
     }
@@ -88,14 +92,18 @@ final class HelpdeskTaskStatusOptions
                 return [
                     self::STATUS_PENDING => self::all()[self::STATUS_PENDING],
                     self::STATUS_IN_PROGRESS => self::all()[self::STATUS_IN_PROGRESS],
-                    ...self::terminalOnlyOptions(),
+                    ...self::creatorTerminalOptions(),
                 ];
             }
 
-            return self::terminalOnlyOptions();
+            return self::creatorTerminalOptions();
         }
 
         if ($isAssignee) {
+            if (HelpdeskBusinessScrumRoles::isDeveloperUser()) {
+                return self::scrumDeveloperOptions($record);
+            }
+
             return self::executorOptions($record);
         }
 
@@ -111,6 +119,10 @@ final class HelpdeskTaskStatusOptions
         }
 
         if ($isAssignee && ! $isCreator) {
+            if (HelpdeskBusinessScrumRoles::isDeveloperUser()) {
+                return 'Como desarrollador del sprint, avance el ticket y márquelo como Terminado cuando la solución esté lista.';
+            }
+
             return 'Como analista asignado, seleccione el nuevo estado y registre una nota con el motivo o la explicación del cambio.';
         }
 
@@ -161,6 +173,17 @@ final class HelpdeskTaskStatusOptions
     /**
      * @return array<string, string>
      */
+    private static function creatorTerminalOptions(): array
+    {
+        return [
+            self::STATUS_DONE => self::all()[self::STATUS_DONE],
+            self::STATUS_CANCELLED => self::all()[self::STATUS_CANCELLED],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
     private static function executorOptions(HelpDesk $record): array
     {
         $options = self::nonTerminal();
@@ -168,6 +191,25 @@ final class HelpdeskTaskStatusOptions
 
         if (in_array($status, self::terminalStatuses(), true) && isset(self::all()[$status])) {
             $options[$status] = self::all()[$status];
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function scrumDeveloperOptions(HelpDesk $record): array
+    {
+        $options = self::nonTerminal();
+        $options[self::STATUS_DONE] = self::all()[self::STATUS_DONE];
+
+        if (
+            in_array($record->status, self::terminalStatuses(), true)
+            && isset(self::all()[$record->status])
+            && $record->status !== self::STATUS_DONE
+        ) {
+            $options[$record->status] = self::all()[$record->status];
         }
 
         return $options;
@@ -184,6 +226,7 @@ final class HelpdeskTaskStatusOptions
             self::STATUS_QA => 'warning',
             self::STATUS_WAITING => 'gray',
             self::STATUS_DONE => 'success',
+            self::STATUS_REVERTED => 'danger',
             self::STATUS_CANCELLED => 'danger',
             default => 'gray',
         };
@@ -200,6 +243,7 @@ final class HelpdeskTaskStatusOptions
             self::STATUS_QA => 'heroicon-m-beaker',
             self::STATUS_WAITING => 'heroicon-m-pause-circle',
             self::STATUS_DONE => 'heroicon-m-check-circle',
+            self::STATUS_REVERTED => 'heroicon-m-arrow-uturn-left',
             self::STATUS_CANCELLED => 'heroicon-m-x-circle',
             default => 'heroicon-m-flag',
         };

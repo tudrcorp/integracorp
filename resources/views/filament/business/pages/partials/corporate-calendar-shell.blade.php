@@ -9,6 +9,22 @@
                     <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
                         {{ \Illuminate\Support\Str::headline($this->monthLabel) }}
                     </h2>
+                    @if (method_exists($this, 'shouldShowTdgOfficeAttendanceNotifyAction') && $this->shouldShowTdgOfficeAttendanceNotifyAction())
+                        <button
+                            type="button"
+                            wire:click="notifyMonthOfficeAttendance"
+                            wire:confirm="{{ $this->tdgOfficeAttendanceNotifyConfirmMessage() }}"
+                            wire:loading.attr="disabled"
+                            wire:target="notifyMonthOfficeAttendance"
+                            class="mt-3 inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition {{ $this->hasPendingOfficeAttendanceModifications()
+                                ? 'border-amber-300/80 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:border-amber-400/30 dark:bg-amber-500/15 dark:text-amber-100 dark:hover:bg-amber-500/25'
+                                : 'border-cyan-200/80 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-400/30 dark:bg-cyan-500/15 dark:text-cyan-100 dark:hover:bg-cyan-500/25' }}"
+                        >
+                            <x-filament::icon icon="heroicon-o-arrow-path" wire:loading wire:target="notifyMonthOfficeAttendance" class="size-4 animate-spin" />
+                            <x-filament::icon icon="heroicon-o-envelope" wire:loading.remove wire:target="notifyMonthOfficeAttendance" class="size-4" />
+                            <span>{{ $this->tdgOfficeAttendanceNotifyButtonLabel() }}</span>
+                        </button>
+                    @endif
                 </div>
 
                 <div class="flex items-center gap-2 self-start rounded-2xl border border-slate-200/80 bg-white/90 p-1.5 shadow-sm dark:border-white/10 dark:bg-slate-900/80">

@@ -40,6 +40,8 @@ it('define el widget de afiliaciones por agencia con columnas requeridas', funct
         ->toContain('resolvedRankingFilterMonth')
         ->toContain("Action::make('filterAgents')")
         ->toContain("->label('Detalles')")
+        ->toContain("Action::make('viewAffiliationsWithoutAgent')")
+        ->toContain("->label('Ver afiliaciones sin agente')")
         ->toContain('syncPeriodToAgentTable')
         ->toContain('affiliation-corporates-period-changed');
 });
@@ -120,10 +122,14 @@ it('filtra agentes al seleccionar una agencia y afiliaciones al seleccionar un a
 
     expect($listPage)->toContain('filterAffiliationsByAgent')
         ->toContain('#[On(\'affiliation-corporates-filter-by-agent\')]')
+        ->toContain('#[On(\'affiliation-corporates-filter-by-agency-without-agent\')]')
+        ->toContain('filterAffiliationsByAgencyWithoutAgent')
         ->toContain('affiliation-corporates-main-table')
         ->toContain('scrollIntoView');
 
     expect($affiliationsTable)->toContain("SelectFilter::make('agent_id')")
+        ->toContain("SelectFilter::make('code_agency')")
+        ->toContain("Filter::make('without_agent')")
         ->toContain("'id' => 'affiliation-corporates-main-table'");
 });
 
@@ -191,6 +197,7 @@ it('construye queries de ranking optimizadas con subconsultas', function (): voi
         ->toContain('groupBy(\'code_agency\')')
         ->toContain('groupBy(\'agent_id\')')
         ->toContain('applyPeriod')
+        ->toContain('public static function constrainWithoutAgent')
         ->toContain("whereYear('created_at', \$year)")
         ->toContain("whereMonth('created_at', \$month)");
 });

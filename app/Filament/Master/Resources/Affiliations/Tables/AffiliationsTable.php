@@ -379,6 +379,8 @@ class AffiliationsTable
                                                     ->options([
                                                         'CHASE BANK' => 'CHASE BANK',
                                                         'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                        'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                        'ENCORE BANK' => 'ENCORE BANK',
                                                         'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                         'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                         'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
@@ -590,6 +592,8 @@ class AffiliationsTable
                                                             ->options([
                                                                 'CHASE BANK' => 'CHASE BANK',
                                                                 'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                                'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                                'ENCORE BANK' => 'ENCORE BANK',
                                                                 'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                                 'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                                 'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
@@ -790,22 +794,6 @@ class AffiliationsTable
 
                                 return;
                             }
-                        })
-                        ->hidden(function (Affiliation $record) {
-
-                            if ($record->payment_frequency == 'ANUAL' && $record->paid_memberships()->count() == 1) {
-                                return true;
-                            }
-
-                            if ($record->payment_frequency == 'SEMESTRAL' && $record->paid_memberships()->count() == 2) {
-                                return true;
-                            }
-
-                            if ($record->payment_frequency == 'TRIMESTRAL' && $record->paid_memberships()->count() == 4) {
-                                return true;
-                            }
-
-                            return false;
                         }),
 
                     /**DESCARGAR */
@@ -1176,6 +1164,8 @@ class AffiliationsTable
                                                         ->options([
                                                             'CHASE BANK' => 'CHASE BANK',
                                                             'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                            'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                            'ENCORE BANK' => 'ENCORE BANK',
                                                             'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                             'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                             'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
@@ -1387,6 +1377,8 @@ class AffiliationsTable
                                                                 ->options([
                                                                     'CHASE BANK' => 'CHASE BANK',
                                                                     'BANK OF AMERICA' => 'BANK OF AMERICA',
+                                                                    'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+                                                                    'ENCORE BANK' => 'ENCORE BANK',
                                                                     'BANESCO, S.A-US$' => 'BANESCO, S.A - US$',
                                                                     'BANCAMIGA - US$' => 'BANCAMIGA - US$',
                                                                     'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',

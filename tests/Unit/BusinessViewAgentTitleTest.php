@@ -11,6 +11,7 @@ it('muestra información principal en el título de vista de agente business', f
         ->toContain('Agente: ')
         ->toContain('code_agent')
         ->toContain('badgeStyleForStatus')
+        ->toContain('pageTitleVipRowHtml')
         ->toContain('email')
         ->toContain('phone');
 });

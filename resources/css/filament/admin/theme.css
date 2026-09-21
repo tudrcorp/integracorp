@@ -4042,7 +4042,15 @@
   }
 
   .individual-quotes-ranking-table-ios--agency .fi-ta-actions {
-    @apply shrink-0 px-1;
+    @apply flex flex-col items-stretch gap-1 shrink-0 px-1;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .iq-ranking-unassigned-btn {
+    @apply shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tracking-tight shadow-none ring-1 ring-inset ring-amber-200/80 transition-[background-color,box-shadow,transform] duration-150 active:scale-95 dark:ring-amber-500/30;
+  }
+
+  .individual-quotes-ranking-table-ios--agency .iq-ranking-unassigned-btn--active {
+    @apply bg-amber-500/15 ring-amber-500/40;
   }
 
   .individual-quotes-ranking-table-ios--agent .iq-ranking-quotes-btn {

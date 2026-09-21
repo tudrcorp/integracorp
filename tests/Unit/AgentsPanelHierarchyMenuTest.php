@@ -28,11 +28,13 @@ it('expone el botón Ver Jerarquía en el menú de usuario del panel de agentes'
     expect($pageSource)
         ->toContain('CommercialHierarchyFlowchart::renderForAgent')
         ->toContain("protected static ?string \$slug = 'ver-jerarquia'")
-        ->toContain('shouldRegisterNavigation(): bool');
+        ->toContain('shouldRegisterNavigation(): bool')
+        ->toContain('DownloadsCommercialHierarchyStructure');
 
     expect($viewSource)
         ->toContain('getHierarchyDiagram()')
-        ->toContain('Jerarquía comercial');
+        ->toContain('Jerarquía comercial')
+        ->toContain('Descargar estructura (Excel)');
 
     expect($agentsThemeSource)
         ->toContain("@import '../shared/hierarchy-flowchart.css';");

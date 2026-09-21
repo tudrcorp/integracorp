@@ -44,6 +44,47 @@ final class HelpdeskTicketAssigneeWhatsAppService
         TEXT;
     }
 
+    public static function buildSprintReassignedBody(HelpDesk $ticket, string $assignedBy, string $assigneeNames): string
+    {
+        $ticketNo = (string) $ticket->getKey();
+        $creator = filled($ticket->created_by) ? (string) $ticket->created_by : '—';
+
+        return <<<TEXT
+Le reasignaron un ticket de soporte en INTEGRACORP para su solución.
+
+Ticket N.º {$ticketNo}
+Creado por: {$creator}
+Reasignado por: {$assignedBy}
+Equipo: {$assigneeNames}
+
+Debe conectarse al sistema INTEGRACORP con su usuario y contraseña para dar inicio a la gestión del ticket.
+TEXT;
+    }
+
+    public static function buildRevertedToCreatorBody(HelpDesk $ticket, string $actorName, string $reason): string
+    {
+        $ticketNo = (string) $ticket->getKey();
+
+        return <<<TEXT
+El Product Owner {$actorName} revirtió el ticket N.º {$ticketNo} que usted creó.
+
+*Motivo:* {$reason}
+
+Revise el ticket en INTEGRACORP, complete la información solicitada y vuelva a enviarlo para su evaluación.
+TEXT;
+    }
+
+    public static function buildResubmittedToProductOwnerBody(HelpDesk $ticket, string $actorName): string
+    {
+        $ticketNo = (string) $ticket->getKey();
+
+        return <<<TEXT
+El analista {$actorName} corrigió y reenvió el ticket N.º {$ticketNo} a su backlog.
+
+Revise el ticket en INTEGRACORP para evaluarlo de nuevo o asignarlo al sprint.
+TEXT;
+    }
+
     public static function normalizePhoneForWhatsApp(string|int|float|null $phone): ?string
     {
         if ($phone === null) {
@@ -455,7 +496,12 @@ final class HelpdeskTicketAssigneeWhatsAppService
         $creatorNameLower = Str::lower($creatorNameNormalized);
 
         $creatorUser = null;
-        if ($creatorNameNormalized !== '') {
+        $creatorUserId = $ticket->created_by_user_id;
+        if (is_numeric($creatorUserId) && (int) $creatorUserId > 0) {
+            $creatorUser = User::query()->find((int) $creatorUserId, ['id', 'name', 'email', 'phone']);
+        }
+
+        if ($creatorUser === null && $creatorNameNormalized !== '') {
             if (is_numeric($creatorNameNormalized)) {
                 $creatorUser = User::query()->find((int) $creatorNameNormalized, ['id', 'name', 'email', 'phone']);
             }

@@ -30,7 +30,35 @@ class ListAffiliationCorporates extends ListRecords
         $this->tableFilters['agent_id'] = [
             'value' => (string) $agentId,
         ];
+        $this->tableFilters['without_agent'] = [
+            'isActive' => false,
+        ];
+        $this->tableFilters['code_agency'] = [
+            'value' => null,
+        ];
 
+        $this->applyAffiliationCorporateTableFilters();
+    }
+
+    #[On('affiliation-corporates-filter-by-agency-without-agent')]
+    public function filterAffiliationsByAgencyWithoutAgent(string $agencyCode, string $agencyName): void
+    {
+        $this->tableFilters ??= [];
+        $this->tableFilters['code_agency'] = [
+            'value' => $agencyCode,
+        ];
+        $this->tableFilters['without_agent'] = [
+            'isActive' => true,
+        ];
+        $this->tableFilters['agent_id'] = [
+            'value' => null,
+        ];
+
+        $this->applyAffiliationCorporateTableFilters();
+    }
+
+    protected function applyAffiliationCorporateTableFilters(): void
+    {
         $this->getTableFiltersForm()->fill($this->tableFilters);
         $this->resetPage();
         $this->flushCachedTableRecords();

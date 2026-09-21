@@ -36,6 +36,11 @@ class IndividualQuotesByAgentTable extends TableWidget
         return 'agent';
     }
 
+    public function mount(): void
+    {
+        $this->bootInteractsWithIndividualQuotesRankingTable();
+    }
+
     public function viewAgentQuotes(Agent $agent): void
     {
         $this->selectedAgentIdForQuotes = $agent->id;
@@ -45,6 +50,18 @@ class IndividualQuotesByAgentTable extends TableWidget
             agentId: $agent->id,
             agentName: $agent->name,
         )->to(ListIndividualQuotes::class);
+    }
+
+    #[On('individual-quotes-period-changed')]
+    public function applyPeriodFilter(string $year, string $month): void
+    {
+        $this->filterYear = $year;
+        $this->filterMonth = $month;
+        $this->selectedAgentIdForQuotes = null;
+        $this->resetPage();
+        $this->flushCachedTableRecords();
+
+        $this->dispatch('individual-quotes-agent-filter-end');
     }
 
     #[On('individual-quotes-agency-selected')]
@@ -81,9 +98,11 @@ class IndividualQuotesByAgentTable extends TableWidget
 
     public function table(Table $table): Table
     {
-        $heading = $this->filteredAgencyName
+        $year = $this->resolvedRankingFilterYear();
+        $baseHeading = $this->filteredAgencyName
             ? 'Agentes · '.$this->filteredAgencyName
             : IndividualQuotesRankingTableUi::heading('agent');
+        $heading = $baseHeading.' ('.$year.')';
 
         $table = IndividualQuotesRankingTableUi::apply(
             table: $table,
@@ -135,11 +154,11 @@ class IndividualQuotesByAgentTable extends TableWidget
 
     protected function agentQuotesQuery(): Builder
     {
-        if ($this->filteredAgencyCode === null) {
-            return IndividualQuotesRankingQuery::agents()->with('typeAgent');
-        }
-
-        return IndividualQuotesRankingQuery::agents($this->filteredAgencyCode)->with('typeAgent');
+        return IndividualQuotesRankingQuery::agents(
+            $this->filteredAgencyCode,
+            $this->resolvedRankingFilterYear(),
+            $this->resolvedRankingFilterMonth(),
+        )->with('typeAgent');
     }
 
     /**

@@ -11,6 +11,7 @@ it('muestra información principal en el título de vista de agencia business', 
         ->toContain('Agencia: ')
         ->toContain('name_corporative')
         ->toContain('badgeStyleForStatus')
+        ->toContain('pageTitleVipRowHtml')
         ->toContain('email')
         ->toContain('phone');
 });
