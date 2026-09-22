@@ -306,7 +306,7 @@ class ProspectAgentInfolist
                                     ]),
                                 Section::make('Observaciones')
                                     ->icon(Heroicon::OutlinedChatBubbleLeftRight)
-                                    ->description('Notas y seguimiento vinculados a tareas.')
+                                    ->description('Notas de seguimiento. Vincular una tarea es opcional.')
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
                                     ])
@@ -329,7 +329,7 @@ class ProspectAgentInfolist
                                                             ->prefix('#')
                                                             ->placeholder('—'),
                                                         TextEntry::make('observation')
-                                                            ->limit(120)
+                                                            ->wrap()
                                                             ->tooltip(fn ($record): ?string => is_string($record->observation ?? null) ? $record->observation : null),
                                                         TextEntry::make('created_by')
                                                             ->placeholder('—'),

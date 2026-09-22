@@ -6,9 +6,10 @@ use Carbon\Carbon;
 
 trait InteractsWithAffiliationsRankingTable
 {
-    public string $filterYear = '';
+    /** 0 = todos los años. */
+    public string $filterYear = '0';
 
-    /** 0 = todos los meses del año. */
+    /** 0 = todos los meses. */
     public string $filterMonth = '0';
 
     abstract protected function rankingTableVariant(): string;
@@ -20,12 +21,13 @@ trait InteractsWithAffiliationsRankingTable
 
     public function bootInteractsWithAffiliationsRankingTable(): void
     {
-        $this->filterYear = $this->filterYear !== ''
-            ? $this->filterYear
-            : (string) Carbon::now()->year;
-        $this->filterMonth = $this->filterMonth !== ''
-            ? $this->filterMonth
-            : '0';
+        if ($this->filterYear === '') {
+            $this->filterYear = '0';
+        }
+
+        if ($this->filterMonth === '') {
+            $this->filterMonth = '0';
+        }
     }
 
     /**
@@ -34,7 +36,9 @@ trait InteractsWithAffiliationsRankingTable
     public function getRankingYearFilterOptions(): array
     {
         $nowYear = (int) Carbon::now()->year;
-        $options = [];
+        $options = [
+            '0' => 'Año (Todos)',
+        ];
 
         for ($i = 0; $i < 4; $i++) {
             $year = $nowYear - $i;
@@ -50,7 +54,7 @@ trait InteractsWithAffiliationsRankingTable
     public function getRankingMonthFilterOptions(): array
     {
         $locale = app()->getLocale();
-        $year = $this->resolvedRankingFilterYear();
+        $year = $this->resolvedRankingFilterYear() ?? (int) Carbon::now()->year;
         $options = ['0' => 'Mes (Todos)'];
 
         for ($month = 1; $month <= 12; $month++) {
@@ -63,11 +67,41 @@ trait InteractsWithAffiliationsRankingTable
         return $options;
     }
 
-    protected function resolvedRankingFilterYear(): int
+    public function rankingPeriodLabel(): string
+    {
+        $year = $this->resolvedRankingFilterYear();
+        $month = $this->resolvedRankingFilterMonth();
+
+        if ($year === null && $month === null) {
+            return 'Todos';
+        }
+
+        if ($year === null) {
+            return $this->rankingMonthLabel((int) Carbon::now()->year, $month);
+        }
+
+        if ($month === null) {
+            return (string) $year;
+        }
+
+        return $year.' · '.$this->rankingMonthLabel($year, $month);
+    }
+
+    public function normalizedFilterYear(): string
+    {
+        return $this->filterYear !== '' ? $this->filterYear : '0';
+    }
+
+    public function normalizedFilterMonth(): string
+    {
+        return $this->filterMonth !== '' ? $this->filterMonth : '0';
+    }
+
+    protected function resolvedRankingFilterYear(): ?int
     {
         $year = (int) $this->filterYear;
 
-        return $year > 0 ? $year : (int) Carbon::now()->year;
+        return $year > 0 ? $year : null;
     }
 
     protected function resolvedRankingFilterMonth(): ?int
@@ -75,5 +109,14 @@ trait InteractsWithAffiliationsRankingTable
         $month = (int) $this->filterMonth;
 
         return ($month >= 1 && $month <= 12) ? $month : null;
+    }
+
+    protected function rankingMonthLabel(int $year, int $month): string
+    {
+        return ucfirst(
+            Carbon::createFromDate($year, $month, 1)
+                ->locale(app()->getLocale())
+                ->translatedFormat('F')
+        );
     }
 }

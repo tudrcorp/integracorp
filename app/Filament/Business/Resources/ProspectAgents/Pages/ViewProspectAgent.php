@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\ProspectAgents\Pages;
 
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentResource;
+use App\Jobs\NotifyProspectAgentTaskAssigneeJob;
 use App\Models\ProspectAgent;
 use App\Models\ProspectAgentObservation;
 use App\Models\ProspectAgentTask;
@@ -16,6 +17,9 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Throwable;
 
 class ViewProspectAgent extends ViewRecord
 {
@@ -88,14 +92,18 @@ class ViewProspectAgent extends ViewRecord
                                     ->required(),
                                 Select::make('prospect_agent_task_id')
                                     ->label('Tarea')
-                                    ->options(ProspectAgentTask::all()->where('status', 'PENDIENTE')->where('prospect_agent_id', $this->record->id)->pluck('id', 'id'))
-                                    ->preload()
+                                    ->placeholder('Sin tarea vinculada')
+                                    ->helperText('Opcional. Puedes vincular cualquier tarea de este prospecto o dejarla en blanco.')
+                                    ->options(fn (): array => $this->prospectTaskOptions())
                                     ->searchable()
-                                    ->required(),
+                                    ->preload()
+                                    ->nullable(),
                             ])->columnSpanFull(),
                             Textarea::make('observations')
                                 ->label('Notas')
+                                ->rows(8)
                                 ->autosize()
+                                ->columnSpanFull()
                                 ->required(),
                         ])->columns(1),
                 ])
@@ -107,7 +115,9 @@ class ViewProspectAgent extends ViewRecord
                             'prospect_agent_id' => $record->id,
                             'observation' => $data['observations'],
                             'created_by' => auth()->user()->name,
-                            'prospect_agent_task_id' => $data['prospect_agent_task_id'],
+                            'prospect_agent_task_id' => filled($data['prospect_agent_task_id'] ?? null)
+                                ? $data['prospect_agent_task_id']
+                                : null,
                         ]);
 
                         Notification::make()
@@ -170,31 +180,51 @@ class ViewProspectAgent extends ViewRecord
                             Hidden::make('created_by')->default(auth()->user()->name),
                         ])->columns(1),
                 ])
-                ->action(function ($data, $record) {
-
+                ->action(function (array $data, ProspectAgent $record): void {
                     try {
-
-                        ProspectAgentTask::create([
-                            'prospect_agent_id' => $record->id,
+                        $task = ProspectAgentTask::create([
+                            'prospect_agent_id' => $record->getKey(),
                             'rrhh_colaborador_id' => $data['rrhh_colaborador_id'],
                             'task' => $data['task'],
-                            'created_by' => $data['created_by'],
+                            'created_by' => $data['created_by'] ?? auth()->user()?->name,
+                        ]);
+                    } catch (Throwable $exception) {
+                        Log::error('ViewProspectAgent: no se pudo crear la tarea', [
+                            'prospect_agent_id' => $record->getKey(),
+                            'error' => $exception->getMessage(),
                         ]);
 
                         Notification::make()
-                            ->title('Notas agregadas correctamente')
-                            ->success()
-                            ->send();
-
-                        $this->redirectMethod($record->id);
-
-                    } catch (\Exception $e) {
-                        dd($e);
-                        Notification::make()
-                            ->title('Error al agregar notas')
+                            ->title('No se pudo asignar la tarea')
+                            ->body('Inténtelo de nuevo. Si el problema continúa, avise a sistemas.')
                             ->danger()
                             ->send();
+
+                        return;
                     }
+
+                    $queued = true;
+
+                    try {
+                        NotifyProspectAgentTaskAssigneeJob::dispatch((int) $task->getKey());
+                    } catch (Throwable $exception) {
+                        $queued = false;
+
+                        Log::error('ViewProspectAgent: la tarea se guardó pero no se encoló el aviso', [
+                            'task_id' => $task->getKey(),
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+
+                    Notification::make()
+                        ->title('Tarea asignada')
+                        ->body($queued
+                            ? 'El colaborador recibirá el aviso por WhatsApp, correo y la campana del panel.'
+                            : 'La tarea quedó guardada, pero no se pudo encolar el aviso. Avise a sistemas.')
+                        ->success()
+                        ->send();
+
+                    $this->redirectMethod($record->getKey());
                 }),
         ];
     }
@@ -206,6 +236,34 @@ class ViewProspectAgent extends ViewRecord
     public function redirectMethod($recordId): void
     {
         $this->redirect(ProspectAgentResource::getUrl('view', ['record' => $recordId]));
+    }
+
+    /**
+     * Todas las tareas del prospecto, sin filtrar por estado.
+     *
+     * @return array<int|string, string>
+     */
+    private function prospectTaskOptions(): array
+    {
+        return ProspectAgentTask::query()
+            ->where('prospect_agent_id', $this->record->getKey())
+            ->orderByDesc('id')
+            ->get(['id', 'task', 'status'])
+            ->mapWithKeys(function (ProspectAgentTask $task): array {
+                $description = trim((string) $task->task);
+                $label = '#'.$task->id;
+
+                if ($description !== '') {
+                    $label .= ' · '.Str::limit($description, 90);
+                }
+
+                if (filled($task->status)) {
+                    $label .= ' ('.$task->status.')';
+                }
+
+                return [$task->id => $label];
+            })
+            ->all();
     }
 
     public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable

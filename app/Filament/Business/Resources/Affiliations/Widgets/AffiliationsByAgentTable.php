@@ -98,11 +98,10 @@ class AffiliationsByAgentTable extends TableWidget
 
     public function table(Table $table): Table
     {
-        $year = $this->resolvedRankingFilterYear();
         $baseHeading = $this->filteredAgencyName
             ? 'Agentes · '.$this->filteredAgencyName
             : AffiliationCorporatesRankingTableUi::heading('agent');
-        $heading = $baseHeading.' ('.$year.')';
+        $heading = $baseHeading.' ('.$this->rankingPeriodLabel().')';
 
         $table = AffiliationCorporatesRankingTableUi::apply(
             table: $table,
