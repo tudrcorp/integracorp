@@ -8,6 +8,12 @@ final class BusinessFilamentActionPermissionRegistry
 {
     public const CREATE_CORPORATE_AFFILIATE = 'crear-afiliado-corporativo';
 
+    public const MANAGE_CORPORATE_AFFILIATE_UPGRADES = 'gestionar-upgrades-afiliado-corporativo';
+
+    public const CHANGE_CORPORATE_PAYMENT_FREQUENCY = 'cambiar-frecuencia-pago-afiliacion-corporativa';
+
+    public const REVERSE_CORPORATE_PAYMENT_FREQUENCY_CHANGE = 'reversar-cambio-frecuencia-pago-corporativa';
+
     public const MANAGE_WHITE_COMPANY_NEGOTIATED_FEES = 'matriz-negociacion-empresas-aliadas';
 
     public const MANAGE_WHITE_COMPANY_DOCUMENT_BRAND = 'documentos-marca-empresas-aliadas';
@@ -44,6 +50,21 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Crear afiliado corporativo',
                 'group' => 'AFILIACIONES',
                 'modules' => [self::OWNER_MODULE],
+            ],
+            self::MANAGE_CORPORATE_AFFILIATE_UPGRADES => [
+                'name' => 'Agregar y quitar upgrades de afiliados corporativos',
+                'group' => 'AFILIACIONES',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::CHANGE_CORPORATE_PAYMENT_FREQUENCY => [
+                'name' => 'Cambiar frecuencia de pago de afiliaciones corporativas',
+                'group' => 'AFILIACIONES',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::REVERSE_CORPORATE_PAYMENT_FREQUENCY_CHANGE => [
+                'name' => 'Revertir cambios de frecuencia de pago corporativa',
+                'group' => 'COBRANZA',
+                'modules' => ['ADMINISTRACION'],
             ],
             self::MANAGE_WHITE_COMPANY_NEGOTIATED_FEES => [
                 'name' => 'Matriz de negociación',

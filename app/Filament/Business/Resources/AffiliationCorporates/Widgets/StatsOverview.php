@@ -21,11 +21,13 @@ class StatsOverview extends StatsOverviewWidget
         $now = Carbon::now();
         $mesActualNombre = $now->translatedFormat('F');
 
+        $groupKey = self::corporateGroupKeySql();
+
         $stats = $this->affiliationCorporatesQuery()
             ->where('status', 'ACTIVA')
             ->toBase()
-            ->selectRaw('COUNT(*) as total_count')
-            ->selectRaw('SUM(CASE WHEN MONTH(created_at) = ? AND YEAR(created_at) = ? THEN 1 ELSE 0 END) as month_count', [
+            ->selectRaw('COUNT(DISTINCT '.$groupKey.') as total_count')
+            ->selectRaw('COUNT(DISTINCT CASE WHEN MONTH(created_at) = ? AND YEAR(created_at) = ? THEN '.$groupKey.' END) as month_count', [
                 $now->month,
                 $now->year,
             ])
@@ -51,16 +53,16 @@ class StatsOverview extends StatsOverviewWidget
         return [
             Stat::make('Grupos Activos', $totalGrupos.' grupos')
                 ->icon('heroicon-m-building-office-2')
-                ->description('Afiliaciones corporativas con estatus ACTIVA')
+                ->description('Grupos corporativos con estatus ACTIVA')
                 ->color('planIncial')
                 ->extraAttributes([
                     'class' => $iosFocusBlurStyles,
-                    'x-data' => "{ label: '{$totalGrupos} grupos', desc: 'Afiliaciones corporativas con estatus ACTIVA' }",
-                    '@mouseenter' => "label = '{$totalGruposMes} grupos'; desc = 'Activadas en {$mesActualNombre}'",
-                    '@mouseleave' => "label = '{$totalGrupos} grupos'; desc = 'Afiliaciones corporativas con estatus ACTIVA'",
+                    'x-data' => "{ label: '{$totalGrupos} grupos', desc: 'Grupos corporativos con estatus ACTIVA' }",
+                    '@mouseenter' => "label = '{$totalGruposMes} grupos'; desc = 'Activados en {$mesActualNombre}'",
+                    '@mouseleave' => "label = '{$totalGrupos} grupos'; desc = 'Grupos corporativos con estatus ACTIVA'",
                 ])
                 ->value(new HtmlString("<span x-text='label'>{$totalGrupos} grupos</span>"))
-                ->description(new HtmlString("<span x-text='desc'>Afiliaciones corporativas con estatus ACTIVA</span>")),
+                ->description(new HtmlString("<span x-text='desc'>Grupos corporativos con estatus ACTIVA</span>")),
 
             Stat::make('Agencias', $totalAgencias.' agencias')
                 ->icon('heroicon-m-building-storefront')
@@ -82,6 +84,15 @@ class StatsOverview extends StatsOverviewWidget
                 ->value(new HtmlString("{$totalAgentes} agentes"))
                 ->description(new HtmlString('Agentes vinculados a grupos activos')),
         ];
+    }
+
+    /**
+     * Un grupo corporativo es el cliente (nombre), no cada afiliación.
+     * Si el nombre viene vacío, se distingue por id para no fusionar registros distintos.
+     */
+    public static function corporateGroupKeySql(): string
+    {
+        return "CASE WHEN TRIM(COALESCE(name_corporate, '')) <> '' THEN UPPER(TRIM(name_corporate)) ELSE CONCAT('ID:', id) END";
     }
 
     /**

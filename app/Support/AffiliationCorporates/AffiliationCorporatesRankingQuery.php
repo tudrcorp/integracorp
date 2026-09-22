@@ -23,6 +23,7 @@ class AffiliationCorporatesRankingQuery
             ])
             ->whereNotNull('code_agency')
             ->where('code_agency', '!=', '')
+            ->tap(fn (Builder $query): Builder => self::constrainActive($query))
             ->tap(fn (Builder $query): Builder => self::applyPeriod($query, $year, $month))
             ->groupBy('code_agency');
 
@@ -56,6 +57,7 @@ class AffiliationCorporatesRankingQuery
                 filled($agencyCode),
                 fn (Builder $query): Builder => $query->where('code_agency', $agencyCode),
             )
+            ->tap(fn (Builder $query): Builder => self::constrainActive($query))
             ->tap(fn (Builder $query): Builder => self::applyPeriod($query, $year, $month))
             ->groupBy('agent_id');
 
@@ -73,6 +75,11 @@ class AffiliationCorporatesRankingQuery
             });
     }
 
+    public static function constrainActive(Builder $query): Builder
+    {
+        return $query->where('status', 'ACTIVA');
+    }
+
     public static function constrainWithoutAgent(Builder $query): Builder
     {
         return $query->where(function (Builder $inner): void {
@@ -82,11 +89,9 @@ class AffiliationCorporatesRankingQuery
 
     protected static function applyPeriod(Builder $query, ?int $year, ?int $month): Builder
     {
-        if ($year === null) {
-            return $query;
+        if ($year !== null) {
+            $query->whereYear('created_at', $year);
         }
-
-        $query->whereYear('created_at', $year);
 
         if ($month !== null) {
             $query->whereMonth('created_at', $month);

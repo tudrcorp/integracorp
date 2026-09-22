@@ -22,6 +22,9 @@ it('muestra grupos activos junto con agencias y agentes vinculados', function ()
         ->toContain('Grupos Activos')
         ->toContain('Agencias vinculadas a grupos activos')
         ->toContain('Agentes vinculados a grupos activos')
+        ->toContain('corporateGroupKeySql')
+        ->toContain("selectRaw('COUNT(DISTINCT '.\$groupKey.') as total_count')")
+        ->toContain('Grupos corporativos con estatus ACTIVA')
         ->toContain('COUNT(DISTINCT code_agency) as agencies_count')
         ->toContain('COUNT(DISTINCT agent_id) as agents_count')
         ->toContain('AffiliationCorporate::query()')
@@ -29,6 +32,9 @@ it('muestra grupos activos junto con agencias y agentes vinculados', function ()
         ->toContain('->toBase()')
         ->not->toContain('getPageTableQuery')
         ->not->toContain('Total histórico / Acumulado');
+
+    expect(StatsOverview::corporateGroupKeySql())
+        ->toContain('UPPER(TRIM(name_corporate))');
 });
 
 it('valida afiliados activos por plan y su totalidad en grupos activos', function (): void {

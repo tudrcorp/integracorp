@@ -283,34 +283,23 @@
                 <tbody>
                     @for ($i = 0; $i < count($data['plan']); $i++)
                         @php
-                            $plan = \App\Models\Plan::where('id', $data['plan'][$i]['plan_id'])->first()->description;
+                            $plan = (string) \App\Models\Plan::query()->whereKey($data['plan'][$i]['plan_id'] ?? null)->value('description');
 
                             $coverage = \App\Support\CorporateDocumentPlanCoverage::priceForLine(
                                 $data['plan'][$i]['plan_id'] ?? null,
                                 $data['plan'][$i]['coverage_id'] ?? null,
                             );
 
-                            if ($data['plan'][$i]['payment_frequency'] == 'ANUAL') {
-                                $total_amount = $data['plan'][$i]['subtotal_anual'];
-                            }
-                            if ($data['plan'][$i]['payment_frequency'] == 'TRIMESTRAL') {
-                                $total_amount = $data['plan'][$i]['subtotal_quarterly'];
-                            }
-                            if ($data['plan'][$i]['payment_frequency'] == 'SEMESTRAL') {
-                                $total_amount = $data['plan'][$i]['subtotal_semestral'];
-                            }
-                            if ($data['plan'][$i]['payment_frequency'] == 'MENSUAL') {
-                                $total_amount = $data['plan'][$i]['subtotal_anual'] / 12;
-                            }
+                            $total_amount = \App\Support\CorporateDocumentPlanAmounts::periodAmount($data['plan'][$i], $data['frequency'] ?? null);
 
-                            $age_range = \App\Models\AgeRange::where('id', $data['plan'][$i]['age_range_id'])->first()->range;
+                            $age_range = (string) \App\Models\AgeRange::query()->whereKey($data['plan'][$i]['age_range_id'] ?? null)->value('range');
                         @endphp
                         <tr>
                             <td class="desc-col">
                                 <p class="plan-line">
                                     {{ $plan }}@if (filled($coverage)), COBERTURA: US${{ round($coverage) }}@endif<br>
                                     RANGO DE EDAD: {{ $age_range }} años<br>
-                                    FRECUENCIA DE PAGO: {{ $data['plan'][$i]['payment_frequency'] }}<br>
+                                    FRECUENCIA DE PAGO: {{ \App\Support\CorporateDocumentPlanAmounts::frequencyFor($data['plan'][$i], $data['frequency'] ?? null) }}<br>
                                     COBERTURA GEOGRAFICA – LOCAL VENEZUELA
                                 </p>
                             </td>
@@ -318,6 +307,18 @@
 
                         </tr>
                     @endfor
+                    @foreach ($data['upgrades'] ?? [] as $upgrade)
+                        <tr>
+                            <td class="desc-col">
+                                <p class="plan-line">
+                                    UPGRADE: {{ $upgrade['name'] }}<br>
+                                    AFILIADOS CON EL UPGRADE: {{ (int) $upgrade['affiliates'] }}<br>
+                                    FRECUENCIA DE PAGO: {{ $data['frequency'] ?? '' }}
+                                </p>
+                            </td>
+                            <td class="amount-col">US${{ number_format((float) $upgrade['amount'], 2) }}</td>
+                        </tr>
+                    @endforeach
                     <tr class="affiliates-row">
                         <td colspan="2">
                             TOTAL DE AFILIADOS ASOCIADOS A LA AFILIACIÓN: {{ (int) ($data['affiliates_count'] ?? 0) }}

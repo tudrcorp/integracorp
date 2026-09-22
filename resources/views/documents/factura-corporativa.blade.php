@@ -292,32 +292,18 @@
             <tbody>
                 @for ($i = 0; $i < count($data_factura['plan']); $i++) 
                     @php //PLAN 
-                    $plan=\App\Models\Plan::where('id', $data_factura['plan'][$i]['plan_id'])->first()->description;
+                    $plan=(string) \App\Models\Plan::query()->whereKey($data_factura['plan'][$i]['plan_id'] ?? null)->value('description');
 
                     $coverage = \App\Support\CorporateDocumentPlanCoverage::priceForLine(
                         $data_factura['plan'][$i]['plan_id'] ?? null,
                         $data_factura['plan'][$i]['coverage_id'] ?? null,
                     );
 
-                    if ($data_factura['plan'][$i]['payment_frequency'] == 'ANUAL') {
-                    $total_amount = $data_factura['plan'][$i]['subtotal_anual'];
-                    $fechaHasta = date('d/m/Y', strtotime('+1 years'));
-                    }
-                    if ($data_factura['plan'][$i]['payment_frequency'] == 'TRIMESTRAL') {
-                    $total_amount = $data_factura['plan'][$i]['subtotal_quarterly'];
-                    $fechaHasta = date('d/m/Y', strtotime('+3 months'));
-                    }
-                    if ($data_factura['plan'][$i]['payment_frequency'] == 'SEMESTRAL') {
-                    $total_amount = $data_factura['plan'][$i]['subtotal_semestral'];
-                    $fechaHasta = date('d/m/Y', strtotime('+6 months'));
-                    }
-                    if ($data_factura['plan'][$i]['payment_frequency'] == 'MENSUAL') {
-                    $total_amount = $data_factura['plan'][$i]['subtotal_anual'] / 12;
-                    $fechaHasta = date('d/m/Y', strtotime('+1 months'));
-                    }
+                    $total_amount = \App\Support\CorporateDocumentPlanAmounts::periodAmount($data_factura['plan'][$i], $data_factura['frequency'] ?? null);
+                    $fechaHasta = \App\Support\CorporateDocumentPlanAmounts::periodEndFromToday($data_factura['plan'][$i], $data_factura['frequency'] ?? null);
 
                     //rango de edad
-                    $age_range = \App\Models\AgeRange::where('id', $data_factura['plan'][$i]['age_range_id'])->first()->range;
+                    $age_range = (string) \App\Models\AgeRange::query()->whereKey($data_factura['plan'][$i]['age_range_id'] ?? null)->value('range');
 
                     @endphp
                     <tr>
@@ -325,7 +311,7 @@
                             <p style="text-transform: uppercase; line-height: 1;">
                                 {{ $plan }}@if (filled($coverage)), COBERTURA: {{ round($coverage) }}US$@endif<br>
                                 RANGO DE EDAD: {{ $age_range }} años<br>
-                                FRECUENCIA DE PAGO: {{ $data_factura['plan'][$i]['payment_frequency'] }}<br>
+                                FRECUENCIA DE PAGO: {{ \App\Support\CorporateDocumentPlanAmounts::frequencyFor($data_factura['plan'][$i], $data_factura['frequency'] ?? null) }}<br>
                                 COBERTURA GEOGRAFICA – LOCAL VENEZUELA <br>
                                 {{-- PERÍODO DE VIGENCIA DESDE EL {{ $data['desde'] }} HASTA EL {{ $data['hasta'] }} --}}
                             </p>

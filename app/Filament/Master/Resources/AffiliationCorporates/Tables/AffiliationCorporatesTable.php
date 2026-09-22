@@ -7,6 +7,7 @@ use App\Http\Controllers\AffiliationCorporateController;
 use App\Mail\UploadPayment;
 use App\Models\AffiliationCorporate;
 use App\Models\User;
+use App\Support\AffiliationCorporates\CorporatePaymentUploadAvailability;
 use App\Support\CommercialStructure\MasterPanelAffiliationCorporateScope;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -639,22 +640,7 @@ class AffiliationCorporatesTable
                             }
 
                         })
-                        ->hidden(function (AffiliationCorporate $record) {
-
-                            if ($record->payment_frequency == 'ANUAL' && $record->paid_membership_corporates()->count() == 1) {
-                                return true;
-                            }
-
-                            if ($record->payment_frequency == 'SEMESTRAL' && $record->paid_membership_corporates()->count() == 2) {
-                                return true;
-                            }
-
-                            if ($record->payment_frequency == 'TRIMESTRAL' && $record->paid_membership_corporates()->count() == 4) {
-                                return true;
-                            }
-
-                            return false;
-                        }),
+                        ->hidden(fn (AffiliationCorporate $record): bool => CorporatePaymentUploadAvailability::isFullyPaid($record)),
                 ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
             ])
             ->toolbarActions([

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\CompanyAssociates;
 
 use App\Filament\Business\Clusters\NuevosNegocios\NuevosNegociosCluster;
+use App\Filament\Business\Resources\CompanyAssociates\Pages\EditCompanyAssociate;
 use App\Filament\Business\Resources\CompanyAssociates\Pages\ListCompanyAssociates;
 use App\Filament\Business\Resources\CompanyAssociates\Pages\ViewCompanyAssociate;
+use App\Filament\Business\Resources\CompanyAssociates\Schemas\CompanyAssociateForm;
 use App\Filament\Business\Resources\CompanyAssociates\Schemas\CompanyAssociateInfolist;
 use App\Filament\Business\Resources\CompanyAssociates\Tables\CompanyAssociatesTable;
 use App\Filament\Business\Resources\Concerns\ConfiguresBusinessGlobalSearch;
@@ -92,6 +94,11 @@ class CompanyAssociateResource extends Resource
         ];
     }
 
+    public static function form(Schema $schema): Schema
+    {
+        return CompanyAssociateForm::configure($schema);
+    }
+
     public static function infolist(Schema $schema): Schema
     {
         return CompanyAssociateInfolist::configure($schema);
@@ -121,6 +128,7 @@ class CompanyAssociateResource extends Resource
         return [
             'index' => ListCompanyAssociates::route('/'),
             'view' => ViewCompanyAssociate::route('/{record}'),
+            'edit' => EditCompanyAssociate::route('/{record}/edit'),
         ];
     }
 
@@ -131,7 +139,7 @@ class CompanyAssociateResource extends Resource
 
     public static function canEdit(Model $record): bool
     {
-        return false;
+        return $record instanceof CompanyAssociate && ! $record->isAnnulled();
     }
 
     public static function canDelete(Model $record): bool

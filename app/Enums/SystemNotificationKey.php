@@ -20,6 +20,7 @@ enum SystemNotificationKey: string
     case CompanyAssociateIlsCoverage = 'company_associate_ils_coverage';
     case TelemedicineServiceLimitOverride = 'telemedicine_service_limit_override';
     case StorefrontQuotePaymentReceipt = 'storefront_quote_payment_receipt';
+    case CorporatePaymentFrequencyChange = 'corporate_payment_frequency_change';
 
     public function label(): string
     {
@@ -38,6 +39,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage => 'Cobertura ILS confirmada',
             self::TelemedicineServiceLimitOverride => 'Autorización de servicio fuera de límite',
             self::StorefrontQuotePaymentReceipt => 'Comprobante de pago PWA',
+            self::CorporatePaymentFrequencyChange => 'Cambio de frecuencia de pago corporativa',
         };
     }
 
@@ -58,6 +60,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage => 'Destinatarios del aviso que confirma que un asociado de nuevos negocios quedó cubierto en su totalidad, con el número de voucher ILS, su vigencia y el documento adjunto.',
             self::TelemedicineServiceLimitOverride => 'Quienes reciben la clave OTP de 6 dígitos cuando un médico pide asignar un servicio clínico que ya agotó el cupo del plan. El médico no recibe la clave: se la dictan estos contactos.',
             self::StorefrontQuotePaymentReceipt => 'Destinatarios de Administración (correo y WhatsApp) cuando un cliente carga el comprobante de una cotización desde la PWA.',
+            self::CorporatePaymentFrequencyChange => 'Contactos de Administración (correo y WhatsApp) que reciben el aviso cuando Negocios cambia la frecuencia de pago de una afiliación corporativa, y cuando Administración revierte ese cambio. Además se avisa siempre a todos los usuarios activos del departamento de Administración.',
         };
     }
 
@@ -78,6 +81,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage => 'Confirmación de cobertura del asociado',
             self::TelemedicineServiceLimitOverride => 'Clave OTP fuera de límite clínico',
             self::StorefrontQuotePaymentReceipt => 'Comprobante de cotización PWA',
+            self::CorporatePaymentFrequencyChange => 'Cambio de frecuencia de pago',
         };
     }
 
@@ -98,6 +102,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage => 'Cuando el analista guarda el voucher ILS de un asociado, el sistema le pide declarar que completó toda la gestión que garantiza la cobertura. Al confirmar se envía correo y WhatsApp con los datos del asociado, el número de voucher, la vigencia desde-hasta y el documento del voucher adjunto en ambos canales.',
             self::TelemedicineServiceLimitOverride => 'Si el médico confirma que quiere continuar con un servicio agotado, el sistema envía en el acto (WhatsApp y correo) una clave de 6 dígitos con 5 minutos de vida. Sin destinatarios o con la alerta pausada no hay excepción.',
             self::StorefrontQuotePaymentReceipt => 'Cuando el cliente adjunta el comprobante en la app, el sistema encola correo y WhatsApp a Administración con el número de cotización, el usuario que lo cargó y el canal PWA. El archivo viaja adjunto.',
+            self::CorporatePaymentFrequencyChange => 'Cuando un analista cambia la frecuencia de pago de una afiliación corporativa, el sistema anula los avisos de cobro pendientes, genera los nuevos y avisa a Administración por WhatsApp, correo (con la lista de avisos cancelados y creados) y notificación del panel. El reverso se avisa igual.',
         };
     }
 
@@ -191,6 +196,12 @@ enum SystemNotificationKey: string
                 '3. Cola asíncrona',
                 '4. Email + WhatsApp a Administración',
             ],
+            self::CorporatePaymentFrequencyChange => [
+                '1. Negocios cambia la frecuencia',
+                '2. Avisos pendientes anulados y reemplazados',
+                '3. Registro con el estado anterior',
+                '4. WhatsApp + correo + panel a Administración',
+            ],
         };
     }
 
@@ -211,6 +222,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage => 'Declaración del analista:',
             self::TelemedicineServiceLimitOverride => 'Autorización excepcional:',
             self::StorefrontQuotePaymentReceipt => 'Acción requerida para Administración:',
+            self::CorporatePaymentFrequencyChange => 'Acción requerida para Administración:',
         };
     }
 
@@ -231,6 +243,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage => 'el aviso solo se envía cuando el analista confirma expresamente que realizó toda la gestión que garantiza la cobertura del cliente. Quién confirmó y cuándo queda registrado en las trazas de seguridad.',
             self::TelemedicineServiceLimitOverride => 'dicte la clave al médico por un canal interno. La clave vence en 5 minutos, es de un solo uso y no debe reenviarse al paciente. Sin esta clave el sistema no asigna el servicio extra.',
             self::StorefrontQuotePaymentReceipt => 'revise el comprobante adjunto, concilie el pago y dé seguimiento a la cotización. El teléfono configurado aquí también es el que usa el cliente en la PWA para escribirle a Administración.',
+            self::CorporatePaymentFrequencyChange => 'revise el cambio en Administración → Cambios de frecuencia de pago y márquelo como validado. Si no está de acuerdo o hubo una falla, desde allí puede revertirlo: la afiliación y su cobranza vuelven exactamente al estado anterior.',
         };
     }
 
@@ -251,6 +264,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage => 'heroicon-o-shield-check',
             self::TelemedicineServiceLimitOverride => 'heroicon-o-key',
             self::StorefrontQuotePaymentReceipt => 'heroicon-o-banknotes',
+            self::CorporatePaymentFrequencyChange => 'heroicon-o-arrows-right-left',
         };
     }
 
@@ -280,6 +294,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage => [],
             self::TelemedicineServiceLimitOverride => [],
             self::StorefrontQuotePaymentReceipt => [],
+            self::CorporatePaymentFrequencyChange => [],
         };
     }
 
@@ -321,6 +336,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage => [],
             self::TelemedicineServiceLimitOverride => [],
             self::StorefrontQuotePaymentReceipt => [],
+            self::CorporatePaymentFrequencyChange => [],
         };
     }
 
@@ -341,6 +357,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage => 'Aún no hay destinatarios configurados. El analista podrá confirmar la cobertura, pero no se enviará el aviso con el voucher.',
             self::TelemedicineServiceLimitOverride => 'Aún no hay destinatarios. El médico verá el cupo agotado, pero no podrá pedir autorización fuera de límite hasta que agregue al menos un correo o un teléfono.',
             self::StorefrontQuotePaymentReceipt => 'Aún no hay destinatarios de Administración. El cliente podrá cargar el comprobante, pero no se enviará el aviso ni habrá WhatsApp de contacto en la PWA.',
+            self::CorporatePaymentFrequencyChange => 'Sin contactos del departamento configurados. Igual se avisará por correo, WhatsApp y panel a los usuarios activos de Administración.',
         };
     }
 
@@ -391,6 +408,9 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt => $empty
                 ? 'No hay destinatarios de Administración. El comprobante se guardará, pero nadie recibirá el aviso.'
                 : 'Se notificará por correo y WhatsApp a Administración cuando un cliente cargue el comprobante desde la PWA.',
+            self::CorporatePaymentFrequencyChange => $empty
+                ? 'Sin contactos del departamento. Se avisará igual a los usuarios activos de Administración.'
+                : 'Se avisará a estos contactos y a los usuarios activos de Administración en cada cambio de frecuencia y en cada reverso.',
         };
     }
 
@@ -405,6 +425,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage,
             self::TelemedicineServiceLimitOverride,
             self::StorefrontQuotePaymentReceipt,
+            self::CorporatePaymentFrequencyChange,
         ], true);
     }
 
@@ -425,6 +446,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage => 'Si está inactiva, el analista podrá guardar el voucher y confirmar la cobertura, pero no se enviará el aviso por correo ni WhatsApp.',
             self::TelemedicineServiceLimitOverride => 'Si está inactiva, el médico verá el cupo agotado y no podrá pedir la clave OTP. El servicio extra queda bloqueado.',
             self::StorefrontQuotePaymentReceipt => 'Si está inactiva, el cliente podrá cargar el comprobante en la app, pero no se enviará correo ni WhatsApp a Administración.',
+            self::CorporatePaymentFrequencyChange => 'Si está inactiva, el cambio y su reverso se aplican y quedan registrados, y los usuarios de Administración reciben la notificación del panel, pero no se envía correo ni WhatsApp.',
         };
     }
 
@@ -448,6 +470,7 @@ enum SystemNotificationKey: string
             self::CompanyAssociateIlsCoverage,
             self::TelemedicineServiceLimitOverride,
             self::StorefrontQuotePaymentReceipt,
+            self::CorporatePaymentFrequencyChange,
         ];
     }
 }

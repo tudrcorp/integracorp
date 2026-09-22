@@ -41,6 +41,7 @@ it('define el widget de afiliaciones individuales por agencia con periodo y sin 
         ->toContain("->label('Detalles')")
         ->toContain("Action::make('viewAffiliationsWithoutAgent')")
         ->toContain("->label('Venta Directa')")
+        ->toContain('Heroicon::OutlinedBuildingStorefront')
         ->not->toContain('->tooltip(')
         ->toContain('syncPeriodToAgentTable')
         ->toContain('affiliations-period-changed');

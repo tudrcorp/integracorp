@@ -22,7 +22,9 @@ it('consolida las queries de widgets del listado de afiliaciones corporativas', 
     $estadoChart = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Widgets/AffiliationCorporatePorEstadoChart.php');
 
     expect($statsOverview)
-        ->toContain("selectRaw('COUNT(*) as total_count')")
+        ->toContain("selectRaw('COUNT(DISTINCT '.\$groupKey.') as total_count')")
+        ->toContain('corporateGroupKeySql')
+        ->toContain('UPPER(TRIM(name_corporate))')
         ->toContain("selectRaw('COUNT(DISTINCT code_agency) as agencies_count')")
         ->toContain("selectRaw('COUNT(DISTINCT agent_id) as agents_count')")
         ->toContain('Grupos Activos')

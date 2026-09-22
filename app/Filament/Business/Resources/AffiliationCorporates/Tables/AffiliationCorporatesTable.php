@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\Tables;
 
+use App\Exceptions\CorporatePaymentFrequencyChangeBlockedException;
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Exports\AffiliationCorporateExporter;
 use App\Http\Controllers\AffiliateCorporateExportCsvController;
@@ -14,6 +15,11 @@ use App\Models\Agency;
 use App\Models\User;
 use App\Services\AffiliationCorporateBusinessDocumentsService;
 use App\Support\AffiliationCorporates\AffiliationCorporatesRankingQuery;
+use App\Support\AffiliationCorporates\CorporatePaymentFrequency;
+use App\Support\AffiliationCorporates\CorporatePaymentFrequencyChanger;
+use App\Support\AffiliationCorporates\CorporatePaymentUploadAvailability;
+use App\Support\Filament\BusinessFilamentActionAccess;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -24,10 +30,12 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
@@ -49,6 +57,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\HtmlString;
+use InvalidArgumentException;
 
 class AffiliationCorporatesTable
 {
@@ -1094,22 +1104,7 @@ class AffiliationCorporatesTable
                                     ->send();
                             }
                         })
-                        ->hidden(function (AffiliationCorporate $record) {
-
-                            if ($record->payment_frequency == 'ANUAL' && $record->paid_membership_corporates()->count() == 1) {
-                                return true;
-                            }
-
-                            if ($record->payment_frequency == 'SEMESTRAL' && $record->paid_membership_corporates()->count() == 2) {
-                                return true;
-                            }
-
-                            if ($record->payment_frequency == 'TRIMESTRAL' && $record->paid_membership_corporates()->count() == 4) {
-                                return true;
-                            }
-
-                            return false;
-                        }),
+                        ->hidden(fn (AffiliationCorporate $record): bool => CorporatePaymentUploadAvailability::isFullyPaid($record)),
 
                     Action::make('change_status')
                         ->label('Actualizar estatus')
@@ -1260,6 +1255,7 @@ class AffiliationCorporatesTable
                                 ->send();
                         })
                         ->hidden(fn () => ! in_array('SUPERADMIN', (array) (Auth::user()?->departament ?? []))),
+                    self::changePaymentFrequencyAction(),
                 ])->hidden(fn ($record) => $record->status == 'EXCLUIDO'),
             ])
             ->toolbarActions([
@@ -1327,10 +1323,213 @@ class AffiliationCorporatesTable
 
                             return redirect()->route('business.affiliate-corporates.export-csv', ['token' => $token]);
                         }),
+                    self::changePaymentFrequencyBulkAction(),
                     DeleteBulkAction::make(),
                 ]),
             ])
             ->striped();
+    }
+
+    private static function userCanChangePaymentFrequency(): bool
+    {
+        return BusinessFilamentActionAccess::userCan(
+            BusinessFilamentActionPermissionRegistry::CHANGE_CORPORATE_PAYMENT_FREQUENCY,
+        );
+    }
+
+    private static function paymentFrequencyField(?string $currentFrequency = null): ToggleButtons
+    {
+        $current = CorporatePaymentFrequency::normalize($currentFrequency);
+
+        return ToggleButtons::make('payment_frequency')
+            ->label('Nueva frecuencia de pago')
+            ->options(CorporatePaymentFrequency::options())
+            ->icons([
+                CorporatePaymentFrequency::ANUAL => Heroicon::CalendarDays,
+                CorporatePaymentFrequency::SEMESTRAL => Heroicon::CalendarDateRange,
+                CorporatePaymentFrequency::TRIMESTRAL => Heroicon::Calendar,
+                CorporatePaymentFrequency::MENSUAL => Heroicon::Clock,
+            ])
+            ->disableOptionWhen(fn (string $value): bool => $current !== null && $value === $current)
+            ->inline()
+            ->required()
+            ->live()
+            ->validationMessages([
+                'required' => 'Seleccione la nueva frecuencia de pago.',
+            ]);
+    }
+
+    private static function changePaymentFrequencyAction(): Action
+    {
+        return Action::make('change_payment_frequency')
+            ->label('Cambiar frecuencia de pago')
+            ->icon(Heroicon::ArrowsRightLeft)
+            ->color('warning')
+            ->modalIcon(Heroicon::ArrowsRightLeft)
+            ->modalWidth(Width::TwoExtraLarge)
+            ->modalHeading('Cambiar frecuencia de pago')
+            ->modalDescription(fn (AffiliationCorporate $record): string => 'Frecuencia actual: '.CorporatePaymentFrequency::label($record->payment_frequency)
+                .' · Tarifa anual: '.self::money((float) $record->fee_anual)
+                .'. Los avisos de cobro pendientes se anulan y se reemplazan por otros con la nueva frecuencia, por el mismo saldo. '
+                .'Administración recibe el aviso por WhatsApp, correo y panel, y puede revertir el cambio.')
+            ->modalSubmitActionLabel('Cambiar frecuencia')
+            ->form(fn (AffiliationCorporate $record): array => [
+                self::paymentFrequencyField($record->payment_frequency),
+                Placeholder::make('payment_frequency_preview')
+                    ->label('Qué va a pasar')
+                    ->content(fn (Get $get): HtmlString => self::paymentFrequencyPreview($record, $get('payment_frequency'))),
+            ])
+            ->action(function (AffiliationCorporate $record, array $data): void {
+                try {
+                    $result = CorporatePaymentFrequencyChanger::change($record, (string) ($data['payment_frequency'] ?? ''));
+                } catch (CorporatePaymentFrequencyChangeBlockedException|InvalidArgumentException $exception) {
+                    Notification::make()->warning()->title('No se cambió la frecuencia')->body($exception->getMessage())->send();
+
+                    return;
+                } catch (\Throwable $throwable) {
+                    Log::error('NEGOCIOS-AFILIACIONES-CORPORATIVAS: Error al cambiar la frecuencia de pago.', [
+                        'affiliation_corporate_id' => $record->getKey(),
+                        'error' => $throwable->getMessage(),
+                    ]);
+                    Notification::make()->danger()->title('No se pudo cambiar la frecuencia')
+                        ->body('No se aplicó ningún cambio. Intente de nuevo o contacte a soporte.')->send();
+
+                    return;
+                }
+
+                if (! $result['changed']) {
+                    Notification::make()->info()->title('Sin cambios')
+                        ->body('La afiliación ya tiene frecuencia '.CorporatePaymentFrequency::label($result['frequency']).'.')->send();
+
+                    return;
+                }
+
+                $body = 'De '.CorporatePaymentFrequency::label($result['previous']).' a '.CorporatePaymentFrequency::label($result['frequency'])
+                    .'. Monto por período: '.self::money($result['period_amount']).'.';
+
+                if ($result['cancelled'] > 0) {
+                    $body .= ' '.$result['cancelled'].' '.($result['cancelled'] === 1 ? 'aviso pendiente anulado' : 'avisos pendientes anulados')
+                        .' y '.$result['created'].' '.($result['created'] === 1 ? 'aviso nuevo generado' : 'avisos nuevos generados')
+                        .'; los PDF se generan en segundo plano.';
+                }
+
+                $body .= ' Se avisó a Administración para su validación.';
+
+                Notification::make()->success()->title('Frecuencia de pago actualizada')->body($body)->send();
+            })
+            ->visible(fn (AffiliationCorporate $record): bool => self::userCanChangePaymentFrequency()
+                && ! in_array(mb_strtoupper(trim((string) $record->status), 'UTF-8'), CorporatePaymentFrequencyChanger::BLOCKED_AFFILIATION_STATUSES, true));
+    }
+
+    private static function changePaymentFrequencyBulkAction(): BulkAction
+    {
+        return BulkAction::make('change_payment_frequency_bulk')
+            ->label('Cambiar frecuencia de pago')
+            ->icon(Heroicon::ArrowsRightLeft)
+            ->color('warning')
+            ->modalIcon(Heroicon::ArrowsRightLeft)
+            ->modalWidth(Width::TwoExtraLarge)
+            ->modalHeading('Cambiar frecuencia de pago de las afiliaciones seleccionadas')
+            ->modalDescription(fn (Collection $records): string => 'Se procesarán '.$records->count().' '.($records->count() === 1 ? 'afiliación' : 'afiliaciones')
+                .' por separado. En cada una se recalcula el monto por período y sus avisos de cobro pendientes se reemplazan por otros con la nueva frecuencia, por el mismo saldo. '
+                .'Las excluidas, las que ya tienen esa frecuencia y las que tengan un comprobante por aprobar no se modifican. '
+                .'Administración recibe un solo aviso consolidado y puede revertir cada cambio por separado.')
+            ->modalSubmitActionLabel('Cambiar frecuencia')
+            ->form([
+                self::paymentFrequencyField(),
+            ])
+            ->deselectRecordsAfterCompletion()
+            ->action(function (Collection $records, array $data): void {
+                try {
+                    $summary = CorporatePaymentFrequencyChanger::changeMany($records, (string) ($data['payment_frequency'] ?? ''));
+                } catch (InvalidArgumentException $exception) {
+                    Notification::make()->warning()->title('No se cambió la frecuencia')->body($exception->getMessage())->send();
+
+                    return;
+                }
+
+                $lines = [];
+
+                if ($summary['changed'] !== []) {
+                    $lines[] = count($summary['changed']).' '.(count($summary['changed']) === 1 ? 'afiliación actualizada' : 'afiliaciones actualizadas').'.';
+                }
+
+                if ($summary['created'] > 0) {
+                    $lines[] = $summary['cancelled'].' avisos pendientes anulados y '.$summary['created'].' nuevos generados; los PDF se generan en segundo plano.';
+                }
+
+                if ($summary['change_ids'] !== []) {
+                    $lines[] = 'Se avisó a Administración para su validación.';
+                }
+
+                if ($summary['unchanged'] !== []) {
+                    $lines[] = count($summary['unchanged']).' ya '.(count($summary['unchanged']) === 1 ? 'tenía' : 'tenían').' esa frecuencia.';
+                }
+
+                foreach (array_slice($summary['blocked'], 0, 10) as $blocked) {
+                    $lines[] = $blocked['name'].': '.$blocked['reason'];
+                }
+
+                if (count($summary['blocked']) > 10) {
+                    $lines[] = 'Y '.(count($summary['blocked']) - 10).' más sin cambios.';
+                }
+
+                $notification = Notification::make()
+                    ->title($summary['changed'] !== [] ? 'Frecuencia de pago actualizada' : 'No se actualizó ninguna afiliación')
+                    ->body(implode(' ', $lines));
+
+                $summary['blocked'] === [] && $summary['changed'] !== []
+                    ? $notification->success()
+                    : $notification->warning();
+
+                $notification->persistent()->send();
+            })
+            ->visible(fn (): bool => self::userCanChangePaymentFrequency());
+    }
+
+    private static function paymentFrequencyPreview(AffiliationCorporate $record, mixed $frequency): HtmlString
+    {
+        if (CorporatePaymentFrequency::normalize(is_string($frequency) ? $frequency : null) === null) {
+            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">Elija una frecuencia para ver el nuevo monto y los avisos que se generarán.</span>');
+        }
+
+        $preview = CorporatePaymentFrequencyChanger::preview($record, (string) $frequency);
+
+        if ($preview['blocked'] !== null) {
+            return new HtmlString('<span class="text-sm font-medium text-danger-600 dark:text-danger-400">'.e($preview['blocked']).'</span>');
+        }
+
+        if ($preview['unchanged']) {
+            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">Es la frecuencia actual; no hay cambios.</span>');
+        }
+
+        $html = '<div class="space-y-2 text-sm text-gray-700 dark:text-gray-200">'
+            .'<p>Monto por período: <strong>'.e(self::money($preview['period_amount'])).'</strong> '
+            .'('.e(CorporatePaymentFrequency::installmentsPerYear($preview['target'])).' '
+            .e(CorporatePaymentFrequency::installmentsPerYear($preview['target']) === 1 ? 'cuota' : 'cuotas').' al año).</p>';
+
+        if ($preview['pending_count'] === 0) {
+            return new HtmlString($html.'<p>No hay avisos de cobro pendientes: la nueva frecuencia rige en los próximos cobros.</p></div>');
+        }
+
+        $html .= '<p>Se anularán <strong>'.e($preview['pending_count']).'</strong> '
+            .e($preview['pending_count'] === 1 ? 'aviso pendiente' : 'avisos pendientes')
+            .' (saldo '.e(self::money($preview['pending_balance'])).') y se generarán:</p><ul class="list-disc ps-5">';
+
+        foreach ($preview['schedule'] as $installment) {
+            $html .= '<li>'.e($installment['date']).' — '.e(self::money($installment['amount']))
+                .($installment['months'] < CorporatePaymentFrequency::monthsPerInstallment($preview['target'])
+                    ? ' (prorrateado: '.e($installment['months']).' '.($installment['months'] === 1 ? 'mes' : 'meses').')'
+                    : '')
+                .'</li>';
+        }
+
+        return new HtmlString($html.'</ul></div>');
+    }
+
+    private static function money(float $amount): string
+    {
+        return number_format($amount, 2, ',', '.').' US$';
     }
 
     /**

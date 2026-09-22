@@ -37,6 +37,7 @@ class AffiliationCorporatesByAgencyTable extends TableWidget
     public function mount(): void
     {
         $this->bootInteractsWithAffiliationCorporatesRankingTable();
+        $this->dispatchPeriodToAgentTable();
     }
 
     public function updatedFilterYear(): void
@@ -55,10 +56,15 @@ class AffiliationCorporatesByAgencyTable extends TableWidget
         $this->flushCachedTableRecords();
 
         $this->dispatch('affiliation-corporates-agent-filter-start');
+        $this->dispatchPeriodToAgentTable();
+    }
+
+    protected function dispatchPeriodToAgentTable(): void
+    {
         $this->dispatch(
             'affiliation-corporates-period-changed',
-            year: (string) $this->resolvedRankingFilterYear(),
-            month: (string) ((int) $this->filterMonth),
+            year: $this->normalizedFilterYear(),
+            month: $this->normalizedFilterMonth(),
         )->to(AffiliationCorporatesByAgentTable::class);
     }
 
@@ -127,9 +133,8 @@ class AffiliationCorporatesByAgencyTable extends TableWidget
                     ->extraAttributes(['class' => 'iq-ranking-filter-btn'])
                     ->action(fn (Agency $record): mixed => $this->selectAgency($record)),
                 Action::make('viewAffiliationsWithoutAgent')
-                    ->label('Ver afiliaciones sin agente')
-                    ->tooltip('Afiliaciones de esta agencia que no tienen un agente asignado')
-                    ->icon(Heroicon::OutlinedNoSymbol)
+                    ->label('Venta Directa')
+                    ->icon(Heroicon::OutlinedBuildingStorefront)
                     ->color(fn (Agency $record): string => $this->selectedAgencyIdForUnassignedAffiliations === $record->id ? 'warning' : 'gray')
                     ->extraAttributes(fn (Agency $record): array => [
                         'class' => $this->selectedAgencyIdForUnassignedAffiliations === $record->id

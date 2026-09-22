@@ -324,31 +324,17 @@
                 <tbody>
                     @for ($i = 0; $i < count($data['plan']); $i++)
                         @php
-                            $plan = \App\Models\Plan::where('id', $data['plan'][$i]['plan_id'])->first()->description;
+                            $plan = (string) \App\Models\Plan::query()->whereKey($data['plan'][$i]['plan_id'] ?? null)->value('description');
 
                             $coverage = \App\Support\CorporateDocumentPlanCoverage::priceForLine(
                                 $data['plan'][$i]['plan_id'] ?? null,
                                 $data['plan'][$i]['coverage_id'] ?? null,
                             );
 
-                            if ($data['plan'][$i]['payment_frequency'] == 'ANUAL') {
-                                $total_amount = $data['plan'][$i]['subtotal_anual'];
-                                $fechaHasta = date('d/m/Y', strtotime('+1 years'));
-                            }
-                            if ($data['plan'][$i]['payment_frequency'] == 'TRIMESTRAL') {
-                                $total_amount = $data['plan'][$i]['subtotal_quarterly'];
-                                $fechaHasta = date('d/m/Y', strtotime('+3 months'));
-                            }
-                            if ($data['plan'][$i]['payment_frequency'] == 'SEMESTRAL') {
-                                $total_amount = $data['plan'][$i]['subtotal_semestral'];
-                                $fechaHasta = date('d/m/Y', strtotime('+6 months'));
-                            }
-                            if ($data['plan'][$i]['payment_frequency'] == 'MENSUAL') {
-                                $total_amount = $data['plan'][$i]['subtotal_anual'] / 12;
-                                $fechaHasta = date('d/m/Y', strtotime('+1 months'));
-                            }
+                            $total_amount = \App\Support\CorporateDocumentPlanAmounts::periodAmount($data['plan'][$i], $data['frequency'] ?? null);
+                            $fechaHasta = \App\Support\CorporateDocumentPlanAmounts::periodEndFromToday($data['plan'][$i], $data['frequency'] ?? null);
 
-                            $age_range = \App\Models\AgeRange::where('id', $data['plan'][$i]['age_range_id'])->first()->range;
+                            $age_range = (string) \App\Models\AgeRange::query()->whereKey($data['plan'][$i]['age_range_id'] ?? null)->value('range');
                         @endphp
                         <tr>
                             <td class="desc-col">
@@ -356,7 +342,7 @@
                                     {{ $plan }}@if (filled($coverage)), COBERTURA: US${{ round($coverage) }}@endif<br>
 
                                     RANGO DE EDAD: {{ $age_range }} años<br>
-                                    FRECUENCIA DE PAGO: {{ $data['plan'][$i]['payment_frequency'] }}<br>
+                                    FRECUENCIA DE PAGO: {{ \App\Support\CorporateDocumentPlanAmounts::frequencyFor($data['plan'][$i], $data['frequency'] ?? null) }}<br>
                                     COBERTURA GEOGRAFICA – LOCAL VENEZUELA
                                 </p>
                             </td>

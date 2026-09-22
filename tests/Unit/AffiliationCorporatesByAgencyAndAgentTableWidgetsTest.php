@@ -41,7 +41,10 @@ it('define el widget de afiliaciones por agencia con columnas requeridas', funct
         ->toContain("Action::make('filterAgents')")
         ->toContain("->label('Detalles')")
         ->toContain("Action::make('viewAffiliationsWithoutAgent')")
-        ->toContain("->label('Ver afiliaciones sin agente')")
+        ->toContain("->label('Venta Directa')")
+        ->toContain('Heroicon::OutlinedBuildingStorefront')
+        ->not->toContain('->tooltip(')
+        ->toContain('dispatchPeriodToAgentTable')
         ->toContain('syncPeriodToAgentTable')
         ->toContain('affiliation-corporates-period-changed');
 });
@@ -63,7 +66,8 @@ it('define el widget de afiliaciones por agente con columnas requeridas', functi
         ->toContain("Action::make('viewAffiliations')")
         ->toContain("->label('Ver afiliaciones')")
         ->toContain('#[On(\'affiliation-corporates-period-changed\')]')
-        ->toContain('applyPeriodFilter');
+        ->toContain('applyPeriodFilter')
+        ->toContain('rankingPeriodLabel()');
 });
 
 it('coloca las tablas lado a lado en la misma fila', function (): void {
@@ -118,9 +122,12 @@ it('filtra agentes al seleccionar una agencia y afiliaciones al seleccionar un a
         ->not->toContain('#[Reactive]');
 
     expect($query)->toContain('joinSub')
+        ->toContain('constrainActive')
+        ->toContain("->where('status', 'ACTIVA')")
         ->toContain("->where('code_agency', \$agencyCode)");
 
     expect($listPage)->toContain('filterAffiliationsByAgent')
+        ->toContain("'value' => 'ACTIVA'")
         ->toContain('#[On(\'affiliation-corporates-filter-by-agent\')]')
         ->toContain('#[On(\'affiliation-corporates-filter-by-agency-without-agent\')]')
         ->toContain('filterAffiliationsByAgencyWithoutAgent')
@@ -166,10 +173,47 @@ it('aplica UI de ranking reutilizando estilos iOS compactos', function (): void 
 });
 
 it('expone opciones de filtro con etiquetas Año y Mes (Todos)', function (): void {
+    $widget = new class
+    {
+        use \App\Filament\Business\Resources\AffiliationCorporates\Widgets\Concerns\InteractsWithAffiliationCorporatesRankingTable;
+
+        protected function rankingTableVariant(): string
+        {
+            return 'agency';
+        }
+    };
+
+    $widget->bootInteractsWithAffiliationCorporatesRankingTable();
+
+    expect($widget->filterYear)->toBe('0')
+        ->and($widget->filterMonth)->toBe('0')
+        ->and($widget->rankingPeriodLabel())->toBe('Todos')
+        ->and($widget->normalizedFilterYear())->toBe('0')
+        ->and($widget->normalizedFilterMonth())->toBe('0')
+        ->and($widget->getRankingYearFilterOptions()['0'])->toBe('Año (Todos)');
+
+    $widget->filterYear = '2026';
+    expect($widget->rankingPeriodLabel())->toBe('2026');
+
+    $widget->filterMonth = '9';
+    $reflection = new ReflectionClass($widget);
+    $resolvedYear = $reflection->getMethod('resolvedRankingFilterYear');
+    $resolvedMonth = $reflection->getMethod('resolvedRankingFilterMonth');
+
+    expect($resolvedYear->invoke($widget))->toBe(2026)
+        ->and($resolvedMonth->invoke($widget))->toBe(9);
+
+    $widget->filterYear = '0';
+    $widget->filterMonth = '0';
+
+    expect($resolvedYear->invoke($widget))->toBeNull()
+        ->and($resolvedMonth->invoke($widget))->toBeNull();
+
     $trait = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Widgets/Concerns/InteractsWithAffiliationCorporatesRankingTable.php');
 
     expect($trait)->not->toBeFalse()
         ->toContain("'Año '")
+        ->toContain("'Año (Todos)'")
         ->toContain("'Mes (Todos)'")
         ->toContain('getRankingYearFilterOptions')
         ->toContain('getRankingMonthFilterOptions')
@@ -197,6 +241,8 @@ it('construye queries de ranking optimizadas con subconsultas', function (): voi
         ->toContain('groupBy(\'code_agency\')')
         ->toContain('groupBy(\'agent_id\')')
         ->toContain('applyPeriod')
+        ->toContain('constrainActive')
+        ->toContain("->where('status', 'ACTIVA')")
         ->toContain('public static function constrainWithoutAgent')
         ->toContain("whereYear('created_at', \$year)")
         ->toContain("whereMonth('created_at', \$month)");

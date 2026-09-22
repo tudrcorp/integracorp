@@ -9,7 +9,9 @@ use App\Models\CompanyAssociate;
 use App\Support\Companies\CompanyAssociatePageHeader;
 use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\Action;
+use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -34,6 +36,14 @@ class ViewCompanyAssociate extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            EditAction::make()
+                ->label('Editar información')
+                ->icon(Heroicon::OutlinedPencilSquare)
+                ->color('primary')
+                ->visible(fn (CompanyAssociate $record): bool => ! $record->isAnnulled())
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
+                ]),
             Action::make('back')
                 ->label('Volver al listado')
                 ->icon('heroicon-o-arrow-left')

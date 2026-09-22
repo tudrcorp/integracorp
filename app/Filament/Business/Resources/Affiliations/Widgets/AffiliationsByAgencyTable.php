@@ -134,7 +134,7 @@ class AffiliationsByAgencyTable extends TableWidget
                     ->action(fn (Agency $record): mixed => $this->selectAgency($record)),
                 Action::make('viewAffiliationsWithoutAgent')
                     ->label('Venta Directa')
-                    ->icon(Heroicon::OutlinedNoSymbol)
+                    ->icon(Heroicon::OutlinedBuildingStorefront)
                     ->color(fn (Agency $record): string => $this->selectedAgencyIdForUnassignedAffiliations === $record->id ? 'warning' : 'gray')
                     ->extraAttributes(fn (Agency $record): array => [
                         'class' => $this->selectedAgencyIdForUnassignedAffiliations === $record->id

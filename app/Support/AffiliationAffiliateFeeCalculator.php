@@ -489,10 +489,11 @@ final class AffiliationAffiliateFeeCalculator
 
     public function totalAmountForPaymentFrequency(float $annualFee, string $frequency): float
     {
-        return match ($frequency) {
+        return match (mb_strtoupper(trim($frequency))) {
             'ANUAL' => round($annualFee, 2),
             'SEMESTRAL' => round($annualFee / 2, 2),
             'TRIMESTRAL' => round($annualFee / 4, 2),
+            'MENSUAL' => round($annualFee / 12, 2),
             default => round($annualFee, 2),
         };
     }

@@ -322,32 +322,17 @@
                         @php
                             $planRow = $data['plan'][$i];
 
-                            $plan = \App\Models\Plan::where('id', $planRow['plan_id'])->first()->description;
+                            $plan = (string) \App\Models\Plan::query()->whereKey($planRow['plan_id'] ?? null)->value('description');
 
                             $coverage = \App\Support\CorporateDocumentPlanCoverage::priceForLine(
                                 $planRow['plan_id'] ?? null,
                                 $planRow['coverage_id'] ?? null,
                             );
 
-                            $paymentFrequency = $planRow['payment_frequency'];
-                            $subtotalAnual = (float) data_get($planRow, 'subtotal_anual', 0);
-                            $subtotalQuarterly = (float) data_get($planRow, 'subtotal_quarterly', 0);
-                            $subtotalSemestral = (float) data_get($planRow, 'subtotal_semestral', $subtotalQuarterly);
+                            $paymentFrequency = \App\Support\CorporateDocumentPlanAmounts::frequencyFor($planRow, $data['frequency'] ?? null);
+                            $total_amount = \App\Support\CorporateDocumentPlanAmounts::periodAmount($planRow, $data['frequency'] ?? null);
 
-                            if ($paymentFrequency == 'ANUAL') {
-                                $total_amount = $subtotalAnual;
-                            }
-                            if ($paymentFrequency == 'TRIMESTRAL') {
-                                $total_amount = $subtotalQuarterly;
-                            }
-                            if ($paymentFrequency == 'SEMESTRAL') {
-                                $total_amount = $subtotalSemestral;
-                            }
-                            if ($paymentFrequency == 'MENSUAL') {
-                                $total_amount = $subtotalAnual / 12;
-                            }
-
-                            $age_range = \App\Models\AgeRange::where('id', $planRow['age_range_id'])->first()->range;
+                            $age_range = (string) \App\Models\AgeRange::query()->whereKey($planRow['age_range_id'] ?? null)->value('range');
                         @endphp
                         <tr>
                             <td class="desc-col">
