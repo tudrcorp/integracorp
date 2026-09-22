@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Jobs\GeneratePdfInformeMedicoCorto;
+use App\Jobs\GeneratePdfInformeMedicoLargo;
 use App\Jobs\GeneratePdfMedicamentos;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
@@ -87,8 +87,8 @@ it('expone opciones segun datos del caso y consulta inicial', function (): void 
     $options = $service->availableOptions($case);
 
     expect($options)
-        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO)
-        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_LARGO)
+        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO)
+        ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO)
         ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS);
 
     $consultation->telemedicine_service_list_id = TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID;
@@ -99,9 +99,10 @@ it('expone opciones segun datos del caso y consulta inicial', function (): void 
 
     $options = $service->availableOptions($case);
 
+    /** El informe médico también se ofrece en los servicios AMD. */
     expect($options)
-        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO)
-        ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_LARGO)
+        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO)
+        ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO)
         ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS)
         ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_LABORATORIOS)
         ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_IMAGENOLOGIA)
@@ -214,18 +215,18 @@ it('genera los documentos en el request sin tocar la cola', function (): void {
     $service = telemedicineRegenerationServiceForTest();
 
     $result = $service->regenerate(telemedicineRegenerationTestCase(), [
-        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO,
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS,
     ], telemedicineRegenerationTestUser());
 
     expect($result->generated)->toBe([
-        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO,
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS,
     ])
         ->and($result->failed)->toBe([])
         ->and($result->allGenerated())->toBeTrue()
         ->and($service->executed)->toHaveCount(2)
-        ->and($service->executed[0])->toBeInstanceOf(GeneratePdfInformeMedicoCorto::class)
+        ->and($service->executed[0])->toBeInstanceOf(GeneratePdfInformeMedicoLargo::class)
         ->and($service->executed[1])->toBeInstanceOf(GeneratePdfMedicamentos::class);
 
     // El sentido de esta acción es funcionar cuando la cola está caída.
@@ -244,11 +245,11 @@ it('un documento que falla no impide generar los demás', function (): void {
     });
 
     $result = $service->regenerate(telemedicineRegenerationTestCase(), [
-        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO,
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS,
     ], telemedicineRegenerationTestUser());
 
-    expect($result->generated)->toBe([TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO])
+    expect($result->generated)->toBe([TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO])
         ->and($result->failed)->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS)
         ->and($result->failed[TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS])->toBe('Disco lleno')
         ->and($result->allGenerated())->toBeFalse()
@@ -265,7 +266,7 @@ it('informa cuando ningún documento pudo generarse', function (): void {
     });
 
     $result = $service->regenerate(telemedicineRegenerationTestCase(), [
-        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO,
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
     ], telemedicineRegenerationTestUser());
 
     expect($result->noneGenerated())->toBeTrue()
@@ -299,7 +300,8 @@ it('la accion filament usa checkbox list y el servicio de regeneracion', functio
     expect($table)->toContain('RegenerateTelemedicineCaseDocumentsAction::make');
 
     expect($service)
-        ->toContain('GeneratePdfInformeMedicoCorto')
+        ->toContain('GeneratePdfInformeMedicoLargo')
+        ->not->toContain('GeneratePdfInformeMedicoCorto')
         ->toContain('GeneratePdfInformeSeguimiento')
         ->toContain('GeneratePdfMedicamentos')
         ->toContain('GeneratePdfLaboratorio')
@@ -313,19 +315,19 @@ it('la accion filament usa checkbox list y el servicio de regeneracion', functio
 
 it('el resultado distingue éxito total, parcial y fallo completo', function (): void {
     $labels = [
-        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO => 'Informe médico',
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO => 'Informe médico',
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS => 'Récipe',
     ];
 
     $todo = new TelemedicineCaseDocumentRegenerationResult(array_keys($labels), [], $labels);
     $parcial = new TelemedicineCaseDocumentRegenerationResult(
-        [TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO],
+        [TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO],
         [TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS => 'Disco lleno'],
         $labels,
     );
     $ninguno = new TelemedicineCaseDocumentRegenerationResult(
         [],
-        [TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO => 'Error'],
+        [TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO => 'Error'],
         $labels,
     );
 

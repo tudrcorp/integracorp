@@ -11,7 +11,6 @@ use App\Http\Controllers\OperationCoordinationServiceController;
 use App\Http\Controllers\TelemedicineMedicalReportController;
 use App\Jobs\GeneratePdfEspecialista;
 use App\Jobs\GeneratePdfImagenologia;
-use App\Jobs\GeneratePdfInformeMedicoCorto;
 use App\Jobs\GeneratePdfInformeMedicoLargo;
 use App\Jobs\GeneratePdfLaboratorio;
 use App\Jobs\GeneratePdfMedicamentos;
@@ -39,6 +38,7 @@ use App\Support\ClinicalEntitlements\ClinicalConsultationConsumption;
 use App\Support\ClinicalEntitlements\ClinicalEntitlement;
 use App\Support\ClinicalEntitlements\ClinicalEntitlementException;
 use App\Support\ClinicalEntitlements\ClinicalServiceOverrideOtp;
+use App\Support\ClinicalEntitlements\TelemedicineConsultationClinicalUi;
 use App\Support\Filament\FilamentIosActionsMenu;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
@@ -50,6 +50,7 @@ use App\Support\Telemedicine\ProvidesConsultationFormContext;
 use App\Support\Telemedicine\TelemedicineAmdFileRegistrar;
 use App\Support\Telemedicine\TelemedicineAmdInformRegistrar;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
+use App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationService;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineConsultationSigningDoctor;
 use App\Support\Telemedicine\TelemedicineFollowUpReportDocument;
@@ -722,7 +723,10 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
         }
 
         // Recetas y órdenes viven en la petición (no en sesión global entre pestañas).
-        $this->clinicalSelections = ConsultationClinicalSelections::fromFormData($data);
+        $this->clinicalSelections = ConsultationClinicalSelections::fromFormData($data)
+            ->withoutUncontemplatedCovered(
+                static fn (ClinicalServiceChannel $channel): bool => TelemedicineConsultationClinicalUi::channelIsContemplated($channel),
+            );
         session()->forget([
             'medications',
             'labs',
@@ -1262,6 +1266,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
 
                         $dataLaboratorios = [
                             'fecha' => now()->format('d/m/Y'),
+                            'consultation_status' => $record['status'] ?? null,
                             'code_reference' => $record['code_reference'],
                             'name_patiente' => $patientDisplayName,
                             'ci_patiente' => $record['nro_identificacion'],
@@ -1310,6 +1315,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
 
                         $dataEstudios = [
                             'fecha' => now()->format('d/m/Y'),
+                            'consultation_status' => $record['status'] ?? null,
                             'code_reference' => $record['code_reference'],
                             'name_patiente' => $patientDisplayName,
                             'ci_patiente' => $record['nro_identificacion'],
@@ -1368,6 +1374,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
 
                         $dataEspecialistas = [
                             'fecha' => now()->format('d/m/Y'),
+                            'consultation_status' => $record['status'] ?? null,
                             'code_reference' => $record['code_reference'],
                             'name_patiente' => $patientDisplayName,
                             'ci_patiente' => $record['nro_identificacion'],
@@ -1459,39 +1466,6 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
 
                     if ($record['status'] == 'CONSULTA INICIAL') {
 
-                        $dataInformeCorteo = [
-                            'fecha' => now()->format('d/m/Y'),
-                            'code_reference' => $this->data['code_reference'],
-                            'name_patient' => $patientDisplayName,
-                            'ci_patient' => $this->data['nro_identificacion'],
-                            'age_patient' => $this->data['age'],
-                            'reason' => $this->data['reason_consultation'],
-                            'actual_phatology' => $this->data['actual_phatology'],
-                            'background' => $this->data['background'],
-                            'diagnostic_impression' => $this->data['diagnostic_impression'],
-                            'peso' => $this->data['peso'],
-                            'estatura' => $this->data['estatura'],
-                            'imc' => $this->data['imc'],
-                            'phone' => $this->data['phone_ppal'],
-                            'consultSpecialistArr' => $consultSpecialistArr,
-                            'medicationsArr' => $medicationsArr ?? [],
-                            'labsArr' => $labsArr ?? [],
-                            'otherLabsArr' => $otherLabsArr ?? [],
-                            'studiesArr' => $studiesArr ?? [],
-                            'otherStudiesArr' => $otherStudiesArr ?? [],
-                            'consultSpecialistArr' => $consultSpecialistArr ?? [],
-                            'otherSpecialistArr' => $otherSpecialistArr ?? [],
-                            'doctor_name' => $doctor['full_name'] ?? null,
-                            'code_cm' => $doctor['code_cm'],
-                            'code_mpps' => $doctor['code_mpps'],
-                            'signature' => $doctor['signature'],
-                            'telemedicine_case_id' => $record['telemedicine_case_id'],
-                            'telemedicine_consultation_id' => $record['id'],
-                            'telemedicine_patient_id' => $record['telemedicine_patient_id'],
-                        ];
-
-                        $pdfJobs[] = new GeneratePdfInformeMedicoCorto($dataInformeCorteo, Auth::user(), 'informe-corto');
-
                         $dataInformeLargo = [
                             'fecha' => now()->format('d/m/Y'),
                             'code_reference' => $this->data['code_reference'],
@@ -1528,11 +1502,11 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             'saturacion' => $this->data['saturacion'],
                         ];
 
-                        $isAmdService = (int) ($record['telemedicine_service_list_id'] ?? 0) === TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID;
-
-                        if (! $isAmdService) {
-                            $pdfJobs[] = new GeneratePdfInformeMedicoLargo($dataInformeLargo, Auth::user(), 'informe-largo');
-                        }
+                        $pdfJobs[] = new GeneratePdfInformeMedicoLargo(
+                            $dataInformeLargo,
+                            Auth::user(),
+                            TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
+                        );
                     } elseif (TelemedicineFollowUpReportDocument::appliesTo((string) ($record['status'] ?? ''))) {
                         $pdfJobs[] = TelemedicineFollowUpReportDocument::makeJob(
                             TelemedicineFollowUpReportDocument::payloadFromCreateData(

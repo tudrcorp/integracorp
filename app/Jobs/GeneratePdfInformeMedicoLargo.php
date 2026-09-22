@@ -107,7 +107,7 @@ class GeneratePdfInformeMedicoLargo implements ShouldQueue
             ->value('name'));
 
         if ($defaultDocumentTypeName === '') {
-            $defaultDocumentTypeName = 'INFORME MEDICO CONSULTA INICIAL (LARGO)';
+            $defaultDocumentTypeName = 'INFORME MEDICO';
         }
 
         TelemedicineConsultationUploadedDocuments::sync($consultation, [

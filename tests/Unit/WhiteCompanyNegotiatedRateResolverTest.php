@@ -9,7 +9,7 @@ it('resuelve neta pactada por empresa aliada y congela snapshot en la afiliacion
 
     expect($source)
         ->toContain('function settlementForAffiliation(Affiliation $affiliation)')
-        ->toContain('whiteCompanyForAgencyCode')
+        ->toContain('WhiteCompanyOwnership::forAffiliation')
         ->toContain('WhiteCompanyFee::query()')
         ->toContain('white_company_sale_price')
         ->toContain('white_company_neta')

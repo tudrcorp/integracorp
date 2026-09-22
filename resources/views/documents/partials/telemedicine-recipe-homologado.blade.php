@@ -229,7 +229,7 @@
                                 @endif
                             </td>
                             <td class="col-title">
-                                <p class="doc-title">Recipe de medicamentos</p>
+                                <p class="doc-title">Indicaciones Médicas</p>
                                 <p class="doc-sub">Clave: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
                                 <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
                                 <span class="badge">{{ $copyLabel }}</span>

@@ -40,14 +40,20 @@ it('HasInformAmdModal incluye la acción uploadAmdFile para cargar archivos AMD'
         ->toContain('TelemedicineAmdFileRegistrar::register');
 });
 
-it('CreateTelemedicineConsultationPatient omite el informe largo automático cuando el servicio es AMD', function (): void {
+it('CreateTelemedicineConsultationPatient emite el informe medico tambien en servicios AMD', function (): void {
+    /**
+     * El informe corto salió de circulación, así que el informe médico es el
+     * único de la consulta inicial: excluirlo en AMD dejaría esos casos sin
+     * informe hasta que el proveedor registre el suyo.
+     */
     $path = dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Pages/CreateTelemedicineConsultationPatient.php';
     $contents = file_get_contents($path);
 
     expect($contents)
-        ->toContain('TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID')
-        ->toContain('if (! $isAmdService)')
         ->toContain('GeneratePdfInformeMedicoLargo')
+        ->toContain('TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO')
+        ->not->toContain('if (! $isAmdService)')
+        ->not->toContain('GeneratePdfInformeMedicoCorto')
         ->toContain('TelemedicineAmdInformRegistrar::attachPendingToConsultation')
         ->toContain('TelemedicineAmdFileRegistrar::attachPendingToConsultation');
 });

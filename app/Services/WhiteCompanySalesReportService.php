@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Affiliation;
-use App\Models\User;
 use App\Models\WhiteCompany;
 use App\Support\SecurityAudit;
 use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
+use App\Support\WhiteCompanies\WhiteCompanyOwnership;
 use App\Support\WhiteCompanies\WhiteCompanyPaymentSettlement;
 use App\Support\WhiteCompanies\WhiteCompanySalesReportKey;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -358,15 +358,7 @@ final class WhiteCompanySalesReportService
      */
     public static function agencyCodesFor(WhiteCompany $company): array
     {
-        return User::query()
-            ->where('white_company_id', $company->getKey())
-            ->whereNotNull('code_agency')
-            ->where('code_agency', '!=', '')
-            ->distinct()
-            ->pluck('code_agency')
-            ->map(static fn (mixed $code): string => (string) $code)
-            ->values()
-            ->all();
+        return WhiteCompanyOwnership::agencyCodesFor($company);
     }
 
     private static function toSqlDate(string $value): string

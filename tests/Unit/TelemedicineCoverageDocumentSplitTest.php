@@ -87,18 +87,58 @@ it('parte imagenologia y especialistas por cobertura', function (): void {
         ->and($specialists[1]['payload']['other_specialist'])->toBe(['Medicina interna']);
 });
 
-it('nombra los archivos por familia cubiertos y no cubiertos', function (): void {
+it('nombra cada documento como Tipo-Cubierto y Tipo-Referido-Seguro', function (): void {
     $data = [
         'ci_patiente' => '16007868',
         'code_reference' => 'REF-71352',
     ];
 
-    expect(TelemedicineCoverageDocumentSplit::filename($data, 'medicamentos-cubiertos'))
-        ->toBe('16007868-REF-71352-medicamentos-cubiertos.pdf')
-        ->and(TelemedicineCoverageDocumentSplit::familyFilenames($data, 'laboratorios'))
+    $esperado = [
+        'medicamentos' => ['Medicamentos-Cubierto', 'Medicamentos-Referido-Seguro'],
+        'laboratorios' => ['Laboratorios-Cubierto', 'Laboratorios-Referido-Seguro'],
+        'imagenologia' => ['Imagenologia-Cubierto', 'Imagenologia-Referido-Seguro'],
+        'especialista' => ['Especialista-Cubierto', 'Especialista-Referido-Seguro'],
+    ];
+
+    foreach ($esperado as $docType => [$cubierto, $referido]) {
+        expect(TelemedicineCoverageDocumentSplit::fileKey($docType, TelemedicineCoverageDocumentSplit::GROUP_COVERED))
+            ->toBe($cubierto)
+            ->and(TelemedicineCoverageDocumentSplit::fileKey($docType, TelemedicineCoverageDocumentSplit::GROUP_UNCOVERED))
+            ->toBe($referido)
+            ->and(TelemedicineCoverageDocumentSplit::filename(
+                $data,
+                TelemedicineCoverageDocumentSplit::fileKey($docType, TelemedicineCoverageDocumentSplit::GROUP_COVERED),
+            ))->toBe('16007868-REF-71352-'.$cubierto.'.pdf');
+    }
+});
+
+it('el nombre de imagenologia viaja sin tilde', function (): void {
+    expect(TelemedicineCoverageDocumentSplit::fileKey('imagenologia', TelemedicineCoverageDocumentSplit::GROUP_COVERED))
+        ->not->toContain('í')
+        ->toBe('Imagenologia-Cubierto');
+});
+
+it('la familia de limpieza arrastra todas las grafias anteriores', function (): void {
+    $data = [
+        'ci_patiente' => '16007868',
+        'code_reference' => 'REF-71352',
+    ];
+
+    /**
+     * En producción el sistema de archivos distingue mayúsculas: si la familia
+     * no nombrara las grafías viejas, el caso acabaría con varios PDF del
+     * mismo tipo al regenerar.
+     */
+    expect(TelemedicineCoverageDocumentSplit::familyFilenames($data, 'laboratorios'))
         ->toBe([
             '16007868-REF-71352-laboratorios.pdf',
             '16007868-REF-71352-laboratorios-cubiertos.pdf',
             '16007868-REF-71352-laboratorios-no-cubiertos.pdf',
-        ]);
+            '16007868-REF-71352-laboratorios-referido-seguro.pdf',
+            '16007868-REF-71352-Laboratorios-Cubierto.pdf',
+            '16007868-REF-71352-Laboratorios-Referido-Seguro.pdf',
+        ])
+        ->and(TelemedicineCoverageDocumentSplit::familyFilenames($data, 'medicamentos'))
+        ->toContain('16007868-REF-71352-medicamentos-cubiertos.pdf')
+        ->toContain('16007868-REF-71352-Medicamentos-Referido-Seguro.pdf');
 });

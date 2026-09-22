@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support\Telemedicine;
 
+use App\Enums\ClinicalServiceChannel;
+
 /**
  * Lo que el médico recetó y solicitó en la consulta que se está guardando.
  *
@@ -38,6 +40,32 @@ final class ConsultationClinicalSelections
     public static function empty(): self
     {
         return new self;
+    }
+
+    /**
+     * Descarta las listas de servicios cubiertos cuyo canal no está en el uso
+     * clínico del plan del paciente.
+     *
+     * El formulario ya oculta esos campos, pero la regla no puede vivir solo
+     * en la pantalla: un estado arrastrado de una consulta anterior o una
+     * petición manipulada dejaría al PDF y a la coordinación de servicio
+     * diciendo algo distinto de lo que vio el médico. Lo no cubierto no se
+     * toca: siempre puede indicarse.
+     *
+     * @param  callable(ClinicalServiceChannel): bool  $channelIsContemplated
+     */
+    public function withoutUncontemplatedCovered(callable $channelIsContemplated): self
+    {
+        return new self(
+            medications: $this->medications,
+            labs: $channelIsContemplated(ClinicalServiceChannel::Laboratory) ? $this->labs : [],
+            otherLabs: $this->otherLabs,
+            studies: $channelIsContemplated(ClinicalServiceChannel::Imaging) ? $this->studies : [],
+            otherStudies: $this->otherStudies,
+            consultSpecialist: $channelIsContemplated(ClinicalServiceChannel::Specialist) ? $this->consultSpecialist : [],
+            otherSpecialist: $this->otherSpecialist,
+            discharge: $this->discharge,
+        );
     }
 
     /**

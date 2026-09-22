@@ -13,7 +13,7 @@ final class TelemedicineConsultationClinicalUi
 {
     public const SPECIALIST_COMPLEMENT_KEY = 3;
 
-    public const SPECIALIST_NOT_CONTEMPLATED_MESSAGE = 'Consulta con especialista no está contemplada en el uso clínico de este plan. Puede continuar: la interconsulta se registra, pero no consume cupo de especialista.';
+    public const SPECIALIST_NOT_CONTEMPLATED_MESSAGE = 'Consulta con especialista no está contemplada en el uso clínico de este plan. Puede indicar especialistas no cubiertos por el plan: la interconsulta se registra y no consume cupo de especialista.';
 
     private static ?ClinicalEntitlementSnapshot $cached = null;
 
@@ -255,7 +255,16 @@ final class TelemedicineConsultationClinicalUi
         return $out;
     }
 
-    public static function specialistIsContemplatedIn(?ClinicalEntitlementSnapshot $snapshot): bool
+    /**
+     * Si el uso clínico del plan contempla el canal. Sin plan se asume que sí
+     * —el cupo no aplica hasta que Operaciones lo vincule—, y con un plan a
+     * medio configurar no se afirma nada.
+     *
+     * Ojo: esto no mira el cupo restante. Un canal contemplado con el cupo
+     * agotado sigue contemplado; de ese bloqueo se encarga
+     * ClinicalQuotaFormGuard.
+     */
+    public static function channelIsContemplatedIn(?ClinicalEntitlementSnapshot $snapshot, ClinicalServiceChannel $channel): bool
     {
         if ($snapshot === null || ! $snapshot->hasPlan) {
             return true;
@@ -265,12 +274,22 @@ final class TelemedicineConsultationClinicalUi
             return false;
         }
 
-        return $snapshot->channelIsAvailable(ClinicalServiceChannel::Specialist);
+        return $snapshot->channelIsAvailable($channel);
+    }
+
+    public static function channelIsContemplated(ClinicalServiceChannel $channel): bool
+    {
+        return self::channelIsContemplatedIn(self::snapshotFromSession(), $channel);
+    }
+
+    public static function specialistIsContemplatedIn(?ClinicalEntitlementSnapshot $snapshot): bool
+    {
+        return self::channelIsContemplatedIn($snapshot, ClinicalServiceChannel::Specialist);
     }
 
     public static function specialistIsContemplated(): bool
     {
-        return self::specialistIsContemplatedIn(self::snapshotFromSession());
+        return self::channelIsContemplated(ClinicalServiceChannel::Specialist);
     }
 
     public static function specialistComplementSelected(mixed $complements): bool

@@ -104,7 +104,7 @@ it('el recipe de medicamentos de producción usa el diseño homologado en horizo
     $path = telemedicineOrdenRedesignWritePdf($html, 'recipe-medicamentos-redesign.pdf', 'landscape');
 
     expect($html)
-        ->toContain('Recipe de medicamentos')
+        ->toContain('<p class="doc-title">Indicaciones Médicas</p>')
         ->toContain('A4 landscape')
         ->toContain('#00ADEF')
         ->toContain('DejaVu Sans')
@@ -178,7 +178,7 @@ it('la orden de laboratorios de producción usa el diseño homologado', function
     $path = telemedicineOrdenRedesignWritePdf($html, 'orden-laboratorios-redesign.pdf');
 
     expect($html)
-        ->toContain('Orden de laboratorios')
+        ->toContain('<p class="doc-title">Laboratorios</p>')
         ->toContain('#00ADEF')
         ->toContain('header-rule-space')
         ->toContain('Hematología completa')
@@ -204,15 +204,47 @@ it('la orden de laboratorios de producción usa el diseño homologado', function
         ->and(filesize($path))->toBeGreaterThan(8_000);
 });
 
-it('la orden de laboratorios muestra la etiqueta de cobertura cuando el job parte el documento', function (): void {
+it('la orden muestra la etapa de la consulta en lugar de la cobertura', function (): void {
     $data = telemedicineOrdenRedesignSampleData();
     $data['coverage_group'] = 'No cubiertos';
 
-    $html = view('documents.laboratorios', [
-        'data' => $data,
+    $inicial = view('documents.laboratorios', [
+        'data' => array_merge($data, ['consultation_status' => 'CONSULTA INICIAL']),
     ])->render();
 
-    expect($html)->toContain('No cubiertos');
+    $seguimiento = view('documents.laboratorios', [
+        'data' => array_merge($data, ['consultation_status' => 'EN SEGUIMIENTO']),
+    ])->render();
+
+    $alta = view('documents.laboratorios', [
+        'data' => array_merge($data, ['consultation_status' => 'ALTA MEDICA']),
+    ])->render();
+
+    $sinEtapa = view('documents.laboratorios', ['data' => $data])->render();
+
+    expect($inicial)
+        ->toContain('<span class="badge">Consulta Inicial</span>')
+        ->and($inicial)->not->toContain('<span class="badge">No cubiertos</span>')
+        ->and($seguimiento)->toContain('<span class="badge">Seguimiento</span>')
+        ->and($alta)->toContain('<span class="badge">Seguimiento</span>')
+        ->and($sinEtapa)->not->toContain('<span class="badge">No cubiertos</span>');
+});
+
+it('la orden ya no imprime el tipo de servicio y deja paciente, cedula y edad en una fila', function (): void {
+    $html = view('documents.laboratorios', [
+        'data' => telemedicineOrdenRedesignSampleData(),
+    ])->render();
+
+    preg_match('/<table class="grid">.*?<\/table>/s', $html, $grid);
+    $gridHtml = $grid[0] ?? '';
+
+    expect($gridHtml)
+        ->toContain('Paciente')
+        ->toContain('Cédula')
+        ->toContain('Edad')
+        ->and($gridHtml)->not->toContain('Tipo de servicio')
+        ->and(substr_count($gridHtml, '<tr>'))->toBe(1)
+        ->and(substr_count($gridHtml, '<td'))->toBe(3);
 });
 
 it('la orden de estudios e imagenología de producción usa el diseño homologado', function (): void {
@@ -232,7 +264,7 @@ it('la orden de estudios e imagenología de producción usa el diseño homologad
     $path = telemedicineOrdenRedesignWritePdf($html, 'orden-imagenologia-redesign.pdf');
 
     expect($html)
-        ->toContain('Orden de estudios / imagenología')
+        ->toContain('<p class="doc-title">Imagenología</p>')
         ->toContain('header-rule-space')
         ->toContain('Radiografía de tórax PA')
         ->toContain('Ecografía abdominal')
@@ -272,7 +304,7 @@ it('la referencia a especialistas de producción usa el diseño homologado', fun
     $path = telemedicineOrdenRedesignWritePdf($html, 'referencia-especialistas-redesign.pdf');
 
     expect($html)
-        ->toContain('Referencia a especialistas')
+        ->toContain('<p class="doc-title">Especialistas</p>')
         ->toContain('header-rule-space')
         ->toContain('Otorrinolaringología')
         ->toContain('Medicina interna')

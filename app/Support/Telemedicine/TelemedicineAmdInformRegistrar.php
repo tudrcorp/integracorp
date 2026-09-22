@@ -214,7 +214,7 @@ final class TelemedicineAmdInformRegistrar
             ->value('name'));
 
         if ($defaultDocumentTypeName === '') {
-            $defaultDocumentTypeName = 'INFORME MEDICO CONSULTA INICIAL (LARGO)';
+            $defaultDocumentTypeName = 'INFORME MEDICO';
         }
 
         $existingDocuments = is_array($consultation->uploaded_documents)
@@ -363,7 +363,7 @@ final class TelemedicineAmdInformRegistrar
         }
 
         $pdfData ??= TelemedicineInformeLargoDataBuilder::buildFromContext($context, $doctor, $clinicalData ?? []);
-        $fileName = TelemedicineInformeLargoPdfGenerator::generateAndSave($pdfData, 'informe-largo');
+        $fileName = TelemedicineInformeLargoPdfGenerator::generateAndSave($pdfData);
 
         $inform->update([
             'pdf_document_name' => $fileName,

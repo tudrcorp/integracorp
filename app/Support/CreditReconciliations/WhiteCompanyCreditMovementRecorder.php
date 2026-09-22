@@ -12,6 +12,7 @@ use App\Models\CreditReconciliation;
 use App\Models\PaidMembership;
 use App\Models\PaidMembershipCorporate;
 use App\Models\WhiteCompany;
+use App\Support\WhiteCompanies\WhiteCompanyOwnership;
 use Illuminate\Support\Facades\Auth;
 
 final class WhiteCompanyCreditMovementRecorder
@@ -27,9 +28,7 @@ final class WhiteCompanyCreditMovementRecorder
             return null;
         }
 
-        $company = CreditReconciliationAffiliationSnapshot::whiteCompanyForAgencyCode(
-            is_string($affiliation->code_agency) ? $affiliation->code_agency : null
-        );
+        $company = WhiteCompanyOwnership::forAffiliation($affiliation);
 
         if (! $company instanceof WhiteCompany) {
             return null;
@@ -60,9 +59,7 @@ final class WhiteCompanyCreditMovementRecorder
             return null;
         }
 
-        $company = CreditReconciliationAffiliationSnapshot::whiteCompanyForAgencyCode(
-            is_string($affiliation->code_agency) ? $affiliation->code_agency : null
-        );
+        $company = WhiteCompanyOwnership::forAffiliation($affiliation);
 
         if (! $company instanceof WhiteCompany) {
             return null;

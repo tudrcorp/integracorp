@@ -9,7 +9,6 @@ use App\Models\AffiliationCorporate;
 use App\Models\WhiteCompany;
 use App\Models\WhiteCompanyPlanLabel;
 use App\Services\AffiliationBusinessDocumentsService;
-use App\Support\CreditReconciliations\CreditReconciliationAffiliationSnapshot;
 use Illuminate\Support\Facades\Storage;
 
 final class WhiteCompanyDocumentBrand
@@ -65,26 +64,23 @@ final class WhiteCompanyDocumentBrand
 
     public static function forCorporate(AffiliationCorporate $record): self
     {
-        $company = CreditReconciliationAffiliationSnapshot::whiteCompanyForAgencyCode($record->code_agency);
-        $company?->loadMissing(['planDocuments', 'planLabels']);
-
-        return self::fromCompany($company);
+        return self::forAlliedRecord($record);
     }
 
     public static function forAffiliation(Affiliation $record): self
     {
-        $company = null;
+        return self::forAlliedRecord($record);
+    }
 
-        if ($record->relationLoaded('whiteCompanyUser') && filled($record->whiteCompanyUser?->white_company_id)) {
-            $company = WhiteCompany::query()
-                ->with(['planDocuments', 'planLabels'])
-                ->find($record->whiteCompanyUser->white_company_id);
-        }
-
-        if ($company === null) {
-            $company = CreditReconciliationAffiliationSnapshot::whiteCompanyForAgencyCode($record->code_agency);
-            $company?->loadMissing(['planDocuments', 'planLabels']);
-        }
+    /**
+     * La empresa aliada se resuelve por la jerarquía comercial completa: una
+     * agencia que cuelga de la MASTER aliada emite documentos con la marca de
+     * la aliada, no con la de TDEC.
+     */
+    private static function forAlliedRecord(Affiliation|AffiliationCorporate $record): self
+    {
+        $company = WhiteCompanyOwnership::forAffiliation($record);
+        $company?->loadMissing(['planDocuments', 'planLabels']);
 
         return self::fromCompany($company);
     }
