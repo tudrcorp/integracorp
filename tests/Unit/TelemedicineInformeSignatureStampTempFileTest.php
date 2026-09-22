@@ -65,13 +65,19 @@ it('la limpieza de un render no deja sin sello al que va en paralelo', function 
     expect(is_file($enCurso))->toBeFalse();
 });
 
-it('el temporal conserva el contenido del sello', function (): void {
+it('el temporal conserva el sello, ya aplanado a PNG opaco', function (): void {
     $path = TelemedicineInformeSignatureStamp::applyTo(informeSignatureStampDompdf(), informeSignatureStampData());
 
-    $esperado = base64_decode(substr(SELLO_PNG_1X1, strpos(SELLO_PNG_1X1, ',') + 1), true);
+    $original = base64_decode(substr(SELLO_PNG_1X1, strpos(SELLO_PNG_1X1, ',') + 1), true);
+    $temporal = (string) file_get_contents($path);
 
-    expect(file_get_contents($path))->toBe($esperado)
-        ->and(@getimagesize($path))->toBeArray();
+    /**
+     * El sello llega RGBA y se guarda opaco (tipo de color 2): un PNG con alfa
+     * es el que DomPDF termina dibujando con fondo negro si falla al separar la máscara.
+     */
+    expect(App\Support\PdfOpaqueImage::pngColorType($original))->toBe(6)
+        ->and(App\Support\PdfOpaqueImage::pngColorType($temporal))->toBe(2)
+        ->and(array_slice((array) @getimagesize($path), 0, 2))->toBe(array_slice((array) getimagesizefromstring($original), 0, 2));
 
     TelemedicineInformeSignatureStamp::cleanUp($path);
 });

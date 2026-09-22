@@ -66,6 +66,26 @@ it('no calcula master cuando la general pertenece a TDG-100', function (): void 
         ->and($result['porcentaje_agencia_master_usd'])->toBe(0.0);
 });
 
+it('deja en cero al superior ausente y pasa la diferencia a la agencia master', function (): void {
+    $result = CommissionController::buildSubAgentCommissionsFromTotalAmount(
+        totalAmount: 80.0,
+        commissionTdecSubAgent: 15.0,
+        commissionTdecAgentSuperior: 15.0,
+        agencySuperiorCommissionTdec: 25.0,
+        agencySuperiorTypeId: 1,
+        agencySuperiorOwnerCode: 'TDG-106',
+        agencyMasterCommissionTdec: null,
+    );
+
+    expect($result['porcent_sub_agente'])->toBe(15.0)
+        ->and($result['porcent_agente_superior'])->toBe(0.0)
+        ->and($result['porcent_agencia_general'])->toBe(0.0)
+        ->and($result['porcent_agencia_master'])->toBe(10.0)
+        ->and($result['porcentaje_sub_agente_usd'])->toBe(12.0)
+        ->and($result['porcentaje_agente_superior_usd'])->toBe(0.0)
+        ->and($result['porcentaje_agencia_master_usd'])->toBe(8.0);
+});
+
 it('usa total_amount como base unica en calculateCommissionSubAgente', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Http/Controllers/CommissionController.php');
     $methodStart = strpos($source, 'public static function calculateCommissionSubAgente');
@@ -75,6 +95,9 @@ it('usa total_amount como base unica en calculateCommissionSubAgente', function 
     expect($methodSource)
         ->toContain('buildSubAgentCommissionsFromTotalAmount')
         ->toContain('totalAmount: (float) $record->total_amount')
+        ->toContain('filled($subAgent->owner_agent)')
+        ->toContain('AgencyNotFoundForCommissionException::make')
+        ->not->toContain('catch (\Throwable')
         ->not->toContain('pay_amount_usd')
         ->not->toContain('pay_amount_ves');
 });

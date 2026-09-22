@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\AgencyNotFoundForCommissionException;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\CommissionPayroll;
@@ -9,42 +10,101 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class CommissionController extends Controller
 {
-    public static function calculateCommissionSubAgente($agent_id, $record)
+    /**
+     * @return array{
+     *     porcentaje_sub_agente_usd: float,
+     *     porcentaje_sub_agente_ves: float,
+     *     porcentaje_agente_superior_usd: float,
+     *     porcentaje_agente_superior_ves: float,
+     *     porcentaje_agencia_general_usd: float,
+     *     porcentaje_agencia_general_ves: float,
+     *     porcentaje_agencia_master_usd: float,
+     *     porcentaje_agencia_master_ves: float,
+     *     money: string,
+     *     porcent_sub_agente: float,
+     *     porcent_agente_superior: float,
+     *     porcent_agencia_general: float,
+     *     porcent_agencia_master: float,
+     *     total_amount: float
+     * }
+     */
+    public static function calculateCommissionSubAgente($agent_id, $record): array
     {
-        try {
-            $subAgent = Agent::query()->findOrFail($agent_id);
-            $commissionTdecSubAgent = (float) $subAgent->commission_tdec;
+        $subAgent = Agent::query()->find($agent_id);
 
-            $agentSuperior = Agent::query()->findOrFail($subAgent->owner_agent);
-            $commissionTdecAgentSuperior = (float) $agentSuperior->commission_tdec;
+        if (! $subAgent instanceof Agent) {
+            throw new RuntimeException('No se encontró el subagente al calcular la comisión. No se realizó ningún cambio.');
+        }
 
-            $agencySuperior = Agency::query()
-                ->where('code', $agentSuperior->owner_code)
-                ->firstOrFail();
+        $commissionTdecSubAgent = (float) $subAgent->commission_tdec;
+        $agentSuperior = null;
 
-            $agencyMasterCommissionTdec = null;
-            if ((int) $agencySuperior->agency_type_id === 3 && $agencySuperior->owner_code !== 'TDG-100') {
-                $agencyMasterCommissionTdec = (float) Agency::query()
-                    ->where('code', $agencySuperior->owner_code)
-                    ->firstOrFail()
-                    ->commission_tdec;
+        if (filled($subAgent->owner_agent)) {
+            $agentSuperior = Agent::query()->find($subAgent->owner_agent);
+
+            if (! $agentSuperior instanceof Agent) {
+                throw new RuntimeException('No se encontró el agente superior del subagente. Verifique la ficha del agente antes de aprobar el pago. No se realizó ningún cambio.');
+            }
+        }
+
+        $commissionTdecAgentSuperior = $agentSuperior instanceof Agent
+            ? (float) $agentSuperior->commission_tdec
+            : $commissionTdecSubAgent;
+
+        $agencyCode = $agentSuperior instanceof Agent
+            ? (string) $agentSuperior->owner_code
+            : (string) $subAgent->owner_code;
+
+        $agencySuperior = Agency::query()->where('code', $agencyCode)->first();
+
+        if (! $agencySuperior instanceof Agency) {
+            throw AgencyNotFoundForCommissionException::make(
+                $agencyCode,
+                self::affiliationCodeFromCommissionRecord($record),
+                $record->id ?? null,
+            );
+        }
+
+        $agencyMasterCommissionTdec = null;
+
+        if ((int) $agencySuperior->agency_type_id === 3 && $agencySuperior->owner_code !== 'TDG-100') {
+            $masterAgency = Agency::query()->where('code', $agencySuperior->owner_code)->first();
+
+            if (! $masterAgency instanceof Agency) {
+                throw AgencyNotFoundForCommissionException::make(
+                    (string) $agencySuperior->owner_code,
+                    self::affiliationCodeFromCommissionRecord($record),
+                    $record->id ?? null,
+                );
             }
 
-            return self::buildSubAgentCommissionsFromTotalAmount(
-                totalAmount: (float) $record->total_amount,
-                commissionTdecSubAgent: $commissionTdecSubAgent,
-                commissionTdecAgentSuperior: $commissionTdecAgentSuperior,
-                agencySuperiorCommissionTdec: (float) $agencySuperior->commission_tdec,
-                agencySuperiorTypeId: (int) $agencySuperior->agency_type_id,
-                agencySuperiorOwnerCode: (string) $agencySuperior->owner_code,
-                agencyMasterCommissionTdec: $agencyMasterCommissionTdec,
-            );
-        } catch (\Throwable $th) {
-            Log::error($th);
+            $agencyMasterCommissionTdec = (float) $masterAgency->commission_tdec;
         }
+
+        return self::buildSubAgentCommissionsFromTotalAmount(
+            totalAmount: (float) $record->total_amount,
+            commissionTdecSubAgent: $commissionTdecSubAgent,
+            commissionTdecAgentSuperior: $commissionTdecAgentSuperior,
+            agencySuperiorCommissionTdec: (float) $agencySuperior->commission_tdec,
+            agencySuperiorTypeId: (int) $agencySuperior->agency_type_id,
+            agencySuperiorOwnerCode: (string) $agencySuperior->owner_code,
+            agencyMasterCommissionTdec: $agencyMasterCommissionTdec,
+        );
+    }
+
+    private static function affiliationCodeFromCommissionRecord(object $record): ?string
+    {
+        $affiliation = $record->affiliation ?? null;
+
+        if (! is_object($affiliation) || blank($affiliation->code ?? null)) {
+            return null;
+        }
+
+        return (string) $affiliation->code;
     }
 
     /**
