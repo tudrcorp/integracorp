@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\AffiliationCorporates;
 
 use App\Models\AffiliateCorporate;
+use App\Models\AffiliateCorporateUpgrade;
 use App\Models\AffiliationCorporate;
 use App\Models\AfilliationCorporatePlan;
 use App\Models\AgeRange;
@@ -13,6 +14,7 @@ use App\Services\CorporateAffiliateRemovalService;
 use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
 use App\Support\SecurityAudit;
 use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -147,7 +149,16 @@ final class CorporateAffiliatePlanSynchronizer
 
         return (int) $affiliate->plan_id === (int) $planRow->plan_id
             && (int) $affiliate->coverage_id === (int) $planRow->coverage_id
-            && abs((float) $affiliate->fee - (float) $planRow->fee) < 0.01;
+            && abs((float) $affiliate->fee - self::expectedFeeFor($affiliate, $planRow)) < 0.01;
+    }
+
+    /**
+     * Tarifa anual que corresponde al afiliado: la del plan contratado más sus
+     * upgrades activos. Sincronizar nunca debe borrar un upgrade.
+     */
+    public static function expectedFeeFor(AffiliateCorporate $affiliate, AfilliationCorporatePlan $planRow): float
+    {
+        return round((float) $planRow->fee + CorporateAffiliateUpgradeManager::activeTotalFor($affiliate), 2);
     }
 
     public static function businessContextIsSynced(AffiliationCorporate $owner, AffiliateCorporate $affiliate): bool
@@ -195,6 +206,12 @@ final class CorporateAffiliatePlanSynchronizer
 
         $before = self::totalsSnapshot($owner);
 
+        if ($affiliates instanceof EloquentCollection && $affiliates->isNotEmpty()) {
+            $affiliates->loadSum([
+                'upgrades as active_upgrades_total' => fn ($query) => $query->where('status', AffiliateCorporateUpgrade::STATUS_ACTIVE),
+            ], 'amount');
+        }
+
         DB::transaction(function () use ($owner, $affiliates, $planRows, $frequency, &$updated, &$unchanged, &$skipped): void {
             foreach ($affiliates as $affiliate) {
                 $resolution = self::resolvePlanRowForAffiliate($owner, $affiliate, $planRows);
@@ -209,7 +226,7 @@ final class CorporateAffiliatePlanSynchronizer
                     continue;
                 }
 
-                $attributes = self::attributesFor($owner, $planRow, $frequency);
+                $attributes = self::attributesFor($owner, $planRow, $frequency, $affiliate);
                 $changes = array_filter(
                     $attributes,
                     fn (mixed $value, string $key): bool => ! self::valuesMatch($affiliate->{$key}, $value),
@@ -260,8 +277,9 @@ final class CorporateAffiliatePlanSynchronizer
         AffiliationCorporate $owner,
         AfilliationCorporatePlan $planRow,
         string $frequency,
+        AffiliateCorporate $affiliate,
     ): array {
-        $fee = (float) $planRow->fee;
+        $fee = self::expectedFeeFor($affiliate, $planRow);
 
         return [
             'plan_id' => $planRow->plan_id,

@@ -10,6 +10,7 @@ use App\Models\AffiliationCorporate;
 use App\Models\AffiliationCorporateRenovationHistory;
 use App\Models\RenovationCorporate;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\AffiliationCorporates\CorporateAffiliateUpgradeManager;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -93,6 +94,7 @@ final class AcceptAffiliationCorporateRenovationsService
 
         $affiliates = $affiliation->corporateAffiliates()
             ->whereIn('status', PrepareAffiliationCorporateRenovations::AFFILIATE_STATUSES_FOR_RENEWAL)
+            ->withActiveUpgradesTotal()
             ->get();
 
         if ($manualOptions !== null) {
@@ -164,12 +166,14 @@ final class AcceptAffiliationCorporateRenovationsService
                 continue;
             }
 
+            $annualFee = $this->annualFeeWithUpgrades($affiliate, (float) $amounts['annual_fee']);
+
             $affiliate->update([
                 'plan_id' => $manualOptions->planId,
                 'coverage_id' => $amounts['coverage_id'],
-                'fee' => $amounts['annual_fee'],
-                'subtotal_anual' => $amounts['annual_fee'],
-                'subtotal_payment_frequency' => $amounts['period_amount'],
+                'fee' => $annualFee,
+                'subtotal_anual' => $annualFee,
+                'subtotal_payment_frequency' => $this->calculator->totalAmountForPaymentFrequency($annualFee, $manualOptions->paymentFrequency),
                 'payment_frequency' => $manualOptions->paymentFrequency,
                 'age' => $age,
             ]);
@@ -218,12 +222,14 @@ final class AcceptAffiliationCorporateRenovationsService
                 );
 
                 if ($amounts !== null) {
+                    $annualFee = $this->annualFeeWithUpgrades($affiliate, (float) $amounts['annual_fee']);
+
                     $affiliate->update([
                         'plan_id' => $planId,
                         'coverage_id' => $amounts['coverage_id'],
-                        'fee' => $amounts['annual_fee'],
-                        'subtotal_anual' => $amounts['annual_fee'],
-                        'subtotal_payment_frequency' => $amounts['period_amount'],
+                        'fee' => $annualFee,
+                        'subtotal_anual' => $annualFee,
+                        'subtotal_payment_frequency' => $this->calculator->totalAmountForPaymentFrequency($annualFee, $paymentFrequency),
                         'payment_frequency' => $paymentFrequency,
                         'age' => $age,
                     ]);
@@ -238,6 +244,14 @@ final class AcceptAffiliationCorporateRenovationsService
                 'age' => $age ?? $affiliate->age,
             ]);
         }
+    }
+
+    /**
+     * La tarifa renovada por edad conserva los upgrades activos del afiliado.
+     */
+    private function annualFeeWithUpgrades(AffiliateCorporate $affiliate, float $planAnnualFee): float
+    {
+        return round($planAnnualFee + CorporateAffiliateUpgradeManager::activeTotalFor($affiliate), 2);
     }
 
     private function recalculateAffiliationTotals(AffiliationCorporate $affiliation): void

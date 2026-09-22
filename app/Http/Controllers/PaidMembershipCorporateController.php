@@ -357,11 +357,15 @@ class PaidMembershipCorporateController extends Controller
 
                 if ($record->affiliation_corporate->payment_frequency == 'MENSUAL') {
 
-                    // Pregunto cual es el ultimo numero de factura
-                    $lastInvoiceNumberCollection = Collection::latest()->first();
-
                     $mensual = 11;
                     for ($i = 0; $i < $mensual; $i++) {
+                        /** Cada cuota mensual parte de la anterior de esta afiliación, igual que el flujo trimestral. */
+                        $prox_date = Collection::select('id', 'include_date', 'next_payment_date')->where('affiliation_code', $record->affiliation_corporate->code)->orderBy('id', 'desc')->first();
+                        $prox_date = $prox_date === null ? $record->affiliation_corporate->activated_at : $prox_date->next_payment_date;
+
+                        // Pregunto cual es el ultimo numero de aviso de cobro
+                        $lastInvoiceNumberCollection = (string) (Collection::query()->latest('id')->value('collection_invoice_number') ?? '');
+
                         $collections = new Collection;
                         $collections->sale_id = $sales->id;
                         $collections->include_date = $record->affiliation_corporate->activated_at;
@@ -370,7 +374,7 @@ class PaidMembershipCorporateController extends Controller
                         $collections->plan_id = $record->affiliation_corporate->plan_id;
                         $collections->coverage_id = $record->affiliation_corporate->coverage_id ?? null;
                         $collections->agent_id = $record->affiliation_corporate->agent_id;
-                        $collections->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumber->invoice_number);
+                        $collections->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumberCollection);
                         $collections->quote_number = AffiliationQuoteNumber::forCorporate($record->affiliation_corporate);
                         $collections->affiliation_code = $record->affiliation_corporate->code;
                         $collections->affiliate_full_name = $record->affiliation_corporate->name_corporate;
@@ -393,19 +397,19 @@ class PaidMembershipCorporateController extends Controller
                         $collections->payment_frequency = $record->affiliation_corporate->payment_frequency;
                         $collections->reference = isset($reference_payment) ? $reference_payment : null;
                         $collections->created_by = Auth::user()->name;
-                        $collections->next_payment_date = $record->prox_payment_date;
+                        $collections->next_payment_date = self::parseDateForStorage((string) $prox_date)->addMonthNoOverflow()->format('d/m/Y');
 
                         // ... -> Agregado para filtrar por fecha de vencimiento (proxima fecha de pago)
                         $collections->filter_next_payment_date = self::parseDateForStorage((string) $collections->next_payment_date)->format('Y-m-d');
 
-                        $collections->expiration_date = date($collections->next_payment_date, strtotime('+30 days')); // Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
+                        $collections->expiration_date = self::parseDateForStorage((string) $collections->next_payment_date)->addDays(30)->format('d/m/Y');
                         $collections->created_by = Auth::user()->name;
                         $collections->save();
 
                         /**Ejecutamos el Job para crea el aviso de cobro */
                         $array_data = [
                             'invoice_number' => $collections->collection_invoice_number,
-                            'emission_date' => $record->prox_payment_date,
+                            'emission_date' => $collections->next_payment_date,
                             'full_name_ti' => $sales->affiliate_full_name,
                             'ci_rif_ti' => $record->affiliation_corporate->rif,
                             'address_ti' => $record->affiliation_corporate->address,

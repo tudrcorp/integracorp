@@ -36,6 +36,9 @@ class ListAffiliationCorporates extends ListRecords
         $this->tableFilters['code_agency'] = [
             'value' => null,
         ];
+        $this->tableFilters['status'] = [
+            'value' => 'ACTIVA',
+        ];
 
         $this->applyAffiliationCorporateTableFilters();
     }

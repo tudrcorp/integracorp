@@ -23,7 +23,7 @@ final class CompanyAssociateRegistrar
     /**
      * Indica si ya existe un registro con la misma cédula en la fecha indicada (día calendario).
      */
-    public static function hasIdentityCardRegisteredOnDate(string $identityCard, ?CarbonInterface $date = null): bool
+    public static function hasIdentityCardRegisteredOnDate(string $identityCard, ?CarbonInterface $date = null, int|string|null $exceptAssociateId = null): bool
     {
         $normalized = self::normalizeIdentityCard($identityCard);
 
@@ -35,6 +35,10 @@ final class CompanyAssociateRegistrar
 
         return CompanyAssociate::query()
             ->whereDate('registered_at', $day)
+            ->when(
+                filled($exceptAssociateId),
+                fn ($query) => $query->whereKeyNot($exceptAssociateId),
+            )
             ->get(['identity_card'])
             ->contains(
                 fn (CompanyAssociate $associate): bool => self::normalizeIdentityCard($associate->identity_card) === $normalized

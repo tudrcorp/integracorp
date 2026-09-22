@@ -6,6 +6,7 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers
 
 use App\Http\Controllers\AffiliateCorporateController;
 use App\Models\AffiliateCorporate;
+use App\Models\AffiliateCorporateUpgrade;
 use App\Models\AffiliationCorporate;
 use App\Models\AfilliationCorporatePlan;
 use App\Models\AgeRange;
@@ -15,6 +16,7 @@ use App\Models\Plan;
 use App\Support\AffiliateVaucherIlsRemainingDays;
 use App\Support\AffiliationCorporates\CorporateAffiliatePlanSynchronizer;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
+use App\Support\AffiliationCorporates\CorporateAffiliateUpgradeManager;
 use App\Support\AffiliationCorporates\CorporateAffiliateVoucherIlsUpdater;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
@@ -29,9 +31,11 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -272,6 +276,9 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->preload(),
                                 TextInput::make('fee')
                                     ->label('Tarifa anual')
+                                    ->helperText(fn (?AffiliateCorporate $record): ?string => $record !== null && CorporateAffiliateUpgradeManager::activeTotalFor($record) > 0
+                                        ? 'Incluye '.self::money(CorporateAffiliateUpgradeManager::activeTotalFor($record)).' de upgrades. Para quitarlos use «Quitar upgrade».'
+                                        : null)
                                     ->live(onBlur: true)
                                     ->required()
                                     ->numeric()
@@ -307,7 +314,9 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     'coverage',
                     'businessLine:id,definition',
                     'businessUnit:id,definition',
+                    'activeUpgrades',
                 ])
+                ->withActiveUpgradesTotal()
                 ->orderBy('last_name')
                 ->orderBy('first_name'))
             ->emptyStateHeading('Sin afiliados corporativos')
@@ -444,6 +453,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->numeric(decimalPlaces: 2)
                     ->suffix(' US$')
                     ->icon(Heroicon::CurrencyDollar)
+                    ->description(fn (AffiliateCorporate $record): ?string => self::upgradesBreakdown($record))
+                    ->tooltip(fn (AffiliateCorporate $record): ?string => self::upgradesTooltip($record))
                     ->sortable(),
                 ColumnGroup::make('Voucher ILS', [
                     TextColumn::make('vaucherIls')
@@ -695,14 +706,57 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->modalSubmitActionLabel('Sincronizar')
                         ->action(function (AffiliateCorporate $record): void {
                             $this->runAffiliateSync([$record]);
-                        }),
+                        })
+                        ->visible(fn (): bool => self::userIsBusinessAdmin()),
+                    Action::make('add_upgrade')
+                        ->label('Agregar upgrade')
+                        ->icon(Heroicon::Sparkles)
+                        ->color('success')
+                        ->modalWidth(Width::ThreeExtraLarge)
+                        ->modalIcon(Heroicon::Sparkles)
+                        ->modalHeading(fn (AffiliateCorporate $record): string => 'Agregar upgrade a '.CorporateAffiliatePlanSynchronizer::labelFor($record))
+                        ->modalDescription(fn (AffiliateCorporate $record): string => 'Tarifa anual actual: '.self::money((float) $record->fee)
+                            .'. Cada monto se suma a la tarifa anual del afiliado, a los totales de la afiliación y a los avisos de cobro pendientes.')
+                        ->modalSubmitActionLabel('Agregar upgrade')
+                        ->form([
+                            self::upgradeItemsRepeater(),
+                        ])
+                        ->action(function (AffiliateCorporate $record, array $data): void {
+                            $this->runAddUpgrades([$record], $data);
+                        })
+                        ->visible(fn (): bool => self::userCanManageUpgrades()),
+                    Action::make('remove_upgrades')
+                        ->label('Quitar upgrade')
+                        ->icon(Heroicon::MinusCircle)
+                        ->color('danger')
+                        ->modalWidth(Width::TwoExtraLarge)
+                        ->modalIcon(Heroicon::MinusCircle)
+                        ->modalHeading(fn (AffiliateCorporate $record): string => 'Quitar upgrade a '.CorporateAffiliatePlanSynchronizer::labelFor($record))
+                        ->modalDescription('El monto de cada upgrade seleccionado se descuenta de la tarifa anual del afiliado, de los totales de la afiliación y de los avisos de cobro pendientes. El upgrade queda inactivo en el historial.')
+                        ->modalSubmitActionLabel('Quitar seleccionados')
+                        ->form(fn (AffiliateCorporate $record): array => [
+                            CheckboxList::make('upgrade_ids')
+                                ->label('Upgrades activos')
+                                ->options(self::activeUpgradeOptions($record))
+                                ->required()
+                                ->validationMessages([
+                                    'required' => 'Seleccione al menos un upgrade.',
+                                ])
+                                ->bulkToggleable(),
+                        ])
+                        ->action(function (array $data): void {
+                            $this->runRemoveUpgrades(array_map('intval', (array) ($data['upgrade_ids'] ?? [])));
+                        })
+                        ->visible(fn (AffiliateCorporate $record): bool => self::userCanManageUpgrades()
+                            && CorporateAffiliateUpgradeManager::activeTotalFor($record) > 0),
                     EditAction::make()
                         ->label('Editar')
                         ->color('warning')
                         ->icon(Heroicon::PencilSquare)
                         ->modalWidth(Width::SevenExtraLarge)
                         ->modalHeading('Editar afiliado')
-                        ->modalDescription('Actualice los datos del afiliado. No se ocultan campos: revise cada sección.'),
+                        ->modalDescription('Actualice los datos del afiliado. No se ocultan campos: revise cada sección.')
+                        ->visible(fn (): bool => self::userIsBusinessAdmin()),
                     Action::make('upload_info_ils')
                         ->label('Voucher ILS')
                         ->color('info')
@@ -778,7 +832,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 return true;
                             }
 
-                            return false;
+                            return ! self::userIsBusinessAdmin();
                         }),
                     Action::make('changet_status')
                         ->label('Dar de baja')
@@ -803,8 +857,9 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->body($th->getMessage())
                                     ->send();
                             }
-                        }),
-                ])->hidden(fn ($record) => $record->status == 'INACTIVO' || $record->status == 'EXCLUIDO' || Auth::user()->is_business_admin != 1),
+                        })
+                        ->visible(fn (): bool => self::userIsBusinessAdmin()),
+                ])->hidden(fn ($record) => $record->status == 'INACTIVO' || $record->status == 'EXCLUIDO'),
 
             ])
             ->toolbarActions([
@@ -894,6 +949,59 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->action(function (Collection $records): void {
                             $this->runAffiliateSync($records);
                         }),
+                    BulkAction::make('add_upgrade_bulk')
+                        ->label('Agregar upgrade')
+                        ->icon(Heroicon::Sparkles)
+                        ->color('success')
+                        ->modalWidth(Width::ThreeExtraLarge)
+                        ->modalIcon(Heroicon::Sparkles)
+                        ->modalHeading('Agregar upgrade a los afiliados seleccionados')
+                        ->modalDescription(fn (Collection $records): string => 'Se agregarán los mismos upgrades a '.$records->count().' '.($records->count() === 1 ? 'afiliado' : 'afiliados')
+                            .'. Cada monto se suma a la tarifa anual de cada afiliado, a los totales de la afiliación y a los avisos de cobro pendientes. Se omiten los afiliados dados de baja y los que ya tienen ese upgrade.')
+                        ->modalSubmitActionLabel('Agregar upgrade')
+                        ->form([
+                            self::upgradeItemsRepeater(),
+                        ])
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records, array $data): void {
+                            $this->runAddUpgrades($records, $data);
+                        })
+                        ->visible(fn (): bool => self::userCanManageUpgrades()),
+                    BulkAction::make('remove_upgrade_bulk')
+                        ->label('Quitar upgrade')
+                        ->icon(Heroicon::MinusCircle)
+                        ->color('danger')
+                        ->modalWidth(Width::TwoExtraLarge)
+                        ->modalIcon(Heroicon::MinusCircle)
+                        ->modalHeading('Quitar upgrade a los afiliados seleccionados')
+                        ->modalDescription('Se da de baja el upgrade elegido en cada afiliado seleccionado que lo tenga activo. Su monto se descuenta de la tarifa anual del afiliado, de los totales de la afiliación y de los avisos de cobro pendientes.')
+                        ->modalSubmitActionLabel('Quitar seleccionados')
+                        ->form(function (Collection $records): array {
+                            $options = self::activeUpgradeNameOptions($this->getOwnerRecord(), $records);
+
+                            return [
+                                CheckboxList::make('names')
+                                    ->label('Upgrades activos entre los seleccionados')
+                                    ->options($options)
+                                    ->required()
+                                    ->validationMessages([
+                                        'required' => 'Seleccione al menos un upgrade.',
+                                    ])
+                                    ->helperText($options === [] ? 'Ninguno de los afiliados seleccionados tiene upgrades activos.' : null)
+                                    ->bulkToggleable(),
+                            ];
+                        })
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records, array $data): void {
+                            $ids = CorporateAffiliateUpgradeManager::activeUpgradeIdsForNames(
+                                $this->getOwnerRecord(),
+                                array_map('intval', $records->modelKeys()),
+                                array_map('strval', (array) ($data['names'] ?? [])),
+                            );
+
+                            $this->runRemoveUpgrades($ids);
+                        })
+                        ->visible(fn (): bool => self::userCanManageUpgrades()),
                     BulkAction::make('reassign_plan')
                         ->label('Reasignar plan')
                         ->color('info')
@@ -963,7 +1071,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     $record->update([
                                         'plan_id' => $data['plan_id'],
                                         'coverage_id' => $plans->coverage_id,
-                                        'fee' => $plans->fee,
+                                        'fee' => CorporateAffiliatePlanSynchronizer::expectedFeeFor($record, $plans),
                                     ]);
                                     TelemedicinePatientPlanBridge::syncFromAffiliateCorporate($record);
                                     $reassigned++;
@@ -997,6 +1105,239 @@ class CorporateAffiliatesRelationManager extends RelationManager
                 ]),
             ])
             ->poll('5s');
+    }
+
+    private static function userIsBusinessAdmin(): bool
+    {
+        return (int) (Auth::user()?->is_business_admin ?? 0) === 1;
+    }
+
+    /**
+     * SUPERADMIN siempre; el resto de analistas de Negocios solo con el permiso asignado.
+     */
+    private static function userCanManageUpgrades(): bool
+    {
+        return BusinessFilamentActionAccess::userCan(
+            BusinessFilamentActionPermissionRegistry::MANAGE_CORPORATE_AFFILIATE_UPGRADES,
+        );
+    }
+
+    private static function upgradeItemsRepeater(): Repeater
+    {
+        return Repeater::make('upgrades')
+            ->label('Upgrades')
+            ->schema([
+                TextInput::make('name')
+                    ->label('Nombre del upgrade')
+                    ->placeholder('Ej.: ODONTOLOGÍA AMPLIADA')
+                    ->helperText('Escríbalo o elija uno del catálogo. Si no existe, se agrega al catálogo al guardar.')
+                    ->datalist(fn (): array => array_keys(CorporateAffiliateUpgradeManager::catalogPrices()))
+                    ->required()
+                    ->maxLength(CorporateAffiliateUpgradeManager::MAX_NAME_LENGTH)
+                    ->distinct()
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function (Set $set, Get $get, ?string $state): void {
+                        $price = CorporateAffiliateUpgradeManager::catalogPriceFor($state);
+
+                        if ($price !== null && blank($get('amount'))) {
+                            $set('amount', number_format($price, 2, '.', ''));
+                        }
+                    })
+                    ->validationMessages([
+                        'required' => 'Indique el nombre del upgrade.',
+                        'distinct' => 'Este upgrade está repetido.',
+                    ])
+                    ->columnSpan(2),
+                TextInput::make('amount')
+                    ->label('Monto anual')
+                    ->numeric()
+                    ->inputMode('decimal')
+                    ->step(0.01)
+                    ->minValue(0.01)
+                    ->maxValue(CorporateAffiliateUpgradeManager::MAX_AMOUNT)
+                    ->prefix('US$')
+                    ->required()
+                    ->validationMessages([
+                        'required' => 'Indique el monto.',
+                        'min' => 'El monto debe ser mayor a 0.',
+                        'max' => 'El monto es demasiado alto.',
+                    ]),
+            ])
+            ->columns(3)
+            ->defaultItems(1)
+            ->minItems(1)
+            ->maxItems(CorporateAffiliateUpgradeManager::MAX_ITEMS)
+            ->reorderable(false)
+            ->addActionLabel('Agregar otro upgrade')
+            ->columnSpanFull();
+    }
+
+    /**
+     * @param  iterable<int, AffiliateCorporate>  $affiliates
+     * @param  array<string, mixed>  $data
+     */
+    private function runAddUpgrades(iterable $affiliates, array $data): void
+    {
+        $owner = $this->getOwnerRecord();
+
+        try {
+            $result = CorporateAffiliateUpgradeManager::add($owner, $affiliates, array_values((array) ($data['upgrades'] ?? [])));
+        } catch (\InvalidArgumentException $exception) {
+            Notification::make()->warning()->title('Revise los upgrades')->body($exception->getMessage())->send();
+
+            return;
+        } catch (\Throwable $throwable) {
+            Log::error('NEGOCIOS-AFILIACIONES-CORPORATIVAS: Error al agregar upgrades.', [
+                'affiliation_corporate_id' => $owner->getKey(),
+                'error' => $throwable->getMessage(),
+            ]);
+
+            Notification::make()
+                ->danger()
+                ->title('No se pudo agregar el upgrade')
+                ->body($throwable instanceof \RuntimeException ? $throwable->getMessage() : 'No se aplicó ningún cambio. Intente de nuevo o contacte a soporte.')
+                ->send();
+
+            return;
+        }
+
+        $body = [];
+
+        if ($result['upgrades_created'] > 0) {
+            $body[] = $result['upgrades_created'].' '.($result['upgrades_created'] === 1 ? 'upgrade agregado' : 'upgrades agregados')
+                .' a '.$result['affiliates_updated'].' '.($result['affiliates_updated'] === 1 ? 'afiliado' : 'afiliados').'.';
+        }
+
+        $body = [...$body, ...self::ownerImpactLines($result)];
+
+        foreach ($result['skipped'] as $skipped) {
+            $body[] = $skipped['name'].(isset($skipped['upgrade']) ? ' ('.$skipped['upgrade'].')' : '').': '
+                .CorporateAffiliateUpgradeManager::skipReasonLabel($skipped['reason']).'.';
+        }
+
+        $notification = Notification::make()
+            ->title($result['upgrades_created'] > 0 ? 'Upgrade agregado' : 'No se agregó ningún upgrade')
+            ->body(implode(' ', $body));
+
+        $result['upgrades_created'] === 0
+            ? $notification->warning()
+            : ($result['skipped'] === [] ? $notification->success() : $notification->warning());
+
+        $notification->send();
+    }
+
+    /**
+     * @param  list<int>  $upgradeIds
+     */
+    private function runRemoveUpgrades(array $upgradeIds): void
+    {
+        $owner = $this->getOwnerRecord();
+
+        try {
+            $result = CorporateAffiliateUpgradeManager::deactivate($owner, $upgradeIds);
+        } catch (\InvalidArgumentException $exception) {
+            Notification::make()->warning()->title('Sin upgrades que quitar')->body($exception->getMessage())->send();
+
+            return;
+        } catch (\Throwable $throwable) {
+            Log::error('NEGOCIOS-AFILIACIONES-CORPORATIVAS: Error al quitar upgrades.', [
+                'affiliation_corporate_id' => $owner->getKey(),
+                'error' => $throwable->getMessage(),
+            ]);
+
+            Notification::make()
+                ->danger()
+                ->title('No se pudo quitar el upgrade')
+                ->body($throwable instanceof \RuntimeException ? $throwable->getMessage() : 'No se aplicó ningún cambio. Intente de nuevo o contacte a soporte.')
+                ->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->success()
+            ->title('Upgrade quitado')
+            ->body(implode(' ', [
+                $result['upgrades_removed'].' '.($result['upgrades_removed'] === 1 ? 'upgrade dado de baja' : 'upgrades dados de baja')
+                    .' en '.$result['affiliates_updated'].' '.($result['affiliates_updated'] === 1 ? 'afiliado' : 'afiliados').'.',
+                ...self::ownerImpactLines($result),
+            ]))
+            ->send();
+    }
+
+    /**
+     * @param  array{annual_delta: float, collections_adjusted: int}  $result
+     * @return list<string>
+     */
+    private static function ownerImpactLines(array $result): array
+    {
+        $lines = [];
+
+        if (abs($result['annual_delta']) >= 0.01) {
+            $lines[] = 'Tarifa anual de la afiliación '.($result['annual_delta'] > 0 ? '+' : '−').self::money(abs($result['annual_delta'])).'.';
+        }
+
+        if ($result['collections_adjusted'] > 0) {
+            $lines[] = $result['collections_adjusted'].' '.($result['collections_adjusted'] === 1 ? 'aviso de cobro pendiente ajustado' : 'avisos de cobro pendientes ajustados')
+                .'; los PDF se regeneran en segundo plano.';
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function activeUpgradeOptions(AffiliateCorporate $record): array
+    {
+        return $record->activeUpgrades()
+            ->get()
+            ->mapWithKeys(fn (AffiliateCorporateUpgrade $upgrade): array => [
+                (int) $upgrade->getKey() => $upgrade->name.' · '.self::money((float) $upgrade->amount)
+                    .' · cargado por '.($upgrade->created_by ?: 'sistema')
+                    .($upgrade->created_at !== null ? ' el '.$upgrade->created_at->format('d/m/Y') : ''),
+            ])
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, AffiliateCorporate>  $records
+     * @return array<string, string>
+     */
+    private static function activeUpgradeNameOptions(AffiliationCorporate $owner, Collection $records): array
+    {
+        return collect(CorporateAffiliateUpgradeManager::activeNamesAmong($owner, array_map('intval', $records->modelKeys())))
+            ->mapWithKeys(fn (int $count, string $name): array => [
+                $name => $name.' ('.$count.' '.($count === 1 ? 'afiliado' : 'afiliados').')',
+            ])
+            ->all();
+    }
+
+    private static function upgradesBreakdown(AffiliateCorporate $record): ?string
+    {
+        $upgrades = CorporateAffiliateUpgradeManager::activeTotalFor($record);
+
+        if ($upgrades <= 0) {
+            return null;
+        }
+
+        return 'Plan '.self::money(max(0.0, (float) $record->fee - $upgrades)).' + upgrades '.self::money($upgrades);
+    }
+
+    private static function upgradesTooltip(AffiliateCorporate $record): ?string
+    {
+        if (! $record->relationLoaded('activeUpgrades') || $record->activeUpgrades->isEmpty()) {
+            return null;
+        }
+
+        return $record->activeUpgrades
+            ->map(fn (AffiliateCorporateUpgrade $upgrade): string => $upgrade->name.': '.self::money((float) $upgrade->amount))
+            ->implode(' · ');
+    }
+
+    private static function money(float $amount): string
+    {
+        return number_format($amount, 2, ',', '.').' US$';
     }
 
     private function affiliateHasVoucherIls(AffiliateCorporate $record): bool
@@ -1074,7 +1415,10 @@ class CorporateAffiliatesRelationManager extends RelationManager
         return 'Se asignará el plan «'.$plan.'»'
             .($rango !== '' ? ' (rango '.$rango.' años)' : '')
             .', cobertura '.$cobertura
-            .' y tarifa anual '.number_format((float) $planRow->fee, 2, ',', '.').' US$'
+            .' y tarifa anual '.self::money(CorporateAffiliatePlanSynchronizer::expectedFeeFor($record, $planRow))
+            .(CorporateAffiliateUpgradeManager::activeTotalFor($record) > 0
+                ? ' (plan '.self::money((float) $planRow->fee).' + upgrades '.self::money(CorporateAffiliateUpgradeManager::activeTotalFor($record)).')'
+                : '')
             .', junto con la unidad de negocio y la línea de servicio de la afiliación. El estatus del afiliado no cambia.';
     }
 
@@ -1117,7 +1461,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                 $pending[] = 'cobertura';
             }
 
-            if (abs((float) $record->fee - (float) $planRow->fee) >= 0.01) {
+            if (abs((float) $record->fee - CorporateAffiliatePlanSynchronizer::expectedFeeFor($record, $planRow)) >= 0.01) {
                 $pending[] = 'tarifa';
             }
         }

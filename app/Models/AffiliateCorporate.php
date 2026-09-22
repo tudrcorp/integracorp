@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AffiliateCorporate extends Model
 {
@@ -72,5 +74,36 @@ class AffiliateCorporate extends Model
     public function businessLine(): BelongsTo
     {
         return $this->belongsTo(BusinessLine::class);
+    }
+
+    /**
+     * @return HasMany<AffiliateCorporateUpgrade, $this>
+     */
+    public function upgrades(): HasMany
+    {
+        return $this->hasMany(AffiliateCorporateUpgrade::class);
+    }
+
+    /**
+     * @return HasMany<AffiliateCorporateUpgrade, $this>
+     */
+    public function activeUpgrades(): HasMany
+    {
+        return $this->upgrades()
+            ->where('status', AffiliateCorporateUpgrade::STATUS_ACTIVE)
+            ->orderBy('id');
+    }
+
+    /**
+     * Agrega `active_upgrades_total`: suma de upgrades activos, sin N+1 en tablas.
+     *
+     * @param  Builder<AffiliateCorporate>  $query
+     */
+    public function scopeWithActiveUpgradesTotal(Builder $query): void
+    {
+        $query->withSum([
+            'upgrades as active_upgrades_total' => fn (Builder $upgrades): Builder => $upgrades
+                ->where('status', AffiliateCorporateUpgrade::STATUS_ACTIVE),
+        ], 'amount');
     }
 }
