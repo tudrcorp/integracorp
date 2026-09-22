@@ -11,6 +11,7 @@ use App\Filament\Business\Resources\ProspectAgents\Widgets\StatusChangesByMonth;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\TopRegisterProspect;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\TopRegisterProspectForState;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\TypeProspect;
+use App\Jobs\NotifyProspectAgentTaskAssigneeJob;
 use App\Models\ProspectAgent;
 use App\Models\ProspectAgentTask;
 use App\Models\RrhhColaborador;
@@ -23,13 +24,24 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\HtmlString;
+use Throwable;
 
 class ListProspectAgents extends ListRecords
 {
     protected static string $resource = ProspectAgentResource::class;
 
-    protected static ?string $title = 'Prospectos TuDrGroup';
+    protected static ?string $title = 'Captación de Tu Doctor Group';
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return new HtmlString(
+            '<p class="max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-300">Prospectos de la red comercial. Registre altas, asigne tareas y dé seguimiento desde esta vista.</p>'
+        );
+    }
 
     /**
      * @return int|array<string, int|null>
@@ -81,29 +93,48 @@ class ListProspectAgents extends ListRecords
                             Hidden::make('created_by')->default(Auth::user()->name),
                         ])->columns(1),
                 ])
-                ->action(function ($data, $record) {
-
+                ->action(function (array $data): void {
                     try {
-
-                        ProspectAgentTask::create([
+                        $task = ProspectAgentTask::create([
                             'prospect_agent_id' => $data['prospect_agent_id'],
                             'rrhh_colaborador_id' => $data['rrhh_colaborador_id'],
                             'task' => $data['task'],
-                            'created_by' => $data['created_by'],
+                            'created_by' => $data['created_by'] ?? Auth::user()?->name,
+                        ]);
+                    } catch (Throwable $exception) {
+                        Log::error('ListProspectAgents: no se pudo crear la tarea', [
+                            'error' => $exception->getMessage(),
                         ]);
 
                         Notification::make()
-                            ->title('Notas agregadas correctamente')
-                            ->success()
-                            ->send();
-
-                    } catch (\Exception $e) {
-                        dd($e);
-                        Notification::make()
-                            ->title('Error al agregar notas')
+                            ->title('No se pudo asignar la tarea')
+                            ->body('Inténtelo de nuevo. Si el problema continúa, avise a sistemas.')
                             ->danger()
                             ->send();
+
+                        return;
                     }
+
+                    $queued = true;
+
+                    try {
+                        NotifyProspectAgentTaskAssigneeJob::dispatch((int) $task->getKey());
+                    } catch (Throwable $exception) {
+                        $queued = false;
+
+                        Log::error('ListProspectAgents: la tarea se guardó pero no se encoló el aviso', [
+                            'task_id' => $task->getKey(),
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+
+                    Notification::make()
+                        ->title('Tarea asignada')
+                        ->body($queued
+                            ? 'El colaborador recibirá el aviso por WhatsApp, correo y la campana del panel.'
+                            : 'La tarea quedó guardada, pero no se pudo encolar el aviso. Avise a sistemas.')
+                        ->success()
+                        ->send();
                 }),
         ];
     }

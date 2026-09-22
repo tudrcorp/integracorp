@@ -63,6 +63,39 @@ it('infolist ProspectAgent usa pestañas con estilos del sistema', function (): 
         ->toContain("RepeatableEntry::make('prospectAgentContacts')");
 });
 
+it('el modal de notas del prospecto deja la tarea opcional y la nota en texto largo', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/ProspectAgents/Pages/ViewProspectAgent.php');
+    $migration = file_get_contents(dirname(__DIR__, 2).'/database/migrations/2026_09_22_115155_change_observation_to_longtext_on_prospect_agent_observations_table.php');
+    $infolist = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/ProspectAgents/Schemas/ProspectAgentInfolist.php');
+
+    expect($source)
+        ->toContain("Select::make('prospect_agent_task_id')")
+        ->toContain('->nullable()')
+        ->toContain('prospectTaskOptions()')
+        ->toContain("->where('prospect_agent_id', \$this->record->getKey())")
+        ->toContain("Textarea::make('observations')")
+        ->toContain('->rows(8)')
+        ->not->toContain("where('status', 'PENDIENTE')");
+
+    expect($migration)
+        ->toContain("\$table->longText('observation')->nullable(false)->change()");
+
+    expect($infolist)
+        ->toContain("TextEntry::make('observation')")
+        ->toContain('->wrap()')
+        ->not->toContain('->limit(120)');
+});
+
+it('el listado de prospectos titula la captación de Tu Doctor Group', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/ProspectAgents/Pages/ListProspectAgents.php');
+
+    expect($source)
+        ->toContain("protected static ?string \$title = 'Captación de Tu Doctor Group';")
+        ->toContain('function getSubheading()')
+        ->toContain('Prospectos de la red comercial.')
+        ->not->toContain('Prospectos TuDrGroup');
+});
+
 it('pagina ver prospecto usa botones con estilo iOS', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/ProspectAgents/Pages/ViewProspectAgent.php');
 

@@ -388,6 +388,15 @@ class AffiliationsTable
                     ->searchable()
                     ->preload()
                     ->native(false),
+                SelectFilter::make('status')
+                    ->label('Estatus')
+                    ->options([
+                        'ACTIVA' => 'ACTIVA',
+                        'PRE-APROBADA' => 'PRE-APROBADA',
+                        'PENDIENTE' => 'PENDIENTE',
+                        'EXCLUIDO' => 'EXCLUIDO',
+                    ])
+                    ->native(false),
                 Filter::make('without_agent')
                     ->label('Sin agente')
                     ->toggle()

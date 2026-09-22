@@ -40,7 +40,8 @@ it('define el widget de afiliaciones individuales por agencia con periodo y sin 
         ->toContain("Action::make('filterAgents')")
         ->toContain("->label('Detalles')")
         ->toContain("Action::make('viewAffiliationsWithoutAgent')")
-        ->toContain("->label('Ver afiliaciones sin agente')")
+        ->toContain("->label('Venta Directa')")
+        ->not->toContain('->tooltip(')
         ->toContain('syncPeriodToAgentTable')
         ->toContain('affiliations-period-changed');
 });
@@ -91,6 +92,7 @@ it('filtra agentes y afiliaciones sin agente desde el ranking', function (): voi
     expect($listPage)
         ->toContain('#[On(\'affiliations-filter-by-agent\')]')
         ->toContain('filterAffiliationsByAgent')
+        ->toContain("'value' => 'ACTIVA'")
         ->toContain('#[On(\'affiliations-filter-by-agency-without-agent\')]')
         ->toContain('filterAffiliationsByAgencyWithoutAgent')
         ->toContain('affiliations-main-table');
@@ -109,13 +111,50 @@ it('filtra agentes y afiliaciones sin agente desde el ranking', function (): voi
         ->toContain('Affiliation::query()')
         ->toContain("DB::raw('COUNT(*) as total_affiliations')")
         ->toContain('applyPeriod')
+        ->toContain('constrainActive')
+        ->toContain("->where('status', 'ACTIVA')")
         ->toContain('public static function constrainWithoutAgent');
 
     expect($affiliationsTable)
         ->toContain("SelectFilter::make('agent_id')")
+        ->toContain("SelectFilter::make('status')")
         ->toContain("SelectFilter::make('code_agency')")
         ->toContain("Filter::make('without_agent')")
         ->toContain("'id' => 'affiliations-main-table'");
+});
+
+it('abre el ranking en todos los periodos y deja ver las acciones con scroll', function (): void {
+    $widget = new class
+    {
+        use \App\Filament\Business\Resources\Affiliations\Widgets\Concerns\InteractsWithAffiliationsRankingTable;
+
+        protected function rankingTableVariant(): string
+        {
+            return 'agency';
+        }
+    };
+
+    $widget->bootInteractsWithAffiliationsRankingTable();
+
+    expect($widget->filterYear)->toBe('0')
+        ->and($widget->filterMonth)->toBe('0')
+        ->and($widget->rankingPeriodLabel())->toBe('Todos')
+        ->and($widget->normalizedFilterYear())->toBe('0')
+        ->and($widget->normalizedFilterMonth())->toBe('0')
+        ->and($widget->getRankingYearFilterOptions()['0'])->toBe('Año (Todos)');
+
+    $widget->filterYear = '2026';
+    expect($widget->rankingPeriodLabel())->toBe('2026');
+
+    $agency = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Widgets/AffiliationsByAgencyTable.php');
+    $agent = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Widgets/AffiliationsByAgentTable.php');
+    $css = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
+
+    expect($agency)->toContain('dispatchPeriodToAgentTable')
+        ->and($agent)->toContain('rankingPeriodLabel()')
+        ->and($css)->toContain('overflow-x-auto')
+        ->and($css)->toContain('min-w-0 max-w-full')
+        ->and($css)->toContain('width: max(100%, max-content);');
 });
 
 it('registra los widgets de ranking de afiliaciones individuales en Livewire', function (): void {
