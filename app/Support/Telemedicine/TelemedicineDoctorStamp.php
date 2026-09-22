@@ -4,10 +4,18 @@ declare(strict_types=1);
 
 namespace App\Support\Telemedicine;
 
+use App\Support\PdfOpaqueImage;
 use Illuminate\Support\Facades\Storage;
 
 final class TelemedicineDoctorStamp
 {
+    /**
+     * Sello del médico listo para DomPDF: siempre opaco, aplanado sobre blanco.
+     *
+     * Un PNG con transparencia puede salir con fondo negro si DomPDF falla al
+     * separar su canal alfa (ver {@see PdfOpaqueImage}). El sello va sobre una
+     * zona blanca, así que el aplanado no cambia cómo se ve.
+     */
     public static function dataUri(mixed $signature): string
     {
         $value = trim((string) ($signature ?? ''));
@@ -16,7 +24,7 @@ final class TelemedicineDoctorStamp
         }
 
         if (str_starts_with($value, 'data:image')) {
-            return $value;
+            return PdfOpaqueImage::fromDataUri($value);
         }
 
         $relative = ltrim($value, '/');
@@ -39,7 +47,7 @@ final class TelemedicineDoctorStamp
         foreach ($candidates as $absolutePath) {
             $uri = self::fileToDataUri($absolutePath);
             if ($uri !== '') {
-                return $uri;
+                return PdfOpaqueImage::fromDataUri($uri);
             }
         }
 

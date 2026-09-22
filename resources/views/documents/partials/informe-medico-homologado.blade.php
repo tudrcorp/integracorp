@@ -11,13 +11,10 @@
     $isLong = $variant === 'largo';
     $isFollowUp = $variant === 'seguimiento';
     $brandCyan = '#00ADEF';
-    $logoDataUri = $logoDataUri ?? '';
-    if ($logoDataUri === '') {
-        $logoPath = public_path('image/logoNewPdf.png');
-        if (is_file($logoPath)) {
-            $logoDataUri = 'data:image/png;base64,'.base64_encode((string) file_get_contents($logoPath));
-        }
-    }
+    /** Logo opaco: un PNG con transparencia sale con fondo negro si DomPDF falla al separar su canal alfa. */
+    $logoDataUri = trim((string) ($logoDataUri ?? '')) !== ''
+        ? \App\Support\PdfOpaqueImage::fromDataUri((string) $logoDataUri)
+        : \App\Support\PdfOpaqueImage::fromPath(public_path('image/logoNewPdf.png'));
     $val = static fn (mixed $value): string => filled($value) ? (string) $value : '—';
 
     $medications = is_array($data['medicationsArr'] ?? null) ? $data['medicationsArr'] : [];

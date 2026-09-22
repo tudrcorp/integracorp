@@ -9,13 +9,10 @@
     $data = is_array($data ?? null) ? $data : [];
     $docType = $docType ?? 'laboratorios';
     $brandCyan = '#00ADEF';
-    $logoDataUri = $logoDataUri ?? '';
-    if ($logoDataUri === '') {
-        $logoPath = public_path('image/logoNewPdf.png');
-        if (is_file($logoPath)) {
-            $logoDataUri = 'data:image/png;base64,'.base64_encode((string) file_get_contents($logoPath));
-        }
-    }
+    /** Logo opaco: un PNG con transparencia sale con fondo negro si DomPDF falla al separar su canal alfa. */
+    $logoDataUri = trim((string) ($logoDataUri ?? '')) !== ''
+        ? \App\Support\PdfOpaqueImage::fromDataUri((string) $logoDataUri)
+        : \App\Support\PdfOpaqueImage::fromPath(public_path('image/logoNewPdf.png'));
     $val = static fn (mixed $value): string => filled($value) ? (string) $value : '—';
 
     $title = match ($docType) {
@@ -157,8 +154,6 @@
             background: #f9fafb;
             border: 1px dashed #d1d5db;
         }
-        .coverage-yes { color: #166534; font-weight: bold; }
-        .coverage-no { color: #b91c1c; font-weight: bold; }
         .keep-together { page-break-inside: avoid; }
         .doc-content { padding: 0 0 28mm 0; }
         .footer-fixed {
@@ -264,19 +259,13 @@
             <table class="items">
                 <thead>
                     <tr>
-                        <th style="width:78%">{{ $columnTitle }}</th>
-                        <th style="width:22%">Cobertura</th>
+                        <th style="width:100%">{{ $columnTitle }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($items as $item)
-                        @php
-                            $coverage = (string) ($item['coverage'] ?? 'No cubierto');
-                            $coverageClass = $coverage === 'Cubierto' ? 'coverage-yes' : 'coverage-no';
-                        @endphp
                         <tr>
                             <td>{{ $val($item['label'] ?? '') }}</td>
-                            <td class="{{ $coverageClass }}">{{ $val($coverage) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

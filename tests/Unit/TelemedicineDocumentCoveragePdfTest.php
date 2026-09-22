@@ -136,7 +136,7 @@ it('create, edit, regeneración y plantillas publican cobertura y sello', functi
         ->and($recipe)->not->toContain('Cobertura')
         ->and($recipe)->not->toContain('telemedicine-doctor-stamp')
         ->and($orden)->toContain('TelemedicineDocumentOrderItems::forDocument')
-        ->and($orden)->toContain('Cobertura')
+        ->and($orden)->not->toContain('Cobertura')
         ->and($orden)->toContain('doctor-signature')
         ->and($orden)->not->toContain('telemedicine-doctor-stamp')
         ->and($stamp)->toContain('Sello digital')
