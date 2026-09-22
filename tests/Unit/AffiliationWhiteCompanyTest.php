@@ -67,7 +67,12 @@ it('reconoce empresa aliada por white_company_id si la relación no está cargad
     expect(AffiliationWhiteCompany::belongsToAlliedCompany($record))->toBeTrue();
 });
 
-it('no consulta agencia cuando ya se cargó que no hay empresa aliada', function (): void {
+it('prefiere el vinculo congelado de la afiliacion aunque el usuario de agencia no tenga empresa aliada', function (): void {
+    /**
+     * El usuario de la agencia emisora solo declara la empresa aliada en la
+     * agencia MASTER: que una agencia hija no lo tenga no significa que la
+     * afiliación no sea de la aliada (ver WhiteCompanyOwnership).
+     */
     $record = (new Affiliation)->forceFill([
         'code' => 'TDEC-IND-000394',
         'code_agency' => 'TDG-1',
@@ -75,7 +80,7 @@ it('no consulta agencia cuando ya se cargó que no hay empresa aliada', function
     ]);
     $record->setRelation('whiteCompanyUser', null);
 
-    expect(AffiliationWhiteCompany::belongsToAlliedCompany($record))->toBeFalse();
+    expect(AffiliationWhiteCompany::belongsToAlliedCompany($record))->toBeTrue();
 });
 
 it('expone filtro y resaltado de empresas aliadas en tablas de afiliaciones', function (): void {

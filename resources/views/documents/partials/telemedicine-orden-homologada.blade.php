@@ -19,9 +19,9 @@
     $val = static fn (mixed $value): string => filled($value) ? (string) $value : '—';
 
     $title = match ($docType) {
-        'imagenologia' => 'Orden de estudios / imagenología',
-        'especialista' => 'Referencia a especialistas',
-        default => 'Orden de laboratorios',
+        'imagenologia' => 'Imagenología',
+        'especialista' => 'Especialistas',
+        default => 'Laboratorios',
     };
     $sectionTitle = match ($docType) {
         'imagenologia' => 'Estudios indicados',
@@ -42,7 +42,7 @@
     $stampDataUri = \App\Support\Telemedicine\TelemedicineDoctorStamp::dataUri($data['signature'] ?? null);
     $stampSize = \App\Support\Telemedicine\TelemedicineDoctorStamp::displaySize($stampDataUri);
     $doctorName = trim((string) ($data['doctor_name'] ?? ''));
-    $coverageGroup = trim((string) ($data['coverage_group'] ?? ''));
+    $stageLabel = \App\Support\Telemedicine\TelemedicineConsultationStageLabel::forDocumentData($data);
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -119,7 +119,7 @@
             background: #f0fdff;
         }
         .grid { width: 100%; table-layout: fixed; border-collapse: collapse; }
-        .grid td { width: 50%; padding: 2px 8px 3px 0; vertical-align: top; word-wrap: break-word; }
+        .grid td { padding: 2px 8px 3px 0; vertical-align: top; word-wrap: break-word; }
         .label {
             font-size: 6.25pt;
             color: #9ca3af;
@@ -228,8 +228,8 @@
                 <p class="doc-sub">Clave del servicio: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
                 <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
                 <span class="badge">Telemedicina</span>
-                @if($coverageGroup !== '')
-                    <span class="badge">{{ $coverageGroup }}</span>
+                @if($stageLabel !== '')
+                    <span class="badge">{{ $stageLabel }}</span>
                 @endif
             </td>
         </tr>
@@ -241,23 +241,17 @@
     <div class="section-title">Datos del paciente</div>
     <table class="grid">
         <tr>
-            <td>
+            <td style="width:50%">
                 <div class="label">Paciente</div>
                 <div class="value">{{ $val($data['name_patiente'] ?? ($data['name_patient'] ?? null)) }}</div>
             </td>
-            <td>
+            <td style="width:30%">
                 <div class="label">Cédula</div>
                 <div class="value-muted">{{ $val($data['ci_patiente'] ?? ($data['ci_patient'] ?? null)) }}</div>
             </td>
-        </tr>
-        <tr>
-            <td>
+            <td style="width:20%">
                 <div class="label">Edad</div>
                 <div class="value-muted">{{ $val($data['age_patiente'] ?? ($data['age_patient'] ?? null)) }} años</div>
-            </td>
-            <td>
-                <div class="label">Tipo de servicio</div>
-                <div class="value-muted">Telemedicina</div>
             </td>
         </tr>
     </table>

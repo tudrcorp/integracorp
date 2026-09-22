@@ -67,8 +67,10 @@ final class TelemedicineInformeLargoDataBuilder
         ];
     }
 
-    public static function pdfDocumentName(array $data, string $typeDocument = 'informe-largo'): string
-    {
+    public static function pdfDocumentName(
+        array $data,
+        string $typeDocument = TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
+    ): string {
         return $data['ci_patient'].'-'.$data['code_reference'].'-'.$typeDocument.'.pdf';
     }
 }

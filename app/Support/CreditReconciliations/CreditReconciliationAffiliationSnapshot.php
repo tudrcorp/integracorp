@@ -6,9 +6,9 @@ namespace App\Support\CreditReconciliations;
 
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
-use App\Models\User;
 use App\Models\WhiteCompany;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
+use App\Support\WhiteCompanies\WhiteCompanyOwnership;
 
 final class CreditReconciliationAffiliationSnapshot
 {
@@ -16,23 +16,13 @@ final class CreditReconciliationAffiliationSnapshot
 
     public const KIND_CORPORATE = 'corporate';
 
+    /**
+     * La empresa aliada del código, incluida la heredada de la agencia MASTER
+     * de la que cuelga (ver WhiteCompanyOwnership).
+     */
     public static function whiteCompanyForAgencyCode(?string $agencyCode): ?WhiteCompany
     {
-        if (blank($agencyCode)) {
-            return null;
-        }
-
-        $whiteCompanyId = User::query()
-            ->where('code_agency', $agencyCode)
-            ->whereNotNull('white_company_id')
-            ->orderBy('id')
-            ->value('white_company_id');
-
-        if ($whiteCompanyId === null) {
-            return null;
-        }
-
-        return WhiteCompany::query()->find($whiteCompanyId);
+        return WhiteCompanyOwnership::forAgencyCode($agencyCode);
     }
 
     /**

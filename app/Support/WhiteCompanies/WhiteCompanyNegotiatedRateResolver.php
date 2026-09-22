@@ -11,7 +11,6 @@ use App\Models\Fee;
 use App\Models\WhiteCompany;
 use App\Models\WhiteCompanyFee;
 use App\Support\AffiliationAffiliateFeeCalculator;
-use App\Support\CreditReconciliations\CreditReconciliationAffiliationSnapshot;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -27,9 +26,7 @@ final class WhiteCompanyNegotiatedRateResolver
      */
     public function settlementForAffiliation(Affiliation $affiliation): ?WhiteCompanyPaymentSettlement
     {
-        $company = CreditReconciliationAffiliationSnapshot::whiteCompanyForAgencyCode(
-            is_string($affiliation->code_agency) ? $affiliation->code_agency : null
-        );
+        $company = WhiteCompanyOwnership::forAffiliation($affiliation);
 
         if (! $company instanceof WhiteCompany) {
             return null;
@@ -245,16 +242,27 @@ final class WhiteCompanyNegotiatedRateResolver
 
     private function snapshot(Affiliation $affiliation, WhiteCompanyPaymentSettlement $settlement): void
     {
-        $needsSnapshot = $affiliation->white_company_sale_price === null
+        $needsAmounts = $affiliation->white_company_sale_price === null
             || $affiliation->white_company_neta === null;
 
-        if (! $needsSnapshot) {
+        /**
+         * El vínculo con la aliada se congela en la afiliación aunque los
+         * montos ya estuvieran: así el reporte de ventas y la conciliación no
+         * dependen de que la jerarquía comercial siga igual mañana.
+         */
+        $needsCompany = (int) ($affiliation->white_company_id ?? 0) !== $settlement->whiteCompanyId;
+
+        if (! $needsAmounts && ! $needsCompany) {
             return;
         }
 
-        $affiliation->white_company_sale_price = $settlement->annualSalePrice;
-        $affiliation->white_company_neta = $settlement->annualNeta;
-        $affiliation->white_company_fee_id = $settlement->feeId;
+        if ($needsAmounts) {
+            $affiliation->white_company_sale_price = $settlement->annualSalePrice;
+            $affiliation->white_company_neta = $settlement->annualNeta;
+            $affiliation->white_company_fee_id = $settlement->feeId;
+        }
+
+        $affiliation->white_company_id = $settlement->whiteCompanyId;
         $affiliation->save();
     }
 }

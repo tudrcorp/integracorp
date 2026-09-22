@@ -10,6 +10,26 @@ final class TelemedicineCoverageDocumentSplit
 
     public const GROUP_UNCOVERED = 'no-cubiertos';
 
+    public const COVERED_SUFFIX = 'Cubierto';
+
+    /**
+     * Lo que el plan no cubre se refiere al seguro del paciente.
+     */
+    public const REFERRED_SUFFIX = 'Referido-Seguro';
+
+    /**
+     * Nombre con el que cada documento aparece en el archivo, sin tildes: el
+     * PDF viaja por WhatsApp y por URL.
+     *
+     * @var array<string, string>
+     */
+    private const FILE_LABELS = [
+        'medicamentos' => 'Medicamentos',
+        'laboratorios' => 'Laboratorios',
+        'imagenologia' => 'Imagenologia',
+        'especialista' => 'Especialista',
+    ];
+
     public static function label(string $group): string
     {
         return $group === self::GROUP_COVERED ? 'Cubiertos' : 'No cubiertos';
@@ -17,16 +37,27 @@ final class TelemedicineCoverageDocumentSplit
 
     public static function fileKey(string $baseType, string $group): string
     {
-        return $baseType.'-'.$group;
+        $label = self::FILE_LABELS[$baseType] ?? $baseType;
+
+        return $label.'-'.($group === self::GROUP_COVERED ? self::COVERED_SUFFIX : self::REFERRED_SUFFIX);
     }
 
     /**
+     * Incluye los nombres en desuso: al regenerar hay que borrar también los
+     * archivos emitidos con los esquemas anteriores, o el caso terminaría con
+     * varios documentos del mismo tipo en el hub. En producción el sistema de
+     * archivos distingue mayúsculas, así que las grafías viejas en minúscula
+     * son archivos distintos de los nuevos y hay que nombrarlas aparte.
+     *
      * @return list<string>
      */
     public static function familyFileKeys(string $baseType): array
     {
         return [
             $baseType,
+            $baseType.'-'.self::GROUP_COVERED,
+            $baseType.'-'.self::GROUP_UNCOVERED,
+            $baseType.'-referido-seguro',
             self::fileKey($baseType, self::GROUP_COVERED),
             self::fileKey($baseType, self::GROUP_UNCOVERED),
         ];

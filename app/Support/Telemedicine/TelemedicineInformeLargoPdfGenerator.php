@@ -13,8 +13,10 @@ final class TelemedicineInformeLargoPdfGenerator
     /**
      * @param  array<string, mixed>  $data
      */
-    public static function generateAndSave(array $data, string $typeDocument = 'informe-largo'): string
-    {
+    public static function generateAndSave(
+        array $data,
+        string $typeDocument = TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
+    ): string {
         $fileName = TelemedicineInformeLargoDataBuilder::pdfDocumentName($data, $typeDocument);
         $relativePath = self::STORAGE_DIRECTORY.'/'.$fileName;
 

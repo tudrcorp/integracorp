@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Models\Affiliation;
-use App\Models\User;
+use App\Models\AffiliationCorporate;
 use App\Models\WhiteCompany;
-use App\Support\CreditReconciliations\CreditReconciliationAffiliationSnapshot;
+use App\Support\WhiteCompanies\WhiteCompanyOwnership;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 final class AffiliationWhiteCompany
 {
@@ -19,26 +20,31 @@ final class AffiliationWhiteCompany
         'fi-affiliation-white-company',
     ];
 
+    /** @var array<string, bool> */
+    private static array $columnCache = [];
+
     public static function belongsToWhiteCompany(Model $record): bool
     {
+        if ($record instanceof Affiliation || $record instanceof AffiliationCorporate) {
+            return WhiteCompanyOwnership::isAllied($record);
+        }
+
+        if (filled($record->getAttribute('white_company_id'))) {
+            return true;
+        }
+
         if ($record->relationLoaded('whiteCompanyUser')) {
             return filled($record->getRelation('whiteCompanyUser')?->white_company_id);
         }
 
-        return filled($record->getAttribute('white_company_id'));
+        return WhiteCompanyOwnership::companyIdForAgencyCode(
+            is_string($record->getAttribute('code_agency')) ? $record->getAttribute('code_agency') : null
+        ) !== null;
     }
 
-    public static function belongsToAlliedCompany(Affiliation $affiliation): bool
+    public static function belongsToAlliedCompany(Affiliation|AffiliationCorporate $affiliation): bool
     {
-        if ($affiliation->relationLoaded('whiteCompanyUser')) {
-            return filled($affiliation->whiteCompanyUser?->white_company_id);
-        }
-
-        if (filled($affiliation->getAttribute('white_company_id'))) {
-            return true;
-        }
-
-        return CreditReconciliationAffiliationSnapshot::whiteCompanyForAgencyCode($affiliation->code_agency) !== null;
+        return WhiteCompanyOwnership::isAllied($affiliation);
     }
 
     /**
@@ -61,14 +67,29 @@ final class AffiliationWhiteCompany
         }
 
         $table = $query->getModel()->getTable();
+        $codes = WhiteCompanyOwnership::agencyCodesFor(is_numeric($whiteCompanyId) ? (int) $whiteCompanyId : null);
+        $hasDirectColumn = self::hasWhiteCompanyColumn($table);
 
-        return $query->whereIn(
-            $table.'.code_agency',
-            User::query()
-                ->select('code_agency')
-                ->where('white_company_id', $whiteCompanyId)
-                ->whereNotNull('code_agency')
-        );
+        if (! $hasDirectColumn && $codes === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $builder) use ($table, $whiteCompanyId, $codes, $hasDirectColumn): void {
+            if ($hasDirectColumn) {
+                $builder->where($table.'.white_company_id', $whiteCompanyId);
+            }
+
+            if ($codes !== []) {
+                $hasDirectColumn
+                    ? $builder->orWhereIn($table.'.code_agency', $codes)
+                    : $builder->whereIn($table.'.code_agency', $codes);
+            }
+        });
+    }
+
+    private static function hasWhiteCompanyColumn(string $table): bool
+    {
+        return self::$columnCache[$table] ??= Schema::hasColumn($table, 'white_company_id');
     }
 
     public static function tableFilter(): SelectFilter

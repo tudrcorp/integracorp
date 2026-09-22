@@ -1228,6 +1228,7 @@ class TelemedicineConsultationPatientForm
                                             Select::make('labs')
                                                 ->label('Laboratorios (CUBIERTOS)')
                                                 ->options(TelemedicineListLaboratory::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
+                                                ->visible(fn (): bool => TelemedicineConsultationClinicalUi::channelIsContemplated(ClinicalServiceChannel::Laboratory))
                                                 ->multiple()
                                                 ->rules([
                                                     fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Laboratory),
@@ -1259,6 +1260,7 @@ class TelemedicineConsultationPatientForm
                                                 ->label('Estudios de Imágenes (CUBIERTOS)')
                                                 ->live()
                                                 ->options(TelemedicineListStudy::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
+                                                ->visible(fn (): bool => TelemedicineConsultationClinicalUi::channelIsContemplated(ClinicalServiceChannel::Imaging))
                                                 ->multiple()
                                                 ->rules([
                                                     fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Imaging),
@@ -1304,6 +1306,7 @@ class TelemedicineConsultationPatientForm
                                     Select::make('consult_specialist')
                                         ->label('Interconsultas Especialistas para Patologías Agudas')
                                         ->options(TelemedicineListSpecialist::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
+                                        ->visible(fn (): bool => TelemedicineConsultationClinicalUi::specialistIsContemplated())
                                         ->multiple()
                                         ->rules([
                                             fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Specialist),

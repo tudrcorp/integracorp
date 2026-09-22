@@ -6,7 +6,6 @@ namespace App\Support\Telemedicine;
 
 use App\Jobs\GeneratePdfEspecialista;
 use App\Jobs\GeneratePdfImagenologia;
-use App\Jobs\GeneratePdfInformeMedicoCorto;
 use App\Jobs\GeneratePdfInformeMedicoLargo;
 use App\Jobs\GeneratePdfInformeSeguimiento;
 use App\Jobs\GeneratePdfLaboratorio;
@@ -27,9 +26,21 @@ use Throwable;
 
 class TelemedicineCaseDocumentRegenerationService
 {
+    /**
+     * El informe corto salió de circulación: ya no se emite al guardar la
+     * consulta ni se ofrece para regenerar. La constante y su job siguen vivos
+     * porque 462 consultas históricas lo tienen registrado y deben poder
+     * listarse y descargarse.
+     *
+     * @deprecated
+     */
     public const DOCUMENT_INFORME_CORTO = 'informe-corto';
 
-    public const DOCUMENT_INFORME_LARGO = 'informe-largo';
+    /**
+     * Antes «informe largo». Es el único informe de la consulta inicial y se
+     * emite también en los servicios AMD.
+     */
+    public const DOCUMENT_INFORME_MEDICO = 'informe-medico';
 
     public const DOCUMENT_INFORME_SEGUIMIENTO = 'informe-seguimiento';
 
@@ -55,11 +66,7 @@ class TelemedicineCaseDocumentRegenerationService
         $options = [];
 
         if ($this->canGenerateInforme($consultation)) {
-            $options[self::DOCUMENT_INFORME_CORTO] = 'Informe médico (consulta inicial)';
-
-            if (! $this->isAmdConsultation($consultation)) {
-                $options[self::DOCUMENT_INFORME_LARGO] = 'Informe médico largo (consulta inicial)';
-            }
+            $options[self::DOCUMENT_INFORME_MEDICO] = 'Informe médico (consulta inicial)';
         }
 
         if ($this->latestFollowUpConsultation($case) !== null) {
@@ -135,15 +142,10 @@ class TelemedicineCaseDocumentRegenerationService
 
         foreach ($selected as $documentKey) {
             $job = match ($documentKey) {
-                self::DOCUMENT_INFORME_CORTO => new GeneratePdfInformeMedicoCorto(
-                    $this->buildInformePayload($consultation, $doctor, $patient, $case, includeVitals: false),
-                    $user,
-                    self::DOCUMENT_INFORME_CORTO,
-                ),
-                self::DOCUMENT_INFORME_LARGO => new GeneratePdfInformeMedicoLargo(
+                self::DOCUMENT_INFORME_MEDICO => new GeneratePdfInformeMedicoLargo(
                     $this->buildInformePayload($consultation, $doctor, $patient, $case, includeVitals: true),
                     $user,
-                    self::DOCUMENT_INFORME_LARGO,
+                    self::DOCUMENT_INFORME_MEDICO,
                 ),
                 self::DOCUMENT_INFORME_SEGUIMIENTO => $this->makeFollowUpReportJob($case, $doctor, $patient, $user),
                 self::DOCUMENT_MEDICAMENTOS => new GeneratePdfMedicamentos(
@@ -293,11 +295,6 @@ class TelemedicineCaseDocumentRegenerationService
             || filled($consultation->actual_phatology)
             || filled($consultation->diagnostic_impression)
             || filled($consultation->code_reference);
-    }
-
-    protected function isAmdConsultation(TelemedicineConsultationPatient $consultation): bool
-    {
-        return (int) ($consultation->telemedicine_service_list_id ?? 0) === TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID;
     }
 
     /**
@@ -655,6 +652,7 @@ class TelemedicineCaseDocumentRegenerationService
 
         return [
             'fecha' => now()->format('d/m/Y'),
+            'consultation_status' => $consultation->status,
             'code_reference' => $consultation->code_reference,
             'name_patiente' => $this->documentPatientName($consultation, $patient, $case),
             'ci_patiente' => $consultation->nro_identificacion ?? $patient->nro_identificacion,
@@ -684,6 +682,7 @@ class TelemedicineCaseDocumentRegenerationService
 
         return [
             'fecha' => now()->format('d/m/Y'),
+            'consultation_status' => $consultation->status,
             'code_reference' => $consultation->code_reference,
             'name_patiente' => $this->documentPatientName($consultation, $patient, $case),
             'ci_patiente' => $consultation->nro_identificacion ?? $patient->nro_identificacion,
@@ -714,6 +713,7 @@ class TelemedicineCaseDocumentRegenerationService
 
         return [
             'fecha' => now()->format('d/m/Y'),
+            'consultation_status' => $consultation->status,
             'code_reference' => $consultation->code_reference,
             'name_patiente' => $this->documentPatientName($consultation, $patient, $case),
             'ci_patiente' => $consultation->nro_identificacion ?? $patient->nro_identificacion,
