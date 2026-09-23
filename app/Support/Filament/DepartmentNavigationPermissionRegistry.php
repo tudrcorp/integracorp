@@ -173,6 +173,8 @@ final class DepartmentNavigationPermissionRegistry
      * @var list<class-string>
      */
     private const SUPER_ADMIN_ONLY = [
+        /** Su acceso real es la lista blanca de config/live-presence.php; no debe aparecer como permiso asignable. */
+        \App\Filament\Business\Pages\LiveActivityMonitor::class,
         UserResource::class,
         SystemAuditTraceResource::class,
         AccountManagerResource::class,

@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
+        /** Monitor en vivo: escribe después de responder, no suma tiempo a la petición. */
+        $middleware->append(\App\Http\Middleware\TrackLivePresence::class);
+
         $middleware->alias([
             'storefront.auth' => \App\Http\Middleware\EnsureStorefrontAuthenticated::class,
             'storefront.guest' => \App\Http\Middleware\RedirectIfStorefrontAuthenticated::class,
