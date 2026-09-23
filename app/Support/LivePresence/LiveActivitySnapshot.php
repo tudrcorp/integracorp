@@ -6,7 +6,6 @@ namespace App\Support\LivePresence;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Queue;
 use Throwable;
 
 /**
@@ -27,8 +26,13 @@ final class LiveActivitySnapshot
      */
     public static function sessions(): array
     {
+        /**
+         * Se listan todas las sesiones que aún no vencen (5 min), no solo las de
+         * los últimos 90 s: quien lleva un rato sin señal se muestra como
+         * «inactivo» en vez de desaparecer y reaparecer de la tabla.
+         */
         try {
-            $rows = LivePresenceStore::repository()->online(max(30, (int) config('live-presence.online_window', 90)));
+            $rows = LivePresenceStore::repository()->online(max(60, (int) config('live-presence.session_ttl', 300)));
         } catch (Throwable) {
             return [];
         }
@@ -50,9 +54,25 @@ final class LiveActivitySnapshot
         $rtts = [];
         $active = 0;
 
+        $idle = 0;
+        $withoutHeartbeat = 0;
+
         foreach ($sessions as $session) {
-            $users[$session['user_id']] = true;
+            /** Los filtros por panel cuentan todas las filas de la tabla, inactivas incluidas. */
             $panels[$session['panel']] = ($panels[$session['panel']] ?? 0) + 1;
+
+            /** Los indicadores cuentan solo a quien está conectado ahora; los inactivos se informan aparte. */
+            if ($session['idle']) {
+                $idle++;
+
+                continue;
+            }
+
+            if (! $session['has_heartbeat']) {
+                $withoutHeartbeat++;
+            }
+
+            $users[$session['user_id']] = true;
 
             if ($session['is_pwa']) {
                 $pwa++;
@@ -72,7 +92,10 @@ final class LiveActivitySnapshot
 
         return [
             'users' => count($users),
-            'sessions' => count($sessions),
+            'sessions' => count($sessions) - $idle,
+            'idle_sessions' => $idle,
+            'listed' => count($sessions),
+            'without_heartbeat' => $withoutHeartbeat,
             'active_tabs' => $active,
             'pwa' => $pwa,
             'panels' => $panels,
@@ -139,6 +162,7 @@ final class LiveActivitySnapshot
             'environment' => (string) config('app.env'),
             'queue_driver' => (string) config('queue.default'),
             'queues' => [],
+            'queue_report' => null,
             'queue_pending' => null,
             'failed_jobs' => null,
             'db_ms' => null,
@@ -147,25 +171,19 @@ final class LiveActivitySnapshot
             'disk_free_pct' => null,
         ];
 
-        $pending = 0;
+        $queues = QueueHealth::measure();
+        $health['queue_report'] = $queues;
+        $health['queue_pending'] = $queues['pending_total'];
+        $health['failed_jobs'] = $queues['failed']['total'];
 
-        foreach (['default', 'system', 'renovations'] as $queue) {
-            try {
-                $size = (int) Queue::size($queue);
-                $health['queues'][$queue] = $size;
-                $pending += $size;
-            } catch (Throwable) {
-                $health['queues'][$queue] = null;
-            }
+        foreach ($queues['queues'] as $queue) {
+            $health['queues'][$queue['name']] = $queue['pending'];
         }
-
-        $health['queue_pending'] = $pending;
 
         try {
             $started = microtime(true);
             DB::select('select 1');
             $health['db_ms'] = round((microtime(true) - $started) * 1000, 1);
-            $health['failed_jobs'] = (int) DB::table((string) config('queue.failed.table', 'failed_jobs'))->count();
         } catch (Throwable) {
         }
 
@@ -248,6 +266,10 @@ final class LiveActivitySnapshot
             'last_seen' => $lastSeen,
             'last_seen_ago' => self::ago($now - $lastSeen),
             'idle_seconds' => max(0, $now - $lastSeen),
+            'idle' => ($now - $lastSeen) > max(30, (int) config('live-presence.online_window', 90)),
+            /** Latido reciente: con la pestaña oculta late cada 60 s, así que se da margen de 2,5 veces. */
+            'has_heartbeat' => isset($row['last_ping_at'])
+                && ($now - (int) $row['last_ping_at']) <= (int) (max(15, (int) config('live-presence.hidden_heartbeat_seconds', 60)) * 2.5),
             'session_duration' => self::duration(max(0, $lastSeen - $firstSeen)),
         ];
     }

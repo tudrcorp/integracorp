@@ -59,6 +59,17 @@ return [
      */
     'tv_token' => env('LIVE_MONITOR_TV_TOKEN'),
 
+    /**
+     * Colas que el monitor vigila, en el orden en que el worker debe atenderlas.
+     * Con el driver `database` las colas que no estén aquí se descubren solas.
+     * Una cola cuyo pendiente más viejo supera `stuck_after_minutes` se marca
+     * atascada: casi siempre, ningún worker la está escuchando.
+     */
+    'queues' => [
+        'names' => ['renovations', 'system', 'telemedicina', 'documents', 'certificates', 'renew', 'default'],
+        'stuck_after_minutes' => (int) env('LIVE_PRESENCE_QUEUE_STUCK_MINUTES', 30),
+    ],
+
     'security' => [
         /** IPs o rangos (CIDR) de confianza, separados por coma: nunca se marcan como amenaza. */
         'trusted_ips' => array_values(array_filter(array_map('trim', explode(',', (string) env('LIVE_SECURITY_TRUSTED_IPS', ''))))),

@@ -6,11 +6,13 @@ namespace App\Jobs;
 
 use App\Support\SecurityAudit;
 use App\Support\WhatsAppBrandImage;
+use App\Support\WhatsAppMessageSplitter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -50,59 +52,60 @@ class SendNotificacionWhatsApp implements ShouldQueue
      */
     public function handle(): void
     {
-        $curl = curl_init();
         $response = null;
         $httpCode = null;
         $error = null;
+        $image = $this->imageUrl ?? WhatsAppBrandImage::publicUrl();
+
+        /**
+         * UltraMsg limita el pie de una imagen a 1.024 caracteres: los mensajes
+         * largos se parten (pie + mensajes de texto). En un reintento no se
+         * reenvían las partes que ya salieron.
+         */
+        $parts = WhatsAppMessageSplitter::split((string) $this->body);
+        $steps = [
+            [config('parameters.CURLOPT_URL_IMAGE'), ['image' => $image, 'caption' => $parts['caption']]],
+            ...array_map(static fn (string $text): array => [config('parameters.CURLOPT_URL'), ['body' => $text]], $parts['rest']),
+        ];
+        $progressKey = $this->progressKey();
+        $alreadySent = $this->sentSteps($progressKey);
 
         try {
-            $params = [
-                'token' => config('parameters.TOKEN'),
-                'image' => $this->imageUrl ?? WhatsAppBrandImage::publicUrl(),
-                'to' => $this->phone,
-                'caption' => $this->body,
-            ];
+            foreach ($steps as $index => [$url, $fields]) {
+                if ($index < $alreadySent) {
+                    continue;
+                }
 
-            curl_setopt_array($curl, [
-                CURLOPT_URL => config('parameters.CURLOPT_URL_IMAGE'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => [
-                    'content-type: application/x-www-form-urlencoded',
-                ],
-            ]);
+                [$response, $httpCode, $error] = $this->post((string) $url, [
+                    'token' => config('parameters.TOKEN'),
+                    'to' => $this->phone,
+                    ...$fields,
+                ]);
 
-            $response = curl_exec($curl);
-            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            $error = curl_error($curl);
+                // Validamos errores de conexión o de la API (Códigos no exitosos)
+                if ($error || $httpCode >= 400) {
+                    throw new \Exception("CURL Error ({$httpCode}): ".($error ?: $response));
+                }
 
-            // Validamos errores de conexión o de la API (Códigos no exitosos)
-            if ($error || $httpCode >= 400) {
-                throw new \Exception("CURL Error ({$httpCode}): ".($error ?: $response));
-            }
+                // UltraMsg a veces responde HTTP 200 con {"error":[{"image":"File not exist"}]}
+                if (! \App\Support\MassNotificationWhatsAppSender::apiResponseSucceeded($response, (int) $httpCode)) {
+                    $decoded = is_string($response) ? json_decode($response, true) : null;
+                    $detail = is_array($decoded) && isset($decoded['error'])
+                        ? json_encode($decoded['error'], JSON_UNESCAPED_UNICODE)
+                        : (is_string($response) ? mb_substr($response, 0, 500) : 'respuesta inválida');
 
-            // UltraMsg a veces responde HTTP 200 con {"error":[{"image":"File not exist"}]}
-            if (! \App\Support\MassNotificationWhatsAppSender::apiResponseSucceeded($response, (int) $httpCode)) {
-                $decoded = is_string($response) ? json_decode($response, true) : null;
-                $detail = is_array($decoded) && isset($decoded['error'])
-                    ? json_encode($decoded['error'], JSON_UNESCAPED_UNICODE)
-                    : (is_string($response) ? mb_substr($response, 0, 500) : 'respuesta inválida');
+                    throw new \Exception('UltraMsg '.($index === 0 ? 'image' : 'text').' send failed: '.$detail);
+                }
 
-                throw new \Exception('UltraMsg image send failed: '.$detail);
+                $this->markSent($progressKey, $index + 1);
             }
 
             Log::info('WhatsApp enviado correctamente', [
                 'to' => $this->phone,
                 'status' => $httpCode,
                 'user_id' => $this->user_id,
-                'image' => $params['image'],
+                'image' => $image,
+                'messages' => count($steps),
                 'audit_context' => $this->auditContext,
                 'response' => is_string($response) ? mb_substr($response, 0, 500) : null,
             ]);
@@ -111,6 +114,7 @@ class SendNotificacionWhatsApp implements ShouldQueue
                 'where' => 'job.whatsapp.handle',
                 'to' => $this->phone,
                 'status_code' => $httpCode,
+                'messages' => count($steps),
                 'response' => is_string($response) ? mb_substr($response, 0, 1200) : null,
                 ...$this->auditContext,
             ]);
@@ -138,8 +142,74 @@ class SendNotificacionWhatsApp implements ShouldQueue
 
             // Forzamos el reintento del Job
             throw $e;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array{0: string|false|null, 1: int, 2: string}
+     */
+    protected function post(string $url, array $params): array
+    {
+        $curl = curl_init();
+
+        try {
+            curl_setopt_array($curl, [
+                CURLOPT_URL => $url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => http_build_query($params),
+                CURLOPT_HTTPHEADER => [
+                    'content-type: application/x-www-form-urlencoded',
+                ],
+            ]);
+
+            $response = curl_exec($curl);
+
+            return [$response, (int) curl_getinfo($curl, CURLINFO_HTTP_CODE), (string) curl_error($curl)];
         } finally {
             curl_close($curl);
+        }
+    }
+
+    /**
+     * Clave del progreso de un envío en partes, por intento del mismo trabajo.
+     */
+    private function progressKey(): ?string
+    {
+        $uuid = $this->job?->uuid();
+
+        return is_string($uuid) && $uuid !== '' ? 'whatsapp-send-progress:'.$uuid : null;
+    }
+
+    private function sentSteps(?string $progressKey): int
+    {
+        if ($progressKey === null) {
+            return 0;
+        }
+
+        try {
+            return (int) Cache::get($progressKey, 0);
+        } catch (Throwable) {
+            return 0;
+        }
+    }
+
+    private function markSent(?string $progressKey, int $steps): void
+    {
+        if ($progressKey === null) {
+            return;
+        }
+
+        try {
+            Cache::put($progressKey, $steps, 86400);
+        } catch (Throwable) {
         }
     }
 
