@@ -22,6 +22,7 @@ enum SystemNotificationKey: string
     case StorefrontQuotePaymentReceipt = 'storefront_quote_payment_receipt';
     case CorporatePaymentFrequencyChange = 'corporate_payment_frequency_change';
     case LiveSecurityAlert = 'live_security_alert';
+    case LiveSystemAlert = 'live_system_alert';
 
     public function label(): string
     {
@@ -42,6 +43,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt => 'Comprobante de pago PWA',
             self::CorporatePaymentFrequencyChange => 'Cambio de frecuencia de pago corporativa',
             self::LiveSecurityAlert => 'Alertas de seguridad',
+            self::LiveSystemAlert => 'Alertas de colas y errores',
         };
     }
 
@@ -64,6 +66,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt => 'Destinatarios de Administración (correo y WhatsApp) cuando un cliente carga el comprobante de una cotización desde la PWA.',
             self::CorporatePaymentFrequencyChange => 'Contactos de Administración (correo y WhatsApp) que reciben el aviso cuando Negocios cambia la frecuencia de pago de una afiliación corporativa, y cuando Administración revierte ese cambio. Además se avisa siempre a todos los usuarios activos del departamento de Administración.',
             self::LiveSecurityAlert => 'Destinatarios del aviso por WhatsApp y correo cuando el monitor en vivo detecta un ataque: fuerza bruta, relleno de credenciales, ataque distribuido a una cuenta, inundación de peticiones o cuenta bloqueada.',
+            self::LiveSystemAlert => 'Destinatarios del aviso por WhatsApp y correo cuando una cola se queda sin worker, se atasca o acumula trabajos colgados, cuando se dispara la cantidad de trabajos fallidos, o cuando aparece un error nuevo o vuelve uno ya resuelto.',
         };
     }
 
@@ -86,6 +89,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt => 'Comprobante de cotización PWA',
             self::CorporatePaymentFrequencyChange => 'Cambio de frecuencia de pago',
             self::LiveSecurityAlert => 'Alertas de seguridad en vivo',
+            self::LiveSystemAlert => 'Alertas de colas y errores',
         };
     }
 
@@ -108,6 +112,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt => 'Cuando el cliente adjunta el comprobante en la app, el sistema encola correo y WhatsApp a Administración con el número de cotización, el usuario que lo cargó y el canal PWA. El archivo viaja adjunto.',
             self::CorporatePaymentFrequencyChange => 'Cuando un analista cambia la frecuencia de pago de una afiliación corporativa, el sistema anula los avisos de cobro pendientes, genera los nuevos y avisa a Administración por WhatsApp, correo (con la lista de avisos cancelados y creados) y notificación del panel. El reverso se avisa igual.',
             self::LiveSecurityAlert => 'El monitor en vivo vigila logins fallidos, escáneres, bots y ráfagas de peticiones. Cuando detecta algo crítico avisa a estos contactos y a los usuarios del monitor, una vez por tipo de ataque cada 30 minutos.',
+            self::LiveSystemAlert => 'Cada minuto un vigilante revisa las colas, los trabajos fallidos y los errores del sistema. Si algo necesita atención avisa a estos contactos y a los usuarios del monitor, sin depender de la cola (funciona aunque los workers estén caídos), una vez por problema cada 30 minutos.',
         };
     }
 
@@ -213,6 +218,12 @@ enum SystemNotificationKey: string
                 '3. Umbral crítico superado',
                 '4. WhatsApp + correo con pausa',
             ],
+            self::LiveSystemAlert => [
+                '1. Vigilante cada minuto',
+                '2. Colas, fallidos y errores',
+                '3. Problema nuevo detectado',
+                '4. WhatsApp + correo sin pasar por la cola',
+            ],
         };
     }
 
@@ -235,6 +246,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt => 'Acción requerida para Administración:',
             self::CorporatePaymentFrequencyChange => 'Acción requerida para Administración:',
             self::LiveSecurityAlert => 'Acción requerida:',
+            self::LiveSystemAlert => 'Acción requerida:',
         };
     }
 
@@ -257,6 +269,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt => 'revise el comprobante adjunto, concilie el pago y dé seguimiento a la cotización. El teléfono configurado aquí también es el que usa el cliente en la PWA para escribirle a Administración.',
             self::CorporatePaymentFrequencyChange => 'revise el cambio en Administración → Cambios de frecuencia de pago y márquelo como validado. Si no está de acuerdo o hubo una falla, desde allí puede revertirlo: la afiliación y su cobranza vuelven exactamente al estado anterior.',
             self::LiveSecurityAlert => 'abra Negocios → Monitor en vivo para ver la IP, las cuentas atacadas y el detalle. Las cuentas con muchos fallos se bloquean solas por unos minutos; desde el monitor puede desbloquearlas o bloquear a un usuario.',
+            self::LiveSystemAlert => 'abra Negocios → Colas y errores: cada problema trae su diagnóstico, la línea de código donde ocurrió y la acción recomendada (reintentar, eliminar o corregir).',
         };
     }
 
@@ -279,6 +292,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt => 'heroicon-o-banknotes',
             self::CorporatePaymentFrequencyChange => 'heroicon-o-arrows-right-left',
             self::LiveSecurityAlert => 'heroicon-o-shield-exclamation',
+            self::LiveSystemAlert => 'heroicon-o-queue-list',
         };
     }
 
@@ -310,6 +324,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt => [],
             self::CorporatePaymentFrequencyChange => [],
             self::LiveSecurityAlert => [],
+            self::LiveSystemAlert => [],
         };
     }
 
@@ -353,6 +368,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt => [],
             self::CorporatePaymentFrequencyChange => [],
             self::LiveSecurityAlert => [],
+            self::LiveSystemAlert => [],
         };
     }
 
@@ -375,6 +391,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt => 'Aún no hay destinatarios de Administración. El cliente podrá cargar el comprobante, pero no se enviará el aviso ni habrá WhatsApp de contacto en la PWA.',
             self::CorporatePaymentFrequencyChange => 'Sin contactos del departamento configurados. Igual se avisará por correo, WhatsApp y panel a los usuarios activos de Administración.',
             self::LiveSecurityAlert => 'Sin contactos adicionales. Igual se avisará a los usuarios con acceso al monitor en vivo.',
+            self::LiveSystemAlert => 'Sin contactos adicionales. Igual se avisará a los usuarios con acceso al monitor en vivo.',
         };
     }
 
@@ -431,6 +448,9 @@ enum SystemNotificationKey: string
             self::LiveSecurityAlert => $empty
                 ? 'Sin contactos adicionales. Se avisará solo a los usuarios del monitor en vivo.'
                 : 'Estos contactos y los usuarios del monitor recibirán las alertas de seguridad críticas.',
+            self::LiveSystemAlert => $empty
+                ? 'Sin contactos adicionales. Se avisará solo a los usuarios del monitor en vivo.'
+                : 'Estos contactos y los usuarios del monitor recibirán las alertas de colas y errores.',
         };
     }
 
@@ -447,6 +467,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt,
             self::CorporatePaymentFrequencyChange,
             self::LiveSecurityAlert,
+            self::LiveSystemAlert,
         ], true);
     }
 
@@ -469,6 +490,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt => 'Si está inactiva, el cliente podrá cargar el comprobante en la app, pero no se enviará correo ni WhatsApp a Administración.',
             self::CorporatePaymentFrequencyChange => 'Si está inactiva, el cambio y su reverso se aplican y quedan registrados, y los usuarios de Administración reciben la notificación del panel, pero no se envía correo ni WhatsApp.',
             self::LiveSecurityAlert => 'Si está inactiva, el monitor sigue detectando y bloqueando temporalmente las cuentas atacadas, pero no se envía WhatsApp ni correo.',
+            self::LiveSystemAlert => 'Si está inactiva, el monitor sigue mostrando colas, fallidos y errores, pero no se envía WhatsApp ni correo.',
         };
     }
 
@@ -494,6 +516,7 @@ enum SystemNotificationKey: string
             self::StorefrontQuotePaymentReceipt,
             self::CorporatePaymentFrequencyChange,
             self::LiveSecurityAlert,
+            self::LiveSystemAlert,
         ];
     }
 }

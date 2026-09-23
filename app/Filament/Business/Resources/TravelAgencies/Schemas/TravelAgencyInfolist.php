@@ -82,6 +82,12 @@ class TravelAgencyInfolist
                                                             ->weight('semibold')
                                                             ->columnSpan(['default' => 1, 'xl' => 2])
                                                             ->placeholder('—'),
+                                                        TextEntry::make('id_agencia')
+                                                            ->label('ID agencia')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('id_de_agente')
+                                                            ->label('ID de agente')
+                                                            ->placeholder('—'),
                                                         TextEntry::make('numberIdentification')
                                                             ->label('Número de identificación')
                                                             ->prefix('J/V/E-')

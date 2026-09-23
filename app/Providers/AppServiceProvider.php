@@ -40,6 +40,7 @@ use App\Models\PlanGenerator;
 use App\Observers\ObservationCommercialStructureObserver;
 use App\Observers\PlanGeneratorObserver;
 use App\Support\LivePresence\LivePresenceRecorder;
+use App\Support\LivePresence\QueueActivityRecorder;
 use App\Support\LivePresence\SecurityAuthListener;
 use App\Support\UserSessionAuditTracker;
 use Filament\Actions\Imports\Events\ImportChunkProcessed;
@@ -58,6 +59,9 @@ use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\Validated;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -101,6 +105,12 @@ class AppServiceProvider extends ServiceProvider
             Event::listen(Validated::class, [SecurityAuthListener::class, 'onValidated']);
             Event::listen(Login::class, [SecurityAuthListener::class, 'onLogin']);
             Event::listen(Authenticated::class, [SecurityAuthListener::class, 'onAuthenticated']);
+
+            /** Colas: latido de los workers, rendimiento por cola y contexto de errores dentro de un trabajo. */
+            Event::listen(Looping::class, [QueueActivityRecorder::class, 'onLooping']);
+            Event::listen(JobProcessing::class, [QueueActivityRecorder::class, 'onProcessing']);
+            Event::listen(JobProcessed::class, [QueueActivityRecorder::class, 'onProcessed']);
+            Event::listen(JobFailed::class, [QueueActivityRecorder::class, 'onFailed']);
         }
 
         Event::listen(Login::class, [UserSessionAuditTracker::class, 'onLogin']);

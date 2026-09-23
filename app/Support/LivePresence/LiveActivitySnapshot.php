@@ -150,6 +150,17 @@ final class LiveActivitySnapshot
     }
 
     /**
+     * Tras reintentar o eliminar fallidos, el monitor debe verlo en el siguiente refresco.
+     */
+    public static function forgetSystemHealth(): void
+    {
+        try {
+            Cache::forget(self::HEALTH_CACHE_KEY);
+        } catch (Throwable) {
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function measureSystemHealth(): array
@@ -339,7 +350,8 @@ final class LiveActivitySnapshot
             $seconds < 5 => 'ahora',
             $seconds < 60 => 'hace '.$seconds.' s',
             $seconds < 3600 => 'hace '.intdiv($seconds, 60).' min',
-            default => 'hace '.intdiv($seconds, 3600).' h',
+            $seconds < 172800 => 'hace '.intdiv($seconds, 3600).' h',
+            default => 'hace '.intdiv($seconds, 86400).' días',
         };
     }
 

@@ -225,3 +225,27 @@ Schedule::command('live-presence:geoip-update')
     ->name('live-presence-geoip-update')
     ->withoutOverlapping(120)
     ->runInBackground();
+
+/**
+ * Vigilante de colas y errores del monitor en vivo: workers sin latido, colas
+ * sin nadie que las escuche, atascos, trabajos colgados, ráfagas de fallidos y
+ * errores nuevos. Corre en el scheduler, no en la cola, para avisar aunque los
+ * workers estén caídos. Los avisos van a «Alertas de colas y errores» del
+ * Centro de notificaciones.
+ */
+Schedule::command('live-presence:watch')
+    ->everyMinute()
+    ->name('live-presence-watch')
+    ->withoutOverlapping(5)
+    ->runInBackground()
+    ->when(static fn (): bool => (bool) config('live-presence.enabled', true));
+
+/**
+ * Limpieza diaria de trabajos fallidos más viejos que live-presence.queues.prune_failed_days
+ * (30 días por defecto; 0 la apaga). Mantiene la tabla liviana para el monitor.
+ */
+Schedule::command('queue:prune-failed', ['--hours' => max(1, (int) config('live-presence.queues.prune_failed_days', 30)) * 24])
+    ->dailyAt('3:15')
+    ->name('live-presence-prune-failed')
+    ->withoutOverlapping(30)
+    ->when(static fn (): bool => (int) config('live-presence.queues.prune_failed_days', 30) > 0);

@@ -30,7 +30,10 @@ final class SecurityMonitor
     public const SEVERITY_INFO = 'info';
 
     /** Métricas globales por minuto que se grafican en el monitor. */
-    public const METRICS = ['requests', 'anonymous', 'failed_logins', 'not_found', 'csrf', 'throttled', 'forbidden', 'server_errors', 'scanner', 'bot'];
+    public const METRICS = ['requests', 'anonymous', 'failed_logins', 'not_found', 'csrf', 'throttled', 'forbidden', 'server_errors', 'scanner', 'bot', 'blocked', 'exceptions'];
+
+    /** Respuestas que se cuentan por IP para explicar su puntaje en el monitor. */
+    public const IP_COUNTERS = ['not_found', 'csrf', 'throttled', 'forbidden'];
 
     private const PREFIX = 'lp:sec:';
 
@@ -66,16 +69,25 @@ final class SecurityMonitor
 
             if ($metric !== null) {
                 self::bump($store, $metric, $minute);
+
+                /** Un usuario con sesión que tropieza con un 404 o un 419 deja constancia de que la IP es legítima. */
+                if ($authenticated) {
+                    self::rememberLegitimateIp($store, $ip, null);
+                }
             }
 
             if ($trusted) {
                 return;
             }
 
+            if ($metric !== null && in_array($metric, self::IP_COUNTERS, true)) {
+                $store->increment(self::ipCounterKey($ip, $metric), self::DAY);
+            }
+
             $requestsThisMinute = $store->increment(self::PREFIX.'ip:'.$ip.':rpm:'.$minute, 120);
 
             if ($requestsThisMinute >= $thresholds['requests_per_ip_minute']) {
-                self::flagIp($store, $request, $ip, 'bot', 5);
+                self::flagIp($store, $request, $ip, 'inundación', 5, ['flood_peak' => $requestsThisMinute, 'hard_at' => time()]);
                 self::emit($store, 'flood:'.$ip, 120, [
                     'type' => 'flood',
                     'severity' => self::SEVERITY_CRITICAL,
@@ -90,7 +102,7 @@ final class SecurityMonitor
                 $store->scoreMember(self::PREFIX.'offenders', $ip, 0.2, self::DAY);
 
                 if ($notFound >= $thresholds['not_found_per_ip_minute']) {
-                    self::flagIp($store, $request, $ip, 'escáner', 3);
+                    self::flagIp($store, $request, $ip, 'escáner', 3, ['not_found_peak' => $notFound]);
                     self::emit($store, 'scan404:'.$ip, 600, [
                         'type' => 'scanner',
                         'severity' => self::SEVERITY_WARNING,
@@ -109,7 +121,7 @@ final class SecurityMonitor
 
             if ($scannerPath !== null) {
                 self::bump($store, 'scanner', $minute);
-                self::flagIp($store, $request, $ip, 'escáner', 5);
+                self::flagIp($store, $request, $ip, 'escáner', 5, ['scanner_path' => $scannerPath, 'hard_at' => time()]);
                 self::emit($store, 'scanpath:'.$ip, 600, [
                     'type' => 'scanner',
                     'severity' => self::SEVERITY_WARNING,
@@ -121,7 +133,13 @@ final class SecurityMonitor
 
             if (! $authenticated && self::isBotAgent((string) $request->userAgent())) {
                 self::bump($store, 'bot', $minute);
-                self::flagIp($store, $request, $ip, 'bot', 1);
+
+                if (self::isAttackTool((string) $request->userAgent())) {
+                    self::flagIp($store, $request, $ip, 'herramienta de ataque', 5, ['hard_at' => time()]);
+                } else {
+                    self::flagIp($store, $request, $ip, 'bot', 1);
+                }
+
                 self::emit($store, 'botua:'.$ip, 1800, [
                     'type' => 'bot',
                     'severity' => self::SEVERITY_WARNING,
@@ -188,7 +206,7 @@ final class SecurityMonitor
             self::flagIp($store, $request, $ip, 'login fallido', 0, ['last_account' => $account, 'failed_logins' => $ipFailures, 'accounts_tried' => $ipAccounts]);
 
             if ($ipFailures >= $thresholds['failed_logins_per_ip']) {
-                self::flagIp($store, $request, $ip, 'fuerza bruta', 10);
+                self::flagIp($store, $request, $ip, 'fuerza bruta', 10, ['hard_at' => time()]);
                 self::emit($store, 'bruteforce:'.$ip, $thresholds['failed_logins_per_ip_window'], [
                     'type' => 'brute_force',
                     'severity' => self::SEVERITY_CRITICAL,
@@ -200,7 +218,7 @@ final class SecurityMonitor
             }
 
             if ($ipAccounts >= $thresholds['emails_per_ip']) {
-                self::flagIp($store, $request, $ip, 'relleno de credenciales', 10);
+                self::flagIp($store, $request, $ip, 'relleno de credenciales', 10, ['hard_at' => time()]);
                 self::emit($store, 'stuffing:'.$ip, $thresholds['emails_per_ip_window'], [
                     'type' => 'credential_stuffing',
                     'severity' => self::SEVERITY_CRITICAL,
@@ -213,13 +231,121 @@ final class SecurityMonitor
     }
 
     /**
-     * Login correcto: la racha de fallos de esa cuenta vuelve a cero.
+     * Login correcto: la racha de fallos de esa cuenta vuelve a cero y la IP
+     * queda como legítima unos días (atenúa sus señales débiles en el monitor).
      */
-    public static function recordSuccessfulLogin(string $identifier): void
+    public static function recordSuccessfulLogin(string $identifier, ?string $ip = null): void
     {
-        LivePresenceStore::safely(function (LivePresenceRepository $store) use ($identifier): void {
-            $store->forget(self::PREFIX.'fl:acct:'.self::accountKey(self::normalizeAccount($identifier)));
+        LivePresenceStore::safely(function (LivePresenceRepository $store) use ($identifier, $ip): void {
+            $account = self::normalizeAccount($identifier);
+            $store->forget(self::PREFIX.'fl:acct:'.self::accountKey($account));
+
+            if ($ip !== null && $ip !== '') {
+                self::rememberLegitimateIp($store, $ip, $account);
+            }
         });
+    }
+
+    /**
+     * Petición rechazada por la lista negra de IPs: solo se cuenta.
+     */
+    public static function recordBlockedRequest(Request $request): void
+    {
+        LivePresenceStore::safely(function (LivePresenceRepository $store) use ($request): void {
+            self::bump($store, 'blocked', self::minute());
+            $store->increment(self::ipCounterKey(ClientLocation::ip($request), 'blocked'), self::DAY);
+        });
+    }
+
+    /**
+     * Última evidencia de uso legítimo desde una IP (login correcto o sesión
+     * abierta), o null.
+     *
+     * @return array{at: int, account: string, logins: int}|null
+     */
+    public static function legitimateUse(LivePresenceRepository $store, string $ip): ?array
+    {
+        $value = $store->getValue(self::PREFIX.'good:'.$ip);
+
+        if ($value === null) {
+            return null;
+        }
+
+        return ['at' => (int) ($value['at'] ?? 0), 'account' => (string) ($value['account'] ?? ''), 'logins' => (int) ($value['logins'] ?? 0)];
+    }
+
+    /**
+     * Un analista marcó la IP como legítima: sale de la lista de sospechosas
+     * hasta que venza la marca o aparezca una señal dura nueva.
+     */
+    public static function dismissIp(string $ip, string $actor, string $note = ''): void
+    {
+        LivePresenceStore::safely(function (LivePresenceRepository $store) use ($ip, $actor, $note): void {
+            $days = max(1, (int) config('live-presence.security.dismiss_days', 7));
+            $dismissed = self::dismissalsFrom($store);
+            $dismissed[$ip] = [
+                'at' => time(),
+                'until' => time() + ($days * self::DAY),
+                'by' => $actor,
+                'note' => Str::limit(trim($note), 300, ''),
+            ];
+
+            $store->putValue(self::PREFIX.'dismissed', $dismissed, $days * self::DAY);
+
+            self::emit($store, 'dismiss:'.$ip.':'.time(), 5, [
+                'type' => 'ip_dismissed',
+                'severity' => self::SEVERITY_INFO,
+                'title' => 'IP marcada como legítima',
+                'detail' => $ip.' por '.$actor.' durante '.$days.' días.',
+                'ip' => $ip,
+            ]);
+        });
+    }
+
+    public static function undismissIp(string $ip): void
+    {
+        LivePresenceStore::safely(function (LivePresenceRepository $store) use ($ip): void {
+            $dismissed = self::dismissalsFrom($store);
+
+            if (! array_key_exists($ip, $dismissed)) {
+                return;
+            }
+
+            unset($dismissed[$ip]);
+            $store->putValue(self::PREFIX.'dismissed', $dismissed, max(1, (int) config('live-presence.security.dismiss_days', 7)) * self::DAY);
+        });
+    }
+
+    /**
+     * IPs marcadas como legítimas y vigentes.
+     *
+     * @return array<string, array{at: int, until: int, by: string, note: string}>
+     */
+    public static function dismissals(): array
+    {
+        try {
+            return self::dismissalsFrom(LivePresenceStore::repository());
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * @return array<string, array{at: int, until: int, by: string, note: string}>
+     */
+    public static function dismissalsFrom(LivePresenceRepository $store): array
+    {
+        $now = time();
+
+        return array_filter(
+            (array) ($store->getValue(self::PREFIX.'dismissed') ?? []),
+            static fn (mixed $entry): bool => is_array($entry) && (int) ($entry['until'] ?? 0) > $now,
+        );
+    }
+
+    public static function ipCounterKey(string $ip, string $metric): string
+    {
+        return self::PREFIX.'ipc:'.$ip.':'.$metric;
     }
 
     /**
@@ -356,6 +482,26 @@ final class SecurityMonitor
         return false;
     }
 
+    /**
+     * Herramientas de ataque o escaneo: ningún usuario legítimo navega con ellas.
+     */
+    public static function isAttackTool(string $userAgent): bool
+    {
+        $userAgent = mb_strtolower(trim($userAgent));
+
+        if ($userAgent === '') {
+            return false;
+        }
+
+        foreach ((array) config('live-presence.security.attack_agents', []) as $needle) {
+            if ($needle !== '' && str_contains($userAgent, mb_strtolower((string) $needle))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static function scannerPathHit(Request $request): ?string
     {
         $path = mb_strtolower('/'.ltrim($request->path(), '/'));
@@ -396,6 +542,18 @@ final class SecurityMonitor
         $referer = (string) parse_url((string) $request->headers->get('referer', ''), PHP_URL_PATH);
 
         return str_starts_with($referer, '/monitor/tv/') && ActivityContext::isLivewireUpdate($request);
+    }
+
+    private static function rememberLegitimateIp(LivePresenceRepository $store, string $ip, ?string $account): void
+    {
+        $key = self::PREFIX.'good:'.$ip;
+        $current = $store->getValue($key) ?? [];
+
+        $store->putValue($key, [
+            'at' => time(),
+            'account' => $account ?? (string) ($current['account'] ?? ''),
+            'logins' => (int) ($current['logins'] ?? 0) + ($account !== null ? 1 : 0),
+        ], max(1, (int) config('live-presence.security.legitimate_ip_days', 7)) * self::DAY);
     }
 
     /**

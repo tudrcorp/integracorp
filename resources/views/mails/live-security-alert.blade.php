@@ -23,11 +23,22 @@
                     @endforeach
                 </table>
 
+                @if (! empty($event['action']))
+                    <p style="margin: 0 0 16px; color: #111827; font-size: 14px; line-height: 1.6;"><strong>Qué hacer:</strong> {{ $event['action'] }}</p>
+                @endif
+
+                @if (($event['channel'] ?? null) === 'system')
+                <p style="margin: 0; color: #555555; font-size: 13px; line-height: 1.6;">
+                    Revise <strong>Negocios → Colas y errores</strong> en INTEGRACORP: cada problema trae su diagnóstico, la línea de código donde ocurrió y la acción recomendada.
+                    Este aviso no se repetirá durante {{ (int) config('live-presence.security.alert_cooldown_minutes', 30) }} minutos para el mismo problema.
+                </p>
+                @else
                 <p style="margin: 0; color: #555555; font-size: 13px; line-height: 1.6;">
                     Revise el <strong>Monitor en vivo</strong> en INTEGRACORP → Negocios para ver el detalle en tiempo real.
                     Si una cuenta recibe muchos intentos fallidos, el sistema la bloquea temporalmente de forma automática.
                     Este aviso no se repetirá durante {{ (int) config('live-presence.security.alert_cooldown_minutes', 30) }} minutos para el mismo tipo de ataque.
                 </p>
+                @endif
             </td>
         </tr>
     </table>

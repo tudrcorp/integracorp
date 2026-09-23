@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
+        /** Lista negra de IPs del monitor en vivo: primero de todo, antes de sesión y autenticación. */
+        $middleware->prepend(\App\Http\Middleware\BlockBlacklistedIp::class);
+
         /** Monitor en vivo: escribe después de responder, no suma tiempo a la petición. */
         $middleware->append(\App\Http\Middleware\TrackLivePresence::class);
 
@@ -23,5 +26,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        /** Registro de errores del monitor (Negocios → Colas y errores). No detiene el reporte normal al log. */
+        $exceptions->report(static function (Throwable $exception): void {
+            \App\Support\LivePresence\ErrorTracker::capture($exception);
+        });
     })->create();

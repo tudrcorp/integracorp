@@ -4,17 +4,24 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Pages;
 
+use App\Models\SecurityIpBlock;
 use App\Models\SecurityUserBlock;
 use App\Models\User;
 use App\Support\LivePresence\ActivityContext;
+use App\Support\LivePresence\ErrorTracker;
+use App\Support\LivePresence\IpBlockList;
+use App\Support\LivePresence\IpThreatAssessment;
 use App\Support\LivePresence\LiveActivitySnapshot;
 use App\Support\LivePresence\LivePresenceAccess;
 use App\Support\LivePresence\LivePresenceStore;
+use App\Support\LivePresence\OperationsAdvisor;
 use App\Support\LivePresence\SecurityMonitor;
 use App\Support\LivePresence\SecuritySnapshot;
 use App\Support\LivePresence\UserBlockList;
+use App\Support\SecurityAudit;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -22,6 +29,7 @@ use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 use InvalidArgumentException;
 use Livewire\Attributes\Url;
 use Throwable;
@@ -112,10 +120,14 @@ class LiveActivityMonitor extends Page
             ? null
             : collect($all)->firstWhere('session_key', $this->selectedSession);
 
+        $health = LiveActivitySnapshot::systemHealth();
+        $security = SecuritySnapshot::build();
+
         return [
             'sessions' => $sessions,
             'kpis' => $kpis,
-            'health' => LiveActivitySnapshot::systemHealth(),
+            'health' => $health,
+            'advice' => OperationsAdvisor::advise($security, $health['queue_report'] ?? null, ErrorTracker::groups()),
             'panelLabels' => ActivityContext::PANELS + ['web' => 'Sitio web'],
             'selected' => $selected,
             'selectedTimeline' => $selected === null ? [] : $this->timelineFor((int) $selected['user_id']),
@@ -125,10 +137,174 @@ class LiveActivityMonitor extends Page
             'refreshedAt' => now()->format('H:i:s'),
             'selectedCanBeBlocked' => $selected !== null && ($target = User::query()->find((int) $selected['user_id'])) !== null
                 && UserBlockList::restrictionFor($target) === null,
-            'security' => SecuritySnapshot::build(),
+            'security' => $security,
             'blocks' => $blocks,
             'blockedIds' => array_map(static fn (SecurityUserBlock $block): int => (int) $block->user_id, $blocks),
+            'ipBlocks' => IpBlockList::active(),
+            'dismissedIps' => SecurityMonitor::dismissals(),
         ];
+    }
+
+    /**
+     * Mover una IP a la lista negra: el sistema recomienda, el analista decide.
+     */
+    public function blacklistIpAction(): Action
+    {
+        return Action::make('blacklistIp')
+            ->label('Lista negra')
+            ->icon(Heroicon::OutlinedNoSymbol)
+            ->color('danger')
+            ->size('sm')
+            ->modalIcon(Heroicon::OutlinedNoSymbol)
+            ->modalIconColor('danger')
+            ->modalHeading(fn (array $arguments): string => 'Mover '.self::argumentIp($arguments).' a la lista negra')
+            ->modalDescription(fn (array $arguments): HtmlString => self::offenderSummary(SecuritySnapshot::offender(self::argumentIp($arguments))))
+            ->modalSubmitActionLabel('Mover a lista negra')
+            ->form(function (array $arguments): array {
+                $offender = SecuritySnapshot::offender(self::argumentIp($arguments));
+                $affected = count(IpBlockList::sessionsFrom($offender['ip']));
+
+                return [
+                    Select::make('duration')
+                        ->label('Duración')
+                        ->options([
+                            '1440' => '24 horas',
+                            '10080' => '7 días',
+                            '43200' => '30 días',
+                            'permanent' => 'Hasta que la levante',
+                        ])
+                        ->default((string) IpThreatAssessment::suggestedMinutes($offender['verdict']))
+                        ->helperText('Las IPs de hogares y celulares cambian de dueño: prefiera un bloqueo con vencimiento.')
+                        ->native(false)
+                        ->required(),
+                    Textarea::make('reason')
+                        ->label('Motivo')
+                        ->default($offender['verdict_label'].': '.implode(' ', $offender['reasons']))
+                        ->required()
+                        ->minLength(IpBlockList::MIN_REASON_LENGTH)
+                        ->maxLength(1000)
+                        ->rows(3)
+                        ->validationMessages([
+                            'required' => 'El motivo es obligatorio.',
+                            'min' => 'Explique el motivo con al menos '.IpBlockList::MIN_REASON_LENGTH.' caracteres.',
+                        ]),
+                    Checkbox::make('acknowledge_affected')
+                        ->label('Entiendo que '.$affected.' '.($affected === 1 ? 'usuario conectado desde esta IP perderá' : 'usuarios conectados desde esta IP perderán').' el acceso de inmediato.')
+                        ->visible($affected > 0)
+                        ->accepted()
+                        ->validationMessages(['accepted' => 'Confirme que entiende a quién deja sin acceso.']),
+                ];
+            })
+            ->action(function (array $arguments, array $data): void {
+                $offender = SecuritySnapshot::offender(self::argumentIp($arguments));
+
+                if (IpBlockList::sessionsFrom($offender['ip']) !== [] && ! ($data['acknowledge_affected'] ?? false)) {
+                    Notification::make()->warning()->title('No se bloqueó')->body('Hay usuarios conectados desde esta IP: confirme que entiende que perderán el acceso.')->send();
+
+                    return;
+                }
+
+                try {
+                    IpBlockList::block(
+                        $offender['ip'],
+                        (string) ($data['reason'] ?? ''),
+                        $data['duration'] === 'permanent' ? null : (int) $data['duration'],
+                        $offender['verdict'],
+                        [
+                            'verdict' => $offender['verdict'],
+                            'reasons' => $offender['reasons'],
+                            'mitigations' => $offender['mitigations'],
+                            'score' => $offender['score'],
+                            'tags' => $offender['tags'],
+                            'counters' => $offender['counters'],
+                            'location' => $offender['location'],
+                            'user_agent' => $offender['user_agent'],
+                            'sessions' => $offender['sessions'],
+                        ],
+                    );
+                } catch (InvalidArgumentException $exception) {
+                    Notification::make()->warning()->title('No se bloqueó')->body($exception->getMessage())->send();
+
+                    return;
+                }
+
+                Notification::make()->success()->title('IP en lista negra')->body($offender['ip'].' ya no puede entrar a ninguna parte del sistema.')->send();
+            });
+    }
+
+    /**
+     * Marcar una IP como legítima: sale de la lista de sospechosas unos días,
+     * salvo que vuelva a dar una señal dura.
+     */
+    public function dismissIpAction(): Action
+    {
+        return Action::make('dismissIp')
+            ->label('Es legítima')
+            ->icon(Heroicon::OutlinedCheckCircle)
+            ->color('gray')
+            ->size('sm')
+            ->modalIcon(Heroicon::OutlinedCheckCircle)
+            ->modalHeading(fn (array $arguments): string => 'Marcar '.self::argumentIp($arguments).' como legítima')
+            ->modalDescription('Deja de listarse como sospechosa por '.max(1, (int) config('live-presence.security.dismiss_days', 7)).' días. Si vuelve a dar una señal de ataque clara (escáner, herramienta de ataque, fuerza bruta), reaparece sola.')
+            ->modalSubmitActionLabel('Marcar como legítima')
+            ->form([
+                Textarea::make('note')->label('Nota (opcional)')->placeholder('Por ejemplo: es la oficina de Carora.')->maxLength(300)->rows(2),
+            ])
+            ->action(function (array $arguments, array $data): void {
+                $ip = self::argumentIp($arguments);
+
+                if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
+                    Notification::make()->warning()->title('La IP no es válida')->send();
+
+                    return;
+                }
+
+                $actor = (string) (Auth::user()?->name ?? 'system');
+                SecurityMonitor::dismissIp($ip, $actor, (string) ($data['note'] ?? ''));
+                SecurityAudit::log('AUDIT_LIVE_SECURITY_IP_DISMISSED', 'live-presence.ip-dismiss', ['ip' => $ip, 'note' => (string) ($data['note'] ?? '')]);
+
+                Notification::make()->success()->title('IP marcada como legítima')->body($ip.' sale de la lista de sospechosas.')->send();
+            });
+    }
+
+    public function undismissIpAction(): Action
+    {
+        return Action::make('undismissIp')
+            ->label('Deshacer')
+            ->icon(Heroicon::OutlinedArrowUturnLeft)
+            ->color('gray')
+            ->size('sm')
+            ->requiresConfirmation()
+            ->modalHeading('Volver a vigilar esta IP')
+            ->modalDescription('Si sigue dando señales, vuelve a la lista de IPs sospechosas.')
+            ->action(function (array $arguments): void {
+                SecurityMonitor::undismissIp(self::argumentIp($arguments));
+                Notification::make()->success()->title('La IP vuelve a vigilarse')->send();
+            });
+    }
+
+    public function liftIpBlockAction(): Action
+    {
+        return Action::make('liftIpBlock')
+            ->label('Levantar')
+            ->icon(Heroicon::OutlinedLockOpen)
+            ->color('success')
+            ->size('sm')
+            ->requiresConfirmation()
+            ->modalHeading('Sacar la IP de la lista negra')
+            ->modalDescription('La IP podrá volver a entrar al sistema de inmediato.')
+            ->form([
+                Textarea::make('reason')->label('Motivo (opcional)')->maxLength(1000)->rows(2),
+            ])
+            ->action(function (array $arguments, array $data): void {
+                $block = SecurityIpBlock::query()->find((int) ($arguments['blockId'] ?? 0));
+
+                if ($block !== null) {
+                    IpBlockList::lift($block, (string) ($data['reason'] ?? ''));
+                }
+
+                Notification::make()->success()->title('IP fuera de la lista negra')->send();
+            });
     }
 
     /**
@@ -229,6 +405,34 @@ class LiveActivityMonitor extends Page
                 SecurityMonitor::unlockAccount((string) ($arguments['account'] ?? ''), (string) (Auth::user()?->name ?? 'system'));
                 Notification::make()->success()->title('Cuenta desbloqueada')->send();
             });
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    private static function argumentIp(array $arguments): string
+    {
+        return trim((string) ($arguments['ip'] ?? ''));
+    }
+
+    /**
+     * @param  array<string, mixed>  $offender
+     */
+    private static function offenderSummary(array $offender): HtmlString
+    {
+        $lines = ['<strong>'.e($offender['verdict_label']).'</strong>'];
+
+        foreach ($offender['reasons'] as $reason) {
+            $lines[] = '• '.e($reason);
+        }
+
+        foreach ($offender['mitigations'] as $mitigation) {
+            $lines[] = '⚠ '.e($mitigation);
+        }
+
+        $lines[] = 'Queda sin acceso a todo el sistema (paneles, PWA y páginas públicas) hasta que venza o se levante. Queda registrado quién la bloqueó y por qué.';
+
+        return new HtmlString(implode('<br>', $lines));
     }
 
     /**

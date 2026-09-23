@@ -63,7 +63,7 @@ final class SecurityAuthListener
     public static function onLogin(Login $event): void
     {
         try {
-            SecurityMonitor::recordSuccessfulLogin((string) ($event->user->email ?? ''));
+            SecurityMonitor::recordSuccessfulLogin((string) ($event->user->email ?? ''), ClientLocation::ip(request()));
         } catch (Throwable) {
         }
     }

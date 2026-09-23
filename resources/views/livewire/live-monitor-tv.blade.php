@@ -29,7 +29,7 @@
         <div class="tv-clock" x-data="{ now: '' }" x-init="const tick = () => now = new Date().toLocaleTimeString('es-VE', { hour12: false }); tick(); setInterval(tick, 1000)" x-text="now" wire:ignore></div>
     </div>
 
-    @include('live-presence.partials.security-panel', ['security' => $security, 'kpis' => $kpis, 'health' => $health, 'tv' => true, 'actions' => false])
+    @include('live-presence.partials.security-panel', ['security' => $security, 'kpis' => $kpis, 'health' => $health, 'advice' => $advice, 'tv' => true, 'actions' => false])
 
     <div class="tv-card">
         <div class="tv-title">Usuarios conectados · {{ $totalSessions }} {{ $totalSessions === 1 ? 'sesión' : 'sesiones' }}{{ $totalSessions > count($sessions) ? ' (se muestran las '.count($sessions).' más recientes)' : '' }}</div>

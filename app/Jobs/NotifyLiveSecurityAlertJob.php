@@ -17,11 +17,15 @@ use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 /**
- * Aviso de ataque detectado por el monitor en vivo.
+ * Aviso del monitor en vivo: ataques (Alertas de seguridad) o problemas de
+ * colas y errores (Alertas de colas y errores).
  *
- * Destinatarios: los contactos de «Alertas de seguridad» del Centro de
- * notificaciones más los usuarios de la lista blanca del monitor. Si la
- * entrada está pausada no se envía nada; el evento igual queda en el monitor.
+ * Destinatarios: los contactos de la entrada del Centro de notificaciones más
+ * los usuarios de la lista blanca del monitor. Si la entrada está pausada no se
+ * envía nada; el evento igual queda en el monitor.
+ *
+ * Los avisos de colas se ejecutan con dispatchSync y $sendWhatsAppNow: si las
+ * colas están caídas, un aviso encolado nunca llegaría.
  */
 class NotifyLiveSecurityAlertJob implements ShouldQueue
 {
@@ -32,7 +36,11 @@ class NotifyLiveSecurityAlertJob implements ShouldQueue
     /**
      * @param  array<string, mixed>  $event
      */
-    public function __construct(public array $event) {}
+    public function __construct(
+        public array $event,
+        public string $notificationKey = 'live_security_alert',
+        public bool $sendWhatsAppNow = false,
+    ) {}
 
     /**
      * @return list<int>
@@ -44,7 +52,8 @@ class NotifyLiveSecurityAlertJob implements ShouldQueue
 
     public function handle(): void
     {
-        $key = SystemNotificationKey::LiveSecurityAlert;
+        $key = SystemNotificationKey::tryFrom($this->notificationKey) ?? SystemNotificationKey::LiveSecurityAlert;
+        $isSystem = $key === SystemNotificationKey::LiveSystemAlert;
 
         if (! SystemNotificationRecipients::isActive($key)) {
             return;
@@ -58,7 +67,7 @@ class NotifyLiveSecurityAlertJob implements ShouldQueue
         $emails = self::uniqueEmails([...SystemNotificationRecipients::emails($key), ...$users->pluck('email')->all()]);
         $phones = self::uniquePhones([...SystemNotificationRecipients::phones($key), ...$users->pluck('phone')->all()]);
 
-        $subject = '🚨 '.(string) ($this->event['title'] ?? 'Alerta de seguridad').' · IntegraCorp';
+        $subject = ($isSystem ? '⚠️ ' : '🚨 ').(string) ($this->event['title'] ?? ($isSystem ? 'Alerta de colas y errores' : 'Alerta de seguridad')).' · IntegraCorp';
         $sent = 0;
 
         foreach ($emails as $email) {
@@ -73,14 +82,24 @@ class NotifyLiveSecurityAlertJob implements ShouldQueue
         $body = self::whatsappBody($this->event);
 
         foreach ($phones as $phone) {
-            SendNotificacionWhatsApp::dispatch(null, $body, $phone, null, [
+            $context = [
                 'panel' => 'business',
-                'source' => 'live-presence.security-alert',
+                'source' => $isSystem ? 'live-presence.system-alert' : 'live-presence.security-alert',
                 'event_type' => $this->event['type'] ?? null,
-            ]);
+            ];
+
+            try {
+                if ($this->sendWhatsAppNow) {
+                    SendNotificacionWhatsApp::dispatchSync(null, $body, $phone, null, $context);
+                } else {
+                    SendNotificacionWhatsApp::dispatch(null, $body, $phone, null, $context);
+                }
+            } catch (Throwable $exception) {
+                Log::error('NotifyLiveSecurityAlertJob: error enviando WhatsApp', ['phone' => $phone, 'error' => $exception->getMessage()]);
+            }
         }
 
-        SecurityAudit::log('AUDIT_LIVE_SECURITY_ALERT_SENT', 'live-presence.security-alert', [
+        SecurityAudit::log($isSystem ? 'AUDIT_LIVE_SYSTEM_ALERT_SENT' : 'AUDIT_LIVE_SECURITY_ALERT_SENT', $isSystem ? 'live-presence.system-alert' : 'live-presence.security-alert', [
             'event' => $this->event,
             'emails_sent' => $sent,
             'whatsapps_queued' => count($phones),
@@ -92,8 +111,9 @@ class NotifyLiveSecurityAlertJob implements ShouldQueue
      */
     public static function whatsappBody(array $event): string
     {
+        $isSystem = ($event['channel'] ?? null) === 'system';
         $lines = [
-            '🚨 *'.(string) ($event['title'] ?? 'Alerta de seguridad').'*',
+            ($isSystem ? '⚠️' : '🚨').' *'.(string) ($event['title'] ?? 'Alerta de seguridad').'*',
             '',
             (string) ($event['detail'] ?? ''),
         ];
@@ -108,7 +128,13 @@ class NotifyLiveSecurityAlertJob implements ShouldQueue
 
         $lines[] = 'Hora: '.date('d/m/Y H:i:s', (int) ($event['at'] ?? time()));
         $lines[] = '';
-        $lines[] = 'Revise el Monitor en vivo en INTEGRACORP → Negocios. No se repetirá este aviso durante '.(int) config('live-presence.security.alert_cooldown_minutes', 30).' min.';
+        if (! empty($event['action'])) {
+            $lines[] = 'Qué hacer: '.$event['action'];
+        }
+
+        $lines[] = $isSystem
+            ? 'Revise INTEGRACORP → Negocios → Colas y errores. No se repetirá este aviso durante '.(int) config('live-presence.security.alert_cooldown_minutes', 30).' min.'
+            : 'Revise el Monitor en vivo en INTEGRACORP → Negocios. No se repetirá este aviso durante '.(int) config('live-presence.security.alert_cooldown_minutes', 30).' min.';
 
         return implode("\n", $lines);
     }

@@ -2,8 +2,8 @@
 
 namespace App\Filament\Marketing\Resources\TravelAgencies\Schemas;
 
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
 class TravelAgencyForm
@@ -18,6 +18,14 @@ class TravelAgencyForm
                 TextInput::make('idRepresentante'),
                 TextInput::make('FechaNacimientoRepresentante'),
                 TextInput::make('name'),
+                TextInput::make('id_agencia')
+                    ->label('ID agencia')
+                    ->numeric()
+                    ->nullable(),
+                TextInput::make('id_de_agente')
+                    ->label('ID de agente')
+                    ->maxLength(32)
+                    ->nullable(),
                 TextInput::make('typeIdentification'),
                 TextInput::make('numberIdentification'),
                 TextInput::make('userPortalWeb'),
