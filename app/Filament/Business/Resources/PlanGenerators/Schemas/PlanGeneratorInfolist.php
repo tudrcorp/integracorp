@@ -6,6 +6,7 @@ namespace App\Filament\Business\Resources\PlanGenerators\Schemas;
 
 use App\Enums\PlanGeneratorPopulationUnit;
 use App\Models\PlanGenerator;
+use App\Support\PlanGenerators\PlanGeneratorConditions;
 use App\Support\PlanGenerators\PlanGeneratorPreviewBuilder;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
@@ -225,6 +226,7 @@ class PlanGeneratorInfolist
                                                         'rateRows' => PlanGeneratorPreviewBuilder::rateRows($record),
                                                         'populationUnitLabel' => PlanGeneratorPopulationUnit::resolve($record->population_unit)->label(),
                                                         'includeMonthlyTotal' => (bool) $record->include_monthly_total,
+                                                        'conditions' => PlanGeneratorConditions::normalize($record->conditions),
                                                     ])
                                                     ->columnSpanFull(),
                                             ]),

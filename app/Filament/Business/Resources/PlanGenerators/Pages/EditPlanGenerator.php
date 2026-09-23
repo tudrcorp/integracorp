@@ -9,9 +9,11 @@ use App\Filament\Business\Resources\PlanGenerators\Pages\Concerns\InteractsWithP
 use App\Filament\Business\Resources\PlanGenerators\Pages\Concerns\ValidatesPlanGeneratorPopulation;
 use App\Filament\Business\Resources\PlanGenerators\Pages\Concerns\ValidatesPlanGeneratorQuotation;
 use App\Filament\Business\Resources\PlanGenerators\PlanGeneratorResource;
+use App\Support\PlanGenerators\PlanGeneratorConditions;
 use App\Support\PlanGenerators\PlanGeneratorPersistence;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Validation\ValidationException;
 
 class EditPlanGenerator extends EditRecord
 {
@@ -24,9 +26,17 @@ class EditPlanGenerator extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        return $this->normalizeMatrixFormState(
+        $data = $this->normalizeMatrixFormState(
             array_merge($data, PlanGeneratorPersistence::formStateFromModel($this->getRecord())),
         );
+
+        if ($this->getRecord()->isDerivedQuotation()) {
+            $data['conditions'] = PlanGeneratorConditions::formState(
+                PlanGeneratorConditions::normalize($data['conditions'] ?? $this->getRecord()->conditions),
+            );
+        }
+
+        return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
@@ -36,6 +46,20 @@ class EditPlanGenerator extends EditRecord
         $this->assertPlanGeneratorQuotationBodyIsValid();
 
         unset($data['columns'], $data['rows'], $data['rate_rows'], $data['quotation_pages']);
+
+        if ($this->getRecord()->isDerivedQuotation()) {
+            $conditions = PlanGeneratorConditions::normalize($data['conditions'] ?? []);
+
+            if ($conditions === []) {
+                throw ValidationException::withMessages([
+                    'conditions' => 'Escriba al menos una condición. Aparece debajo del total grupal.',
+                ]);
+            }
+
+            $data['conditions'] = $conditions;
+        } else {
+            unset($data['conditions']);
+        }
 
         return $data;
     }

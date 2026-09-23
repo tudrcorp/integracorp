@@ -8,15 +8,38 @@ use App\Filament\Business\Resources\TravelAgencies\Pages\ListTravelAgencies;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\State;
 use App\Models\TravelAgency;
-use Filament\Support\Assets\Js;
-use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Str;
 
+/**
+ * Agencias de viaje por estado: barras horizontales ordenadas de mayor a menor.
+ *
+ * Antes era una torta: con una docena de estados y uno solo concentrando casi
+ * la mitad, las porciones pequeñas no se distinguían y la leyenda no se leía en
+ * modo oscuro. Comparar cantidades es trabajo de barras: un solo color (el
+ * estado no necesita color propio, su nombre ya lo identifica), el número y el
+ * porcentaje escritos junto a cada estado, y «Sin estado» en gris al final
+ * porque no es un estado sino un dato por completar.
+ */
 class TravelAgencyForStateChart extends ChartWidget
 {
     use InteractsWithPageTable;
+
+    public const WITHOUT_STATE = 'Sin estado';
+
+    /** Azul de magnitud validado para superficie clara y oscura (contraste ≥ 3:1). */
+    private const BAR_LIGHT = '#2a78d6';
+
+    private const BAR_DARK = '#3987e5';
+
+    /** Gris de menor énfasis para «Sin estado». */
+    private const MUTED = '#8a8983';
+
+    /** Alto objetivo por barra y ancho de referencia del panel, para la proporción del gráfico. */
+    private const ROW_HEIGHT = 34;
+
+    private const REFERENCE_WIDTH = 1300;
 
     protected static ?int $sort = 5;
 
@@ -24,253 +47,273 @@ class TravelAgencyForStateChart extends ChartWidget
 
     protected ?string $heading = 'Agencias de viaje por estado';
 
-    protected ?string $description = 'Totales por estado (respeta búsqueda y filtros del listado).';
-
-    protected ?string $maxHeight = '440px';
+    protected ?string $maxHeight = '720px';
 
     protected string $color = 'gray';
 
-    public function mount(): void
-    {
-        parent::mount();
-
-        FilamentAsset::register([
-            Js::make('chartjs-datalabels', 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js'),
-        ]);
-    }
+    /**
+     * @var array{rows: list<array{label: string, count: int, pct: float, muted: bool}>, total: int}|null
+     */
+    private ?array $summary = null;
 
     protected function getTablePage(): string
     {
         return ListTravelAgencies::class;
     }
 
-    protected function getData(): array
+    public function getDescription(): ?string
     {
-        $table = (new TravelAgency)->getTable();
-        $base = $this->getPageTableQuery();
+        $summary = $this->summary();
 
-        $distinctStateIds = (clone $base)
-            ->reorder()
-            ->whereNotNull("{$table}.state_id")
-            ->distinct()
-            ->pluck("{$table}.state_id");
-
-        $stateRows = State::query()
-            ->whereIn('id', $distinctStateIds)
-            ->orderBy('definition')
-            ->get();
-
-        $hasWithoutState = (clone $base)->reorder()->whereNull("{$table}.state_id")->exists();
-
-        $labels = $stateRows
-            ->map(fn (State $state): string => Str::limit($state->definition, 22))
-            ->values()
-            ->all();
-
-        if ($hasWithoutState) {
-            $labels[] = 'Sin estado';
+        if ($summary['total'] === 0) {
+            return 'No hay agencias con la búsqueda y los filtros actuales.';
         }
 
-        if ($labels === []) {
+        $states = array_values(array_filter($summary['rows'], static fn (array $row): bool => ! $row['muted']));
+        $leader = $states[0] ?? null;
+        $parts = [
+            $summary['total'].' '.($summary['total'] === 1 ? 'agencia' : 'agencias').' en '.count($states).' '.(count($states) === 1 ? 'estado' : 'estados').'.',
+        ];
+
+        if ($leader !== null && count($states) > 1) {
+            $parts[] = $leader['label'].' concentra el '.self::percent($leader['pct']).' ('.$leader['count'].').';
+        }
+
+        $withoutState = array_values(array_filter($summary['rows'], static fn (array $row): bool => $row['muted']))[0] ?? null;
+
+        if ($withoutState !== null) {
+            $parts[] = $withoutState['count'].' sin estado asignado (barra gris): conviene completarlo en la ficha.';
+        }
+
+        $parts[] = 'De mayor a menor; respeta la búsqueda y los filtros del listado.';
+
+        return implode(' ', $parts);
+    }
+
+    protected function getData(): array
+    {
+        $summary = $this->summary();
+
+        if ($summary['total'] === 0) {
             return [
-                'labels' => ['Sin datos'],
-                'datasets' => [
-                    [
-                        'label' => 'Agencias de viaje',
-                        'data' => [0],
-                        'backgroundColor' => 'rgba(142, 142, 147, 0.25)',
-                        'borderWidth' => 0,
-                        'borderColor' => 'transparent',
-                    ],
-                ],
+                'labels' => ['Sin agencias'],
+                'datasets' => [[
+                    'label' => 'Agencias de viaje',
+                    'data' => [0],
+                    'counts' => [0],
+                    'percentages' => [0],
+                    'backgroundColor' => self::MUTED,
+                ]],
             ];
         }
 
-        $filteredIdsQuery = (clone $base)
-            ->reorder()
-            ->select("{$table}.id")
-            ->distinct();
-
-        $aggregates = TravelAgency::query()
-            ->whereIn('id', $filteredIdsQuery)
-            ->selectRaw('state_id, COUNT(*) as cnt')
-            ->groupBy('state_id')
-            ->get();
-
-        /** @var array<string, int> $countMap */
-        $countMap = [];
-        foreach ($aggregates as $row) {
-            $key = $row->state_id === null ? 'null_state' : (string) $row->state_id;
-            $countMap[$key] = (int) $row->cnt;
-        }
-
-        $data = [];
-        foreach ($stateRows as $state) {
-            $data[] = $countMap[(string) $state->id] ?? 0;
-        }
-        if ($hasWithoutState) {
-            $data[] = $countMap['null_state'] ?? 0;
-        }
-
-        $vibrantPalette = [
-            '#FF2D55', // Rosa Apple
-            '#5856D6', // Púrpura Apple
-            '#34C759', // Verde Apple
-            '#FF9500', // Naranja Apple
-            '#007AFF', // Azul Apple
-            '#AF52DE', // Índigo
-            '#FFCC00', // Amarillo
-            '#5AC8FA', // Cian
-            '#FF3B30', // Rojo
-            '#2dd4bf', // Teal
-            '#f472b6', // Rosa fuerte
-            '#a78bfa', // Violeta claro
-        ];
-
-        $total = (int) array_sum($data);
-        $percentages = $total > 0
-            ? array_map(
-                static fn (mixed $n): float => round(((float) $n / $total) * 100, 1),
-                $data
-            )
-            : [];
-
-        $backgroundColors = array_map(static function (int $index) use ($vibrantPalette): string {
-            return $vibrantPalette[$index % count($vibrantPalette)];
-        }, array_keys($data));
+        $dark = self::BAR_DARK;
+        $light = self::BAR_LIGHT;
 
         return [
-            'labels' => $labels,
-            'datasets' => [
-                [
-                    'label' => 'Agencias de viaje',
-                    'data' => $data,
-                    'percentages' => array_values($percentages),
-                    'backgroundColor' => $backgroundColors,
-                    'borderWidth' => 0,
-                    'borderColor' => 'transparent',
-                    'radius' => '95%',
-                    'hoverOffset' => 35,
-                    'hoverBorderWidth' => 0,
-                    'hoverBorderColor' => 'transparent',
-                    'borderRadius' => 4,
-                ],
-            ],
+            'labels' => array_map(static fn (array $row): string => $row['label'], $summary['rows']),
+            'datasets' => [[
+                'label' => 'Agencias de viaje',
+                'data' => array_map(static fn (array $row): int => $row['count'], $summary['rows']),
+                'counts' => array_map(static fn (array $row): int => $row['count'], $summary['rows']),
+                'percentages' => array_map(static fn (array $row): float => $row['pct'], $summary['rows']),
+                'muted' => array_map(static fn (array $row): bool => $row['muted'], $summary['rows']),
+                /** El color exacto se resuelve en el navegador según el tema (ver getOptions). */
+                'colorLight' => $light,
+                'colorDark' => $dark,
+                'colorMuted' => self::MUTED,
+                'borderWidth' => 0,
+                'borderRadius' => ['topRight' => 4, 'bottomRight' => 4, 'topLeft' => 0, 'bottomLeft' => 0],
+                'borderSkipped' => false,
+                'barPercentage' => 0.78,
+                'categoryPercentage' => 0.88,
+                'maxBarThickness' => 26,
+            ]],
         ];
     }
 
     protected function getOptions(): RawJs
     {
-        return RawJs::make(<<<'JS'
+        $rows = max(1, count($this->summary()['rows']));
+        /** Alto deseado según la cantidad de estados, convertido en proporción ancho/alto. */
+        $desiredHeight = $rows * self::ROW_HEIGHT + 64;
+        $aspectRatio = round(max(1.6, min(7.0, self::REFERENCE_WIDTH / $desiredHeight)), 2);
+
+        return RawJs::make(<<<JS
         {
             responsive: true,
-            maintainAspectRatio: false,
-            borderWidth: 0,
-            elements: {
-                arc: {
-                    borderWidth: 0,
-                    borderColor: 'transparent'
-                }
+            maintainAspectRatio: true,
+            aspectRatio: window.innerWidth < 768 ? Math.max(0.8, {$aspectRatio} / 3) : {$aspectRatio},
+            indexAxis: 'y',
+            animation: { duration: 500, easing: 'easeOutQuart' },
+            layout: { padding: { top: 4, right: 16, bottom: 0, left: 0 } },
+            datasets: {
+                bar: {
+                    backgroundColor: (context) => {
+                        const ds = context.dataset;
+                        const isDark = document.documentElement.classList.contains('dark');
+
+                        if (Array.isArray(ds.muted) && ds.muted[context.dataIndex]) {
+                            return ds.colorMuted;
+                        }
+
+                        return isDark ? ds.colorDark : ds.colorLight;
+                    },
+                    hoverBackgroundColor: (context) => {
+                        const ds = context.dataset;
+                        const isDark = document.documentElement.classList.contains('dark');
+
+                        if (Array.isArray(ds.muted) && ds.muted[context.dataIndex]) {
+                            return isDark ? '#a3a29c' : '#6f6e69';
+                        }
+
+                        return isDark ? '#5b9ff0' : '#1f63b8';
+                    },
+                },
             },
-            layout: {
-                padding: { top: 8, right: 4, bottom: 0, left: 4 }
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grace: '8%',
+                    position: 'top',
+                    grid: {
+                        display: true,
+                        drawTicks: false,
+                        color: () => document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.07)' : 'rgba(15, 23, 42, 0.07)',
+                    },
+                    border: { display: false },
+                    ticks: {
+                        precision: 0,
+                        padding: 6,
+                        color: () => document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280',
+                        font: { size: 11 },
+                    },
+                    title: {
+                        display: true,
+                        text: 'Cantidad de agencias',
+                        color: () => document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280',
+                        font: { size: 11, weight: '600' },
+                        padding: { bottom: 4 },
+                    },
+                },
+                y: {
+                    grid: { display: false },
+                    border: { display: false },
+                    ticks: {
+                        autoSkip: false,
+                        padding: 10,
+                        color: () => document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#111827',
+                        font: { size: 12.5, weight: '600' },
+                        /** Nombre, cantidad y porcentaje escritos junto a la barra: no hace falta leyenda. */
+                        callback: function (value) {
+                            const ds = this.chart.data.datasets[0];
+                            const label = this.getLabelForValue(value);
+                            const count = ds.counts ? ds.counts[value] : null;
+                            const pct = ds.percentages ? ds.percentages[value] : null;
+
+                            if (count === null || count === undefined) {
+                                return label;
+                            }
+
+                            return label + '   ' + count + ' · ' + String(pct).replace('.', ',') + ' %';
+                        },
+                    },
+                },
             },
             plugins: {
-                legend: {
-                    display: true,
-                    position: 'bottom',
-                    align: 'center',
-                    labels: {
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                        padding: 18,
-                        boxWidth: 10,
-                        boxHeight: 10,
-                        font: {
-                            size: 12,
-                            weight: '600',
-                            family: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
-                        },
-                        generateLabels: function(chart) {
-                            const data = chart.data;
-                            const ds = data.datasets[0];
-                            const meta = chart.getDatasetMeta(0);
-                            return data.labels.map((label, i) => {
-                                const value = ds.data[i];
-                                const pct = Array.isArray(ds.percentages) && ds.percentages[i] !== undefined
-                                    ? ds.percentages[i]
-                                    : 0;
-                                const fill = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
-                                return {
-                                    text: String(label) + ': ' + value + ' agencias (' + pct + '%)',
-                                    fillStyle: fill,
-                                    strokeStyle: fill,
-                                    lineWidth: 0,
-                                    hidden: meta.data[i] ? meta.data[i].hidden : false,
-                                    index: i,
-                                    datasetIndex: 0
-                                };
-                            });
-                        }
-                    }
-                },
+                legend: { display: false },
                 tooltip: {
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    titleColor: '#1e293b',
-                    bodyColor: '#1e293b',
-                    borderColor: '#e2e8f0',
-                    borderWidth: 1,
+                    displayColors: false,
                     padding: 12,
-                    boxPadding: 6,
-                    usePointStyle: true,
+                    cornerRadius: 10,
+                    backgroundColor: () => document.documentElement.classList.contains('dark') ? 'rgba(24, 24, 27, 0.96)' : 'rgba(255, 255, 255, 0.98)',
+                    borderColor: () => document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.12)',
+                    borderWidth: 1,
+                    titleColor: () => document.documentElement.classList.contains('dark') ? '#f9fafb' : '#0f172a',
+                    bodyColor: () => document.documentElement.classList.contains('dark') ? '#d1d5db' : '#334155',
+                    titleFont: { size: 13, weight: '700' },
+                    bodyFont: { size: 12 },
                     callbacks: {
                         label: (context) => {
-                            const value = context.raw || 0;
-                            const pct = context.dataset.percentages[context.dataIndex];
-                            return ` ${context.label}: ${value} agencias (${pct}%)`;
-                        }
-                    }
+                            const ds = context.dataset;
+                            const count = ds.counts[context.dataIndex];
+                            const pct = String(ds.percentages[context.dataIndex]).replace('.', ',');
+                            const total = ds.counts.reduce((sum, value) => sum + value, 0);
+
+                            return [
+                                count + (count === 1 ? ' agencia' : ' agencias') + ' (' + pct + ' % del total)',
+                                'Total en el listado: ' + total,
+                            ];
+                        },
+                    },
                 },
-                datalabels: {
-                    display: function(context) {
-                        const pct = context.dataset.percentages[context.dataIndex];
-                        return pct >= 4;
-                    },
-                    color: '#ffffff',
-                    anchor: 'center',
-                    align: 'center',
-                    font: {
-                        size: 12,
-                        weight: '700',
-                        family: 'ui-sans-serif, -apple-system, system-ui, sans-serif'
-                    },
-                    formatter: function(value, context) {
-                        const pct = context.dataset.percentages[context.dataIndex];
-                        return pct + '%';
-                    },
-                    textShadowColor: 'rgba(0, 0, 0, 0.55)',
-                    textShadowBlur: 3
-                }
             },
-            hover: {
-                mode: 'nearest',
-                intersect: true
+            onHover: (event, elements) => {
+                event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
             },
-            animation: {
-                animateScale: true,
-                animateRotate: true,
-                duration: 1500,
-                easing: 'easeOutQuart'
-            },
-            onHover: (event, chartElement) => {
-                event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
-            }
         }
         JS);
     }
 
     protected function getType(): string
     {
-        return 'pie';
+        return 'bar';
+    }
+
+    /**
+     * Conteo por estado sobre la misma consulta del listado (búsqueda y filtros),
+     * de mayor a menor, con «Sin estado» siempre al final. Se calcula una vez
+     * por render: lo usan los datos, la descripción y la proporción del gráfico.
+     *
+     * @return array{rows: list<array{label: string, count: int, pct: float, muted: bool}>, total: int}
+     */
+    private function summary(): array
+    {
+        if ($this->summary !== null) {
+            return $this->summary;
+        }
+
+        $table = (new TravelAgency)->getTable();
+        $filteredIds = $this->getPageTableQuery()->reorder()->select("{$table}.id")->distinct();
+
+        $counts = TravelAgency::query()
+            ->whereIn('id', $filteredIds)
+            ->selectRaw('state_id, COUNT(*) as total')
+            ->groupBy('state_id')
+            ->pluck('total', 'state_id');
+
+        $withoutState = (int) ($counts[''] ?? 0);
+        $stateCounts = $counts->filter(static fn (mixed $total, mixed $stateId): bool => $stateId !== '' && $stateId !== null);
+        $names = State::query()->whereIn('id', $stateCounts->keys())->pluck('definition', 'id');
+        $total = (int) $counts->sum();
+
+        $rows = [];
+
+        foreach ($stateCounts as $stateId => $count) {
+            $rows[] = [
+                'label' => Str::limit((string) ($names[$stateId] ?? 'Estado #'.$stateId), 30),
+                'count' => (int) $count,
+                'pct' => $total > 0 ? round(((int) $count / $total) * 100, 1) : 0.0,
+                'muted' => false,
+            ];
+        }
+
+        usort($rows, static fn (array $a, array $b): int => [$b['count'], $a['label']] <=> [$a['count'], $b['label']]);
+
+        if ($withoutState > 0) {
+            $rows[] = [
+                'label' => self::WITHOUT_STATE,
+                'count' => $withoutState,
+                'pct' => $total > 0 ? round(($withoutState / $total) * 100, 1) : 0.0,
+                'muted' => true,
+            ];
+        }
+
+        return $this->summary = ['rows' => $rows, 'total' => $total];
+    }
+
+    private static function percent(float $value): string
+    {
+        return str_replace('.', ',', (string) $value).' %';
     }
 }

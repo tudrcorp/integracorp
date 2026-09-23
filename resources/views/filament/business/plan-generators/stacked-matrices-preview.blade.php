@@ -154,4 +154,8 @@
         'rateRows' => $rateRows,
         'includeMonthlyTotal' => (bool) ($includeMonthlyTotal ?? false),
     ])
+
+    @include('filament.business.plan-generators.partials.conditions-list', [
+        'conditions' => $conditions ?? [],
+    ])
 </div>

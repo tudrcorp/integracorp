@@ -8,6 +8,7 @@ use App\Filament\Business\Resources\Helpdesks\Actions\HelpdeskTicketModalActions
 use App\Filament\Business\Resources\TravelAgencies\Concerns\QueuesTravelAgencyFichaPdfSharing;
 use App\Filament\Business\Resources\TravelAgencies\Schemas\TravelAgencyForm;
 use App\Filament\Business\Resources\TravelAgencies\TravelAgencyResource;
+use App\Filament\Shared\CommercialStructure\Actions\CommercialStructureIosActionsMenu;
 use App\Models\TravelAgency;
 use App\Support\BusinessTravelAgencyFichaPdfAccess;
 use App\Support\Filament\FilamentIosButton;
@@ -32,10 +33,6 @@ class ViewTravelAgency extends ViewRecord
 
     private const IOS_GRAY_BUTTON_CLASS = 'ticket-btn-ios-gray'.self::IOS_BUTTON_BASE;
 
-    private const IOS_PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary'.self::IOS_BUTTON_BASE;
-
-    private const IOS_SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success'.self::IOS_BUTTON_BASE;
-
     protected function getHeaderActions(): array
     {
         return [
@@ -47,177 +44,167 @@ class ViewTravelAgency extends ViewRecord
                 ->extraAttributes([
                     'class' => self::IOS_GRAY_BUTTON_CLASS,
                 ]),
-            EditAction::make()
-                ->label('Editar')
-                ->icon('heroicon-o-pencil')
-                ->color('primary')
-                ->extraAttributes([
-                    'class' => self::IOS_PRIMARY_BUTTON_CLASS,
-                ]),
-            Action::make('travelAgencyFichaPreview')
-                ->label('Ficha PDF')
-                ->icon('heroicon-o-document-text')
-                ->color('success')
-                ->extraAttributes([
-                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
-                ])
-                ->slideOver()
-                ->formWrapper(false)
-                ->modalWidth(Width::FiveExtraLarge)
-                ->extraModalWindowAttributes([
-                    'class' => 'fi-agency-command-center-window',
-                ])
-                ->modalHeading(fn (): string => 'Ficha de agencia de viajes · '.($this->getRecord()->name ?? ''))
-                ->modalDescription(fn (): string => 'Vista previa, descarga y envío por correo o WhatsApp.')
-                ->modalContent(fn (): \Illuminate\Contracts\View\View => $this->resolveTravelAgencyFichaPanelView())
-                ->modalSubmitAction(false)
-                ->modalCancelAction(
-                    fn (Action $action): Action => $action
-                        ->label('Cerrar')
-                        ->extraAttributes([
-                            'class' => HelpdeskTicketModalActions::IOS_GRAY_BTN,
-                        ]),
-                )
-                ->action(fn (): null => null)
-                ->visible(fn (): bool => BusinessTravelAgencyFichaPdfAccess::userCanAccess($this->getRecord())),
-            Action::make('addTravelAgents')
-                ->label('Agregar agentes')
-                ->icon('heroicon-o-user-group')
-                ->color('warning')
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
-                ])
-                ->modalHeading('Registrar agentes')
-                ->modalDescription('Agregue uno o varios agentes asociados a esta agencia de viajes.')
-                ->modalSubmitActionLabel('Guardar')
-                ->modalCancelActionLabel('Cancelar')
-                ->modalSubmitAction(
-                    fn (Action $action) => $action
-                        ->color('warning')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
-                        ])
-                )
-                ->modalCancelAction(
-                    fn (Action $action) => $action
-                        ->color('gray')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
-                        ])
-                )
-                ->form([
-                    TravelAgencyForm::travelAgentsRepeater(useRelationship: false),
-                ])
-                ->action(function (array $data): void {
-                    $agents = $data['travelAgents'] ?? [];
+            CommercialStructureIosActionsMenu::make([
+                EditAction::make()
+                    ->label('Editar')
+                    ->icon('heroicon-o-pencil')
+                    ->color('primary'),
+                Action::make('travelAgencyFichaPreview')
+                    ->label('Ficha PDF')
+                    ->icon('heroicon-o-document-text')
+                    ->color('success')
+                    ->slideOver()
+                    ->formWrapper(false)
+                    ->modalWidth(Width::FiveExtraLarge)
+                    ->extraModalWindowAttributes([
+                        'class' => 'fi-agency-command-center-window',
+                    ])
+                    ->modalHeading(fn (): string => 'Ficha de agencia de viajes · '.($this->getRecord()->name ?? ''))
+                    ->modalDescription(fn (): string => 'Vista previa, descarga y envío por correo o WhatsApp.')
+                    ->modalContent(fn (): \Illuminate\Contracts\View\View => $this->resolveTravelAgencyFichaPanelView())
+                    ->modalSubmitAction(false)
+                    ->modalCancelAction(
+                        fn (Action $action): Action => $action
+                            ->label('Cerrar')
+                            ->extraAttributes([
+                                'class' => HelpdeskTicketModalActions::IOS_GRAY_BTN,
+                            ]),
+                    )
+                    ->action(fn (): null => null)
+                    ->visible(fn (): bool => BusinessTravelAgencyFichaPdfAccess::userCanAccess($this->getRecord())),
+                Action::make('addTravelAgents')
+                    ->label('Agregar agentes')
+                    ->icon('heroicon-o-user-group')
+                    ->color('warning')
+                    ->modalHeading('Registrar agentes')
+                    ->modalDescription('Agregue uno o varios agentes asociados a esta agencia de viajes.')
+                    ->modalSubmitActionLabel('Guardar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalSubmitAction(
+                        fn (Action $action) => $action
+                            ->color('warning')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('warning'),
+                            ])
+                    )
+                    ->modalCancelAction(
+                        fn (Action $action) => $action
+                            ->color('gray')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                            ])
+                    )
+                    ->form([
+                        TravelAgencyForm::travelAgentsRepeater(useRelationship: false),
+                    ])
+                    ->action(function (array $data): void {
+                        $agents = $data['travelAgents'] ?? [];
 
-                    if ($agents === []) {
-                        Notification::make()
-                            ->warning()
-                            ->title('Sin agentes')
-                            ->body('Debe registrar al menos un agente.')
-                            ->send();
+                        if ($agents === []) {
+                            Notification::make()
+                                ->warning()
+                                ->title('Sin agentes')
+                                ->body('Debe registrar al menos un agente.')
+                                ->send();
 
-                        return;
-                    }
+                            return;
+                        }
 
-                    $createdBy = Auth::user()?->name ?? 'Analista';
-                    $createdCount = 0;
+                        $createdBy = Auth::user()?->name ?? 'Analista';
+                        $createdCount = 0;
 
-                    foreach ($agents as $agentData) {
-                        $this->record->travelAgents()->create([
-                            'name' => $agentData['name'] ?? '',
-                            'cargo' => $agentData['cargo'] ?? '',
-                            'email' => $agentData['email'] ?? '',
-                            'phone' => $agentData['phone'] ?? '',
-                            'fechaNacimiento' => $this->formatAgentBirthDate($agentData['fechaNacimiento'] ?? null),
+                        foreach ($agents as $agentData) {
+                            $this->record->travelAgents()->create([
+                                'name' => $agentData['name'] ?? '',
+                                'cargo' => $agentData['cargo'] ?? '',
+                                'email' => $agentData['email'] ?? '',
+                                'phone' => $agentData['phone'] ?? '',
+                                'fechaNacimiento' => $this->formatAgentBirthDate($agentData['fechaNacimiento'] ?? null),
+                                'created_by' => $createdBy,
+                                'updated_by' => $createdBy,
+                            ]);
+
+                            $createdCount++;
+                        }
+
+                        $this->record->unsetRelation('travelAgents');
+                        $this->record->load('travelAgents');
+
+                        SecurityAudit::log('AUDIT_BUSINESS_TRAVEL_AGENCY_AGENTS_ADDED', 'business.travel-agencies.add-agents', [
+                            'panel' => 'business',
+                            'module' => 'travel_agencies',
+                            'travel_agency_id' => $this->record->getKey(),
+                            'travel_agency_name' => $this->record->name,
                             'created_by' => $createdBy,
-                            'updated_by' => $createdBy,
+                            'agents_count' => $createdCount,
                         ]);
 
-                        $createdCount++;
-                    }
+                        Notification::make()
+                            ->success()
+                            ->title($createdCount > 1 ? 'Agentes guardados' : 'Agente guardado')
+                            ->body($createdCount > 1
+                                ? "Se registraron {$createdCount} agentes en la agencia."
+                                : 'Se registró 1 agente en la agencia.')
+                            ->send();
+                    }),
+                Action::make('addObservation')
+                    ->label('Agregar observación')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->color('info')
+                    ->modalHeading('Registrar observación')
+                    ->modalDescription('La observación quedará asociada a esta agencia de viajes y al analista que la registra.')
+                    ->modalSubmitActionLabel('Guardar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalSubmitAction(
+                        fn (Action $action) => $action
+                            ->color('info')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                            ])
+                    )
+                    ->modalCancelAction(
+                        fn (Action $action) => $action
+                            ->color('gray')
+                            ->extraAttributes([
+                                'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                            ])
+                    )
+                    ->form([
+                        Textarea::make('observation')
+                            ->label('Texto de la observación')
+                            ->placeholder('Escriba la nota o seguimiento administrativo…')
+                            ->required()
+                            ->minLength(2)
+                            ->maxLength(5000)
+                            ->rows(5),
+                    ])
+                    ->action(function (array $data): void {
+                        $createdBy = Auth::user()?->name ?? 'Analista';
 
-                    $this->record->unsetRelation('travelAgents');
-                    $this->record->load('travelAgents');
+                        $this->record->observationCommercialStructures()->create([
+                            'observation' => $data['observation'],
+                            'created_by' => $createdBy,
+                            'date' => now()->format('d/m/Y H:i'),
+                        ]);
 
-                    SecurityAudit::log('AUDIT_BUSINESS_TRAVEL_AGENCY_AGENTS_ADDED', 'business.travel-agencies.add-agents', [
-                        'panel' => 'business',
-                        'module' => 'travel_agencies',
-                        'travel_agency_id' => $this->record->getKey(),
-                        'travel_agency_name' => $this->record->name,
-                        'created_by' => $createdBy,
-                        'agents_count' => $createdCount,
-                    ]);
+                        $this->record->unsetRelation('observationCommercialStructures');
+                        $this->record->load('observationCommercialStructures');
 
-                    Notification::make()
-                        ->success()
-                        ->title($createdCount > 1 ? 'Agentes guardados' : 'Agente guardado')
-                        ->body($createdCount > 1
-                            ? "Se registraron {$createdCount} agentes en la agencia."
-                            : 'Se registró 1 agente en la agencia.')
-                        ->send();
-                }),
-            Action::make('addObservation')
-                ->label('Agregar observación')
-                ->icon('heroicon-o-chat-bubble-left-right')
-                ->color('info')
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('info'),
-                ])
-                ->modalHeading('Registrar observación')
-                ->modalDescription('La observación quedará asociada a esta agencia de viajes y al analista que la registra.')
-                ->modalSubmitActionLabel('Guardar')
-                ->modalCancelActionLabel('Cancelar')
-                ->modalSubmitAction(
-                    fn (Action $action) => $action
-                        ->color('info')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('info'),
-                        ])
-                )
-                ->modalCancelAction(
-                    fn (Action $action) => $action
-                        ->color('gray')
-                        ->extraAttributes([
-                            'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
-                        ])
-                )
-                ->form([
-                    Textarea::make('observation')
-                        ->label('Texto de la observación')
-                        ->placeholder('Escriba la nota o seguimiento administrativo…')
-                        ->required()
-                        ->minLength(2)
-                        ->maxLength(5000)
-                        ->rows(5),
-                ])
-                ->action(function (array $data): void {
-                    $createdBy = Auth::user()?->name ?? 'Analista';
+                        SecurityAudit::log('AUDIT_BUSINESS_TRAVEL_AGENCY_OBSERVATION_ADDED', 'business.travel-agencies.add-observation', [
+                            'panel' => 'business',
+                            'module' => 'travel_agencies',
+                            'travel_agency_id' => $this->record->getKey(),
+                            'travel_agency_name' => $this->record->name,
+                            'created_by' => $createdBy,
+                            'observation' => \Illuminate\Support\Str::limit((string) ($data['observation'] ?? ''), 500),
+                        ]);
 
-                    $this->record->observationCommercialStructures()->create([
-                        'observation' => $data['observation'],
-                        'created_by' => $createdBy,
-                        'date' => now()->format('d/m/Y H:i'),
-                    ]);
-
-                    $this->record->unsetRelation('observationCommercialStructures');
-                    $this->record->load('observationCommercialStructures');
-
-                    SecurityAudit::log('AUDIT_BUSINESS_TRAVEL_AGENCY_OBSERVATION_ADDED', 'business.travel-agencies.add-observation', [
-                        'panel' => 'business',
-                        'module' => 'travel_agencies',
-                        'travel_agency_id' => $this->record->getKey(),
-                        'travel_agency_name' => $this->record->name,
-                        'created_by' => $createdBy,
-                        'observation' => \Illuminate\Support\Str::limit((string) ($data['observation'] ?? ''), 500),
-                    ]);
-
-                    Notification::make()
-                        ->success()
-                        ->title('Observación guardada')
-                        ->send();
-                }),
+                        Notification::make()
+                            ->success()
+                            ->title('Observación guardada')
+                            ->send();
+                    }),
+            ]),
         ];
     }
 

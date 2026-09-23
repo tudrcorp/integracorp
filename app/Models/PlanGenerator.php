@@ -23,6 +23,7 @@ class PlanGenerator extends Model
         'population_summary',
         'population_unit',
         'include_monthly_total',
+        'conditions',
         'brand_color',
         'quotation_page_count',
         'plan_page_number',
@@ -45,6 +46,7 @@ class PlanGenerator extends Model
             'plan_page_number' => 'integer',
             'population_import_id' => 'integer',
             'include_monthly_total' => 'boolean',
+            'conditions' => 'array',
         ];
     }
 

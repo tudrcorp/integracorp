@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\TravelAgencies\Schemas;
 
 use App\Models\TravelAgency;
+use App\Support\TravelAgencies\TravelAgencyPublicRegistrar;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
@@ -242,6 +243,34 @@ class TravelAgencyInfolist
                         Tab::make('Jerarquía')
                             ->icon(Heroicon::OutlinedAdjustmentsVertical)
                             ->schema([
+                                Section::make('Enlaces de registro')
+                                    ->description('Comparte el enlace de agencias asociadas y el de sus agentes. Quien se registre queda en esta agencia y conserva la jerarquía.')
+                                    ->icon(Heroicon::OutlinedLink)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                Grid::make()
+                                                    ->columns(['default' => 1, 'lg' => 2])
+                                                    ->schema([
+                                                        TextEntry::make('agency_registration_url')
+                                                            ->label('Link de registro de agencias')
+                                                            ->state(fn (TravelAgency $record): string => TravelAgencyPublicRegistrar::agencyRegistrationUrl($record))
+                                                            ->copyable()
+                                                            ->url(fn (string $state): string => $state, true),
+                                                        TextEntry::make('agent_registration_url')
+                                                            ->label('Link de registro de agentes')
+                                                            ->state(fn (TravelAgency $record): string => TravelAgencyPublicRegistrar::agentRegistrationUrl($record))
+                                                            ->copyable()
+                                                            ->url(fn (string $state): string => $state, true),
+                                                    ]),
+                                            ]),
+                                    ]),
                                 Section::make('Información Jerarquica')
                                     ->description('Clasificación comercial, comisiones y niveles.')
                                     ->icon(Heroicon::OutlinedAdjustmentsVertical)

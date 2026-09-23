@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 /**
  * Deriva una cotización nueva usando un registro de «Planes Generados» como
@@ -108,6 +109,9 @@ final class PlanGeneratorTemplateCloner
             'population_summary' => (string) $template->population_summary,
             'brand_color' => (string) ($template->brand_color ?? PlanGeneratorBrandColor::DEFAULT),
             'include_monthly_total' => (bool) $template->include_monthly_total,
+            'conditions' => PlanGeneratorConditions::formState(
+                PlanGeneratorConditions::normalize($template->conditions),
+            ),
             'columns' => $matrix['columns'],
             'rows' => $matrix['rows'],
             'rate_rows' => $matrix['rate_rows'],
@@ -135,6 +139,7 @@ final class PlanGeneratorTemplateCloner
         }
 
         $attributes['include_monthly_total'] = (bool) ($formState['include_monthly_total'] ?? false);
+        $attributes['conditions'] = self::conditionsFromFormState($formState);
         $attributes['parent_id'] = $base->getKey();
         $attributes['plan_id'] = $template->plan_id;
         $attributes['quotation_page_count'] = $template->quotation_page_count;
@@ -153,6 +158,23 @@ final class PlanGeneratorTemplateCloner
 
             return $derived;
         });
+    }
+
+    /**
+     * La derivada no se guarda sin al menos una condición escrita.
+     *
+     * @param  array<string, mixed>  $formState
+     * @return list<string>
+     */
+    private static function conditionsFromFormState(array $formState): array
+    {
+        $conditions = PlanGeneratorConditions::normalize($formState['conditions'] ?? []);
+
+        if ($conditions === []) {
+            throw new InvalidArgumentException('La cotización derivada requiere al menos una condición.');
+        }
+
+        return $conditions;
     }
 
     /**

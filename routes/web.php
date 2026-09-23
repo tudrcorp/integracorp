@@ -138,6 +138,12 @@ Route::get('/tdev/agencia/{token}', App\Livewire\TdevAgencyRegistration::class)
 Route::get('/tdev/{token}', App\Livewire\TdevAgentRegistration::class)
     ->name('tdev-agents.register');
 
+Route::get('/viajes/agencia/{token}', App\Livewire\TravelAgencyRegistration::class)
+    ->name('travel-agencies.register');
+
+Route::get('/viajes/agente/{token}', App\Livewire\TravelAgentRegistration::class)
+    ->name('travel-agents.register');
+
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');

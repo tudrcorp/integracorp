@@ -73,9 +73,8 @@ it('pagina ver agencia de viajes usa botones con estilo iOS', function (): void 
 
     expect($source)
         ->toContain('IOS_GRAY_BUTTON_CLASS')
-        ->toContain('IOS_PRIMARY_BUTTON_CLASS')
+        ->toContain('CommercialStructureIosActionsMenu::make')
         ->toContain('ticket-btn-ios-gray')
-        ->toContain('aviso-btn-ios-primary')
         ->toContain('badgeStyleForStatus');
 });
 
@@ -88,7 +87,7 @@ it('pagina ver agencia de viajes incluye accion de ficha pdf con vista previa y 
         ->toContain('travel-agency-ficha-panel')
         ->toContain('QueuesTravelAgencyFichaPdfSharing')
         ->toContain('BusinessTravelAgencyFichaPdfAccess::userCanAccess')
-        ->toContain('IOS_SUCCESS_BUTTON_CLASS');
+        ->toContain('CommercialStructureIosActionsMenu::make');
 });
 
 it('panel de ficha de agencia de viajes expone correo y whatsapp', function (): void {

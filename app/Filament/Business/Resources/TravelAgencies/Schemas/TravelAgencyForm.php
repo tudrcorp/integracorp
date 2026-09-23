@@ -8,9 +8,12 @@ use App\Http\Controllers\UtilsController;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\State;
+use App\Models\TravelAgency;
+use App\Support\TravelAgencies\TravelAgencyPublicRegistrar;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
@@ -26,6 +29,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 
 class TravelAgencyForm
 {
@@ -81,6 +85,24 @@ class TravelAgencyForm
         }
 
         return $repeater;
+    }
+
+    /**
+     * @param  callable(TravelAgency): string  $url
+     */
+    private static function registrationLink(?TravelAgency $record, callable $url): HtmlString
+    {
+        if ($record === null || blank($record->getKey())) {
+            return new HtmlString('<span class="text-sm text-gray-500">Se generará al guardar la agencia.</span>');
+        }
+
+        $href = $url($record);
+
+        return new HtmlString(
+            '<a href="'.e($href).'" target="_blank" rel="noopener" class="text-sm font-medium text-cyan-700 underline decoration-cyan-700/30 underline-offset-2 hover:decoration-cyan-700 dark:text-cyan-300">'
+            .e($href)
+            .'</a>'
+        );
     }
 
     public static function configure(Schema $schema): Schema
@@ -307,6 +329,33 @@ class TravelAgencyForm
                         Tab::make('Jerarquía')
                             ->icon(Heroicon::OutlinedAdjustmentsVertical)
                             ->schema([
+                                Section::make('Enlaces de registro')
+                                    ->description('Comparte el enlace de agencias asociadas y el de sus agentes. Quien se registre queda en esta agencia y conserva la jerarquía.')
+                                    ->icon(Heroicon::OutlinedLink)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'lg' => 2])
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                Placeholder::make('agency_registration_url')
+                                                    ->label('Link de registro de agencias')
+                                                    ->content(fn (?TravelAgency $record): HtmlString => self::registrationLink(
+                                                        $record,
+                                                        fn (TravelAgency $agency): string => TravelAgencyPublicRegistrar::agencyRegistrationUrl($agency),
+                                                    )),
+                                                Placeholder::make('agent_registration_url')
+                                                    ->label('Link de registro de agentes')
+                                                    ->content(fn (?TravelAgency $record): HtmlString => self::registrationLink(
+                                                        $record,
+                                                        fn (TravelAgency $agency): string => TravelAgencyPublicRegistrar::agentRegistrationUrl($agency),
+                                                    )),
+                                            ]),
+                                    ])
+                                    ->visibleOn(['edit', 'view']),
                                 Section::make('Información Jerarquica')
                                     ->description('Informacion Jerarquica de la Agencia y Comiciones')
                                     ->icon(Heroicon::OutlinedAdjustmentsVertical)
