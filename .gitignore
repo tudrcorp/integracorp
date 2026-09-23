@@ -22,3 +22,12 @@ yarn-error.log
 /.vscode
 /.zed
 /config/parameters.php
+
+# Archivos del sistema operativo: no deben versionarse ni publicarse
+.DS_Store
+desktop.ini
+Thumbs.db
+
+# Documentos generados sueltos en la raíz pública: se sirven sin autenticación.
+# Los documentos van en storage/ y se entregan por rutas protegidas.
+/public/*.pdf
