@@ -28,6 +28,7 @@ class TrackLivePresence
      * @var list<string>
      */
     private const SKIPPED_PATHS = [
+        'lp/s',
         'live-presence/ping',
         'up',
         'build/*',

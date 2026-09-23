@@ -245,7 +245,7 @@ it('el latido guarda latencia, red y PWA instalada', function (): void {
     $this->actingAs(presenceUser())
         ->withHeaders(['X-CSRF-TOKEN' => 'x'])
         ->withoutMiddleware(Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class)
-        ->postJson('/live-presence/ping', [
+        ->postJson('/lp/s', [
             'reason' => 'heartbeat',
             'path' => '/app/cotizaciones?token=secreto',
             'title' => 'Cotizaciones',
@@ -270,9 +270,9 @@ it('el latido guarda latencia, red y PWA instalada', function (): void {
 it('el latido rechaza valores fuera de rango y exige sesión', function (): void {
     $this->withoutMiddleware(Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
 
-    $this->postJson('/live-presence/ping', ['rtt' => 10])->assertUnauthorized();
+    $this->postJson('/lp/s', ['rtt' => 10])->assertUnauthorized();
 
-    $this->actingAs(presenceUser())->postJson('/live-presence/ping', ['rtt' => -5])->assertUnprocessable();
+    $this->actingAs(presenceUser())->postJson('/lp/s', ['rtt' => -5])->assertUnprocessable();
 
     expect(LivePresenceStore::repository()->online(90))->toBe([]);
 });
@@ -293,6 +293,7 @@ it('el monitor muestra a los conectados y bloquea a quien no está en la lista',
         'browser' => 'Chrome',
         'os' => 'Windows',
         'rtt_ms' => 95,
+        'last_ping_at' => time(),
         'activity' => 'Guardó los cambios',
         'activity_at' => time(),
         /** Formato técnico anterior: ya no debe mostrarse. */
@@ -327,7 +328,7 @@ it('el latido solo se imprime con sesión iniciada', function (): void {
 
     expect(view('live-presence.beacon')->render())
         ->toContain('__livePresence')
-        ->toContain('live-presence')
+        ->toContain('lp\\/s')
         ->toContain('data-navigate-once');
 });
 
@@ -359,3 +360,55 @@ it('la actualización de la base de ubicación prueba el mes anterior y conserva
     'servidor rechaza' => [404, 'Not found'],
     'respuesta que no es la base' => [200, 'ok'],
 ]);
+
+it('el latido va a /lp/s y la dirección anterior sigue respondiendo', function (): void {
+    $this->withoutMiddleware(Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+
+    expect(route('live-presence.ping', absolute: false))->toBe('/lp/s');
+
+    $this->actingAs(presenceUser())->postJson('/lp/s', ['path' => '/business', 'rtt' => 50])->assertNoContent();
+    $this->actingAs(presenceUser())->postJson('/live-presence/ping', ['path' => '/business', 'rtt' => 60])->assertNoContent();
+
+    /** En pruebas cada petición abre una sesión nueva: llegan como dos sesiones con su latencia. */
+    expect(collect(LivePresenceStore::repository()->online(90))->pluck('rtt_ms')->sort()->values()->all())->toBe(['50', '60']);
+});
+
+it('quien lleva un rato sin señal se ve inactivo en vez de desaparecer, y se marca a quien no envía latido', function (): void {
+    $store = presenceRepository();
+    LivePresenceStore::swap($store);
+
+    $store->touch('aaaaaaaaaaaaaaaaaaaaaaaa', ['user_id' => 1, 'user_name' => 'Con latido', 'panel' => 'business', 'rtt_ms' => 80, 'last_ping_at' => time()], true);
+    $store->touch('bbbbbbbbbbbbbbbbbbbbbbbb', ['user_id' => 2, 'user_name' => 'Sin latido', 'panel' => 'agents'], true);
+    $store->touch('cccccccccccccccccccccccc', ['user_id' => 3, 'user_name' => 'Inactivo', 'panel' => 'operations', 'last_ping_at' => time() - 150], true);
+
+    /** El inactivo tuvo su última señal hace 150 s: fuera de los 90 s, dentro de los 5 min. */
+    $index = Cache::store('array')->get('lp:online');
+    $index['cccccccccccccccccccccccc'] = time() - 150;
+    Cache::store('array')->put('lp:online', $index, 300);
+    $row = Cache::store('array')->get('lp:s:cccccccccccccccccccccccc');
+    $row['last_seen'] = (string) (time() - 150);
+    Cache::store('array')->put('lp:s:cccccccccccccccccccccccc', $row, 300);
+
+    $sessions = collect(LiveActivitySnapshot::sessions())->keyBy('user_name');
+    $kpis = LiveActivitySnapshot::kpis($sessions->values()->all());
+
+    expect($sessions)->toHaveCount(3)
+        ->and($sessions['Inactivo']['idle'])->toBeTrue()
+        ->and($sessions['Con latido']['idle'])->toBeFalse()
+        ->and($sessions['Con latido']['has_heartbeat'])->toBeTrue()
+        ->and($sessions['Sin latido']['has_heartbeat'])->toBeFalse()
+        ->and($kpis['users'])->toBe(2)
+        ->and($kpis['sessions'])->toBe(2)
+        ->and($kpis['idle_sessions'])->toBe(1)
+        ->and($kpis['without_heartbeat'])->toBe(1)
+        ->and($kpis['listed'])->toBe(3)
+        ->and($kpis['avg_rtt'])->toBe(80);
+
+    Filament::setCurrentPanel('business');
+    $this->actingAs(presenceUser('gcamacho@tudrencasa.com', 2));
+
+    Livewire::test(LiveActivityMonitor::class)
+        ->assertSee('Sin señal del navegador')
+        ->assertSee('Inactivo · hace 2 min')
+        ->assertSee('80 ms');
+});

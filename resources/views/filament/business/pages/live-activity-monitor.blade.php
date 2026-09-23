@@ -26,6 +26,9 @@
         .lam-table td { padding: 11px 14px; border-bottom: 1px solid var(--lam-border); vertical-align: middle; }
         .lam-table tr.lam-row { cursor: pointer; transition: background .15s; }
         .lam-table tr.lam-row:hover, .lam-table tr.lam-row.selected { background: var(--lam-soft); }
+        .lam-table tr.lam-row.idle > td { opacity: .5; }
+        .lam-table tr.lam-row.idle:hover > td { opacity: .85; }
+        .lam-nosignal { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 600; background: rgba(100, 116, 139, .16); color: var(--lam-muted); white-space: nowrap; cursor: help; }
         .lam-user { display: flex; align-items: center; gap: 10px; min-width: 190px; }
         .lam-avatar { width: 34px; height: 34px; border-radius: 999px; background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 12px; flex-shrink: 0; position: relative; }
         .lam-presence { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 999px; border: 2px solid var(--lam-bg); background: var(--lam-good); }
@@ -69,7 +72,7 @@
         @include('live-presence.partials.security-panel', ['security' => $security, 'kpis' => $kpis, 'health' => $health, 'tv' => false, 'actions' => true])
 
         <div class="lam-filters">
-            <button type="button" class="lam-chip {{ $panelFilter === 'all' ? 'on' : '' }}" wire:click="filterPanel('all')">Todos<span>{{ $kpis['sessions'] }}</span></button>
+            <button type="button" class="lam-chip {{ $panelFilter === 'all' ? 'on' : '' }}" wire:click="filterPanel('all')">Todos<span>{{ $kpis['listed'] }}</span></button>
             @foreach ($kpis['panels'] as $panel => $count)
                 <button type="button" wire:key="chip-{{ $panel }}" class="lam-chip {{ $panelFilter === $panel ? 'on' : '' }}" wire:click="filterPanel('{{ $panel }}')">
                     {{ $panelLabels[$panel] ?? $panel }}<span>{{ $count }}</span>
@@ -100,7 +103,7 @@
                     <tbody>
                         @foreach ($sessions as $session)
                             <tr wire:key="session-{{ $session['session_key'] }}"
-                                class="lam-row {{ $selectedSession === $session['session_key'] ? 'selected' : '' }}"
+                                class="lam-row {{ $selectedSession === $session['session_key'] ? 'selected' : '' }} {{ $session['idle'] ? 'idle' : '' }}"
                                 wire:click="selectSession('{{ $session['session_key'] }}')">
                                 <td>
                                     <div class="lam-user">
@@ -138,7 +141,11 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="lam-metric"><span class="lam-level {{ $session['rtt_level'] }}"></span>{{ $session['rtt_ms'] !== null ? $session['rtt_ms'].' ms' : '—' }}</span>
+                                    @if ($session['has_heartbeat'])
+                                        <span class="lam-metric"><span class="lam-level {{ $session['rtt_level'] }}"></span>{{ $session['rtt_ms'] !== null ? $session['rtt_ms'].' ms' : 'midiendo…' }}</span>
+                                    @else
+                                        <span class="lam-nosignal" title="El navegador no está enviando su latido: suele ser una pestaña abierta antes de la última actualización (se corrige recargando), un bloqueador de publicidad o antivirus, o una conexión inestable. Solo se le ve cuando hace clic o navega.">Sin señal del navegador</span>
+                                    @endif
                                     <div class="lam-sub">{{ $session['conn_type'] !== '' ? strtoupper($session['conn_type']) : '' }}</div>
                                 </td>
                                 <td>
@@ -146,8 +153,13 @@
                                     <div class="lam-sub">{{ $session['queries'] !== null ? $session['queries'].' consultas' : '' }}</div>
                                 </td>
                                 <td>
-                                    <div style="font-weight: 600;">{{ $session['last_seen_ago'] }}</div>
-                                    <div class="lam-sub">{{ $session['visible'] ? 'Pestaña activa' : 'En segundo plano' }} · {{ $session['session_duration'] }}</div>
+                                    @if ($session['idle'])
+                                        <span class="lam-badge warn">Inactivo · {{ $session['last_seen_ago'] }}</span>
+                                        <div class="lam-sub" style="margin-top: 3px;">sin señales desde hace un rato · {{ $session['session_duration'] }}</div>
+                                    @else
+                                        <div style="font-weight: 600;">{{ $session['last_seen_ago'] }}</div>
+                                        <div class="lam-sub">{{ $session['visible'] ? 'Pestaña activa' : 'En segundo plano' }} · {{ $session['session_duration'] }}</div>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -189,7 +201,7 @@
                 $eventIcon = ['page' => 'heroicon-m-document-text', 'action' => 'heroicon-m-bolt', 'download' => 'heroicon-m-arrow-down-tray', 'visibility' => 'heroicon-m-eye-slash'];
                 $isBlocked = in_array($selected['user_id'], $blockedIds, true);
                 $tiles = [
-                    ['label' => 'Latencia', 'value' => $selected['rtt_ms'], 'suffix' => 'ms', 'level' => $selected['rtt_level'], 'hint' => 'ida y vuelta'],
+                    ['label' => 'Latencia', 'value' => $selected['has_heartbeat'] ? $selected['rtt_ms'] : null, 'suffix' => 'ms', 'level' => $selected['has_heartbeat'] ? $selected['rtt_level'] : 'unknown', 'hint' => $selected['has_heartbeat'] ? 'ida y vuelta' : 'sin señal del navegador'],
                     ['label' => 'Servidor', 'value' => $selected['server_ms'], 'suffix' => 'ms', 'level' => $selected['server_level'], 'hint' => 'última respuesta'],
                     ['label' => 'Carga de página', 'value' => $selected['load_ms'], 'suffix' => 'ms', 'level' => $msLevel($selected['load_ms'], 2500, 5000), 'hint' => 'en el navegador'],
                     ['label' => 'Primer byte', 'value' => $selected['ttfb_ms'], 'suffix' => 'ms', 'level' => $msLevel($selected['ttfb_ms'], 800, 1800), 'hint' => 'TTFB'],
@@ -261,12 +273,15 @@
                     <div class="lam-dh-chips">
                         <span class="lam-badge {{ $selected['is_pwa'] ? 'pwa' : 'accent' }}">{{ $selected['panel_label'] }}</span>
                         <span class="lam-badge" style="{{ $selected['visible'] ? 'background: rgba(22, 163, 74, .14); color: var(--lam-good);' : 'background: rgba(217, 119, 6, .14); color: var(--lam-fair);' }}">
-                            {{ $selected['visible'] ? 'Pestaña activa' : 'En segundo plano' }} · {{ $selected['last_seen_ago'] }}
+                            {{ $selected['idle'] ? 'Inactivo' : ($selected['visible'] ? 'Pestaña activa' : 'En segundo plano') }} · {{ $selected['last_seen_ago'] }}
                         </span>
                         <span class="lam-badge">{{ $selected['flag'] }} {{ $selected['location'] }}</span>
                         @if ($selected['pwa_installed'])
                             <span class="lam-badge pwa">PWA instalada</span>
                         @endif
+                        @unless ($selected['has_heartbeat'])
+                            <span class="lam-nosignal" title="El navegador no está enviando su latido: pestaña abierta antes de la última actualización, bloqueador o conexión inestable.">Sin señal del navegador</span>
+                        @endunless
                         @if ($isBlocked)
                             <span class="lam-badge" style="background: rgba(220, 38, 38, .14); color: var(--lam-poor);">Bloqueado</span>
                         @endif

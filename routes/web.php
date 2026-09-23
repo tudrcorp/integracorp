@@ -2202,9 +2202,18 @@ Route::middleware(['auth', 'throttle:30,1'])->group(function () {
 |
 */
 
-Route::post('/live-presence/ping', \App\Http\Controllers\LivePresencePingController::class)
+Route::post('/lp/s', \App\Http\Controllers\LivePresencePingController::class)
     ->middleware(['auth', 'throttle:120,1'])
     ->name('live-presence.ping');
+
+/**
+ * Dirección anterior: los bloqueadores de publicidad filtran URLs con «ping» o
+ * «presence», por eso el latido ahora va a /lp/s. Se conserva para pestañas
+ * abiertas con el script viejo; se puede retirar tras unos días.
+ */
+Route::post('/live-presence/ping', \App\Http\Controllers\LivePresencePingController::class)
+    ->middleware(['auth', 'throttle:120,1'])
+    ->name('live-presence.ping-legacy');
 
 /*
 | Pantalla grande del monitor en vivo: solo lectura, protegida por token

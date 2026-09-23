@@ -38,15 +38,21 @@
         @else
             <table class="tv-users">
                 @foreach ($sessions as $session)
-                    <tr wire:key="tv-session-{{ $session['session_key'] }}">
+                    <tr wire:key="tv-session-{{ $session['session_key'] }}" @if ($session['idle']) style="opacity: .5;" @endif>
                         <td><strong>{{ $session['user_name'] }}</strong><div class="tv-muted">{{ $session['user_email'] }}</div></td>
                         <td><span class="tv-badge {{ $session['is_pwa'] ? 'pwa' : '' }}">{{ $session['panel_label'] }}</span> {{ $session['page_label'] }}
                             @if ($session['last_action'] !== '')<div class="tv-muted">⚡ {{ \Illuminate\Support\Str::limit($session['last_action'], 70) }}</div>@endif
                         </td>
                         <td>{{ $session['flag'] }} {{ $session['location'] }}<div class="tv-muted">{{ $session['ip'] }}</div></td>
                         <td>{{ $session['browser'] }}<div class="tv-muted">{{ $session['os'] }}</div></td>
-                        <td><span class="tv-dot-sm {{ $session['rtt_level'] }}"></span>{{ $session['rtt_ms'] !== null ? $session['rtt_ms'].' ms' : '—' }}</td>
-                        <td class="tv-muted">{{ $session['last_seen_ago'] }}<br>{{ $session['visible'] ? 'activa' : 'segundo plano' }}</td>
+                        <td>
+                            @if ($session['has_heartbeat'])
+                                <span class="tv-dot-sm {{ $session['rtt_level'] }}"></span>{{ $session['rtt_ms'] !== null ? $session['rtt_ms'].' ms' : 'midiendo…' }}
+                            @else
+                                <span class="tv-muted">sin señal</span>
+                            @endif
+                        </td>
+                        <td class="tv-muted">{{ $session['last_seen_ago'] }}<br>{{ $session['idle'] ? 'inactivo' : ($session['visible'] ? 'activa' : 'segundo plano') }}</td>
                     </tr>
                 @endforeach
             </table>
