@@ -51,7 +51,7 @@
             width: 60%;
             opacity: 0.045;
             z-index: 0;
-            transform: translateY(-50%) rotate(-10deg);
+            transform: translateY(-50%);
         }
         .watermark img { width: 100%; height: auto; display: block; }
         .copies {
@@ -226,7 +226,8 @@
                                 @endif
                             </td>
                             <td class="col-title">
-                                <p class="doc-title">Indicaciones Médicas</p>
+                                {{-- El original va a la farmacia (solo medicamentos): es el récipe. La copia, con las indicaciones, es la del paciente. --}}
+                                <p class="doc-title">{{ $isOriginal ? 'Récipe Médico' : 'Indicaciones Médicas' }}</p>
                                 <p class="doc-sub">Clave: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
                                 <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
                                 <span class="badge">{{ $copyLabel }}</span>

@@ -79,7 +79,7 @@ class GeneratePdfInformeSeguimiento implements ShouldQueue
      */
     private function documentFileName(array $data): string
     {
-        return $data['ci_patient'].'-'.$data['code_reference'].'-'.$this->type_document.'.pdf';
+        return TelemedicineFollowUpReportDocument::fileName($data);
     }
 
     /**

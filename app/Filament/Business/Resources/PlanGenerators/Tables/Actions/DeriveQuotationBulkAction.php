@@ -87,7 +87,7 @@ final class DeriveQuotationBulkAction
                     'derived_id' => $derived->getKey(),
                     'control_number' => $derived->control_number,
                     'client_data' => $derived->client_data,
-                    'conditions_count' => count($derived->conditions ?? []),
+                    'conditions_length' => mb_strlen((string) ($derived->conditions ?? '')),
                 ]);
 
                 Notification::make()
@@ -163,7 +163,7 @@ final class DeriveQuotationBulkAction
                 $columns,
             ),
             'conditions' => PlanGeneratorConditions::normalize(
-                $rawState['conditions'] ?? $data['conditions'] ?? [],
+                $rawState['conditions'] ?? $data['conditions'] ?? null,
             ),
         ];
     }
@@ -227,13 +227,13 @@ final class DeriveQuotationBulkAction
      */
     private static function assertConditionsArePresent(BulkAction $action, array $formState): void
     {
-        if (PlanGeneratorConditions::normalize($formState['conditions'] ?? []) !== []) {
+        if (PlanGeneratorConditions::normalize($formState['conditions'] ?? null) !== '') {
             return;
         }
 
         Notification::make()
             ->title('Faltan las condiciones')
-            ->body('Escriba al menos una condición. Aparece debajo del total grupal en la cotización.')
+            ->body('Pegue o escriba las condiciones. Aparecen debajo del total grupal en la cotización.')
             ->danger()
             ->persistent()
             ->send();

@@ -30,7 +30,7 @@ it('la plantilla de ordenes usa la etapa de la consulta y ya no la cobertura en 
         ->not->toContain('$coverageGroup')
         ->not->toContain('Tipo de servicio')
         ->toContain("'imagenologia' => 'Imagenología'")
-        ->toContain("'especialista' => 'Especialistas'")
+        ->toContain("'especialista' => 'Referencia Especialista'")
         ->toContain("default => 'Laboratorios'")
         ->not->toContain('Orden de laboratorios')
         ->not->toContain('Orden de estudios / imagenología')

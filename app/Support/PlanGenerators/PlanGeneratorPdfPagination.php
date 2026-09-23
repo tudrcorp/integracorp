@@ -41,7 +41,6 @@ final class PlanGeneratorPdfPagination
      * @param  array<int, array<string, mixed>>  $columns
      * @param  array<string, array<string, mixed>>  $rows
      * @param  array<string, array<string, mixed>>  $rateRows
-     * @param  list<string>  $conditions
      */
     public static function calculationsStartOnNextPage(
         array $columns,
@@ -49,7 +48,7 @@ final class PlanGeneratorPdfPagination
         array $rateRows,
         bool $includeMonthlyTotal,
         string $populationUnitLabel = 'Población',
-        array $conditions = [],
+        string $conditions = '',
     ): bool {
         $columnCount = max(1, count($columns));
         $planWidthPt = self::mmToPt((float) PlanGeneratorMatrixColumnLayout::planColumnWidthMm($columnCount));
@@ -127,7 +126,6 @@ final class PlanGeneratorPdfPagination
     /**
      * @param  array<int, array<string, mixed>>  $columns
      * @param  array<string, array<string, mixed>>  $rateRows
-     * @param  list<string>  $conditions
      */
     private static function calculationsBlockHeight(
         array $columns,
@@ -138,7 +136,7 @@ final class PlanGeneratorPdfPagination
         float $rateAgeWidthPt,
         float $ratePopWidthPt,
         float $planWidthPt,
-        array $conditions = [],
+        string $conditions = '',
     ): float {
         $ratesHeader = max(
             self::lineCount('TARIFA INDIVIDUAL ANUAL', self::textWidthPt($rateAgeWidthPt), true),
@@ -192,22 +190,19 @@ final class PlanGeneratorPdfPagination
             + self::CALC_PADDING_BOTTOM_PT;
     }
 
-    /**
-     * @param  list<string>  $conditions
-     */
-    private static function conditionsBlockHeight(array $conditions): float
+    private static function conditionsBlockHeight(string $conditions): float
     {
-        $lines = PlanGeneratorConditions::normalize($conditions);
+        $text = PlanGeneratorConditions::normalize($conditions);
 
-        if ($lines === []) {
+        if ($text === '') {
             return 0.0;
         }
 
         $width = self::mmToPt(PlanGeneratorMatrixColumnLayout::PDF_CONTENT_WIDTH_MM) - 12.0;
         $height = self::SECTION_TITLE_PT;
 
-        foreach ($lines as $line) {
-            $height += self::bodyRowHeight(self::lineCount($line, $width, false));
+        foreach (explode("\n", $text) as $line) {
+            $height += self::bodyRowHeight(self::lineCount($line === '' ? ' ' : $line, $width, false));
         }
 
         return $height;

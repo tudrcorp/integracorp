@@ -57,7 +57,7 @@
             opacity: 0.052;
             z-index: 0;
             pointer-events: none;
-            transform: translateY(-50%) rotate(-14deg);
+            transform: translateY(-50%);
             transform-origin: center center;
         }
         .watermark img {

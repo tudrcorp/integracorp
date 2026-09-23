@@ -109,9 +109,7 @@ final class PlanGeneratorTemplateCloner
             'population_summary' => (string) $template->population_summary,
             'brand_color' => (string) ($template->brand_color ?? PlanGeneratorBrandColor::DEFAULT),
             'include_monthly_total' => (bool) $template->include_monthly_total,
-            'conditions' => PlanGeneratorConditions::formState(
-                PlanGeneratorConditions::normalize($template->conditions),
-            ),
+            'conditions' => PlanGeneratorConditions::formState($template->conditions),
             'columns' => $matrix['columns'],
             'rows' => $matrix['rows'],
             'rate_rows' => $matrix['rate_rows'],
@@ -164,14 +162,13 @@ final class PlanGeneratorTemplateCloner
      * La derivada no se guarda sin al menos una condición escrita.
      *
      * @param  array<string, mixed>  $formState
-     * @return list<string>
      */
-    private static function conditionsFromFormState(array $formState): array
+    private static function conditionsFromFormState(array $formState): string
     {
-        $conditions = PlanGeneratorConditions::normalize($formState['conditions'] ?? []);
+        $conditions = PlanGeneratorConditions::normalize($formState['conditions'] ?? null);
 
-        if ($conditions === []) {
-            throw new InvalidArgumentException('La cotización derivada requiere al menos una condición.');
+        if ($conditions === '') {
+            throw new InvalidArgumentException('La cotización derivada requiere las condiciones.');
         }
 
         return $conditions;

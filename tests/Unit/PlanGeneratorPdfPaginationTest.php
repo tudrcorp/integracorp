@@ -109,10 +109,7 @@ function beneficiosLargosCapemiac(): array
  * @param  array<string, array<string, mixed>>  $rows
  * @param  array<string, array<string, mixed>>  $rateRows
  */
-/**
- * @param  list<string>  $conditions
- */
-function htmlDePlanPdf(array $columns, array $rows, array $rateRows, array $conditions = []): string
+function htmlDePlanPdf(array $columns, array $rows, array $rateRows, string $conditions = ''): string
 {
     $plan = new PlanGenerator([
         'name' => 'PLAN ESPECIAL CAPEMIAC',
@@ -222,14 +219,17 @@ it('imprime las condiciones debajo del total grupal y las cuenta para el salto d
         ['label' => '31 a 65 años', 'population' => 4, 'rate' => 180],
     ]);
 
-    $html = htmlDePlanPdf($columns, $rows, $rateRows, [
-        'Cotización válida por 15 días.',
-        'Las tarifas no incluyen IVA.',
-    ]);
+    $html = htmlDePlanPdf(
+        $columns,
+        $rows,
+        $rateRows,
+        "* Cotización válida por 15 días.\n* Las tarifas no incluyen IVA.",
+    );
 
     expect(strpos($html, 'Total grupal'))->toBeLessThan(strpos($html, 'Condiciones'))
-        ->and(strpos($html, 'Condiciones'))->toBeLessThan(strpos($html, '1. Cotización válida por 15 días.'))
-        ->and(strpos($html, '1. Cotización válida por 15 días.'))->toBeLessThan(strpos($html, '2. Las tarifas no incluyen IVA.'));
+        ->and(strpos($html, 'Condiciones'))->toBeLessThan(strpos($html, '* Cotización válida por 15 días.'))
+        ->and(strpos($html, '* Cotización válida por 15 días.'))->toBeLessThan(strpos($html, '* Las tarifas no incluyen IVA.'))
+        ->and($html)->toContain('white-space: pre-wrap');
 
     expect(PlanGeneratorPdfPagination::calculationsStartOnNextPage($columns, $rows, $rateRows, false, 'Población'))
         ->toBeFalse()
@@ -239,7 +239,7 @@ it('imprime las condiciones debajo del total grupal y las cuenta para el salto d
             $rateRows,
             false,
             'Población',
-            array_fill(0, 40, str_repeat('Condición comercial de la cotización derivada. ', 8)),
+            str_repeat("Condición comercial de la cotización derivada.\n", 80),
         ))->toBeTrue();
 });
 

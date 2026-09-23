@@ -21,7 +21,7 @@
     $labs = is_array($data['labsArr'] ?? null) ? array_values(array_filter($data['labsArr'], static fn (mixed $item): bool => filled($item))) : [];
     $studies = is_array($data['studiesArr'] ?? null) ? array_values(array_filter($data['studiesArr'], static fn (mixed $item): bool => filled($item))) : [];
 
-    $title = $isFollowUp ? 'Informe de seguimiento' : 'Informe Médico';
+    $title = $isFollowUp ? 'Informe Médico - Seguimiento' : 'Informe Médico';
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -69,7 +69,7 @@
             opacity: 0.052;
             z-index: 0;
             pointer-events: none;
-            transform: translateY(-50%) rotate(-14deg);
+            transform: translateY(-50%);
             transform-origin: center center;
         }
         .watermark img {
@@ -183,6 +183,12 @@
             overflow-wrap: break-word;
         }
         .grid tr td:nth-child(2) {
+            padding-right: 0;
+        }
+        .grid--3 tr td:nth-child(2) {
+            padding-right: 8px;
+        }
+        .grid--3 tr td:nth-child(3) {
             padding-right: 0;
         }
         .label {
@@ -373,7 +379,14 @@
         <div class="section-title section-title--block">Antecedentes</div>
         <div class="prose-box">{{ $val($data['background'] ?? null) }}</div>
 
-        @if($isLong)
+        @php
+            /** Una sección se muestra si tiene al menos un dato; si están todos vacíos se oculta (un 0 sí es dato). */
+            $hasAnyOf = static fn (array $keys): bool => collect($keys)->contains(static fn (string $key): bool => filled($data[$key] ?? null));
+            $hasVitalSigns = $hasAnyOf(['pa', 'fc', 'fr', 'temp', 'saturacion']);
+            $hasAnthropometrics = $hasAnyOf(['peso', 'estatura', 'imc']);
+        @endphp
+
+        @if($isLong && $hasVitalSigns)
             <div class="keep-together">
                 <div class="section-title section-title--block">Signos vitales</div>
                 <table class="items">
@@ -388,7 +401,7 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="center">{{ $val($data['pa'] ?? null) }}</td>
+                            <td class="center">{{ \App\Support\Telemedicine\TelemedicineBloodPressure::format($data['pa'] ?? null) }}</td>
                             <td class="center">{{ $val($data['fc'] ?? null) }}</td>
                             <td class="center">{{ $val($data['fr'] ?? null) }}</td>
                             <td class="center">{{ $val($data['temp'] ?? null) }}</td>
@@ -399,28 +412,28 @@
             </div>
         @endif
 
+        @if($hasAnthropometrics)
         <div class="keep-together">
             <div class="section-title section-title--block">Medidas antropométricas</div>
-            <table class="grid">
+            {{-- Una sola fila; anchos fijos por celda para que DomPDF no reparta las columnas a su criterio. --}}
+            <table class="grid grid--3">
                 <tr>
-                    <td>
+                    <td style="width:33.33%">
                         <div class="label">Peso</div>
-                        <div class="value">{{ $val($data['peso'] ?? null) }} kg</div>
+                        <div class="value">{{ \App\Support\Telemedicine\TelemedicineMeasurementFormatter::format($data['peso'] ?? null, 'kg') }}</div>
                     </td>
-                    <td>
+                    <td style="width:33.33%">
                         <div class="label">Estatura</div>
-                        <div class="value">{{ $val($data['estatura'] ?? null) }} m</div>
+                        <div class="value">{{ \App\Support\Telemedicine\TelemedicineMeasurementFormatter::format($data['estatura'] ?? null, 'm') }}</div>
                     </td>
-                </tr>
-                <tr>
-                    <td>
+                    <td style="width:33.34%">
                         <div class="label">IMC</div>
-                        <div class="value">{{ $val($data['imc'] ?? null) }}</div>
+                        <div class="value">{{ \App\Support\Telemedicine\TelemedicineMeasurementFormatter::format($data['imc'] ?? null, '', 1) }}</div>
                     </td>
-                    <td></td>
                 </tr>
             </table>
         </div>
+        @endif
 
         <div class="section-title section-title--block">Impresión diagnóstica</div>
         <div class="prose-box">{{ $val($data['diagnostic_impression'] ?? null) }}</div>

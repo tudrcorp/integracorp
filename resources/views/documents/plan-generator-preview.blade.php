@@ -284,8 +284,8 @@
             font-weight: bold;
         }
 
-        .condition-line {
-            margin: 0 0 3px 0;
+        .conditions-block {
+            white-space: pre-wrap;
             font-size: 7pt;
             line-height: 1.35;
             color: #1f2937;

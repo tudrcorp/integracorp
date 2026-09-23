@@ -40,7 +40,7 @@
             width: 60%;
             opacity: 0.052;
             z-index: 0;
-            transform: translateY(-50%) rotate(-14deg);
+            transform: translateY(-50%);
         }
         .watermark img { width: 100%; height: auto; display: block; }
         .doc-root { position: relative; z-index: 1; }
