@@ -6,9 +6,8 @@ namespace App\Support\LivePresence;
 
 use App\Models\FailedJob;
 use App\Support\SecurityAudit;
-use Illuminate\Database\ConnectionInterface;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Queue\DatabaseQueue;
+use Illuminate\Queue\RedisQueue;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -16,20 +15,20 @@ use Throwable;
 
 /**
  * Liberar una cola atascada: sacar trabajos que esperan (o que quedaron
- * colgados) para que el resto fluya.
+ * colgados) para que el resto fluya. Funciona con los drivers `database` y `redis`.
  *
  * Dos formas, a elección del analista:
  * - Mover a fallidos (recomendado): el trabajo sale de la cola pero queda en
  *   «Colas y errores», donde se puede reintentar cuando la cola esté sana.
  * - Eliminar: se borra sin rastro del trabajo (sí queda en la auditoría).
  *
- * Solo aplica al driver `database`. Los pendientes se sacan únicamente si
- * nadie los tomó entre la lectura y el borrado (`reserved_at` nulo), así no se
- * pisa un trabajo que un worker acaba de empezar.
+ * Un pendiente que un worker tomó entre la lectura y el borrado no se toca.
  */
 final class QueueJobActions
 {
     public const SCOPE_STUCK = 'stuck';
+
+    public const SCOPE_DUPLICATES = 'duplicates';
 
     public const SCOPE_PENDING = 'pending';
 
@@ -41,7 +40,9 @@ final class QueueJobActions
 
     public const MODE_DELETE = 'delete';
 
-    private const CHUNK = 500;
+    private static ?QueueJobStore $store = null;
+
+    private static bool $storeResolved = false;
 
     /**
      * @return array<string, string>
@@ -50,19 +51,51 @@ final class QueueJobActions
     {
         return [
             self::SCOPE_STUCK => 'Solo los atascados (esperan más de '.self::stuckAfterMinutes().' min)',
+            self::SCOPE_DUPLICATES => 'Repetidos idénticos (deja el más reciente de cada uno)',
             self::SCOPE_PENDING => 'Todos los que esperan',
-            self::SCOPE_ZOMBIES => 'Los colgados (reservados hace más de '.QueueHealth::ageLabel(self::retryAfter()).')',
+            self::SCOPE_ZOMBIES => 'Los colgados (el worker que los tomó ya no responde)',
             self::SCOPE_ALL => 'Todo lo de la cola (incluye programados y colgados)',
         ];
     }
 
     public static function isSupported(): bool
     {
-        try {
-            return Queue::connection() instanceof DatabaseQueue;
-        } catch (Throwable) {
-            return false;
+        return self::store() !== null;
+    }
+
+    /**
+     * Para pruebas: fuerza un acceso a la cola, o con $resolved = false vuelve a resolverlo.
+     */
+    public static function swapStore(?QueueJobStore $store, bool $resolved = true): void
+    {
+        self::$store = $store;
+        self::$storeResolved = $resolved;
+    }
+
+    public static function store(): ?QueueJobStore
+    {
+        if (self::$storeResolved) {
+            return self::$store;
         }
+
+        try {
+            $connection = Queue::connection();
+        } catch (Throwable) {
+            return null;
+        }
+
+        if ($connection instanceof DatabaseQueue) {
+            return new DatabaseQueueJobStore(
+                $connection->getDatabase(),
+                (string) config('queue.connections.'.config('queue.default').'.table', 'jobs'),
+            );
+        }
+
+        if ($connection instanceof RedisQueue) {
+            return new RedisQueueJobStore($connection->getConnection(), static fn (string $queue): string => $connection->getQueue($queue));
+        }
+
+        return null;
     }
 
     /**
@@ -72,10 +105,11 @@ final class QueueJobActions
      */
     public static function counts(string $queue, ?string $jobClass = null): array
     {
+        $entries = self::entries($queue, true);
         $counts = [];
 
         foreach (array_keys(self::scopeLabels()) as $scope) {
-            $counts[$scope] = count(self::ids($queue, $scope, $jobClass));
+            $counts[$scope] = count(self::select($entries, $scope, $jobClass));
         }
 
         return $counts;
@@ -90,15 +124,9 @@ final class QueueJobActions
     {
         $classes = [];
 
-        try {
-            self::table()->where('queue', $queue)->select('id')->selectRaw('SUBSTR(payload, 1, 300) AS payload_head')->orderBy('id')->limit(20000)
-                ->get()
-                ->each(function (object $row) use (&$classes): void {
-                    $class = FailedJob::jobClassFromPayload((string) $row->payload_head);
-                    $classes[$class] = ($classes[$class] ?? 0) + 1;
-                });
-        } catch (Throwable) {
-            return [];
+        foreach (self::entries($queue) as $entry) {
+            $class = FailedJob::jobClassFromPayload((string) $entry['payload']);
+            $classes[$class] = ($classes[$class] ?? 0) + 1;
         }
 
         arsort($classes);
@@ -112,14 +140,38 @@ final class QueueJobActions
     }
 
     /**
+     * Qué tipo de trabajo espera y cuántos están colgados, para el tablero.
+     *
+     * @return array{pending_by_class: array<string, int>, zombies: int}
+     */
+    public static function summary(string $queue): array
+    {
+        $entries = self::entries($queue);
+        $byClass = [];
+
+        foreach ($entries as $entry) {
+            if ($entry['bucket'] === 'pending') {
+                $job = class_basename(FailedJob::jobClassFromPayload((string) $entry['payload']));
+                $byClass[$job] = ($byClass[$job] ?? 0) + 1;
+            }
+        }
+
+        arsort($byClass);
+
+        return ['pending_by_class' => $byClass, 'zombies' => count(self::select($entries, self::SCOPE_ZOMBIES, null))];
+    }
+
+    /**
      * @return array{affected: int, moved: int, deleted: int}
      *
      * @throws InvalidArgumentException
      */
     public static function release(string $queue, string $scope, string $mode, ?string $jobClass = null, string $reason = '', ?string $actor = null): array
     {
-        if (! self::isSupported()) {
-            throw new InvalidArgumentException('Liberar colas solo está disponible con el driver de colas «database».');
+        $store = self::store();
+
+        if ($store === null) {
+            throw new InvalidArgumentException('Liberar colas solo está disponible con los drivers de colas «database» o «redis».');
         }
 
         if (! array_key_exists($scope, self::scopeLabels()) || ! in_array($mode, [self::MODE_MOVE, self::MODE_DELETE], true)) {
@@ -133,53 +185,34 @@ final class QueueJobActions
         }
 
         $actor ??= 'system';
-        $ids = self::ids($queue, $scope, $jobClass);
-        $moved = 0;
-        $deleted = 0;
+        $selected = self::select(self::entries($queue, true), $scope, $jobClass === '' ? null : $jobClass);
+        $message = 'App\Support\LivePresence\QueueJobActions: Sacado de la cola a mano desde el monitor por '.$actor.'.'
+            .($reason !== '' ? ' Motivo: '.Str::limit(trim($reason), 500) : '')
+            .' in '.__FILE__.':'.__LINE__;
 
-        foreach (array_chunk($ids, self::CHUNK) as $chunk) {
-            self::connection()->transaction(function () use ($chunk, $scope, $mode, $reason, $actor, &$moved, &$deleted): void {
-                $query = self::table()->whereIn('id', $chunk)->lockForUpdate();
+        $archive = $mode === self::MODE_MOVE
+            ? static function (string $payload, string $jobQueue) use ($message): string {
+                $uuid = self::uuidFor($payload);
 
-                /** Un pendiente que un worker tomó mientras tanto ya no se toca. */
-                if (in_array($scope, [self::SCOPE_STUCK, self::SCOPE_PENDING], true)) {
-                    $query->whereNull('reserved_at');
-                }
+                FailedJob::query()->insert([
+                    'uuid' => $uuid,
+                    'connection' => (string) config('queue.default'),
+                    'queue' => $jobQueue,
+                    'payload' => $payload,
+                    'exception' => $message,
+                    'failed_at' => now(),
+                ]);
 
-                $rows = $query->get(['id', 'queue', 'payload']);
+                return $uuid;
+            }
+        : null;
 
-                if ($rows->isEmpty()) {
-                    return;
-                }
+        $unarchive = static function (string $uuid): void {
+            FailedJob::query()->where('uuid', $uuid)->delete();
+        };
 
-                if ($mode === self::MODE_MOVE) {
-                    $failed = [];
-                    $now = now();
-
-                    foreach ($rows as $row) {
-                        $failed[] = [
-                            'uuid' => self::uuidFor((string) $row->payload),
-                            'connection' => (string) config('queue.default'),
-                            'queue' => (string) $row->queue,
-                            'payload' => (string) $row->payload,
-                            'exception' => 'App\Support\LivePresence\QueueJobActions: Sacado de la cola a mano desde el monitor por '.$actor.'.'
-                                .($reason !== '' ? ' Motivo: '.Str::limit(trim($reason), 500) : '')
-                                .' in '.__FILE__.':'.__LINE__,
-                            'failed_at' => $now,
-                        ];
-                    }
-
-                    FailedJob::query()->insert($failed);
-                    $moved += count($failed);
-                } else {
-                    $deleted += count($rows);
-                }
-
-                self::table()->whereIn('id', $rows->pluck('id')->all())->delete();
-            });
-        }
-
-        $result = ['affected' => $moved + $deleted, 'moved' => $moved, 'deleted' => $deleted];
+        $removed = $store->remove($queue, $selected, $archive, $unarchive);
+        $result = ['affected' => $removed, 'moved' => $mode === self::MODE_MOVE ? $removed : 0, 'deleted' => $mode === self::MODE_DELETE ? $removed : 0];
 
         FailedJobCatalog::forgetCache();
 
@@ -190,6 +223,7 @@ final class QueueJobActions
                 'mode' => $mode,
                 'job_class' => $jobClass,
                 'reason' => $reason,
+                'driver' => (string) config('queue.default'),
                 ...$result,
             ]);
         } catch (Throwable) {
@@ -199,39 +233,94 @@ final class QueueJobActions
     }
 
     /**
-     * @return list<int>
+     * @return list<array<string, mixed>>
      */
-    private static function ids(string $queue, string $scope, ?string $jobClass): array
+    private static function entries(string $queue, bool $fullPayload = false): array
     {
         try {
-            $now = now()->getTimestamp();
-            $query = self::table()->where('queue', $queue);
-
-            match ($scope) {
-                self::SCOPE_STUCK => $query->whereNull('reserved_at')->where('available_at', '<=', $now - self::stuckAfterMinutes() * 60),
-                self::SCOPE_PENDING => $query->whereNull('reserved_at')->where('available_at', '<=', $now),
-                self::SCOPE_ZOMBIES => $query->whereNotNull('reserved_at')->where('reserved_at', '<', $now - self::retryAfter()),
-                default => $query,
-            };
-
-            if ($jobClass === null || $jobClass === '') {
-                return array_map('intval', $query->orderBy('id')->pluck('id')->all());
-            }
-
-            $ids = [];
-
-            $query->select('id')->selectRaw('SUBSTR(payload, 1, 300) AS payload_head')->orderBy('id')
-                ->get()
-                ->each(function (object $row) use ($jobClass, &$ids): void {
-                    if (FailedJob::jobClassFromPayload((string) $row->payload_head) === $jobClass) {
-                        $ids[] = (int) $row->id;
-                    }
-                });
-
-            return $ids;
+            return self::store()?->entries($queue, $fullPayload) ?? [];
         } catch (Throwable) {
             return [];
         }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $entries
+     * @return list<array<string, mixed>>
+     */
+    private static function select(array $entries, string $scope, ?string $jobClass): array
+    {
+        $now = now()->getTimestamp();
+        $stuckBefore = $now - self::stuckAfterMinutes() * 60;
+        $retryAfter = self::retryAfter();
+
+        if ($jobClass !== null) {
+            $entries = array_values(array_filter($entries, static fn (array $entry): bool => FailedJob::jobClassFromPayload((string) $entry['payload']) === $jobClass));
+        }
+
+        if ($scope === self::SCOPE_DUPLICATES) {
+            return self::duplicates($entries);
+        }
+
+        return array_values(array_filter($entries, static function (array $entry) use ($scope, $now, $stuckBefore, $retryAfter): bool {
+            $since = $entry['available_at'] ?? $entry['created_at'];
+
+            return match ($scope) {
+                self::SCOPE_STUCK => $entry['bucket'] === 'pending' && $since !== null && $since <= $stuckBefore,
+                self::SCOPE_PENDING => $entry['bucket'] === 'pending',
+                /** database: reservado hace más de retry_after. redis: la reserva ya venció. */
+                self::SCOPE_ZOMBIES => $entry['bucket'] === 'reserved' && (
+                    ($entry['reserved_until'] !== null && $entry['reserved_until'] < $now)
+                    || ($entry['reserved_at'] !== null && $entry['reserved_at'] < $now - $retryAfter)
+                ),
+                default => true,
+            };
+        }));
+    }
+
+    /**
+     * Pendientes idénticos (mismo trabajo con los mismos datos): se deja el
+     * más reciente de cada uno y se seleccionan los demás. Es el caso típico de
+     * un trabajo programado que se acumula día tras día sin worker. Dos
+     * WhatsApp a personas distintas no son idénticos y nunca se tocan.
+     *
+     * @param  list<array<string, mixed>>  $entries
+     * @return list<array<string, mixed>>
+     */
+    private static function duplicates(array $entries): array
+    {
+        $groups = [];
+
+        foreach ($entries as $index => $entry) {
+            if ($entry['bucket'] !== 'pending') {
+                continue;
+            }
+
+            $decoded = json_decode((string) $entry['payload'], true);
+
+            if (! is_array($decoded) || ! isset($decoded['data']['command']) || ! is_string($decoded['data']['command'])) {
+                continue;
+            }
+
+            $identity = sha1(((string) ($decoded['displayName'] ?? '')).'|'.$decoded['data']['command']);
+            $groups[$identity][] = ['index' => $index, 'at' => (int) ($entry['created_at'] ?? $entry['available_at'] ?? 0)];
+        }
+
+        $selected = [];
+
+        foreach ($groups as $members) {
+            if (count($members) < 2) {
+                continue;
+            }
+
+            usort($members, static fn (array $a, array $b): int => [$b['at'], $b['index']] <=> [$a['at'], $a['index']]);
+
+            foreach (array_slice($members, 1) as $member) {
+                $selected[] = $entries[$member['index']];
+            }
+        }
+
+        return $selected;
     }
 
     /**
@@ -247,19 +336,6 @@ final class QueueJobActions
         }
 
         return $uuid;
-    }
-
-    private static function connection(): ConnectionInterface
-    {
-        /** @var DatabaseQueue $queue */
-        $queue = Queue::connection();
-
-        return $queue->getDatabase();
-    }
-
-    private static function table(): Builder
-    {
-        return self::connection()->table((string) config('queue.connections.'.config('queue.default').'.table', 'jobs'));
     }
 
     private static function stuckAfterMinutes(): int
