@@ -8,6 +8,7 @@ use App\Enums\PlanGeneratorPopulationUnit;
 use App\Filament\Business\Resources\PlanGenerators\Actions\AdjustRateAmountsAction;
 use App\Models\Benefit;
 use App\Models\Plan;
+use App\Support\PlanGenerators\PlanGeneratorAgentLookup;
 use App\Support\PlanGenerators\PlanGeneratorBrandColor;
 use App\Support\PlanGenerators\PlanGeneratorImageGallery;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
@@ -303,14 +304,7 @@ class PlanGeneratorForm
                                                             ->native(false)
                                                             ->displayFormat('d/m/Y')
                                                             ->closeOnDateSelection(),
-                                                        TextInput::make('agent_name')
-                                                            ->label('Agente')
-                                                            ->required()
-                                                            ->maxLength(255)
-                                                            ->placeholder('Ej: Eiram Briceño')
-                                                            ->afterStateUpdatedJs(<<<'JS'
-                                                                $set('agent_name', $state.toUpperCase());
-                                                            JS),
+                                                        PlanGeneratorAgentLookup::field(),
                                                         ToggleButtons::make('population_unit')
                                                             ->label('¿Qué representa el total?')
                                                             ->options(PlanGeneratorPopulationUnit::options())

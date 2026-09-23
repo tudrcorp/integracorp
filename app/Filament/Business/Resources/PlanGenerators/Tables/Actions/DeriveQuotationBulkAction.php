@@ -8,6 +8,7 @@ use App\Enums\PlanGeneratorPopulationUnit;
 use App\Filament\Business\Resources\PlanGenerators\Actions\AdjustRateAmountsAction;
 use App\Models\Benefit;
 use App\Models\PlanGenerator;
+use App\Support\PlanGenerators\PlanGeneratorAgentLookup;
 use App\Support\PlanGenerators\PlanGeneratorBrandColor;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorPopulationValidator;
@@ -279,13 +280,7 @@ final class DeriveQuotationBulkAction
                                             $set('client_data', $state.toUpperCase());
                                         JS)
                                         ->columnSpan(['default' => 1, 'md' => 2]),
-                                    TextInput::make('agent_name')
-                                        ->label('Agente')
-                                        ->required()
-                                        ->maxLength(255)
-                                        ->afterStateUpdatedJs(<<<'JS'
-                                            $set('agent_name', $state.toUpperCase());
-                                        JS),
+                                    PlanGeneratorAgentLookup::field(),
                                     DatePicker::make('issued_at')
                                         ->label('Fecha de emisión')
                                         ->required()
