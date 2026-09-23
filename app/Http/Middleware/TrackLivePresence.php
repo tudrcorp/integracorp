@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Support\LivePresence\LivePresenceRecorder;
+use App\Support\LivePresence\SecurityMonitor;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +22,8 @@ class TrackLivePresence
 {
     /**
      * Rutas que no son actividad del usuario: recursos estáticos, el propio
-     * latido (se registra en su controlador) y el chequeo de salud.
+     * latido (se registra en su controlador) y el chequeo de salud. Los 404 de
+     * escáneres NO se saltan: no coinciden con estas rutas.
      *
      * @var list<string>
      */
@@ -60,11 +62,14 @@ class TrackLivePresence
                 return;
             }
 
-            if ($request->is(...self::SKIPPED_PATHS) || ! $request->hasSession()) {
+            if ($request->is(...self::SKIPPED_PATHS)) {
                 return;
             }
 
-            $user = Auth::user();
+            $user = $request->hasSession() ? Auth::user() : null;
+
+            /** Los ataques llegan sin sesión: la seguridad mira todas las peticiones. */
+            SecurityMonitor::recordRequest($request, $response, $user !== null);
 
             if ($user === null) {
                 return;

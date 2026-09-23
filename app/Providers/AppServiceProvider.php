@@ -40,6 +40,7 @@ use App\Models\PlanGenerator;
 use App\Observers\ObservationCommercialStructureObserver;
 use App\Observers\PlanGeneratorObserver;
 use App\Support\LivePresence\LivePresenceRecorder;
+use App\Support\LivePresence\SecurityAuthListener;
 use App\Support\UserSessionAuditTracker;
 use Filament\Actions\Imports\Events\ImportChunkProcessed;
 use Filament\Actions\Imports\Events\ImportCompleted;
@@ -49,8 +50,12 @@ use Filament\Support\Facades\FilamentColor;
 use Filament\Support\Facades\FilamentTimezone;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Auth\Events\Attempting;
+use Illuminate\Auth\Events\Authenticated;
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\Events\Validated;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\DB;
@@ -89,6 +94,13 @@ class AppServiceProvider extends ServiceProvider
 
             /** Latido del navegador en todos los paneles; la vista no imprime nada sin sesión. */
             FilamentView::registerRenderHook(PanelsRenderHook::BODY_END, fn (): string => view('live-presence.beacon')->render());
+
+            /** Seguridad: bloqueo temporal de cuentas atacadas, lista negra y detección de ataques. */
+            Event::listen(Attempting::class, [SecurityAuthListener::class, 'onAttempting']);
+            Event::listen(Failed::class, [SecurityAuthListener::class, 'onFailed']);
+            Event::listen(Validated::class, [SecurityAuthListener::class, 'onValidated']);
+            Event::listen(Login::class, [SecurityAuthListener::class, 'onLogin']);
+            Event::listen(Authenticated::class, [SecurityAuthListener::class, 'onAuthenticated']);
         }
 
         Event::listen(Login::class, [UserSessionAuditTracker::class, 'onLogin']);

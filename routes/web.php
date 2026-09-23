@@ -2205,3 +2205,12 @@ Route::middleware(['auth', 'throttle:30,1'])->group(function () {
 Route::post('/live-presence/ping', \App\Http\Controllers\LivePresencePingController::class)
     ->middleware(['auth', 'throttle:120,1'])
     ->name('live-presence.ping');
+
+/*
+| Pantalla grande del monitor en vivo: solo lectura, protegida por token
+| (LIVE_MONITOR_TV_TOKEN). Sin token configurado responde 404.
+*/
+Route::get('/monitor/tv/{token}', \App\Livewire\LiveMonitorTv::class)
+    ->where('token', '[A-Za-z0-9]{32,128}')
+    ->middleware('throttle:30,1')
+    ->name('live-monitor.tv');

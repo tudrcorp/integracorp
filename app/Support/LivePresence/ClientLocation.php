@@ -6,15 +6,17 @@ namespace App\Support\LivePresence;
 
 use GeoIp2\Database\Reader;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\IpUtils;
 use Throwable;
 
 /**
  * IP real y ubicación del usuario.
  *
- * Producción está detrás de Cloudflare: la IP del cliente llega en
- * `CF-Connecting-IP` y, si el dominio tiene activos los encabezados de
- * ubicación, también país, región y ciudad. Si faltan, se consulta la base
- * GeoLite2 local (sin llamadas externas). En desarrollo la IP es local.
+ * Hoy producción está en Cloudflare solo como DNS: la IP de la conexión ya es
+ * la del usuario. Si algún día se activa el proxy, `CF-Connecting-IP` y los
+ * encabezados de ubicación se aceptan solo desde rangos oficiales de
+ * Cloudflare. La ubicación sale de GeoLite2 local si está instalada; es un
+ * dato de apoyo, nunca la base para bloquear.
  */
 final class ClientLocation
 {
@@ -27,9 +29,18 @@ final class ClientLocation
      */
     private static array $cache = [];
 
+    /**
+     * IP real del cliente.
+     *
+     * `CF-Connecting-IP` solo se acepta si la conexión viene de verdad desde un
+     * rango de Cloudflare: sin proxy, cualquiera podría enviar ese encabezado y
+     * hacerse pasar por otra IP. Hoy (DNS only) siempre gana la IP de la conexión.
+     */
     public static function ip(Request $request): string
     {
-        if (config('live-presence.trust_cloudflare_headers', true)) {
+        $connection = (string) $request->server('REMOTE_ADDR', $request->ip());
+
+        if (self::cameThroughCloudflare($connection)) {
             $cloudflare = trim((string) $request->header('CF-Connecting-IP'));
 
             if ($cloudflare !== '' && filter_var($cloudflare, FILTER_VALIDATE_IP) !== false) {
@@ -37,7 +48,16 @@ final class ClientLocation
             }
         }
 
-        return (string) $request->ip();
+        return $connection !== '' ? $connection : (string) $request->ip();
+    }
+
+    public static function cameThroughCloudflare(string $connectionIp): bool
+    {
+        if (! config('live-presence.trust_cloudflare_headers', true) || $connectionIp === '') {
+            return false;
+        }
+
+        return IpUtils::checkIp($connectionIp, (array) config('live-presence.security.cloudflare_ranges', []));
     }
 
     /**
@@ -45,7 +65,7 @@ final class ClientLocation
      */
     public static function locate(Request $request, string $ip): array
     {
-        if (config('live-presence.trust_cloudflare_headers', true)) {
+        if (self::cameThroughCloudflare((string) $request->server('REMOTE_ADDR', ''))) {
             $fromCloudflare = self::fromCloudflare($request);
 
             if ($fromCloudflare !== null && $fromCloudflare['city'] !== '') {
@@ -53,7 +73,9 @@ final class ClientLocation
             }
         }
 
-        return self::fromGeoIp($ip) ?? self::fromCloudflare($request) ?? self::unknown($ip);
+        return self::fromGeoIp($ip)
+            ?? (self::cameThroughCloudflare((string) $request->server('REMOTE_ADDR', '')) ? self::fromCloudflare($request) : null)
+            ?? self::unknown($ip);
     }
 
     /**
