@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Support\PlanGenerators\PlanGeneratorConditions;
+use App\Support\PlanGenerators\PlanGeneratorConditionsColumn;
 
 it('conserva los saltos de línea y las viñetas del texto pegado', function (): void {
     $pegado = "  * BENEFICIO DE ORIENTACIÓN MÉDICA.\n* BENEFICIOS DOMICILIARIOS TIENEN PERÍODO DE ESPERA.\n\n* SE EXCLUYEN PATOLOGÍAS PREEXISTENTES.  \n";
@@ -62,4 +63,28 @@ it('la derivada pide las condiciones en un cuadro de texto debajo del total grup
         ->and(strpos($pdf, 'Total grupal'))->toBeLessThan(strpos($pdf, 'conditions-block'));
 
     expect($migracion)->toContain("longText('conditions')");
+});
+
+it('reconoce el check json_valid que MariaDB deja en la columna de condiciones', function (): void {
+    $mariaDb = <<<'SQL'
+CREATE TABLE `plan_generators` (
+  `conditions` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`conditions`))
+) ENGINE=InnoDB
+SQL;
+
+    $conNombre = <<<'SQL'
+CREATE TABLE `plan_generators` (
+  `conditions` longtext DEFAULT NULL,
+  CONSTRAINT `plan_generators.conditions` CHECK (json_valid(`conditions`))
+) ENGINE=InnoDB
+SQL;
+
+    $mysql = 'CREATE TABLE `plan_generators` (`conditions` longtext COLLATE utf8mb4_unicode_ci) ENGINE=InnoDB';
+
+    expect(PlanGeneratorConditionsColumn::jsonValidityConstraintNames($mariaDb))
+        ->toBe(['plan_generators.conditions'])
+        ->and(PlanGeneratorConditionsColumn::jsonValidityConstraintNames($conNombre))
+        ->toBe(['plan_generators.conditions'])
+        ->and(PlanGeneratorConditionsColumn::jsonValidityConstraintNames($mysql))
+        ->toBe([]);
 });
