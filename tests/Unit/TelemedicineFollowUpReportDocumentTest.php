@@ -41,7 +41,8 @@ it('el job y la plantilla del informe de seguimiento cubren los tres campos clí
 
     expect($partial)
         ->toContain("'corto' | 'largo' | 'seguimiento'")
-        ->toContain('Informe de seguimiento')
+        ->toContain("\$isFollowUp ? 'Informe Médico - Seguimiento' : 'Informe Médico'")
+        ->not->toContain('Informe de seguimiento')
         ->toContain('Diagnóstico principal de la consulta inicial')
         ->toContain('Historia de la enfermedad actual')
         ->toContain('Evolución del paciente');
@@ -62,4 +63,19 @@ it('el job y la plantilla del informe de seguimiento cubren los tres campos clí
     expect($migration)
         ->toContain("'INFORME DE SEGUIMIENTO'")
         ->toContain("hasTable('operation_document_lists')");
+});
+
+it('el PDF del informe de seguimiento se llama …-Informe-Seguimiento.pdf', function (): void {
+    expect(TelemedicineFollowUpReportDocument::fileName(['ci_patient' => 'V-12345678', 'code_reference' => 'TDEC-00042']))
+        ->toBe('V-12345678-TDEC-00042-Informe-Seguimiento.pdf');
+});
+
+it('la clave interna del tipo no cambia y el job arma el nombre desde el sufijo nuevo', function (): void {
+    $job = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/GeneratePdfInformeSeguimiento.php');
+
+    /** La clave identifica el tipo en registros y regeneración: cambiarla rompería esos flujos. */
+    expect(TelemedicineFollowUpReportDocument::TYPE_DOCUMENT)->toBe('informe-seguimiento')
+        ->and(TelemedicineFollowUpReportDocument::FILE_SUFFIX)->toBe('Informe-Seguimiento')
+        ->and($job)->toContain('return TelemedicineFollowUpReportDocument::fileName($data);')
+        ->and($job)->not->toContain("'-'.\$this->type_document.'.pdf'");
 });

@@ -17,9 +17,26 @@ use App\Models\User;
  */
 final class TelemedicineFollowUpReportDocument
 {
+    /** Clave interna del tipo de documento (registros, regeneración). No cambia. */
     public const TYPE_DOCUMENT = 'informe-seguimiento';
 
+    /**
+     * Sufijo del nombre del archivo PDF. Solo afecta a los informes que se
+     * generen desde ahora: los ya guardados conservan su nombre y sus enlaces.
+     */
+    public const FILE_SUFFIX = 'Informe-Seguimiento';
+
     public const DOCUMENT_TYPE_NAME = 'INFORME DE SEGUIMIENTO';
+
+    /**
+     * {cédula}-{código de referencia}-Informe-Seguimiento.pdf
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function fileName(array $data): string
+    {
+        return $data['ci_patient'].'-'.$data['code_reference'].'-'.self::FILE_SUFFIX.'.pdf';
+    }
 
     public static function appliesTo(?string $status): bool
     {

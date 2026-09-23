@@ -13,7 +13,7 @@
     use App\Support\PlanGenerators\PlanGeneratorPdfPagination;
     use App\Support\PlanGenerators\PlanGeneratorConditions;
 
-    $conditions = PlanGeneratorConditions::normalize($planGenerator->conditions ?? []);
+    $conditions = PlanGeneratorConditions::normalize($planGenerator->conditions ?? '');
 
     $brandColor = PlanGeneratorBrandColor::resolve($planGenerator->brand_color ?? null);
     $populationUnitLabel = PlanGeneratorPopulationUnit::resolve($planGenerator->population_unit ?? null)->label();
@@ -233,12 +233,10 @@
     </table>
     </div>
 
-    @if ($conditions !== [])
+    @if ($conditions !== '')
         <div class="matrix-section">
             <p class="section-title">Condiciones</p>
-            @foreach ($conditions as $index => $condition)
-                <p class="condition-line">{{ $index + 1 }}. {{ $condition }}</p>
-            @endforeach
+            <div class="conditions-block">{{ $conditions }}</div>
         </div>
     @endif
 

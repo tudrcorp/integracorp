@@ -103,8 +103,12 @@ it('el recipe de medicamentos de producción usa el diseño homologado en horizo
     ])->render();
     $path = telemedicineOrdenRedesignWritePdf($html, 'recipe-medicamentos-redesign.pdf', 'landscape');
 
+    /** El original (va a la farmacia) es el «Récipe Médico»; la copia del paciente conserva «Indicaciones Médicas». */
+    expect(substr_count($html, '<p class="doc-title">Récipe Médico</p>'))->toBe(1)
+        ->and(substr_count($html, '<p class="doc-title">Indicaciones Médicas</p>'))->toBe(1)
+        ->and(strpos($html, 'Récipe Médico'))->toBeLessThan(strpos($html, '<p class="doc-title">Indicaciones Médicas</p>'));
+
     expect($html)
-        ->toContain('<p class="doc-title">Indicaciones Médicas</p>')
         ->toContain('A4 landscape')
         ->toContain('#00ADEF')
         ->toContain('DejaVu Sans')
@@ -303,7 +307,7 @@ it('la referencia a especialistas de producción usa el diseño homologado', fun
     $path = telemedicineOrdenRedesignWritePdf($html, 'referencia-especialistas-redesign.pdf');
 
     expect($html)
-        ->toContain('<p class="doc-title">Especialistas</p>')
+        ->toContain('<p class="doc-title">Referencia Especialista</p>')
         ->toContain('header-rule-space')
         ->toContain('Otorrinolaringología')
         ->toContain('Medicina interna')

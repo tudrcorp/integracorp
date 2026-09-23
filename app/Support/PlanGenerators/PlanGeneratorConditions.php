@@ -6,97 +6,82 @@ namespace App\Support\PlanGenerators;
 
 use App\Models\PlanGenerator;
 use Closure;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 
 /**
- * Condiciones que el analista escribe a mano en una cotización derivada.
+ * Condiciones que el analista pega o escribe en una cotización derivada.
  *
- * La lista es ordenada y puede tener una sola condición o varias. Se muestra
- * debajo del total grupal. El registro base no las pide.
+ * Es un solo texto, no una lista de filas: los saltos de línea, las viñetas y
+ * el orden del pegado se conservan debajo del total grupal y en el PDF.
  */
 final class PlanGeneratorConditions
 {
-    public const MAX_ITEMS = 20;
+    /**
+     * Conserva el texto y sus saltos de línea. Solo recorta el blanco de los
+     * extremos del bloque.
+     */
+    public static function normalize(mixed $raw): string
+    {
+        if (is_array($raw)) {
+            $raw = self::joinLegacyList($raw);
+        }
 
-    public const MAX_LENGTH = 500;
+        if (! is_string($raw) && ! is_numeric($raw)) {
+            return '';
+        }
+
+        $text = str_replace(["\r\n", "\r"], "\n", (string) $raw);
+
+        return trim($text);
+    }
 
     /**
-     * Deja solo texto útil, en el orden en que lo escribió el analista.
-     *
-     * Acepta la lista ya guardada, el estado deshidratado del Repeater
-     * (`['texto', ...]`) y el estado vivo (`uuid => ['text' => 'texto']`).
-     *
-     * @return list<string>
+     * Valor para el cuadro de texto. Un registro viejo guardado como lista
+     * JSON se muestra como líneas, para no perder lo ya escrito.
      */
-    public static function normalize(mixed $raw): array
+    public static function formState(mixed $raw): string
     {
-        $items = [];
+        return self::fromLegacyStorage($raw);
+    }
 
-        foreach (self::textsFrom($raw) as $text) {
-            $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+    /**
+     * Convierte el JSON de la lista anterior en texto con un renglón por ítem.
+     */
+    public static function fromLegacyStorage(mixed $raw): string
+    {
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
 
-            if ($text === '') {
-                continue;
-            }
-
-            if (mb_strlen($text) > self::MAX_LENGTH) {
-                $text = rtrim(mb_substr($text, 0, self::MAX_LENGTH));
-            }
-
-            $items[] = $text;
-
-            if (count($items) >= self::MAX_ITEMS) {
-                break;
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $raw = $decoded;
             }
         }
 
-        return $items;
+        if (is_array($raw)) {
+            return self::normalize(self::joinLegacyList($raw));
+        }
+
+        return self::normalize($raw);
     }
 
-    /**
-     * Una fila en blanco para que el analista empiece a escribir.
-     *
-     * @param  list<string>  $conditions
-     * @return list<string>
-     */
-    public static function formState(array $conditions): array
+    public static function field(bool $onlyOnDerivedRecord = false): Textarea
     {
-        return $conditions === [] ? [''] : $conditions;
-    }
-
-    public static function field(bool $onlyOnDerivedRecord = false): Repeater
-    {
-        $field = Repeater::make('conditions')
+        $field = Textarea::make('conditions')
             ->label('Condiciones')
-            ->helperText('Escríbalas a mano. Puede agregar una o varias. Aparecen debajo del total grupal en la cotización y en el PDF.')
-            ->addActionLabel('Agregar condición')
-            ->reorderable()
-            ->minItems(1)
-            ->maxItems(self::MAX_ITEMS)
-            ->defaultItems(1)
-            ->simple(
-                Textarea::make('text')
-                    ->hiddenLabel()
-                    ->placeholder('Ej: Cotización válida por 15 días. Tarifas en dólares, no incluyen IVA.')
-                    ->rows(2)
-                    ->maxLength(self::MAX_LENGTH)
-                    ->required()
-                    ->rule(static function (): Closure {
-                        return static function (string $attribute, mixed $value, Closure $fail): void {
-                            if (trim((string) $value) === '') {
-                                $fail('Escriba la condición.');
-                            }
-                        };
-                    })
-                    ->validationMessages([
-                        'required' => 'Escriba la condición.',
-                        'max' => 'La condición no puede superar los '.self::MAX_LENGTH.' caracteres.',
-                    ]),
-            )
+            ->helperText('Pegue el texto con el formato que ya tenga. Los saltos de línea y las viñetas se conservan debajo del total grupal y en el PDF.')
+            ->placeholder("Ej:\n* Cotización válida por 15 días.\n* Tarifas en dólares, no incluyen IVA.")
+            ->rows(10)
+            ->autosize()
+            ->required()
+            ->rule(static function (): Closure {
+                return static function (string $attribute, mixed $value, Closure $fail): void {
+                    if (self::normalize($value) === '') {
+                        $fail('Escriba las condiciones.');
+                    }
+                };
+            })
             ->validationMessages([
-                'min' => 'Agregue al menos una condición.',
-                'max' => 'Puede registrar hasta '.self::MAX_ITEMS.' condiciones.',
+                'required' => 'Escriba las condiciones.',
             ])
             ->columnSpanFull();
 
@@ -110,18 +95,31 @@ final class PlanGeneratorConditions
     }
 
     /**
+     * @param  array<mixed>  $raw
+     */
+    private static function joinLegacyList(array $raw): string
+    {
+        $lines = [];
+
+        foreach (self::textsFrom($raw) as $text) {
+            $text = str_replace(["\r\n", "\r"], "\n", $text);
+
+            if (trim($text) === '') {
+                continue;
+            }
+
+            $lines[] = $text;
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<mixed>  $raw
      * @return list<string>
      */
-    private static function textsFrom(mixed $raw): array
+    private static function textsFrom(array $raw): array
     {
-        if (is_string($raw) || is_numeric($raw)) {
-            return [(string) $raw];
-        }
-
-        if (! is_array($raw)) {
-            return [];
-        }
-
         $texts = [];
 
         foreach ($raw as $item) {

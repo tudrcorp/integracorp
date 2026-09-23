@@ -46,7 +46,6 @@ class PlanGenerator extends Model
             'plan_page_number' => 'integer',
             'population_import_id' => 'integer',
             'include_monthly_total' => 'boolean',
-            'conditions' => 'array',
         ];
     }
 

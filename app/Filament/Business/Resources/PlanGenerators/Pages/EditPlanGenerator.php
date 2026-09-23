@@ -32,7 +32,7 @@ class EditPlanGenerator extends EditRecord
 
         if ($this->getRecord()->isDerivedQuotation()) {
             $data['conditions'] = PlanGeneratorConditions::formState(
-                PlanGeneratorConditions::normalize($data['conditions'] ?? $this->getRecord()->conditions),
+                $data['conditions'] ?? $this->getRecord()->conditions,
             );
         }
 
@@ -48,11 +48,11 @@ class EditPlanGenerator extends EditRecord
         unset($data['columns'], $data['rows'], $data['rate_rows'], $data['quotation_pages']);
 
         if ($this->getRecord()->isDerivedQuotation()) {
-            $conditions = PlanGeneratorConditions::normalize($data['conditions'] ?? []);
+            $conditions = PlanGeneratorConditions::normalize($data['conditions'] ?? null);
 
-            if ($conditions === []) {
+            if ($conditions === '') {
                 throw ValidationException::withMessages([
-                    'conditions' => 'Escriba al menos una condición. Aparece debajo del total grupal.',
+                    'conditions' => 'Escriba las condiciones. Aparecen debajo del total grupal.',
                 ]);
             }
 

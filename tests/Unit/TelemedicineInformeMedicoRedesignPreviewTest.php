@@ -195,10 +195,50 @@ it('el informe médico largo de producción usa el diseño homologado', function
         ->and($html)->not->toContain('Informe médico (consulta inicial)')
         ->and($html)->not->toContain('Tarjeta de Afiliado');
 
-    // Este informe estaba a ~4 mm de llenar la hoja. Al reservar la banda de la
-    // firma (ver TelemedicineInformeSignatureStamp) pasa a dos páginas: es el
-    // precio de que la firma no pueda quedarse sola en una hoja.
+    // Este informe estaba a ~4 mm de llenar la hoja y, con la banda reservada
+    // para la firma (ver TelemedicineInformeSignatureStamp), pasaba a dos páginas.
+    // Desde que peso, estatura e IMC van en una sola fila (23/09/2026) vuelve a
+    // caber en una, con la banda de la firma incluida.
     expect($path)->toBeFile()
         ->and(filesize($path))->toBeGreaterThan(8_000)
-        ->and(telemedicineInformePdfPageCount($path))->toBe(2);
+        ->and(telemedicineInformePdfPageCount($path))->toBe(1);
+});
+
+it('las medidas antropométricas van en una sola fila, legibles y sin «— m»', function (): void {
+    $html = telemedicineInformeRender('corto', [...telemedicineInformeRedesignSampleData(), 'peso' => '71.200', 'estatura' => null, 'imc' => null]);
+
+    $section = substr($html, strpos($html, 'Medidas antropométricas'), 1500);
+    $section = substr($section, 0, strpos($section, '</table>'));
+
+    expect(substr_count($section, '<tr>'))->toBe(1)
+        ->and(substr_count($section, '<td'))->toBe(3)
+        ->and($section)->toContain('grid grid--3')
+        ->toContain('71,2 kg')
+        ->not->toContain('71.200')
+        ->not->toContain('— m')
+        ->not->toContain('— kg');
+
+    $path = telemedicineInformeWritePdf('corto', [...telemedicineInformeRedesignSampleData(), 'peso' => '71.200', 'estatura' => '1.750', 'imc' => '23.25'], 'informe-medidas-una-fila.pdf');
+
+    expect(file_exists($path))->toBeTrue();
+});
+
+it('oculta «Signos vitales» y «Medidas antropométricas» cuando no tienen ningún dato', function (): void {
+    $empty = [...telemedicineInformeRedesignSampleData(), 'pa' => null, 'fc' => '', 'fr' => null, 'temp' => ' ', 'saturacion' => null, 'peso' => null, 'estatura' => '', 'imc' => null];
+
+    expect(telemedicineInformeRender('largo', $empty))
+        ->not->toContain('Signos vitales')
+        ->not->toContain('Medidas antropométricas')
+        ->toContain('Impresión diagnóstica');
+});
+
+it('muestra la sección con un solo dato y completa el resto con «—»', function (): void {
+    $html = telemedicineInformeRender('largo', [...telemedicineInformeRedesignSampleData(), 'pa' => '110.70', 'fc' => null, 'fr' => null, 'temp' => null, 'saturacion' => null, 'peso' => '0', 'estatura' => null, 'imc' => null]);
+
+    $vitals = substr($html, strpos($html, 'Signos vitales'), 2500);
+
+    expect($html)->toContain('Signos vitales')
+        ->toContain('Medidas antropométricas')
+        ->and($vitals)->toContain('110/70 mmHg')
+        ->not->toContain('110.70');
 });

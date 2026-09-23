@@ -71,32 +71,9 @@ function poblacionDeRangos(array $rateRows): int
     return collect($rateRows)->sum(fn (array $rateRow): int => max(0, (int) ($rateRow['population'] ?? 0)));
 }
 
-/**
- * Escribe la primera condición de la modal. El Repeater guarda el texto bajo
- * una clave uuid; si el estado aún es la lista plana, se reemplaza entero.
- */
 function escribirCondicionEnLaModal(\Livewire\Features\SupportTesting\Testable $componente, string $texto): void
 {
-    $condiciones = $componente->get('mountedActions.0.data.conditions');
-
-    if (! is_array($condiciones) || $condiciones === []) {
-        $componente->set('mountedActions.0.data.conditions', [
-            'condicion-pest' => ['text' => $texto],
-        ]);
-
-        return;
-    }
-
-    $clave = array_key_first($condiciones);
-    $item = $condiciones[$clave];
-
-    if (is_array($item)) {
-        $componente->set('mountedActions.0.data.conditions.'.$clave.'.text', $texto);
-
-        return;
-    }
-
-    $componente->set('mountedActions.0.data.conditions', [$texto]);
+    $componente->set('mountedActions.0.data.conditions', $texto);
 }
 
 /**
@@ -174,7 +151,7 @@ it('abre la modal precargada con la matriz de la plantilla', function (): void {
         ->assertMountedActionModalSee('Agregar columna')
         ->assertMountedActionModalSee('Beneficios del Plan')
         ->assertMountedActionModalSee('Condiciones')
-        ->assertMountedActionModalSee('Agregar condición')
+        ->assertMountedActionModalSee('Pegue el texto con el formato que ya tenga.')
         ->assertMountedActionModalSeeHtml('mountedActions.0.data.rows.');
 });
 
@@ -243,7 +220,7 @@ it('crea la cotización derivada con la matriz ajustada y la cuelga del registro
         // El cuerpo del PDF se hereda de la plantilla.
         ->and($derivada->quotation_page_count)->toBe($plantilla->quotation_page_count)
         ->and($derivada->plan_page_number)->toBe($plantilla->plan_page_number)
-        ->and($derivada->conditions)->toBe(['Cotización válida por 15 días.']);
+        ->and($derivada->conditions)->toBe('Cotización válida por 15 días.');
 
     // Cada celda guardada apunta a una columna que sigue existiendo.
     $columnasVivas = $derivada->columns()->pluck('id')->all();
@@ -315,21 +292,14 @@ it('guarda las condiciones en el orden en que las escribió el analista', functi
         'population_summary' => '1',
         'brand_color' => '#1d4ed8',
         'include_monthly_total' => false,
-        'conditions' => [
-            '  Vigencia de 15 días.  ',
-            '',
-            ['text' => 'Las tarifas no incluyen IVA.'],
-            '   ',
-        ],
+        'conditions' => "  Vigencia de 15 días.\n\n* Las tarifas no incluyen IVA.  \n",
         'columns' => [],
         'rows' => [],
         'rate_rows' => [],
     ], 'PEST');
 
-    expect($derivada->fresh()->conditions)->toBe([
-        'Vigencia de 15 días.',
-        'Las tarifas no incluyen IVA.',
-    ])->and($base->fresh()->conditions)->toBeNull();
+    expect($derivada->fresh()->conditions)->toBe("Vigencia de 15 días.\n\n* Las tarifas no incluyen IVA.")
+        ->and($base->fresh()->conditions)->toBeNull();
 });
 
 it('rechaza derivar sin ninguna condición escrita', function (): void {
@@ -339,7 +309,7 @@ it('rechaza derivar sin ninguna condición escrita', function (): void {
         'name' => 'PLAN VACIO',
         'control_number' => $base->control_number.'-1',
         'client_data' => 'CLIENTE VACIO',
-        'conditions' => ['   ', ''],
+        'conditions' => "   \n  \n",
         'columns' => [],
         'rows' => [],
         'rate_rows' => [],
