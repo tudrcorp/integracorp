@@ -10,6 +10,7 @@
     use App\Support\PlanGenerators\PlanGeneratorBrandColor;
     use App\Enums\PlanGeneratorPopulationUnit;
     use App\Services\PlanGeneratorPdfService;
+    use App\Support\PlanGenerators\PlanGeneratorPdfPagination;
 
     $brandColor = PlanGeneratorBrandColor::resolve($planGenerator->brand_color ?? null);
     $populationUnitLabel = PlanGeneratorPopulationUnit::resolve($planGenerator->population_unit ?? null)->label();
@@ -21,8 +22,18 @@
     $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn((array) $columns, (array) $rateRows);
     $includeMonthlyTotal = (bool) ($planGenerator->include_monthly_total ?? false);
     $groupRows = PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal);
+    $calculationsOnNextPage = $columnCount > 0 && PlanGeneratorPdfPagination::calculationsStartOnNextPage(
+        (array) $columns,
+        (array) $rows,
+        (array) $rateRows,
+        $includeMonthlyTotal,
+        $populationUnitLabel,
+    );
 @endphp
 
+<table class="pdf-plan-sheet" cellpadding="0" cellspacing="0">
+<tr>
+<td class="pdf-plan-margin-cell pdf-plan-margin-cell-first {{ $columnCount === 0 ? 'pdf-plan-margin-cell-last' : '' }}">
 <div class="header">
     <table>
         <tr>
@@ -68,16 +79,25 @@
 
 @if ($columnCount === 0)
     <p>Sin columnas configuradas para este plan.</p>
-@else
-    <div class="matrix-section">
-    <p class="section-title">Matriz de beneficios y coberturas</p>
-    <table class="matrix-table">
+    <div class="footer">
+        Integracorp · Tu Dr en Casa · Plan generado
+    </div>
+@endif
+</td>
+</tr>
+</table>
+
+@if ($columnCount > 0)
+    <table class="matrix-table pdf-benefits-table">
         @include('filament.business.plan-generators.partials.matrix-column-colgroup', [
             'columns' => $columns,
             'type' => 'benefits',
             'usePdfWidths' => true,
         ])
         <thead>
+            <tr class="pdf-benefits-intro">
+                <th colspan="{{ $columnCount + 2 }}">Matriz de beneficios y coberturas</th>
+            </tr>
             <tr>
                 <th colspan="2" class="benefit-col" style="width: {{ $leadWidthMm }}mm;">Beneficios del Plan</th>
                 @foreach ($columns as $column)
@@ -121,8 +141,10 @@
             @endforelse
         </tbody>
     </table>
-    </div>
 
+    <table class="pdf-plan-sheet pdf-plan-calc-keep {{ $calculationsOnNextPage ? 'pdf-plan-calc-next-page' : '' }}" cellpadding="0" cellspacing="0">
+    <tr>
+    <td class="pdf-plan-margin-cell pdf-plan-calc-cell">
     <div class="matrix-section">
     <p class="section-title">Tarifa individual anual</p>
     <table class="matrix-table">
@@ -206,8 +228,11 @@
         </tbody>
     </table>
     </div>
-@endif
 
-<div class="footer">
-    Integracorp · Tu Dr en Casa · Plan generado
-</div>
+    <div class="footer">
+        Integracorp · Tu Dr en Casa · Plan generado
+    </div>
+    </td>
+    </tr>
+    </table>
+@endif

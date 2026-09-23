@@ -77,7 +77,7 @@ class TrackLivePresence
             $user = $request->hasSession() ? Auth::user() : null;
 
             /** Los ataques llegan sin sesión: la seguridad mira todas las peticiones. */
-            SecurityMonitor::recordRequest($request, $response, $user !== null);
+            SecurityMonitor::recordRequest($request, $response, $user !== null, $user);
 
             if ($user === null) {
                 return;

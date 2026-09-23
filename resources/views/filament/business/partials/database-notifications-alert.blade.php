@@ -95,8 +95,20 @@
     }
 </style>
 
-<script>
+{{--
+    data-navigate-once: el panel es SPA y Livewire vuelve a ejecutar los scripts
+    del body en cada navegación. Sin esto, cada cambio de página sumaba otro
+    sondeo de 2 s que nunca se detenía (un usuario llegó a 450 peticiones por
+    minuto). La bandera global cubre además cualquier ejecución repetida.
+--}}
+<script data-navigate-once>
     (() => {
+        if (window.__tdgBusinessBellAlert) {
+            return;
+        }
+
+        window.__tdgBusinessBellAlert = true;
+
         const panelBodyClass = 'fi-panel-business';
         const buttonSelector = 'body.fi-panel-business .fi-topbar-database-notifications-btn, body.fi-panel-business .fi-sidebar-database-notifications-btn';
         const alertClass = 'fi-db-notifications-alert';
@@ -107,8 +119,12 @@
         let lastUnreadCount = null;
         let alertTimeout = null;
         let echoRegistered = false;
+        /** La campanita ya reacciona al instante cuando cambia el contador; el sondeo es solo un respaldo. */
+        const pollEveryMs = 20000;
         let pollIntervalId = null;
+        let pollInFlight = false;
         let observer = null;
+        let observedNode = null;
 
         function isBusinessPanel() {
             return document.body.classList.contains(panelBodyClass);
@@ -181,9 +197,12 @@
         }
 
         function pollBellAlertSignal() {
-            if (! isBusinessPanel()) {
+            /** Con la pestaña oculta no se pregunta nada; al volver se consulta de inmediato. */
+            if (! isBusinessPanel() || document.hidden || pollInFlight) {
                 return;
             }
+
+            pollInFlight = true;
 
             window.fetch(bellAlertUrl, {
                 method: 'GET',
@@ -199,7 +218,10 @@
                         triggerBellAlert();
                     }
                 })
-                .catch(() => {});
+                .catch(() => {})
+                .finally(() => {
+                    pollInFlight = false;
+                });
         }
 
         function registerEchoListeners() {
@@ -228,15 +250,15 @@
         }
 
         function observeBadgeChanges() {
-            if (observer !== null) {
-                return;
-            }
-
             const topbarEnd = document.querySelector('body.fi-panel-business .fi-topbar-end');
 
-            if (! topbarEnd) {
+            /** Tras una navegación SPA la barra superior puede ser otro nodo: se vuelve a enganchar. */
+            if (! topbarEnd || topbarEnd === observedNode) {
                 return;
             }
+
+            observer?.disconnect();
+            observedNode = topbarEnd;
 
             observer = new MutationObserver(() => {
                 checkForIncreasedUnreadCount();
@@ -268,8 +290,14 @@
                 return;
             }
 
-            pollIntervalId = window.setInterval(pollBellAlertSignal, 2000);
+            pollIntervalId = window.setInterval(pollBellAlertSignal, pollEveryMs);
         }
+
+        document.addEventListener('visibilitychange', () => {
+            if (! document.hidden) {
+                pollBellAlertSignal();
+            }
+        });
 
         document.addEventListener('livewire:init', () => {
             window.Livewire.hook('message.processed', () => {
