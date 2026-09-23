@@ -46,7 +46,11 @@ return [
     /** Muestras de tiempo de respuesta para el rendimiento del sistema. */
     'performance_samples' => 500,
 
-    /** Producción está detrás de Cloudflare: la IP real y la ubicación llegan en sus encabezados. */
+    /**
+     * Si algún día se activa el proxy de Cloudflare, CF-Connecting-IP y sus
+     * encabezados de ubicación se aceptan solo desde rangos oficiales de
+     * Cloudflare (ver security.cloudflare_ranges). Hoy producción es DNS only.
+     */
     'trust_cloudflare_headers' => (bool) env('LIVE_PRESENCE_TRUST_CLOUDFLARE', true),
 
     /**
@@ -114,10 +118,17 @@ return [
         'alert_cooldown_minutes' => 30,
     ],
 
+    /**
+     * Base de ubicación por IP: DB-IP «IP to City Lite» (CC BY 4.0, uso comercial
+     * permitido citando la fuente). MaxMind GeoLite2 prohíbe descargas desde
+     * Venezuela por normas de EE. UU.; DB-IP no. Se actualiza sola cada mes con
+     * `php artisan live-presence:geoip-update`, sin cuenta ni clave.
+     */
     'geoip' => [
-        'database' => env('GEOIP_DATABASE_PATH', storage_path('app/geoip/GeoLite2-City.mmdb')),
-        'account_id' => env('MAXMIND_ACCOUNT_ID'),
-        'license_key' => env('MAXMIND_LICENSE_KEY'),
-        'download_url' => 'https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz',
+        'database' => env('GEOIP_DATABASE_PATH', storage_path('app/geoip/ip-city.mmdb')),
+        'provider' => 'DB-IP',
+        'provider_url' => 'https://db-ip.com',
+        /** {month} = AAAA-MM. Si el mes en curso aún no está publicado se intenta el anterior. */
+        'download_url' => 'https://download.db-ip.com/free/dbip-city-lite-{month}.mmdb.gz',
     ],
 ];

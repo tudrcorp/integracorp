@@ -102,6 +102,17 @@
     .lsec-sev { width: 4px; border-radius: 4px; flex-shrink: 0; background: #38bdf8; }
     .lsec-sev.critical { background: var(--s-red); } .lsec-sev.warning { background: var(--s-amber); }
 
+    /* Secciones plegables */
+    .lsec-fold { display: flex; flex-direction: column; gap: 8px; }
+    .lsec-fold-head { display: flex; align-items: center; gap: 10px; width: 100%; background: transparent; border: 0; padding: 2px 4px; color: inherit; cursor: pointer; text-align: left; }
+    .lsec-fold-head:hover .lsec-fold-toggle { color: var(--s-text); border-color: var(--s-muted); }
+    .lsec-fold-summary { font-size: 12.5px; color: var(--s-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lsec-fold-summary strong { color: var(--s-text); }
+    .lsec-fold-summary.alert strong { color: var(--s-red); }
+    .lsec-fold-toggle { margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--s-muted); border: 1px solid var(--s-border); border-radius: 999px; padding: 3px 10px; }
+    .lsec-fold-chevron { display: inline-block; transition: transform .2s; }
+    .lsec-fold-chevron.closed { transform: rotate(-90deg); }
+
     /* Salud del sistema */
     .lsec-health { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .lsec-chip { display: inline-flex; align-items: baseline; gap: 6px; border: 1px solid var(--s-border); background: var(--s-bg); border-radius: 999px; padding: 5px 12px; font-size: 12px; color: var(--s-muted); }
@@ -141,138 +152,179 @@
     </div>
 
     {{-- Actividad --}}
-    <div class="lsec-card lsec-strip">
-        @foreach ($activity as $item)
-            <div>
-                <div class="lsec-label">{{ $item['label'] }}</div>
-                <div class="lsec-value">
-                    @if (! empty($item['level']))<span class="lsec-dot {{ $item['level'] }}"></span>@endif
-                    {{ $item['value'] ?? '—' }}@if ($item['value'] !== null && ! empty($item['unit']))<small>{{ $item['unit'] }}</small>@endif
-                </div>
-                <div class="lsec-hint" title="{{ $item['hint'] }}">{{ $item['hint'] }}</div>
-            </div>
-        @endforeach
-    </div>
-
-    {{-- Seguridad por minuto --}}
-    <div class="lsec-card">
-        <div class="lsec-strip-head">
-            <span class="lsec-label">Seguridad · último minuto</span>
-            <span class="lsec-muted">gráficas de los últimos 30 min</span>
-        </div>
-        <div class="lsec-strip">
-            @foreach ($securityMetrics as $metric => [$label, $color])
-                @php($values = $security['series'][$metric] ?? [])
-                <div wire:key="metric-{{ $metric }}">
-                    <div class="lsec-label">{{ $label }}</div>
-                    <div class="lsec-value">{{ $security['last_minute'][$metric] ?? 0 }}<small>/min</small></div>
-                    <div class="lsec-hint">{{ $security['last_five'][$metric] ?? 0 }} en 5 min · {{ array_sum($values) }} en 30 min</div>
-                    <svg class="lsec-spark" viewBox="0 0 160 26" preserveAspectRatio="none" aria-hidden="true">
-                        <polyline fill="none" stroke="{{ $color }}" stroke-width="1.8" stroke-linejoin="round" points="{{ \App\Support\LivePresence\SecuritySnapshot::sparkline($values, 160, 26) }}" />
-                    </svg>
+    <section class="lsec-fold" @unless ($tv) x-data="{ open: $persist(true).as('lam-fold-activity') }" @endunless>
+        @unless ($tv)
+            <button type="button" class="lsec-fold-head" x-on:click="open = ! open" x-bind:aria-expanded="open" title="Ocultar o mostrar esta sección">
+                <span class="lsec-label">Actividad</span>
+                <span class="lsec-fold-summary" x-show="! open" wire:ignore.self><strong>{{ $kpis['users'] }}</strong> usuarios · <strong>{{ $kpis['active_tabs'] }}</strong> pestañas activas · <strong>{{ $kpis['pwa'] }}</strong> en la PWA · latencia <strong>{{ $kpis['avg_rtt'] ?? '—' }}</strong> ms · p95 <strong>{{ $kpis['p95_ms'] ?? '—' }}</strong> ms · <strong>{{ $kpis['rpm'] }}</strong> pet/min</span>
+                <span class="lsec-fold-toggle">
+                    <span class="lsec-fold-chevron" x-bind:class="open ? '' : 'closed'" wire:ignore.self>▾</span>
+                    <span x-text="open ? 'Ocultar' : 'Mostrar'" wire:ignore>Ocultar</span>
+                </span>
+            </button>
+        @endunless
+        <div @unless ($tv) x-show="open" x-collapse wire:ignore.self @endunless>
+        <div class="lsec-card lsec-strip">
+            @foreach ($activity as $item)
+                <div>
+                    <div class="lsec-label">{{ $item['label'] }}</div>
+                    <div class="lsec-value">
+                        @if (! empty($item['level']))<span class="lsec-dot {{ $item['level'] }}"></span>@endif
+                        {{ $item['value'] ?? '—' }}@if ($item['value'] !== null && ! empty($item['unit']))<small>{{ $item['unit'] }}</small>@endif
+                    </div>
+                    <div class="lsec-hint" title="{{ $item['hint'] }}">{{ $item['hint'] }}</div>
                 </div>
             @endforeach
         </div>
-    </div>
+        </div>
+    </section>
+
+    {{-- Seguridad por minuto --}}
+    <section class="lsec-fold" @unless ($tv) x-data="{ open: $persist(true).as('lam-fold-security') }" @endunless>
+        @unless ($tv)
+            <button type="button" class="lsec-fold-head" x-on:click="open = ! open" x-bind:aria-expanded="open" title="Ocultar o mostrar esta sección">
+                <span class="lsec-label">Seguridad</span>
+                <span class="lsec-fold-summary {{ (($security['last_minute']['failed_logins'] ?? 0) + ($security['last_minute']['server_errors'] ?? 0)) > 0 ? 'alert' : '' }}" x-show="! open" wire:ignore.self>Último minuto: <strong>{{ $security['last_minute']['failed_logins'] ?? 0 }}</strong> logins fallidos · <strong>{{ $security['last_minute']['not_found'] ?? 0 }}</strong> 404 · <strong>{{ $security['last_minute']['throttled'] ?? 0 }}</strong> 429 · <strong>{{ $security['last_minute']['csrf'] ?? 0 }}</strong> 419 · <strong>{{ $security['last_minute']['anonymous'] ?? 0 }}</strong> sin sesión · <strong>{{ $security['last_minute']['server_errors'] ?? 0 }}</strong> errores 5xx</span>
+                <span class="lsec-fold-toggle">
+                    <span class="lsec-fold-chevron" x-bind:class="open ? '' : 'closed'" wire:ignore.self>▾</span>
+                    <span x-text="open ? 'Ocultar' : 'Mostrar'" wire:ignore>Ocultar</span>
+                </span>
+            </button>
+        @endunless
+        <div @unless ($tv) x-show="open" x-collapse wire:ignore.self @endunless>
+        <div class="lsec-card">
+            <div class="lsec-strip-head">
+                <span class="lsec-muted">Por minuto, con gráficas de los últimos 30 min</span>
+            </div>
+            <div class="lsec-strip">
+                @foreach ($securityMetrics as $metric => [$label, $color])
+                    @php($values = $security['series'][$metric] ?? [])
+                    <div wire:key="metric-{{ $metric }}">
+                        <div class="lsec-label">{{ $label }}</div>
+                        <div class="lsec-value">{{ $security['last_minute'][$metric] ?? 0 }}<small>/min</small></div>
+                        <div class="lsec-hint">{{ $security['last_five'][$metric] ?? 0 }} en 5 min · {{ array_sum($values) }} en 30 min</div>
+                        <svg class="lsec-spark" viewBox="0 0 160 26" preserveAspectRatio="none" aria-hidden="true">
+                            <polyline fill="none" stroke="{{ $color }}" stroke-width="1.8" stroke-linejoin="round" points="{{ \App\Support\LivePresence\SecuritySnapshot::sparkline($values, 160, 26) }}" />
+                        </svg>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+        </div>
+    </section>
 
     {{-- Amenazas y eventos --}}
-    <div class="lsec-grid">
-        <div class="lsec-card">
-            <div class="lsec-panel-head">
-                <span class="lsec-label">Amenazas · últimas 24 h</span>
-            </div>
-
-            <div class="lsec-sub">
-                <div class="lsec-subtitle">
-                    <span class="lsec-label">IPs sospechosas</span>
-                    <span class="lsec-count {{ $security['offenders'] !== [] ? 'alert' : '' }}">{{ count($security['offenders']) }}</span>
-                </div>
-                @forelse ($security['offenders'] as $offender)
-                    <div class="lsec-row ip" wire:key="offender-{{ $offender['ip'] }}">
-                        <div>
-                            <div class="lsec-mono" style="font-weight: 700;">{{ $offender['ip'] }}</div>
-                            <div class="lsec-muted">{{ $offender['flag'] }} {{ $offender['location'] ?: 'Ubicación desconocida' }}</div>
-                        </div>
-                        <div>
-                            @foreach ($offender['tags'] as $tag)
-                                <span class="lsec-tag {{ $tagColors[$tag] ?? '' }}">{{ $tag }}</span>
-                            @endforeach
-                            <div class="lsec-muted" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $offender['user_agent'] }}">{{ $offender['user_agent'] }}</div>
-                        </div>
-                        <div>
-                            <div>{{ $offender['failed_logins'] }} logins · {{ $offender['accounts_tried'] }} cuentas</div>
-                            <div class="lsec-muted" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $offender['last_account'] ?: $offender['last_path'] }}</div>
-                        </div>
-                        <div class="lsec-muted" style="text-align: right;">{{ $offender['last_seen_ago'] }}<br>puntaje {{ $offender['score'] }}</div>
-                    </div>
-                @empty
-                    <div class="lsec-ok">Ninguna IP con comportamiento sospechoso.</div>
-                @endforelse
-            </div>
-
-            <div class="lsec-two" style="border-top: 1px solid var(--s-border);">
-                <div class="lsec-sub">
-                    <div class="lsec-subtitle">
-                        <span class="lsec-label">Cuentas bajo ataque</span>
-                        <span class="lsec-count {{ $security['targets'] !== [] ? 'alert' : '' }}">{{ count($security['targets']) }}</span>
-                    </div>
-                    @forelse ($security['targets'] as $account => $failures)
-                        <div class="lsec-row pair" wire:key="target-{{ md5($account) }}">
-                            <span style="font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $account }}">{{ $account }}</span>
-                            <span class="lsec-muted"><strong style="color: var(--s-text);">{{ (int) $failures }}</strong> fallos</span>
-                        </div>
-                    @empty
-                        <div class="lsec-ok">Ninguna cuenta con intentos fallidos.</div>
-                    @endforelse
+    <section class="lsec-fold" @unless ($tv) x-data="{ open: $persist(true).as('lam-fold-threats') }" @endunless>
+        @unless ($tv)
+            <button type="button" class="lsec-fold-head" x-on:click="open = ! open" x-bind:aria-expanded="open" title="Ocultar o mostrar esta sección">
+                <span class="lsec-label">Amenazas y eventos</span>
+                <span class="lsec-fold-summary {{ ($security['offenders'] !== [] || $security['targets'] !== [] || $security['locks'] !== []) ? 'alert' : '' }}" x-show="! open" wire:ignore.self><strong>{{ count($security['offenders']) }}</strong> IPs sospechosas · <strong>{{ count($security['targets']) }}</strong> cuentas atacadas · <strong>{{ count($security['locks']) }}</strong> bloqueadas · <strong>{{ count($security['events']) }}</strong> eventos</span>
+                <span class="lsec-fold-toggle">
+                    <span class="lsec-fold-chevron" x-bind:class="open ? '' : 'closed'" wire:ignore.self>▾</span>
+                    <span x-text="open ? 'Ocultar' : 'Mostrar'" wire:ignore>Ocultar</span>
+                </span>
+            </button>
+        @endunless
+        <div @unless ($tv) x-show="open" x-collapse wire:ignore.self @endunless>
+        <div class="lsec-grid">
+            <div class="lsec-card">
+                <div class="lsec-panel-head">
+                    <span class="lsec-label">Amenazas · últimas 24 h</span>
                 </div>
 
                 <div class="lsec-sub">
                     <div class="lsec-subtitle">
-                        <span class="lsec-label">Bloqueadas temporalmente</span>
-                        <span class="lsec-count {{ $security['locks'] !== [] ? 'alert' : '' }}">{{ count($security['locks']) }}</span>
+                        <span class="lsec-label">IPs sospechosas</span>
+                        <span class="lsec-count {{ $security['offenders'] !== [] ? 'alert' : '' }}">{{ count($security['offenders']) }}</span>
                     </div>
-                    @forelse ($security['locks'] as $lock)
-                        <div class="lsec-row pair" wire:key="lock-{{ md5($lock['account']) }}">
-                            <div style="min-width: 0;">
-                                <div style="font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ $lock['account'] }}</div>
-                                <div class="lsec-muted">{{ $lock['failures'] }} fallos · {{ $lock['ips'] }} {{ (int) $lock['ips'] === 1 ? 'IP' : 'IPs' }} · libera {{ date('H:i', (int) $lock['until']) }}</div>
+                    @forelse ($security['offenders'] as $offender)
+                        <div class="lsec-row ip" wire:key="offender-{{ $offender['ip'] }}">
+                            <div>
+                                <div class="lsec-mono" style="font-weight: 700;">{{ $offender['ip'] }}</div>
+                                <div class="lsec-muted">{{ $offender['flag'] }} {{ $offender['location'] ?: 'Ubicación desconocida' }}</div>
                             </div>
-                            @if ($actions)
-                                <div>{{ ($this->unlockAccountAction)(['account' => $lock['account']]) }}</div>
-                            @endif
+                            <div>
+                                @foreach ($offender['tags'] as $tag)
+                                    <span class="lsec-tag {{ $tagColors[$tag] ?? '' }}">{{ $tag }}</span>
+                                @endforeach
+                                <div class="lsec-muted" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $offender['user_agent'] }}">{{ $offender['user_agent'] }}</div>
+                            </div>
+                            <div>
+                                <div>{{ $offender['failed_logins'] }} logins · {{ $offender['accounts_tried'] }} cuentas</div>
+                                <div class="lsec-muted" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $offender['last_account'] ?: $offender['last_path'] }}</div>
+                            </div>
+                            <div class="lsec-muted" style="text-align: right;">{{ $offender['last_seen_ago'] }}<br>puntaje {{ $offender['score'] }}</div>
                         </div>
                     @empty
-                        <div class="lsec-ok">Ninguna cuenta bloqueada.</div>
+                        <div class="lsec-ok">Ninguna IP con comportamiento sospechoso.</div>
                     @endforelse
                 </div>
-            </div>
-        </div>
 
-        <div class="lsec-card">
-            <div class="lsec-panel-head">
-                <span class="lsec-label">Eventos de seguridad</span>
-                <span class="lsec-muted">en vivo</span>
-            </div>
-            @if ($security['events'] === [])
-                <div style="padding: 12px 16px;"><div class="lsec-ok">Sin eventos todavía.</div></div>
-            @else
-                <ul class="lsec-events">
-                    @foreach ($security['events'] as $event)
-                        <li wire:key="sec-event-{{ $event['id'] ?? $loop->index }}-{{ $event['at'] ?? 0 }}">
-                            <span class="lsec-sev {{ $event['severity'] ?? 'info' }}"></span>
-                            <div style="min-width: 0; flex: 1;">
-                                <div style="display: flex; justify-content: space-between; gap: 8px;">
-                                    <strong>{{ $event['title'] ?? '' }}</strong>
-                                    <span class="lsec-muted" title="{{ $event['ago'] }}">{{ $event['time'] }}</span>
+                <div class="lsec-two" style="border-top: 1px solid var(--s-border);">
+                    <div class="lsec-sub">
+                        <div class="lsec-subtitle">
+                            <span class="lsec-label">Cuentas bajo ataque</span>
+                            <span class="lsec-count {{ $security['targets'] !== [] ? 'alert' : '' }}">{{ count($security['targets']) }}</span>
+                        </div>
+                        @forelse ($security['targets'] as $account => $failures)
+                            <div class="lsec-row pair" wire:key="target-{{ md5($account) }}">
+                                <span style="font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $account }}">{{ $account }}</span>
+                                <span class="lsec-muted"><strong style="color: var(--s-text);">{{ (int) $failures }}</strong> fallos</span>
+                            </div>
+                        @empty
+                            <div class="lsec-ok">Ninguna cuenta con intentos fallidos.</div>
+                        @endforelse
+                    </div>
+
+                    <div class="lsec-sub">
+                        <div class="lsec-subtitle">
+                            <span class="lsec-label">Bloqueadas temporalmente</span>
+                            <span class="lsec-count {{ $security['locks'] !== [] ? 'alert' : '' }}">{{ count($security['locks']) }}</span>
+                        </div>
+                        @forelse ($security['locks'] as $lock)
+                            <div class="lsec-row pair" wire:key="lock-{{ md5($lock['account']) }}">
+                                <div style="min-width: 0;">
+                                    <div style="font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ $lock['account'] }}</div>
+                                    <div class="lsec-muted">{{ $lock['failures'] }} fallos · {{ $lock['ips'] }} {{ (int) $lock['ips'] === 1 ? 'IP' : 'IPs' }} · libera {{ date('H:i', (int) $lock['until']) }}</div>
                                 </div>
-                                <div style="word-break: break-word;">{{ $event['detail'] ?? '' }}</div>
+                                @if ($actions)
+                                    <div>{{ ($this->unlockAccountAction)(['account' => $lock['account']]) }}</div>
+                                @endif
                             </div>
-                        </li>
-                    @endforeach
-                </ul>
-            @endif
+                        @empty
+                            <div class="lsec-ok">Ninguna cuenta bloqueada.</div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+
+            <div class="lsec-card">
+                <div class="lsec-panel-head">
+                    <span class="lsec-label">Eventos de seguridad</span>
+                    <span class="lsec-muted">en vivo</span>
+                </div>
+                @if ($security['events'] === [])
+                    <div style="padding: 12px 16px;"><div class="lsec-ok">Sin eventos todavía.</div></div>
+                @else
+                    <ul class="lsec-events">
+                        @foreach ($security['events'] as $event)
+                            <li wire:key="sec-event-{{ $event['id'] ?? $loop->index }}-{{ $event['at'] ?? 0 }}">
+                                <span class="lsec-sev {{ $event['severity'] ?? 'info' }}"></span>
+                                <div style="min-width: 0; flex: 1;">
+                                    <div style="display: flex; justify-content: space-between; gap: 8px;">
+                                        <strong>{{ $event['title'] ?? '' }}</strong>
+                                        <span class="lsec-muted" title="{{ $event['ago'] }}">{{ $event['time'] }}</span>
+                                    </div>
+                                    <div style="word-break: break-word;">{{ $event['detail'] ?? '' }}</div>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
         </div>
-    </div>
+        </div>
+    </section>
 
     {{-- Salud del sistema --}}
     <div class="lsec-health">
@@ -284,5 +336,8 @@
         @endforeach
         <span class="lsec-chip">PHP <strong>{{ $health['php'] }}</strong> {{ $health['environment'] }} · cola {{ $health['queue_driver'] }} · {{ $health['store'] }}</span>
         <span class="lsec-muted">medido {{ $health['measured_at'] }}</span>
+        <span class="lsec-muted" style="margin-left: auto;">
+            Ubicación por IP: <a href="{{ config('live-presence.geoip.provider_url', 'https://db-ip.com') }}" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">{{ config('live-presence.geoip.provider', 'DB-IP') }}</a> · CC BY 4.0
+        </span>
     </div>
 </div>

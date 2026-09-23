@@ -293,8 +293,10 @@ it('el monitor muestra a los conectados y bloquea a quien no está en la lista',
         'browser' => 'Chrome',
         'os' => 'Windows',
         'rtt_ms' => 95,
-        'last_action' => 'Edit Supplier › save',
-        'last_action_at' => time(),
+        'activity' => 'Guardó los cambios',
+        'activity_at' => time(),
+        /** Formato técnico anterior: ya no debe mostrarse. */
+        'last_action' => 'Case Follow Up Chat Panel › pollHeartbeat',
     ], true);
 
     $this->actingAs(presenceUser('gcamacho@tudrencasa.com', 2));
@@ -305,7 +307,8 @@ it('el monitor muestra a los conectados y bloquea a quien no está en la lista',
         ->assertSee('Operaciones')
         ->assertSee('Caracas, Venezuela')
         ->assertSee('95 ms')
-        ->assertSee('Edit Supplier › save')
+        ->assertSee('Guardó los cambios')
+        ->assertDontSee('pollHeartbeat')
         ->call('selectSession', 'cccccccccccccccccccccccc')
         ->assertSee('Línea de tiempo')
         ->set('search', 'nadie-coincide')
@@ -327,3 +330,32 @@ it('el latido solo se imprime con sesión iniciada', function (): void {
         ->toContain('live-presence')
         ->toContain('data-navigate-once');
 });
+
+it('la actualización de la base de ubicación prueba el mes anterior y conserva la base vigente si falla', function (int $status, string $body): void {
+    $target = sys_get_temp_dir().'/lp-ip-city-'.bin2hex(random_bytes(4)).'.mmdb';
+    file_put_contents($target, 'BASE-VIGENTE');
+    config([
+        'live-presence.geoip.database' => $target,
+        'live-presence.geoip.download_url' => 'https://download.db-ip.com/free/dbip-city-lite-{month}.mmdb.gz',
+    ]);
+
+    Illuminate\Support\Facades\Http::preventStrayRequests();
+    Illuminate\Support\Facades\Http::fake(['download.db-ip.com/*' => Illuminate\Support\Facades\Http::response($body, $status)]);
+
+    $this->artisan('live-presence:geoip-update')
+        ->expectsOutputToContain('La base anterior sigue en uso sin cambios.')
+        ->assertFailed();
+
+    expect(file_get_contents($target))->toBe('BASE-VIGENTE');
+
+    $urls = collect(Illuminate\Support\Facades\Http::recorded())->map(fn (array $pair): string => $pair[0]->url())->unique()->values()->all();
+    expect($urls)->toBe([
+        'https://download.db-ip.com/free/dbip-city-lite-'.now()->format('Y-m').'.mmdb.gz',
+        'https://download.db-ip.com/free/dbip-city-lite-'.now()->subMonthNoOverflow()->format('Y-m').'.mmdb.gz',
+    ]);
+
+    @unlink($target);
+})->with([
+    'servidor rechaza' => [404, 'Not found'],
+    'respuesta que no es la base' => [200, 'ok'],
+]);
