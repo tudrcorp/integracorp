@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Support\PlanGenerators\PlanGeneratorConditions;
+use App\Support\PlanGenerators\PlanGeneratorConditionsColumn;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,9 @@ return new class extends Migration
 
             return;
         }
+
+        // MariaDB reporta JSON como longtext y conserva CHECK (json_valid()).
+        PlanGeneratorConditionsColumn::dropJsonValidityConstraint();
 
         if ($this->columnType() === 'longtext') {
             return;
