@@ -79,6 +79,12 @@ class TravelAgencyForStateChart extends ChartWidget
             $parts[] = $leader['label'].' concentra el '.self::percent($leader['pct']).' ('.$leader['count'].').';
         }
 
+        $withoutState = array_values(array_filter($summary['rows'], static fn (array $row): bool => $row['muted']))[0] ?? null;
+
+        if ($withoutState !== null) {
+            $parts[] = $withoutState['count'].' sin estado asignado (barra gris): conviene completarlo en la ficha.';
+        }
+
         $parts[] = 'De mayor a menor; respeta la búsqueda y los filtros del listado.';
 
         return implode(' ', $parts);
