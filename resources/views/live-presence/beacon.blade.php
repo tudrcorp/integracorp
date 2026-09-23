@@ -88,6 +88,41 @@
         }
     };
 
+    /**
+     * Texto del botón pulsado: viaja en la siguiente petición de Livewire para
+     * que el monitor diga «Abrió "Reporte de Proveedores"» y no el nombre interno.
+     * Solo el texto visible del botón, nunca lo escrito en formularios.
+     */
+    let lastClick = null;
+
+    document.addEventListener('click', (event) => {
+        const target = event.target instanceof Element
+            ? event.target.closest('button, a, [role="button"], [wire\\:click], [x-on\\:click]')
+            : null;
+
+        if (!target || target.closest('input, textarea, select, [contenteditable="true"]')) return;
+
+        const text = (target.getAttribute('aria-label') || target.innerText || target.getAttribute('title') || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 60);
+
+        lastClick = text ? { text, at: Date.now() } : null;
+    }, true);
+
+    const attachClickHeader = () => window.Livewire.hook('request', ({ options }) => {
+        if (!lastClick || Date.now() - lastClick.at > 2000) return;
+        options.headers = options.headers || {};
+        options.headers['X-Presence-Click'] = encodeURIComponent(lastClick.text);
+        lastClick = null;
+    });
+
+    if (window.Livewire && typeof window.Livewire.hook === 'function') {
+        attachClickHeader();
+    } else {
+        document.addEventListener('livewire:init', attachClickHeader, { once: true });
+    }
+
     document.addEventListener('visibilitychange', () => ping('visibility'));
     document.addEventListener('livewire:navigated', () => ping('navigate'));
 

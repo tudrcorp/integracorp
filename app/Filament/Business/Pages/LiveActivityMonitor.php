@@ -4,15 +4,25 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Pages;
 
+use App\Models\SecurityUserBlock;
+use App\Models\User;
 use App\Support\LivePresence\ActivityContext;
 use App\Support\LivePresence\LiveActivitySnapshot;
 use App\Support\LivePresence\LivePresenceAccess;
 use App\Support\LivePresence\LivePresenceStore;
+use App\Support\LivePresence\SecurityMonitor;
+use App\Support\LivePresence\SecuritySnapshot;
+use App\Support\LivePresence\UserBlockList;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use InvalidArgumentException;
 use Livewire\Attributes\Url;
 use Throwable;
 
@@ -95,6 +105,7 @@ class LiveActivityMonitor extends Page
     protected function getViewData(): array
     {
         $all = LiveActivitySnapshot::sessions();
+        $blocks = UserBlockList::active();
         $kpis = LiveActivitySnapshot::kpis($all);
         $sessions = $this->applyFilters($all);
         $selected = $this->selectedSession === null
@@ -112,7 +123,112 @@ class LiveActivityMonitor extends Page
                 ? []
                 : array_values(array_filter($all, fn (array $session): bool => $session['user_id'] === $selected['user_id'] && $session['session_key'] !== $selected['session_key'])),
             'refreshedAt' => now()->format('H:i:s'),
+            'selectedCanBeBlocked' => $selected !== null && ($target = User::query()->find((int) $selected['user_id'])) !== null
+                && UserBlockList::restrictionFor($target) === null,
+            'security' => SecuritySnapshot::build(),
+            'blocks' => $blocks,
+            'blockedIds' => array_map(static fn (SecurityUserBlock $block): int => (int) $block->user_id, $blocks),
         ];
+    }
+
+    /**
+     * Bloquear a un usuario: sale de todos los paneles y de la PWA en su próxima petición.
+     */
+    public function blockUserAction(): Action
+    {
+        return Action::make('blockUser')
+            ->label('Bloquear usuario')
+            ->icon(Heroicon::OutlinedNoSymbol)
+            ->color('danger')
+            ->size('sm')
+            ->requiresConfirmation()
+            ->modalIcon(Heroicon::OutlinedNoSymbol)
+            ->modalHeading(fn (array $arguments): string => 'Bloquear a '.(User::query()->find((int) ($arguments['userId'] ?? 0))?->name ?? 'este usuario'))
+            ->modalDescription('Pierde el acceso a todos los paneles y a la PWA en su próxima petición, aunque tenga la sesión abierta. No se modifica su cuenta ni sus datos. Queda registrado quién lo bloqueó y por qué.')
+            ->modalSubmitActionLabel('Bloquear')
+            ->form([
+                Select::make('duration')
+                    ->label('Duración')
+                    ->options([
+                        '60' => '1 hora',
+                        '1440' => '24 horas',
+                        '10080' => '7 días',
+                        'permanent' => 'Hasta que lo levante',
+                    ])
+                    ->default('1440')
+                    ->native(false)
+                    ->required(),
+                Textarea::make('reason')
+                    ->label('Motivo')
+                    ->placeholder('Qué comportamiento motivó el bloqueo.')
+                    ->required()
+                    ->minLength(UserBlockList::MIN_REASON_LENGTH)
+                    ->maxLength(1000)
+                    ->rows(3)
+                    ->validationMessages([
+                        'required' => 'El motivo es obligatorio.',
+                        'min' => 'Explique el motivo con al menos '.UserBlockList::MIN_REASON_LENGTH.' caracteres.',
+                    ]),
+            ])
+            ->action(function (array $arguments, array $data): void {
+                $user = User::query()->find((int) ($arguments['userId'] ?? 0));
+
+                if ($user === null) {
+                    Notification::make()->warning()->title('El usuario ya no existe')->send();
+
+                    return;
+                }
+
+                try {
+                    UserBlockList::block($user, (string) ($data['reason'] ?? ''), $data['duration'] === 'permanent' ? null : (int) $data['duration']);
+                } catch (InvalidArgumentException $exception) {
+                    Notification::make()->warning()->title('No se bloqueó')->body($exception->getMessage())->send();
+
+                    return;
+                }
+
+                Notification::make()->success()->title('Usuario bloqueado')->body($user->name.' queda fuera del sistema en su próxima petición.')->send();
+            });
+    }
+
+    public function liftBlockAction(): Action
+    {
+        return Action::make('liftBlock')
+            ->label('Levantar')
+            ->icon(Heroicon::OutlinedLockOpen)
+            ->color('success')
+            ->size('sm')
+            ->requiresConfirmation()
+            ->modalHeading('Levantar el bloqueo')
+            ->modalDescription('El usuario podrá volver a iniciar sesión de inmediato.')
+            ->form([
+                Textarea::make('reason')->label('Motivo (opcional)')->maxLength(1000)->rows(2),
+            ])
+            ->action(function (array $arguments, array $data): void {
+                $block = SecurityUserBlock::query()->find((int) ($arguments['blockId'] ?? 0));
+
+                if ($block !== null) {
+                    UserBlockList::lift($block, (string) ($data['reason'] ?? ''));
+                }
+
+                Notification::make()->success()->title('Bloqueo levantado')->send();
+            });
+    }
+
+    public function unlockAccountAction(): Action
+    {
+        return Action::make('unlockAccount')
+            ->label('Desbloquear')
+            ->icon(Heroicon::OutlinedLockOpen)
+            ->color('gray')
+            ->size('sm')
+            ->requiresConfirmation()
+            ->modalHeading('Desbloquear la cuenta')
+            ->modalDescription('Quita el bloqueo temporal por intentos fallidos. Si el ataque sigue, se volverá a bloquear sola.')
+            ->action(function (array $arguments): void {
+                SecurityMonitor::unlockAccount((string) ($arguments['account'] ?? ''), (string) (Auth::user()?->name ?? 'system'));
+                Notification::make()->success()->title('Cuenta desbloqueada')->send();
+            });
     }
 
     /**

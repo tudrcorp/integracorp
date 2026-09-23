@@ -48,13 +48,29 @@ new #[Layout('components.layouts.storefront')] #[Title('Entrar')] class extends 
             ]);
         }
 
+        /** Cuenta atacada: bloqueo temporal aunque la clave sea correcta (monitor en vivo). */
+        $accountLock = \App\Support\LivePresence\SecurityMonitor::accountLock($this->identifier);
+
+        if ($accountLock !== null) {
+            throw ValidationException::withMessages([
+                'identifier' => [\App\Support\LivePresence\SecurityMonitor::lockMessage($accountLock)],
+            ]);
+        }
+
         $user = StorefrontAccount::findByLoginIdentifier($this->identifier);
 
         if ($user === null || ! Hash::check($this->password, (string) $user->password)) {
             RateLimiter::hit($throttleKey, 60);
+            \App\Support\LivePresence\SecurityMonitor::recordFailedLogin(request(), $this->identifier, 'PWA');
 
             throw ValidationException::withMessages([
                 'identifier' => ['No reconocemos esos datos. Revisa tu correo, teléfono o cédula y tu clave.'],
+            ]);
+        }
+
+        if (\App\Support\LivePresence\UserBlockList::isBlocked((int) $user->getKey())) {
+            throw ValidationException::withMessages([
+                'identifier' => [\App\Support\LivePresence\SecurityAuthListener::blockedMessage()],
             ]);
         }
 

@@ -80,6 +80,7 @@ it('toma la IP real de Cloudflare y descarta encabezados inválidos', function (
 
 it('ubica con los encabezados de Cloudflare o marca la red local', function (): void {
     $request = Request::create('/business', 'GET', server: [
+        'REMOTE_ADDR' => '173.245.48.10',
         'HTTP_CF_IPCOUNTRY' => 've',
         'HTTP_CF_IPCITY' => 'Caracas',
         'HTTP_CF_REGION' => 'Distrito Capital',
@@ -90,32 +91,73 @@ it('ubica con los encabezados de Cloudflare o marca la red local', function (): 
 
     expect(ClientLocation::locate(Request::create('/'), '127.0.0.1'))
         ->toMatchArray(['country' => 'Red local', 'source' => 'local']);
+
+    /** Conexión directa (sin pasar por Cloudflare): los encabezados de ubicación se ignoran. */
+    $spoofed = Request::create('/business', 'GET', server: ['REMOTE_ADDR' => '190.202.10.20', 'HTTP_CF_IPCOUNTRY' => 'US', 'HTTP_CF_IPCITY' => 'Falsa']);
+    expect(ClientLocation::locate($spoofed, '190.202.10.20')['city'])->not->toBe('Falsa');
 });
 
 it('sabe en qué panel y página está el usuario', function (): void {
     expect(ActivityContext::panelFor('/business/affiliation-corporates/15'))->toBe('business')
         ->and(ActivityContext::panelFor('/app/cotizaciones'))->toBe('pwa')
         ->and(ActivityContext::panelFor('/plk/10'))->toBe('web')
-        ->and(ActivityContext::pageLabel('/business/affiliation-corporates/15'))->toBe('Affiliation corporates · #15')
-        ->and(ActivityContext::pageLabel('/business'))->toBe('Escritorio');
+        ->and(ActivityContext::pageLabel('/business/affiliation-corporates/15'))->toBe('Afiliaciones › Corporativas · ver #15')
+        ->and(ActivityContext::pageLabel('/business/affiliation-corporates/15/edit'))->toBe('Afiliaciones › Corporativas · editar #15')
+        ->and(ActivityContext::pageLabel('/operations/suppliers'))->toBe('Proveedores Jurídicos')
+        ->and(ActivityContext::pageLabel('/business'))->toBe('Escritorio')
+        ->and(ActivityContext::pageLabel('/ruta/sin-pagina-conocida'))->toBe('Ruta · Sin pagina conocida');
 
     $livewire = Request::create('/livewire/update', 'POST', server: ['HTTP_REFERER' => 'https://www.integracorp.test/operations/suppliers?page=2']);
     expect(ActivityContext::pagePath($livewire))->toBe('/operations/suppliers');
 });
 
-it('traduce las llamadas de Livewire a la acción que el usuario ejecutó e ignora los refrescos', function (): void {
-    $snapshot = json_encode(['memo' => ['name' => 'app.filament.business.resources.affiliation-corporates.pages.list-affiliation-corporates']]);
+/**
+ * @param  list<array{method: string, params?: array<int, mixed>}>  $calls
+ * @param  array<string, mixed>  $updates
+ * @param  array<string, string>  $headers
+ */
+function livewireCall(array $calls, array $updates = [], array $headers = []): Request
+{
     $request = Request::create('/livewire/update', 'POST', [
-        'components' => [
-            ['snapshot' => $snapshot, 'calls' => [['method' => 'mountAction', 'params' => ['change_payment_frequency']]]],
-            ['snapshot' => $snapshot, 'calls' => [['method' => '$refresh', 'params' => []]]],
-        ],
+        'components' => [['snapshot' => '{}', 'calls' => $calls, 'updates' => $updates]],
     ]);
 
-    expect(ActivityContext::livewireAction($request))->toBe('List Affiliation Corporates › abre «change_payment_frequency»');
+    foreach ($headers as $name => $value) {
+        $request->headers->set($name, $value);
+    }
 
-    $poll = Request::create('/livewire/update', 'POST', ['components' => [['snapshot' => $snapshot, 'calls' => [['method' => '$refresh']]]]]);
-    expect(ActivityContext::livewireAction($poll))->toBeNull();
+    return $request;
+}
+
+it('dice en español lo que hizo el usuario, con el texto del botón que pulsó', function (): void {
+    expect(ActivityContext::livewireAction(livewireCall([['method' => 'mountAction', 'params' => ['report_suppliers']]], headers: ['X-Presence-Click' => rawurlencode('Reporte de Proveedores')])))
+        ->toBe('Abrió «Reporte de Proveedores»')
+        ->and(ActivityContext::livewireAction(livewireCall([['method' => 'mountAction', 'params' => ['report_suppliers']]])))
+        ->toBe('Abrió «Report suppliers»')
+        ->and(ActivityContext::livewireAction(livewireCall([['method' => 'callMountedAction']], headers: ['X-Presence-Click' => rawurlencode('Cambiar frecuencia')])))
+        ->toBe('Confirmó «Cambiar frecuencia»')
+        ->and(ActivityContext::livewireAction(livewireCall([['method' => 'unmountAction']])))->toBe('Cerró la ventana')
+        ->and(ActivityContext::livewireAction(livewireCall([['method' => 'save']])))->toBe('Guardó los cambios')
+        ->and(ActivityContext::livewireAction(livewireCall([['method' => 'sendMessage']], headers: ['X-Presence-Click' => rawurlencode('<b>Enviar</b>')])))->toBe('Pulsó «Enviar»')
+        ->and(ActivityContext::livewireAction(livewireCall([['method' => 'sendMessage']])))->toBe('Ejecutó «Send message»');
+});
+
+it('ignora lo automático: refrescos, sondeos del chat y gráficas', function (string $method): void {
+    expect(ActivityContext::livewireAction(livewireCall([['method' => $method]])))->toBeNull();
+})->with(['$refresh', 'pollHeartbeat', 'updateChartData', '__lazyLoad', 'refreshTickets', 'checkForUpdates']);
+
+it('registra búsquedas, filtros y pestañas pero no el tecleo en formularios', function (): void {
+    expect(ActivityContext::livewireAction(livewireCall([], ['tableSearch' => 'clinica caracas'])))->toBe('Buscó «clinica caracas»')
+        ->and(ActivityContext::livewireAction(livewireCall([], ['tableFilters.status.value' => 'ACTIVO'])))->toBe('Cambió los filtros de la tabla')
+        ->and(ActivityContext::livewireAction(livewireCall([], ['activeTab' => 'por_validar'])))->toBe('Cambió a la pestaña «Por validar»')
+        ->and(ActivityContext::livewireAction(livewireCall([], ['data.email' => 'algo@x.com'])))->toBeNull();
+});
+
+it('describe descargas y PDFs en lenguaje claro', function (): void {
+    expect(ActivityContext::downloadLabel('/operations/suppliers/report/preview', 'application/pdf', 'Proveedores Jurídicos'))
+        ->toBe('Abrió un PDF (reporte · vista previa) desde Proveedores Jurídicos')
+        ->and(ActivityContext::downloadLabel('/business/export-affiliations', 'text/csv; charset=UTF-8', null))
+        ->toStartWith('Descargó una hoja de cálculo');
 });
 
 it('el almacén mezcla campos, ordena por actividad y excluye a los inactivos', function (): void {
@@ -171,7 +213,8 @@ it('cada petición autenticada queda registrada después de responder', function
     Route::middleware('web')->get('/business/lp-prueba', fn () => response('<html><body>ok</body></html>', 200, ['Content-Type' => 'text/html']));
 
     $this->actingAs(presenceUser())
-        ->withHeaders(['CF-Connecting-IP' => '190.202.10.20', 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'])
+        ->withServerVariables(['REMOTE_ADDR' => '190.202.10.20'])
+        ->withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'])
         ->get('/business/lp-prueba')
         ->assertOk();
 

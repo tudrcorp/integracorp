@@ -133,6 +133,97 @@ final class CacheLivePresenceRepository implements LivePresenceRepository
         return 'cache';
     }
 
+    public function increment(string $key, int $ttl): int
+    {
+        $this->cache->add($key, 0, $ttl);
+
+        return (int) $this->cache->increment($key);
+    }
+
+    public function counters(array $keys): array
+    {
+        $counters = [];
+
+        foreach ($keys as $key) {
+            $counters[$key] = (int) $this->cache->get($key, 0);
+        }
+
+        return $counters;
+    }
+
+    public function addToSet(string $key, string $member, int $ttl): int
+    {
+        $count = 0;
+
+        $this->withLock($key, function () use ($key, $member, $ttl, &$count): void {
+            $members = $this->cache->get($key);
+            $members = is_array($members) ? $members : [];
+            $members[$member] = true;
+            $this->cache->put($key, $members, $ttl);
+            $count = count($members);
+        });
+
+        return $count;
+    }
+
+    public function pushList(string $key, array $item, int $size, int $ttl): void
+    {
+        $this->withLock($key, function () use ($key, $item, $size, $ttl): void {
+            $items = $this->cache->get($key);
+            $items = is_array($items) ? $items : [];
+            array_unshift($items, $item);
+            $this->cache->put($key, array_slice($items, 0, $size), $ttl);
+        });
+    }
+
+    public function readList(string $key, int $limit): array
+    {
+        $items = $this->cache->get($key);
+
+        return array_values(array_filter(array_slice(is_array($items) ? $items : [], 0, $limit), 'is_array'));
+    }
+
+    public function scoreMember(string $key, string $member, float $score, int $ttl): void
+    {
+        $this->withLock($key, function () use ($key, $member, $score, $ttl): void {
+            $members = $this->cache->get($key);
+            $members = is_array($members) ? $members : [];
+            $members[$member] = (float) ($members[$member] ?? 0) + $score;
+            arsort($members);
+            $this->cache->put($key, array_slice($members, 0, 500, true), $ttl);
+        });
+    }
+
+    public function topMembers(string $key, int $limit): array
+    {
+        $members = $this->cache->get($key);
+
+        if (! is_array($members)) {
+            return [];
+        }
+
+        arsort($members);
+
+        return array_map('floatval', array_slice($members, 0, $limit, true));
+    }
+
+    public function putValue(string $key, array $value, int $ttl): void
+    {
+        $this->cache->put($key, $value, $ttl);
+    }
+
+    public function getValue(string $key): ?array
+    {
+        $value = $this->cache->get($key);
+
+        return is_array($value) ? $value : null;
+    }
+
+    public function forget(string $key): void
+    {
+        $this->cache->forget($key);
+    }
+
     /**
      * Lectura-modificación-escritura protegida si el store tiene locks; si no,
      * se hace igual: en desarrollo perder un latido no importa.

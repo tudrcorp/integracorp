@@ -45,7 +45,8 @@ final class LivePresenceRecorder
         $isLivewire = ActivityContext::isLivewireUpdate($request);
         $isPage = self::isPageLoad($request, $response);
         $pagePath = ActivityContext::pagePath($request);
-        $action = ActivityContext::livewireAction($request);
+        /** Los clics dentro del propio monitor son ruido: no son actividad a vigilar. */
+        $action = ActivityContext::isMonitorPage($pagePath) ? null : ActivityContext::livewireAction($request);
 
         $fields = [
             ...self::identity($request, $user),
@@ -75,9 +76,23 @@ final class LivePresenceRecorder
         $event = match (true) {
             $action !== null => ['type' => 'action', 'label' => $action],
             $isPage => ['type' => 'page', 'label' => ActivityContext::pageLabel($pagePath)],
-            $request->isMethod('GET') && ! $isLivewire && ! $request->expectsJson() => ['type' => 'download', 'label' => Str::limit('/'.ltrim($request->path(), '/'), 90)],
+            $request->isMethod('GET') && ! $isLivewire && ! $request->expectsJson() => [
+                'type' => 'download',
+                'label' => ActivityContext::downloadLabel(
+                    '/'.ltrim($request->path(), '/'),
+                    $response?->headers->get('Content-Type'),
+                    self::refererPageLabel($request),
+                ),
+            ],
             default => null,
         };
+
+        SecurityMonitor::recordAuthenticatedCountry(
+            (int) $user->getAuthIdentifier(),
+            (string) ($fields['user_name'] ?? ''),
+            (string) ($fields['country_code'] ?? ''),
+            (string) ($fields['ip'] ?? ''),
+        );
 
         LivePresenceStore::safely(function (LivePresenceRepository $store) use ($sessionKey, $fields, $event, $user, $pagePath, $durationMs, $response): void {
             $store->touch($sessionKey, $fields, countRequest: true);
@@ -89,6 +104,7 @@ final class LivePresenceRecorder
                     ...$event,
                     'at' => time(),
                     'panel' => ActivityContext::panelLabel($panel),
+                    'page' => $event['type'] === 'page' ? null : ActivityContext::pageLabel($event['type'] === 'download' ? (self::refererPath($request) ?? $pagePath) : $pagePath),
                     'path' => $pagePath,
                     'ms' => (int) round($durationMs),
                     'status' => $response?->getStatusCode(),
@@ -180,6 +196,20 @@ final class LivePresenceRecorder
             'device' => $agent['device'],
             'user_agent' => $userAgent,
         ];
+    }
+
+    private static function refererPath(Request $request): ?string
+    {
+        $path = parse_url((string) $request->headers->get('referer', ''), PHP_URL_PATH);
+
+        return is_string($path) && $path !== '' ? $path : null;
+    }
+
+    private static function refererPageLabel(Request $request): ?string
+    {
+        $path = self::refererPath($request);
+
+        return $path === null ? null : ActivityContext::pageLabel($path);
     }
 
     private static function isPageLoad(Request $request, ?Response $response): bool

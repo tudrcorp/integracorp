@@ -157,6 +157,110 @@ final class RedisLivePresenceRepository implements LivePresenceRepository
         ];
     }
 
+    public function increment(string $key, int $ttl): int
+    {
+        $value = (int) $this->redis()->incr($key);
+
+        if ($value === 1) {
+            $this->redis()->expire($key, $ttl);
+        }
+
+        return $value;
+    }
+
+    public function counters(array $keys): array
+    {
+        if ($keys === []) {
+            return [];
+        }
+
+        $values = $this->redis()->mget($keys);
+        $counters = [];
+
+        foreach (array_values($keys) as $index => $key) {
+            $counters[$key] = (int) ($values[$index] ?? 0);
+        }
+
+        return $counters;
+    }
+
+    public function addToSet(string $key, string $member, int $ttl): int
+    {
+        $results = $this->redis()->pipeline(function ($pipe) use ($key, $member, $ttl): void {
+            $pipe->sadd($key, $member);
+            $pipe->expire($key, $ttl);
+            $pipe->scard($key);
+        });
+
+        return (int) ($results[2] ?? 0);
+    }
+
+    public function pushList(string $key, array $item, int $size, int $ttl): void
+    {
+        $payload = (string) json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $this->redis()->pipeline(function ($pipe) use ($key, $payload, $size, $ttl): void {
+            $pipe->lpush($key, $payload);
+            $pipe->ltrim($key, 0, $size - 1);
+            $pipe->expire($key, $ttl);
+        });
+    }
+
+    public function readList(string $key, int $limit): array
+    {
+        $items = $this->redis()->lrange($key, 0, max(0, $limit - 1));
+
+        return array_values(array_filter(array_map(
+            static fn (mixed $item): mixed => is_string($item) ? json_decode($item, true) : null,
+            is_array($items) ? $items : [],
+        ), 'is_array'));
+    }
+
+    public function scoreMember(string $key, string $member, float $score, int $ttl): void
+    {
+        $this->redis()->pipeline(function ($pipe) use ($key, $member, $score, $ttl): void {
+            $pipe->zincrby($key, $score, $member);
+            $pipe->expire($key, $ttl);
+        });
+    }
+
+    public function topMembers(string $key, int $limit): array
+    {
+        $connection = $this->redis();
+        $client = $connection->client();
+
+        /** phpredis y predis piden WITHSCORES de forma distinta. */
+        $rows = $client instanceof \Redis
+            ? $client->zRevRange($key, 0, max(0, $limit - 1), true)
+            : $connection->command('zrevrange', [$key, 0, max(0, $limit - 1), ['withscores' => true]]);
+
+        $members = [];
+
+        foreach (is_array($rows) ? $rows : [] as $member => $score) {
+            $members[(string) $member] = (float) $score;
+        }
+
+        return $members;
+    }
+
+    public function putValue(string $key, array $value, int $ttl): void
+    {
+        $this->redis()->setex($key, $ttl, (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    public function getValue(string $key): ?array
+    {
+        $raw = $this->redis()->get($key);
+        $value = is_string($raw) ? json_decode($raw, true) : null;
+
+        return is_array($value) ? $value : null;
+    }
+
+    public function forget(string $key): void
+    {
+        $this->redis()->del($key);
+    }
+
     private function redis(): Connection
     {
         return Redis::connection($this->connectionName);
