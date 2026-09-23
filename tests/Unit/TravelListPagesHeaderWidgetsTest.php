@@ -7,6 +7,17 @@ use App\Filament\Business\Resources\TravelAgencies\Widgets\TotalTravelAgencyStat
 use App\Filament\Business\Resources\TravelAgents\Pages\ListTravelAgents;
 use App\Filament\Business\Resources\TravelAgents\Widgets\TotalTravelAgentStatOverview;
 
+it('lista agencias de viaje usa el encabezado de tu doctor en viajes', function (): void {
+    $source = (string) file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/TravelAgencies/Pages/ListTravelAgencies.php');
+
+    expect($source)
+        ->toContain('logo-tdev.png')
+        ->toContain('Tu Doctor En Viajes')
+        ->toContain('Agencias de viajes')
+        ->toContain('Estructura comercial · agencias, asociadas y agentes')
+        ->toContain('public function getTitle(): string|Htmlable');
+});
+
 it('lista agencias de viaje solo monta el widget de agencias en la cabecera', function (): void {
     $ref = new ReflectionClass(ListTravelAgencies::class);
     $instance = $ref->newInstanceWithoutConstructor();

@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class TravelAgency extends Model
 {
@@ -39,6 +42,9 @@ class TravelAgency extends Model
         'agenciaPpalNivel1',
         'created_by',
         'updated_by',
+        'parent_id',
+        'registration_token',
+        'agency_registration_token',
 
         'logo',
         'nameSecundario',
@@ -72,11 +78,83 @@ class TravelAgency extends Model
 
     ];
 
-    public function travelAgents()
+    protected static function booted(): void
+    {
+        static::creating(function (TravelAgency $agency): void {
+            if (blank($agency->registration_token)) {
+                $agency->registration_token = (string) Str::uuid();
+            }
+
+            if (blank($agency->agency_registration_token)) {
+                $agency->agency_registration_token = (string) Str::uuid();
+            }
+        });
+    }
+
+    public function travelAgents(): HasMany
     {
         return $this->hasMany(TravelAgent::class)
             ->orderByDesc('created_at')
             ->orderByDesc('id');
+    }
+
+    public function parentAgency(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function childAgencies(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+    }
+
+    public function logoUrl(): ?string
+    {
+        if (blank($this->logo)) {
+            return null;
+        }
+
+        return asset('storage/'.$this->logo);
+    }
+
+    public function faviconUrl(): string
+    {
+        return $this->logoUrl() ?? asset('image/logo-tdev.png');
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function registrationHierarchyLines(): array
+    {
+        $lines = [];
+        $nivel = trim((string) $this->nivel);
+
+        if ($nivel !== '') {
+            $lines[] = preg_match('/nivel/i', $nivel) === 1 ? $nivel : 'Nivel '.$nivel;
+        }
+
+        if (filled($this->agenciaPpalNivel1)) {
+            $lines[] = 'Agencia principal: '.mb_strtoupper(trim((string) $this->agenciaPpalNivel1));
+        }
+
+        if (filled($this->agenciaSuperiorNivel2)) {
+            $lines[] = 'Agencia superior: '.mb_strtoupper(trim((string) $this->agenciaSuperiorNivel2));
+        }
+
+        if (filled($this->agenteSuperiorNivel3)) {
+            $lines[] = 'Agente superior: '.mb_strtoupper(trim((string) $this->agenteSuperiorNivel3));
+        }
+
+        $parentName = trim((string) $this->parentAgency?->name);
+
+        if ($parentName !== '') {
+            $lines[] = 'Registrada bajo: '.$parentName;
+        }
+
+        return $lines;
     }
 
     public function country()

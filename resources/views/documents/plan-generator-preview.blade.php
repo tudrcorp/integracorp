@@ -284,6 +284,13 @@
             font-weight: bold;
         }
 
+        .condition-line {
+            margin: 0 0 3px 0;
+            font-size: 7pt;
+            line-height: 1.35;
+            color: #1f2937;
+        }
+
         .proposal-title {
             margin: 0 0 6px 0;
             font-size: 9pt;

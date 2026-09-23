@@ -72,6 +72,34 @@ function poblacionDeRangos(array $rateRows): int
 }
 
 /**
+ * Escribe la primera condición de la modal. El Repeater guarda el texto bajo
+ * una clave uuid; si el estado aún es la lista plana, se reemplaza entero.
+ */
+function escribirCondicionEnLaModal(\Livewire\Features\SupportTesting\Testable $componente, string $texto): void
+{
+    $condiciones = $componente->get('mountedActions.0.data.conditions');
+
+    if (! is_array($condiciones) || $condiciones === []) {
+        $componente->set('mountedActions.0.data.conditions', [
+            'condicion-pest' => ['text' => $texto],
+        ]);
+
+        return;
+    }
+
+    $clave = array_key_first($condiciones);
+    $item = $condiciones[$clave];
+
+    if (is_array($item)) {
+        $componente->set('mountedActions.0.data.conditions.'.$clave.'.text', $texto);
+
+        return;
+    }
+
+    $componente->set('mountedActions.0.data.conditions', [$texto]);
+}
+
+/**
  * Registro mínimo propio del test. Los planes reales de la base ya tienen
  * derivadas creadas a mano, así que un test que asuma «-1 está libre» o
  * «este base no tiene derivadas» se rompe con el uso normal del módulo.
@@ -145,6 +173,8 @@ it('abre la modal precargada con la matriz de la plantilla', function (): void {
     $componente
         ->assertMountedActionModalSee('Agregar columna')
         ->assertMountedActionModalSee('Beneficios del Plan')
+        ->assertMountedActionModalSee('Condiciones')
+        ->assertMountedActionModalSee('Agregar condición')
         ->assertMountedActionModalSeeHtml('mountedActions.0.data.rows.');
 });
 
@@ -190,7 +220,11 @@ it('crea la cotización derivada con la matriz ajustada y la cuelga del registro
         ->call('removeMatrixRow', $beneficioAQuitar, 'mountedActions.0.data')
         ->set('mountedActions.0.data.client_data', 'CLIENTE DERIVADO PEST')
         ->set('mountedActions.0.data.name', 'PLAN DERIVADO PEST')
-        ->set('mountedActions.0.data.population_summary', (string) poblacionDeRangos($estado['rate_rows']))
+        ->set('mountedActions.0.data.population_summary', (string) poblacionDeRangos($estado['rate_rows']));
+
+    escribirCondicionEnLaModal($componente, 'Cotización válida por 15 días.');
+
+    $componente
         ->callMountedAction()
         ->assertHasNoErrors()
         ->assertNotified('Cotización creada');
@@ -208,7 +242,8 @@ it('crea la cotización derivada con la matriz ajustada y la cuelga del registro
         ->and($derivada->rows_count)->toBe($beneficiosPrevios - 1)
         // El cuerpo del PDF se hereda de la plantilla.
         ->and($derivada->quotation_page_count)->toBe($plantilla->quotation_page_count)
-        ->and($derivada->plan_page_number)->toBe($plantilla->plan_page_number);
+        ->and($derivada->plan_page_number)->toBe($plantilla->plan_page_number)
+        ->and($derivada->conditions)->toBe(['Cotización válida por 15 días.']);
 
     // Cada celda guardada apunta a una columna que sigue existiendo.
     $columnasVivas = $derivada->columns()->pluck('id')->all();
@@ -240,12 +275,77 @@ it('no guarda la cotización si la matriz quedó incompleta', function (): void 
     $componente
         ->set('mountedActions.0.data.columns.0.header_label', '')
         ->set('mountedActions.0.data.client_data', 'CLIENTE INCOMPLETO PEST')
-        ->set('mountedActions.0.data.population_summary', (string) poblacionDeRangos($estado['rate_rows']))
+        ->set('mountedActions.0.data.population_summary', (string) poblacionDeRangos($estado['rate_rows']));
+
+    escribirCondicionEnLaModal($componente, 'Condición para llegar a validar la matriz.');
+
+    $componente
         ->callMountedAction()
         ->assertNotified('La matriz está incompleta');
 
     expect(PlanGenerator::query()->count())->toBe($antes)
         ->and(PlanGenerator::query()->where('client_data', 'CLIENTE INCOMPLETO PEST')->exists())->toBeFalse();
+});
+
+it('no guarda la cotización derivada si no hay condiciones', function (): void {
+    $antes = PlanGenerator::query()->count();
+
+    Livewire::actingAs($this->analista)
+        ->test(ListPlanGenerators::class)
+        ->set('selectedTableRecords', [(string) $this->plantilla->getKey()])
+        ->mountAction(TestAction::make('deriveQuotation')->table()->bulk())
+        ->set('mountedActions.0.data.client_data', 'CLIENTE SIN CONDICION PEST')
+        ->callMountedAction();
+
+    expect(PlanGenerator::query()->count())->toBe($antes)
+        ->and(PlanGenerator::query()->where('client_data', 'CLIENTE SIN CONDICION PEST')->exists())->toBeFalse();
+});
+
+it('guarda las condiciones en el orden en que las escribió el analista', function (): void {
+    $base = planGeneradoDePrueba('BASE CONDICIONES PEST');
+
+    $derivada = PlanGeneratorTemplateCloner::create($base, [
+        'name' => 'PLAN CONDICIONES PEST',
+        'status' => 'PRE-APROBADO',
+        'control_number' => $base->control_number.'-1',
+        'client_data' => 'CLIENTE CONDICIONES PEST',
+        'issued_at' => now()->toDateString(),
+        'agent_name' => 'PEST',
+        'population_unit' => 'poblacion',
+        'population_summary' => '1',
+        'brand_color' => '#1d4ed8',
+        'include_monthly_total' => false,
+        'conditions' => [
+            '  Vigencia de 15 días.  ',
+            '',
+            ['text' => 'Las tarifas no incluyen IVA.'],
+            '   ',
+        ],
+        'columns' => [],
+        'rows' => [],
+        'rate_rows' => [],
+    ], 'PEST');
+
+    expect($derivada->fresh()->conditions)->toBe([
+        'Vigencia de 15 días.',
+        'Las tarifas no incluyen IVA.',
+    ])->and($base->fresh()->conditions)->toBeNull();
+});
+
+it('rechaza derivar sin ninguna condición escrita', function (): void {
+    $base = planGeneradoDePrueba('BASE SIN CONDICION PEST');
+
+    expect(fn () => PlanGeneratorTemplateCloner::create($base, [
+        'name' => 'PLAN VACIO',
+        'control_number' => $base->control_number.'-1',
+        'client_data' => 'CLIENTE VACIO',
+        'conditions' => ['   ', ''],
+        'columns' => [],
+        'rows' => [],
+        'rate_rows' => [],
+    ]))->toThrow(InvalidArgumentException::class);
+
+    expect(PlanGenerator::query()->where('client_data', 'CLIENTE VACIO')->exists())->toBeFalse();
 });
 
 it('el borrado masivo libera a las derivadas en vez de dejarlas huérfanas', function (): void {
@@ -410,7 +510,8 @@ it('la tabla agrupa por familia y ofrece la acción de derivar', function (): vo
         ->toContain("Hidden::make('rate_rows')")
         ->toContain("'manageColumns' => true")
         ->toContain('stacked-matrices-editor')
-        ->toContain('PlanGeneratorPopulationValidator::validationMessage');
+        ->toContain('PlanGeneratorPopulationValidator::validationMessage')
+        ->toContain('PlanGeneratorConditions::field()');
 
     // La agrupación resuelve el título desde el registro base: sin eager load
     // cada fila derivada consultaría a su padre por separado.

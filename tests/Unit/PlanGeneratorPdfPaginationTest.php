@@ -109,7 +109,10 @@ function beneficiosLargosCapemiac(): array
  * @param  array<string, array<string, mixed>>  $rows
  * @param  array<string, array<string, mixed>>  $rateRows
  */
-function htmlDePlanPdf(array $columns, array $rows, array $rateRows): string
+/**
+ * @param  list<string>  $conditions
+ */
+function htmlDePlanPdf(array $columns, array $rows, array $rateRows, array $conditions = []): string
 {
     $plan = new PlanGenerator([
         'name' => 'PLAN ESPECIAL CAPEMIAC',
@@ -123,6 +126,7 @@ function htmlDePlanPdf(array $columns, array $rows, array $rateRows): string
     ]);
     $plan->id = 23;
     $plan->issued_at = Carbon::parse('2026-09-23');
+    $plan->conditions = $conditions;
 
     return view('documents.plan-generator-preview', [
         'planGenerator' => $plan,
@@ -208,6 +212,35 @@ it('deja los cálculos en la misma hoja cuando la matriz de beneficios es corta'
     expect(htmlDePlanPdf($columns, $rows, $rateRows))
         ->toContain('pdf-plan-calc-keep')
         ->not->toContain('pdf-plan-calc-keep pdf-plan-calc-next-page');
+});
+
+it('imprime las condiciones debajo del total grupal y las cuenta para el salto de página', function (): void {
+    $columns = columnasDePlanPdf(['PLAN ESPECIAL 5K', 'PLAN ESPECIAL 10K']);
+    $rows = filasDeBeneficiosPdf(['TELEMEDICINA', 'LABORATORIO', 'AMBULANCIA'], $columns, false);
+    $rateRows = filasDeTarifaPdf($columns, [
+        ['label' => '0 a 30 años', 'population' => 10, 'rate' => 100],
+        ['label' => '31 a 65 años', 'population' => 4, 'rate' => 180],
+    ]);
+
+    $html = htmlDePlanPdf($columns, $rows, $rateRows, [
+        'Cotización válida por 15 días.',
+        'Las tarifas no incluyen IVA.',
+    ]);
+
+    expect(strpos($html, 'Total grupal'))->toBeLessThan(strpos($html, 'Condiciones'))
+        ->and(strpos($html, 'Condiciones'))->toBeLessThan(strpos($html, '1. Cotización válida por 15 días.'))
+        ->and(strpos($html, '1. Cotización válida por 15 días.'))->toBeLessThan(strpos($html, '2. Las tarifas no incluyen IVA.'));
+
+    expect(PlanGeneratorPdfPagination::calculationsStartOnNextPage($columns, $rows, $rateRows, false, 'Población'))
+        ->toBeFalse()
+        ->and(PlanGeneratorPdfPagination::calculationsStartOnNextPage(
+            $columns,
+            $rows,
+            $rateRows,
+            false,
+            'Población',
+            array_fill(0, 40, str_repeat('Condición comercial de la cotización derivada. ', 8)),
+        ))->toBeTrue();
 });
 
 it('no parte el título del total grupal de su tabla en el pdf', function (): void {

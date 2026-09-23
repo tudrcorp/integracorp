@@ -10,6 +10,7 @@ use App\Models\Benefit;
 use App\Models\PlanGenerator;
 use App\Support\PlanGenerators\PlanGeneratorAgentLookup;
 use App\Support\PlanGenerators\PlanGeneratorBrandColor;
+use App\Support\PlanGenerators\PlanGeneratorConditions;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorPopulationValidator;
 use App\Support\PlanGenerators\PlanGeneratorTemplateCloner;
@@ -56,7 +57,7 @@ final class DeriveQuotationBulkAction
             ->color('success')
             ->modalWidth(Width::ScreenTwoExtraLarge)
             ->modalHeading('Generar cotización desde plantilla')
-            ->modalDescription('Ajuste columnas, beneficios y tarifas. Se creará una cotización nueva colgada del mismo registro base; la plantilla no se modifica.')
+            ->modalDescription('Ajuste columnas, beneficios, tarifas y las condiciones que van debajo del total grupal. Se creará una cotización nueva colgada del mismo registro base; la plantilla no se modifica.')
             ->modalSubmitActionLabel('Crear cotización')
             ->modalCancelActionLabel('Cancelar')
             ->closeModalByClickingAway(false)
@@ -72,6 +73,7 @@ final class DeriveQuotationBulkAction
                 $formState = self::matrixStateFromModal($action, $data, $schema);
 
                 self::assertMatrixIsUsable($action, $formState);
+                self::assertConditionsArePresent($action, $formState);
 
                 $derived = PlanGeneratorTemplateCloner::create(
                     $template,
@@ -85,6 +87,7 @@ final class DeriveQuotationBulkAction
                     'derived_id' => $derived->getKey(),
                     'control_number' => $derived->control_number,
                     'client_data' => $derived->client_data,
+                    'conditions_count' => count($derived->conditions ?? []),
                 ]);
 
                 Notification::make()
@@ -159,6 +162,9 @@ final class DeriveQuotationBulkAction
                 (array) ($rawState['rate_rows'] ?? $data['rate_rows'] ?? []),
                 $columns,
             ),
+            'conditions' => PlanGeneratorConditions::normalize(
+                $rawState['conditions'] ?? $data['conditions'] ?? [],
+            ),
         ];
     }
 
@@ -206,6 +212,28 @@ final class DeriveQuotationBulkAction
         Notification::make()
             ->title('La matriz está incompleta')
             ->body('Falta '.implode(', ', $problems).'. Complete la matriz y vuelva a intentarlo.')
+            ->danger()
+            ->persistent()
+            ->send();
+
+        $action->halt();
+    }
+
+    /**
+     * La derivada siempre lleva al menos una condición escrita por el analista.
+     * Va debajo del total grupal; sin ella la cotización sale incompleta.
+     *
+     * @param  array<string, mixed>  $formState
+     */
+    private static function assertConditionsArePresent(BulkAction $action, array $formState): void
+    {
+        if (PlanGeneratorConditions::normalize($formState['conditions'] ?? []) !== []) {
+            return;
+        }
+
+        Notification::make()
+            ->title('Faltan las condiciones')
+            ->body('Escriba al menos una condición. Aparece debajo del total grupal en la cotización.')
             ->danger()
             ->persistent()
             ->send();
@@ -330,7 +358,7 @@ final class DeriveQuotationBulkAction
 
             Section::make('Matriz de la cotización')
                 ->icon(Heroicon::OutlinedTableCells)
-                ->description('Quite o agregue columnas, beneficios y rangos etarios. El total grupal se recalcula solo.')
+                ->description('Quite o agregue columnas, beneficios y rangos etarios. El total grupal se recalcula solo. Debajo, escriba las condiciones de esta cotización.')
                 ->extraAttributes(['class' => self::IOS_SECTION_CLASS])
                 ->schema([
                     Grid::make(1)
@@ -375,6 +403,7 @@ final class DeriveQuotationBulkAction
                                         ->all(),
                                 ])
                                 ->columnSpanFull(),
+                            PlanGeneratorConditions::field(),
                         ]),
                 ]),
         ];

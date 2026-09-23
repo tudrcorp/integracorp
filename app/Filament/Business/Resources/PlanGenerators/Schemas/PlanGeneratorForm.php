@@ -10,6 +10,7 @@ use App\Models\Benefit;
 use App\Models\Plan;
 use App\Support\PlanGenerators\PlanGeneratorAgentLookup;
 use App\Support\PlanGenerators\PlanGeneratorBrandColor;
+use App\Support\PlanGenerators\PlanGeneratorConditions;
 use App\Support\PlanGenerators\PlanGeneratorImageGallery;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorPopulationValidator;
@@ -608,6 +609,7 @@ class PlanGeneratorForm
                                                             ->all(),
                                                     ])
                                                     ->columnSpanFull(),
+                                                PlanGeneratorConditions::field(onlyOnDerivedRecord: true),
                                             ]),
                                     ]),
                             ]),

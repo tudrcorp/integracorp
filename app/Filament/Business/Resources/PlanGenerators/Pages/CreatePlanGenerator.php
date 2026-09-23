@@ -29,7 +29,7 @@ class CreatePlanGenerator extends CreateRecord
         $this->assertPlanGeneratorQuotationBodyIsValid();
         $data['created_by'] = Auth::user()?->name;
 
-        unset($data['columns'], $data['rows'], $data['rate_rows'], $data['quotation_pages']);
+        unset($data['columns'], $data['rows'], $data['rate_rows'], $data['quotation_pages'], $data['conditions']);
 
         return $data;
     }

@@ -11,6 +11,9 @@
     use App\Enums\PlanGeneratorPopulationUnit;
     use App\Services\PlanGeneratorPdfService;
     use App\Support\PlanGenerators\PlanGeneratorPdfPagination;
+    use App\Support\PlanGenerators\PlanGeneratorConditions;
+
+    $conditions = PlanGeneratorConditions::normalize($planGenerator->conditions ?? []);
 
     $brandColor = PlanGeneratorBrandColor::resolve($planGenerator->brand_color ?? null);
     $populationUnitLabel = PlanGeneratorPopulationUnit::resolve($planGenerator->population_unit ?? null)->label();
@@ -28,6 +31,7 @@
         (array) $rateRows,
         $includeMonthlyTotal,
         $populationUnitLabel,
+        $conditions,
     );
 @endphp
 
@@ -228,6 +232,15 @@
         </tbody>
     </table>
     </div>
+
+    @if ($conditions !== [])
+        <div class="matrix-section">
+            <p class="section-title">Condiciones</p>
+            @foreach ($conditions as $index => $condition)
+                <p class="condition-line">{{ $index + 1 }}. {{ $condition }}</p>
+            @endforeach
+        </div>
+    @endif
 
     <div class="footer">
         Integracorp · Tu Dr en Casa · Plan generado
