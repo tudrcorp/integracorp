@@ -6,8 +6,33 @@ use App\Support\PdfOpaqueImage;
 use App\Support\Telemedicine\TelemedicineDoctorStamp;
 use App\Support\Telemedicine\TelemedicineInformeSignatureStamp;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 uses(Tests\TestCase::class);
+
+/**
+ * Las órdenes consultan los catálogos de cobertura. Sin config cacheada los
+ * tests corren en sqlite en memoria, vacía: se crean catálogos mínimos para
+ * que el test no dependa de la base de desarrollo.
+ */
+beforeEach(function (): void {
+    if (DB::connection()->getDriverName() !== 'sqlite') {
+        return;
+    }
+
+    foreach (['telemedicine_list_laboratories', 'telemedicine_list_studies', 'telemedicine_list_specialists'] as $table) {
+        if (! Schema::hasTable($table)) {
+            Schema::create($table, function (Blueprint $blueprint): void {
+                $blueprint->id();
+                $blueprint->string('name')->nullable();
+                $blueprint->string('type')->nullable();
+                $blueprint->timestamps();
+            });
+        }
+    }
+});
 
 /**
  * El logo de los documentos de telemedicina salió en producción como letras

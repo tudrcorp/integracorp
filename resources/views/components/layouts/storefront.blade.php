@@ -325,5 +325,6 @@
     @persist('toast')
         <flux:toast />
     @endpersist
+    @include('live-presence.beacon')
 </body>
 </html>

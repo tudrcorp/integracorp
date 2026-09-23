@@ -39,6 +39,7 @@ use App\Models\ObservationCommercialStructure;
 use App\Models\PlanGenerator;
 use App\Observers\ObservationCommercialStructureObserver;
 use App\Observers\PlanGeneratorObserver;
+use App\Support\LivePresence\LivePresenceRecorder;
 use App\Support\UserSessionAuditTracker;
 use Filament\Actions\Imports\Events\ImportChunkProcessed;
 use Filament\Actions\Imports\Events\ImportCompleted;
@@ -52,6 +53,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
@@ -79,6 +81,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (config('live-presence.enabled', true)) {
+            /** Contador de consultas por petición para el monitor en vivo. */
+            DB::listen(static function (): void {
+                LivePresenceRecorder::$queries++;
+            });
+
+            /** Latido del navegador en todos los paneles; la vista no imprime nada sin sesión. */
+            FilamentView::registerRenderHook(PanelsRenderHook::BODY_END, fn (): string => view('live-presence.beacon')->render());
+        }
+
         Event::listen(Login::class, [UserSessionAuditTracker::class, 'onLogin']);
         Event::listen(Logout::class, [UserSessionAuditTracker::class, 'onLogout']);
 

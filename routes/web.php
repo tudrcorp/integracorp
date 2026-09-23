@@ -2190,3 +2190,18 @@ Route::middleware(['auth', 'throttle:30,1'])->group(function () {
     Route::get('/propuestas/{control}/pdf', [\App\Http\Controllers\QuoteProposalController::class, 'pdf'])
         ->name('propuestas.pdf');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Monitor en vivo: latido del navegador
+|--------------------------------------------------------------------------
+|
+| Cada pestaña abierta (paneles internos y PWA) late cada 15 s con su
+| latencia y estado. Responde 204 y escribe solo en Redis (o en la caché en
+| desarrollo). Lo lee Negocios → Monitor en vivo.
+|
+*/
+
+Route::post('/live-presence/ping', \App\Http\Controllers\LivePresencePingController::class)
+    ->middleware(['auth', 'throttle:120,1'])
+    ->name('live-presence.ping');
