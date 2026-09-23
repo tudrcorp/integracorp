@@ -110,7 +110,8 @@ final class IpThreatAssessment
             $weak[] = $counters['not_found'].' páginas inexistentes en 24 h.';
         }
 
-        if (in_array('bot', $tags, true)) {
+        /** La etiqueta dura 24 h: solo cuenta si el User-Agent visto sigue siendo de un cliente automatizado. */
+        if (in_array('bot', $tags, true) && SecurityMonitor::isBotAgent((string) ($evidence['user_agent'] ?? ''))) {
             $weak[] = 'Cliente automatizado (sin navegador).';
         }
 

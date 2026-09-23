@@ -94,8 +94,15 @@
     }
 </style>
 
-<script>
+{{-- data-navigate-once: sin esto, cada navegación SPA sumaba otra copia de los oyentes y del observador. --}}
+<script data-navigate-once>
     (() => {
+        if (window.__tdgTelemedicinaBellAlert) {
+            return;
+        }
+
+        window.__tdgTelemedicinaBellAlert = true;
+
         const panelBodyClass = 'fi-panel-telemedicina';
         const buttonSelector = 'body.fi-panel-telemedicina .fi-topbar-database-notifications-btn, body.fi-panel-telemedicina .fi-sidebar-database-notifications-btn';
         const alertClass = 'fi-db-notifications-alert';
@@ -106,6 +113,7 @@
         let alertTimeout = null;
         let echoRegistered = false;
         let observer = null;
+        let observedNode = null;
 
         function isTelemedicinaPanel() {
             return document.body.classList.contains(panelBodyClass);
@@ -203,15 +211,15 @@
         }
 
         function observeBadgeChanges() {
-            if (observer !== null) {
-                return;
-            }
-
             const topbarEnd = document.querySelector('body.fi-panel-telemedicina .fi-topbar-end');
 
-            if (! topbarEnd) {
+            /** Tras una navegación SPA la barra superior puede ser otro nodo: se vuelve a enganchar. */
+            if (! topbarEnd || topbarEnd === observedNode) {
                 return;
             }
+
+            observer?.disconnect();
+            observedNode = topbarEnd;
 
             observer = new MutationObserver(() => {
                 checkForIncreasedUnreadCount();

@@ -56,9 +56,59 @@
             border: 0;
         }
 
+        /*
+         * El cuerpo no puede vivir en una sola celda: DomPDF no conserva el
+         * margen al partirla, y con muchos beneficios el total grupal salía
+         * cortado en la hoja siguiente.
+         */
+        .pdf-plan-flow {
+            page-break-inside: auto;
+        }
+
+        .pdf-plan-sheet {
+            width: 100%;
+            border-collapse: collapse;
+            border: 0;
+        }
+
         .pdf-plan-margin-cell {
-            padding: 20mm;
+            padding: 0 20mm;
             vertical-align: top;
+        }
+
+        .pdf-plan-margin-cell-first {
+            padding-top: 20mm;
+        }
+
+        .pdf-plan-margin-cell-last {
+            padding-bottom: 16mm;
+        }
+
+        .pdf-benefits-table th,
+        .pdf-benefits-table td {
+            font-size: 6.5pt;
+            padding: 2px 2px;
+        }
+
+        .pdf-plan-calc-keep {
+            page-break-inside: avoid;
+        }
+
+        .pdf-plan-calc-keep .matrix-section {
+            page-break-inside: avoid;
+        }
+
+        .pdf-plan-calc-cell {
+            padding-top: 3mm;
+            padding-bottom: 16mm;
+        }
+
+        .pdf-plan-calc-next-page {
+            page-break-before: always;
+        }
+
+        .pdf-plan-calc-next-page .pdf-plan-calc-cell {
+            padding-top: 20mm;
         }
 
         .pdf-plan-margin-cell .header {
@@ -154,6 +204,23 @@
             border-collapse: collapse;
             table-layout: fixed;
             margin-bottom: 12px;
+        }
+
+        table.matrix-table.pdf-benefits-table {
+            width: 170mm;
+            margin-left: 20mm;
+            margin-bottom: 2mm;
+        }
+
+        table.matrix-table.pdf-benefits-table thead tr.pdf-benefits-intro th {
+            background: #ffffff;
+            color: {{ $brandColor }};
+            border: none;
+            text-align: left;
+            text-transform: uppercase;
+            font-size: 7pt;
+            font-weight: bold;
+            padding: 8mm 0 1.5mm 0;
         }
 
         .matrix-table th,
@@ -274,17 +341,9 @@
     @if ($useQuotationBody)
         @foreach ($quotationPages as $index => $page)
             @if ($page['is_plan_page'])
-                <table
-                    class="pdf-plan-margin-frame {{ $index < $quotationPageTotal - 1 ? 'pdf-page-break' : '' }}"
-                    cellpadding="0"
-                    cellspacing="0"
-                >
-                    <tr>
-                        <td class="pdf-plan-margin-cell">
-                            @include('documents.partials.plan-generator-plan-body')
-                        </td>
-                    </tr>
-                </table>
+                <div class="pdf-plan-flow {{ $index < $quotationPageTotal - 1 ? 'pdf-page-break' : '' }}">
+                    @include('documents.partials.plan-generator-plan-body')
+                </div>
             @elseif ($page['image_data_uri'] !== '')
                 <table
                     class="pdf-image-frame {{ $index < $quotationPageTotal - 1 ? 'pdf-page-break' : '' }}"
@@ -300,13 +359,9 @@
             @endif
         @endforeach
     @else
-        <table class="pdf-plan-margin-frame" cellpadding="0" cellspacing="0">
-            <tr>
-                <td class="pdf-plan-margin-cell">
-                    @include('documents.partials.plan-generator-plan-body')
-                </td>
-            </tr>
-        </table>
+        <div class="pdf-plan-flow">
+            @include('documents.partials.plan-generator-plan-body')
+        </div>
     @endif
 </body>
 </html>

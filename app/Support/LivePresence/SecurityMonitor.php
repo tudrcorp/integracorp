@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\LivePresence;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\IpUtils;
@@ -39,13 +40,13 @@ final class SecurityMonitor
 
     private const DAY = 86400;
 
-    public static function recordRequest(Request $request, ?Response $response, bool $authenticated): void
+    public static function recordRequest(Request $request, ?Response $response, bool $authenticated, ?Authenticatable $user = null): void
     {
         if (self::isMonitorTraffic($request)) {
             return;
         }
 
-        LivePresenceStore::safely(function (LivePresenceRepository $store) use ($request, $response, $authenticated): void {
+        LivePresenceStore::safely(function (LivePresenceRepository $store) use ($request, $response, $authenticated, $user): void {
             $ip = ClientLocation::ip($request);
             $trusted = self::isTrusted($ip);
             $minute = self::minute();
@@ -76,6 +77,15 @@ final class SecurityMonitor
                 }
             }
 
+            /**
+             * Un usuario con sesión que hace demasiadas peticiones no es un ataque:
+             * casi siempre es una pestaña o un script del propio sistema desbocado.
+             * Se avisa como rendimiento y no cuenta para la inundación de su IP.
+             */
+            if ($authenticated) {
+                self::watchRunawaySession($store, $request, $user, $minute, $thresholds);
+            }
+
             if ($trusted) {
                 return;
             }
@@ -84,24 +94,32 @@ final class SecurityMonitor
                 $store->increment(self::ipCounterKey($ip, $metric), self::DAY);
             }
 
-            $requestsThisMinute = $store->increment(self::PREFIX.'ip:'.$ip.':rpm:'.$minute, 120);
+            if (! $authenticated) {
+                $requestsThisMinute = $store->increment(self::PREFIX.'ip:'.$ip.':rpm:'.$minute, 120);
+                $floodThreshold = $thresholds['requests_per_ip_minute'];
 
-            if ($requestsThisMinute >= $thresholds['requests_per_ip_minute']) {
-                self::flagIp($store, $request, $ip, 'inundación', 5, ['flood_peak' => $requestsThisMinute, 'hard_at' => time()]);
-                self::emit($store, 'flood:'.$ip, 120, [
-                    'type' => 'flood',
-                    'severity' => self::SEVERITY_CRITICAL,
-                    'title' => 'Inundación de peticiones',
-                    'detail' => $requestsThisMinute.' peticiones en un minuto desde '.$ip.'.',
-                    'ip' => $ip,
-                ]);
+                /**
+                 * Se puntúa una sola vez por minuto, al cruzar el umbral; después solo
+                 * se actualiza el pico cada 100 peticiones. Antes cada petición sumaba
+                 * 5 puntos y reescribía la ficha de la IP.
+                 */
+                if ($requestsThisMinute === $floodThreshold || ($requestsThisMinute > $floodThreshold && $requestsThisMinute % 100 === 0)) {
+                    self::flagIp($store, $request, $ip, 'inundación', $requestsThisMinute === $floodThreshold ? 5 : 0, ['flood_peak' => $requestsThisMinute, 'hard_at' => time()]);
+                    self::emit($store, 'flood:'.$ip, 120, [
+                        'type' => 'flood',
+                        'severity' => self::SEVERITY_CRITICAL,
+                        'title' => 'Inundación de peticiones',
+                        'detail' => $requestsThisMinute.' peticiones sin sesión en un minuto desde '.$ip.'.',
+                        'ip' => $ip,
+                    ]);
+                }
             }
 
             if ($status === 404) {
                 $notFound = $store->increment(self::PREFIX.'ip:'.$ip.':404:'.$minute, 120);
                 $store->scoreMember(self::PREFIX.'offenders', $ip, 0.2, self::DAY);
 
-                if ($notFound >= $thresholds['not_found_per_ip_minute']) {
+                if ($notFound === $thresholds['not_found_per_ip_minute']) {
                     self::flagIp($store, $request, $ip, 'escáner', 3, ['not_found_peak' => $notFound]);
                     self::emit($store, 'scan404:'.$ip, 600, [
                         'type' => 'scanner',
@@ -542,6 +560,35 @@ final class SecurityMonitor
         $referer = (string) parse_url((string) $request->headers->get('referer', ''), PHP_URL_PATH);
 
         return str_starts_with($referer, '/monitor/tv/') && ActivityContext::isLivewireUpdate($request);
+    }
+
+    /**
+     * @param  array<string, int>  $thresholds
+     */
+    private static function watchRunawaySession(LivePresenceRepository $store, Request $request, ?Authenticatable $user, string $minute, array $thresholds): void
+    {
+        if ($user === null) {
+            return;
+        }
+
+        $userId = (int) $user->getAuthIdentifier();
+        $threshold = max(1, (int) ($thresholds['requests_per_user_minute'] ?? 240));
+        $count = $store->increment(self::PREFIX.'user:'.$userId.':rpm:'.$minute, 120);
+
+        if ($count !== $threshold) {
+            return;
+        }
+
+        $path = '/'.ltrim($request->path(), '/');
+
+        self::emit($store, 'runaway:'.$userId, 900, [
+            'type' => 'runaway_session',
+            'severity' => self::SEVERITY_INFO,
+            'title' => 'Sesión con demasiadas peticiones',
+            'detail' => (string) ($user->name ?? 'Usuario').' (ID '.$userId.') superó '.$threshold.' peticiones en un minuto, la última a '.Str::limit($path, 80).'. No es un ataque: suele ser una pestaña o un script del sistema en bucle; pídale recargar la página y revise ese script.',
+            'ip' => ClientLocation::ip($request),
+            'user_id' => $userId,
+        ]);
     }
 
     private static function rememberLegitimateIp(LivePresenceRepository $store, string $ip, ?string $account): void

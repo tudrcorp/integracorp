@@ -19,7 +19,7 @@ class PlanGeneratorPdfService
 {
     private const LOGO_CACHE_PREFIX = 'plan_generator_pdf_logo_uri:v1:';
 
-    private const PDF_CACHE_KEY_PREFIX = 'plan_generator_pdf:v1:';
+    private const PDF_CACHE_KEY_PREFIX = 'plan_generator_pdf:v2:';
 
     private const PDF_CACHE_TTL_FALLBACK_SECONDS = 900;
 

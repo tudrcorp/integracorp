@@ -347,3 +347,43 @@ it('el comando de emergencia saca una IP de la lista negra', function (): void {
     expect(IpBlockList::isBlocked('94.154.43.125'))->toBeFalse()
         ->and(SecurityIpBlock::query()->sole()->lift_reason)->toBe('Era la oficina.');
 });
+
+describe('inundación y sesiones desbocadas', function (): void {
+    it('una IP sin sesión que inunda suma puntaje una sola vez por minuto', function (): void {
+        foreach (range(1, 450) as $i) {
+            SecurityMonitor::recordRequest(ipTestRequest('45.33.1.1', '/'), null, false);
+        }
+
+        $offender = SecuritySnapshot::offender('45.33.1.1');
+
+        expect($offender['score'])->toBe(5)
+            ->and($offender['tags'])->toContain('inundación')
+            ->and($offender['verdict'])->toBe(IpThreatAssessment::CONFIRMED)
+            ->and(array_count_values(array_column(SecuritySnapshot::build()['events'], 'type'))['flood'] ?? 0)->toBe(1);
+    });
+
+    it('un usuario con sesión que hace demasiadas peticiones es un aviso de rendimiento, no una amenaza', function (): void {
+        $user = User::factory()->make(['id' => 70, 'name' => 'Christopher Reyes', 'email' => 'creyes@tudrencasa.com']);
+
+        foreach (range(1, 453) as $i) {
+            SecurityMonitor::recordRequest(ipTestRequest('82.86.134.252', '/business/notifications/bell-alert'), null, true, $user);
+        }
+
+        $snapshot = SecuritySnapshot::build();
+        $runaway = array_values(array_filter($snapshot['events'], fn (array $event): bool => $event['type'] === 'runaway_session'));
+
+        expect(array_column($snapshot['offenders'], 'ip'))->not->toContain('82.86.134.252')
+            ->and($runaway)->toHaveCount(1)
+            ->and($runaway[0]['severity'])->toBe(SecurityMonitor::SEVERITY_INFO)
+            ->and($runaway[0]['detail'])->toContain('Christopher Reyes')
+            ->and($runaway[0]['detail'])->toContain('/business/notifications/bell-alert')
+            ->and($snapshot['level'])->toBe(SecuritySnapshot::LEVEL_GREEN);
+    });
+
+    it('una etiqueta «bot» vieja no acusa a un navegador normal', function (): void {
+        expect(IpThreatAssessment::assess(['tags' => ['bot'], 'user_agent' => 'Mozilla/5.0 (Windows NT 10.0) Chrome/128.0'])['reasons'])
+            ->not->toContain('Cliente automatizado (sin navegador).')
+            ->and(IpThreatAssessment::assess(['tags' => ['bot'], 'user_agent' => 'python-requests/2.31'])['reasons'])
+            ->toContain('Cliente automatizado (sin navegador).');
+    });
+});

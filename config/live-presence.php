@@ -131,8 +131,10 @@ return [
             'emails_per_ip_window' => 600,
             /** Escáner: ráfaga de 404 de una IP por minuto. */
             'not_found_per_ip_minute' => 30,
-            /** Bot o inundación: peticiones de una IP por minuto. */
+            /** Inundación: peticiones SIN sesión de una IP por minuto. */
             'requests_per_ip_minute' => 300,
+            /** Sesión desbocada (rendimiento, no ataque): peticiones de un usuario con sesión por minuto. */
+            'requests_per_user_minute' => 240,
             /** Ráfagas globales de 419 (CSRF) o 429 (límite) por minuto. */
             'rejections_per_minute' => 20,
             /** Semáforo por logins fallidos globales por minuto. */

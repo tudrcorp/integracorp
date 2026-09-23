@@ -30,3 +30,26 @@ it('registra la animacion de campana de notificaciones en el panel de telemedici
         ->toContain('fi-panel-business')
         ->toContain('fi-db-bell-ring');
 });
+
+it('la campanita sondea una sola vez por pestaña aunque se navegue dentro del panel', function (string $view, string $flag): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/'.$view.'/partials/database-notifications-alert.blade.php');
+
+    /** El panel es SPA: sin data-navigate-once cada navegación sumaba otra copia del script (un usuario llegó a 450 peticiones por minuto). */
+    expect($source)
+        ->toContain('<script data-navigate-once>')
+        ->toContain('window.'.$flag)
+        ->toContain('topbarEnd === observedNode')
+        ->not->toContain('setInterval(pollBellAlertSignal, 2000)');
+})->with([
+    'negocios' => ['business', '__tdgBusinessBellAlert'],
+    'telemedicina' => ['telemedicina', '__tdgTelemedicinaBellAlert'],
+]);
+
+it('el sondeo de Negocios se pausa con la pestaña oculta y no se solapa', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/partials/database-notifications-alert.blade.php');
+
+    expect($source)
+        ->toContain('const pollEveryMs = 20000;')
+        ->toContain('document.hidden || pollInFlight')
+        ->toContain("addEventListener('visibilitychange'");
+});
