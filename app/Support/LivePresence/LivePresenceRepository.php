@@ -77,6 +77,11 @@ interface LivePresenceRepository
     public function scoreMember(string $key, string $member, float $score, int $ttl): void;
 
     /**
+     * Saca un miembro de un ranking.
+     */
+    public function removeMember(string $key, string $member, int $ttl): void;
+
+    /**
      * @return array<string, float> miembro => puntaje, de mayor a menor
      */
     public function topMembers(string $key, int $limit): array;

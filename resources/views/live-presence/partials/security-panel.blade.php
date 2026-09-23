@@ -9,6 +9,10 @@
 @php
     $tv = $tv ?? false;
     $actions = $actions ?? false;
+    $onlyConfirmed = $onlyConfirmed ?? false;
+    $shownOffenders = $onlyConfirmed
+        ? array_values(array_filter($security['offenders'], static fn (array $offender): bool => $offender['verdict'] === 'confirmed'))
+        : $security['offenders'];
 
     $activity = [
         ['label' => 'Usuarios conectados', 'value' => $kpis['users'], 'hint' => $kpis['sessions'].' '.($kpis['sessions'] === 1 ? 'sesión activa' : 'sesiones activas').(($kpis['idle_sessions'] ?? 0) > 0 ? ' · '.$kpis['idle_sessions'].' '.($kpis['idle_sessions'] === 1 ? 'inactiva' : 'inactivas') : '')],
@@ -109,6 +113,8 @@
     .lsec-why { font-size: 12px; color: var(--s-muted); margin-top: 2px; }
     .lsec-why.warn { color: var(--s-amber); }
     .lsec-ip-actions { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+    .lsec-filter { font-size: 11px; font-weight: 700; border: 1px solid var(--s-border); border-radius: 999px; padding: 2px 10px; background: transparent; color: var(--s-muted); cursor: pointer; }
+    .lsec-filter.on { background: rgba(220, 38, 38, .15); border-color: rgba(220, 38, 38, .4); color: var(--s-red); }
     .lsec-row.pair { grid-template-columns: minmax(0, 1fr) auto; }
     .lsec-tag { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; margin: 1px 3px 1px 0; background: rgba(100, 116, 139, .15); color: var(--s-muted); }
     .lsec-tag.red { background: rgba(220, 38, 38, .15); color: var(--s-red); } .lsec-tag.amber { background: rgba(217, 119, 6, .16); color: var(--s-amber); }
@@ -301,9 +307,17 @@
                 <div class="lsec-sub">
                     <div class="lsec-subtitle">
                         <span class="lsec-label">IPs sospechosas</span>
-                        <span class="lsec-count {{ $security['offenders'] !== [] ? 'alert' : '' }}">{{ count($security['offenders']) }}</span>
+                        <span style="display: inline-flex; align-items: center; gap: 8px;">
+                            @if ($actions && $security['offenders'] !== [])
+                                <button type="button" class="lsec-filter {{ $onlyConfirmed ? 'on' : '' }}" wire:click="toggleOnlyConfirmedThreats" title="Solo cambia la vista: no borra nada">
+                                    {{ $onlyConfirmed ? '✓ ' : '' }}Solo confirmadas
+                                </button>
+                                {{ $this->clearFalsePositivesAction }}
+                            @endif
+                            <span class="lsec-count {{ $security['offenders'] !== [] ? 'alert' : '' }}">{{ count($shownOffenders) }}@if ($onlyConfirmed) / {{ count($security['offenders']) }} @endif</span>
+                        </span>
                     </div>
-                    @forelse ($security['offenders'] as $offender)
+                    @forelse ($shownOffenders as $offender)
                         <div class="lsec-row ip {{ $actions ? 'with-actions' : '' }} {{ $offender['verdict'] === 'benign' && ! $offender['blocked'] ? 'benign' : '' }}" wire:key="offender-{{ $offender['ip'] }}">
                             <div>
                                 <div class="lsec-mono" style="font-weight: 700;">{{ $offender['ip'] }}</div>
@@ -336,11 +350,12 @@
                                         {{ ($this->blacklistIpAction)(['ip' => $offender['ip']]) }}
                                         {{ ($this->dismissIpAction)(['ip' => $offender['ip']]) }}
                                     @endunless
+                                    {{ ($this->resetIpAction)(['ip' => $offender['ip']]) }}
                                 </div>
                             @endif
                         </div>
                     @empty
-                        <div class="lsec-ok">Ninguna IP con comportamiento sospechoso.</div>
+                        <div class="lsec-ok">{{ $onlyConfirmed && $security['offenders'] !== [] ? 'Ninguna amenaza confirmada. Hay '.count($security['offenders']).' IPs sospechosas ocultas por el filtro.' : 'Ninguna IP con comportamiento sospechoso.' }}</div>
                     @endforelse
                 </div>
 

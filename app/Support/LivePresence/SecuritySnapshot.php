@@ -64,6 +64,44 @@ final class SecuritySnapshot
     }
 
     /**
+     * IPs que se pueden limpiar sin riesgo: calificadas «Probable falso
+     * positivo», o con sesión abierta o login correcto desde ellas. Nunca
+     * incluye amenazas confirmadas ni IPs en la lista negra.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function falsePositives(): array
+    {
+        try {
+            $store = LivePresenceStore::repository();
+            $sessions = self::sessionNamesByIp($store);
+            $dismissed = SecurityMonitor::dismissalsFrom($store);
+            $blocked = array_flip(IpBlockList::activeIps());
+            $rows = [];
+
+            foreach ($store->topMembers(SecurityMonitor::prefix().'offenders', 200) as $ip => $score) {
+                if ($score < 1) {
+                    continue;
+                }
+
+                $row = self::offenderRow($store, (string) $ip, $score, $sessions, $dismissed, $blocked);
+
+                if ($row['blocked'] || $row['verdict'] === IpThreatAssessment::CONFIRMED) {
+                    continue;
+                }
+
+                if ($row['verdict'] === IpThreatAssessment::BENIGN || $row['mitigations'] !== []) {
+                    $rows[] = $row;
+                }
+            }
+
+            return $rows;
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /**
      * Una IP con su evidencia y veredicto, para las acciones del monitor.
      * Devuelve la fila aunque la IP ya no figure entre las sospechosas.
      *

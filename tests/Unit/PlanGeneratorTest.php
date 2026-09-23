@@ -460,7 +460,10 @@ it('preview builder formatea montos y rutas pdf del plan generado', function ():
     $routes = file_get_contents(dirname(__DIR__, 2).'/routes/web.php');
     $controller = file_get_contents(dirname(__DIR__, 2).'/app/Http/Controllers/BusinessPlanGeneratorPdfController.php');
 
-    expect(App\Support\PlanGenerators\PlanGeneratorPreviewBuilder::formatCoverageAmount(5000.0))->toBe('5,000.00')
+    expect(App\Support\PlanGenerators\PlanGeneratorPreviewBuilder::formatCoverageAmount(5000.0))->toBe('5.000')
+        ->and(App\Support\PlanGenerators\PlanGeneratorPreviewBuilder::formatCoverageAmount(10000.0))->toBe('10.000')
+        ->and(App\Support\PlanGenerators\PlanGeneratorPreviewBuilder::formatCoverageAmount(20000.0))->toBe('20.000')
+        ->and(App\Support\PlanGenerators\PlanGeneratorPreviewBuilder::formatCoverageAmount(50000.5))->toBe('50.001')
         ->and(App\Support\PlanGenerators\PlanGeneratorPreviewBuilder::formatCoverageAmount(null))->toBe('')
         ->and(App\Support\PlanGenerators\PlanGeneratorPreviewBuilder::formatRateAmount(265.0))->toBe('265')
         ->and(App\Support\PlanGenerators\PlanGeneratorPreviewBuilder::formatRateAmount(1068.0))->toBe('1.068');

@@ -99,7 +99,7 @@ final class PlanGeneratorPreviewBuilder
             return '';
         }
 
-        return number_format($amount, 2, '.', ',');
+        return number_format($amount, 0, ',', '.');
     }
 
     public static function formatRateAmount(?float $amount): string

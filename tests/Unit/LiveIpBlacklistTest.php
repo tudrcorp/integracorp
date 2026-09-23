@@ -387,3 +387,70 @@ describe('inundación y sesiones desbocadas', function (): void {
             ->toContain('Cliente automatizado (sin navegador).');
     });
 });
+
+describe('limpiar la vista de IPs sospechosas', function (): void {
+    beforeEach(function (): void {
+        /** Confirmada: escáner. */
+        $this->withServerVariables(['REMOTE_ADDR' => '94.154.43.125'])->get('/.env')->assertNotFound();
+
+        /** Falso positivo: un login fallido de quien luego entró bien. */
+        SecurityMonitor::recordFailedLogin(ipTestRequest('190.97.243.244'), 'drperez3689@tudrencasa.com', 'Telemedicina');
+        SecurityMonitor::recordSuccessfulLogin('drperez3689@tudrencasa.com', '190.97.243.244');
+
+        /** Posible con atenuante: fallos repetidos desde una IP con sesión abierta. */
+        foreach (range(1, 3) as $i) {
+            SecurityMonitor::recordFailedLogin(ipTestRequest('82.86.134.252'), 'creyes@tudrencasa.com', 'Negocios');
+        }
+
+        ipTestSession('bbbbbbbbbbbbbbbbbbbbbbbb', 70, 'Christopher Reyes', '82.86.134.252');
+
+        /** Posible sin atenuante: se queda. */
+        foreach (range(1, 3) as $i) {
+            SecurityMonitor::recordFailedLogin(ipTestRequest('45.84.107.198'), 's.aw@gmail.com', 'Negocios');
+        }
+    });
+
+    it('elige como falsos positivos solo los que tienen atenuante o salen como ruido', function (): void {
+        expect(array_column(SecuritySnapshot::falsePositives(), 'ip'))->toEqualCanonicalizing(['190.97.243.244', '82.86.134.252']);
+    });
+
+    it('reiniciar una ficha la saca de la lista pero conserva eventos y logins correctos', function (): void {
+        SecurityMonitor::resetIp('190.97.243.244', 'Gustavo');
+
+        $snapshot = SecuritySnapshot::build();
+
+        expect(array_column($snapshot['offenders'], 'ip'))->not->toContain('190.97.243.244')
+            ->and(array_column($snapshot['events'], 'type'))->toContain('failed_login', 'ip_reset')
+            ->and(SecurityMonitor::legitimateUse(LivePresenceStore::repository(), '190.97.243.244'))->not->toBeNull();
+
+        SecurityMonitor::recordFailedLogin(ipTestRequest('190.97.243.244'), 'drperez3689@tudrencasa.com', 'Telemedicina');
+
+        /** Vuelve con puntaje limpio; las ventanas de detección (5 min) se conservan a propósito. */
+        expect(SecuritySnapshot::offender('190.97.243.244')['score'])->toBe(3)
+            ->and(array_column(SecuritySnapshot::build()['offenders'], 'ip'))->toContain('190.97.243.244');
+    });
+
+    it('desde el monitor se filtra, se limpian los falsos positivos y se reinicia una ficha', function (): void {
+        Filament::setCurrentPanel('business');
+        $this->actingAs(ipTestAdmin());
+
+        $component = Livewire::test(LiveActivityMonitor::class)
+            ->assertSee('190.97.243.244')
+            ->call('toggleOnlyConfirmedThreats')
+            ->assertSee('94.154.43.125')
+            ->assertDontSeeHtml('offender-45.84.107.198')
+            ->call('toggleOnlyConfirmedThreats')
+            ->mountAction('clearFalsePositives')
+            ->assertMountedActionModalSee(['Probable falso positivo', 'Christopher Reyes'])
+            ->callMountedAction()
+            ->assertNotified('2 IPs limpiadas');
+
+        expect(array_column(SecuritySnapshot::build()['offenders'], 'ip'))->toEqualCanonicalizing(['94.154.43.125', '45.84.107.198']);
+
+        $component->callAction('resetIp', arguments: ['ip' => '45.84.107.198'])
+            ->assertNotified('Ficha reiniciada');
+
+        expect(array_column(SecuritySnapshot::build()['offenders'], 'ip'))->toBe(['94.154.43.125'])
+            ->and(DB::table('logs')->whereIn('action', ['AUDIT_LIVE_SECURITY_FALSE_POSITIVES_CLEARED', 'AUDIT_LIVE_SECURITY_IP_RESET'])->count())->toBe(2);
+    });
+});
