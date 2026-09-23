@@ -69,8 +69,12 @@ final class LivePresenceRecorder
         }
 
         if ($action !== null) {
-            $fields['last_action'] = $action;
-            $fields['last_action_at'] = time();
+            /**
+             * Campo `activity` (no `last_action`): así se ignora lo guardado con el
+             * formato técnico anterior, que sobrevivía mientras la pestaña siguiera abierta.
+             */
+            $fields['activity'] = $action;
+            $fields['activity_at'] = time();
         }
 
         $event = match (true) {

@@ -15,8 +15,11 @@ use Throwable;
  * Hoy producción está en Cloudflare solo como DNS: la IP de la conexión ya es
  * la del usuario. Si algún día se activa el proxy, `CF-Connecting-IP` y los
  * encabezados de ubicación se aceptan solo desde rangos oficiales de
- * Cloudflare. La ubicación sale de GeoLite2 local si está instalada; es un
+ * Cloudflare. La ubicación sale de la base local por IP si está instalada; es un
  * dato de apoyo, nunca la base para bloquear.
+ *
+ * La base es DB-IP «IP to City Lite» (formato MMDB, lo lee el mismo lector de
+ * GeoIP2). Se instala y actualiza con `php artisan live-presence:geoip-update`.
  */
 final class ClientLocation
 {
@@ -134,7 +137,7 @@ final class ClientLocation
             'country_code' => (string) ($record->country->isoCode ?? ''),
             'region' => (string) ($record->mostSpecificSubdivision->names['es'] ?? $record->mostSpecificSubdivision->name ?? ''),
             'city' => (string) ($record->city->names['es'] ?? $record->city->name ?? ''),
-            'source' => 'geolite2',
+            'source' => 'dbip',
         ]);
     }
 
@@ -180,7 +183,7 @@ final class ClientLocation
             'country' => '',
             'country_code' => '',
             'region' => '',
-            'city' => self::geoIpAvailable() ? 'Ubicación no encontrada' : 'Falta la base GeoLite2',
+            'city' => self::geoIpAvailable() ? 'Ubicación no encontrada' : 'Falta la base de ubicación',
             'source' => 'none',
         ];
     }

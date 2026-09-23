@@ -333,3 +333,21 @@ it('el detalle solo ofrece bloquear a quien se puede bloquear', function (): voi
         ->assertSee('Analista Común')
         ->assertSee('Bloquear usuario');
 });
+
+it('las secciones se pueden plegar en el monitor pero siempre se ven en la TV', function (): void {
+    Filament\Facades\Filament::setCurrentPanel('business');
+    $this->actingAs(securityUser(2, 'gcamacho@tudrencasa.com', ['SUPERADMIN']));
+
+    Livewire::test(App\Filament\Business\Pages\LiveActivityMonitor::class)
+        ->assertSeeHtml('lam-fold-activity')
+        ->assertSeeHtml('lam-fold-security')
+        ->assertSeeHtml('lam-fold-threats')
+        ->assertSee('Ocultar')
+        ->assertSee('IPs sospechosas');
+
+    $this->get('/monitor/tv/'.str_repeat('a1B2', 16))
+        ->assertOk()
+        ->assertDontSee('lam-fold-', false)
+        ->assertSee('Usuarios conectados')
+        ->assertSee('IPs sospechosas');
+});

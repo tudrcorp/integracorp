@@ -58,7 +58,7 @@
                 {{ $paused ? 'En pausa' : 'En vivo' }} · actualizado {{ $refreshedAt }}
                 <span class="lam-badge accent">{{ $health['store'] }}</span>
                 @unless ($health['geoip'])
-                    <span class="lam-badge warn" title="Sin la base GeoLite2 la ciudad solo se obtiene de Cloudflare.">Sin base GeoLite2</span>
+                    <span class="lam-badge warn" title="Instálela con: php artisan live-presence:geoip-update. Mientras tanto, las IPs públicas se ven sin ciudad.">Sin base de ubicación</span>
                 @endunless
             </div>
             <button type="button" class="lam-btn" wire:click="togglePause">

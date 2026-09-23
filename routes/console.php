@@ -213,3 +213,15 @@ Schedule::command('telemedicine:audit-patient-case-identity')
 Schedule::job(new SendOperationInventoryLowStockAlert, 'system')
     ->dailyAt('8:00')
     ->when($operationInventoryLowStockIsActive);
+
+/**
+ * Base de ubicación por IP del monitor en vivo (DB-IP «IP to City Lite»).
+ * DB-IP publica una base nueva al inicio de cada mes; el día 3 ya está disponible.
+ * En segundo plano para no frenar el resto del scheduler mientras descarga (~60 MB),
+ * y sin solaparse. Si falla, la base anterior sigue en uso.
+ */
+Schedule::command('live-presence:geoip-update')
+    ->monthlyOn(3, '3:30')
+    ->name('live-presence-geoip-update')
+    ->withoutOverlapping(120)
+    ->runInBackground();
