@@ -82,6 +82,19 @@ final class QueueHealth
             ? self::pendingByClass($connection)
             : [];
 
+        /** Redis no se consulta con SQL: se lee cada cola con trabajo a través del mismo acceso que usa «Liberar». */
+        if (! $connection instanceof DatabaseQueue && QueueJobActions::isSupported()) {
+            foreach ($rows as $name => $row) {
+                if ((int) $row['pending'] + (int) $row['reserved'] === 0) {
+                    continue;
+                }
+
+                $summary = QueueJobActions::summary((string) $name);
+                $pendingByClass[$name] = $summary['pending_by_class'];
+                $rows[$name]['zombies'] = $summary['zombies'];
+            }
+        }
+
         $queues = [];
         $pendingTotal = 0;
         $stuck = [];
@@ -417,7 +430,7 @@ final class QueueHealth
         $pending = (int) ($row['pending'] ?? 0);
 
         return match ($status) {
-            'unattended' => $pending.' '.($pending === 1 ? 'trabajo espera' : 'trabajos esperan').' y ningún worker escucha «'.$name.'». Reinicie el worker con el comando de abajo, que incluye todas las colas.',
+            'unattended' => $pending.' '.($pending === 1 ? 'trabajo espera' : 'trabajos esperan').' y ningún worker escucha «'.$name.'»: mientras tanto no se ejecutan. Arranque el worker con el comando que incluye todas las colas (botón «Copiar»). «Liberar» solo los saca de la cola, no los ejecuta.',
             'stuck' => 'El pendiente más viejo lleva '.self::ageLabel($row['oldest_seconds']).' (umbral '.$stuckAfter.' min). El worker no da abasto o está detenido.',
             'zombie' => (int) $row['zombies'].' '.((int) $row['zombies'] === 1 ? 'trabajo lleva' : 'trabajos llevan').' reservado más tiempo del permitido: el worker que los tomó probablemente murió. Volverán a la cola solos al vencer retry_after; si se repite, revise el timeout del trabajo.',
             'busy' => $pending > 0 ? $pending.' en espera, procesándose.' : 'Procesando.',

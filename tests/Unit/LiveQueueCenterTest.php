@@ -18,6 +18,7 @@ use App\Support\LivePresence\OperationsAdvisor;
 use App\Support\LivePresence\QueueActivityRecorder;
 use App\Support\LivePresence\QueueHealth;
 use App\Support\LivePresence\QueueJobActions;
+use App\Support\LivePresence\RedisQueueJobStore;
 use App\Support\LivePresence\SystemHealthWatcher;
 use Filament\Facades\Filament;
 use Illuminate\Database\Schema\Blueprint;
@@ -93,11 +94,13 @@ beforeEach(function (): void {
     Cache::store('array')->flush();
     LivePresenceStore::swap(null);
     QueueActivityRecorder::reset();
+    QueueJobActions::swapStore(null, false);
 });
 
 afterEach(function (): void {
     LivePresenceStore::swap(null);
     QueueActivityRecorder::reset();
+    QueueJobActions::swapStore(null, false);
     DB::purge('lqc_testing');
     config()->set('database.default', $this->previousConnection);
     DB::setDefaultConnection($this->previousConnection);
@@ -562,8 +565,8 @@ describe('liberar colas atascadas', function (): void {
     });
 
     it('cuenta qué tocaría cada opción y qué tipos de trabajo hay', function (): void {
-        expect(QueueJobActions::counts('lqc-renovations'))->toBe(['stuck' => 2, 'pending' => 3, 'zombies' => 1, 'all' => 5])
-            ->and(QueueJobActions::counts('lqc-renovations', 'App\Jobs\PrepareAffiliationRenovations'))->toBe(['stuck' => 0, 'pending' => 1, 'zombies' => 1, 'all' => 3])
+        expect(QueueJobActions::counts('lqc-renovations'))->toBe(['stuck' => 2, 'duplicates' => 1, 'pending' => 3, 'zombies' => 1, 'all' => 5])
+            ->and(QueueJobActions::counts('lqc-renovations', 'App\Jobs\PrepareAffiliationRenovations'))->toBe(['stuck' => 0, 'duplicates' => 0, 'pending' => 1, 'zombies' => 1, 'all' => 3])
             ->and(QueueJobActions::jobClasses('lqc-renovations'))->toBe([
                 'App\Jobs\PrepareAffiliationRenovations' => '3 × PrepareAffiliationRenovations',
                 'App\Jobs\SendNotificacionWhatsApp' => '2 × SendNotificacionWhatsApp',
@@ -601,7 +604,7 @@ describe('liberar colas atascadas', function (): void {
 
         config(['queue.default' => 'sync']);
 
-        expect(fn () => QueueJobActions::release('lqc-renovations', QueueJobActions::SCOPE_STUCK, QueueJobActions::MODE_MOVE))->toThrow(InvalidArgumentException::class, 'database');
+        expect(fn () => QueueJobActions::release('lqc-renovations', QueueJobActions::SCOPE_STUCK, QueueJobActions::MODE_MOVE))->toThrow(InvalidArgumentException::class, '«database» o «redis»');
     });
 
     it('desde la pantalla se libera una cola; eliminar exige escribir su nombre', function (): void {
@@ -698,4 +701,142 @@ it('el monitor se dibuja entero con una cola sin atender y ofrece liberarla', fu
         ->assertOk()
         ->assertSee('Cola sin atender')
         ->assertSee('libere la cola');
+});
+
+/**
+ * Redis en memoria con la misma estructura que usa Laravel: lista de
+ * pendientes y conjuntos ordenados de programados y reservados.
+ */
+final class LqcFakeRedis
+{
+    /** @var array<string, list<string>> */
+    public array $lists = [];
+
+    /** @var array<string, array<string, float>> */
+    public array $sets = [];
+
+    /** Simula un worker que toma el trabajo justo antes de que se quite. */
+    public ?string $stolenOnRemove = null;
+
+    public function lrange(string $key, int $start, int $stop): array
+    {
+        return array_slice($this->lists[$key] ?? [], $start, $stop < 0 ? null : $stop - $start + 1);
+    }
+
+    public function lrem(string $key, int $count, string $value): int
+    {
+        if ($this->stolenOnRemove === $value) {
+            $this->lists[$key] = array_values(array_filter($this->lists[$key] ?? [], fn (string $item): bool => $item !== $value));
+        }
+
+        $index = array_search($value, $this->lists[$key] ?? [], true);
+
+        if ($index === false) {
+            return 0;
+        }
+
+        array_splice($this->lists[$key], $index, 1);
+
+        return 1;
+    }
+
+    public function zrangebyscore(string $key, string $min, string $max, array $options = []): array
+    {
+        $members = $this->sets[$key] ?? [];
+        asort($members);
+
+        return $members;
+    }
+
+    public function zrem(string $key, string $member): int
+    {
+        if (! isset($this->sets[$key][$member])) {
+            return 0;
+        }
+
+        unset($this->sets[$key][$member]);
+
+        return 1;
+    }
+}
+
+function lqcRedisPayload(string $class, string $uuid, int $createdAt, string $command = 'O:8:"stdClass":0:{}'): string
+{
+    return json_encode(['uuid' => $uuid, 'displayName' => $class, 'createdAt' => $createdAt, 'data' => ['commandName' => $class, 'command' => $command]]);
+}
+
+describe('liberar colas en Redis (producción)', function (): void {
+    beforeEach(function (): void {
+        $now = now()->getTimestamp();
+        $this->redis = new LqcFakeRedis;
+        $renovation = static fn (string $uuid, int $days): string => lqcRedisPayload('App\Jobs\PrepareAffiliationRenovations', $uuid, $now - $days * 86400);
+
+        /** El caso real: 55 renovaciones diarias acumuladas porque ningún worker escucha la cola. */
+        $this->redis->lists['queues:renovations'] = [
+            $renovation('dia-27', 27),
+            $renovation('dia-26', 26),
+            $renovation('dia-1', 1),
+            lqcRedisPayload('App\Jobs\SendNotificacionWhatsApp', 'wa-ana', $now - 3600, 'O:8:"stdClass":1:{s:5:"phone";s:4:"ana1";}'),
+            lqcRedisPayload('App\Jobs\SendNotificacionWhatsApp', 'wa-luis', $now - 3600, 'O:8:"stdClass":1:{s:5:"phone";s:4:"luis";}'),
+            lqcRedisPayload('App\Jobs\PrepareAffiliationCorporateRenovations', 'reciente', $now - 60),
+        ];
+        $this->redis->sets['queues:renovations:delayed'] = [lqcRedisPayload('App\Jobs\X', 'programado', $now) => $now + 3600];
+        $this->redis->sets['queues:renovations:reserved'] = [
+            lqcRedisPayload('App\Jobs\X', 'colgado', $now - 5000) => $now - 600,
+            lqcRedisPayload('App\Jobs\X', 'trabajando', $now - 30) => $now + 800,
+        ];
+
+        QueueJobActions::swapStore(new RedisQueueJobStore($this->redis, static fn (string $queue): string => 'queues:'.$queue));
+    });
+
+    it('lee pendientes, programados y reservados, y cuenta cada opción', function (): void {
+        expect(QueueJobActions::isSupported())->toBeTrue()
+            ->and(QueueJobActions::counts('renovations'))->toBe(['stuck' => 5, 'duplicates' => 2, 'pending' => 6, 'zombies' => 1, 'all' => 9])
+            ->and(QueueJobActions::summary('renovations'))->toBe([
+                'pending_by_class' => ['PrepareAffiliationRenovations' => 3, 'SendNotificacionWhatsApp' => 2, 'PrepareAffiliationCorporateRenovations' => 1],
+                'zombies' => 1,
+            ]);
+    });
+
+    it('saca los repetidos idénticos dejando el más reciente, sin tocar mensajes distintos', function (): void {
+        $result = QueueJobActions::release('renovations', QueueJobActions::SCOPE_DUPLICATES, QueueJobActions::MODE_MOVE, reason: 'Renovaciones acumuladas', actor: 'Gustavo');
+
+        $remaining = array_map(fn (string $payload): string => json_decode($payload, true)['uuid'], $this->redis->lists['queues:renovations']);
+
+        expect($result)->toBe(['affected' => 2, 'moved' => 2, 'deleted' => 0])
+            ->and($remaining)->toBe(['dia-1', 'wa-ana', 'wa-luis', 'reciente'])
+            ->and(FailedJob::query()->pluck('uuid')->sort()->values()->all())->toBe(['dia-26', 'dia-27'])
+            ->and(FailedJob::query()->value('queue'))->toBe('renovations');
+    });
+
+    it('elimina los colgados sin tocar el que un worker está procesando', function (): void {
+        expect(QueueJobActions::release('renovations', QueueJobActions::SCOPE_ZOMBIES, QueueJobActions::MODE_DELETE, reason: 'Worker murió')['deleted'])->toBe(1)
+            ->and(array_map(fn (string $payload): string => json_decode($payload, true)['uuid'], array_keys($this->redis->sets['queues:renovations:reserved'])))->toBe(['trabajando'])
+            ->and(FailedJob::query()->count())->toBe(0);
+    });
+
+    it('si un worker toma el trabajo mientras tanto, no lo duplica en fallidos', function (): void {
+        $this->redis->stolenOnRemove = $this->redis->lists['queues:renovations'][0];
+
+        $result = QueueJobActions::release('renovations', QueueJobActions::SCOPE_STUCK, QueueJobActions::MODE_MOVE);
+
+        expect($result['moved'])->toBe(4)
+            ->and(FailedJob::query()->where('uuid', 'dia-27')->exists())->toBeFalse()
+            ->and(FailedJob::query()->count())->toBe(4);
+    });
+
+    it('en la pantalla aparece el botón Liberar y la cola se libera', function (): void {
+        Filament::setCurrentPanel('business');
+        $this->actingAs(lqcAdmin());
+
+        Livewire::test(LiveQueueCenter::class)
+            ->mountAction('releaseQueue', ['queue' => 'renovations'])
+            ->assertMountedActionModalSee(['Repetidos idénticos', 'Solo los atascados'])
+            ->set('mountedActions.0.data.scope', QueueJobActions::SCOPE_DUPLICATES)
+            ->callMountedAction()
+            ->assertHasNoActionErrors()
+            ->assertNotified('Cola «renovations» liberada');
+
+        expect(count($this->redis->lists['queues:renovations']))->toBe(4);
+    });
 });
