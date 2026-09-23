@@ -64,6 +64,10 @@ class LiveActivityMonitor extends Page
 
     public bool $paused = false;
 
+    /** Filtro de la vista: solo amenazas confirmadas. No borra nada. */
+    #[Url(as: 'confirmadas')]
+    public bool $onlyConfirmedThreats = false;
+
     public static function canAccess(): bool
     {
         return LivePresenceAccess::allows(Auth::user());
@@ -105,6 +109,97 @@ class LiveActivityMonitor extends Page
     public function togglePause(): void
     {
         $this->paused = ! $this->paused;
+    }
+
+    public function toggleOnlyConfirmedThreats(): void
+    {
+        $this->onlyConfirmedThreats = ! $this->onlyConfirmedThreats;
+    }
+
+    /**
+     * Reiniciar la ficha de una IP cuya causa ya se entendió o corrigió.
+     */
+    public function resetIpAction(): Action
+    {
+        return Action::make('resetIp')
+            ->label('Reiniciar')
+            ->icon(Heroicon::OutlinedArrowPath)
+            ->color('gray')
+            ->size('sm')
+            ->requiresConfirmation()
+            ->modalIcon(Heroicon::OutlinedArrowPath)
+            ->modalHeading(fn (array $arguments): string => 'Reiniciar la ficha de '.self::argumentIp($arguments))
+            ->modalDescription('Sale de «IPs sospechosas» con puntaje, etiquetas y contadores en cero. Se conservan los eventos, la auditoría y la lista negra. Si la causa sigue activa, la IP vuelve a aparecer con datos limpios.')
+            ->modalSubmitActionLabel('Reiniciar ficha')
+            ->action(function (array $arguments): void {
+                $ip = self::argumentIp($arguments);
+
+                if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
+                    Notification::make()->warning()->title('La IP no es válida')->send();
+
+                    return;
+                }
+
+                SecurityMonitor::resetIp($ip, (string) (Auth::user()?->name ?? 'system'));
+                SecurityAudit::log('AUDIT_LIVE_SECURITY_IP_RESET', 'live-presence.ip-reset', ['ip' => $ip]);
+
+                Notification::make()->success()->title('Ficha reiniciada')->body($ip.' sale de la lista de sospechosas.')->send();
+            });
+    }
+
+    /**
+     * Limpiar de una vez los falsos positivos. Nunca toca amenazas confirmadas.
+     */
+    public function clearFalsePositivesAction(): Action
+    {
+        return Action::make('clearFalsePositives')
+            ->label('Limpiar falsos positivos')
+            ->icon(Heroicon::OutlinedSparkles)
+            ->color('gray')
+            ->size('xs')
+            ->requiresConfirmation()
+            ->modalIcon(Heroicon::OutlinedSparkles)
+            ->modalHeading('Limpiar falsos positivos')
+            ->modalDescription(function (): HtmlString {
+                $candidates = SecuritySnapshot::falsePositives();
+
+                if ($candidates === []) {
+                    return new HtmlString('No hay falsos positivos que limpiar: las IPs que quedan son amenazas confirmadas o posibles sin ningún atenuante.');
+                }
+
+                $lines = ['Se reinicia la ficha de <strong>'.count($candidates).'</strong> '.(count($candidates) === 1 ? 'IP' : 'IPs').' calificadas «Probable falso positivo» o con sesión o login legítimo:'];
+
+                foreach (array_slice($candidates, 0, 10) as $candidate) {
+                    $lines[] = '• '.e($candidate['ip']).' — '.e($candidate['verdict_label']).($candidate['sessions'] !== [] ? ' ('.e(implode(', ', array_slice($candidate['sessions'], 0, 2))).')' : '');
+                }
+
+                if (count($candidates) > 10) {
+                    $lines[] = '… y '.(count($candidates) - 10).' más.';
+                }
+
+                $lines[] = 'Las amenazas confirmadas y las IPs en lista negra no se tocan. Los eventos y la auditoría se conservan.';
+
+                return new HtmlString(implode('<br>', $lines));
+            })
+            ->modalSubmitActionLabel('Limpiar')
+            ->action(function (): void {
+                $candidates = SecuritySnapshot::falsePositives();
+                $actor = (string) (Auth::user()?->name ?? 'system');
+
+                foreach ($candidates as $candidate) {
+                    SecurityMonitor::resetIp((string) $candidate['ip'], $actor, 'limpieza de falsos positivos');
+                }
+
+                SecurityAudit::log('AUDIT_LIVE_SECURITY_FALSE_POSITIVES_CLEARED', 'live-presence.ip-reset', [
+                    'ips' => array_column($candidates, 'ip'),
+                    'count' => count($candidates),
+                ]);
+
+                Notification::make()->success()
+                    ->title($candidates === [] ? 'No había falsos positivos' : count($candidates).' '.(count($candidates) === 1 ? 'IP limpiada' : 'IPs limpiadas'))
+                    ->body($candidates === [] ? null : 'Las amenazas confirmadas siguen en la lista.')
+                    ->send();
+            });
     }
 
     /**

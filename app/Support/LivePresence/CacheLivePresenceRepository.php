@@ -194,6 +194,20 @@ final class CacheLivePresenceRepository implements LivePresenceRepository
         });
     }
 
+    public function removeMember(string $key, string $member, int $ttl): void
+    {
+        $this->withLock($key, function () use ($key, $member, $ttl): void {
+            $members = $this->cache->get($key);
+
+            if (! is_array($members) || ! array_key_exists($member, $members)) {
+                return;
+            }
+
+            unset($members[$member]);
+            $this->cache->put($key, $members, $ttl);
+        });
+    }
+
     public function topMembers(string $key, int $limit): array
     {
         $members = $this->cache->get($key);

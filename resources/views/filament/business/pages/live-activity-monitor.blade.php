@@ -69,7 +69,7 @@
             </button>
         </div>
 
-        @include('live-presence.partials.security-panel', ['security' => $security, 'kpis' => $kpis, 'health' => $health, 'advice' => $advice, 'tv' => false, 'actions' => true])
+        @include('live-presence.partials.security-panel', ['security' => $security, 'kpis' => $kpis, 'health' => $health, 'advice' => $advice, 'tv' => false, 'actions' => true, 'onlyConfirmed' => $onlyConfirmedThreats])
 
         <div class="lam-filters">
             <button type="button" class="lam-chip {{ $panelFilter === 'all' ? 'on' : '' }}" wire:click="filterPanel('all')">Todos<span>{{ $kpis['listed'] }}</span></button>

@@ -224,6 +224,11 @@ final class RedisLivePresenceRepository implements LivePresenceRepository
         });
     }
 
+    public function removeMember(string $key, string $member, int $ttl): void
+    {
+        $this->redis()->zrem($key, $member);
+    }
+
     public function topMembers(string $key, int $limit): array
     {
         $connection = $this->redis();

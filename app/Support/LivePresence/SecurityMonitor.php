@@ -361,6 +361,33 @@ final class SecurityMonitor
         );
     }
 
+    /**
+     * Reinicia la ficha de una IP: sale de «IPs sospechosas» con puntaje,
+     * etiquetas y contadores en cero. Se conservan los eventos, la auditoría,
+     * la lista negra, los logins correctos (evitan falsos positivos) y las
+     * ventanas cortas de detección: reiniciar una ficha nunca apaga la
+     * detección de fuerza bruta. Si la causa sigue, la IP vuelve con datos limpios.
+     */
+    public static function resetIp(string $ip, string $actor, string $reason = 'manual'): void
+    {
+        LivePresenceStore::safely(function (LivePresenceRepository $store) use ($ip, $actor, $reason): void {
+            $store->removeMember(self::PREFIX.'offenders', $ip, self::DAY);
+            $store->forget(self::PREFIX.'ipmeta:'.$ip);
+
+            foreach ([...self::IP_COUNTERS, 'blocked'] as $metric) {
+                $store->forget(self::ipCounterKey($ip, $metric));
+            }
+
+            self::emit($store, 'reset:'.$ip.':'.time(), 5, [
+                'type' => 'ip_reset',
+                'severity' => self::SEVERITY_INFO,
+                'title' => 'Ficha de IP reiniciada',
+                'detail' => $ip.' por '.$actor.($reason !== 'manual' ? ' ('.$reason.')' : '').'.',
+                'ip' => $ip,
+            ]);
+        });
+    }
+
     public static function ipCounterKey(string $ip, string $metric): string
     {
         return self::PREFIX.'ipc:'.$ip.':'.$metric;
