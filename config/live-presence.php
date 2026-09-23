@@ -68,7 +68,36 @@ return [
     'queues' => [
         'names' => ['renovations', 'system', 'telemedicina', 'documents', 'certificates', 'renew', 'default'],
         'stuck_after_minutes' => (int) env('LIVE_PRESENCE_QUEUE_STUCK_MINUTES', 30),
+
+        /** Segundos sin latido tras los que un worker se da por muerto (late cada 10 s). */
+        'worker_alive_seconds' => 60,
+
+        /** Una cola con trabajo y sin worker que la escuche se marca tras estos segundos. */
+        'unattended_after_seconds' => 60,
+
+        /** Un grupo de fallidos que no se repite hace estos días se recomienda eliminar. */
+        'stale_group_days' => 7,
+
+        /** Borrado automático diario de fallidos más viejos que estos días (0 = apagado). */
+        'prune_failed_days' => (int) env('LIVE_PRESENCE_PRUNE_FAILED_DAYS', 30),
+
+        /** Fallidos en 10 minutos a partir de los cuales se avisa por WhatsApp y correo. */
+        'failed_spike_per_10_min' => 10,
     ],
+
+    /**
+     * Registro de errores del sistema (Negocios → Colas y errores).
+     * Se agrupan por huella y se guardan en Redis sin cuerpos de petición ni secretos.
+     */
+    'errors' => [
+        'enabled' => (bool) env('LIVE_PRESENCE_ERRORS_ENABLED', true),
+        'retention_days' => 7,
+        /** Horas que un error recién aparecido se muestra como «Nuevo». */
+        'new_hours' => 24,
+    ],
+
+    /** Avisos por WhatsApp y correo que el vigilante envía como máximo por minuto; el resto se resume en uno. */
+    'max_alerts_per_run' => 5,
 
     'security' => [
         /** IPs o rangos (CIDR) de confianza, separados por coma: nunca se marcan como amenaza. */
@@ -124,6 +153,22 @@ return [
             'scrapy', 'headlesschrome', 'phantomjs', 'libwww-perl', 'java/', 'masscan', 'nmap', 'nikto',
             'sqlmap', 'zgrab', 'httpclient', 'postmanruntime', 'insomnia',
         ],
+
+        /**
+         * User-Agent de herramientas de ataque o escaneo. A diferencia de `bot_agents`
+         * (curl, python…, que también usan integraciones legítimas), verlas es una
+         * señal dura: la IP se califica «Amenaza confirmada».
+         */
+        'attack_agents' => [
+            'sqlmap', 'nikto', 'masscan', 'nmap', 'zgrab', 'wpscan', 'nuclei', 'acunetix', 'dirbuster',
+            'gobuster', 'ffuf', 'feroxbuster', 'hydra', 'netsparker', 'openvas', 'nessus', 'jaeles', 'whatweb',
+        ],
+
+        /** Días que una IP con login correcto cuenta como de uso legítimo. */
+        'legitimate_ip_days' => 7,
+
+        /** Días que dura la marca «Es legítima» puesta por un analista. */
+        'dismiss_days' => 7,
 
         /** Minutos sin repetir el mismo aviso por WhatsApp y correo durante un ataque. */
         'alert_cooldown_minutes' => 30,

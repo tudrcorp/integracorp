@@ -23,6 +23,12 @@ class TravelAgencyInfolist
                     ->placeholder('-'),
                 TextEntry::make('name')
                     ->placeholder('-'),
+                TextEntry::make('id_agencia')
+                    ->label('ID agencia')
+                    ->placeholder('-'),
+                TextEntry::make('id_de_agente')
+                    ->label('ID de agente')
+                    ->placeholder('-'),
                 TextEntry::make('typeIdentification')
                     ->placeholder('-'),
                 TextEntry::make('numberIdentification')

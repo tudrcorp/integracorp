@@ -85,6 +85,16 @@ class TravelAgenciesTable
                     ->searchable()
                     ->sortable()
                     ->description(fn ($record): ?string => filled($record->nameSecundario ?? null) ? (string) $record->nameSecundario : null),
+                TextColumn::make('id_agencia')
+                    ->label('ID agencia')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('id_de_agente')
+                    ->label('ID de agente')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()

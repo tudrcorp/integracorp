@@ -58,7 +58,27 @@ final class SecuritySnapshot
             'targets' => $targets,
             'locks' => SecurityMonitor::activeLocks(),
             'blocked_users' => UserBlockList::activeCount(),
+            'blocked_ips' => count(IpBlockList::activeIps()),
+            'dismissed_ips' => count(SecurityMonitor::dismissalsFrom($store)),
         ];
+    }
+
+    /**
+     * Una IP con su evidencia y veredicto, para las acciones del monitor.
+     * Devuelve la fila aunque la IP ya no figure entre las sospechosas.
+     *
+     * @return array<string, mixed>
+     */
+    public static function offender(string $ip): array
+    {
+        try {
+            $store = LivePresenceStore::repository();
+            $score = (float) ($store->topMembers(SecurityMonitor::prefix().'offenders', 200)[$ip] ?? 0);
+
+            return self::offenderRow($store, $ip, $score, self::sessionNamesByIp($store), SecurityMonitor::dismissalsFrom($store), array_flip(IpBlockList::activeIps()));
+        } catch (Throwable) {
+            return self::offenderRow(null, $ip, 0, [], [], []);
+        }
     }
 
     /**
@@ -120,34 +140,111 @@ final class SecuritySnapshot
     }
 
     /**
+     * IPs sospechosas con su veredicto. Las marcadas como legítimas no se
+     * listan; primero las amenazas confirmadas, después por puntaje.
+     *
      * @return list<array<string, mixed>>
      */
     private static function offenders(LivePresenceRepository $store): array
     {
+        $sessions = self::sessionNamesByIp($store);
+        $dismissed = SecurityMonitor::dismissalsFrom($store);
+        $blocked = array_flip(IpBlockList::activeIps());
         $rows = [];
 
-        foreach ($store->topMembers(SecurityMonitor::prefix().'offenders', 12) as $ip => $score) {
+        foreach ($store->topMembers(SecurityMonitor::prefix().'offenders', 30) as $ip => $score) {
             if ($score < 1) {
                 continue;
             }
 
-            $meta = $store->getValue(SecurityMonitor::prefix().'ipmeta:'.$ip) ?? [];
-            $rows[] = [
-                'ip' => $ip,
-                'score' => (int) round($score),
-                'tags' => (array) ($meta['tags'] ?? []),
-                'location' => (string) ($meta['location'] ?? ''),
-                'flag' => self::flag((string) ($meta['country_code'] ?? '')),
-                'failed_logins' => (int) ($meta['failed_logins'] ?? 0),
-                'accounts_tried' => (int) ($meta['accounts_tried'] ?? 0),
-                'last_account' => (string) ($meta['last_account'] ?? ''),
-                'last_path' => (string) ($meta['last_path'] ?? ''),
-                'user_agent' => (string) ($meta['user_agent'] ?? ''),
-                'last_seen_ago' => isset($meta['last_seen']) ? LiveActivitySnapshot::ago(time() - (int) $meta['last_seen']) : '',
-            ];
+            $row = self::offenderRow($store, (string) $ip, $score, $sessions, $dismissed, $blocked);
+
+            if ($row['dismissed']) {
+                continue;
+            }
+
+            $rows[] = $row;
         }
 
-        return $rows;
+        usort($rows, static fn (array $a, array $b): int => [IpThreatAssessment::RANK[$a['verdict']], -$a['score']] <=> [IpThreatAssessment::RANK[$b['verdict']], -$b['score']]);
+
+        return array_slice($rows, 0, 12);
+    }
+
+    /**
+     * @param  array<string, list<string>>  $sessions  IP → nombres con sesión abierta
+     * @param  array<string, array<string, mixed>>  $dismissed
+     * @param  array<string, int>  $blocked  IPs en la lista negra (como claves)
+     * @return array<string, mixed>
+     */
+    private static function offenderRow(?LivePresenceRepository $store, string $ip, float $score, array $sessions, array $dismissed, array $blocked): array
+    {
+        $meta = $store?->getValue(SecurityMonitor::prefix().'ipmeta:'.$ip) ?? [];
+        $counterKeys = array_map(static fn (string $metric): string => SecurityMonitor::ipCounterKey($ip, $metric), [...SecurityMonitor::IP_COUNTERS, 'blocked']);
+        $rawCounters = $store?->counters($counterKeys) ?? [];
+        $counters = [];
+
+        foreach ([...SecurityMonitor::IP_COUNTERS, 'blocked'] as $metric) {
+            $counters[$metric] = (int) ($rawCounters[SecurityMonitor::ipCounterKey($ip, $metric)] ?? 0);
+        }
+
+        $evidence = [
+            'tags' => array_values(array_map('strval', (array) ($meta['tags'] ?? []))),
+            'failed_logins' => (int) ($meta['failed_logins'] ?? 0),
+            'accounts_tried' => (int) ($meta['accounts_tried'] ?? 0),
+            'scanner_path' => (string) ($meta['scanner_path'] ?? ''),
+            'user_agent' => (string) ($meta['user_agent'] ?? ''),
+            'not_found_peak' => (int) ($meta['not_found_peak'] ?? 0),
+            'flood_peak' => (int) ($meta['flood_peak'] ?? 0),
+            'hard_at' => (int) ($meta['hard_at'] ?? 0),
+            'counters' => $counters,
+            'legitimate' => $store === null ? null : SecurityMonitor::legitimateUse($store, $ip),
+            'sessions' => $sessions[$ip] ?? [],
+            'dismissed' => $dismissed[$ip] ?? null,
+        ];
+
+        $assessment = IpThreatAssessment::assess($evidence);
+
+        return [
+            'ip' => $ip,
+            'score' => (int) round($score),
+            'tags' => $evidence['tags'],
+            'location' => (string) ($meta['location'] ?? ''),
+            'flag' => self::flag((string) ($meta['country_code'] ?? '')),
+            'failed_logins' => $evidence['failed_logins'],
+            'accounts_tried' => $evidence['accounts_tried'],
+            'last_account' => (string) ($meta['last_account'] ?? ''),
+            'last_path' => (string) ($meta['last_path'] ?? ''),
+            'user_agent' => $evidence['user_agent'],
+            'last_seen_ago' => isset($meta['last_seen']) ? LiveActivitySnapshot::ago(time() - (int) $meta['last_seen']) : '',
+            'counters' => $counters,
+            'sessions' => $evidence['sessions'],
+            'verdict' => $assessment['verdict'],
+            'verdict_label' => $assessment['label'],
+            'reasons' => $assessment['reasons'],
+            'mitigations' => $assessment['mitigations'],
+            'hard' => $assessment['hard'],
+            'dismissed' => $assessment['dismissed'],
+            'blocked' => isset($blocked[$ip]),
+        ];
+    }
+
+    /**
+     * @return array<string, list<string>> IP → nombres de usuarios con sesión abierta
+     */
+    private static function sessionNamesByIp(LivePresenceRepository $store): array
+    {
+        $byIp = [];
+
+        foreach ($store->online(max(60, (int) config('live-presence.session_ttl', 300))) as $row) {
+            $ip = (string) ($row['ip'] ?? '');
+
+            if ($ip !== '' && (int) ($row['user_id'] ?? 0) > 0) {
+                $byIp[$ip][] = (string) ($row['user_name'] ?? 'Usuario');
+            }
+        }
+
+        return array_map(static fn (array $names): array => array_values(array_unique($names)), $byIp);
     }
 
     /**
@@ -237,6 +334,8 @@ final class SecuritySnapshot
             'targets' => [],
             'locks' => [],
             'blocked_users' => 0,
+            'blocked_ips' => 0,
+            'dismissed_ips' => 0,
         ];
     }
 }

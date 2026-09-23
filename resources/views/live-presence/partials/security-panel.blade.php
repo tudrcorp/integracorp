@@ -28,12 +28,18 @@
         'server_errors' => ['Errores del servidor · 5xx', '#ef4444'],
     ];
 
-    $tagColors = ['fuerza bruta' => 'red', 'relleno de credenciales' => 'red', 'escáner' => 'amber', 'bot' => 'amber'];
+    $tagColors = ['fuerza bruta' => 'red', 'relleno de credenciales' => 'red', 'herramienta de ataque' => 'red', 'inundación' => 'red', 'escáner' => 'amber', 'bot' => 'amber'];
+    $verdictColors = ['confirmed' => 'red', 'possible' => 'amber', 'benign' => ''];
     $level = fn (bool $bad, bool $warn): string => $bad ? 'poor' : ($warn ? 'fair' : '');
     $queueReport = $health['queue_report'] ?? null;
     $stuckQueues = $queueReport['stuck'] ?? [];
     $failed = $queueReport['failed'] ?? [];
-    $stuckRows = collect($queueReport['queues'] ?? [])->where('stuck', true)->values();
+    try {
+        $centerUrl = $tv ? null : \App\Filament\Business\Pages\LiveQueueCenter::getUrl();
+    } catch (\Throwable) {
+        $centerUrl = null;
+    }
+    $stuckRows = collect($queueReport['queues'] ?? [])->filter(static fn (array $row): bool => $row['stuck'] || ($row['unattended'] ?? false))->values();
     $healthChips = [
         ['label' => 'Colas', 'value' => $health['queue_pending'] ?? '—', 'hint' => $stuckQueues !== [] ? 'atascada: '.implode(', ', $stuckQueues) : 'pendientes', 'level' => $level($stuckQueues !== [] || ($health['queue_pending'] ?? 0) >= 200, ($health['queue_pending'] ?? 0) >= 50)],
         ['label' => 'Jobs fallidos', 'value' => $health['failed_jobs'] ?? '—', 'hint' => ($failed['last_24h'] ?? null) !== null ? $failed['last_24h'].' en 24 h' : null, 'level' => $level(($failed['last_24h'] ?? 0) >= 20, ($failed['last_24h'] ?? 0) > 0)],
@@ -94,7 +100,15 @@
     .lsec-ok::before { content: '✓'; color: var(--s-green); font-weight: 800; }
     .lsec-row { display: grid; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--s-border); font-size: 13px; }
     .lsec-row:first-child { border-top: 0; }
-    .lsec-row.ip { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1fr) auto; }
+    .lsec-row.ip { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) minmax(0, 1fr) auto; }
+    .lsec-row.ip.with-actions { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) minmax(0, 1fr) auto auto; }
+    .lsec-row.ip.benign { opacity: .62; }
+    .lsec-verdict { display: inline-block; border-radius: 6px; padding: 1px 7px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; margin-top: 3px; background: rgba(100, 116, 139, .15); color: var(--s-muted); }
+    .lsec-verdict.red { background: rgba(220, 38, 38, .18); color: var(--s-red); } .lsec-verdict.amber { background: rgba(217, 119, 6, .18); color: var(--s-amber); }
+    .lsec-verdict.blocked { background: rgba(15, 23, 42, .85); color: #fff; }
+    .lsec-why { font-size: 12px; color: var(--s-muted); margin-top: 2px; }
+    .lsec-why.warn { color: var(--s-amber); }
+    .lsec-ip-actions { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
     .lsec-row.pair { grid-template-columns: minmax(0, 1fr) auto; }
     .lsec-tag { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; margin: 1px 3px 1px 0; background: rgba(100, 116, 139, .15); color: var(--s-muted); }
     .lsec-tag.red { background: rgba(220, 38, 38, .15); color: var(--s-red); } .lsec-tag.amber { background: rgba(217, 119, 6, .16); color: var(--s-amber); }
@@ -163,6 +177,10 @@
 </style>
 
 <div class="lsec {{ $tv ? 'tv' : '' }}">
+    @isset($advice)
+        @include('live-presence.partials.advisor', ['advice' => $advice, 'actions' => ! $tv])
+    @endisset
+
     {{-- Semáforo --}}
     <div class="lsec-card lsec-status {{ $security['level'] }}">
         <span class="lsec-light {{ $security['level'] }}"></span>
@@ -174,7 +192,8 @@
         </div>
         <div class="lsec-status-side">
             <span><strong>{{ count($security['locks']) }}</strong>{{ count($security['locks']) === 1 ? 'cuenta bloqueada' : 'cuentas bloqueadas' }}</span>
-            <span><strong>{{ $security['blocked_users'] }}</strong>en la lista negra</span>
+            <span><strong>{{ $security['blocked_users'] }}</strong>{{ $security['blocked_users'] === 1 ? 'usuario' : 'usuarios' }} en la lista negra</span>
+            <span><strong>{{ $security['blocked_ips'] ?? 0 }}</strong>{{ ($security['blocked_ips'] ?? 0) === 1 ? 'IP' : 'IPs' }} en la lista negra</span>
         </div>
     </div>
 
@@ -183,11 +202,16 @@
         <div class="lsec-card lsec-banner" role="alert">
             <span class="lsec-light red" style="margin-top: 3px;"></span>
             <div style="min-width: 0;">
-                <div class="lsec-banner-title">{{ $stuckRows->count() === 1 ? 'Cola atascada' : 'Colas atascadas' }}</div>
+                <div class="lsec-banner-title">{{ $stuckRows->count() === 1 ? 'Cola sin atender' : 'Colas sin atender' }}</div>
                 @foreach ($stuckRows as $row)
-                    <div class="lsec-status-reason"><strong style="color: var(--s-text);">{{ $row['name'] }}</strong>: {{ $row['pending'] }} {{ $row['pending'] === 1 ? 'trabajo espera' : 'trabajos esperan' }}, el más viejo desde hace {{ \App\Support\LivePresence\QueueHealth::ageLabel($row['oldest_seconds']) }}.</div>
+                    <div class="lsec-status-reason"><strong style="color: var(--s-text);">{{ $row['name'] }}</strong>: {{ $row['advice'] ?? ($row['pending'].' trabajos esperan.') }}</div>
                 @endforeach
-                <div class="lsec-status-reason">Casi siempre significa que el worker no escucha esa cola. Reinícielo con todas las colas:</div>
+                <div class="lsec-status-reason">
+                    Reinicie el worker con todas las colas
+                    @if ($centerUrl)
+                        o <a href="{{ $centerUrl }}?tab=colas" wire:navigate style="color: #0284c7; font-weight: 700;">libere la cola →</a> sacando lo que la traba
+                    @endif
+                </div>
                 <div class="lsec-cmd"><code>{{ $queueReport['worker_command'] }}</code></div>
             </div>
         </div>
@@ -256,7 +280,7 @@
     </section>
 
     {{-- Amenazas y eventos --}}
-    <section class="lsec-fold" @unless ($tv) x-data="{ open: $persist(true).as('lam-fold-threats') }" @endunless>
+    <section id="lsec-threats" class="lsec-fold" @unless ($tv) x-data="{ open: $persist(true).as('lam-fold-threats') }" @endunless>
         @unless ($tv)
             <button type="button" class="lsec-fold-head" x-on:click="open = ! open" x-bind:aria-expanded="open" title="Ocultar o mostrar esta sección">
                 <span class="lsec-label">Amenazas y eventos</span>
@@ -280,22 +304,40 @@
                         <span class="lsec-count {{ $security['offenders'] !== [] ? 'alert' : '' }}">{{ count($security['offenders']) }}</span>
                     </div>
                     @forelse ($security['offenders'] as $offender)
-                        <div class="lsec-row ip" wire:key="offender-{{ $offender['ip'] }}">
+                        <div class="lsec-row ip {{ $actions ? 'with-actions' : '' }} {{ $offender['verdict'] === 'benign' && ! $offender['blocked'] ? 'benign' : '' }}" wire:key="offender-{{ $offender['ip'] }}">
                             <div>
                                 <div class="lsec-mono" style="font-weight: 700;">{{ $offender['ip'] }}</div>
                                 <div class="lsec-muted">{{ $offender['flag'] }} {{ $offender['location'] ?: 'Ubicación desconocida' }}</div>
+                                @if ($offender['blocked'])
+                                    <span class="lsec-verdict blocked">En lista negra</span>
+                                @else
+                                    <span class="lsec-verdict {{ $verdictColors[$offender['verdict']] ?? '' }}">{{ $offender['verdict_label'] }}</span>
+                                @endif
                             </div>
-                            <div>
+                            <div style="min-width: 0;" title="{{ $offender['user_agent'] }}">
                                 @foreach ($offender['tags'] as $tag)
                                     <span class="lsec-tag {{ $tagColors[$tag] ?? '' }}">{{ $tag }}</span>
                                 @endforeach
-                                <div class="lsec-muted" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $offender['user_agent'] }}">{{ $offender['user_agent'] }}</div>
+                                @foreach ($offender['reasons'] as $reason)
+                                    <div class="lsec-why">{{ $reason }}</div>
+                                @endforeach
+                                @foreach ($offender['mitigations'] as $mitigation)
+                                    <div class="lsec-why warn">⚠ {{ $mitigation }}</div>
+                                @endforeach
                             </div>
                             <div>
                                 <div>{{ $offender['failed_logins'] }} logins · {{ $offender['accounts_tried'] }} cuentas</div>
                                 <div class="lsec-muted" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $offender['last_account'] ?: $offender['last_path'] }}</div>
                             </div>
                             <div class="lsec-muted" style="text-align: right;">{{ $offender['last_seen_ago'] }}<br>puntaje {{ $offender['score'] }}</div>
+                            @if ($actions)
+                                <div class="lsec-ip-actions">
+                                    @unless ($offender['blocked'])
+                                        {{ ($this->blacklistIpAction)(['ip' => $offender['ip']]) }}
+                                        {{ ($this->dismissIpAction)(['ip' => $offender['ip']]) }}
+                                    @endunless
+                                </div>
+                            @endif
                         </div>
                     @empty
                         <div class="lsec-ok">Ninguna IP con comportamiento sospechoso.</div>
@@ -370,11 +412,17 @@
 
     {{-- Colas y trabajos --}}
     @if ($queueReport)
+        @php
+            $queueWorkers = $queueReport['workers'] ?? ['known' => false, 'alive' => []];
+            $unattendedQueues = $queueReport['unattended'] ?? [];
+            $queueStatusClasses = ['unattended' => 'stuck', 'stuck' => 'stuck', 'zombie' => 'busy', 'busy' => 'busy', 'ok' => 'ok', 'unknown' => 'idle'];
+            $categoryTags = ['provider' => 'amber', 'network' => 'amber', 'code' => 'red', 'resources' => 'red', 'config' => '', 'data' => '', 'unknown' => ''];
+        @endphp
         <section class="lsec-fold" @unless ($tv) x-data="{ open: $persist(true).as('lam-fold-queues') }" @endunless>
             @unless ($tv)
                 <button type="button" class="lsec-fold-head" x-on:click="open = ! open" x-bind:aria-expanded="open" title="Ocultar o mostrar esta sección">
                     <span class="lsec-label">Colas y trabajos</span>
-                    <span class="lsec-fold-summary {{ $stuckQueues !== [] || ($failed['last_24h'] ?? 0) > 0 ? 'alert' : '' }}" x-show="! open" wire:ignore.self><strong>{{ $queueReport['pending_total'] }}</strong> pendientes · <strong>{{ count($stuckQueues) }}</strong> atascadas · <strong>{{ $failed['last_24h'] ?? '—' }}</strong> fallidos en 24 h · <strong>{{ $failed['last_7d'] ?? '—' }}</strong> en 7 días</span>
+                    <span class="lsec-fold-summary {{ $stuckQueues !== [] || $unattendedQueues !== [] || ($failed['last_24h'] ?? 0) > 0 ? 'alert' : '' }}" x-show="! open" wire:ignore.self><strong>{{ $queueReport['pending_total'] }}</strong> pendientes · <strong>{{ count($unattendedQueues) + count($stuckQueues) }}</strong> sin atender · <strong>{{ $queueWorkers['known'] ? count($queueWorkers['alive']) : '—' }}</strong> workers · <strong>{{ $failed['last_24h'] ?? '—' }}</strong> fallidos en 24 h</span>
                     <span class="lsec-fold-toggle">
                         <span class="lsec-fold-chevron" x-bind:class="open ? '' : 'closed'" wire:ignore.self>▾</span>
                         <span x-text="open ? 'Ocultar' : 'Mostrar'" wire:ignore>Ocultar</span>
@@ -386,7 +434,14 @@
                 <div class="lsec-card">
                     <div class="lsec-panel-head">
                         <span class="lsec-label">Colas · driver {{ $health['queue_driver'] }}</span>
-                        <span class="lsec-muted">atascada si el más viejo espera más de {{ $queueReport['stuck_after_minutes'] }} min</span>
+                        <span class="lsec-muted">
+                            @if (! $queueWorkers['known'])
+                                workers sin latido todavía
+                            @else
+                                {{ count($queueWorkers['alive']) }} {{ count($queueWorkers['alive']) === 1 ? 'worker vivo' : 'workers vivos' }} · {{ $queueReport['throughput']['processed_30m'] ?? 0 }} procesados en 30 min
+                            @endif
+                            @if ($centerUrl) · <a href="{{ $centerUrl }}?tab=colas" wire:navigate style="color: #0284c7; font-weight: 700;">Ver detalle →</a>@endif
+                        </span>
                     </div>
                     <table class="lsec-queues">
                         <thead>
@@ -396,58 +451,49 @@
                                 <th class="num">En proceso</th>
                                 <th class="num">Programados</th>
                                 <th class="num">Más viejo</th>
+                                <th class="num">Workers</th>
                                 <th>Estado</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($queueReport['queues'] as $row)
-                                @php
-                                    [$stateClass, $stateLabel] = match (true) {
-                                        $row['pending'] === null => ['idle', 'sin lectura'],
-                                        $row['stuck'] => ['stuck', 'atascada'],
-                                        $row['pending'] > 0 || ($row['reserved'] ?? 0) > 0 => ['busy', 'procesando'],
-                                        default => ['ok', 'al día'],
-                                    };
-                                @endphp
-                                <tr class="{{ $row['stuck'] ? 'stuck' : '' }}" wire:key="queue-{{ $row['name'] }}">
+                                <tr class="{{ in_array($row['status'] ?? '', ['unattended', 'stuck'], true) ? 'stuck' : '' }}" wire:key="queue-{{ $row['name'] }}" title="{{ $row['advice'] ?? '' }}">
                                     <td class="lsec-mono" style="font-weight: 700;">{{ $row['name'] }}</td>
                                     <td class="num">{{ $row['pending'] ?? '—' }}</td>
-                                    <td class="num">{{ $row['reserved'] ?? '—' }}</td>
+                                    <td class="num">{{ $row['reserved'] ?? '—' }}@if (($row['zombies'] ?? 0) > 0) <span style="color: var(--s-amber);">({{ $row['zombies'] }} colgados)</span>@endif</td>
                                     <td class="num">{{ $row['delayed'] ?? '—' }}</td>
                                     <td class="num">{{ \App\Support\LivePresence\QueueHealth::ageLabel($row['oldest_seconds']) }}</td>
-                                    <td><span class="lsec-state {{ $stateClass }}">{{ $stateLabel }}</span></td>
+                                    <td class="num">{{ $queueWorkers['known'] ? ($row['listeners'] ?? 0) : '—' }}</td>
+                                    <td><span class="lsec-state {{ $queueStatusClasses[$row['status'] ?? 'unknown'] ?? 'idle' }}">{{ $row['status_label'] ?? '—' }}</span></td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
-                    <div class="lsec-sub" style="border-top: 1px solid var(--s-border);">
-                        <div class="lsec-label" style="margin-bottom: 4px;">Comando del worker</div>
-                        <div class="lsec-muted">Debe escuchar todas las colas; el orden define la prioridad.</div>
-                        <div class="lsec-cmd" @unless ($tv) x-data="{ copied: false }" @endunless>
-                            <code>{{ $queueReport['worker_command'] }}</code>
-                            @unless ($tv)
-                                <button type="button" class="lsec-copy" x-on:click="navigator.clipboard?.writeText(@js($queueReport['worker_command'])).then(() => { copied = true; setTimeout(() => copied = false, 1500) })" x-text="copied ? 'Copiado' : 'Copiar'" wire:ignore>Copiar</button>
-                            @endunless
+                    @if ($unattendedQueues !== [] || $stuckQueues !== [])
+                        <div class="lsec-sub" style="border-top: 1px solid var(--s-border);">
+                            <div class="lsec-status-reason">Arranque el worker con todas las colas:</div>
+                            <div class="lsec-cmd"><code>{{ $queueReport['worker_command'] }}</code>@unless ($tv) @include('live-presence.partials.copy-button', ['text' => $queueReport['worker_command'], 'label' => 'Copiar']) @endunless</div>
                         </div>
-                    </div>
+                    @endif
                 </div>
 
                 <div class="lsec-card">
                     <div class="lsec-panel-head">
                         <span class="lsec-label">Trabajos fallidos</span>
-                        <span class="lsec-muted">causas más repetidas · 7 días</span>
+                        <span class="lsec-muted">por causa · 7 días @if ($centerUrl) · <a href="{{ $centerUrl }}?tab=causas" wire:navigate style="color: #0284c7; font-weight: 700;">Gestionar →</a>@endif</span>
                     </div>
                     <div class="lsec-failed-kpis">
-                        <div><div class="lsec-label">24 h</div><div class="lsec-value">@if (($failed['last_24h'] ?? 0) > 0)<span class="lsec-dot poor"></span>@endif{{ $failed['last_24h'] ?? '—' }}</div></div>
-                        <div><div class="lsec-label">7 días</div><div class="lsec-value">{{ $failed['last_7d'] ?? '—' }}</div></div>
+                        <div><div class="lsec-label">1 h</div><div class="lsec-value">@if (($failed['last_hour'] ?? 0) > 0)<span class="lsec-dot poor"></span>@endif{{ $failed['last_hour'] ?? '—' }}</div></div>
+                        <div><div class="lsec-label">24 h</div><div class="lsec-value">@if (($failed['last_24h'] ?? 0) > 0)<span class="lsec-dot fair"></span>@endif{{ $failed['last_24h'] ?? '—' }}</div></div>
                         <div><div class="lsec-label">Total</div><div class="lsec-value">{{ $failed['total'] ?? '—' }}</div></div>
                     </div>
                     <div class="lsec-sub">
-                        @forelse ($failed['top'] ?? [] as $cause)
-                            <div class="lsec-row pair" wire:key="failed-{{ md5($cause['job'].$cause['reason']) }}">
+                        @forelse ($failed['groups'] ?? [] as $cause)
+                            <div class="lsec-row pair" wire:key="failed-{{ $cause['fingerprint'] }}">
                                 <div style="min-width: 0;">
-                                    <div style="font-weight: 700;">{{ $cause['job'] }}</div>
-                                    <div class="lsec-muted" style="word-break: break-word;">{{ $cause['reason'] }}</div>
+                                    <div><strong>{{ $cause['job'] }}</strong> <span class="lsec-tag {{ $categoryTags[$cause['diagnosis']['category']] ?? '' }}">{{ $cause['diagnosis']['category_label'] }}</span></div>
+                                    <div style="font-size: 12.5px;">{{ $cause['diagnosis']['title'] }}</div>
+                                    <div class="lsec-muted">→ {{ $cause['diagnosis']['action_label'] }} · último {{ $cause['last_ago'] }}</div>
                                 </div>
                                 <span class="lsec-count alert" title="último: {{ $cause['last_at'] }}">{{ $cause['count'] }}</span>
                             </div>

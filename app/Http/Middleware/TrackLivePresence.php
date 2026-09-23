@@ -67,6 +67,13 @@ class TrackLivePresence
                 return;
             }
 
+            /** Rechazada por la lista negra: solo se cuenta, no vuelve a puntuar a la IP. */
+            if ($request->attributes->get(BlockBlacklistedIp::BLOCKED_ATTRIBUTE) === true) {
+                SecurityMonitor::recordBlockedRequest($request);
+
+                return;
+            }
+
             $user = $request->hasSession() ? Auth::user() : null;
 
             /** Los ataques llegan sin sesión: la seguridad mira todas las peticiones. */

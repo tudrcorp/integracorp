@@ -69,7 +69,7 @@
             </button>
         </div>
 
-        @include('live-presence.partials.security-panel', ['security' => $security, 'kpis' => $kpis, 'health' => $health, 'tv' => false, 'actions' => true])
+        @include('live-presence.partials.security-panel', ['security' => $security, 'kpis' => $kpis, 'health' => $health, 'advice' => $advice, 'tv' => false, 'actions' => true])
 
         <div class="lam-filters">
             <button type="button" class="lam-chip {{ $panelFilter === 'all' ? 'on' : '' }}" wire:click="filterPanel('all')">Todos<span>{{ $kpis['listed'] }}</span></button>
@@ -190,6 +190,57 @@
                         @endforeach
                     </tbody>
                 </table>
+            @endif
+        </div>
+
+        <div class="lam-card" style="padding: 14px 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong>IPs en lista negra</strong>
+                <span class="lam-sub">{{ count($ipBlocks) }} {{ count($ipBlocks) === 1 ? 'IP bloqueada' : 'IPs bloqueadas' }} · {{ array_sum($security['series']['blocked'] ?? []) }} peticiones rechazadas en 30 min</span>
+            </div>
+            @if ($ipBlocks === [])
+                <div class="lam-sub">Ninguna IP bloqueada. Para bloquear, use «Lista negra» en la tabla de IPs sospechosas.</div>
+            @else
+                <table class="lam-table">
+                    <thead><tr><th>IP</th><th>Motivo</th><th>Vence</th><th>Bloqueada por</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach ($ipBlocks as $ipBlock)
+                            <tr wire:key="ip-block-{{ $ipBlock->id }}">
+                                <td>
+                                    <div class="lam-name" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">{{ $ipBlock->ip }}</div>
+                                    <div class="lam-sub">{{ \App\Support\LivePresence\IpThreatAssessment::LABELS[$ipBlock->verdict] ?? 'Sin veredicto' }}@if (! empty($ipBlock->evidence['location'])) · {{ $ipBlock->evidence['location'] }}@endif</div>
+                                </td>
+                                <td style="max-width: 380px;">{{ $ipBlock->reason }}</td>
+                                <td>{{ $ipBlock->expires_at ? $ipBlock->expires_at->format('d/m/Y H:i') : 'Hasta levantarla' }}</td>
+                                <td><div>{{ $ipBlock->blocked_by_name }}</div><div class="lam-sub">{{ $ipBlock->created_at?->format('d/m/Y H:i') }}</div></td>
+                                <td style="text-align: right;">{{ ($this->liftIpBlockAction)(['blockId' => $ipBlock->id]) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+
+            @if ($dismissedIps !== [])
+                <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--lam-border);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <strong style="font-size: 13px;">Marcadas como legítimas</strong>
+                        <span class="lam-sub">no se listan como sospechosas mientras dure la marca</span>
+                    </div>
+                    <table class="lam-table">
+                        <thead><tr><th>IP</th><th>Nota</th><th>Hasta</th><th>Marcada por</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach ($dismissedIps as $dismissedIp => $dismissal)
+                                <tr wire:key="dismissed-{{ md5($dismissedIp) }}">
+                                    <td class="lam-name" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">{{ $dismissedIp }}</td>
+                                    <td>{{ $dismissal['note'] !== '' ? $dismissal['note'] : '—' }}</td>
+                                    <td>{{ date('d/m/Y H:i', (int) $dismissal['until']) }}</td>
+                                    <td><div>{{ $dismissal['by'] }}</div><div class="lam-sub">{{ date('d/m/Y H:i', (int) $dismissal['at']) }}</div></td>
+                                    <td style="text-align: right;">{{ ($this->undismissIpAction)(['ip' => $dismissedIp]) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             @endif
         </div>
 

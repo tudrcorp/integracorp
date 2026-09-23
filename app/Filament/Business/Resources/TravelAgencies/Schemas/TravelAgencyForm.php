@@ -135,6 +135,17 @@ class TravelAgencyForm
                                                 TextInput::make('name')
                                                     ->label('Nombre de la Agencia')
                                                     ->maxLength(255),
+                                                TextInput::make('id_agencia')
+                                                    ->label('ID agencia')
+                                                    ->numeric()
+                                                    ->minValue(1)
+                                                    ->unique(ignoreRecord: true)
+                                                    ->nullable(),
+                                                TextInput::make('id_de_agente')
+                                                    ->label('ID de agente')
+                                                    ->maxLength(32)
+                                                    ->unique(ignoreRecord: true)
+                                                    ->nullable(),
                                                 TextInput::make('numberIdentification')
                                                     ->prefix('J/V/E-')
                                                     ->label('Numero de identificacion')

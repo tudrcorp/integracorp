@@ -16,6 +16,8 @@ class TravelAgency extends Model
         'idRepresentante',
         'FechaNacimientoRepresentante',
         'name',
+        'id_agencia',
+        'id_de_agente',
         'typeIdentification',
         'numberIdentification',
         'userPortalWeb',
@@ -97,5 +99,15 @@ class TravelAgency extends Model
         return $this->hasMany(ObservationCommercialStructure::class)
             ->orderByDesc('created_at')
             ->orderByDesc('id');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'id_agencia' => 'integer',
+        ];
     }
 }
