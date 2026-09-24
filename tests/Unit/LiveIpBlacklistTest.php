@@ -318,7 +318,7 @@ it('exige confirmar a quién deja sin acceso si hay sesiones abiertas desde la I
     expect(SecurityIpBlock::query()->count())->toBe(0);
 });
 
-it('desde el monitor se marca una IP como legítima y se deshace', function (): void {
+it('desde el monitor se oculta una IP de sospechosas y se deshace', function (): void {
     Filament::setCurrentPanel('business');
     SecurityMonitor::recordFailedLogin(ipTestRequest('190.153.66.197'), 'analista@tudrencasa.com', 'Negocios');
     $this->actingAs(ipTestAdmin());
@@ -329,10 +329,11 @@ it('desde el monitor se marca una IP como legítima y se deshace', function (): 
         ->set('mountedActions.0.data.note', 'Oficina de Maracay.')
         ->callMountedAction()
         ->assertHasNoActionErrors()
-        ->assertSee('Marcadas como legítimas')
+        ->assertSee('Ocultas de sospechosas')
+        ->assertSee('no desbloquea ni exime de la lista negra')
         ->assertSee('Oficina de Maracay.')
         ->callAction('undismissIp', arguments: ['ip' => '190.153.66.197'])
-        ->assertDontSee('Marcadas como legítimas');
+        ->assertDontSee('Ocultas de sospechosas');
 
     expect(SecurityMonitor::dismissals())->toBe([]);
 });
@@ -453,4 +454,15 @@ describe('limpiar la vista de IPs sospechosas', function (): void {
         expect(array_column(SecuritySnapshot::build()['offenders'], 'ip'))->toBe(['94.154.43.125'])
             ->and(DB::table('logs')->whereIn('action', ['AUDIT_LIVE_SECURITY_FALSE_POSITIVES_CLEARED', 'AUDIT_LIVE_SECURITY_IP_RESET'])->count())->toBe(2);
     });
+});
+
+it('una IP oculta de sospechosas que sigue en la lista negra lo advierte', function (): void {
+    Filament::setCurrentPanel('business');
+    $this->actingAs(ipTestAdmin());
+    IpBlockList::block('190.153.66.197', 'Prueba de IP bloqueada y oculta', 60, actorIp: '10.0.0.1');
+    SecurityMonitor::dismissIp('190.153.66.197', 'Prueba', 'Oficina');
+
+    Livewire::test(LiveActivityMonitor::class)
+        ->assertSee('Ocultas de sospechosas')
+        ->assertSee('Sigue bloqueada · use «Levantar» arriba');
 });

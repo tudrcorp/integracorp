@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Agents\Pages\ViewMyHierarchy;
 use App\Filament\Agents\Resources\Agents\AgentResource;
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Models\Agent;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
@@ -36,7 +37,7 @@ class AgentsPanelProvider extends PanelProvider
         return $panel
             ->id('agents')
             ->path('agents')
-            ->login()
+            ->login(PanelAwareLogin::class)
             ->passwordReset()
             ->profile()
             ->spa()

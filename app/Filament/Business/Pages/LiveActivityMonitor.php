@@ -7,6 +7,7 @@ namespace App\Filament\Business\Pages;
 use App\Models\SecurityIpBlock;
 use App\Models\SecurityUserBlock;
 use App\Models\User;
+use App\Support\LivePresence\AccessDiagnosis;
 use App\Support\LivePresence\ActivityContext;
 use App\Support\LivePresence\ErrorTracker;
 use App\Support\LivePresence\IpBlockList;
@@ -24,8 +25,12 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Actions;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\View;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
@@ -328,20 +333,21 @@ class LiveActivityMonitor extends Page
     }
 
     /**
-     * Marcar una IP como legítima: sale de la lista de sospechosas unos días,
-     * salvo que vuelva a dar una señal dura.
+     * Ocultar una IP de la lista de sospechosas unos días, salvo que vuelva a dar
+     * una señal dura. No la desbloquea ni la exime: eso es «Levantar» o la lista blanca.
+     * Antes se llamaba «Es legítima» y se confundía con una exención.
      */
     public function dismissIpAction(): Action
     {
         return Action::make('dismissIp')
-            ->label('Es legítima')
+            ->label('Ocultar de sospechosas')
             ->icon(Heroicon::OutlinedCheckCircle)
             ->color('gray')
             ->size('sm')
             ->modalIcon(Heroicon::OutlinedCheckCircle)
-            ->modalHeading(fn (array $arguments): string => 'Marcar '.self::argumentIp($arguments).' como legítima')
-            ->modalDescription('Deja de listarse como sospechosa por '.max(1, (int) config('live-presence.security.dismiss_days', 7)).' días. Si vuelve a dar una señal de ataque clara (escáner, herramienta de ataque, fuerza bruta), reaparece sola.')
-            ->modalSubmitActionLabel('Marcar como legítima')
+            ->modalHeading(fn (array $arguments): string => 'Ocultar '.self::argumentIp($arguments).' de sospechosas')
+            ->modalDescription('Deja de listarse como sospechosa por '.max(1, (int) config('live-presence.security.dismiss_days', 7)).' días. Si vuelve a dar una señal de ataque clara (escáner, herramienta de ataque, fuerza bruta), reaparece sola. Importante: no la desbloquea ni la pone en la lista blanca. Si está en la lista negra, sigue bloqueada: para eso use «Levantar».')
+            ->modalSubmitActionLabel('Ocultar de sospechosas')
             ->form([
                 Textarea::make('note')->label('Nota (opcional)')->placeholder('Por ejemplo: es la oficina de Carora.')->maxLength(300)->rows(2),
             ])
@@ -358,7 +364,7 @@ class LiveActivityMonitor extends Page
                 SecurityMonitor::dismissIp($ip, $actor, (string) ($data['note'] ?? ''));
                 SecurityAudit::log('AUDIT_LIVE_SECURITY_IP_DISMISSED', 'live-presence.ip-dismiss', ['ip' => $ip, 'note' => (string) ($data['note'] ?? '')]);
 
-                Notification::make()->success()->title('IP marcada como legítima')->body($ip.' sale de la lista de sospechosas.')->send();
+                Notification::make()->success()->title('IP ocultada de sospechosas')->body($ip.' sale de la lista de sospechosas. Si estaba en la lista negra, sigue bloqueada.')->send();
             });
     }
 
@@ -484,6 +490,69 @@ class LiveActivityMonitor extends Page
 
                 Notification::make()->success()->title('Bloqueo levantado')->send();
             });
+    }
+
+    /**
+     * @return array<Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            $this->diagnoseAccessAction(),
+        ];
+    }
+
+    /**
+     * «¿Por qué no puede entrar?»: un correo → los tres bloqueos, su panel y sus
+     * intentos de hoy. Solo lee; desde aquí solo se puede levantar el bloqueo por
+     * intentos, que es el único que no tiene otra pantalla.
+     */
+    public function diagnoseAccessAction(): Action
+    {
+        return Action::make('diagnoseAccess')
+            ->label('¿Por qué no puede entrar?')
+            ->icon(Heroicon::OutlinedQuestionMarkCircle)
+            ->color('gray')
+            ->modalIcon(Heroicon::OutlinedQuestionMarkCircle)
+            ->modalHeading('¿Por qué no puede entrar este usuario?')
+            ->modalDescription('Escriba el correo con el que intenta entrar. Se revisan el usuario, su panel, los tres bloqueos (cuenta, usuario e IP) y sus intentos de hoy. No cambia nada.')
+            ->modalWidth(Width::ThreeExtraLarge)
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar')
+            ->schema([
+                TextInput::make('email')
+                    ->label('Correo del usuario')
+                    ->placeholder('usuario@correo.com')
+                    ->prefixIcon(Heroicon::OutlinedEnvelope)
+                    ->autocomplete(false)
+                    ->live(debounce: 600)
+                    ->afterStateUpdated(function (?string $state): void {
+                        $email = mb_strtolower(trim((string) $state));
+
+                        if (filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
+                            SecurityAudit::log('AUDIT_LIVE_SECURITY_ACCESS_DIAGNOSIS', 'live-presence.access-diagnosis', ['email' => $email]);
+                        }
+                    }),
+                Actions::make([
+                    Action::make('unlockDiagnosedAccount')
+                        ->label('Desbloquear la cuenta')
+                        ->icon(Heroicon::OutlinedLockOpen)
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading('Desbloquear la cuenta')
+                        ->modalDescription('Quita el bloqueo temporal por intentos fallidos. Si los fallos siguen, se volverá a bloquear sola.')
+                        ->visible(fn (Get $get): bool => filter_var(trim((string) $get('email')), FILTER_VALIDATE_EMAIL) !== false
+                            && SecurityMonitor::accountLock((string) $get('email')) !== null)
+                        ->action(function (Get $get): void {
+                            $email = mb_strtolower(trim((string) $get('email')));
+                            SecurityMonitor::unlockAccount($email, (string) (Auth::user()?->name ?? 'system'));
+                            SecurityAudit::log('AUDIT_LIVE_SECURITY_ACCOUNT_UNLOCKED', 'live-presence.access-diagnosis', ['email' => $email]);
+                            Notification::make()->success()->title('Cuenta desbloqueada')->body($email.' ya puede volver a intentar.')->send();
+                        }),
+                ]),
+                View::make('live-presence.partials.access-diagnosis')
+                    ->viewData(fn (Get $get): array => ['diagnosis' => AccessDiagnosis::for((string) $get('email'))]),
+            ]);
     }
 
     public function unlockAccountAction(): Action

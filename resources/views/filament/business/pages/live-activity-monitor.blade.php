@@ -223,15 +223,20 @@
             @if ($dismissedIps !== [])
                 <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--lam-border);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <strong style="font-size: 13px;">Marcadas como legítimas</strong>
-                        <span class="lam-sub">no se listan como sospechosas mientras dure la marca</span>
+                        <strong style="font-size: 13px;">Ocultas de sospechosas</strong>
+                        <span class="lam-sub">no se listan como sospechosas mientras dure la marca · no desbloquea ni exime de la lista negra</span>
                     </div>
                     <table class="lam-table">
-                        <thead><tr><th>IP</th><th>Nota</th><th>Hasta</th><th>Marcada por</th><th></th></tr></thead>
+                        <thead><tr><th>IP</th><th>Nota</th><th>Hasta</th><th>Ocultada por</th><th></th></tr></thead>
                         <tbody>
                             @foreach ($dismissedIps as $dismissedIp => $dismissal)
                                 <tr wire:key="dismissed-{{ md5($dismissedIp) }}">
-                                    <td class="lam-name" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">{{ $dismissedIp }}</td>
+                                    <td class="lam-name" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">
+                                        {{ $dismissedIp }}
+                                        @if (\App\Support\LivePresence\IpBlockList::isBlocked($dismissedIp))
+                                            <div style="margin-top: 2px; font-family: inherit; font-size: 11px; font-weight: 700; color: #dc2626;">Sigue bloqueada · use «Levantar» arriba</div>
+                                        @endif
+                                    </td>
                                     <td>{{ $dismissal['note'] !== '' ? $dismissal['note'] : '—' }}</td>
                                     <td>{{ date('d/m/Y H:i', (int) $dismissal['until']) }}</td>
                                     <td><div>{{ $dismissal['by'] }}</div><div class="lam-sub">{{ date('d/m/Y H:i', (int) $dismissal['at']) }}</div></td>

@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Master\Pages\ViewMyHierarchy;
 use App\Filament\Master\Resources\Agencies\AgencyResource;
+use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Models\Agency;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
@@ -35,7 +36,7 @@ class MasterPanelProvider extends PanelProvider
         return $panel
             ->id('master')
             ->path('master')
-            ->login()
+            ->login(PanelAwareLogin::class)
             ->passwordReset()
             ->profile()
             ->spa()

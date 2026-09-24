@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Http\Middleware\DuplicatedSession;
 use App\Support\Filament\MarketingPanelNavigationGroups;
@@ -32,7 +33,7 @@ class MarketingPanelProvider extends PanelProvider
         return $panel
             ->id('marketing')
             ->path('marketing')
-            ->login()
+            ->login(PanelAwareLogin::class)
             ->passwordReset()
             ->profile()
             ->spa()

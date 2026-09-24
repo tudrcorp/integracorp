@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Filament\Telemedicina\Resources\TelemedicineDoctors\TelemedicineDoctorResource;
 use App\Filament\Telemedicina\Widgets\WelcomeDoctorWidget;
 use App\Http\Middleware\DuplicatedSession;
@@ -35,7 +36,7 @@ class TelemedicinaPanelProvider extends PanelProvider
         return $panel
             ->id('telemedicina')
             ->path('telemedicina')
-            ->login()
+            ->login(PanelAwareLogin::class)
             ->registration()
             ->passwordReset()
             ->profile()

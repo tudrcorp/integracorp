@@ -2,38 +2,28 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Shared\Auth\PanelAwareLogin;
+use Filament\Actions\Action;
+use Filament\Http\Middleware\Authenticate;
+use Filament\Http\Middleware\AuthenticateSession;
+use Filament\Http\Middleware\DisableBladeIconComponents;
+use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
+use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Actions\Action;
-use Filament\Pages\Dashboard;
 use Filament\Support\Enums\Width;
-use Filament\Support\Colors\Color;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Grid;
-use Illuminate\Support\Facades\Blade;
-use App\Http\Controllers\LogController;
-use Filament\Forms\Components\TextInput;
-use Filament\Navigation\NavigationGroup;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
 use Filament\Widgets\FilamentInfoWidget;
-use Filament\Http\Middleware\Authenticate;
-use Illuminate\Session\Middleware\StartSession;
-use App\Http\Controllers\NotificationController;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Filament\Http\Middleware\AuthenticateSession;
-use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Swis\Filament\Backgrounds\ImageProviders\MyImages;
-use Filament\Http\Middleware\DisableBladeIconComponents;
-use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
-use Filament\Http\Middleware\DispatchServingFilamentEvent;
-
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
+use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -43,7 +33,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(PanelAwareLogin::class)
             ->passwordReset()
             ->profile()
             ->spa()
@@ -118,9 +108,9 @@ class AdminPanelProvider extends PanelProvider
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
             ->userMenuItems([
-                'profile' => fn(Action $action) => $action->label('Profile'),
+                'profile' => fn (Action $action) => $action->label('Profile'),
                 // ...
-                'logout' => fn(Action $action) => $action
+                'logout' => fn (Action $action) => $action
                     ->label('Cerrar Sesión')
                     ->color('danger')
                     ->url(route('internal')),
@@ -143,7 +133,7 @@ class AdminPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->renderHook(
                 PanelsRenderHook::FOOTER,
-                fn() => view('footer-panel-admin')
+                fn () => view('footer-panel-admin')
             );
     }
 }

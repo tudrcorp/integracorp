@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Support\Filament\ProjectManagement\RecentProjectsNavigation;
 use Filament\Actions\Action;
@@ -34,7 +35,7 @@ class ProjectsPanelProvider extends PanelProvider
         return $panel
             ->id('projects')
             ->path('projects')
-            ->login()
+            ->login(PanelAwareLogin::class)
             ->passwordReset()
             ->profile()
             ->spa()

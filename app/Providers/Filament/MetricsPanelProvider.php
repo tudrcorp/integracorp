@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Filament\Metrics\Pages\Dashboard;
 use App\Filament\Metrics\Widgets\VenezuelaActivityMapWidget;
+use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Support\Filament\MetricsPanelNavigationGroups;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
@@ -32,7 +33,7 @@ class MetricsPanelProvider extends PanelProvider
         return $panel
             ->id('metrics')
             ->path('metrics')
-            ->login()
+            ->login(PanelAwareLogin::class)
             ->passwordReset()
             ->profile()
             ->spa()
