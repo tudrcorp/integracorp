@@ -191,6 +191,7 @@ final class SecurityMonitor
                 'detail' => $account.' en '.$channel.' desde '.$ip.'.',
                 'ip' => $ip,
                 'account' => $account,
+                'channel' => $channel,
                 'at' => time(),
             ], 150, self::DAY);
 
@@ -265,6 +266,42 @@ final class SecurityMonitor
     }
 
     /**
+     * Clave correcta en un panel al que el usuario no tiene acceso. No es un login
+     * fallido: quien la escribió conoce la clave, así que no suma al bloqueo de la
+     * cuenta y reinicia su racha de fallos. Queda como evento informativo.
+     *
+     * @param  list<string>  $accessiblePanelLabels
+     */
+    public static function recordWrongPanelLogin(Request $request, string $identifier, string $channel, array $accessiblePanelLabels): void
+    {
+        LivePresenceStore::safely(function (LivePresenceRepository $store) use ($request, $identifier, $channel, $accessiblePanelLabels): void {
+            $ip = ClientLocation::ip($request);
+            $account = self::normalizeAccount($identifier);
+            $accountKey = self::accountKey($account);
+
+            $store->forget(self::PREFIX.'fl:acct:'.$accountKey);
+
+            if ($ip !== '') {
+                self::rememberLegitimateIp($store, $ip, $account);
+            }
+
+            $destination = $accessiblePanelLabels === []
+                ? 'no tiene acceso a ningún panel'
+                : 'su acceso es por '.implode(', ', $accessiblePanelLabels);
+
+            self::emit($store, 'wrong-panel:'.$accountKey.':'.$channel, 300, [
+                'type' => 'wrong_panel',
+                'severity' => self::SEVERITY_INFO,
+                'title' => 'Ingreso por el panel equivocado',
+                'detail' => $account.' escribió bien su clave en '.$channel.' desde '.$ip.', pero '.$destination.'. No cuenta como intento fallido.',
+                'ip' => $ip,
+                'account' => $account,
+                'channel' => $channel,
+            ]);
+        });
+    }
+
+    /**
      * Petición rechazada por la lista negra de IPs: solo se cuenta.
      */
     public static function recordBlockedRequest(Request $request): void
@@ -293,7 +330,7 @@ final class SecurityMonitor
     }
 
     /**
-     * Un analista marcó la IP como legítima: sale de la lista de sospechosas
+     * Un analista ocultó la IP de sospechosas: sale de la lista de sospechosas
      * hasta que venza la marca o aparezca una señal dura nueva.
      */
     public static function dismissIp(string $ip, string $actor, string $note = ''): void
@@ -313,7 +350,7 @@ final class SecurityMonitor
             self::emit($store, 'dismiss:'.$ip.':'.time(), 5, [
                 'type' => 'ip_dismissed',
                 'severity' => self::SEVERITY_INFO,
-                'title' => 'IP marcada como legítima',
+                'title' => 'IP ocultada de sospechosas',
                 'detail' => $ip.' por '.$actor.' durante '.$days.' días.',
                 'ip' => $ip,
             ]);
@@ -335,7 +372,7 @@ final class SecurityMonitor
     }
 
     /**
-     * IPs marcadas como legítimas y vigentes.
+     * IPs ocultas de sospechosas y vigentes.
      *
      * @return array<string, array{at: int, until: int, by: string, note: string}>
      */

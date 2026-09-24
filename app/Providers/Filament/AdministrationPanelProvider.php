@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Administration\Pages\Dashboard;
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Filament\Shared\Renovations\Widgets\CorporateRenovationKpisWidget;
 use App\Filament\Shared\Renovations\Widgets\IndividualRenovationKpisWidget;
 use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
@@ -36,7 +37,7 @@ class AdministrationPanelProvider extends PanelProvider
         return $panel
             ->id('administration')
             ->path('administration')
-            ->login()
+            ->login(PanelAwareLogin::class)
             ->passwordReset()
             ->profile()
             ->spa()

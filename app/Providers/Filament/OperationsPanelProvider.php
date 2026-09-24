@@ -8,6 +8,7 @@ use App\Filament\Operations\Widgets\AffiliationChart;
 use App\Filament\Operations\Widgets\StatsOverview;
 use App\Filament\Operations\Widgets\StatsOverviewPlan;
 use App\Filament\Operations\Widgets\TotalAfiliacionesPorEstado;
+use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Http\Middleware\DuplicatedSession;
 use App\Support\Filament\OperationsPanelNavigationGroups;
@@ -39,7 +40,7 @@ class OperationsPanelProvider extends PanelProvider
         return $panel
             ->id('operations')
             ->path('operations')
-            ->login()
+            ->login(PanelAwareLogin::class)
             ->passwordReset()
             ->profile()
             ->spa()
