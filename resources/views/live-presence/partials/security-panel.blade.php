@@ -473,7 +473,7 @@
                         <tbody>
                             @foreach ($queueReport['queues'] as $row)
                                 <tr class="{{ in_array($row['status'] ?? '', ['unattended', 'stuck'], true) ? 'stuck' : '' }}" wire:key="queue-{{ $row['name'] }}" title="{{ $row['advice'] ?? '' }}">
-                                    <td class="lsec-mono" style="font-weight: 700;">{{ $row['name'] }}</td>
+                                    <td class="lsec-mono" style="font-weight: 700; white-space: nowrap;">{{ $row['name'] }}</td>
                                     <td class="num">{{ $row['pending'] ?? '—' }}</td>
                                     <td class="num">{{ $row['reserved'] ?? '—' }}@if (($row['zombies'] ?? 0) > 0) <span style="color: var(--s-amber);">({{ $row['zombies'] }} colgados)</span>@endif</td>
                                     <td class="num">{{ $row['delayed'] ?? '—' }}</td>
