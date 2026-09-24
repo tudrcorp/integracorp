@@ -24,9 +24,10 @@
         .lqc-tab { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--q-border); background: var(--q-bg); color: var(--q-text); border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 700; cursor: pointer; }
         .lqc-tab.on { background: var(--q-blue); border-color: var(--q-blue); color: #fff; }
         .lqc-tab span { font-size: 11px; opacity: .75; }
-        .lqc-kicker { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--q-muted); }
+        .lqc-kicker { white-space: nowrap; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--q-muted); }
         .lqc-muted { color: var(--q-muted); font-size: 12.5px; }
         .lqc-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
+        .lqc-queue-name { font-weight: 700; white-space: nowrap; word-break: normal; }
         .lqc-badge { display: inline-flex; align-items: center; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 800; white-space: nowrap; background: rgba(100, 116, 139, .15); color: var(--q-muted); }
         .lqc-badge.red { background: rgba(220, 38, 38, .15); color: var(--q-red); } .lqc-badge.amber { background: rgba(217, 119, 6, .16); color: var(--q-amber); }
         .lqc-badge.green { background: rgba(22, 163, 74, .14); color: var(--q-green); } .lqc-badge.blue { background: rgba(2, 132, 199, .13); color: var(--q-blue); }
@@ -177,7 +178,7 @@
                             <tbody>
                                 @foreach ($report['queues'] as $queue)
                                     <tr wire:key="queue-{{ $queue['name'] }}">
-                                        <td class="lqc-mono" style="font-weight: 700;">{{ $queue['name'] }}</td>
+                                        <td class="lqc-mono lqc-queue-name">{{ $queue['name'] }}</td>
                                         <td style="min-width: 220px;">
                                             <span class="lqc-badge {{ $statusClasses[$queue['status']] ?? 'gray' }}">{{ $queue['status_label'] }}</span>
                                             <div class="lqc-muted" style="margin-top: 4px;">{{ $queue['advice'] }}</div>

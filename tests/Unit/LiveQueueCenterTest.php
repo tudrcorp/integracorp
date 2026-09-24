@@ -840,3 +840,12 @@ describe('liberar colas en Redis (producción)', function (): void {
         expect(count($this->redis->lists['queues:renovations']))->toBe(4);
     });
 });
+
+it('muestra el nombre de la cola en una sola línea', function (): void {
+    $center = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/live-queue-center.blade.php');
+    $panel = file_get_contents(dirname(__DIR__, 2).'/resources/views/live-presence/partials/security-panel.blade.php');
+
+    expect($center)->toContain('.lqc-queue-name { font-weight: 700; white-space: nowrap; word-break: normal; }')
+        ->and($center)->toContain('<td class="lqc-mono lqc-queue-name">{{ $queue[\'name\'] }}</td>')
+        ->and($panel)->toContain('<td class="lsec-mono" style="font-weight: 700; white-space: nowrap;">{{ $row[\'name\'] }}</td>');
+});
