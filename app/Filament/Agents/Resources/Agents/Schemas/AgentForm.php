@@ -4,6 +4,7 @@ namespace App\Filament\Agents\Resources\Agents\Schemas;
 
 use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Filament\Shared\CommercialStructure\ReferidorToggle;
+use App\Filament\Shared\CommercialStructure\TdevIntegrationTab;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\City;
@@ -297,11 +298,6 @@ class AgentForm
                                             ->label('Usuario de Instagram')
                                             ->prefixIcon('heroicon-s-user')
                                             ->maxLength(255),
-                                        TextInput::make('user_tdev')
-                                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
-                                            ->prefixIcon('heroicon-s-identification')
-                                            ->maxLength(255),
-
                                         Fieldset::make('Dirección en Venezuela')
                                             ->schema([
 
@@ -444,25 +440,9 @@ class AgentForm
                                             ])->columnSpanFull(),
                                         ReferidorToggle::make(forceReadOnly: true),
                                         ReferidorPercentageField::make(forceReadOnly: true),
-                                        Grid::make(2)
-                                            ->schema([
-                                                TextInput::make('commission_tdev')
-                                                    ->label('Comisión TDEV US$')
-                                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                                    ->prefix('%')
-                                                    ->disabled()
-                                                    ->dehydrated(),
-
-                                                TextInput::make('commission_tdev_renewal')
-                                                    ->label('Comisión Renovacion TDEV US$')
-                                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                                    ->prefix('%')
-                                                    ->disabled()
-                                                    ->dehydrated(),
-
-                                            ])->columnSpanFull(),
                                     ]),
                             ]),
+                        TdevIntegrationTab::agent(lockCommissions: true),
                         Tab::make('Información Bancaria Local(VES)')
                             ->icon('heroicon-o-building-library')
                             ->schema([

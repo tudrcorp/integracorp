@@ -70,6 +70,7 @@ class Agent extends Model
         'commission_tdec',
         'commission_tdec_renewal',
         'commission_tdev',
+        'id_agent_tdev',
         'commission_tdev_renewal',
 
         'agent_type_id',
@@ -104,6 +105,7 @@ class Agent extends Model
         'address_other_country',
         'audit_items',
         'assigned_credit',
+        'amount_asign_credit_tdev',
         'is_referidor',
         'referidor_percentage',
         'referidor_id',
@@ -118,6 +120,8 @@ class Agent extends Model
         return [
             'audit_items' => 'array',
             'assigned_credit' => 'decimal:2',
+            'amount_asign_credit_tdev' => 'decimal:2',
+            'id_agent_tdev' => 'integer',
             'is_referidor' => 'boolean',
             'referidor_percentage' => 'decimal:2',
         ];

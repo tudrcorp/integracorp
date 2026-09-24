@@ -3,8 +3,10 @@
 namespace App\Filament\Marketing\Resources\Agencies\Schemas;
 
 use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Filament\Shared\CommercialStructure\TdevIntegrationInfolistTab;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
 
 class AgencyInfolist
@@ -13,6 +15,11 @@ class AgencyInfolist
     {
         return $schema
             ->components([
+                Tabs::make('integracion-tudrenviajes')
+                    ->tabs([
+                        TdevIntegrationInfolistTab::agency(),
+                    ])
+                    ->columnSpanFull(),
                 TextEntry::make('owner_code'),
                 TextEntry::make('code'),
                 TextEntry::make('agency_type_id'),
@@ -50,8 +57,6 @@ class AgencyInfolist
                 TextEntry::make('extra_beneficiary_address'),
                 IconEntry::make('tdec')
                     ->boolean(),
-                IconEntry::make('tdev')
-                    ->boolean(),
                 IconEntry::make('is_referidor')
                     ->label('Es Referidor')
                     ->boolean(),
@@ -59,10 +64,6 @@ class AgencyInfolist
                 TextEntry::make('commission_tdec')
                     ->numeric(),
                 TextEntry::make('commission_tdec_renewal')
-                    ->numeric(),
-                TextEntry::make('commission_tdev')
-                    ->numeric(),
-                TextEntry::make('commission_tdev_renewal')
                     ->numeric(),
                 TextEntry::make('file_acuerdo'),
                 TextEntry::make('file_planilla'),
@@ -85,7 +86,6 @@ class AgencyInfolist
                 TextEntry::make('owner_master'),
                 TextEntry::make('owner_general'),
                 TextEntry::make('owner_agent'),
-                TextEntry::make('user_tdev'),
                 IconEntry::make('conf_position_menu')
                     ->boolean(),
                 TextEntry::make('type_chart'),

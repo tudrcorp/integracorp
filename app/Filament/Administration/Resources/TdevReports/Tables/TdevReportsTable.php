@@ -6,6 +6,7 @@ use App\Enums\FormaPago;
 use App\Enums\StatusComision;
 use App\Enums\StatusPago;
 use App\Enums\StatusVaucher;
+use App\Filament\Administration\Pages\CompensacionVaucher;
 use App\Filament\Administration\Resources\TdevReports\Actions\TdevReportPaymentModalActions;
 use App\Filament\Administration\Resources\TdevReports\Actions\TdevReportProcessNotesModalActions;
 use App\Models\TdevReport;
@@ -72,7 +73,12 @@ class TdevReportsTable
                     ->icon('heroicon-o-ticket')
                     ->weight(FontWeight::SemiBold)
                     ->fontFamily(FontFamily::Mono)
-                    ->copyable()
+                    ->color(fn (): ?string => self::canOpenCompensacion() ? 'primary' : null)
+                    ->tooltip(fn (): ?string => self::canOpenCompensacion() ? 'Abrir en Compensación de voucher' : null)
+                    ->url(fn (TdevReport $record): ?string => self::canOpenCompensacion() && filled($record->vaucher)
+                        ? CompensacionVaucher::getUrlForVoucher((string) $record->vaucher)
+                        : null)
+                    ->copyable(fn (): bool => ! self::canOpenCompensacion())
                     ->copyMessage('Voucher copiado')
                     ->searchable()
                     ->sortable(),
@@ -544,5 +550,17 @@ class TdevReportsTable
             ->orderBy($column)
             ->pluck($column, $column)
             ->all();
+    }
+
+    /**
+     * Se resuelve una vez por petición: la tabla lo consulta en cada fila.
+     */
+    private static function canOpenCompensacion(): bool
+    {
+        static $cache = [];
+
+        $userId = Auth::id();
+
+        return $cache[$userId ?? 0] ??= $userId !== null && CompensacionVaucher::canAccess();
     }
 }

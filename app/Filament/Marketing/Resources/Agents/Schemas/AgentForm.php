@@ -4,10 +4,12 @@ namespace App\Filament\Marketing\Resources\Agents\Schemas;
 
 use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Filament\Shared\CommercialStructure\ReferidorToggle;
+use App\Filament\Shared\CommercialStructure\TdevIntegrationTab;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
 
 class AgentForm
@@ -67,7 +69,6 @@ class AgentForm
                 TextInput::make('extra_beneficiary_aba'),
                 TextInput::make('extra_beneficiary_address'),
                 Toggle::make('tdec'),
-                Toggle::make('tdev'),
                 ReferidorToggle::make(),
                 ReferidorPercentageField::make(),
                 TextInput::make('commission_tdec')
@@ -76,12 +77,11 @@ class AgentForm
                 TextInput::make('commission_tdec_renewal')
                     ->numeric()
                     ->default(0.0),
-                TextInput::make('commission_tdev')
-                    ->numeric()
-                    ->default(0.0),
-                TextInput::make('commission_tdev_renewal')
-                    ->numeric()
-                    ->default(0.0),
+                Tabs::make('integracion-tudrenviajes')
+                    ->tabs([
+                        TdevIntegrationTab::agent(),
+                    ])
+                    ->columnSpanFull(),
                 TextInput::make('status')
                     ->default('POR REVISION'),
                 TextInput::make('created_by'),
@@ -98,7 +98,6 @@ class AgentForm
                 Textarea::make('comments')
                     ->columnSpanFull(),
                 TextInput::make('owner_agent'),
-                TextInput::make('user_tdev'),
                 Toggle::make('conf_position_menu'),
                 TextInput::make('type_chart')
                     ->default('bar'),

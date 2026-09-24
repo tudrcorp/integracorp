@@ -7,6 +7,8 @@ namespace App\Support\Filament;
 use App\Filament\Administration\Pages\AgendaCorporativa as AdministrationAgendaCorporativa;
 use App\Filament\Administration\Pages\CalendariosTdg as AdministrationCalendariosTdg;
 use App\Filament\Administration\Pages\CompensacionVaucher;
+use App\Filament\Administration\Pages\Dashboard as AdministrationEscritorio;
+use App\Filament\Administration\Resources\AffiliationCorporatePaymentFrequencyChanges\AffiliationCorporatePaymentFrequencyChangeResource;
 use App\Filament\Administration\Resources\AffiliationCorporateRenovationHistories\AffiliationCorporateRenovationHistoryResource as AdministrationAffiliationCorporateRenovationHistoryResource;
 use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource as AdministrationAffiliationCorporateResource;
 use App\Filament\Administration\Resources\AffiliationRenovationHistories\AffiliationRenovationHistoryResource as AdministrationAffiliationRenovationHistoryResource;
@@ -232,6 +234,7 @@ final class DepartmentNavigationPermissionRegistry
         AgeRangeResource::class => ['rango-edades'],
 
         // ADMINISTRACION
+        AdministrationEscritorio::class => ['escritorio'],
         AdministrationAgendaCorporativa::class => ['agenda-corporativa'],
         AdministrationCalendariosTdg::class => ['calendarios-tdg'],
         AdministrationAffiliationResource::class => ['afiliaciones-individuales'],
@@ -262,6 +265,7 @@ final class DepartmentNavigationPermissionRegistry
         RrhhNominaResource::class => ['calculo-de-nomina'],
         AdministrationDownloadZoneResource::class => ['zona-de-descarga'],
         AdministrationHelpdeskResource::class => ['helpdesk'],
+        AffiliationCorporatePaymentFrequencyChangeResource::class => ['cambios-de-frecuencia-de-pago'],
 
         // MARKETING
         MarketingAgendaCorporativa::class => ['agenda-corporativa'],

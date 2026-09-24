@@ -6,6 +6,7 @@ namespace App\Filament\Agents\Resources\Agents\Schemas;
 
 use App\Filament\Shared\CommercialStructure\CommercialHierarchyFlowchart;
 use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Filament\Shared\CommercialStructure\TdevIntegrationInfolistTab;
 use App\Models\Agent;
 use App\Support\FilamentDateDisplay;
 use Filament\Infolists\Components\IconEntry;
@@ -101,9 +102,6 @@ class AgentInfolist
                                                             ->label('Teléfono')
                                                             ->icon(Heroicon::OutlinedPhone)
                                                             ->copyable()
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('user_tdev')
-                                                            ->label('Usuario TDEV')
                                                             ->placeholder('—'),
                                                         TextEntry::make('user_instagram')
                                                             ->label('Usuario Instagram')
@@ -211,7 +209,7 @@ class AgentInfolist
                             ->icon(Heroicon::OutlinedCurrencyDollar)
                             ->schema([
                                 Section::make('Comisiones')
-                                    ->description('Porcentajes TDEC y TDEV')
+                                    ->description('Porcentajes TDEC')
                                     ->icon(Heroicon::OutlinedCurrencyDollar)
                                     ->extraAttributes([
                                         'class' => self::SECTION_CARD,
@@ -230,9 +228,6 @@ class AgentInfolist
                                                         IconEntry::make('tdec')
                                                             ->label('TDEC habilitado')
                                                             ->boolean(),
-                                                        IconEntry::make('tdev')
-                                                            ->label('TDEV habilitado')
-                                                            ->boolean(),
                                                         IconEntry::make('is_referidor')
                                                             ->label('Es Referidor')
                                                             ->boolean(),
@@ -247,21 +242,13 @@ class AgentInfolist
                                                             ->suffix(' %')
                                                             ->numeric(decimalPlaces: 2)
                                                             ->placeholder('—'),
-                                                        TextEntry::make('commission_tdev')
-                                                            ->label('Comisión TDEV')
-                                                            ->suffix(' %')
-                                                            ->numeric(decimalPlaces: 2)
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('commission_tdev_renewal')
-                                                            ->label('Comisión renovación TDEV')
-                                                            ->suffix(' %')
-                                                            ->numeric(decimalPlaces: 2)
-                                                            ->placeholder('—'),
                                                     ]),
                                             ]),
                                     ])
                                     ->columnSpanFull(),
                             ]),
+
+                        TdevIntegrationInfolistTab::agent(),
 
                         Tab::make('Información Bancaria Local(VES)')
                             ->icon(Heroicon::OutlinedBuildingLibrary)

@@ -6,6 +6,7 @@ use App\Filament\Administration\Resources\AffiliationCorporatePaymentFrequencyCh
 use App\Filament\Administration\Resources\AffiliationCorporatePaymentFrequencyChanges\Pages\ListAffiliationCorporatePaymentFrequencyChanges;
 use App\Filament\Administration\Resources\AffiliationCorporatePaymentFrequencyChanges\Pages\ViewAffiliationCorporatePaymentFrequencyChange;
 use App\Models\AffiliationCorporatePaymentFrequencyChange;
+use App\Models\Permission;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\DB;
@@ -31,10 +32,21 @@ afterEach(function (): void {
     DB::rollBack();
 });
 
-function administrationUser(array $departments): User
+/**
+ * @param  list<string>  $departments
+ * @param  list<string>  $permissionSlugs
+ */
+function administrationUser(array $departments, array $permissionSlugs = ['cambios-de-frecuencia-de-pago']): User
 {
     $user = User::factory()->make(['id' => 999999, 'name' => 'Revisor Administración', 'status' => 'ACTIVO']);
     $user->setRawAttributes([...$user->getAttributes(), 'departament' => json_encode($departments)], true);
+    $user->setRelation('permissions', collect($permissionSlugs)->map(
+        fn (string $slug): Permission => new Permission([
+            'slug' => $slug,
+            'module' => 'ADMINISTRACION',
+            'name' => $slug,
+        ])
+    ));
 
     return $user;
 }
@@ -64,15 +76,17 @@ function sampleFrequencyChange(): AffiliationCorporatePaymentFrequencyChange
     ]);
 }
 
-it('solo Administración y SUPERADMIN ven el registro', function (array $departments, bool $expected): void {
-    $this->actingAs(administrationUser($departments));
+it('el registro se asigna como permiso del módulo Administración', function (array $departments, array $permissionSlugs, bool $expected): void {
+    $this->actingAs(administrationUser($departments, $permissionSlugs));
 
     expect(AffiliationCorporatePaymentFrequencyChangeResource::canAccess())->toBe($expected)
         ->and(AffiliationCorporatePaymentFrequencyChangeResource::canCreate())->toBeFalse();
 })->with([
-    'administración' => [['ADMINISTRACION'], true],
-    'superadmin' => [['SUPERADMIN'], true],
-    'negocios' => [['NEGOCIOS'], false],
+    'con el permiso' => [['ADMINISTRACION'], ['cambios-de-frecuencia-de-pago'], true],
+    'sin el permiso' => [['ADMINISTRACION'], ['gestion-de-cobranza'], false],
+    'sin permisos del módulo' => [['ADMINISTRACION'], [], false],
+    'superadmin' => [['SUPERADMIN'], [], true],
+    'negocios' => [['NEGOCIOS'], ['cambios-de-frecuencia-de-pago'], false],
 ]);
 
 it('la lista muestra el cambio por validar', function (): void {

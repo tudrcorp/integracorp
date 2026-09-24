@@ -251,6 +251,8 @@ it('no parte el título del total grupal de su tabla en el pdf', function (): vo
         ->toContain('page-break-inside: avoid')
         ->toContain('pdf-plan-calc-next-page')
         ->toContain('page-break-before: always')
+        ->toContain('table.matrix-table.pdf-benefits-table th')
+        ->toContain('font-size: 5.5pt')
         ->toContain('pdf-benefits-table');
 
     expect($body)

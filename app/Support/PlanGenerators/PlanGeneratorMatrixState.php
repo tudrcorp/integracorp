@@ -33,6 +33,34 @@ final class PlanGeneratorMatrixState
      * @param  array<int, mixed>  $columns
      * @return array<string, mixed>
      */
+    /**
+     * Marca o quita «Incluido» en todas las celdas, sin tocar el monto de cobertura.
+     *
+     * @param  array<string|int, mixed>  $rows
+     * @param  array<int, mixed>  $columns
+     * @return array<string|int, mixed>
+     */
+    public static function withBenefitsIncluded(array $rows, array $columns, bool $included): array
+    {
+        $rows = self::ensureRowsHaveCells($rows, $columns);
+
+        foreach ($rows as $rowKey => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            foreach ((array) ($row['cells'] ?? []) as $columnKey => $cell) {
+                if (! is_array($cell)) {
+                    continue;
+                }
+
+                $rows[$rowKey]['cells'][$columnKey]['is_selected'] = $included;
+            }
+        }
+
+        return $rows;
+    }
+
     public static function emptyCellsForColumns(array $columns): array
     {
         $cells = [];

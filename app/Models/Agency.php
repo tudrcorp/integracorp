@@ -65,6 +65,7 @@ class Agency extends Model
         'commission_tdec',
         'commission_tdec_renewal',
         'commission_tdev',
+        'id_agency_tdev',
         'commission_tdev_renewal',
 
         'agency_type_id',
@@ -92,6 +93,7 @@ class Agency extends Model
         'account_manager_id',
         'address_complement',
         'assigned_credit',
+        'amount_asign_credit_tdev',
         'is_referidor',
         'referidor_percentage',
         'referidor_id',
@@ -107,6 +109,8 @@ class Agency extends Model
         return [
             'audit_items' => 'array',
             'assigned_credit' => 'decimal:2',
+            'amount_asign_credit_tdev' => 'decimal:2',
+            'id_agency_tdev' => 'integer',
             'is_referidor' => 'boolean',
             'referidor_percentage' => 'decimal:2',
         ];

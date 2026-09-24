@@ -5,6 +5,7 @@ namespace App\Filament\Administration\Resources\Agents\Schemas;
 use App\Filament\Shared\CommercialStructure\ReferidorAssignmentFields;
 use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Filament\Shared\CommercialStructure\ReferidorToggle;
+use App\Filament\Shared\CommercialStructure\TdevIntegrationTab;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use App\Models\City;
@@ -19,6 +20,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -527,8 +529,6 @@ class AgentForm
                     ->schema([
                         Toggle::make('tdec')
                             ->label('TDEC'),
-                        Toggle::make('tdev')
-                            ->label('TDEV'),
                         TextInput::make('commission_tdec')
                             ->label('Comisión TDEC US$')
                             ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
@@ -545,23 +545,12 @@ class AgentForm
                             ->validationMessages([
                                 'numeric' => 'Campo tipo numerico.',
                             ]),
-                        TextInput::make('commission_tdev')
-                            ->label('Comisión TDEV US$')
-                            ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                            ->prefix('%')
-                            ->numeric()
-                            ->validationMessages([
-                                'numeric' => 'Campo tipo numerico.',
-                            ]),
-                        TextInput::make('commission_tdev_renewal')
-                            ->label('Comisión Renovacion TDEV US$')
-                            ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                            ->prefix('%')
-                            ->numeric()
-                            ->validationMessages([
-                                'numeric' => 'Campo tipo numerico.',
-                            ]),
                     ])->columnSpanFull()->columns(2),
+                Tabs::make('integracion-tudrenviajes')
+                    ->tabs([
+                        TdevIntegrationTab::agent(),
+                    ])
+                    ->columnSpanFull(),
                 Section::make('CRÉDITO ASIGNADO')
                     ->collapsed()
                     ->description('Cupo de crédito del agente. Los movimientos se registran al cancelar cuotas.')

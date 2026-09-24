@@ -49,6 +49,31 @@ trait InteractsWithPlanGeneratorMatrixRows
         $this->setPlanGeneratorMatrixState($statePath, 'rows', $rows);
     }
 
+    /**
+     * Marca o quita «Incluido» en todos los beneficios y columnas de una vez.
+     * El monto de cobertura de cada celda se conserva.
+     */
+    public function setAllBenefitsIncluded(?string $statePath = null, mixed $included = true): void
+    {
+        $statePath = $this->resolvePlanGeneratorMatrixStatePath($statePath);
+
+        if ($statePath === null) {
+            return;
+        }
+
+        $markIncluded = filter_var($included, FILTER_VALIDATE_BOOLEAN);
+
+        $this->setPlanGeneratorMatrixState(
+            $statePath,
+            'rows',
+            PlanGeneratorMatrixState::withBenefitsIncluded(
+                $this->getPlanGeneratorMatrixState($statePath, 'rows'),
+                $this->getPlanGeneratorMatrixState($statePath, 'columns'),
+                $markIncluded,
+            ),
+        );
+    }
+
     public function createPlanGeneratorBenefit(string $rowKey, ?string $description, ?string $statePath = null): void
     {
         $statePath = $this->resolvePlanGeneratorMatrixStatePath($statePath);

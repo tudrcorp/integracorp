@@ -18,10 +18,10 @@
     $brandColor = PlanGeneratorBrandColor::resolve($planGenerator->brand_color ?? null);
     $populationUnitLabel = PlanGeneratorPopulationUnit::resolve($planGenerator->population_unit ?? null)->label();
     $columnCount = count($columns);
-    $leadWidthMm = PlanGeneratorMatrixColumnLayout::leadWidthMm();
-    $rateAgeWidthMm = PlanGeneratorMatrixColumnLayout::rateAgeWidthMm();
-    $ratePopWidthMm = PlanGeneratorMatrixColumnLayout::ratePopWidthMm();
-    $planWidthMm = PlanGeneratorMatrixColumnLayout::planColumnWidthMm(max(1, $columnCount));
+    $leadPercent = PlanGeneratorMatrixColumnLayout::LEAD_PERCENT;
+    $rateAgePercent = PlanGeneratorMatrixColumnLayout::RATE_AGE_PERCENT;
+    $ratePopPercent = PlanGeneratorMatrixColumnLayout::RATE_POP_PERCENT;
+    $planPercent = PlanGeneratorMatrixColumnLayout::planColumnPercent(max(1, $columnCount));
     $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn((array) $columns, (array) $rateRows);
     $includeMonthlyTotal = (bool) ($planGenerator->include_monthly_total ?? false);
     $groupRows = PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal);
@@ -92,6 +92,7 @@
 </table>
 
 @if ($columnCount > 0)
+    <p class="pdf-benefits-title">Matriz de beneficios y coberturas</p>
     <table class="matrix-table pdf-benefits-table">
         @include('filament.business.plan-generators.partials.matrix-column-colgroup', [
             'columns' => $columns,
@@ -99,20 +100,17 @@
             'usePdfWidths' => true,
         ])
         <thead>
-            <tr class="pdf-benefits-intro">
-                <th colspan="{{ $columnCount + 2 }}">Matriz de beneficios y coberturas</th>
-            </tr>
             <tr>
-                <th colspan="2" class="benefit-col" style="width: {{ $leadWidthMm }}mm;">Beneficios del Plan</th>
+                <th class="benefit-col" style="width: {{ $leadPercent }}%;">Beneficios del Plan</th>
                 @foreach ($columns as $column)
-                    <th style="width: {{ $planWidthMm }}mm;">{{ $column['header_label'] ?? '—' }}</th>
+                    <th style="width: {{ $planPercent }}%;">{{ $column['header_label'] ?? '—' }}</th>
                 @endforeach
             </tr>
         </thead>
         <tbody>
             @forelse ($rows as $row)
                 <tr>
-                    <td colspan="2" class="benefit-col">{{ $row['benefit_label'] ?? '—' }}</td>
+                    <td class="benefit-col" style="width: {{ $leadPercent }}%;">{{ $row['benefit_label'] ?? '—' }}</td>
                     @foreach ($columns as $column)
                         @php
                             $columnKey = (string) ($column['column_key'] ?? '');
@@ -124,7 +122,7 @@
                                 ? PlanGeneratorPreviewBuilder::formatCoverageAmount((float) $coverage)
                                 : '';
                         @endphp
-                        <td style="text-align: center;">
+                        <td style="width: {{ $planPercent }}%; text-align: center;">
                             {{-- Con tope se muestra solo el monto: el check encima sería redundante. --}}
                             @if ($display === 'amount')
                                 <span class="amount">US$ {{ $coverageLabel }}</span>
@@ -138,7 +136,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ $columnCount + 2 }}" style="text-align: center; color: #6b7280;">
+                    <td colspan="{{ $columnCount + 1 }}" style="text-align: center; color: #6b7280;">
                         Sin beneficios registrados.
                     </td>
                 </tr>
@@ -159,10 +157,10 @@
         ])
         <thead>
             <tr>
-                <th style="width: {{ $rateAgeWidthMm }}mm; text-align: left;">Tarifa individual Anual</th>
-                <th style="width: {{ $ratePopWidthMm }}mm;">{{ $populationUnitLabel }}</th>
+                <th style="width: {{ $rateAgePercent }}%; text-align: left;">Tarifa individual Anual</th>
+                <th style="width: {{ $ratePopPercent }}%;">{{ $populationUnitLabel }}</th>
                 @foreach ($columns as $column)
-                    <th style="width: {{ $planWidthMm }}mm;">{{ $column['header_label'] ?? '—' }}</th>
+                    <th style="width: {{ $planPercent }}%;">{{ $column['header_label'] ?? '—' }}</th>
                 @endforeach
             </tr>
         </thead>
@@ -207,9 +205,9 @@
         ])
         <thead>
             <tr>
-                <th style="width: {{ $leadWidthMm }}mm; text-align: left;">Total Grupal</th>
+                <th style="width: {{ $leadPercent }}%; text-align: left;">Total Grupal</th>
                 @foreach ($columns as $column)
-                    <th style="width: {{ $planWidthMm }}mm;">{{ $column['header_label'] ?? '—' }}</th>
+                    <th style="width: {{ $planPercent }}%;">{{ $column['header_label'] ?? '—' }}</th>
                 @endforeach
             </tr>
         </thead>

@@ -4,10 +4,12 @@ namespace App\Filament\Marketing\Resources\Agencies\Schemas;
 
 use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Filament\Shared\CommercialStructure\ReferidorToggle;
+use App\Filament\Shared\CommercialStructure\TdevIntegrationTab;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
 
 class AgencyForm
@@ -62,7 +64,6 @@ class AgencyForm
                 TextInput::make('extra_beneficiary_aba'),
                 TextInput::make('extra_beneficiary_address'),
                 Toggle::make('tdec'),
-                Toggle::make('tdev'),
                 ReferidorToggle::make(),
                 ReferidorPercentageField::make(),
                 TextInput::make('commission_tdec')
@@ -71,12 +72,11 @@ class AgencyForm
                 TextInput::make('commission_tdec_renewal')
                     ->numeric()
                     ->default(0.0),
-                TextInput::make('commission_tdev')
-                    ->numeric()
-                    ->default(0.0),
-                TextInput::make('commission_tdev_renewal')
-                    ->numeric()
-                    ->default(0.0),
+                Tabs::make('integracion-tudrenviajes')
+                    ->tabs([
+                        TdevIntegrationTab::agency(),
+                    ])
+                    ->columnSpanFull(),
                 TextInput::make('file_acuerdo'),
                 TextInput::make('file_planilla'),
                 TextInput::make('status')
@@ -97,7 +97,6 @@ class AgencyForm
                 TextInput::make('owner_master'),
                 TextInput::make('owner_general'),
                 TextInput::make('owner_agent'),
-                TextInput::make('user_tdev'),
                 Toggle::make('conf_position_menu'),
                 TextInput::make('type_chart')
                     ->default('bar'),

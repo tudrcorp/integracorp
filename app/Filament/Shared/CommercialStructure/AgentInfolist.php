@@ -533,7 +533,7 @@ class AgentInfolist
                             ->icon('heroicon-o-calculator')
                             ->schema([
                                 Section::make('Comisiones')
-                                    ->description('TDEC y TDEV: venta nueva y renovación.')
+                                    ->description('TDEC: venta nueva y renovación.')
                                     ->icon('heroicon-o-calculator')
                                     ->extraAttributes([
                                         'class' => self::SECTION_CARD,
@@ -544,7 +544,7 @@ class AgentInfolist
                                                 'class' => self::IOS_INNER_CLASS,
                                             ])
                                             ->schema([
-                                                Grid::make(['default' => 1, 'sm' => 4])
+                                                Grid::make(['default' => 1, 'sm' => 2])
                                                     ->extraAttributes([
                                                         'class' => self::IOS_INSET_GROUP_CLASS.' mb-4',
                                                     ])
@@ -562,25 +562,14 @@ class AgentInfolist
                                                             ->suffix(' %')
                                                             ->weight('medium')
                                                             ->placeholder('—'),
-                                                        TextEntry::make('commission_tdev')
-                                                            ->label('TDEV — venta nueva')
-                                                            ->icon('heroicon-m-calculator')
-                                                            ->numeric(decimalPlaces: 2)
-                                                            ->suffix(' %')
-                                                            ->weight('medium')
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('commission_tdev_renewal')
-                                                            ->label('TDEV — renovación')
-                                                            ->numeric(decimalPlaces: 2)
-                                                            ->suffix(' %')
-                                                            ->weight('medium')
-                                                            ->placeholder('—'),
                                                     ]),
                                             ])
                                             ->columnSpanFull(),
                                     ])
                                     ->columnSpanFull(),
                             ]),
+
+                        TdevIntegrationInfolistTab::agent(),
 
                         Tab::make('Documentos')
                             ->icon('heroicon-o-document-text')

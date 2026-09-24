@@ -306,7 +306,9 @@ it('formulario generador incluye matrices alineadas con columnas compartidas', f
         ->toContain('$populationUnitLabel')
         ->toContain('pg-stacked-editor')
         ->toContain('addMatrixRow')
-        ->toContain('addRateRow');
+        ->toContain('addRateRow')
+        ->toContain('setAllBenefitsIncluded')
+        ->toContain('Marcar todos');
 
     expect($trait)->toContain('matrixFormStateForPersistence');
 });
@@ -352,6 +354,40 @@ it('estado de matriz inicializa celdas por columna', function (): void {
 
     expect($rows['row-1']['cells']['col-a']['is_selected'])->toBeFalse()
         ->and($rows['row-1']['cells']['col-a']['coverage_amount'])->toBeNull();
+});
+
+it('marcar todos incluye cada beneficio y conserva la cobertura', function (): void {
+    $columns = [
+        ['column_key' => 'col-a', 'header_label' => 'PLAN PRUEBA 5K'],
+        ['column_key' => 'col-b', 'header_label' => 'PLAN PRUEBA 10K'],
+    ];
+    $rows = [
+        'row-1' => [
+            'benefit_label' => 'TELEMEDICINA',
+            'cells' => [
+                'col-a' => ['is_selected' => false, 'coverage_amount' => 5000],
+                'col-b' => ['is_selected' => true, 'coverage_amount' => null],
+            ],
+        ],
+        'row-2' => [
+            'benefit_label' => 'LABORATORIO',
+            'cells' => [],
+        ],
+    ];
+
+    $marcadas = App\Support\PlanGenerators\PlanGeneratorMatrixState::withBenefitsIncluded($rows, $columns, true);
+
+    expect($marcadas['row-1']['cells']['col-a']['is_selected'])->toBeTrue()
+        ->and($marcadas['row-1']['cells']['col-a']['coverage_amount'])->toBe(5000)
+        ->and($marcadas['row-1']['cells']['col-b']['is_selected'])->toBeTrue()
+        ->and($marcadas['row-2']['cells']['col-a']['is_selected'])->toBeTrue()
+        ->and($marcadas['row-2']['cells']['col-b']['is_selected'])->toBeTrue();
+
+    $limpias = App\Support\PlanGenerators\PlanGeneratorMatrixState::withBenefitsIncluded($marcadas, $columns, false);
+
+    expect($limpias['row-1']['cells']['col-a']['is_selected'])->toBeFalse()
+        ->and($limpias['row-1']['cells']['col-a']['coverage_amount'])->toBe(5000)
+        ->and($limpias['row-2']['cells']['col-b']['is_selected'])->toBeFalse();
 });
 
 it('infolist y vista muestran matrices alineadas del plan generado', function (): void {
@@ -404,7 +440,8 @@ it('infolist y vista muestran matrices alineadas del plan generado', function ()
 
     expect($pdfBody)->toContain('matrix-column-colgroup')
         ->toContain('usePdfWidths')
-        ->toContain('colspan="2"')
+        ->toContain('pdf-benefits-title')
+        ->toContain('class="benefit-col" style="width: {{ $leadPercent }}%;"')
         ->toContain('proposal-block')
         ->toContain('PlanGeneratorBrandColor::resolve')
         ->toContain('Propuesta Comercial')
@@ -545,9 +582,9 @@ it('layout de columnas alinea bloque de planes entre matrices', function (): voi
     expect($layout::LEAD_PERCENT + $layout::PLAN_BLOCK_PERCENT)->toEqual(100.0)
         ->and($layout::RATE_AGE_PERCENT + $layout::RATE_POP_PERCENT)->toEqual($layout::LEAD_PERCENT)
         ->and($layout::planColumnPercent(3))->toEqual($layout::PLAN_BLOCK_PERCENT / 3)
-        ->and($layout::planColumnWidthMm(3))->toBe('38.53')
-        ->and($layout::leadWidthMm())->toBe('54.40')
-        ->and($layout::rateAgeWidthMm())->toBe('37.40')
+        ->and($layout::planColumnWidthMm(3))->toBe('28.33')
+        ->and($layout::leadWidthMm())->toBe('85.00')
+        ->and($layout::rateAgeWidthMm())->toBe('68.00')
         ->and($layout::ratePopWidthMm())->toBe('17.00');
 
     $colgroup = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/plan-generators/partials/matrix-column-colgroup.blade.php');

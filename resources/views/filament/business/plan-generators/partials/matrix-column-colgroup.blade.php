@@ -9,7 +9,7 @@
     $planWidthMm = PlanGeneratorMatrixColumnLayout::planColumnWidthMm($columnCount);
 @endphp
 <colgroup>
-    @if ($type === 'group-total')
+    @if ($type === 'group-total' || ($type === 'benefits' && $usePdfWidths))
         <col
             @if ($usePdfWidths)
                 style="width: {{ PlanGeneratorMatrixColumnLayout::leadWidthMm() }}mm"

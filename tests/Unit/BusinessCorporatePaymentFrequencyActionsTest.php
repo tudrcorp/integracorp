@@ -63,7 +63,7 @@ it('el registro de cambios vive en Administración, es de solo lectura y reverti
 
     expect($resource)
         ->toContain("protected static ?string \$navigationLabel = 'Cambios de frecuencia de pago';")
-        ->toContain('CorporatePaymentFrequencyChangeRecipients::DEPARTMENT')
+        ->toContain('use AuthorizesDepartmentNavigation;')
         ->toContain("public static function canCreate(): bool\n    {\n        return false;")
         ->toContain("public static function canEdit(Model \$record): bool\n    {\n        return false;")
         ->toContain("public static function canDelete(Model \$record): bool\n    {\n        return false;");
@@ -81,6 +81,10 @@ it('el registro de cambios vive en Administración, es de solo lectura y reverti
 
     expect($definition)->not->toBeNull()
         ->and($definition['modules'])->toBe(['ADMINISTRACION']);
+
+    expect(App\Support\Filament\DepartmentNavigationPermissionRegistry::slugsFor(
+        App\Filament\Administration\Resources\AffiliationCorporatePaymentFrequencyChanges\AffiliationCorporatePaymentFrequencyChangeResource::class
+    ))->toBe(['cambios-de-frecuencia-de-pago']);
 });
 
 it('el aviso de cambio de frecuencia es configurable en el Centro de notificaciones', function (): void {
