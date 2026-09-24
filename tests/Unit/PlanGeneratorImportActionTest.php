@@ -47,6 +47,30 @@ beforeEach(function (): void {
     }
 });
 
+it('marca incluido en todos los beneficios sin borrar la cobertura', function (): void {
+    $componente = Livewire::actingAs($this->analista)
+        ->test(CreatePlanGenerator::class)
+        ->set('data.columns', [
+            ['column_key' => 'col-a', 'header_label' => 'PLAN PRUEBA 5K'],
+            ['column_key' => 'col-b', 'header_label' => 'PLAN PRUEBA 10K'],
+        ])
+        ->set('data.rows', [
+            'row-1' => [
+                'benefit_label' => 'TELEMEDICINA',
+                'cells' => [
+                    'col-a' => ['is_selected' => false, 'coverage_amount' => '5000'],
+                ],
+            ],
+        ])
+        ->call('setAllBenefitsIncluded', 'data', true);
+
+    $celdas = $componente->get('data.rows.row-1.cells');
+
+    expect($celdas['col-a']['is_selected'])->toBeTrue()
+        ->and($celdas['col-a']['coverage_amount'])->toBe('5000')
+        ->and($celdas['col-b']['is_selected'])->toBeTrue();
+});
+
 it('muestra el selector de plan del catálogo', function (): void {
     Livewire::actingAs($this->analista)
         ->test(CreatePlanGenerator::class)

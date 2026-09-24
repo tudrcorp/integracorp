@@ -5,6 +5,7 @@ namespace App\Filament\General\Resources\Agents\Schemas;
 use App\Filament\Shared\CommercialStructure\ReferidorAssignmentFields;
 use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Filament\Shared\CommercialStructure\ReferidorToggle;
+use App\Filament\Shared\CommercialStructure\TdevIntegrationTab;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\City;
@@ -283,11 +284,6 @@ class AgentForm
                                             ->label('Usuario de Instagram')
                                             ->prefixIcon('heroicon-s-user')
                                             ->maxLength(255),
-                                        TextInput::make('user_tdev')
-                                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
-                                            ->prefixIcon('heroicon-s-identification')
-                                            ->maxLength(255),
-
                                         Fieldset::make('Dirección en Venezuela')
                                             ->schema([
 
@@ -385,6 +381,7 @@ class AgentForm
 
                                     ])->columnSpanFull()->columns(4),
                             ]),
+                        TdevIntegrationTab::agent(),
                         Tab::make('Información Bancaria Local(VES)')
                             ->icon('heroicon-o-building-library')
                             ->schema([

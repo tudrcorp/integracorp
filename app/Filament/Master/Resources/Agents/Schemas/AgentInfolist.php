@@ -3,10 +3,12 @@
 namespace App\Filament\Master\Resources\Agents\Schemas;
 
 use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Filament\Shared\CommercialStructure\TdevIntegrationInfolistTab;
 use App\Models\Agent;
 use App\Support\CommercialStructure\ReferidorAssignmentService;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
 
 class AgentInfolist
@@ -15,6 +17,11 @@ class AgentInfolist
     {
         return $schema
             ->components([
+                Tabs::make('integracion-tudrenviajes')
+                    ->tabs([
+                        TdevIntegrationInfolistTab::agent(),
+                    ])
+                    ->columnSpanFull(),
                 TextEntry::make('agency.id')
                     ->numeric(),
                 TextEntry::make('code_agent'),
@@ -60,8 +67,6 @@ class AgentInfolist
                 TextEntry::make('extra_beneficiary_address'),
                 IconEntry::make('tdec')
                     ->boolean(),
-                IconEntry::make('tdev')
-                    ->boolean(),
                 IconEntry::make('is_referidor')
                     ->label('Es Referidor')
                     ->boolean(),
@@ -81,10 +86,6 @@ class AgentInfolist
                 TextEntry::make('commission_tdec')
                     ->numeric(),
                 TextEntry::make('commission_tdec_renewal')
-                    ->numeric(),
-                TextEntry::make('commission_tdev')
-                    ->numeric(),
-                TextEntry::make('commission_tdev_renewal')
                     ->numeric(),
                 TextEntry::make('status'),
                 TextEntry::make('created_by'),

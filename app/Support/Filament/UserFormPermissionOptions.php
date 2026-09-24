@@ -58,6 +58,7 @@ class UserFormPermissionOptions
         'tdevagencyresource' => ['agencias-tdev'],
         'whitecompanyresource' => ['empresas-aliadas'],
         'creditreconciliationresource' => ['conciliacion-de-credito'],
+        'affiliationcorporatepaymentfrequencychangeresource' => ['cambios-de-frecuencia-de-pago'],
         'zoneresource' => ['gestion-de-carpetas'],
         'affiliateresource' => ['afiliados-individuales'],
         'affiliatecorporateresource' => ['afiliados-corporativos'],

@@ -5,6 +5,7 @@ namespace App\Filament\General\Resources\Agencies\Schemas;
 use App\Filament\Shared\CommercialStructure\ReferidorAssignmentFields;
 use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Filament\Shared\CommercialStructure\ReferidorToggle;
+use App\Filament\Shared\CommercialStructure\TdevIntegrationTab;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use App\Models\City;
@@ -366,11 +367,6 @@ class AgencyForm
                                             ->label('Usuario de Instagram')
                                             ->prefixIcon('heroicon-s-user')
                                             ->maxLength(255),
-                                        TextInput::make('user_tdev')
-                                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
-                                            ->prefixIcon('heroicon-s-identification')
-                                            ->maxLength(255),
-
                                         TextInput::make('status')
                                             ->label('Estatus')
                                             ->prefixIcon('heroicon-m-shield-check')
@@ -531,8 +527,6 @@ class AgencyForm
                                             ->schema([
                                                 Toggle::make('tdec')
                                                     ->label('TDEC'),
-                                                Toggle::make('tdev')
-                                                    ->label('TDEV'),
 
                                             ])->columnSpanFull(),
                                         Grid::make(2)
@@ -563,35 +557,12 @@ class AgencyForm
                                                     ]),
 
                                             ])->columnSpanFull(),
-                                        Grid::make(2)
-                                            ->schema([
-                                                TextInput::make('commission_tdev')
-                                                    ->label('Comisión TDEV US$')
-                                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                                    ->prefix('%')
-                                                    ->numeric()
-                                                    ->rules(['required', 'max:40'])
-                                                    ->validationMessages([
-                                                        'numeric' => 'Campo tipo numerico.',
-                                                        'required' => 'Campo Requerido',
-                                                        'max' => 'El campo no debe ser mayor a 40%',
-
-                                                    ]),
-                                                TextInput::make('commission_tdev_renewal')
-                                                    ->label('Comisión Renovacion TDEV US$')
-                                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                                    ->prefix('%')
-                                                    ->numeric()
-                                                    ->rules(['required', 'max:40'])
-                                                    ->validationMessages([
-                                                        'numeric' => 'Campo tipo numerico.',
-                                                        'required' => 'Campo Requerido',
-                                                        'max' => 'El campo no debe ser mayor a 40%',
-
-                                                    ]),
-                                            ])->columnSpanFull(),
                                     ]),
                             ]),
+                        TdevIntegrationTab::agency(
+                            saleRules: ['required', 'max:40'],
+                            renewalRules: ['required', 'max:40'],
+                        ),
                         Tab::make('Información Bancaria Local(VES)')
                             ->icon('heroicon-o-building-library')
                             ->schema([

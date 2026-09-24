@@ -542,14 +542,14 @@ class AgencyInfolist
                         Tab::make('Comisiones')
                             ->icon('heroicon-o-calculator')
                             ->schema([
-                                Section::make('Comisiones TDEC / TDEV')
-                                    ->description('Porcentajes y activación de esquemas.')
+                                Section::make('Comisiones TDEC')
+                                    ->description('Porcentajes de venta nueva y renovación.')
                                     ->icon('heroicon-o-calculator')
                                     ->extraAttributes([
                                         'class' => self::SECTION_CARD,
                                     ])
                                     ->schema([
-                                        Grid::make(4)
+                                        Grid::make(2)
                                             ->extraAttributes([
                                                 'class' => self::IOS_INNER_CLASS,
                                             ])
@@ -564,21 +564,13 @@ class AgencyInfolist
                                                     ->formatStateUsing(fn ($state): string => self::formatPercent($state))
                                                     ->weight('medium')
                                                     ->placeholder('—'),
-                                                TextEntry::make('commission_tdev')
-                                                    ->label('Comisión TDEV')
-                                                    ->formatStateUsing(fn ($state): string => self::formatPercent($state))
-                                                    ->weight('medium')
-                                                    ->placeholder('—'),
-                                                TextEntry::make('commission_tdev_renewal')
-                                                    ->label('Comisión renovación TDEV')
-                                                    ->formatStateUsing(fn ($state): string => self::formatPercent($state))
-                                                    ->weight('medium')
-                                                    ->placeholder('—'),
                                             ])
                                             ->columnSpanFull(),
                                     ])
                                     ->columnSpanFull(),
                             ]),
+
+                        TdevIntegrationInfolistTab::agency(),
 
                         Tab::make('Documentos')
                             ->icon('heroicon-o-document-text')

@@ -5,6 +5,7 @@ namespace App\Filament\Master\Resources\Agents\Schemas;
 use App\Filament\Shared\CommercialStructure\ReferidorAssignmentFields;
 use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Filament\Shared\CommercialStructure\ReferidorToggle;
+use App\Filament\Shared\CommercialStructure\TdevIntegrationTab;
 use App\Models\Agent;
 use App\Models\City;
 use App\Models\Country;
@@ -281,11 +282,6 @@ class AgentForm
                                             ->label('Usuario de Instagram')
                                             ->prefixIcon('heroicon-s-user')
                                             ->maxLength(255),
-                                        TextInput::make('user_tdev')
-                                            ->label('Usuario de Tu Doctor en Viajes (TDEV)')
-                                            ->prefixIcon('heroicon-s-identification')
-                                            ->maxLength(255),
-
                                         Fieldset::make('Dirección en Venezuela')
                                             ->schema([
 
@@ -394,8 +390,6 @@ class AgentForm
                                             ->schema([
                                                 Toggle::make('tdec')
                                                     ->label('TDEC'),
-                                                Toggle::make('tdev')
-                                                    ->label('TDEV'),
 
                                             ])->columnSpanFull(),
                                         Grid::make(2)
@@ -422,31 +416,12 @@ class AgentForm
                                                     ]),
 
                                             ])->columnSpanFull(),
-                                        Grid::make(2)
-                                            ->schema([
-                                                TextInput::make('commission_tdev')
-                                                    ->label('Comisión TDEV US$')
-                                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                                    ->prefix('%')
-                                                    ->numeric()
-                                                    ->rules(['required', 'max:35'])
-                                                    ->validationMessages([
-                                                        'required' => 'Campo Requerido.',
-                                                        'max' => 'El valor no puede ser mayor al 20%',
-                                                    ]),
-                                                TextInput::make('commission_tdev_renewal')
-                                                    ->label('Comisión Renovacion TDEV US$')
-                                                    ->helperText('Valor expresado en porcentaje. Utilice separador decimal(.)')
-                                                    ->prefix('%')
-                                                    ->numeric()
-                                                    ->rules(['required', 'max:35'])
-                                                    ->validationMessages([
-                                                        'required' => 'Campo Requerido.',
-                                                        'max' => 'El valor no puede ser mayor al 20%',
-                                                    ]),
-                                            ])->columnSpanFull(),
                                     ]),
                             ]),
+                        TdevIntegrationTab::agent(
+                            saleRules: ['required', 'max:35'],
+                            renewalRules: ['required', 'max:35'],
+                        ),
                         Tab::make('Información Bancaria Local(VES)')
                             ->icon('heroicon-o-building-library')
                             ->schema([

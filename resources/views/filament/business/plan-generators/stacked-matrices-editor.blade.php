@@ -32,6 +32,25 @@
     $populationUnitLabel = (string) ($populationUnitLabel ?? 'Población');
     $includeMonthlyTotal = (bool) ($includeMonthlyTotal ?? false);
     $columnCount = count($columns);
+    $allBenefitsIncluded = $columnCount > 0 && $rows !== [] && collect($rows)->every(function (mixed $row) use ($columns): bool {
+        if (! is_array($row)) {
+            return false;
+        }
+
+        foreach ($columns as $column) {
+            $columnKey = (string) ($column['column_key'] ?? '');
+
+            if ($columnKey === '') {
+                continue;
+            }
+
+            if (! (bool) data_get($row, "cells.{$columnKey}.is_selected", false)) {
+                return false;
+            }
+        }
+
+        return true;
+    });
     $benefitOptions = collect($benefitOptions ?? [])
         ->map(fn ($benefit): string => (string) $benefit)
         ->filter(fn (string $benefit): bool => $benefit !== '')
@@ -45,6 +64,19 @@
         <x-filament::button type="button" size="sm" wire:click="addMatrixRow('{{ $matrixStatePath }}')" icon="heroicon-m-plus">
             Agregar beneficio
         </x-filament::button>
+        @if ($columnCount > 0 && $rows !== [])
+            <x-filament::button
+                type="button"
+                size="sm"
+                color="gray"
+                wire:click="setAllBenefitsIncluded('{{ $matrixStatePath }}', {{ $allBenefitsIncluded ? '0' : '1' }})"
+                wire:loading.attr="disabled"
+                wire:target="setAllBenefitsIncluded"
+                icon="{{ $allBenefitsIncluded ? 'heroicon-m-x-mark' : 'heroicon-m-check' }}"
+            >
+                {{ $allBenefitsIncluded ? 'Quitar todos' : 'Marcar todos' }}
+            </x-filament::button>
+        @endif
         @if ($manageColumns)
             <x-filament::button type="button" size="sm" color="gray" wire:click="addMatrixColumn('{{ $matrixStatePath }}')" icon="heroicon-m-view-columns">
                 Agregar columna

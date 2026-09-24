@@ -9,13 +9,13 @@ final class PlanGeneratorMatrixColumnLayout
     /** Ancho útil del cuerpo en PDF (A4 210mm − márgenes 20mm × 2). */
     public const PDF_CONTENT_WIDTH_MM = 170.0;
 
-    public const LEAD_PERCENT = 32.0;
+    public const LEAD_PERCENT = 50.0;
 
-    public const RATE_AGE_PERCENT = 22.0;
+    public const RATE_AGE_PERCENT = 40.0;
 
     public const RATE_POP_PERCENT = 10.0;
 
-    public const PLAN_BLOCK_PERCENT = 68.0;
+    public const PLAN_BLOCK_PERCENT = 50.0;
 
     public static function planColumnCount(array $columns): int
     {

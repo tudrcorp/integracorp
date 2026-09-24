@@ -3,12 +3,14 @@
 namespace App\Filament\Master\Resources\Agencies\Schemas;
 
 use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
+use App\Filament\Shared\CommercialStructure\TdevIntegrationInfolistTab;
 use App\Models\Agency;
 use App\Support\CommercialStructure\ReferidorAssignmentService;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
 
 class AgencyInfolist
@@ -141,15 +143,15 @@ class AgencyInfolist
                                 TextEntry::make('commission_tdec_renewal')
                                     ->numeric()
                                     ->placeholder('-'),
-                                TextEntry::make('commission_tdev')
-                                    ->numeric()
-                                    ->placeholder('-'),
-                                TextEntry::make('commission_tdev_renewal')
-                                    ->numeric()
-                                    ->placeholder('-'),
                             ])->columnSpanFull()->columns(5),
 
                     ])->columnSpanFull(),
+
+                Tabs::make('integracion-tudrenviajes')
+                    ->tabs([
+                        TdevIntegrationInfolistTab::agency(),
+                    ])
+                    ->columnSpanFull(),
 
             ]);
     }

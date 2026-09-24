@@ -7,6 +7,7 @@ namespace App\Filament\Business\Resources\Agencies\Schemas;
 use App\Filament\Shared\CommercialStructure\ReferidorAssignmentFields;
 use App\Filament\Shared\CommercialStructure\ReferidorPercentageField;
 use App\Filament\Shared\CommercialStructure\ReferidorToggle;
+use App\Filament\Shared\CommercialStructure\TdevIntegrationTab;
 use App\Models\Agency;
 use App\Models\AgencyType;
 use App\Models\Agent;
@@ -871,8 +872,8 @@ class AgencyForm
                         Tab::make('Comisiones')
                             ->icon('heroicon-o-chart-pie')
                             ->schema([
-                                Section::make('Comisiones TDEC / TDEV')
-                                    ->description('Porcentajes y activación de esquemas.')
+                                Section::make('Comisiones TDEC')
+                                    ->description('Porcentajes y activación del esquema TDEC.')
                                     ->icon('heroicon-o-calculator')
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
@@ -883,11 +884,6 @@ class AgencyForm
                                             ->schema([
                                                 Toggle::make('tdec')
                                                     ->label('TDEC')
-                                                    ->inline(false)
-                                                    ->onIcon('heroicon-s-check')
-                                                    ->onColor('success'),
-                                                Toggle::make('tdev')
-                                                    ->label('TDEV')
                                                     ->inline(false)
                                                     ->onIcon('heroicon-s-check')
                                                     ->onColor('success'),
@@ -909,22 +905,6 @@ class AgencyForm
                                                     ->helperText('Valor en porcentaje. Use punto como separador decimal.')
                                                     ->prefix('%')
                                                     ->numeric(),
-                                                TextInput::make('commission_tdev')
-                                                    ->label('Comisión TDEV US$')
-                                                    ->helperText('Valor en porcentaje. Use punto como separador decimal.')
-                                                    ->prefix('%')
-                                                    ->numeric()
-                                                    ->validationMessages([
-                                                        'numeric' => 'Campo tipo numerico.',
-                                                    ]),
-                                                TextInput::make('commission_tdev_renewal')
-                                                    ->label('Comisión renovación TDEV US$')
-                                                    ->helperText('Valor en porcentaje. Use punto como separador decimal.')
-                                                    ->prefix('%')
-                                                    ->numeric()
-                                                    ->validationMessages([
-                                                        'numeric' => 'Campo tipo numerico.',
-                                                    ]),
                                             ]),
                                     ])
                                     ->collapsible(),
@@ -944,6 +924,8 @@ class AgencyForm
                                     ])
                                     ->collapsible(),
                             ]),
+
+                        TdevIntegrationTab::agency(),
 
                         Tab::make('Observaciones')
                             ->icon('heroicon-o-chat-bubble-left-right')

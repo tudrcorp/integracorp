@@ -84,10 +84,19 @@
             padding-bottom: 16mm;
         }
 
-        .pdf-benefits-table th,
-        .pdf-benefits-table td {
+        table.matrix-table.pdf-benefits-table th,
+        table.matrix-table.pdf-benefits-table td {
+            font-size: 5.5pt;
+            padding: 2px 1px;
+            line-height: 1.2;
+        }
+
+        table.matrix-table.pdf-benefits-table .check {
             font-size: 6.5pt;
-            padding: 2px 2px;
+        }
+
+        table.matrix-table.pdf-benefits-table .amount {
+            font-size: 5.5pt;
         }
 
         .pdf-plan-calc-keep {
@@ -206,21 +215,19 @@
             margin-bottom: 12px;
         }
 
-        table.matrix-table.pdf-benefits-table {
-            width: 170mm;
-            margin-left: 20mm;
-            margin-bottom: 2mm;
-        }
-
-        table.matrix-table.pdf-benefits-table thead tr.pdf-benefits-intro th {
-            background: #ffffff;
+        .pdf-benefits-title {
+            margin: 8mm 0 1.5mm 20mm;
             color: {{ $brandColor }};
-            border: none;
             text-align: left;
             text-transform: uppercase;
             font-size: 7pt;
             font-weight: bold;
-            padding: 8mm 0 1.5mm 0;
+        }
+
+        table.matrix-table.pdf-benefits-table {
+            width: 170mm;
+            margin-left: 20mm;
+            margin-bottom: 2mm;
         }
 
         .matrix-table th,
