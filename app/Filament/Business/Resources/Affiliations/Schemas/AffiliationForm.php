@@ -13,13 +13,13 @@ use App\Models\BusinessUnit;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\Coverage;
-use App\Models\IndividualQuote;
 use App\Models\Plan;
 use App\Models\Region;
 use App\Models\ServiceProvider;
 use App\Models\State;
 use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
 use App\Support\AffiliationAffiliateTypeSynchronizer;
+use App\Support\Affiliations\AffiliationIndividualQuoteField;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
 use App\Support\SecurityAudit;
@@ -117,12 +117,11 @@ class AffiliationForm
                                         Select::make('individual_quote_id')
                                             ->label('Nombre del cliente')
                                             ->prefixIcon('heroicon-m-clipboard-document-check')
-                                            ->options(IndividualQuote::all()->pluck('full_name', 'id'))
+                                            ->getOptionLabelUsing(fn (mixed $value): ?string => AffiliationIndividualQuoteField::optionLabel($value))
                                             ->default($quoteRecord['individual_quote_id'] ?? null)
-                                            ->searchable()
                                             ->disabled()
                                             ->dehydrated()
-                                            ->preload()
+                                            ->hiddenOn('edit')
                                             ->visible(fn (): bool => ! PlanGeneratorPreAffiliationSession::isActive()),
                                         TextInput::make('plan_generator_client')
                                             ->label('Cliente del plan generado')
