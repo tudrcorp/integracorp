@@ -80,6 +80,10 @@ class LiveQueueCenter extends Page implements HasTable
     #[Url(as: 'tab')]
     public string $tab = 'causas';
 
+    /** Filtro de la pestaña de errores al llegar desde el semáforo (ver OperationsAdvisor::ERROR_FILTERS). */
+    #[Url(as: 'filtro')]
+    public string $errorFilter = '';
+
     public int $groupsPage = 1;
 
     public int $errorsPage = 1;
@@ -105,6 +109,16 @@ class LiveQueueCenter extends Page implements HasTable
     public function mount(): void
     {
         $this->selectTab($this->tab);
+
+        if (! array_key_exists($this->errorFilter, OperationsAdvisor::ERROR_FILTERS)) {
+            $this->errorFilter = '';
+        }
+    }
+
+    public function clearErrorFilter(): void
+    {
+        $this->errorFilter = '';
+        $this->errorsPage = 1;
     }
 
     public function getMaxContentWidth(): Width|string|null
@@ -423,7 +437,10 @@ class LiveQueueCenter extends Page implements HasTable
         $errors = ErrorTracker::groups();
         $groups = $this->tab === 'causas' ? FailedJobCatalog::groups() : [];
         $groupsPager = self::pager(count($groups), $this->groupsPage);
-        $errorsPager = self::pager(count($errors), $this->errorsPage);
+        $filteredErrors = $this->errorFilter !== ''
+            ? array_values(array_filter($errors, fn (array $error): bool => OperationsAdvisor::matchesErrorFilter($error, $this->errorFilter)))
+            : $errors;
+        $errorsPager = self::pager(count($filteredErrors), $this->errorsPage);
         $this->groupsPage = $groupsPager['page'];
         $this->errorsPage = $errorsPager['page'];
 
@@ -433,7 +450,9 @@ class LiveQueueCenter extends Page implements HasTable
             'groups' => array_slice($groups, ($groupsPager['page'] - 1) * self::PER_PAGE, self::PER_PAGE),
             'groupsPager' => $groupsPager,
             'errors' => $errors,
-            'errorsVisible' => array_slice($errors, ($errorsPager['page'] - 1) * self::PER_PAGE, self::PER_PAGE),
+            'errorsVisible' => array_slice($filteredErrors, ($errorsPager['page'] - 1) * self::PER_PAGE, self::PER_PAGE),
+            'errorFilterLabel' => OperationsAdvisor::ERROR_FILTERS[$this->errorFilter] ?? null,
+            'errorFilterCount' => count($filteredErrors),
             'errorsPager' => $errorsPager,
             'canReleaseQueues' => QueueJobActions::isSupported(),
             'jobStats' => $this->tab === 'colas' ? QueueActivityRecorder::jobStats() : [],

@@ -16,6 +16,11 @@
     .ladv-lights { display: grid; grid-template-columns: repeat(var(--ladv-cols, 3), minmax(0, 1fr)); gap: 12px; }
     .ladv-light { display: flex; align-items: center; gap: 12px; background: var(--a-bg); border: 1px solid var(--a-border); border-left: 5px solid var(--a-green); border-radius: 14px; padding: 12px 16px; min-width: 0; }
     .ladv-light.amber { border-left-color: var(--a-amber); } .ladv-light.red { border-left-color: var(--a-red); animation: ladv-alarm 1.2s infinite; }
+    .ladv-light-link { color: inherit; text-decoration: none; cursor: pointer; transition: border-color .15s, transform .15s; }
+    .ladv-light-link:hover { border-top-color: var(--a-blue); border-right-color: var(--a-blue); border-bottom-color: var(--a-blue); transform: translateY(-1px); }
+    .ladv-light-link:focus-visible { outline: 2px solid var(--a-blue); outline-offset: 2px; }
+    .ladv-light-go { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--a-muted); white-space: nowrap; }
+    .ladv-light-link:hover .ladv-light-go { color: var(--a-blue); }
     @keyframes ladv-alarm { 50% { box-shadow: 0 0 0 4px rgba(220, 38, 38, .18); } }
     .ladv-bulb { width: 14px; height: 14px; border-radius: 999px; flex-shrink: 0; background: var(--a-green); box-shadow: 0 0 0 4px rgba(22, 163, 74, .18); }
     .ladv-bulb.amber { background: var(--a-amber); box-shadow: 0 0 0 4px rgba(217, 119, 6, .2); } .ladv-bulb.red { background: var(--a-red); box-shadow: 0 0 0 4px rgba(220, 38, 38, .25); }
@@ -45,15 +50,27 @@
 <div class="ladv">
     <div class="ladv-lights" style="--ladv-cols: {{ count($shownLights) }};">
         @foreach ($shownLights as $key)
-            @php $light = $advice['lights'][$key]; @endphp
-            <div class="ladv-light {{ $light['level'] }}" wire:key="ladv-light-{{ $key }}">
+            @php
+                $light = $advice['lights'][$key];
+                $lightUrl = $actions ? ($light['url'] ?? null) : null;
+            @endphp
+            @if ($lightUrl !== null)
+                <a href="{{ $lightUrl }}" wire:navigate class="ladv-light ladv-light-link {{ $light['level'] }}" wire:key="ladv-light-{{ $key }}" title="Ver {{ mb_strtolower($lightTitles[$key]) }}">
+            @else
+                <div class="ladv-light {{ $light['level'] }}" wire:key="ladv-light-{{ $key }}">
+            @endif
                 <span class="ladv-bulb {{ $light['level'] }}"></span>
-                <div style="min-width: 0;">
+                <div style="min-width: 0; flex: 1;">
                     <div class="ladv-kicker">{{ $lightTitles[$key] }}</div>
                     <div class="ladv-state">{{ $light['label'] }}</div>
                     <div class="ladv-detail" title="{{ $light['detail'] }}">{{ $light['detail'] }}</div>
                 </div>
-            </div>
+            @if ($lightUrl !== null)
+                    <span class="ladv-light-go">Ver →</span>
+                </a>
+            @else
+                </div>
+            @endif
         @endforeach
     </div>
 
