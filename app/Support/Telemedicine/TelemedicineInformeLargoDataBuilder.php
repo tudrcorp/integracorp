@@ -67,10 +67,27 @@ final class TelemedicineInformeLargoDataBuilder
         ];
     }
 
+    /**
+     * Sufijo visible del archivo del informe médico. Es distinto de la clave
+     * interna `DOCUMENT_INFORME_MEDICO` (`informe-medico`), que la regeneración
+     * de documentos usa como identificador y no debe cambiar.
+     */
+    public const FILE_SUFFIX_INFORME_MEDICO = 'Informe-Medico';
+
+    /**
+     * `{cédula}-{referencia}-Informe-Medico.pdf`. Cualquier otro tipo conserva
+     * su clave como sufijo, igual que antes.
+     *
+     * @param  array<string, mixed>  $data
+     */
     public static function pdfDocumentName(
         array $data,
         string $typeDocument = TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
     ): string {
-        return $data['ci_patient'].'-'.$data['code_reference'].'-'.$typeDocument.'.pdf';
+        $suffix = $typeDocument === TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO
+            ? self::FILE_SUFFIX_INFORME_MEDICO
+            : $typeDocument;
+
+        return $data['ci_patient'].'-'.$data['code_reference'].'-'.$suffix.'.pdf';
     }
 }

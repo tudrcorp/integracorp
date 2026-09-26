@@ -31,7 +31,8 @@ beforeEach(function (): void {
     });
     Schema::create('travel_agencies', function (Blueprint $table): void {
         $table->id();
-        $table->unsignedBigInteger('state_id')->nullable();
+        /** En producción es varchar: guarda IDs del catálogo y nombres escritos a mano. */
+        $table->string('state_id')->nullable();
     });
 });
 
@@ -43,7 +44,11 @@ afterEach(function (): void {
 
 function travelChartWidget(): TravelAgencyForStateChart
 {
-    return new TravelAgencyForStateChartUnderTest;
+    /** El widget real, pero leyendo de una consulta fija en vez de la tabla de la página. */
+    $widget = Mockery::mock(TravelAgencyForStateChart::class)->makePartial()->shouldAllowMockingProtectedMethods();
+    $widget->shouldReceive('getPageTableQuery')->andReturnUsing(static fn (): Builder => TravelAgency::query());
+
+    return $widget;
 }
 
 function travelChartCall(TravelAgencyForStateChart $widget, string $method): mixed
@@ -85,8 +90,43 @@ it('ordena de mayor a menor, deja «Sin estado» al final en gris y calcula porc
         ->and($dataset['data'])->toBe([39, 11, 10, 1, 2])
         ->and($dataset['percentages'])->toBe([61.9, 17.5, 15.9, 1.6, 3.2])
         ->and($dataset['muted'])->toBe([false, false, false, false, true])
-        ->and($dataset['colorLight'])->toBe('#2a78d6')
-        ->and($dataset['colorDark'])->toBe('#3987e5');
+        ->and($dataset['levels'])->toBe([4, 2, 2, 0, 0])
+        ->and($dataset['rampLight'])->toHaveCount(6)
+        ->and($dataset['rampDark'])->toHaveCount(6);
+});
+
+it('une en una sola barra el ID del catálogo y el nombre escrito a mano', function (): void {
+    $capitalId = DB::table('states')->insertGetId(['definition' => 'DISTRITO CAPITAL']);
+    $araguaId = DB::table('states')->insertGetId(['definition' => 'ARAGUA']);
+
+    foreach ([
+        ...array_fill(0, 3, (string) $capitalId),
+        'Distrito Capital', 'Estado Distrito Capital', '  distrito   capital ',
+        (string) $araguaId, 'Estado Aragua',
+        'Departamento de Norte de Santander',
+        '999',
+        '', '   ', null,
+    ] as $stateId) {
+        DB::table('travel_agencies')->insert(['state_id' => $stateId]);
+    }
+
+    $data = travelChartCall(travelChartWidget(), 'getData');
+    $dataset = $data['datasets'][0];
+
+    expect($data['labels'])->toBe(['DISTRITO CAPITAL', 'ARAGUA', 'DEPARTAMENTO DE NORTE DE SANTA...', 'Estado #999', 'Sin estado'])
+        ->and($dataset['data'])->toBe([6, 2, 1, 1, 3])
+        ->and($dataset['muted'])->toBe([false, false, false, false, true])
+        ->and(array_sum($dataset['data']))->toBe(13);
+});
+
+it('el color sube de intensidad con la cantidad y nunca se sale de la rampa', function (): void {
+    seedTravelAgencies(['A' => 1, 'B' => 4, 'C' => 9, 'D' => 16, 'E' => 25, 'F' => 100]);
+
+    $levels = travelChartCall(travelChartWidget(), 'getData')['datasets'][0]['levels'];
+
+    expect($levels)->toBe([4, 2, 2, 1, 1, 0])
+        ->and(max($levels))->toBeLessThan(5)
+        ->and(min($levels))->toBeGreaterThanOrEqual(0);
 });
 
 it('la descripción explica el total y quién concentra más', function (): void {
@@ -114,16 +154,7 @@ it('se lee en modo claro y oscuro, sin leyenda y con los números junto a cada e
         ->toContain('legend: { display: false }')
         ->toContain("classList.contains('dark')")
         ->toContain("count + ' · '")
+        ->toContain('ds.rampDark')
+        ->toContain('ds.rampLight')
         ->not->toContain('datalabels');
 });
-
-/**
- * El widget real, pero leyendo de una consulta fija en vez de la tabla de la página.
- */
-final class TravelAgencyForStateChartUnderTest extends TravelAgencyForStateChart
-{
-    protected function getPageTableQuery(): Builder
-    {
-        return TravelAgency::query();
-    }
-}

@@ -15,12 +15,15 @@ use Illuminate\Support\Str;
 /**
  * Agencias de viaje por estado: barras horizontales ordenadas de mayor a menor.
  *
- * Antes era una torta: con una docena de estados y uno solo concentrando casi
- * la mitad, las porciones pequeñas no se distinguían y la leyenda no se leía en
- * modo oscuro. Comparar cantidades es trabajo de barras: un solo color (el
- * estado no necesita color propio, su nombre ya lo identifica), el número y el
- * porcentaje escritos junto a cada estado, y «Sin estado» en gris al final
- * porque no es un estado sino un dato por completar.
+ * El color de cada barra sigue la cantidad (escala de un solo azul, más intenso
+ * cuanto más agencias): el estado no necesita color propio porque su nombre ya
+ * lo identifica. «Sin estado» va en gris al final porque no es un estado sino
+ * un dato por completar.
+ *
+ * `travel_agencies.state_id` es texto y convive con dos formatos: el ID del
+ * catálogo (`10`) y el nombre escrito a mano en el registro (`Estado Aragua`).
+ * Ambos se agrupan bajo el mismo nombre normalizado para no partir un estado en
+ * dos barras. Solo se unifica al mostrar; el dato guardado no se toca.
  */
 class TravelAgencyForStateChart extends ChartWidget
 {
@@ -28,10 +31,20 @@ class TravelAgencyForStateChart extends ChartWidget
 
     public const WITHOUT_STATE = 'Sin estado';
 
-    /** Azul de magnitud validado para superficie clara y oscura (contraste ≥ 3:1). */
-    private const BAR_LIGHT = '#2a78d6';
+    /**
+     * Rampas de azul por intensidad (de menos a más agencias), validadas como
+     * escala ordinal sobre superficie clara y oscura. El sexto tono es solo
+     * para el hover del nivel más alto.
+     *
+     * @var list<string>
+     */
+    private const RAMP_LIGHT = ['#86b6ef', '#5598e7', '#2a78d6', '#1c5cab', '#104281', '#0d366b'];
 
-    private const BAR_DARK = '#3987e5';
+    /** En oscuro la intensidad sube hacia el claro, que es lo que resalta sobre fondo negro. */
+    private const RAMP_DARK = ['#184f95', '#256abf', '#3987e5', '#6da7ec', '#9ec5f4', '#cde2fb'];
+
+    /** Niveles de color que usan las barras (el último tono de cada rampa queda para el hover). */
+    private const LEVELS = 5;
 
     /** Gris de menor énfasis para «Sin estado». */
     private const MUTED = '#8a8983';
@@ -52,7 +65,7 @@ class TravelAgencyForStateChart extends ChartWidget
     protected string $color = 'gray';
 
     /**
-     * @var array{rows: list<array{label: string, count: int, pct: float, muted: bool}>, total: int}|null
+     * @var array{rows: list<array{label: string, count: int, pct: float, muted: bool, level: int}>, total: int}|null
      */
     private ?array $summary = null;
 
@@ -107,9 +120,6 @@ class TravelAgencyForStateChart extends ChartWidget
             ];
         }
 
-        $dark = self::BAR_DARK;
-        $light = self::BAR_LIGHT;
-
         return [
             'labels' => array_map(static fn (array $row): string => $row['label'], $summary['rows']),
             'datasets' => [[
@@ -118,9 +128,10 @@ class TravelAgencyForStateChart extends ChartWidget
                 'counts' => array_map(static fn (array $row): int => $row['count'], $summary['rows']),
                 'percentages' => array_map(static fn (array $row): float => $row['pct'], $summary['rows']),
                 'muted' => array_map(static fn (array $row): bool => $row['muted'], $summary['rows']),
-                /** El color exacto se resuelve en el navegador según el tema (ver getOptions). */
-                'colorLight' => $light,
-                'colorDark' => $dark,
+                'levels' => array_map(static fn (array $row): int => $row['level'], $summary['rows']),
+                /** El tono exacto se resuelve en el navegador según el tema (ver getOptions). */
+                'rampLight' => self::RAMP_LIGHT,
+                'rampDark' => self::RAMP_DARK,
                 'colorMuted' => self::MUTED,
                 'borderWidth' => 0,
                 'borderRadius' => ['topRight' => 4, 'bottomRight' => 4, 'topLeft' => 0, 'bottomLeft' => 0],
@@ -157,7 +168,9 @@ class TravelAgencyForStateChart extends ChartWidget
                             return ds.colorMuted;
                         }
 
-                        return isDark ? ds.colorDark : ds.colorLight;
+                        const ramp = isDark ? ds.rampDark : ds.rampLight;
+
+                        return ramp[ds.levels?.[context.dataIndex] ?? 2];
                     },
                     hoverBackgroundColor: (context) => {
                         const ds = context.dataset;
@@ -167,7 +180,9 @@ class TravelAgencyForStateChart extends ChartWidget
                             return isDark ? '#a3a29c' : '#6f6e69';
                         }
 
-                        return isDark ? '#5b9ff0' : '#1f63b8';
+                        const ramp = isDark ? ds.rampDark : ds.rampLight;
+
+                        return ramp[(ds.levels?.[context.dataIndex] ?? 2) + 1];
                     },
                 },
             },
@@ -265,7 +280,7 @@ class TravelAgencyForStateChart extends ChartWidget
      * de mayor a menor, con «Sin estado» siempre al final. Se calcula una vez
      * por render: lo usan los datos, la descripción y la proporción del gráfico.
      *
-     * @return array{rows: list<array{label: string, count: int, pct: float, muted: bool}>, total: int}
+     * @return array{rows: list<array{label: string, count: int, pct: float, muted: bool, level: int}>, total: int}
      */
     private function summary(): array
     {
@@ -276,25 +291,55 @@ class TravelAgencyForStateChart extends ChartWidget
         $table = (new TravelAgency)->getTable();
         $filteredIds = $this->getPageTableQuery()->reorder()->select("{$table}.id")->distinct();
 
+        /**
+         * Se recorren las filas en vez de indexarlas por `state_id`: NULL y '' son
+         * grupos distintos en SQL, y como llave de colección uno pisaría al otro.
+         */
         $counts = TravelAgency::query()
             ->whereIn('id', $filteredIds)
             ->selectRaw('state_id, COUNT(*) as total')
             ->groupBy('state_id')
-            ->pluck('total', 'state_id');
+            ->toBase()
+            ->get()
+            ->map(static fn (object $row): array => ['raw' => trim((string) $row->state_id), 'count' => (int) $row->total]);
 
-        $withoutState = (int) ($counts[''] ?? 0);
-        $stateCounts = $counts->filter(static fn (mixed $total, mixed $stateId): bool => $stateId !== '' && $stateId !== null);
-        $names = State::query()->whereIn('id', $stateCounts->keys())->pluck('definition', 'id');
-        $total = (int) $counts->sum();
+        $catalogIds = $counts->pluck('raw')
+            ->filter(static fn (string $raw): bool => ctype_digit($raw))
+            ->values();
+        $names = State::query()->whereIn('id', $catalogIds)->pluck('definition', 'id');
+        $total = (int) $counts->sum('count');
+        $withoutState = 0;
 
+        /** @var array<string, int> $grouped */
+        $grouped = [];
+
+        foreach ($counts as ['raw' => $raw, 'count' => $count]) {
+
+            if ($raw === '') {
+                $withoutState += $count;
+
+                continue;
+            }
+
+            $label = match (true) {
+                ! ctype_digit($raw) => self::normalizeStateName($raw),
+                isset($names[(int) $raw]) => self::normalizeStateName((string) $names[(int) $raw]),
+                default => 'Estado #'.$raw,
+            };
+
+            $grouped[$label] = ($grouped[$label] ?? 0) + $count;
+        }
+
+        $max = max([1, ...array_values($grouped)]);
         $rows = [];
 
-        foreach ($stateCounts as $stateId => $count) {
+        foreach ($grouped as $label => $count) {
             $rows[] = [
-                'label' => Str::limit((string) ($names[$stateId] ?? 'Estado #'.$stateId), 30),
-                'count' => (int) $count,
-                'pct' => $total > 0 ? round(((int) $count / $total) * 100, 1) : 0.0,
+                'label' => Str::limit((string) $label, 30),
+                'count' => $count,
+                'pct' => $total > 0 ? round(($count / $total) * 100, 1) : 0.0,
                 'muted' => false,
+                'level' => self::intensityLevel($count, $max),
             ];
         }
 
@@ -306,10 +351,33 @@ class TravelAgencyForStateChart extends ChartWidget
                 'count' => $withoutState,
                 'pct' => $total > 0 ? round(($withoutState / $total) * 100, 1) : 0.0,
                 'muted' => true,
+                'level' => 0,
             ];
         }
 
         return $this->summary = ['rows' => $rows, 'total' => $total];
+    }
+
+    /**
+     * «Estado Aragua», «aragua» y el ID 4 (ARAGUA) terminan en la misma barra.
+     */
+    private static function normalizeStateName(string $name): string
+    {
+        return Str::of($name)
+            ->ascii()
+            ->upper()
+            ->squish()
+            ->replaceMatches('/^ESTADO\s+/', '')
+            ->value();
+    }
+
+    /**
+     * Nivel de color de 0 a LEVELS - 1. La raíz cuadrada reparte mejor los tonos
+     * cuando un estado concentra casi todo y el resto tiene una o dos agencias.
+     */
+    private static function intensityLevel(int $count, int $max): int
+    {
+        return min(self::LEVELS - 1, (int) floor(sqrt($count / $max) * self::LEVELS));
     }
 
     private static function percent(float $value): string

@@ -7,14 +7,36 @@ use App\Support\Telemedicine\TelemedicineInformeLargoDataBuilder;
 
 $basePath = dirname(__DIR__, 2);
 
-it('nombra el archivo del informe medico con el sufijo informe-medico', function (): void {
+it('nombra el archivo del informe medico con el sufijo Informe-Medico', function (): void {
     $name = TelemedicineInformeLargoDataBuilder::pdfDocumentName([
         'ci_patient' => 'V-12345678',
         'code_reference' => 'REF-100',
     ]);
 
-    expect($name)->toBe('V-12345678-REF-100-informe-medico.pdf')
-        ->and(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO)->toBe('informe-medico');
+    expect($name)->toBe('V-12345678-REF-100-Informe-Medico.pdf')
+        ->and(TelemedicineInformeLargoDataBuilder::pdfDocumentName(
+            ['ci_patient' => '16007868', 'code_reference' => 'REF-60294'],
+            TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
+        ))->toBe('16007868-REF-60294-Informe-Medico.pdf');
+});
+
+it('la clave interna del informe medico no cambia: la usa la regeneracion de documentos', function (): void {
+    expect(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO)->toBe('informe-medico');
+});
+
+it('otro tipo de documento conserva su clave como sufijo', function (): void {
+    expect(TelemedicineInformeLargoDataBuilder::pdfDocumentName(
+        ['ci_patient' => '16007868', 'code_reference' => 'REF-60294'],
+        'informe-largo',
+    ))->toBe('16007868-REF-60294-informe-largo.pdf');
+});
+
+it('la notificacion de documento listo usa el mismo nombre que el archivo guardado', function () use ($basePath): void {
+    $job = file_get_contents($basePath.'/app/Jobs/GeneratePdfInformeMedicoLargo.php');
+
+    expect($job)
+        ->toContain('TelemedicineInformeLargoDataBuilder::pdfDocumentName($this->data, $this->type_document)')
+        ->not->toContain("\$this->data['ci_patient'].'-'");
 });
 
 it('el generador y el registrador AMD usan el sufijo canonico del informe medico', function () use ($basePath): void {

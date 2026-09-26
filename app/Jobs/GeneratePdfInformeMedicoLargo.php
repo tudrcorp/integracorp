@@ -8,6 +8,7 @@ use App\Models\TelemedicineConsultationPatient;
 use App\Support\Telemedicine\Concerns\LogsTelemedicineJobFailures;
 use App\Support\Telemedicine\TelemedicineCaseDocumentReadyNotification;
 use App\Support\Telemedicine\TelemedicineConsultationUploadedDocuments;
+use App\Support\Telemedicine\TelemedicineInformeLargoDataBuilder;
 use App\Support\Telemedicine\TelemedicineInformeLargoPdfGenerator;
 use App\Support\Telemedicine\TelemedicineJobFailureLogger;
 use Filament\Notifications\Notification;
@@ -68,7 +69,7 @@ class GeneratePdfInformeMedicoLargo implements ShouldQueue
         $this->runWithTelemedicineFailureLogging(function (): void {
             $this->generatePDF($this->data);
 
-            $name_pdf = $this->data['ci_patient'].'-'.$this->data['code_reference'].'-'.$this->type_document.'.pdf';
+            $name_pdf = TelemedicineInformeLargoDataBuilder::pdfDocumentName($this->data, $this->type_document);
 
             TelemedicineCaseDocumentReadyNotification::send($this->user, $this->data, $name_pdf);
         }, $this->telemedicineJobFailureContext());
