@@ -209,7 +209,7 @@ describe('diagnóstico', function (): void {
         'registro borrado' => ['Illuminate\Database\Eloquent\ModelNotFoundException', 'No query results for model [App\Models\Affiliation].', FailureDiagnosis::CATEGORY_DATA, FailureDiagnosis::ACTION_DELETE],
         'bug' => ['TypeError', 'App\Support\X::y(): Argument #1 ($a) must be of type string, null given', FailureDiagnosis::CATEGORY_CODE, FailureDiagnosis::ACTION_FIX],
         'adjunto que no existe' => ['Symfony\Component\Mime\Exception\InvalidArgumentException', 'Unable to open path "/var/www/x/public/storage/CER-TDEC-IND-000244.pdf".', FailureDiagnosis::CATEGORY_DATA, FailureDiagnosis::ACTION_FIX],
-        'trabajo de otra aplicación' => ['Error', 'The script tried to call a method on an incomplete object. Please ensure that the class LiveQueueCenterTest "App\Mail\SendMailKitBienvenida" of the object you are trying to operate on was loaded _before_ unserialize() gets called', FailureDiagnosis::CATEGORY_CONFIG, FailureDiagnosis::ACTION_DELETE],
+        'trabajo de otra aplicación' => ['Error', 'The script tried to call a method on an incomplete object. Please ensure that the class definition "App\Mail\SendMailKitBienvenida" of the object you are trying to operate on was loaded _before_ unserialize() gets called', FailureDiagnosis::CATEGORY_CONFIG, FailureDiagnosis::ACTION_DELETE],
         'desconocido' => ['RuntimeException', 'Algo raro', FailureDiagnosis::CATEGORY_UNKNOWN, FailureDiagnosis::ACTION_REVIEW],
     ]);
 
@@ -707,57 +707,60 @@ it('el monitor se dibuja entero con una cola sin atender y ofrece liberarla', fu
  * Redis en memoria con la misma estructura que usa Laravel: lista de
  * pendientes y conjuntos ordenados de programados y reservados.
  */
-final class LqcFakeRedis
+function lqcFakeRedis(): object
 {
-    /** @var array<string, list<string>> */
-    public array $lists = [];
-
-    /** @var array<string, array<string, float>> */
-    public array $sets = [];
-
-    /** Simula un worker que toma el trabajo justo antes de que se quite. */
-    public ?string $stolenOnRemove = null;
-
-    public function lrange(string $key, int $start, int $stop): array
+    return new class
     {
-        return array_slice($this->lists[$key] ?? [], $start, $stop < 0 ? null : $stop - $start + 1);
-    }
+        /** @var array<string, list<string>> */
+        public array $lists = [];
 
-    public function lrem(string $key, int $count, string $value): int
-    {
-        if ($this->stolenOnRemove === $value) {
-            $this->lists[$key] = array_values(array_filter($this->lists[$key] ?? [], fn (string $item): bool => $item !== $value));
+        /** @var array<string, array<string, float>> */
+        public array $sets = [];
+
+        /** Simula un worker que toma el trabajo justo antes de que se quite. */
+        public ?string $stolenOnRemove = null;
+
+        public function lrange(string $key, int $start, int $stop): array
+        {
+            return array_slice($this->lists[$key] ?? [], $start, $stop < 0 ? null : $stop - $start + 1);
         }
 
-        $index = array_search($value, $this->lists[$key] ?? [], true);
+        public function lrem(string $key, int $count, string $value): int
+        {
+            if ($this->stolenOnRemove === $value) {
+                $this->lists[$key] = array_values(array_filter($this->lists[$key] ?? [], fn (string $item): bool => $item !== $value));
+            }
 
-        if ($index === false) {
-            return 0;
+            $index = array_search($value, $this->lists[$key] ?? [], true);
+
+            if ($index === false) {
+                return 0;
+            }
+
+            array_splice($this->lists[$key], $index, 1);
+
+            return 1;
         }
 
-        array_splice($this->lists[$key], $index, 1);
+        public function zrangebyscore(string $key, string $min, string $max, array $options = []): array
+        {
+            $members = $this->sets[$key] ?? [];
+            asort($members);
 
-        return 1;
-    }
-
-    public function zrangebyscore(string $key, string $min, string $max, array $options = []): array
-    {
-        $members = $this->sets[$key] ?? [];
-        asort($members);
-
-        return $members;
-    }
-
-    public function zrem(string $key, string $member): int
-    {
-        if (! isset($this->sets[$key][$member])) {
-            return 0;
+            return $members;
         }
 
-        unset($this->sets[$key][$member]);
+        public function zrem(string $key, string $member): int
+        {
+            if (! isset($this->sets[$key][$member])) {
+                return 0;
+            }
 
-        return 1;
-    }
+            unset($this->sets[$key][$member]);
+
+            return 1;
+        }
+    };
 }
 
 function lqcRedisPayload(string $class, string $uuid, int $createdAt, string $command = 'O:8:"stdClass":0:{}'): string
@@ -768,7 +771,7 @@ function lqcRedisPayload(string $class, string $uuid, int $createdAt, string $co
 describe('liberar colas en Redis (producción)', function (): void {
     beforeEach(function (): void {
         $now = now()->getTimestamp();
-        $this->redis = new LqcFakeRedis;
+        $this->redis = lqcFakeRedis();
         $renovation = static fn (string $uuid, int $days): string => lqcRedisPayload('App\Jobs\PrepareAffiliationRenovations', $uuid, $now - $days * 86400);
 
         /** El caso real: 55 renovaciones diarias acumuladas porque ningún worker escucha la cola. */
@@ -848,4 +851,91 @@ it('muestra el nombre de la cola en una sola línea', function (): void {
     expect($center)->toContain('.lqc-queue-name { font-weight: 700; white-space: nowrap; word-break: normal; }')
         ->and($center)->toContain('<td class="lqc-mono lqc-queue-name">{{ $queue[\'name\'] }}</td>')
         ->and($panel)->toContain('<td class="lsec-mono" style="font-weight: 700; white-space: nowrap;">{{ $row[\'name\'] }}</td>');
+});
+
+describe('semáforo de errores enlazado', function (): void {
+    /**
+     * @return array<string, mixed>
+     */
+    function lqcErrorRow(string $fingerprint, string $status, int $secondsAgo): array
+    {
+        return ['fingerprint' => $fingerprint, 'status' => $status, 'last_at' => time() - $secondsAgo];
+    }
+
+    function lqcErrorsLight(array $errors): array
+    {
+        return OperationsAdvisor::advise(['level' => 'green', 'level_label' => '', 'reasons' => [], 'offenders' => []], null, $errors)['lights']['errors'];
+    }
+
+    it('con un solo error reciente abre directo su detalle', function (): void {
+        $light = lqcErrorsLight([lqcErrorRow('abc123', 'active', 60), lqcErrorRow('old999', 'active', 7200)]);
+        $query = [];
+        parse_str((string) parse_url($light['url'], PHP_URL_QUERY), $query);
+
+        expect($light['label'])->toBe('Errores ahora')
+            ->and(parse_url($light['url'], PHP_URL_PATH))->toEndWith('/business/colas-y-errores')
+            ->and($query)->toMatchArray([
+                'tab' => 'errores',
+                'filtro' => 'recientes',
+                'action' => 'viewError',
+                'actionArguments' => ['fingerprint' => 'abc123'],
+            ]);
+    });
+
+    it('con varios errores recientes lleva a la lista filtrada, sin abrir ninguno', function (): void {
+        $light = lqcErrorsLight([lqcErrorRow('abc123', 'active', 60), lqcErrorRow('def456', 'active', 120)]);
+        $query = [];
+        parse_str((string) parse_url($light['url'], PHP_URL_QUERY), $query);
+
+        expect($query)->toBe(['tab' => 'errores', 'filtro' => 'recientes']);
+    });
+
+    it('sin errores el semáforo igual lleva a la pestaña de errores', function (): void {
+        $light = lqcErrorsLight([]);
+
+        expect($light['label'])->toBe('Sin errores')
+            ->and($light['url'])->toContain('tab=errores')
+            ->and($light['url'])->not->toContain('filtro');
+    });
+
+    it('la tarjeta es un enlace en el monitor, pero no en la TV', function (): void {
+        $advice = OperationsAdvisor::advise(['level' => 'green', 'level_label' => '', 'reasons' => [], 'offenders' => []], null, [lqcErrorRow('abc123', 'active', 60)]);
+
+        $withActions = view('live-presence.partials.advisor', ['advice' => $advice, 'actions' => true, 'lights' => ['errors']])->render();
+        $tv = view('live-presence.partials.advisor', ['advice' => $advice, 'actions' => false, 'lights' => ['errors']])->render();
+
+        expect($withActions)->toContain('class="ladv-light ladv-light-link red"')
+            ->toContain('action=viewError')
+            ->toContain('Ver →')
+            ->and($tv)->not->toContain('class="ladv-light ladv-light-link')
+            ->not->toContain('action=viewError');
+    });
+
+    it('el filtro de la URL muestra solo esos errores y se puede quitar', function (): void {
+        Filament::setCurrentPanel('business');
+        $this->actingAs(lqcAdmin());
+        ErrorTracker::capture(new RuntimeException('Error reciente de prueba uno'));
+        ErrorTracker::capture(new LogicException('Error reciente de prueba dos'));
+
+        Livewire::withQueryParams(['tab' => 'errores', 'filtro' => 'recientes'])
+            ->test(LiveQueueCenter::class)
+            ->assertSet('errorFilter', 'recientes')
+            ->assertSee('Mostrando solo')
+            ->assertSee('errores de los últimos 10 minutos')
+            ->assertSee('Error reciente de prueba uno')
+            ->call('clearErrorFilter')
+            ->assertSet('errorFilter', '')
+            ->assertDontSee('Mostrando solo')
+            ->assertSee('Error reciente de prueba dos');
+    });
+
+    it('ignora un filtro desconocido en la URL', function (): void {
+        Filament::setCurrentPanel('business');
+        $this->actingAs(lqcAdmin());
+
+        Livewire::withQueryParams(['tab' => 'errores', 'filtro' => '<script>'])
+            ->test(LiveQueueCenter::class)
+            ->assertSet('errorFilter', '')
+            ->assertDontSee('Mostrando solo');
+    });
 });

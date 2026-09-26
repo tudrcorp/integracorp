@@ -7,13 +7,16 @@
     <meta name="referrer" content="same-origin">
     <title>{{ $title ?? 'Monitor en vivo' }} · IntegraCorp</title>
     <link rel="icon" href="{{ asset('image/ico_Android_IOS.png') }}">
-    <style>
-        html, body { margin: 0; padding: 0; background: #060b16; color: #e2e8f0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
-        body { min-height: 100vh; }
-    </style>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
+
+    {{-- Solo el CSS (Tailwind + Flux): la TV no necesita el JS del sitio público. --}}
+    @vite(['resources/css/app.css'])
 </head>
-<body>
+<body class="min-h-screen bg-zinc-950 font-sans text-zinc-100 antialiased">
     {{ $slot }}
+
+    @fluxScripts
 
     <script>
         /**
@@ -28,6 +31,35 @@
                 });
             });
         });
+
+        /**
+         * En una TV nadie hace scroll: si el contenido no cabe, cada 25 s baja
+         * suavemente hasta el final y luego vuelve arriba. Si alguien mueve la
+         * página a mano, el ciclo se pausa un minuto.
+         */
+        (() => {
+            const stepMs = 25000;
+            let pausedUntil = 0;
+            let goingDown = true;
+            let autoScrolling = false;
+
+            ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach((type) => {
+                window.addEventListener(type, () => { pausedUntil = Date.now() + 60000; }, { passive: true });
+            });
+
+            setInterval(() => {
+                const room = document.documentElement.scrollHeight - window.innerHeight;
+
+                if (room <= 8 || Date.now() < pausedUntil || autoScrolling) {
+                    return;
+                }
+
+                autoScrolling = true;
+                window.scrollTo({ top: goingDown ? room : 0, behavior: 'smooth' });
+                goingDown = ! goingDown;
+                setTimeout(() => { autoScrolling = false; }, 2000);
+            }, stepMs);
+        })();
 
         /** Respaldo: recarga completa cada 6 horas para liberar memoria del navegador. */
         setTimeout(() => window.location.reload(), 6 * 60 * 60 * 1000);

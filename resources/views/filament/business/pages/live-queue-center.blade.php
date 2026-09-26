@@ -39,6 +39,9 @@
         .lqc-error { margin-top: 6px; font-size: 12px; color: var(--q-muted); word-break: break-word; }
         .lqc-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
         .lqc-reco { font-size: 11px; font-weight: 700; color: var(--q-muted); }
+        .lqc-filter { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid var(--q-border); background: rgba(2, 132, 199, .08); font-size: 13px; }
+        .lqc-filter-clear { font-size: 12px; font-weight: 700; border: 1px solid var(--q-border); border-radius: 999px; padding: 5px 12px; background: var(--q-bg); color: var(--q-text); cursor: pointer; white-space: nowrap; }
+        .lqc-filter-clear:hover { border-color: var(--q-blue); color: var(--q-blue); }
         .lqc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .lqc-table th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--q-muted); padding: 9px 14px; border-bottom: 1px solid var(--q-border); white-space: nowrap; }
         .lqc-table td { padding: 9px 14px; border-top: 1px solid var(--q-border); vertical-align: top; font-variant-numeric: tabular-nums; }
@@ -125,6 +128,12 @@
                     <span class="lqc-kicker">Errores del sistema · últimos {{ (int) config('live-presence.errors.retention_days', 7) }} días</span>
                     <span class="lqc-muted">Agrupados por la línea de nuestro código donde se originan. Marque «resuelto» al desplegar la corrección: si vuelve, se avisa como regresión.</span>
                 </div>
+                @if ($errorFilterLabel !== null)
+                    <div class="lqc-filter" wire:key="error-filter-{{ $this->errorFilter }}">
+                        <span>Mostrando solo <strong>{{ $errorFilterLabel }}</strong> ({{ $errorFilterCount }}).</span>
+                        <button type="button" class="lqc-filter-clear" wire:click="clearErrorFilter" wire:loading.attr="disabled" wire:target="clearErrorFilter">Ver todos los errores</button>
+                    </div>
+                @endif
                 @forelse ($errorsVisible as $error)
                     <div class="lqc-group" wire:key="error-{{ $error['fingerprint'] }}" style="{{ $error['status'] === 'resolved' ? 'opacity: .6;' : '' }}">
                         <div>
@@ -151,7 +160,7 @@
                         </div>
                     </div>
                 @empty
-                    <div class="lqc-empty">Sin errores registrados. Cualquier error que ocurra en paneles, trabajos o consola aparecerá aquí al instante.</div>
+                    <div class="lqc-empty">{{ $errorFilterLabel !== null ? 'Ya no quedan '.$errorFilterLabel.'. Pueden haberse resuelto o vencido la ventana de tiempo.' : 'Sin errores registrados. Cualquier error que ocurra en paneles, trabajos o consola aparecerá aquí al instante.' }}</div>
                 @endforelse
                 @include('live-presence.partials.pager', ['pager' => $errorsPager, 'list' => 'errors'])
             </div>

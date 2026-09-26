@@ -6,6 +6,7 @@ namespace App\Livewire;
 
 use App\Support\LivePresence\ErrorTracker;
 use App\Support\LivePresence\LiveActivitySnapshot;
+use App\Support\LivePresence\LiveMonitorTvBoard;
 use App\Support\LivePresence\OperationsAdvisor;
 use App\Support\LivePresence\SecuritySnapshot;
 use Illuminate\Contracts\View\View;
@@ -54,14 +55,10 @@ class LiveMonitorTv extends Component
         $sessions = LiveActivitySnapshot::sessions();
         $security = SecuritySnapshot::build();
         $health = LiveActivitySnapshot::systemHealth();
+        $advice = OperationsAdvisor::advise($security, $health['queue_report'] ?? null, ErrorTracker::groups());
 
         return view('livewire.live-monitor-tv', [
-            'security' => $security,
-            'kpis' => LiveActivitySnapshot::kpis($sessions),
-            'health' => $health,
-            'advice' => OperationsAdvisor::advise($security, $health['queue_report'] ?? null, ErrorTracker::groups()),
-            'sessions' => array_slice($sessions, 0, 14),
-            'totalSessions' => count($sessions),
+            'board' => LiveMonitorTvBoard::build($security, LiveActivitySnapshot::kpis($sessions), $health, $advice, $sessions),
             'refreshedAt' => now()->format('H:i:s'),
         ]);
     }

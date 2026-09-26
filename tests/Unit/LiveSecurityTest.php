@@ -351,3 +351,39 @@ it('las secciones se pueden plegar en el monitor pero siempre se ven en la TV', 
         ->assertSee('Usuarios conectados')
         ->assertSee('IPs sospechosas');
 });
+
+it('el tablero de la TV arma 30 minutos alineados al minuto actual con la fecha que acepta Flux', function (): void {
+    $now = mktime(14, 37, 25, 9, 24, 2026);
+    $series = ['requests' => range(1, 30), 'failed_logins' => [...array_fill(0, 29, 0), 4]];
+
+    $rows = App\Support\LivePresence\LiveMonitorTvBoard::chartRows($series, $now);
+
+    expect($rows)->toHaveCount(30)
+        ->and($rows[29]['at'])->toBe('2026-09-24T14:37:00')
+        ->and($rows[0]['at'])->toBe('2026-09-24T14:08:00')
+        ->and($rows[29]['requests'])->toBe(30)
+        ->and($rows[0]['requests'])->toBe(1)
+        ->and($rows[29]['failed_logins'])->toBe(4)
+        ->and($rows[29]['server_errors'])->toBe(0);
+
+    foreach ($rows as $row) {
+        expect($row['at'])->toMatch('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/');
+    }
+});
+
+it('la TV se dibuja con Flux, con gráficas y sin nada clicable', function (): void {
+    SecurityMonitor::recordFailedLogin(attackRequest('45.10.10.10'), 'victima@tudrencasa.com', 'Negocios');
+
+    $html = $this->get('/monitor/tv/'.str_repeat('a1B2', 16))->assertOk()->getContent();
+
+    expect($html)->toContain('<ui-chart')
+        ->toContain('Tráfico · últimos 30 minutos')
+        ->toContain('Incidentes de seguridad por minuto')
+        ->toContain('Seguridad · último minuto')
+        ->toContain('Qué hacer ahora')
+        ->toContain('Cuentas bajo ataque')
+        ->toContain('noindex, nofollow')
+        ->not->toContain('ladv-light-link')
+        ->not->toContain('wire:navigate')
+        ->not->toContain('mountAction');
+});

@@ -24,7 +24,7 @@ final class OperationsAdvisor
      * @param  array<string, mixed>  $security  SecuritySnapshot::build()
      * @param  array<string, mixed>|null  $queueReport  QueueHealth::measure()
      * @param  list<array<string, mixed>>  $errors  ErrorTracker::groups()
-     * @return array{lights: array<string, array{level: string, label: string, detail: string}>, actions: list<array{severity: string, area: string, title: string, detail: string, cta: array{type: string, label: string, value: string}|null}>}
+     * @return array{lights: array<string, array{level: string, label: string, detail: string, url?: string|null}>, actions: list<array{severity: string, area: string, title: string, detail: string, cta: array{type: string, label: string, value: string}|null}>}
      */
     public static function advise(array $security, ?array $queueReport, array $errors): array
     {
@@ -115,7 +115,7 @@ final class OperationsAdvisor
                 'Errores',
                 ($error['status'] === 'regression' ? 'Volvió un error resuelto: ' : 'Error nuevo: ').$error['short_class'].' en '.($error['origin'] ?: $error['location']),
                 $error['count'].' '.($error['count'] === 1 ? 'vez' : 'veces').($error['users'] > 0 ? ' · '.$error['users'].' '.($error['users'] === 1 ? 'usuario afectado' : 'usuarios afectados') : '').' · último '.$error['last_ago'].'. '.$error['diagnosis']['title'].'.',
-                self::link('Ver error', 'errores'),
+                ['type' => 'link', 'label' => 'Ver error', 'value' => self::errorsUrl([$error], '')],
             );
 
             if (count($actions) >= 3) {
@@ -191,22 +191,69 @@ final class OperationsAdvisor
         return ['level' => 'green', 'label' => 'Al día', 'detail' => $report['pending_total'].' pendientes'.($workers['known'] ? ' · '.$alive.' '.($alive === 1 ? 'worker' : 'workers') : '').'.'];
     }
 
+    /** Filtros de la pestaña de errores del Centro de colas y errores. */
+    public const ERROR_FILTERS = [
+        'regresiones' => 'errores resueltos que volvieron',
+        'recientes' => 'errores de los últimos 10 minutos',
+        'nuevos' => 'errores nuevos de las últimas 24 horas',
+    ];
+
+    /**
+     * Misma regla que el semáforo: así el enlace lleva exactamente a los errores que lo encendieron.
+     *
+     * @param  array<string, mixed>  $error
+     */
+    public static function matchesErrorFilter(array $error, string $filter): bool
+    {
+        return match ($filter) {
+            'regresiones' => ($error['status'] ?? '') === 'regression',
+            'recientes' => ($error['status'] ?? '') !== 'resolved' && (int) ($error['last_at'] ?? 0) >= time() - 600,
+            'nuevos' => ($error['status'] ?? '') === 'new',
+            default => true,
+        };
+    }
+
     /**
      * @param  list<array<string, mixed>>  $errors
-     * @return array{level: string, label: string, detail: string}
+     * @return array{level: string, label: string, detail: string, url: string|null}
      */
     private static function errorLight(array $errors): array
     {
-        $regressions = count(array_filter($errors, static fn (array $error): bool => $error['status'] === 'regression'));
-        $new = count(array_filter($errors, static fn (array $error): bool => $error['status'] === 'new'));
-        $recent = count(array_filter($errors, static fn (array $error): bool => $error['status'] !== 'resolved' && (int) $error['last_at'] >= time() - 600));
+        $regressions = array_values(array_filter($errors, static fn (array $error): bool => self::matchesErrorFilter($error, 'regresiones')));
+        $recent = array_values(array_filter($errors, static fn (array $error): bool => self::matchesErrorFilter($error, 'recientes')));
+        $new = array_values(array_filter($errors, static fn (array $error): bool => self::matchesErrorFilter($error, 'nuevos')));
 
         return match (true) {
-            $regressions > 0 => ['level' => 'red', 'label' => 'Regresión', 'detail' => $regressions.' '.($regressions === 1 ? 'error resuelto volvió' : 'errores resueltos volvieron').'.'],
-            $recent > 0 => ['level' => 'red', 'label' => 'Errores ahora', 'detail' => $recent.' '.($recent === 1 ? 'tipo de error' : 'tipos de error').' en los últimos 10 min.'],
-            $new > 0 => ['level' => 'amber', 'label' => 'Errores nuevos', 'detail' => $new.' '.($new === 1 ? 'error nuevo' : 'errores nuevos').' en 24 h.'],
-            default => ['level' => 'green', 'label' => 'Sin errores', 'detail' => 'Nada nuevo en 24 h.'],
+            $regressions !== [] => ['level' => 'red', 'label' => 'Regresión', 'detail' => count($regressions).' '.(count($regressions) === 1 ? 'error resuelto volvió' : 'errores resueltos volvieron').'.', 'url' => self::errorsUrl($regressions, 'regresiones')],
+            $recent !== [] => ['level' => 'red', 'label' => 'Errores ahora', 'detail' => count($recent).' '.(count($recent) === 1 ? 'tipo de error' : 'tipos de error').' en los últimos 10 min.', 'url' => self::errorsUrl($recent, 'recientes')],
+            $new !== [] => ['level' => 'amber', 'label' => 'Errores nuevos', 'detail' => count($new).' '.(count($new) === 1 ? 'error nuevo' : 'errores nuevos').' en 24 h.', 'url' => self::errorsUrl($new, 'nuevos')],
+            default => ['level' => 'green', 'label' => 'Sin errores', 'detail' => 'Nada nuevo en 24 h.', 'url' => self::errorsUrl([], '')],
         };
+    }
+
+    /**
+     * Un solo error: abre su detalle. Varios: la pestaña de errores filtrada por ellos.
+     *
+     * @param  list<array<string, mixed>>  $errors
+     */
+    public static function errorsUrl(array $errors, string $filter): string
+    {
+        $parameters = ['tab' => 'errores'];
+
+        if (array_key_exists($filter, self::ERROR_FILTERS)) {
+            $parameters['filtro'] = $filter;
+        }
+
+        if (count($errors) === 1 && is_string($errors[0]['fingerprint'] ?? null)) {
+            $parameters['action'] = 'viewError';
+            $parameters['actionArguments'] = ['fingerprint' => $errors[0]['fingerprint']];
+        }
+
+        try {
+            return LiveQueueCenter::getUrl($parameters);
+        } catch (Throwable) {
+            return '/business/colas-y-errores?'.http_build_query($parameters);
+        }
     }
 
     /**

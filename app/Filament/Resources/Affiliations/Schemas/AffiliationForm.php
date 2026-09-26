@@ -87,6 +87,7 @@ class AffiliationForm
                                         $set('code_individual_quote', $code);
                                     })
                                     ->required()
+                                    ->hiddenOn('edit')
                                     ->validationMessages([
                                         'required'  => 'Campo Requerido',
                                     ]),
