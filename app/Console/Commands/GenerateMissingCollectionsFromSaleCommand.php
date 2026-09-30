@@ -12,11 +12,11 @@ use Throwable;
 class GenerateMissingCollectionsFromSaleCommand extends Command
 {
     protected $signature = 'collections:generate-from-sale
-                            {affiliation_code : Código de la afiliación (ej. TDEC-IND-000119)}
+                            {affiliation_code : Código individual o corporativo (ej. TDEC-IND-000119 o TDEC-COR-00025)}
                             {--invoice= : Factura de la venta ya registrada. Si se omite, usa la última venta}
                             {--execute : Sin este flag solo muestra la vista previa}';
 
-    protected $description = 'Crea cobranzas pendientes a partir de una venta ya registrada. No duplica la venta.';
+    protected $description = 'Crea cobranzas pendientes a partir de una venta ya registrada (individual o corporativa). No duplica la venta.';
 
     public function handle(MissingCollectionsFromSaleGenerator $generator): int
     {
@@ -42,7 +42,7 @@ class GenerateMissingCollectionsFromSaleCommand extends Command
         }
 
         $this->info($persist ? 'Cobranzas creadas (la venta no se tocó).' : 'Vista previa: no se escribió nada. Agregue --execute para crear.');
-        $this->line('Afiliación: '.$result['affiliation_code']);
+        $this->line('Afiliación: '.$result['affiliation_code'].' ('.$this->affiliationKindLabel($result['affiliation_kind'] ?? 'individual').')');
         $this->line('Venta #'.$result['sale_id'].'  factura '.$result['invoice_number']);
         $this->line('Frecuencia: '.$result['payment_frequency']);
         $this->line('Fechas nuevas: '.($result['dates'] === [] ? 'ninguna' : implode(', ', $result['dates'])));
@@ -54,5 +54,10 @@ class GenerateMissingCollectionsFromSaleCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    private function affiliationKindLabel(string $kind): string
+    {
+        return $kind === 'corporate' ? 'corporativa' : 'individual';
     }
 }
