@@ -42,6 +42,7 @@ use App\Observers\PlanGeneratorObserver;
 use App\Support\LivePresence\LivePresenceRecorder;
 use App\Support\LivePresence\QueueActivityRecorder;
 use App\Support\LivePresence\SecurityAuthListener;
+use App\Support\Operations\CoordinationServiceTabCounts;
 use App\Support\UserSessionAuditTracker;
 use Filament\Actions\Imports\Events\ImportChunkProcessed;
 use Filament\Actions\Imports\Events\ImportCompleted;
@@ -165,6 +166,7 @@ class AppServiceProvider extends ServiceProvider
 
         ObservationCommercialStructure::observe(ObservationCommercialStructureObserver::class);
         PlanGenerator::observe(PlanGeneratorObserver::class);
+        CoordinationServiceTabCounts::registerCacheInvalidation();
 
         FilamentColor::register([
             'azulOscuro' => Color::hex('#052F60'),
