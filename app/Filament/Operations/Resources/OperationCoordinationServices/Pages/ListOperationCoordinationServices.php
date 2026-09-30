@@ -7,12 +7,14 @@ use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\Opera
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\CoordinationServiceCaseDeletion;
 use App\Support\Operations\CoordinationServiceItemsManager;
+use App\Support\Operations\CoordinationServiceTabCounts;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Colors\Color;
+use Filament\Tables\Enums\PaginationMode;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -50,6 +52,49 @@ class ListOperationCoordinationServices extends ListRecords
         }
 
         return parent::getTableRecords();
+    }
+
+    /**
+     * En «Todas» sin búsqueda, el total del paginador es exactamente el conteo de
+     * la pestaña: se reutiliza en vez de repetir la consulta de ocho subconsultas.
+     * Con búsqueda, otra pestaña o «ver todo», Filament cuenta como siempre.
+     */
+    protected function paginateTableQuery(Builder $query): Paginator|CursorPaginator
+    {
+        $perPage = $this->getTableRecordsPerPage();
+
+        if (! $this->canReuseTabCountForPagination($perPage)) {
+            return parent::paginateTableQuery($query);
+        }
+
+        return $query
+            ->paginate(
+                perPage: (int) $perPage,
+                pageName: $this->getTablePaginationPageName(),
+                total: $this->tabCounts()['todas'],
+            )
+            ->onEachSide(0);
+    }
+
+    private function canReuseTabCountForPagination(int|string|null $perPage): bool
+    {
+        if (! is_numeric($perPage) || (int) $perPage < 1) {
+            return false;
+        }
+
+        if ($this->getTable()->getPaginationMode() !== PaginationMode::Default) {
+            return false;
+        }
+
+        if (($this->activeTab ?? $this->getDefaultActiveTab()) !== 'todas') {
+            return false;
+        }
+
+        if (filled($this->getTableSearch())) {
+            return false;
+        }
+
+        return array_filter($this->getTableColumnSearches(), fn (mixed $search): bool => filled($search)) === [];
     }
 
     /**
@@ -130,7 +175,8 @@ class ListOperationCoordinationServices extends ListRecords
      * Cada `Tab::badge()` recibe el resultado ya calculado, así que las siete
      * cuentas se ejecutaban en cada render aunque sólo una pestaña estuviese
      * activa. Los seis conteos por estatus salen ahora de un único GROUP BY, y
-     * el de «Todas» —el caro, con ocho subconsultas— se memoiza por petición.
+     * el de «Todas» —el caro, con ocho subconsultas— se memoiza por petición y se
+     * guarda en caché entre peticiones ({@see CoordinationServiceTabCounts}).
      *
      * @return array<string, int>
      */
@@ -140,6 +186,14 @@ class ListOperationCoordinationServices extends ListRecords
             return $this->tabCounts;
         }
 
+        return $this->tabCounts = CoordinationServiceTabCounts::remember(fn (): array => $this->computeTabCounts());
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function computeTabCounts(): array
+    {
         $byStatus = OperationsSupplierScope::coordinationServiceQuery()
             ->toBase()
             ->selectRaw('UPPER(TRIM(status)) AS estatus, COUNT(*) AS total')
@@ -152,7 +206,7 @@ class ListOperationCoordinationServices extends ListRecords
             $statuses,
         ));
 
-        return $this->tabCounts = [
+        return [
             'todas' => OperationCoordinationServicesTable::applyHideFullyFinalizedScope(
                 OperationsSupplierScope::coordinationServiceQuery()
             )->count(),

@@ -1432,23 +1432,32 @@ class OperationCoordinationServicesTable
                     ->icon('heroicon-m-calendar-days')
                     ->badge()
                     ->color('gray')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('relationship_patient')
-                    ->label('Relación del Paciente'),
+                    ->label('Relación del Paciente')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('age_patient')
-                    ->label('Edad del Paciente'),
+                    ->label('Edad del Paciente')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('contractor')
-                    ->label('Contratante'),
+                    ->label('Contratante')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('state_id')
-                    ->label('Estado'),
+                    ->label('Estado')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('city_id')
-                    ->label('Ciudad'),
+                    ->label('Ciudad')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('address')
-                    ->label('Dirección'),
+                    ->label('Dirección')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('phone_holder')
-                    ->label('Teléfono'),
+                    ->label('Teléfono')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('symptoms_diagnosis')
-                    ->label('Síntomas y Diagnóstico'),
+                    ->label('Síntomas y Diagnóstico')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type_service')
                     ->label('Tipo de Servicio')
                     ->badge()
@@ -1463,25 +1472,30 @@ class OperationCoordinationServicesTable
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('farmadoc')
                     ->label('Farmadoc')
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type_negotiation')
                     ->label('Tipo de Negociación')
                     ->badge()
                     ->color('gray')
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status_negotiation')
                     ->label('Estatus de Negociación')
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('neto')
                     ->label('Precio Neto')
                     ->money('USD')
                     ->sortable()
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('porcen_tdec')
                     ->label('% TDEC')
                     ->suffix('%')
                     ->sortable()
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('quote_price')
                     ->money()
                     ->badge()
@@ -1489,34 +1503,41 @@ class OperationCoordinationServicesTable
                     ->icon('heroicon-s-currency-dollar')
                     ->label('Precio de Cotización')
                     ->sortable()
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('negotiation')
                     ->label('Negociación')
                     ->badge()
                     ->color(fn (?string $state): string => $state === 'SI' ? 'success' : 'gray')
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('porcen_discount')
                     ->label('% Descuento')
                     ->suffix('%')
                     ->sortable()
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('price_discount')
                     ->label('Precio de Descuento')
                     ->money('USD')
                     ->sortable()
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('quote_number')
                     ->label('Número de Cotización')
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('approved_number')
                     ->label('Número de Aprobación')
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('service_order_number')
                     ->label('Número Orden de Servicio')
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('bill_number')
                     ->label('Número de Factura')
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('bill_price')
                     ->money()
                     ->badge()
@@ -1525,27 +1546,33 @@ class OperationCoordinationServicesTable
                     ->prefix('US$')
                     ->label('Precio de Factura')
                     ->sortable()
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('bill_date')
                     ->label('Fecha de Factura')
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('incidence')
                     ->label('Incidencia')
                     ->badge()
                     ->color(fn (?string $state): string => $state === 'SI' ? 'warning' : 'gray')
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('negotiation_description')
                     ->label('Descripción de Negociación')
                     ->badge()
                     ->color('gray')
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('qc_description')
                     ->label('Descripción de QC')
                     ->limit(40)
                     ->tooltip(fn (?string $state): ?string => $state)
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('observations')
-                    ->label('Observaciones'),
+                    ->label('Observaciones')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_by')
                     ->label('Creado Por')
                     ->toggleable(isToggledHiddenByDefault: true),
