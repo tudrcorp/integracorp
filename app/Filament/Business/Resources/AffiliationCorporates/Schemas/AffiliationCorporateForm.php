@@ -14,10 +14,10 @@ use App\Models\City;
 use App\Models\CorporateQuoteData;
 use App\Models\Country;
 use App\Models\Region;
-use App\Models\ServiceProvider;
 use App\Models\State;
 use App\Support\AffiliationCorporateAffiliateBusinessContextSynchronizer;
 use App\Support\AffiliationCorporateAffiliateTypeSynchronizer;
+use App\Support\Affiliations\AffiliationServiceProvidersField;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
 use App\Support\SecurityAudit;
@@ -449,13 +449,7 @@ class AffiliationCorporateForm
                                             ->searchable()
                                             ->prefixIcon('fontisto-person')
                                             ->preload(),
-                                        Select::make('service_providers')
-                                            ->label('Provvedor(es) de Servicios')
-                                            ->multiple()
-                                            ->options(ServiceProvider::all()->pluck('name', 'name'))
-                                            ->searchable()
-                                            ->prefixIcon('fontisto-person')
-                                            ->preload(),
+                                        AffiliationServiceProvidersField::make(),
                                         Actions::make([
                                             Action::make('syncAffiliateCorporateBusinessContext')
                                                 ->label('Sincronizar con afiliados')

@@ -11,8 +11,10 @@ use App\Models\OperationQuoteGenerator;
 use App\Models\OperationServiceOrder;
 use App\Models\OperationServiceOrderQuote;
 use App\Models\TelemedicineCase;
+use App\Models\TelemedicineCaseAttachment;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineDocument;
+use App\Support\UrlPathEncoder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -76,10 +78,11 @@ final class TelemedicineCaseDocumentsCatalog
                     types: ['Consignación del caso'],
                     filePath: $relativePath,
                     uploadedAt: $document->created_at,
-                    downloadUrl: asset('storage/'.$relativePath),
+                    downloadUrl: asset('storage/'.UrlPathEncoder::encode($relativePath)),
                 ));
             });
 
+        self::appendDoctorAttachments($entries, $case, $caseLabel);
         self::appendConsultationUploadedDocuments($entries, $case);
 
         $coordinations = OperationCoordinationService::query()
@@ -267,6 +270,43 @@ final class TelemedicineCaseDocumentsCatalog
             ->sort()
             ->values()
             ->all();
+    }
+
+    /**
+     * Documentos que el médico cargó desde el asistente de consulta. La
+     * categoría dice si fue en la consulta inicial o en un seguimiento, y la
+     * referencia precisa cuál («Seguimiento 2»).
+     *
+     * @param  Collection<int, array<string, mixed>>  $entries
+     */
+    private static function appendDoctorAttachments(Collection $entries, TelemedicineCase $case, string $caseLabel): void
+    {
+        if (! self::hasTable(TelemedicineCaseAttachment::class)) {
+            return;
+        }
+
+        TelemedicineCaseAttachment::query()
+            ->with('telemedicineDoctor:id,full_name')
+            ->where('telemedicine_case_id', $case->id)
+            ->orderByDesc('created_at')
+            ->get()
+            ->each(function (TelemedicineCaseAttachment $attachment) use ($entries, $caseLabel): void {
+                $doctor = trim((string) ($attachment->telemedicineDoctor?->full_name ?? ''));
+
+                $entries->push(self::makeEntry(
+                    category: $attachment->stage->label(),
+                    categoryTone: $attachment->stage->tone(),
+                    reference: $attachment->stageLabel(),
+                    referenceDetail: $doctor !== '' ? $caseLabel.' · Cargado por '.$doctor : $caseLabel,
+                    documentName: (string) $attachment->original_name,
+                    types: array_filter([
+                        'Cargado por el médico',
+                        (string) ($attachment->description ?? ''),
+                    ]),
+                    filePath: (string) $attachment->file_path,
+                    uploadedAt: $attachment->created_at,
+                ));
+            });
     }
 
     /**
@@ -532,7 +572,7 @@ final class TelemedicineCaseDocumentsCatalog
             return '#';
         }
 
-        return Storage::disk('public')->url($path);
+        return Storage::disk('public')->url(UrlPathEncoder::encode($path));
     }
 
     private static function resolveTimestamp(mixed $value): ?Carbon

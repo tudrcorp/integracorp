@@ -104,7 +104,15 @@ final class TelemedicineAmdInformRegistrar
 
         $inform = $inform->refresh();
 
-        self::ensureInformPdfExists($inform, $consultation);
+        /*
+         * Si el examen físico se cargó antes de guardar la consulta, el PDF del
+         * informe pendiente ya existe sin él: se rehace ahora que está vinculado.
+         */
+        self::ensureInformPdfExists(
+            $inform,
+            $consultation,
+            force: TelemedicineAmdPhysicalExamRegistrar::forConsultation((int) $consultation->id) !== null,
+        );
 
         self::syncConsultationUploadedDocument($consultation, $inform);
         self::syncTelemedicineDocument($consultation, $inform);
@@ -322,6 +330,22 @@ final class TelemedicineAmdInformRegistrar
     }
 
     /**
+     * Rehace el Informe Médico Largo de la consulta AMD, si existe, para que
+     * refleje el examen físico recién guardado.
+     */
+    public static function regeneratePdfForConsultation(TelemedicineConsultationPatient $consultation): void
+    {
+        $inform = TelemedicineAmdInform::query()
+            ->where('telemedicine_consultation_patient_id', $consultation->id)
+            ->latest('id')
+            ->first();
+
+        if ($inform instanceof TelemedicineAmdInform) {
+            self::ensureInformPdfExists($inform, $consultation, force: true);
+        }
+    }
+
+    /**
      * @param  array<string, mixed>|null  $pdfData
      * @param  array<string, mixed>|null  $clinicalData
      * @param  array<string, mixed>|null  $context
@@ -333,8 +357,9 @@ final class TelemedicineAmdInformRegistrar
         ?TelemedicineDoctor $doctor = null,
         ?array $clinicalData = null,
         ?array $context = null,
+        bool $force = false,
     ): void {
-        if (filled($inform->pdf_document_name) && TelemedicineInformeLargoPdfGenerator::fileExists($inform->pdf_document_name)) {
+        if (! $force && filled($inform->pdf_document_name) && TelemedicineInformeLargoPdfGenerator::fileExists($inform->pdf_document_name)) {
             return;
         }
 

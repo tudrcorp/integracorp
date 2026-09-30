@@ -254,3 +254,47 @@ it('registra Bitácora de Caso en el panel de telemedicina para los médicos', f
         ->toContain('constrainToTdgDoctorsCases')
         ->not->toContain("status', '!=', 'ALTA MEDICA");
 });
+
+it('el encabezado de la bitácora en Telemedicina invita a buscar cuando no hay caso seleccionado', function (): void {
+    $html = view('filament.telemedicina.bitacora.header', [
+        'case' => App\Filament\Telemedicina\Pages\BitacoraDeCaso::headerCase(null),
+    ])->render();
+
+    expect($html)
+        ->toContain('Expediente clínico')
+        ->toContain('Bitácora de caso')
+        ->toContain('Código de caso')
+        ->toContain('Nombre del paciente')
+        ->toContain('Cédula')
+        ->not->toContain('Caso N.º');
+});
+
+it('el encabezado de la bitácora (Telemedicina y Operaciones) resume el caso seleccionado y omite los guiones vacíos', function (): void {
+    $case = App\Filament\Telemedicina\Pages\BitacoraDeCaso::headerCase([
+        'code' => 'TDG-0042',
+        'status' => 'EN SEGUIMIENTO',
+        'header' => ['Prioridad' => 'Urgencia', 'Médico' => 'ANA PEREZ', 'Apertura' => '01/09/2026 10:00 AM', 'Última actualización' => '—'],
+        'patient' => ['Nombre' => 'JUAN LOPEZ', 'Cédula' => 'V-12345678'],
+    ]);
+
+    $html = view('filament.telemedicina.bitacora.header', ['case' => $case])->render();
+
+    expect($html)
+        ->toContain('Caso N.º TDG-0042')
+        ->toContain('EN SEGUIMIENTO')
+        ->toContain('Urgencia')
+        ->toContain('JUAN LOPEZ')
+        ->toContain('V-12345678')
+        ->toContain('Dr(a). ANA PEREZ')
+        ->toContain('01/09/2026 10:00 AM')
+        ->not->toContain('Última actualización')
+        ->not->toContain('Busque por');
+
+    $trait = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Concerns/InteractsWithTelemedicineCaseBitacora.php');
+
+    expect($trait)
+        ->toContain('filament.telemedicina.bitacora.header')
+        ->toContain('from-[#0a74d6] to-[#005ca9]')
+        ->toContain('from-[#4aa3e3] to-[#1f6fae]')
+        ->and(App\Filament\Operations\Pages\BitacoraDeCaso::headerCase(null))->toBeNull();
+});

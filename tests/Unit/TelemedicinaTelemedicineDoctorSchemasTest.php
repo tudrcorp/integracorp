@@ -77,11 +77,14 @@ it('limita el tamaño de la firma digital en la tabla de médicos', function ():
 
 it('aplica estilo ios y acciones de perfil en la tabla de médicos telemedicina', function (): void {
     $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineDoctors/Tables/TelemedicineDoctorsTable.php');
+    $header = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/telemedicina/doctors/profile-list-header.blade.php');
+
+    expect($header)->toContain('Mi perfil médico');
 
     expect($contents)
         ->toContain('telemedicine-case-table-ios')
         ->toContain('telemedicine-doctor-profile-table')
-        ->toContain('Mi perfil médico')
+        ->not->toContain("->heading('Mi perfil médico')")
         ->toContain('Ver perfil')
         ->toContain('FontWeight::SemiBold')
         ->not->toContain('DeleteBulkAction');

@@ -36,6 +36,13 @@ final class HelpdeskFormSchema
      */
     public const OPERATIONS_SUPPORT_DEPARTMENTS = ['OPERACIONES', 'SISTEMAS'];
 
+    /**
+     * Departamento de RRHH al que un doctor de Telemedicina puede asignar tickets.
+     *
+     * @var list<string>
+     */
+    public const TELEMEDICINE_ASSIGNEE_DEPARTMENTS = ['OPERACIONES'];
+
     private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
 
     /**
@@ -69,16 +76,62 @@ final class HelpdeskFormSchema
     }
 
     /**
+     * Con `$restrictToDepartments` solo quedan los colaboradores de esos departamentos de RRHH;
+     * sin él se aplica la regla del analista de proveedor.
+     *
+     * @param  Builder<RrhhColaborador>  $query
+     * @param  list<string>|null  $restrictToDepartments
+     * @return Builder<RrhhColaborador>
+     */
+    public static function applyAssigneeDepartmentScope(Builder $query, ?array $restrictToDepartments = null): Builder
+    {
+        if ($restrictToDepartments === null) {
+            return self::applySupplierAnalystColaboradorScope($query);
+        }
+
+        return $query->whereHas(
+            'departamento',
+            fn (Builder $departamento): Builder => $departamento->whereIn('description', $restrictToDepartments)
+        );
+    }
+
+    /**
+     * Ids de colaboradores que NO pertenecen a los departamentos indicados.
+     *
+     * @param  list<int>  $colaboradorIds
+     * @param  list<string>  $departments
+     * @return list<int>
+     */
+    public static function colaboradorIdsOutsideDepartments(array $colaboradorIds, array $departments): array
+    {
+        if ($colaboradorIds === []) {
+            return [];
+        }
+
+        $allowed = RrhhColaborador::query()
+            ->whereKey($colaboradorIds)
+            ->whereHas(
+                'departamento',
+                fn (Builder $departamento): Builder => $departamento->whereIn('description', $departments)
+            )
+            ->pluck('id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
+
+        return array_values(array_diff($colaboradorIds, $allowed));
+    }
+
+    /**
      * Directorio RRHH para CC (solo notificación): todos los colaboradores.
      * No exige usuario de sistema; el aviso usa el correo corporativo.
      *
      * @return array<int, string>
      */
-    public static function rrhhColaboradorOptionsForHelpdeskMultiselect(): array
+    public static function rrhhColaboradorOptionsForHelpdeskMultiselect(?array $restrictToDepartments = null): array
     {
         $query = RrhhColaborador::query()->orderBy('fullName');
 
-        self::applySupplierAnalystColaboradorScope($query);
+        self::applyAssigneeDepartmentScope($query, $restrictToDepartments);
 
         return $query
             ->get(['id', 'fullName'])
@@ -120,8 +173,15 @@ final class HelpdeskFormSchema
         return str_contains($normalized, 'CAYETANO') && str_contains($normalized, 'BATRES');
     }
 
-    public static function configure(Schema $schema, bool $assigneesRequired = true, bool $scrumProductOwnerInbox = false): Schema
-    {
+    /**
+     * @param  list<string>|null  $assigneeDepartments  limita asignados y CC a esos departamentos de RRHH
+     */
+    public static function configure(
+        Schema $schema,
+        bool $assigneesRequired = true,
+        bool $scrumProductOwnerInbox = false,
+        ?array $assigneeDepartments = null,
+    ): Schema {
         return $schema
             ->columns(1)
             ->components([
@@ -134,7 +194,7 @@ final class HelpdeskFormSchema
                     ->tabs([
                         Tab::make('Ticket')
                             ->icon('heroicon-o-ticket')
-                            ->schema(self::ticketTabSchema($assigneesRequired, $scrumProductOwnerInbox)),
+                            ->schema(self::ticketTabSchema($assigneesRequired, $scrumProductOwnerInbox, $assigneeDepartments)),
 
                         Tab::make('Tipo de ticket')
                             ->icon('heroicon-o-tag')
@@ -151,7 +211,10 @@ final class HelpdeskFormSchema
     /**
      * @return array<int, mixed>
      */
-    private static function ticketTabSchema(bool $assigneesRequired, bool $scrumProductOwnerInbox = false): array
+    /**
+     * @param  list<string>|null  $assigneeDepartments
+     */
+    private static function ticketTabSchema(bool $assigneesRequired, bool $scrumProductOwnerInbox = false, ?array $assigneeDepartments = null): array
     {
         $intro = $scrumProductOwnerInbox
             ? '<p class="text-sm leading-relaxed text-gray-600 dark:text-gray-300">'
@@ -265,7 +328,7 @@ final class HelpdeskFormSchema
                                 ->relationship(
                                     name: 'rrhhColaboradores',
                                     titleAttribute: 'fullName',
-                                    modifyQueryUsing: fn (Builder $query): Builder => self::applySupplierAnalystColaboradorScope($query)
+                                    modifyQueryUsing: fn (Builder $query): Builder => self::applyAssigneeDepartmentScope($query, $assigneeDepartments)
                                         ->orderBy('fullName')
                                 )
                                 ->multiple(! $scrumProductOwnerInbox)
@@ -293,7 +356,7 @@ final class HelpdeskFormSchema
                                 ->label('CC (solo notificación)')
                                 ->helperText('Reciben aviso por correo o canal interno; no quedan como ejecutores del ticket.')
                                 ->multiple()
-                                ->options(self::rrhhColaboradorOptionsForHelpdeskMultiselect())
+                                ->options(fn (): array => self::rrhhColaboradorOptionsForHelpdeskMultiselect($assigneeDepartments))
                                 ->searchable()
                                 ->preload()
                                 ->native(false)

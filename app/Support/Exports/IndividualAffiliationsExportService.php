@@ -7,6 +7,7 @@ namespace App\Support\Exports;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Support\CsvExportStream;
+use App\Support\Operations\SupplierAffiliateVisibility;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
@@ -36,7 +37,7 @@ final class IndividualAffiliationsExportService
      */
     public static function affiliationQuery(array $filters = []): Builder
     {
-        $query = Affiliation::query()
+        $query = SupplierAffiliateVisibility::applyToAffiliations(Affiliation::query())
             ->with(self::eagerLoads())
             ->orderBy('id');
 

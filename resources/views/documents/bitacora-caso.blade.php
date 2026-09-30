@@ -237,6 +237,7 @@
 <div class="doc-content">
     @include('documents.partials.bitacora-caso-section', ['title' => 'Identificación del caso', 'map' => $dossier['header'] ?? []])
     @include('documents.partials.bitacora-caso-section', ['title' => 'Paciente', 'map' => $dossier['patient'] ?? []])
+    @include('documents.partials.bitacora-caso-clinical-summary', ['entries' => $dossier['clinical_summary'] ?? []])
 
     @if (! empty($dossier['discharge']))
         @include('documents.partials.bitacora-caso-section', ['title' => 'Alta médica', 'map' => $dossier['discharge']])
@@ -244,6 +245,7 @@
 
     @include('documents.partials.bitacora-caso-entries', ['title' => 'Consultas y notas médicas', 'entries' => $dossier['consultations'] ?? []])
     @include('documents.partials.bitacora-caso-entries', ['title' => 'Seguimientos', 'entries' => $dossier['follow_ups'] ?? []])
+    @include('documents.partials.bitacora-caso-amd-physical-exams', ['entries' => $dossier['amd_physical_exams'] ?? []])
     @include('documents.partials.bitacora-caso-amd', ['entries' => $dossier['amd_reports'] ?? []])
     @include('documents.partials.bitacora-caso-entries', ['title' => 'Observaciones del caso', 'entries' => $dossier['observations'] ?? []])
     @include('documents.partials.bitacora-caso-entries', ['title' => 'Bitácora operativa', 'entries' => $dossier['operation_logs'] ?? []])

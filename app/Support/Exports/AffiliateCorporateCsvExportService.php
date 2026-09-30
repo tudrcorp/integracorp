@@ -6,6 +6,7 @@ namespace App\Support\Exports;
 
 use App\Models\AffiliateCorporate;
 use App\Support\CsvExportStream;
+use App\Support\Operations\SupplierAffiliateVisibility;
 use App\Support\SecurityAudit;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -125,6 +126,8 @@ final class AffiliateCorporateCsvExportService
             'affiliationCorporate.businessLine:id,definition',
             'affiliationCorporate.businessUnit:id,definition',
         ]);
+
+        SupplierAffiliateVisibility::applyToAffiliateCorporates($query);
 
         if ($panel === 'business' && Auth::user()?->is_accountManagers) {
             $query->whereHas(

@@ -10,6 +10,8 @@ use App\Filament\Operations\Resources\CompanyAssociates\Pages\ListCompanyAssocia
 use App\Filament\Operations\Resources\CompanyAssociates\Pages\ViewCompanyAssociate;
 use App\Filament\Operations\Resources\CompanyAssociates\Tables\CompanyAssociatesTable;
 use App\Models\CompanyAssociate;
+use App\Support\Filament\GlobalSearchAffiliateBusinessDetails;
+use App\Support\Operations\SupplierAffiliateVisibility;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Resources\Resource;
@@ -80,6 +82,9 @@ class NuevosNegociosAssociateResource extends Resource
             'Vigencia' => static::formatVoucherVigencia($record),
             'Email' => filled($record->email) ? (string) $record->email : '—',
             'Teléfono' => filled($record->phone) ? (string) $record->phone : '—',
+            'Proveedor(es) de Servicios' => GlobalSearchAffiliateBusinessDetails::serviceProviders(
+                $record->company?->service_providers,
+            ),
         ];
     }
 
@@ -106,7 +111,7 @@ class NuevosNegociosAssociateResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $todayCount = static::getModel()::query()
+        $todayCount = SupplierAffiliateVisibility::applyToCompanyAssociates(static::getModel()::query())
             ->whereDate('created_at', Carbon::today())
             ->count();
 
@@ -128,9 +133,12 @@ class NuevosNegociosAssociateResource extends Resource
         return CompanyAssociatesTable::configure($table);
     }
 
+    /**
+     * Un usuario de proveedor solo alcanza a los asociados de empresas que su proveedor atiende.
+     */
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        return SupplierAffiliateVisibility::applyToCompanyAssociates(parent::getEloquentQuery())
             ->with([
                 'company',
                 'responsible',

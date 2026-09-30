@@ -7,6 +7,7 @@ namespace App\Services\Telemedicine;
 use App\Http\Controllers\NotificationController;
 use App\Mail\TelemedicineCaseDocumentMail;
 use App\Services\TelemedicineConsultationDocumentsNotificationService;
+use App\Support\UrlPathEncoder;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -31,7 +32,7 @@ class TelemedicineCaseDocumentDeliveryService
     {
         $relativePath = ltrim($relativePath, '/');
 
-        return rtrim((string) config('parameters.PUBLIC_URL'), '/').'/'.$relativePath;
+        return rtrim((string) config('parameters.PUBLIC_URL'), '/').'/'.UrlPathEncoder::encode($relativePath);
     }
 
     public static function fileExists(string $relativePath): bool

@@ -44,6 +44,7 @@ final class SupplierIntegracorpManagementForm
                                     ->onIcon('heroicon-s-check')
                                     ->onColor('success')
                                     ->columnSpanFull(),
+                                SupplierIntegracorpManagement::aliasInput(),
                             ])
                             ->columnSpanFull(),
                         SupplierIntegracorpManagement::portalUsersRepeater($innerCardClass),
@@ -59,7 +60,13 @@ final class SupplierIntegracorpManagementForm
     public static function stripUnauthorizedFormData(array $data): array
     {
         if (! SupplierIntegracorpManagement::userCanManage()) {
-            unset($data['gestion_integracorp'], $data['integracorpUsers'], $data['integracorpAnalysts']);
+            unset($data['gestion_integracorp'], $data['integracorp_alias'], $data['integracorpUsers'], $data['integracorpAnalysts']);
+
+            return $data;
+        }
+
+        if (array_key_exists('integracorp_alias', $data)) {
+            $data['integracorp_alias'] = SupplierIntegracorpManagement::normalizeAlias($data['integracorp_alias']);
         }
 
         return $data;

@@ -8,6 +8,7 @@ use App\Filament\Telemedicina\Resources\TelemedicineDoctors\TelemedicineDoctorRe
 use App\Filament\Telemedicina\Widgets\WelcomeDoctorWidget;
 use App\Http\Middleware\DuplicatedSession;
 use Filament\Actions\Action;
+use Filament\Enums\GlobalSearchPosition;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -31,6 +32,8 @@ use Swis\Filament\Backgrounds\ImageProviders\MyImages;
 
 class TelemedicinaPanelProvider extends PanelProvider
 {
+    public const GLOBAL_SEARCH_PLACEHOLDER = 'Buscar caso, cédula, paciente o diagnóstico…';
+
     public function panel(Panel $panel): Panel
     {
         return $panel
@@ -46,6 +49,11 @@ class TelemedicinaPanelProvider extends PanelProvider
             ->brandLogoHeight('3rem')
             ->favicon(asset('image/ico_Android_IOS.png'))
             ->sidebarCollapsibleOnDesktop()
+            ->globalSearch(position: GlobalSearchPosition::Topbar)
+            ->globalSearchDebounce('300ms')
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
+            ->globalSearchFieldKeyBindingSuffix()
+            ->bootUsing(fn (): mixed => self::registerGlobalSearchPlaceholder())
             ->colors([
                 'primary' => '#005ca9',
             ])
@@ -118,6 +126,33 @@ class TelemedicinaPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn () => view('filament.telemedicina.partials.database-notifications-alert')
+            )
+            ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn () => view('filament.panels.internal-quick-nav')
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.telemedicina.hooks.case-follow-up-chat-panel')
             );
+    }
+
+    /**
+     * El texto del buscador sale de una traducción compartida por todos los
+     * paneles; se sobrescribe solo mientras se sirve este panel. Se fuerza la
+     * carga del grupo antes de añadir la línea: si no, `addLines` lo marca como
+     * cargado y el resto de sus textos quedaría sin traducir.
+     */
+    public static function registerGlobalSearchPlaceholder(): void
+    {
+        $locale = app()->getLocale();
+        $translator = app('translator');
+
+        $translator->get('filament-panels::global-search.field.placeholder', [], $locale);
+        $translator->addLines(
+            ['global-search.field.placeholder' => self::GLOBAL_SEARCH_PLACEHOLDER],
+            $locale,
+            'filament-panels',
+        );
     }
 }

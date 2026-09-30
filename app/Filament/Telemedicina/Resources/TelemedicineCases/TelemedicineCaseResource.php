@@ -11,10 +11,12 @@ use App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas\TelemedicineCa
 use App\Filament\Telemedicina\Resources\TelemedicineCases\Schemas\TelemedicineCaseInfolist;
 use App\Filament\Telemedicina\Resources\TelemedicineCases\Tables\TelemedicineCasesTable;
 use App\Models\TelemedicineCase;
+use App\Support\Telemedicine\TelemedicineCaseGlobalSearch;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection;
 use UnitEnum;
 
 class TelemedicineCaseResource extends Resource
@@ -25,11 +27,33 @@ class TelemedicineCaseResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'GESTIÓN TELEMÉDICA';
 
-    protected static ?string $pluralLabel = 'Gestión de Casos de Telemedicína';
+    protected static ?string $pluralLabel = 'Gestión de casos de telemedicina';
 
     protected static ?string $navigationLabel = 'Casos de Telemedicina';
 
     protected static ?int $navigationSort = 3;
+
+    protected static int $globalSearchResultsLimit = TelemedicineCaseGlobalSearch::RESULTS_LIMIT;
+
+    /**
+     * Filament solo habilita la búsqueda global si hay atributos declarados; la
+     * búsqueda real (código, cédula, nombre y diagnóstico) la resuelve
+     * {@see TelemedicineCaseGlobalSearch}.
+     *
+     * @return array<string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['code', 'patient_name'];
+    }
+
+    /**
+     * @return Collection<int, \Filament\GlobalSearch\GlobalSearchResult>
+     */
+    public static function getGlobalSearchResults(string $search): Collection
+    {
+        return TelemedicineCaseGlobalSearch::results($search);
+    }
 
     public static function form(Schema $schema): Schema
     {

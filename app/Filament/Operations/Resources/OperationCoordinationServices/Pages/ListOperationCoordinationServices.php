@@ -6,13 +6,17 @@ use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoo
 use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\CoordinationServiceCaseDeletion;
+use App\Support\Operations\CoordinationServiceItemsManager;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Colors\Color;
+use Illuminate\Contracts\Pagination\CursorPaginator;
+use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Js;
 
 class ListOperationCoordinationServices extends ListRecords
@@ -31,6 +35,21 @@ class ListOperationCoordinationServices extends ListRecords
         parent::mount();
 
         $this->expandRequestedTableGroup();
+    }
+
+    /**
+     * Vacía la memoria de ítems clínicos sólo cuando Filament vuelve a leer los
+     * registros (primera carga o después de una acción que escribió). Hacerlo en
+     * `modifyQueryUsing` la borraba a mitad del render, porque Filament reusa esa
+     * consulta para la casilla de cada grupo y para los conteos.
+     */
+    public function getTableRecords(): Collection|Paginator|CursorPaginator
+    {
+        if ($this->cachedTableRecords === null) {
+            CoordinationServiceItemsManager::flushClinicalItemsCache();
+        }
+
+        return parent::getTableRecords();
     }
 
     /**

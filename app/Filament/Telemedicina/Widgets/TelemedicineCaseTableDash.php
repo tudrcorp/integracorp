@@ -13,7 +13,9 @@ use App\Models\TelemedicinePatient;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Telemedicine\ConsultationCreateRoute;
+use App\Support\Telemedicine\TelemedicineCaseDerivedService;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
+use App\Support\Telemedicine\TelemedicineCaseFollowUpSchedule;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -24,12 +26,16 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ViewColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\On;
 
 class TelemedicineCaseTableDash extends TableWidget
 {
@@ -37,6 +43,37 @@ class TelemedicineCaseTableDash extends TableWidget
 
     /** Borrador del campo «Observación» dentro del modal de consultas del caso (misma lógica que el menú ⋯). */
     public string $consultationsModalObservationDraft = '';
+
+    /**
+     * Filtro elegido en las tarjetas del escritorio ({@see CaseStats}).
+     */
+    public ?string $dashboardFilter = null;
+
+    #[On(CaseStats::FILTER_EVENT)]
+    public function applyDashboardFilter(?string $filter = null): void
+    {
+        $this->dashboardFilter = in_array($filter, [CaseStats::FILTER_ASSIGNED, CaseStats::FILTER_FOLLOW_UP, CaseStats::FILTER_OVERDUE], true)
+            ? $filter
+            : null;
+
+        $this->resetPage();
+    }
+
+    public function clearDashboardFilter(): void
+    {
+        $this->dispatch(CaseStats::FILTER_EVENT, filter: null);
+    }
+
+    private function dashboardFilterLabel(): ?string
+    {
+        return match ($this->dashboardFilter) {
+            CaseStats::FILTER_ASSIGNED => 'casos asignados',
+            CaseStats::FILTER_FOLLOW_UP => 'casos en seguimiento',
+            CaseStats::FILTER_OVERDUE => 'seguimientos vencidos',
+            CaseStats::FILTER_AMD_PENDING => 'AMD por realizar',
+            default => null,
+        };
+    }
 
     /**
      * Última consulta del caso: abre el asistente de creación (mismo flujo que «Hacer seguimiento»),
@@ -312,6 +349,18 @@ class TelemedicineCaseTableDash extends TableWidget
         }
     }
 
+    /**
+     * @return array{label: string, detail: string|null, tone: string}
+     */
+    private static function derivedService(TelemedicineCase $record): array
+    {
+        return TelemedicineCaseDerivedService::describe(
+            $record->getAttribute('latest_drift_name'),
+            $record->getAttribute('latest_consultation_at'),
+            (bool) $record->getAttribute('pending_first_consultation'),
+        );
+    }
+
     public function table(Table $table): Table
     {
         $openCaseConsultationsAction = Action::make('openCaseConsultations')
@@ -367,18 +416,31 @@ class TelemedicineCaseTableDash extends TableWidget
             ->closeModalByClickingAway(false);
 
         return $table
-            ->defaultSort('created_at', 'desc')
-            ->heading(fn (): string => TelemedicineCaseFilamentListQuery::userIsInTdgTelemedicinaContext(Auth::user())
+            // Orden por próximo seguimiento mientras el médico no elija otra columna.
+            ->defaultSort(fn (Builder $query): Builder => TelemedicineCaseFollowUpSchedule::orderByNextFollowUp($query))
+            ->heading(fn (): string => (TelemedicineCaseFilamentListQuery::userIsInTdgTelemedicinaContext(Auth::user())
                 ? 'Casos de telemedicina'
-                : 'Casos asignados')
+                : 'Casos asignados').(($label = $this->dashboardFilterLabel()) !== null ? ' · sólo '.$label : ''))
+            ->description('Ordenados por próximo seguimiento: primero los pendientes de primera consulta y los vencidos.')
             // ->description('Toca el número de caso: modal con consultas, historia, consulta inicial y seguimiento. El menú ⋯ mantiene el resto de acciones. Si eres ATENMEDI, aquí no aparecen casos en alta médica ni aquellos cuya última consulta tenga derivado «Traslado en ambulancia».')
             ->emptyStateHeading('Sin casos asignados')
             ->emptyStateDescription('Cuando te asignen pacientes, aparecerán aquí con el mismo estilo de lista de iOS.')
             ->emptyStateIcon(Heroicon::OutlinedClipboardDocumentList)
             ->recordActionsColumnLabel('')
-            ->query(fn (): Builder => TelemedicineCaseFilamentListQuery::applyDashboardWidgetCaseConstraints(
-                TelemedicineCase::query()
-            ))
+            ->query(function (): Builder {
+                $query = TelemedicineCaseDerivedService::withDerivedServiceColumns(TelemedicineCaseFollowUpSchedule::withFollowUpColumns(
+                    TelemedicineCaseFilamentListQuery::applyDashboardWidgetCaseConstraints(TelemedicineCase::query())
+                ))
+                    ->with(['telemedicinePatient:id,business_line_id,specific_business_unit', 'telemedicinePatient.businessLine:id,definition']);
+
+                return match ($this->dashboardFilter) {
+                    CaseStats::FILTER_ASSIGNED => $query->where('status', 'ASIGNADO'),
+                    CaseStats::FILTER_FOLLOW_UP => $query->where('status', 'EN SEGUIMIENTO'),
+                    CaseStats::FILTER_OVERDUE => TelemedicineCaseFollowUpSchedule::whereOverdue($query),
+                    CaseStats::FILTER_AMD_PENDING => TelemedicineCaseDerivedService::whereAmdPending($query),
+                    default => $query,
+                };
+            })
             ->recordClasses(function (TelemedicineCase $record): array {
                 $classes = [
                     TelemedicinePriorityFilamentBadge::recordRowClasses($record->priority?->name),
@@ -420,6 +482,56 @@ class TelemedicineCaseTableDash extends TableWidget
                     ->searchable()
                     ->wrap()
                     ->extraCellAttributes(['class' => 'py-3 max-w-[14rem] sm:max-w-xs']),
+                TextColumn::make('next_follow_up_at')
+                    ->label('Próximo seguimiento')
+                    ->badge()
+                    ->state(fn (TelemedicineCase $record): string => TelemedicineCaseFollowUpSchedule::describe(
+                        $record->getAttribute('next_follow_up_at'),
+                        (bool) $record->getAttribute('pending_first_consultation'),
+                    )['label'])
+                    ->description(fn (TelemedicineCase $record): ?string => TelemedicineCaseFollowUpSchedule::describe(
+                        $record->getAttribute('next_follow_up_at'),
+                        (bool) $record->getAttribute('pending_first_consultation'),
+                    )['detail'])
+                    ->color(fn (TelemedicineCase $record): string => match (TelemedicineCaseFollowUpSchedule::describe(
+                        $record->getAttribute('next_follow_up_at'),
+                        (bool) $record->getAttribute('pending_first_consultation'),
+                    )['tone']) {
+                        TelemedicineCaseFollowUpSchedule::TONE_OVERDUE => 'danger',
+                        TelemedicineCaseFollowUpSchedule::TONE_SOON => 'warning',
+                        TelemedicineCaseFollowUpSchedule::TONE_PENDING => 'info',
+                        default => 'gray',
+                    })
+                    ->icon('heroicon-m-clock')
+                    ->tooltip('Fecha de la última consulta más el «Próximo seguimiento» que eligió el médico.')
+                    ->extraCellAttributes(['class' => 'py-3']),
+                TextColumn::make('latest_drift_name')
+                    ->label('Derivado por atender')
+                    ->badge()
+                    ->wrap()
+                    ->state(fn (TelemedicineCase $record): string => self::derivedService($record)['label'])
+                    ->description(fn (TelemedicineCase $record): ?string => self::derivedService($record)['detail'])
+                    ->color(fn (TelemedicineCase $record): string => match (self::derivedService($record)['tone']) {
+                        TelemedicineCaseDerivedService::TONE_CRITICAL => 'danger',
+                        TelemedicineCaseDerivedService::TONE_DERIVED => 'info',
+                        TelemedicineCaseDerivedService::TONE_PENDING => 'warning',
+                        default => 'gray',
+                    })
+                    ->icon(fn (TelemedicineCase $record): string => match (self::derivedService($record)['tone']) {
+                        TelemedicineCaseDerivedService::TONE_CRITICAL => 'heroicon-m-exclamation-triangle',
+                        TelemedicineCaseDerivedService::TONE_DERIVED => 'heroicon-m-arrow-uturn-right',
+                        TelemedicineCaseDerivedService::TONE_PENDING => 'heroicon-m-sparkles',
+                        default => 'heroicon-m-minus-circle',
+                    })
+                    ->tooltip('Servicio derivado que indicó la última consulta: es lo que corresponde atender y actualizar en la próxima consulta del caso.')
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query
+                        ->orderByRaw('latest_drift_name is null')
+                        ->orderBy('latest_drift_name', $direction === 'desc' ? 'desc' : 'asc'))
+                    ->extraAttributes(['class' => 'telemedicine-derived-service-cell'])
+                    ->extraCellAttributes(['class' => 'py-3 min-w-[13rem] max-w-[17rem]']),
+                ViewColumn::make('patient_business_line')
+                    ->label('Línea de negocio')
+                    ->view('filament.telemedicina.tables.business-line-cell'),
                 TextColumn::make('patient_age')
                     ->label('Edad')
                     ->description(fn ($record): string => $record->patient_sex)
@@ -469,10 +581,19 @@ class TelemedicineCaseTableDash extends TableWidget
 
             ])
             ->filters([
-                //
+                SelectFilter::make('derived_service')
+                    ->label('Derivado por atender')
+                    ->placeholder('Todos los derivados')
+                    ->options(fn (): array => TelemedicineCaseDerivedService::filterOptions())
+                    ->query(fn (Builder $query, array $data): Builder => TelemedicineCaseDerivedService::whereDerivedService($query, $data['value'] ?? null)),
             ])
             ->headerActions([
-                //
+                Action::make('clear_dashboard_filter')
+                    ->label('Ver todos los casos')
+                    ->icon(Heroicon::OutlinedXMark)
+                    ->color('gray')
+                    ->visible(fn (): bool => $this->dashboardFilter !== null)
+                    ->action(fn () => $this->clearDashboardFilter()),
             ])
             ->recordActions([
                 ActionGroup::make([
@@ -564,8 +685,11 @@ class TelemedicineCaseTableDash extends TableWidget
                             return $this->guardDashboardCaseInteraction($record);
                         },
                     ),
-                ]),
-            ])
+                ])
+                    ->tooltip('Acciones del caso')
+                    // El menú vive a la izquierda: se despliega hacia la derecha para no salirse de la pantalla.
+                    ->dropdownPlacement('bottom-start'),
+            ], position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([
                 BulkActionGroup::make([
                     //

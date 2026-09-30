@@ -10,7 +10,7 @@ it('OperationCoordinationServicesTable define acción gestionar cotización con 
         ->toContain("Action::make('manage_service_quote')")
         ->toContain('Gestionar Cotización')
         ->toContain('ManageCoordinationServiceQuotes::getUrl')
-        ->toContain('CoordinationServiceQuoteManager::coordinationQuotes');
+        ->toContain('CoordinationServiceQuoteManager::hasCoordinationQuotesForDisplay');
 });
 
 it('OperationQuoteGenerator define estatus por defecto pendiente por aprobar', function (): void {

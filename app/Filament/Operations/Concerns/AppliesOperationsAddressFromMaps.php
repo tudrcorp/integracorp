@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Concerns;
 
+use App\Models\User;
+use App\Support\Operations\AffiliatePersonalDataUpdater;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 trait AppliesOperationsAddressFromMaps
 {
@@ -43,8 +46,15 @@ trait AppliesOperationsAddressFromMaps
             successTitle: 'Dirección actualizada',
             successBody: 'La dirección del afiliado se guardó correctamente.',
             persist: function (Model $record, string $normalizedAddress): void {
-                $record->address = $normalizedAddress;
-                $record->save();
+                /** Misma vía que «Editar»: sincroniza telemedicina y avisa a Afiliaciones. */
+                $user = Auth::user();
+
+                AffiliatePersonalDataUpdater::update(
+                    $record,
+                    ['address' => $normalizedAddress],
+                    $user instanceof User ? $user : null,
+                    AffiliatePersonalDataUpdater::SOURCE_MAPS_ADDRESS,
+                );
             },
         );
     }
@@ -56,8 +66,15 @@ trait AppliesOperationsAddressFromMaps
             successTitle: 'Dirección actualizada',
             successBody: 'La dirección del afiliado corporativo se guardó correctamente.',
             persist: function (Model $record, string $normalizedAddress): void {
-                $record->address = $normalizedAddress;
-                $record->save();
+                /** Misma vía que «Editar»: sincroniza telemedicina y avisa a Afiliaciones. */
+                $user = Auth::user();
+
+                AffiliatePersonalDataUpdater::update(
+                    $record,
+                    ['address' => $normalizedAddress],
+                    $user instanceof User ? $user : null,
+                    AffiliatePersonalDataUpdater::SOURCE_MAPS_ADDRESS,
+                );
             },
         );
     }

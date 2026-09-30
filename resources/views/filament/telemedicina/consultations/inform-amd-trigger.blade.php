@@ -2,7 +2,7 @@
     <div>
         <p class="text-sm font-semibold text-slate-900 dark:text-white">Informe AMD</p>
         <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Registre la consulta inicial, genere el Informe Médico Largo o cargue un archivo relacionado con la AMD.
+            Registre la consulta inicial, cargue el examen físico, genere el Informe Médico Largo o cargue un archivo relacionado con la AMD.
         </p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
@@ -18,6 +18,19 @@
             </svg>
             <span wire:loading.remove wire:target="mountAction('informAmd')">Informar AMD</span>
             <span wire:loading wire:target="mountAction('informAmd')">Abriendo…</span>
+        </button>
+        @php($hasPhysicalExam = method_exists($this, 'hasAmdPhysicalExam') && $this->hasAmdPhysicalExam())
+        <button
+            type="button"
+            wire:click="mountAction('amdPhysicalExam')"
+            wire:loading.attr="disabled"
+            wire:target="mountAction('amdPhysicalExam')"
+            title="{{ $hasPhysicalExam ? 'Examen físico cargado. Ábralo para revisarlo o editarlo.' : 'Cargar el examen físico de la visita' }}"
+            class="inline-flex min-h-[2.75rem] shrink-0 items-center justify-center gap-2 rounded-2xl border border-sky-300 bg-white px-5 py-2.5 text-sm font-semibold text-sky-700 shadow-sm transition hover:bg-sky-50 active:scale-[0.98] disabled:opacity-60 dark:border-sky-500/40 dark:bg-sky-950/40 dark:text-sky-200 dark:hover:bg-sky-900/50"
+        >
+            <x-filament::icon :icon="$hasPhysicalExam ? 'heroicon-s-check-circle' : 'heroicon-o-heart'" @class(['h-4 w-4', 'text-emerald-600 dark:text-emerald-400' => $hasPhysicalExam]) />
+            <span wire:loading.remove wire:target="mountAction('amdPhysicalExam')">{{ $hasPhysicalExam ? 'Examen físico (cargado)' : 'Examen físico AMD' }}</span>
+            <span wire:loading wire:target="mountAction('amdPhysicalExam')">Abriendo…</span>
         </button>
         <button
             type="button"

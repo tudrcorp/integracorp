@@ -140,6 +140,15 @@ class ViewAffiliate extends ViewRecord
                     $this->redirect(TelemedicinePatientResource::getUrl('view', ['record' => $result['patient']]));
                 })
                 ->hidden(fn (): bool => in_array('ATENMEDI', Auth::user()?->departament ?? [], true)),
+            Action::make('edit_personal_data')
+                ->label('Editar')
+                ->icon('heroicon-o-pencil-square')
+                ->color('warning')
+                ->extraAttributes([
+                    'class' => self::TICKET_BUTTON_GRAY_CLASS,
+                ])
+                ->url(fn (): string => AffiliateResource::getUrl('edit', ['record' => $this->getRecord()]))
+                ->visible(fn (): bool => AffiliateResource::canEdit($this->getRecord())),
             Action::make('back')
                 ->label('Volver')
                 ->icon('heroicon-o-arrow-left')

@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Widgets;
 
 use App\Models\Affiliate;
 use App\Models\Affiliation;
+use App\Support\Operations\SupplierAffiliateVisibility;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Support\RawJs;
@@ -99,7 +100,7 @@ class AffiliationChart extends ChartWidget
             $endOfMonth = Carbon::create($selectedYear, $this->selectedMonth)->endOfMonth();
 
             $dataTrend = Trend::query(
-                Affiliate::query()
+                SupplierAffiliateVisibility::applyToAffiliates(Affiliate::query())
                     ->whereHas('affiliation', function ($query): void {
                         $query->where('status', 'ACTIVA');
                     })
@@ -121,7 +122,7 @@ class AffiliationChart extends ChartWidget
             $endOfYear = Carbon::create($selectedYear)->endOfYear();
 
             $dataTrend = Trend::query(
-                Affiliation::query()
+                SupplierAffiliateVisibility::applyToAffiliations(Affiliation::query())
                     ->where('status', 'ACTIVA')
                     ->whereYear('created_at', $selectedYear)
             )

@@ -19,7 +19,14 @@ class AnotherAddress extends Model
         'ambulanceParking',
         'relationship',
     ];
-    
+
+    protected function casts(): array
+    {
+        return [
+            'ambulanceParking' => 'boolean',
+        ];
+    }
+
     public function telemedicinePatient()
     {
         return $this->belongsTo(TelemedicinePatient::class);

@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\Affiliates\Tables;
 
+use App\Filament\Operations\Resources\Affiliates\AffiliateResource;
 use App\Http\Controllers\AffiliateExportCsvController;
+use App\Models\Affiliate;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
@@ -26,8 +29,6 @@ class AffiliatesTable
     {
         return $table
             ->defaultSort('created_at', 'desc')
-            ->heading('Afiliados individuales')
-            ->description('Orden por fecha de registro (más recientes primero). La celda del nombre resalta en verde cuando el estado es ACTIVO y el alta es hoy.')
             ->striped()
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
                 'affiliation.businessLine:id,definition',
@@ -265,6 +266,13 @@ class AffiliatesTable
                     ->icon(Heroicon::OutlinedEye)
                     ->label('Ver detalles')
                     ->color('primary'),
+                EditAction::make()
+                    ->icon(Heroicon::OutlinedPencilSquare)
+                    ->label('Editar')
+                    ->tooltip('Corregir datos personales del afiliado')
+                    ->color('warning')
+                    ->url(fn (Affiliate $record): string => AffiliateResource::getUrl('edit', ['record' => $record]))
+                    ->visible(fn (Affiliate $record): bool => AffiliateResource::canEdit($record)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

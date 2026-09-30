@@ -26,8 +26,14 @@
 <div
     class="fi-operations-case-chat-root"
     x-data="operationsCaseChatPanel()"
-    wire:poll.3s="pollHeartbeat"
 >
+    {{-- Ciclo ligero: 3 s con el chat abierto, 5 s cerrado (solo contadores y avisos). El servidor no reenvía HTML si nada cambió. --}}
+    @if ($isOpen)
+        <div wire:poll.3s="pollHeartbeat" wire:key="ops-case-chat-poll-open" hidden></div>
+    @else
+        <div wire:poll.5s="pollHeartbeat" wire:key="ops-case-chat-poll-closed" hidden></div>
+    @endif
+
     @if ($isOpen)
         <div
             class="fi-operations-case-chat-window fi-operations-case-chat--ios fi-operations-case-chat--glass"
@@ -88,8 +94,8 @@
                         <p class="fi-operations-case-chat-subtitle">
                             <span x-show="! minimized">En seguimiento</span>
                             <span x-show="minimized" x-cloak>Minimizado · doble clic para expandir</span>
-                            @if ($cases->isNotEmpty())
-                                · {{ $cases->count() }} activo{{ $cases->count() === 1 ? '' : 's' }}
+                            @if ($activeCasesCount > 0)
+                                · {{ $activeCasesCount }} activo{{ $activeCasesCount === 1 ? '' : 's' }}
                             @endif
                             @if ($totalUnread > 0)
                                 · {{ $totalUnread }} sin leer
@@ -113,7 +119,7 @@
                     <aside class="fi-operations-case-chat-sidebar">
                         <div class="fi-operations-case-chat-sidebar-head">
                             <p class="fi-operations-case-chat-sidebar-label">Casos activos</p>
-                            <span class="fi-operations-case-chat-sidebar-count">{{ $cases->count() }}</span>
+                            <span class="fi-operations-case-chat-sidebar-count">{{ $activeCasesCount }}</span>
                         </div>
 
                         <div class="fi-operations-case-chat-sidebar-search">
@@ -129,32 +135,110 @@
                             </label>
                         </div>
 
-                        <div class="fi-operations-case-chat-case-list" role="listbox" aria-label="Casos en seguimiento">
-                            @forelse ($cases as $case)
+                        <div class="fi-operations-case-chat-filter" role="group" aria-label="Filtrar casos">
+                            <button
+                                type="button"
+                                wire:click="$set('onlyUnread', false)"
+                                @class(['fi-operations-case-chat-filter-chip', 'is-active' => ! $onlyUnread])
+                                aria-pressed="{{ $onlyUnread ? 'false' : 'true' }}"
+                            >
+                                Todos
+                            </button>
+                            <button
+                                type="button"
+                                wire:click="$set('onlyUnread', true)"
+                                @class(['fi-operations-case-chat-filter-chip', 'is-active' => $onlyUnread, 'has-unread' => $unreadByCase !== []])
+                                aria-pressed="{{ $onlyUnread ? 'true' : 'false' }}"
+                            >
+                                Solo no leídos
+                                @if ($unreadByCase !== [])
+                                    <span class="fi-operations-case-chat-filter-count">{{ count($unreadByCase) > 99 ? '99+' : count($unreadByCase) }}</span>
+                                @endif
+                            </button>
+                        </div>
+
+                        @php
+                            /** Una sola secuencia (encabezados + casos) para no duplicar el marcado de cada caso. */
+                            $listRows = [];
+
+                            if ($unreadCases->isNotEmpty()) {
+                                $listRows[] = ['type' => 'header', 'key' => 'unread', 'label' => 'Sin leer', 'count' => $unreadCases->count()];
+
+                                foreach ($unreadCases as $unreadCase) {
+                                    $listRows[] = ['type' => 'case', 'case' => $unreadCase];
+                                }
+                            }
+
+                            if (! $onlyUnread && $cases->isNotEmpty()) {
+                                if ($unreadCases->isNotEmpty()) {
+                                    $listRows[] = ['type' => 'header', 'key' => 'all', 'label' => 'Todos los casos', 'count' => null];
+                                }
+
+                                foreach ($cases as $listedCase) {
+                                    $listRows[] = ['type' => 'case', 'case' => $listedCase];
+                                }
+                            }
+                        @endphp
+
+                        <div
+                            class="fi-operations-case-chat-case-list"
+                            role="listbox"
+                            aria-label="Casos en seguimiento"
+                            wire:loading.class="opacity-60"
+                            wire:target="caseSearch, loadMoreCases, onlyUnread"
+                        >
+                            @forelse ($listRows as $row)
+                                @if ($row['type'] === 'header')
+                                    <p class="fi-operations-case-chat-section-label {{ $row['key'] === 'unread' ? 'is-unread' : '' }}" wire:key="ops-case-chat-section-{{ $row['key'] }}">
+                                        {{ $row['label'] }}
+                                        @if ($row['count'] !== null)
+                                            <span>· {{ $row['count'] }}</span>
+                                        @endif
+                                    </p>
+                                    @continue
+                                @endif
+
                                 @php
+                                    $case = $row['case'];
                                     $unread = $unreadByCase[$case->id] ?? 0;
                                     $isSelected = $selectedCaseId === $case->id;
                                     $patientName = $case->patient_name ?? $case->telemedicinePatient?->full_name ?? 'Paciente';
+                                    $preview = $unread > 0 ? ($previews[$case->id] ?? null) : null;
                                 @endphp
                                 <button
                                     type="button"
                                     wire:click="selectCase({{ $case->id }})"
                                     role="option"
                                     aria-selected="{{ $isSelected ? 'true' : 'false' }}"
+                                    aria-label="{{ $case->code }} · {{ $patientName }}{{ $unread > 0 ? ' · '.$unread.' sin leer' : '' }}"
                                     class="fi-operations-case-chat-case-item {{ $isSelected ? 'is-selected' : '' }} {{ $unread > 0 ? 'has-unread' : '' }}"
                                     wire:key="ops-case-chat-item-{{ $case->id }}"
                                 >
                                     <span class="fi-operations-case-chat-case-avatar" aria-hidden="true">
                                         {{ $initialsFromName($patientName) }}
+                                        @if ($unread > 0)
+                                            <span class="fi-operations-case-chat-case-unread-dot"></span>
+                                        @endif
                                     </span>
 
                                     <span class="fi-operations-case-chat-case-content">
                                         <span class="fi-operations-case-chat-case-item-top">
                                             <span class="fi-operations-case-chat-case-code">{{ $case->code }}</span>
+                                            @if ($preview !== null && $preview['created_at_human'] !== '')
+                                                <span class="fi-operations-case-chat-case-time">{{ $preview['created_at_human'] }}</span>
+                                            @endif
                                         </span>
                                         <span class="fi-operations-case-chat-case-patient">
                                             {{ Str::limit($patientName, 34) }}
                                         </span>
+                                        @if ($preview !== null)
+                                            <span class="fi-operations-case-chat-case-preview">
+                                                @if (filled($preview['user_name']))
+                                                    <strong>{{ Str::limit($preview['user_name'], 18) }}:</strong>
+                                                @endif
+                                                {{ Str::limit(trim($preview['body']), 60) }}
+                                            </span>
+                                        @endif
                                     </span>
 
                                     @if ($unread > 0)
@@ -164,14 +248,40 @@
                             @empty
                                 <div class="fi-operations-case-chat-empty-sidebar">
                                     <span class="fi-operations-case-chat-empty-icon" aria-hidden="true">
-                                        <x-filament::icon icon="heroicon-o-inbox" class="size-7" />
+                                        <x-filament::icon :icon="$onlyUnread && trim($caseSearch) === '' ? 'heroicon-o-check-circle' : 'heroicon-o-inbox'" class="size-7" />
                                     </span>
-                                    <p class="fi-operations-case-chat-empty-title">Sin casos en seguimiento</p>
-                                    <p class="fi-operations-case-chat-empty-text">
-                                        Aparecerán aquí cuando un caso pase a EN SEGUIMIENTO.
-                                    </p>
+                                    @if (trim($caseSearch) !== '')
+                                        <p class="fi-operations-case-chat-empty-title">Sin resultados</p>
+                                        <p class="fi-operations-case-chat-empty-text">
+                                            Ningún caso {{ $onlyUnread ? 'sin leer ' : '' }}coincide con «{{ Str::limit(trim($caseSearch), 40) }}». Busque por código, paciente o doctor.
+                                        </p>
+                                    @elseif ($onlyUnread)
+                                        <p class="fi-operations-case-chat-empty-title">Todo al día</p>
+                                        <p class="fi-operations-case-chat-empty-text">
+                                            No tiene conversaciones sin leer. Pulse «Todos» para ver el resto de los casos.
+                                        </p>
+                                    @else
+                                        <p class="fi-operations-case-chat-empty-title">Sin casos en seguimiento</p>
+                                        <p class="fi-operations-case-chat-empty-text">
+                                            Aparecerán aquí cuando un caso pase a EN SEGUIMIENTO.
+                                        </p>
+                                    @endif
                                 </div>
                             @endforelse
+
+                            @if ($hasMoreCases)
+                                <button
+                                    type="button"
+                                    wire:click="loadMoreCases"
+                                    wire:loading.attr="disabled"
+                                    wire:target="loadMoreCases"
+                                    class="fi-operations-case-chat-case-item justify-center text-sm font-medium opacity-80"
+                                    wire:key="ops-case-chat-load-more"
+                                >
+                                    <span wire:loading.remove wire:target="loadMoreCases">Cargar más casos</span>
+                                    <span wire:loading wire:target="loadMoreCases">Cargando…</span>
+                                </button>
+                            @endif
                         </div>
                     </aside>
 
@@ -211,9 +321,23 @@
                                     aria-live="polite"
                                     aria-relevant="additions"
                                     wire:loading.class="is-syncing"
-                                    wire:target="pollHeartbeat, sendMessage, selectCase"
+                                    wire:target="sendMessage, selectCase"
                                 >
                                 <div class="fi-operations-case-chat-messages-inner">
+                                @if ($hasOlderMessages)
+                                    <div class="flex justify-center py-2" wire:key="ops-case-chat-older-{{ $selectedCaseId }}">
+                                        <button
+                                            type="button"
+                                            wire:click="loadOlderMessages"
+                                            wire:loading.attr="disabled"
+                                            wire:target="loadOlderMessages"
+                                            class="rounded-full px-3 py-1 text-xs font-medium text-primary-600 ring-1 ring-primary-600/30 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-white/5"
+                                        >
+                                            <span wire:loading.remove wire:target="loadOlderMessages">Ver mensajes anteriores</span>
+                                            <span wire:loading wire:target="loadOlderMessages">Cargando…</span>
+                                        </button>
+                                    </div>
+                                @endif
                                 @php
                                     $previousDate = null;
                                 @endphp
@@ -234,6 +358,72 @@
                                         <div class="fi-operations-case-chat-date-divider" wire:key="ops-case-date-{{ $message->id }}">
                                             <span>{{ $dateLabel }}</span>
                                         </div>
+                                    @endif
+
+                                    @if ($unreadDividerMessageId !== null && (int) $message->id === $unreadDividerMessageId && ! $isMine)
+                                        <div class="fi-operations-case-chat-new-divider" wire:key="ops-case-new-divider-{{ $message->id }}" role="separator">
+                                            <span>Mensajes nuevos</span>
+                                        </div>
+                                    @endif
+
+                                    @if ($message->isConsultationSummary())
+                                        @php
+                                            $summaryMeta = is_array($message->meta) ? $message->meta : [];
+                                            $summarySections = array_values(array_filter(
+                                                (array) ($summaryMeta['sections'] ?? []),
+                                                static fn (mixed $section): bool => is_array($section) && filled($section['label'] ?? null),
+                                            ));
+                                            $visibleSections = array_slice($summarySections, 0, 2);
+                                            $hiddenSections = array_slice($summarySections, 2);
+                                        @endphp
+                                        <article
+                                            wire:key="ops-case-msg-{{ $message->id }}"
+                                            class="fi-operations-case-chat-summary"
+                                            x-data="{ expanded: false }"
+                                            aria-label="{{ $summaryMeta['title'] ?? 'Resumen de consulta' }}"
+                                        >
+                                            <header class="fi-operations-case-chat-summary-head">
+                                                <span class="fi-operations-case-chat-summary-badge">
+                                                    <x-filament::icon icon="heroicon-m-sparkles" class="size-3.5" />
+                                                    {{ \App\Support\Telemedicine\ConsultationChatSummary::AUTHOR_LABEL }}
+                                                </span>
+                                                <p class="fi-operations-case-chat-summary-title">{{ $summaryMeta['title'] ?? 'Resumen de consulta' }}</p>
+                                                @if (filled($summaryMeta['subtitle'] ?? null))
+                                                    <p class="fi-operations-case-chat-summary-subtitle">{{ $summaryMeta['subtitle'] }}</p>
+                                                @endif
+                                            </header>
+
+                                            @if ($summarySections === [])
+                                                <p class="fi-operations-case-chat-summary-empty">La consulta se registró sin datos clínicos adicionales.</p>
+                                            @else
+                                                <dl class="fi-operations-case-chat-summary-body">
+                                                    @foreach ($visibleSections as $section)
+                                                        @include('livewire.operations.partials.case-chat-summary-section', ['section' => $section])
+                                                    @endforeach
+
+                                                    @if ($hiddenSections !== [])
+                                                        <div x-show="expanded" x-cloak x-collapse>
+                                                            @foreach ($hiddenSections as $section)
+                                                                @include('livewire.operations.partials.case-chat-summary-section', ['section' => $section])
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
+                                                </dl>
+
+                                                @if ($hiddenSections !== [])
+                                                    <button
+                                                        type="button"
+                                                        class="fi-operations-case-chat-summary-toggle"
+                                                        x-on:click="expanded = ! expanded"
+                                                        x-bind:aria-expanded="expanded ? 'true' : 'false'"
+                                                    >
+                                                        <span x-show="! expanded">Ver resumen completo ({{ count($hiddenSections) }} apartado{{ count($hiddenSections) === 1 ? '' : 's' }} más)</span>
+                                                        <span x-show="expanded" x-cloak>Ocultar detalle</span>
+                                                    </button>
+                                                @endif
+                                            @endif
+                                        </article>
+                                        @continue
                                     @endif
 
                                     <div
@@ -278,7 +468,7 @@
                                 <div class="fi-operations-case-chat-composer-box">
                                     <textarea
                                         id="ops-case-chat-input"
-                                        wire:model.live="messageBody"
+                                        wire:model="messageBody"
                                         rows="1"
                                         maxlength="5000"
                                         placeholder="Mensaje"
@@ -760,14 +950,27 @@
             const bodyPreview = detail.bodyPreview ?? '';
             const newCount = Number(detail.newCount ?? 1);
             const suffix = newCount > 1 ? ` (+${newCount - 1} más)` : '';
+            const isSummary = detail.isSummary === true;
+            const caseId = Number(detail.caseId ?? 0);
 
-            new FilamentNotification()
-                .title(`Nuevo mensaje · ${caseCode}`)
+            const notification = new FilamentNotification()
+                .title(isSummary ? `Nuevo resumen de consulta · ${caseCode}` : `Nuevo mensaje · ${caseCode}`)
                 .body(`${authorName}: ${bodyPreview}${suffix}`)
                 .icon('heroicon-o-chat-bubble-left-right')
                 .info()
-                .duration(6500)
-                .send();
+                .duration(isSummary ? 9000 : 6500);
+
+            if (caseId > 0 && typeof FilamentNotificationAction !== 'undefined') {
+                notification.actions([
+                    new FilamentNotificationAction('openCaseChat')
+                        .label('Abrir chat')
+                        .button()
+                        .dispatch('operations-case-chat-open', { caseId })
+                        .close(),
+                ]);
+            }
+
+            notification.send();
         },
 
         triggerIncomingPulse() {

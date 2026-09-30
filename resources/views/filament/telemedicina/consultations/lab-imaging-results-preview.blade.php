@@ -3,6 +3,7 @@
     $documents = is_array($documents ?? null) ? $documents : [];
     $embeddedInModal = (bool) ($embeddedInModal ?? false);
     $count = count($documents);
+    $groups = \App\Support\Telemedicine\LabImagingResultDocumentGroups::group($documents);
 @endphp
 
 <div
@@ -51,8 +52,15 @@
     @if ($documents === [])
         <p class="text-sm text-slate-500 dark:text-slate-400">No hay resultados de laboratorio o imagenología cargados para este caso.</p>
     @else
+        <div class="flex flex-col gap-4">
+        @foreach ($groups as $groupIndex => $group)
+        <section>
+            <h3 class="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {{ $group['title'] }}
+                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-600 dark:bg-white/10 dark:text-slate-300">{{ count($group['documents']) }}</span>
+            </h3>
         <ul class="flex flex-col gap-2">
-            @foreach ($documents as $index => $document)
+            @foreach ($group['documents'] as $index => $document)
                 @php
                     $previewUrl = $document['preview_url'] ?? null;
                     $name = (string) ($document['document_name'] ?? 'Documento');
@@ -64,12 +72,15 @@
                     $isImage = (bool) ($document['is_image'] ?? false);
                 @endphp
                 <li
-                    wire:key="lab-imaging-result-{{ $index }}-{{ md5((string) ($document['file_path'] ?? $index)) }}"
+                    wire:key="lab-imaging-result-{{ $groupIndex }}-{{ $index }}-{{ md5((string) ($document['file_path'] ?? $index)) }}"
                     class="flex flex-col gap-3 rounded-xl border border-white/70 bg-white/90 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/70 sm:flex-row sm:items-center sm:justify-between"
                 >
                     <div class="min-w-0">
                         <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ $name }}</p>
                         <p class="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                            @if (filled($document['uploaded_label'] ?? null))
+                                <span class="font-medium text-slate-700 dark:text-slate-200">{{ $document['uploaded_label'] }}</span> ·
+                            @endif
                             {{ $extension !== '' ? $extension : 'Archivo' }}
                             · {{ $source }}
                             @if ($services !== [])
@@ -109,6 +120,9 @@
                 </li>
             @endforeach
         </ul>
+        </section>
+        @endforeach
+        </div>
     @endif
 
     <template x-teleport="body">

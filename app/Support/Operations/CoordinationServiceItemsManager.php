@@ -32,6 +32,18 @@ use Illuminate\Support\HtmlString;
 
 final class CoordinationServiceItemsManager
 {
+    /**
+     * Relaciones de ítems clínicos que el cuadro de control precarga.
+     *
+     * @var list<string>
+     */
+    public const CLINICAL_ITEM_RELATIONS = [
+        'telemedicinePatientMedications',
+        'telemedicinePatientLabs',
+        'telemedicinePatientStudies',
+        'telemedicinePatientSpecialties',
+    ];
+
     public static function coverageValue(?string $serviceOrderType, mixed $row): ?bool
     {
         if ($serviceOrderType === 'MEDICAMENTOS') {
@@ -66,12 +78,14 @@ final class CoordinationServiceItemsManager
         };
     }
 
+    /**
+     * Lee de la memoria de ítems de la pasada de render: la bandera `selectable`
+     * no depende del estatus efectivo, así que no hace falta reconsultar.
+     */
     public static function manageServiceActionIsDisabled(OperationCoordinationService $record): bool
     {
-        TelemedicineCaseTdgReassignmentCoordination::ensureAmdManagementItem($record);
-        RegisterTpaRetailServicesAction::ensureStandaloneManagementItem($record);
-
-        return ! self::hasManageServiceSelectableItems($record);
+        return ! self::clinicalItemsWithEffectiveDisplayStatus($record)
+            ->contains(fn (array $item): bool => (bool) ($item['selectable'] ?? false));
     }
 
     public static function isManagementItemSelectable(string $status): bool
@@ -166,12 +180,69 @@ final class CoordinationServiceItemsManager
         TelemedicineCaseTdgReassignmentCoordination::ensureAmdManagementItem($record);
         RegisterTpaRetailServicesAction::ensureStandaloneManagementItem($record);
 
+        return self::buildManagementItems(
+            $record,
+            $record->telemedicinePatientMedications()
+                ->orderBy('id')
+                ->with('operationInventory:id,is_covered')
+                ->get(['id', 'medicine', 'indications', 'status', 'courtesy_status', 'is_covered', 'operation_inventory_id']),
+            $record->telemedicinePatientLabs()
+                ->orderBy('id')
+                ->get(['id', 'laboratory', 'type', 'status', 'courtesy_status']),
+            $record->telemedicinePatientStudies()
+                ->orderBy('id')
+                ->get(['id', 'study', 'type', 'status', 'courtesy_status']),
+            $record->telemedicinePatientSpecialties()
+                ->orderBy('id')
+                ->get(['id', 'specialty', 'type', 'status', 'courtesy_status']),
+        );
+    }
+
+    /**
+     * Ítems de la coordinación armados con las relaciones que la consulta ya
+     * precargó, o `null` si falta alguna.
+     *
+     * Es el camino del cuadro de control: una sola pasada de eager loading para
+     * toda la página en lugar de cuatro consultas por fila. A diferencia de
+     * `associatedServiceItemsForManagement()` nunca escribe: los `ensure*`
+     * siembran el ítem al crear la coordinación, no al pintarla.
+     *
+     * @return Collection<int, array<string, mixed>>|null
+     */
+    public static function preloadedManagementItems(OperationCoordinationService $record): ?Collection
+    {
+        foreach (self::CLINICAL_ITEM_RELATIONS as $relation) {
+            if (! $record->relationLoaded($relation)) {
+                return null;
+            }
+        }
+
+        return self::buildManagementItems(
+            $record,
+            $record->telemedicinePatientMedications->sortBy('id')->values(),
+            $record->telemedicinePatientLabs->sortBy('id')->values(),
+            $record->telemedicinePatientStudies->sortBy('id')->values(),
+            $record->telemedicinePatientSpecialties->sortBy('id')->values(),
+        );
+    }
+
+    /**
+     * @param  Collection<int, TelemedicinePatientMedications>  $medications
+     * @param  Collection<int, TelemedicinePatientLab>  $labs
+     * @param  Collection<int, TelemedicinePatientStudy>  $studies
+     * @param  Collection<int, TelemedicinePatientSpecialty>  $specialties
+     * @return Collection<int, array<string, mixed>>
+     */
+    private static function buildManagementItems(
+        OperationCoordinationService $record,
+        Collection $medications,
+        Collection $labs,
+        Collection $studies,
+        Collection $specialties,
+    ): Collection {
         $items = collect();
 
-        $record->telemedicinePatientMedications()
-            ->orderBy('id')
-            ->with('operationInventory:id,is_covered')
-            ->get(['id', 'medicine', 'indications', 'status', 'courtesy_status', 'is_covered', 'operation_inventory_id'])
+        $medications
             ->each(function (TelemedicinePatientMedications $item) use ($items, $record): void {
                 $coverage = self::coverageValue('MEDICAMENTOS', $item);
                 $isCoveredWithoutInventory = TelemedicineMedicationCoverage::isCoveredWithoutInventory($item);
@@ -193,9 +264,7 @@ final class CoordinationServiceItemsManager
                 ]);
             });
 
-        $record->telemedicinePatientLabs()
-            ->orderBy('id')
-            ->get(['id', 'laboratory', 'type', 'status', 'courtesy_status'])
+        $labs
             ->each(function (TelemedicinePatientLab $item) use ($items, $record): void {
                 $coverage = self::coverageValue('LABORATORIOS', $item);
                 $items->push([
@@ -214,9 +283,7 @@ final class CoordinationServiceItemsManager
                 ]);
             });
 
-        $record->telemedicinePatientStudies()
-            ->orderBy('id')
-            ->get(['id', 'study', 'type', 'status', 'courtesy_status'])
+        $studies
             ->each(function (TelemedicinePatientStudy $item) use ($items): void {
                 $coverage = self::coverageValue('IMAGENOLOGIA', $item);
                 $items->push([
@@ -234,9 +301,7 @@ final class CoordinationServiceItemsManager
                 ]);
             });
 
-        $record->telemedicinePatientSpecialties()
-            ->orderBy('id')
-            ->get(['id', 'specialty', 'type', 'status', 'courtesy_status'])
+        $specialties
             ->each(function (TelemedicinePatientSpecialty $item) use ($items, $record): void {
                 $coverage = self::coverageValue('ESPECIALISTA', $item);
                 $isTpaStandaloneServiceItem = RegisterTpaRetailServicesAction::isTpaRetailStandaloneCoordination($record)
@@ -837,8 +902,10 @@ final class CoordinationServiceItemsManager
     private static function resolveClinicalItemsWithEffectiveDisplayStatus(OperationCoordinationService $record): Collection
     {
         $orderLinks = self::serviceOrderLinksByClinicalItemKey($record);
+        $items = self::preloadedManagementItems($record)
+            ?? self::associatedServiceItemsForManagement($record);
 
-        return self::associatedServiceItemsForManagement($record)
+        return $items
             ->map(function (array $item) use ($orderLinks): array {
                 $orderKey = self::clinicalItemServiceOrderKey($item['category'], (string) $item['label']);
                 $orderLink = $orderLinks[$orderKey] ?? null;
@@ -1068,11 +1135,15 @@ final class CoordinationServiceItemsManager
     {
         $map = [];
 
-        OperationServiceOrder::query()
-            ->where('operation_coordination_service_id', $record->id)
-            ->with(['operationServiceOrderItems:id,operation_service_order_id,item_name,category'])
-            ->orderByDesc('id')
-            ->get(['id', 'order_number', 'status'])
+        $orders = $record->relationLoaded('operationServiceOrders')
+            ? $record->operationServiceOrders->sortByDesc('id')->values()
+            : OperationServiceOrder::query()
+                ->where('operation_coordination_service_id', $record->id)
+                ->with(['operationServiceOrderItems:id,operation_service_order_id,item_name,category'])
+                ->orderByDesc('id')
+                ->get(['id', 'order_number', 'status']);
+
+        $orders
             ->each(function (OperationServiceOrder $order) use (&$map): void {
                 foreach ($order->operationServiceOrderItems as $orderItem) {
                     $serviceType = mb_strtoupper(trim((string) ($orderItem->category ?? '')));
@@ -1172,9 +1243,7 @@ final class CoordinationServiceItemsManager
         $associatedItemsUrl = self::associatedItemsTabUrl($record);
         /*
          * `$itemsForDisplay` ya trae la bandera `selectable` de cada ítem, así que
-         * preguntar de nuevo a la base (manageServiceActionIsDisabled) repetiría
-         * cuatro consultas por fila. Los `ensure*` que aquella hace ya corrieron al
-         * construir la colección.
+         * no hace falta volver a preguntar a la base por fila.
          */
         $canShowManageLink = $itemsForDisplay->contains(fn (array $item): bool => (bool) ($item['selectable'] ?? false))
             && ! in_array('ATENMEDI', Auth::user()?->departament ?? [], true);

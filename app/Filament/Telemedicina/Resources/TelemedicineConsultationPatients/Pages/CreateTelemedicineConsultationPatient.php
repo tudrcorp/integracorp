@@ -3,6 +3,9 @@
 namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages;
 
 use App\Enums\ClinicalServiceChannel;
+use App\Filament\Telemedicina\Resources\TelemedicineCases\TelemedicineCaseResource;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasAmdPhysicalExamModal;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasConsultationReviewStep;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasInformAmdModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasMedicamentosStepInfoModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
@@ -21,9 +24,6 @@ use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineDoctor;
 use App\Models\TelemedicineHistoryPatient;
-use App\Models\TelemedicineListLaboratory;
-use App\Models\TelemedicineListSpecialist;
-use App\Models\TelemedicineListStudy;
 use App\Models\TelemedicinePatient;
 use App\Models\TelemedicinePatientLab;
 use App\Models\TelemedicinePatientMedications;
@@ -49,6 +49,8 @@ use App\Support\Telemedicine\ConsultationFormContext;
 use App\Support\Telemedicine\ProvidesConsultationFormContext;
 use App\Support\Telemedicine\TelemedicineAmdFileRegistrar;
 use App\Support\Telemedicine\TelemedicineAmdInformRegistrar;
+use App\Support\Telemedicine\TelemedicineAmdPhysicalExamRegistrar;
+use App\Support\Telemedicine\TelemedicineCaseAttachmentRegistrar;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationService;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
@@ -57,7 +59,9 @@ use App\Support\Telemedicine\TelemedicineFollowUpReportDocument;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
+use App\Support\Telemedicine\TelemedicinePatientCareHistory;
 use App\Support\Telemedicine\TelemedicinePatientDisplayName;
+use App\Support\Telemedicine\TelemedicinePatientHistorySummary;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -76,6 +80,8 @@ use Livewire\Attributes\Locked;
 
 class CreateTelemedicineConsultationPatient extends CreateRecord implements ProvidesConsultationFormContext
 {
+    use HasAmdPhysicalExamModal;
+    use HasConsultationReviewStep;
     use HasInformAmdModal;
     use HasMedicamentosStepInfoModal;
 
@@ -298,27 +304,70 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
             ->send();
     }
 
+    /**
+     * Texto plano para la pestaña del navegador; el encabezado visual va en getHeading().
+     */
     public function getTitle(): string|Htmlable
     {
+        $patient = $this->headerPatient();
 
-        $patient = session()->get('patient');
         if (! $patient instanceof TelemedicinePatient) {
             return 'Registrar consulta';
         }
 
-        return new HtmlString(
-            '<div style="display: flex; flex-direction: column;">'.
-                '<span style="font-weight: bold; font-size: 1rem; color: #005ca9;">'. // Tono azul oscuro similar a primary-700
-                    'Nombra y Apellido: '.$patient->full_name.
-                '</span>'.
-                '<span style="font-size: 1rem; color: #005ca9;">'. // Tono gris oscuro similar a gray-600
-                    'Cédula: V-'.$patient->nro_identificacion.
-                '</span>'.
-                '<span style="font-size: 1rem; color: #005ca9;">'. // Tono gris oscuro similar a gray-600
-                    'Edad: '.$patient->age.
-                '</span>'.
-            '</div>'
-        );
+        return collect([
+            'Consulta',
+            filled($this->case?->code) ? 'Caso '.$this->case->code : null,
+            $patient->full_name,
+        ])->filter()->implode(' · ');
+    }
+
+    /**
+     * Encabezado con los datos del paciente y el número del caso de ESTA pestaña
+     * (no de la sesión global, que puede pertenecer a otra pestaña abierta).
+     */
+    public function getHeading(): string|Htmlable
+    {
+        $patient = $this->headerPatient();
+
+        if (! $patient instanceof TelemedicinePatient) {
+            return 'Registrar consulta';
+        }
+
+        return new HtmlString(view('filament.telemedicina.consultations.patient-header', [
+            'patientName' => $patient->full_name,
+            'document' => self::formatPatientDocument($patient->nro_identificacion),
+            'age' => filled($patient->age) ? (int) $patient->age : null,
+            'sex' => filled($patient->sex) ? (string) $patient->sex : null,
+            'caseCode' => $this->case?->code,
+            'caseStatus' => $this->case?->status,
+            'managedBy' => $this->case?->managed_by,
+        ])->render());
+    }
+
+    private function headerPatient(): ?TelemedicinePatient
+    {
+        if ($this->patient instanceof TelemedicinePatient) {
+            return $this->patient;
+        }
+
+        $sessionPatient = session()->get('patient');
+
+        return $sessionPatient instanceof TelemedicinePatient ? $sessionPatient : null;
+    }
+
+    /**
+     * Antes se anteponía «V-» siempre: una cédula ya guardada con prefijo (V-, E-, J-, P-) salía «V-V-…».
+     */
+    public static function formatPatientDocument(mixed $document): ?string
+    {
+        $value = trim((string) $document);
+
+        if ($value === '') {
+            return null;
+        }
+
+        return preg_match('/^[VEJPG]-?\d/i', $value) === 1 ? mb_strtoupper($value) : 'V-'.$value;
     }
 
     protected function getHeaderActions(): array
@@ -333,6 +382,47 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                     'class' => FilamentIosButton::extraClassForFilamentColor('estandar'),
                 ]),
             FilamentIosActionsMenu::make([
+                Action::make('upload_case_attachment')
+                    ->label('Cargar documento')
+                    ->icon('heroicon-o-paper-clip')
+                    ->color('primary')
+                    ->visible(fn (): bool => ($this->telemedicineCaseId ?? 0) > 0)
+                    ->modalHeading('Cargar documento al caso')
+                    ->modalDescription(fn (): HtmlString => new HtmlString(
+                        'Se guardará en la bitácora del caso como <strong>'.e($this->caseAttachmentStageLabel()).'</strong>. '
+                        .'No hace falta terminar la consulta: el archivo queda registrado al pulsar «Cargar».'
+                    ))
+                    ->modalWidth(Width::Large)
+                    ->modalSubmitActionLabel('Cargar')
+                    ->closeModalByClickingAway(false)
+                    ->form([
+                        \Filament\Forms\Components\FileUpload::make('files')
+                            ->label('Documentos o imágenes')
+                            ->helperText('PDF, imágenes (JPG, PNG, WEBP, HEIC), Word o Excel. Hasta '.TelemedicineCaseAttachmentRegistrar::MAX_FILES.' archivos de 10 MB cada uno.')
+                            ->disk(TelemedicineCaseAttachmentRegistrar::DISK)
+                            ->directory(fn (): string => TelemedicineCaseAttachmentRegistrar::directoryForCase((int) $this->telemedicineCaseId))
+                            ->visibility('public')
+                            ->multiple()
+                            ->maxFiles(TelemedicineCaseAttachmentRegistrar::MAX_FILES)
+                            ->maxSize(TelemedicineCaseAttachmentRegistrar::MAX_SIZE_KB)
+                            ->acceptedFileTypes(TelemedicineCaseAttachmentRegistrar::ACCEPTED_MIME_TYPES)
+                            ->storeFileNamesIn('original_names')
+                            ->openable()
+                            ->downloadable()
+                            ->required()
+                            ->validationMessages([
+                                'required' => 'Seleccione al menos un archivo.',
+                            ]),
+                        \Filament\Forms\Components\Textarea::make('description')
+                            ->label('Descripción (opcional)')
+                            ->placeholder('Ej.: Resultado de hematología traído por el paciente')
+                            ->rows(2)
+                            ->maxLength(500),
+                    ])
+                    ->action(function (array $data, Action $action): void {
+                        $this->handleCaseAttachmentUpload($data, $action);
+                    }),
+
                 Action::make('preview_lab_imaging_results')
                     ->label(function (): string {
                         $count = count($this->labImagingResultPreviewDocuments());
@@ -445,12 +535,22 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                     ->slideOver()
                     ->icon('healthicons-f-health-worker-form')
                     ->color('primary')
+                    ->modalHeading('Resumen de historia clínica')
+                    ->modalDescription('Alergias, enfermedades y medicación habitual primero; debajo, cada grupo de antecedentes.')
+                    ->modalWidth(Width::FourExtraLarge)
                     ->modalSubmitAction(false)
-                    ->modalContent(function () {
-                        $patient = session()->get('patient');
-                        $records = $patient?->telemedicinePatientHistory()->first();
+                    ->modalCancelActionLabel('Cerrar')
+                    ->modalContent(function (): \Illuminate\Contracts\View\View {
+                        $patient = $this->currentHistoryPatient();
 
-                        return view('history-patient-infolist', ['record' => $records]);
+                        return view('filament.telemedicina.consultations.modals.clinical-history-summary', [
+                            'summary' => TelemedicinePatientHistorySummary::summarize($patient?->telemedicinePatientHistory()->first()),
+                            'patient' => [
+                                'name' => (string) ($patient?->full_name ?? 'Paciente'),
+                                'age' => filled($patient?->age) ? (string) $patient->age : null,
+                                'sex' => filled($patient?->sex) ? (string) $patient->sex : null,
+                            ],
+                        ]);
                     })
                     ->hidden(function () {
                         $patient = session()->get('patient');
@@ -463,12 +563,19 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                     ->icon('heroicon-s-clipboard-document-list')
                     ->color('primary')
                     ->slideOver()
-                    ->modalHeading('Historial de Casos del Paciente')
-                    ->modalContent(function () {
-                        $patient = session()->get('patient');
-                        $records = $patient?->telemedicineConsultationPatients()->orderByDesc('created_at')->get();
+                    ->modalHeading('Consultas anteriores del paciente')
+                    ->modalDescription('Cada caso con su consulta inicial, seguimientos y alta, y lo que se indicó en cada consulta.')
+                    ->modalWidth(Width::FourExtraLarge)
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->modalContent(function (): \Illuminate\Contracts\View\View {
+                        $patient = $this->currentHistoryPatient();
 
-                        return view('consultation-patient-table', ['records' => $records]);
+                        return view('filament.telemedicina.consultations.modals.previous-consultations', [
+                            'cases' => $patient instanceof TelemedicinePatient
+                                ? TelemedicinePatientCareHistory::consultationsByCase($patient, $this->currentHistoryCaseId())
+                                : [],
+                        ]);
                     })
                     ->hidden(function () {
                         $patient = session()->get('patient');
@@ -481,12 +588,19 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                     ->icon('heroicon-s-clipboard-document-list')
                     ->color('primary')
                     ->slideOver()
-                    ->modalHeading('Historial de Casos del Paciente')
-                    ->modalContent(function () {
-                        $patient = session()->get('patient');
-                        $records = $patient?->telemedicineCases()->orderByDesc('created_at')->get();
+                    ->modalHeading('Casos del paciente')
+                    ->modalDescription('Todos los casos abiertos para este paciente. Abra uno para ver su detalle completo.')
+                    ->modalWidth(Width::ThreeExtraLarge)
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->modalContent(function (): \Illuminate\Contracts\View\View {
+                        $patient = $this->currentHistoryPatient();
 
-                        return view('table-telemedicine-cases', ['records' => $records]);
+                        return view('filament.telemedicina.consultations.modals.previous-cases', [
+                            'cases' => $patient instanceof TelemedicinePatient
+                                ? TelemedicinePatientCareHistory::cases($patient, $this->currentHistoryCaseId())
+                                : [],
+                        ]);
                     })
                     ->hidden(function () {
                         $patient = session()->get('patient');
@@ -498,6 +612,150 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
     }
 
     protected function getTelemedicineCaseTable() {}
+
+    /**
+     * @return array{stage: \App\Enums\TelemedicineCaseAttachmentStage, follow_up_number: int|null}
+     */
+    private function caseAttachmentStage(): array
+    {
+        $context = $this->consultationFormContext();
+
+        return TelemedicineCaseAttachmentRegistrar::resolveStage(
+            (int) $this->telemedicineCaseId,
+            $context->isEditingInitialConsultation(),
+            $context->action === 'edit',
+        );
+    }
+
+    private function caseAttachmentStageLabel(): string
+    {
+        $stage = $this->caseAttachmentStage();
+
+        return $stage['stage']->labelWithNumber($stage['follow_up_number']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function handleCaseAttachmentUpload(array $data, Action $action): void
+    {
+        $files = is_array($data['files'] ?? null) ? array_values($data['files']) : [];
+        $originalNames = is_array($data['original_names'] ?? null) ? $data['original_names'] : [];
+
+        $this->resolveConsultationContext();
+        $case = $this->case;
+
+        if (! $case instanceof TelemedicineCase
+            || ($this->telemedicinePatientId !== null && (int) $case->telemedicine_patient_id !== (int) $this->telemedicinePatientId)) {
+            TelemedicineCaseAttachmentRegistrar::deleteFiles(array_map('strval', $files));
+
+            Notification::make()
+                ->title('No se pudo cargar el documento')
+                ->body('No se encontró el caso de esta consulta. Vuelva a abrirlo desde el tablero de telemedicina.')
+                ->danger()
+                ->send();
+
+            $action->halt();
+
+            return;
+        }
+
+        $stage = $this->caseAttachmentStage();
+        $consultationId = $this->consultationFormContext()->action === 'edit'
+            ? $this->telemedicineConsultationId
+            : null;
+
+        try {
+            $attachments = TelemedicineCaseAttachmentRegistrar::register(
+                case: $case,
+                storedPaths: $files,
+                originalNames: $originalNames,
+                description: is_string($data['description'] ?? null) ? $data['description'] : null,
+                stage: $stage['stage'],
+                followUpNumber: $stage['follow_up_number'],
+                consultationId: $consultationId,
+                doctorId: TelemedicineConsultationSigningDoctor::idForUser(Auth::user()),
+                userId: Auth::id() !== null ? (int) Auth::id() : null,
+            );
+        } catch (\InvalidArgumentException $exception) {
+            Notification::make()
+                ->title('No se pudo cargar el documento')
+                ->body($exception->getMessage())
+                ->danger()
+                ->send();
+
+            $action->halt();
+
+            return;
+        } catch (\Throwable $exception) {
+            Log::error('Error al cargar documento del médico en el caso de telemedicina.', [
+                'telemedicine_case_id' => $case->id,
+                'user_id' => Auth::id(),
+                'exception' => $exception->getMessage(),
+            ]);
+
+            Notification::make()
+                ->title('No se pudo cargar el documento')
+                ->body('Ocurrió un error al guardar. Intente de nuevo; si persiste, avise a soporte.')
+                ->danger()
+                ->send();
+
+            $action->halt();
+
+            return;
+        }
+
+        $count = count($attachments);
+
+        Notification::make()
+            ->title($count === 1 ? 'Documento cargado' : $count.' documentos cargados')
+            ->body('Quedó en la bitácora del caso como «'.$stage['stage']->labelWithNumber($stage['follow_up_number']).'».')
+            ->success()
+            ->send();
+    }
+
+    /**
+     * Abre un caso anterior del paciente desde «Casos del paciente». Deja la
+     * marca de sesión que muestra «Volver a Consulta» en la vista del caso.
+     */
+    public function openPreviousCase(int $caseId): void
+    {
+        $patient = $this->currentHistoryPatient();
+
+        $case = $patient instanceof TelemedicinePatient
+            ? $patient->telemedicineCases()->whereKey($caseId)->first()
+            : null;
+
+        if (! $case instanceof TelemedicineCase) {
+            Notification::make()
+                ->title('Caso no disponible')
+                ->body('El caso no pertenece a este paciente o ya no existe.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        session()->put('historyCasesToDetails', $case);
+
+        $this->redirect(TelemedicineCaseResource::getUrl('view', ['record' => $case->id]));
+    }
+
+    private function currentHistoryPatient(): ?TelemedicinePatient
+    {
+        $this->resolveConsultationContext();
+
+        $patient = $this->patient ?? session('patient');
+
+        return $patient instanceof TelemedicinePatient ? $patient : null;
+    }
+
+    private function currentHistoryCaseId(): ?int
+    {
+        $caseId = (int) ($this->case?->id ?? $this->telemedicineCaseId ?? 0);
+
+        return $caseId > 0 ? $caseId : null;
+    }
 
     protected function getFormActions(): array
     {
@@ -1105,6 +1363,13 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                 $consultation = TelemedicineConsultationPatient::query()->find($record['id']);
 
                 if ($consultation) {
+                    // Primero el examen: al vincular el informe, su PDF lo incluye.
+                    TelemedicineAmdPhysicalExamRegistrar::attachPendingToConsultation(
+                        $consultation,
+                        session()->get(TelemedicineAmdPhysicalExamRegistrar::SESSION_PENDING_EXAM_ID)
+                            ?? $this->pendingAmdPhysicalExamId,
+                    );
+
                     TelemedicineAmdInformRegistrar::attachPendingToConsultation(
                         $consultation,
                         session()->get(TelemedicineAmdInformRegistrar::SESSION_PENDING_INFORM_ID)
@@ -1148,9 +1413,10 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                     $otherSpecialistArr = $selections->otherSpecialist;
 
                     if ($feedbackOne != true) {
-                        $finalArrLabs = array_merge($labsArr, $otherLabsArr);
-                        $finalArrStudies = array_merge($studiesArr, $otherStudiesArr);
-                        $finalArrSpecialist = array_merge($consultSpecialistArr, $otherSpecialistArr);
+                        // Cada ítem lleva la cobertura del campo donde se eligió (ver ConsultationClinicalSelections::typed).
+                        $finalArrLabs = $selections->typedLabs();
+                        $finalArrStudies = $selections->typedStudies();
+                        $finalArrSpecialist = $selections->typedSpecialists();
                     }
 
                     // dd($finalArrLabs, $finalArrStudies, $finalArrSpecialist);
@@ -1246,8 +1512,8 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             $labs->telemedicine_patient_id = $record['telemedicine_patient_id'];
                             $labs->telemedicine_case_id = $record['telemedicine_case_id'];
                             $labs->telemedicine_doctor_id = $record['telemedicine_doctor_id'];
-                            $labs->laboratory = $finalArrLabs[$i];
-                            $labs->type = TelemedicineListLaboratory::where('name', $finalArrLabs[$i])->first()->type;
+                            $labs->laboratory = $finalArrLabs[$i]['name'];
+                            $labs->type = $finalArrLabs[$i]['type'];
                             $labs->assigned_by = Auth::user()->id;
                             $labs->save();
                         }
@@ -1295,9 +1561,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             $study->telemedicine_patient_id = $record['telemedicine_patient_id'];
                             $study->telemedicine_case_id = $record['telemedicine_case_id'];
                             $study->telemedicine_doctor_id = $record['telemedicine_doctor_id'];
-                            $study->study = $finalArrStudies[$i];
+                            $study->study = $finalArrStudies[$i]['name'];
                             $study->assigned_by = Auth::user()->id;
-                            $study->type = TelemedicineListStudy::where('name', $finalArrStudies[$i])->first()->type;
+                            $study->type = $finalArrStudies[$i]['type'];
                             $study->save();
                         }
 
@@ -1354,9 +1620,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             $specialist->telemedicine_patient_id = $record['telemedicine_patient_id'];
                             $specialist->telemedicine_case_id = $record['telemedicine_case_id'];
                             $specialist->telemedicine_doctor_id = $record['telemedicine_doctor_id'];
-                            $specialist->specialty = $finalArrSpecialist[$i];
+                            $specialist->specialty = $finalArrSpecialist[$i]['name'];
                             $specialist->assigned_by = Auth::user()->id;
-                            $specialist->type = TelemedicineListSpecialist::where('name', $finalArrSpecialist[$i])->first()->type;
+                            $specialist->type = $finalArrSpecialist[$i]['type'];
                             $specialist->save();
                         }
 

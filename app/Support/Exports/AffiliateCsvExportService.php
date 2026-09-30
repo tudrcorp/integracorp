@@ -6,6 +6,7 @@ namespace App\Support\Exports;
 
 use App\Models\Affiliate;
 use App\Support\CsvExportStream;
+use App\Support\Operations\SupplierAffiliateVisibility;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -108,6 +109,8 @@ final class AffiliateCsvExportService
             'city:id,definition',
             'affiliation:id,code,full_name_ti,ownerAccountManagers',
         ]);
+
+        SupplierAffiliateVisibility::applyToAffiliates($query);
 
         if ($panel === 'business' && Auth::user()?->is_accountManagers) {
             $query->whereHas(

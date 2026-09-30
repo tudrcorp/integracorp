@@ -17,6 +17,8 @@ class OperationServiceOrderPdfService
             'operationCoordinationService.state',
             'operationCoordinationService.city',
             'operationCoordinationService.telemedicinePatient',
+            'operationCoordinationService.telemedicineCase:id,code',
+            'operationCoordinationService.telemedicineConsultationPatient:id,code_reference',
             'supplier.state',
             'supplier.city',
             'doctorNurse',

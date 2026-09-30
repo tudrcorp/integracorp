@@ -15,6 +15,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Unique as UniqueRule;
 
 final class SupplierIntegracorpManagement
@@ -43,6 +44,44 @@ final class SupplierIntegracorpManagement
         return BusinessFilamentActionAccess::userCan(
             BusinessFilamentActionPermissionRegistry::MANAGE_SUPPLIER_INTEGRACORP_PROCESSES
         );
+    }
+
+    public const ALIAS_MAX_LENGTH = 60;
+
+    public static function aliasInput(): TextInput
+    {
+        return TextInput::make('integracorp_alias')
+            ->label('Alias del proveedor')
+            ->placeholder('Ej.: ATENMEDI')
+            ->helperText('Este alias aparecerá en la lista de «Proveedor(es) de Servicios» del módulo de Afiliaciones (individuales y corporativas) y se usará para referenciar la información de los afiliados atendidos por este proveedor. Se guarda en MAYÚSCULAS y no puede repetirse entre proveedores.')
+            ->visible(fn (Get $get): bool => (bool) $get('gestion_integracorp'))
+            ->required(fn (Get $get): bool => (bool) $get('gestion_integracorp'))
+            ->disabled(fn (): bool => ! self::userCanManage())
+            ->dehydrated(fn (): bool => self::userCanManage())
+            ->maxLength(self::ALIAS_MAX_LENGTH)
+            ->unique(table: 'suppliers', column: 'integracorp_alias', ignoreRecord: true)
+            ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeAlias($state))
+            ->validationMessages([
+                'required' => 'Ingrese el alias del proveedor para habilitar la gestión en Integracorp.',
+                'unique' => 'Este alias ya lo usa otro proveedor. Elija uno distinto.',
+                'max' => 'El alias admite hasta '.self::ALIAS_MAX_LENGTH.' caracteres.',
+            ])
+            ->extraInputAttributes([
+                'class' => 'uppercase',
+                'autocomplete' => 'off',
+            ])
+            ->columnSpanFull();
+    }
+
+    public static function normalizeAlias(mixed $alias): ?string
+    {
+        if (! is_string($alias) && ! is_numeric($alias)) {
+            return null;
+        }
+
+        $normalized = Str::upper(Str::squish((string) $alias));
+
+        return $normalized === '' ? null : $normalized;
     }
 
     public static function portalUsersRepeater(string $repeaterCardClass = self::REPEATER_CARD): Repeater

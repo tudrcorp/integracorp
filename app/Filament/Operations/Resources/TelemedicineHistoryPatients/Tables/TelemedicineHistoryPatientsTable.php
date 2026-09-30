@@ -70,8 +70,6 @@ class TelemedicineHistoryPatientsTable
     {
         return $table
             ->defaultSort('created_at', 'desc')
-            ->heading('Historias clínicas')
-            ->description('Expedientes de antecedentes por paciente. El código y el paciente abren el detalle; use filtros para acotar por médico, fechas o antecedentes.')
             ->recordUrl(fn (TelemedicineHistoryPatient $record): string => TelemedicineHistoryPatientResource::getUrl('view', ['record' => $record]))
             ->modifyQueryUsing(function (Builder $query): Builder {
                 $query->with([

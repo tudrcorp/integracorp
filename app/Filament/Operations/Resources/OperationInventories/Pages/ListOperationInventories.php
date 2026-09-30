@@ -3,9 +3,11 @@
 namespace App\Filament\Operations\Resources\OperationInventories\Pages;
 
 use App\Filament\Operations\Resources\OperationInventories\OperationInventoryResource;
+use App\Support\Operations\OperationInventoryListHeaders;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Contracts\Support\Htmlable;
 
 class ListOperationInventories extends ListRecords
 {
@@ -17,6 +19,11 @@ class ListOperationInventories extends ListRecords
     protected static string $resource = OperationInventoryResource::class;
 
     protected static ?string $title = 'Inventario De Productos/Medicamentos';
+
+    public function getHeading(): string|Htmlable
+    {
+        return OperationInventoryListHeaders::inventory();
+    }
 
     protected function getHeaderActions(): array
     {

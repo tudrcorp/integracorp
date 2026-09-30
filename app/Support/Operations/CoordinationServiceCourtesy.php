@@ -73,6 +73,14 @@ final class CoordinationServiceCourtesy
 
     public static function courtesyItemsCount(OperationCoordinationService $record): int
     {
+        $preloaded = CoordinationServiceItemsManager::preloadedManagementItems($record);
+
+        if ($preloaded !== null) {
+            return $preloaded
+                ->filter(fn (array $item): bool => self::itemIsCourtesy($item['courtesy_status'] ?? null))
+                ->count();
+        }
+
         return (int) $record->telemedicinePatientMedications()->where('courtesy_status', self::STATUS)->count()
             + (int) $record->telemedicinePatientLabs()->where('courtesy_status', self::STATUS)->count()
             + (int) $record->telemedicinePatientStudies()->where('courtesy_status', self::STATUS)->count()

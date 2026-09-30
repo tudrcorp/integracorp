@@ -17,6 +17,10 @@ use App\Enums\ClinicalServiceChannel;
  */
 final class ConsultationClinicalSelections
 {
+    public const COVERED = 'CUBIERTO';
+
+    public const NOT_COVERED = 'NO CUBIERTO';
+
     /**
      * @param  array<int, mixed>  $medications
      * @param  array<int, mixed>  $labs
@@ -107,6 +111,60 @@ final class ConsultationClinicalSelections
     public function mergedSpecialists(): array
     {
         return array_merge($this->consultSpecialist, $this->otherSpecialist);
+    }
+
+    /**
+     * Laboratorios a registrar, con la cobertura que indica el campo donde el
+     * médico los eligió.
+     *
+     * @return list<array{name: string, type: string}>
+     */
+    public function typedLabs(): array
+    {
+        return self::typed($this->labs, $this->otherLabs);
+    }
+
+    /**
+     * @return list<array{name: string, type: string}>
+     */
+    public function typedStudies(): array
+    {
+        return self::typed($this->studies, $this->otherStudies);
+    }
+
+    /**
+     * @return list<array{name: string, type: string}>
+     */
+    public function typedSpecialists(): array
+    {
+        return self::typed($this->consultSpecialist, $this->otherSpecialist);
+    }
+
+    /**
+     * La cobertura sale del campo, no del catálogo: un mismo nombre puede estar
+     * como cubierto y como no cubierto (especialistas con `type`/`type_two`,
+     * CREATININA repetida), y buscarlo por nombre devolvía siempre el primero.
+     * Mismo orden que el merge histórico: primero cubiertos, luego no cubiertos.
+     *
+     * @param  array<int, mixed>  $covered
+     * @param  array<int, mixed>  $notCovered
+     * @return list<array{name: string, type: string}>
+     */
+    private static function typed(array $covered, array $notCovered): array
+    {
+        $rows = [];
+
+        foreach ([self::COVERED => $covered, self::NOT_COVERED => $notCovered] as $type => $names) {
+            foreach ($names as $name) {
+                if (! is_scalar($name) || trim((string) $name) === '') {
+                    continue;
+                }
+
+                $rows[] = ['name' => (string) $name, 'type' => $type];
+            }
+        }
+
+        return $rows;
     }
 
     /**

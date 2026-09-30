@@ -6,6 +6,7 @@ namespace App\Filament\Business\Resources\Companies\Schemas;
 
 use App\Models\Company;
 use App\Models\PlanGenerator;
+use App\Support\Affiliations\AffiliationServiceProvidersField;
 use App\Support\Companies\CompanyResponsibleDays;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -107,6 +108,9 @@ class CompanyForm
                                     ->label('Dirección')
                                     ->rows(3)
                                     ->maxLength(500)
+                                    ->columnSpan(['default' => 1, 'lg' => 2]),
+                                AffiliationServiceProvidersField::make()
+                                    ->helperText('Proveedores que atienden a los asociados de esta empresa. Un proveedor con gestión en Integracorp (p. ej. ATENMEDI) solo verá en Operaciones a los asociados de las empresas donde aparezca su alias. Si el proveedor no está en la lista, créelo con el botón «+».')
                                     ->columnSpan(['default' => 1, 'lg' => 2]),
                             ]),
                     ]),

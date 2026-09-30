@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\TelemedicineCases\RelationManagers;
 
 use App\Models\TelemedicineDocument;
+use App\Support\UrlPathEncoder;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -48,7 +49,7 @@ class TelemedicineDocumentsRelationManager extends RelationManager
                                     return '';
                                 }
 
-                                return asset('storage/telemedicina-doc/'.$record->name);
+                                return asset('storage/telemedicina-doc/'.UrlPathEncoder::encode((string) $record->name));
                             })
                             ->openUrlInNewTab(),
                         TextColumn::make('name')
@@ -84,7 +85,7 @@ class TelemedicineDocumentsRelationManager extends RelationManager
                     ->color('success')
                     ->size('sm')
                     ->url(fn (?TelemedicineDocument $record): string => $record !== null
-                        ? asset('storage/telemedicina-doc/'.$record->name)
+                        ? asset('storage/telemedicina-doc/'.UrlPathEncoder::encode((string) $record->name))
                         : '#')
                     ->openUrlInNewTab(),
             ]);

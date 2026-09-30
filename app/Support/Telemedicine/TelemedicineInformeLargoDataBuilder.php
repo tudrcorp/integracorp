@@ -64,7 +64,25 @@ final class TelemedicineInformeLargoDataBuilder
             'fr' => $clinicalData['fr'] ?? $context['fr'] ?? null,
             'temp' => $clinicalData['temp'] ?? $context['temp'] ?? null,
             'saturacion' => $clinicalData['saturacion'] ?? $context['saturacion'] ?? null,
+            'physical_exam' => self::physicalExam($context),
         ];
+    }
+
+    /**
+     * Examen físico AMD de la consulta (o el pendiente del caso cuando el
+     * informe se genera antes de guardarla). Null si no hay: la sección no sale.
+     *
+     * @param  array<string, mixed>  $context
+     * @return array{vitals: list<array{label: string, value: string}>, systems: list<array{label: string, text: string, is_default: bool}>}|null
+     */
+    private static function physicalExam(array $context): ?array
+    {
+        $exam = TelemedicineAmdPhysicalExamRegistrar::forInform(
+            (int) ($context['telemedicine_case_id'] ?? 0),
+            (int) ($context['telemedicine_consultation_id'] ?? 0),
+        );
+
+        return $exam === null ? null : TelemedicineAmdPhysicalExamTemplate::display($exam);
     }
 
     /**
@@ -72,10 +90,10 @@ final class TelemedicineInformeLargoDataBuilder
      * interna `DOCUMENT_INFORME_MEDICO` (`informe-medico`), que la regeneración
      * de documentos usa como identificador y no debe cambiar.
      */
-    public const FILE_SUFFIX_INFORME_MEDICO = 'Informe-Medico';
+    public const FILE_SUFFIX_INFORME_MEDICO = 'Informe-Médico';
 
     /**
-     * `{cédula}-{referencia}-Informe-Medico.pdf`. Cualquier otro tipo conserva
+     * `{cédula}-{referencia}-Informe-Médico.pdf`. Cualquier otro tipo conserva
      * su clave como sufijo, igual que antes.
      *
      * @param  array<string, mixed>  $data

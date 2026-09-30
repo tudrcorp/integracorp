@@ -8,6 +8,7 @@ use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
 use App\Models\AfilliationCorporatePlan;
 use App\Support\CsvExportStream;
+use App\Support\Operations\SupplierAffiliateVisibility;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
@@ -37,7 +38,7 @@ final class CorporateAffiliationsExportService
      */
     public static function affiliationQuery(array $filters = []): Builder
     {
-        $query = AffiliationCorporate::query()
+        $query = SupplierAffiliateVisibility::applyToAffiliations(AffiliationCorporate::query())
             ->with(self::eagerLoads())
             ->orderBy('id');
 

@@ -6,6 +6,8 @@
     $providerAddress = \App\Support\Operations\OperationServiceOrderProviderSummary::addressOrDash($order);
     $providerPhone = \App\Support\Operations\OperationServiceOrderProviderSummary::phoneOrDash($order);
     $patientName = \App\Support\Telemedicine\TelemedicinePatientDisplayName::forCoordination($coord);
+    $caseCode = \App\Support\Operations\OperationServiceOrderCaseReference::caseCode($order);
+    $referenceNumber = \App\Support\Operations\OperationServiceOrderCaseReference::referenceNumber($order);
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -284,6 +286,8 @@
             <td class="col-title title-cell">
                 <p class="doc-title">Orden de servicio</p>
                 <p class="doc-sub">N° <strong>{{ $order->order_number }}</strong></p>
+                <p class="doc-sub">Caso: <strong>{{ $caseCode ?? '—' }}</strong></p>
+                <p class="doc-sub">Referencia: <strong>{{ $referenceNumber ?? '—' }}</strong></p>
                 <p class="doc-sub">Fecha: <strong>{{ $order->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</strong></p>
             </td>
         </tr>
@@ -305,8 +309,8 @@
                 </tr>
                 <tr>
                     <td colspan="2">
-                        <div class="label">Teléfono / Ref.</div>
-                        <div class="value-muted">{{ $coord->phone_holder ?? '—' }} · {{ $coord->reference_number ?? '—' }}</div>
+                        <div class="label">Teléfono</div>
+                        <div class="value-muted">{{ $coord->phone_holder ?? '—' }}</div>
                     </td>
                 </tr>
                 <tr>

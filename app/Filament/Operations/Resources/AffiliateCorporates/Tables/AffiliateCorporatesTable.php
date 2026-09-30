@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\AffiliateCorporates\Tables;
 
+use App\Filament\Operations\Resources\AffiliateCorporates\AffiliateCorporateResource;
 use App\Http\Controllers\AffiliateCorporateExportCsvController;
+use App\Models\AffiliateCorporate;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
@@ -27,8 +30,6 @@ class AffiliateCorporatesTable
     {
         return $table
             ->defaultSort('created_at', 'desc')
-            ->heading('Afiliados corporativos')
-            ->description('Orden por fecha de registro (más recientes primero).')
             ->striped()
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
                 'affiliationCorporate.businessLine:id,definition',
@@ -212,6 +213,13 @@ class AffiliateCorporatesTable
                     ->icon(Heroicon::OutlinedEye)
                     ->color('info')
                     ->label('Ver detalles'),
+                EditAction::make()
+                    ->icon(Heroicon::OutlinedPencilSquare)
+                    ->label('Editar')
+                    ->tooltip('Corregir datos personales del afiliado')
+                    ->color('warning')
+                    ->url(fn (AffiliateCorporate $record): string => AffiliateCorporateResource::getUrl('edit', ['record' => $record]))
+                    ->visible(fn (AffiliateCorporate $record): bool => AffiliateCorporateResource::canEdit($record)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

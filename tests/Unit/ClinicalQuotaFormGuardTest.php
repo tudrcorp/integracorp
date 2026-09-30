@@ -137,17 +137,18 @@ it('conecta el guard a los campos que consumen cupo', function (): void {
     // Servicios Macro en los dos pasos del asistente.
     expect(substr_count($form, 'ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Type1)'))->toBe(2);
 
-    // Laboratorio, imagenología y especialista: cubiertos y no cubiertos.
-    expect(substr_count($form, 'ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Laboratory)'))->toBe(2)
-        ->and(substr_count($form, 'ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Imaging)'))->toBe(2)
-        ->and(substr_count($form, 'ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Specialist)'))->toBe(2);
+    // Laboratorio, imagenología y especialista: sólo el campo cubierto. Lo no
+    // cubierto no consume cupo, así que tampoco puede bloquearse por cupo.
+    expect(substr_count($form, 'ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Laboratory)'))->toBe(1)
+        ->and(substr_count($form, 'ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Imaging)'))->toBe(1)
+        ->and(substr_count($form, 'ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Specialist)'))->toBe(1);
 
     // Medicamentos se valida en la tilde de complementos.
     expect($form)->toContain('ClinicalQuotaFormGuard::complementsRule($livewire)');
 
     // Aviso inmediato y texto fijo bajo el campo.
-    expect(substr_count($form, 'ClinicalQuotaFormGuard::notifyIfBlocked'))->toBeGreaterThanOrEqual(9)
-        ->and(substr_count($form, 'ClinicalQuotaFormGuard::helperText'))->toBeGreaterThanOrEqual(8);
+    expect(substr_count($form, 'ClinicalQuotaFormGuard::notifyIfBlocked'))->toBeGreaterThanOrEqual(6)
+        ->and(substr_count($form, 'ClinicalQuotaFormGuard::helperText'))->toBeGreaterThanOrEqual(6);
 });
 
 it('el asistente valida el paso al avanzar, sin pasos saltables', function (): void {

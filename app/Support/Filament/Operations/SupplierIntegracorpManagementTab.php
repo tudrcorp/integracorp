@@ -42,6 +42,17 @@ final class SupplierIntegracorpManagementTab
                                 ])->render()
                             ))
                             ->columnSpanFull(),
+                        TextEntry::make('integracorp_alias')
+                            ->label('Alias del proveedor')
+                            ->helperText('Aparece en la lista de «Proveedor(es) de Servicios» del módulo de Afiliaciones.')
+                            ->visible(fn (Supplier $record): bool => (bool) $record->gestion_integracorp)
+                            ->badge()
+                            ->color('info')
+                            ->placeholder('Sin alias. Regístrelo desde «Editar».')
+                            ->extraAttributes([
+                                'class' => self::INNER_CARD,
+                            ])
+                            ->columnSpanFull(),
                         RepeatableEntry::make('integracorpAnalysts')
                             ->label('Usuarios de acceso')
                             ->visible(fn (Supplier $record): bool => (bool) $record->gestion_integracorp)

@@ -26,6 +26,13 @@ class TelemedicineDoctorResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'full_name';
 
+    /**
+     * Fuera del buscador global: no respeta el filtro por médico de la tabla y
+     * dejaba a cualquier médico encontrar pacientes o colegas ajenos. El
+     * buscador del panel encuentra casos ({@see \App\Support\Telemedicine\TelemedicineCaseGlobalSearch}).
+     */
+    protected static bool $isGloballySearchable = false;
+
     protected static string|BackedEnum|null $navigationIcon = 'healthicons-f-doctor-male';
 
     protected static string|UnitEnum|null $navigationGroup = 'GESTIÓN TELEMÉDICA';

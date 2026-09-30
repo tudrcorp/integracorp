@@ -113,12 +113,12 @@ it('vuelve a consultar después de vaciar la memoria', function (): void {
     expect($consultas)->toBeGreaterThan(0);
 });
 
-it('la tabla vacía la memoria al construir su consulta', function (): void {
+it('la página vacía la memoria cada vez que vuelve a leer los registros', function (): void {
     $tabla = file_get_contents(base_path('app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php'));
+    $pagina = file_get_contents(base_path('app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ListOperationCoordinationServices.php'));
 
-    expect($tabla)
-        ->toContain('CoordinationServiceItemsManager::flushClinicalItemsCache()')
-        ->toContain('->deferLoading()');
+    expect($tabla)->toContain('->deferLoading()')
+        ->and($pagina)->toContain('CoordinationServiceItemsManager::flushClinicalItemsCache()');
 });
 
 /*

@@ -53,3 +53,16 @@ it('precarga las observaciones en el resource de empresas', function (): void {
 
     expect($source)->toContain("'companyObservations.createdBy:id,name,email'");
 });
+
+it('la ficha de la empresa agrupa sus acciones en «Acciones» y deja «Volver» aparte', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Companies/Pages/ViewCompany.php');
+    $menu = substr($source, (int) strpos($source, 'FilamentIosActionsMenu::make(['));
+
+    expect($source)->toContain('FilamentIosActionsMenu::make([')
+        ->and(strpos($source, "Action::make('back')"))->toBeLessThan(strpos($source, 'FilamentIosActionsMenu::make(['))
+        ->and($menu)->toContain('CompanyTableActions::uploadPaymentVoucherAction(),')
+        ->toContain('CompanyTableActions::sendPublicRegistrationLinkAction(),')
+        ->toContain("Action::make('openRegistrationLink')")
+        ->toContain("Action::make('addObservation')")
+        ->toContain('EditAction::make()');
+});
