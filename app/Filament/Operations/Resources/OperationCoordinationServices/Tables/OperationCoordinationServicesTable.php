@@ -1421,12 +1421,14 @@ class OperationCoordinationServicesTable
                     ->label('Paciente')
                     ->badge()
                     ->color('gray')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('ci_patient')
                     ->label('Cédula del Paciente')
                     ->badge()
                     ->color('gray')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('birth_date_patient')
                     ->label('Fecha de Nacimiento del Paciente')
                     ->icon('heroicon-m-calendar-days')
@@ -1463,13 +1465,15 @@ class OperationCoordinationServicesTable
                     ->badge()
                     ->color('gray')
                     ->tooltip('Edite en la acción «Negociación y precios».')
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('supplier_service')
                     ->label('Proveedor de Servicio')
                     ->searchable()
                     ->limit(28)
                     ->tooltip(fn (?string $state): ?string => $state)
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('farmadoc')
                     ->label('Farmadoc')
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
@@ -1533,7 +1537,8 @@ class OperationCoordinationServicesTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('service_order_number')
                     ->label('Número Orden de Servicio')
-                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
+                    ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('bill_number')
                     ->label('Número de Factura')
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament))
@@ -1607,8 +1612,13 @@ class OperationCoordinationServicesTable
                         }
 
                         $patientName = trim((string) ($record->telemedicineCase?->patient_name ?? ''));
+                        $patientDocument = trim((string) ($record->ci_patient ?? ''));
 
-                        return $patientName !== '' ? $code.' · '.$patientName : $code;
+                        return collect([
+                            $code,
+                            $patientName,
+                            $patientDocument !== '' ? 'C.I. '.$patientDocument : null,
+                        ])->filter()->implode(' · ');
                     })
                     ->getDescriptionFromRecordUsing(function (OperationCoordinationService $record): ?string {
                         if (self::isTpaRetailService($record)) {
