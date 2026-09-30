@@ -1198,7 +1198,11 @@ class OperationCoordinationServicesTable
             ->description('Coordinaciones médicas del sistema: agrupe por caso, revise ítems clínicos y gestione el servicio.')
             ->searchPlaceholder('Caso, paciente, cédula, referencia, servicio, proveedor o estatus')
             ->defaultSort('date_solicitud', 'desc')
-            ->deferLoading()
+            /*
+             * Sin `deferLoading()`: diferir costaba un segundo viaje al servidor (con
+             * su arranque completo) solo para traer 10 filas. Los contadores ya van en
+             * caché (CoordinationServiceTabCounts), así que la página los pinta de una.
+             */
             ->modifyQueryUsing(function (Builder $query): Builder {
                 /*
                  * Filament también llama aquí para la casilla de cada grupo y para
@@ -1208,24 +1212,7 @@ class OperationCoordinationServicesTable
                  */
                 OperationsSupplierScope::applyCoordinationListScope($query);
 
-                return $query->with([
-                    'telemedicinePriority',
-                    'telemedicineDoctor',
-                    'telemedicineCase',
-                    'businessLine:id,definition',
-                    'businessUnit:id,definition',
-                    'telemedicinePatient:id,full_name,business_line_id,business_unit_id,specific_business_unit',
-                    'telemedicinePatient.businessLine:id,definition',
-                    'telemedicinePatient.businessUnit:id,definition',
-                    'telemedicinePatientMedications.operationInventory:id,is_covered',
-                    'telemedicinePatientLabs',
-                    'telemedicinePatientStudies',
-                    'telemedicinePatientSpecialties',
-                    'telemedicineConsultationPatient.telemedicineGeneralService:id,name',
-                    'operationServiceOrders' => fn (HasMany $orders): HasMany => $orders->select(['id', 'order_number', 'status', 'operation_coordination_service_id']),
-                    'operationServiceOrders.operationServiceOrderItems:id,operation_service_order_id,item_name,category',
-                    'operationQuoteGenerators',
-                ]);
+                return $query->with(self::listEagerLoads());
             })
             ->columns([
                 TextColumn::make('telemedicineCase.code')
@@ -1686,6 +1673,34 @@ class OperationCoordinationServicesTable
                     CoordinationServiceCaseDeletion::makeRestoreBulkAction(),
                 ]),
             ]);
+    }
+
+    /**
+     * Relaciones que el cuadro de control precarga para cada página. Público para que
+     * el diagnóstico de rendimiento mida exactamente la misma consulta.
+     *
+     * @return array<int|string, mixed>
+     */
+    public static function listEagerLoads(): array
+    {
+        return [
+            'telemedicinePriority',
+            'telemedicineDoctor',
+            'telemedicineCase',
+            'businessLine:id,definition',
+            'businessUnit:id,definition',
+            'telemedicinePatient:id,full_name,business_line_id,business_unit_id,specific_business_unit',
+            'telemedicinePatient.businessLine:id,definition',
+            'telemedicinePatient.businessUnit:id,definition',
+            'telemedicinePatientMedications.operationInventory:id,is_covered',
+            'telemedicinePatientLabs',
+            'telemedicinePatientStudies',
+            'telemedicinePatientSpecialties',
+            'telemedicineConsultationPatient.telemedicineGeneralService:id,name',
+            'operationServiceOrders' => fn (HasMany $orders): HasMany => $orders->select(['id', 'order_number', 'status', 'operation_coordination_service_id']),
+            'operationServiceOrders.operationServiceOrderItems:id,operation_service_order_id,item_name,category',
+            'operationQuoteGenerators',
+        ];
     }
 
     private static function serviceOrderType(OperationCoordinationService $record): ?string

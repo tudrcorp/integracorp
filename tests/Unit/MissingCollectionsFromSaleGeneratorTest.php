@@ -47,10 +47,15 @@ it('el generador no crea ventas ni aprueba pagos', function (): void {
         ->toContain('No crea ni duplica ventas')
         ->toContain("status = 'POR PAGAR'")
         ->toContain('AffiliationQuoteNumber::forIndividual')
+        ->toContain('AffiliationQuoteNumber::forCorporate')
+        ->toContain('AffiliationCorporate')
+        ->toContain("'AFILIACION CORPORATIVA'")
+        ->toContain("'AFILIACION INDIVIDUAL'")
         ->not->toContain('new Sale')
         ->not->toContain('Sale::query()->create')
         ->not->toContain('new PaidMembership')
         ->not->toContain('PaidMembershipController')
+        ->not->toContain('PaidMembershipCorporateController')
         ->not->toContain('approvePayment');
 });
 
@@ -61,5 +66,17 @@ it('el comando exige --execute y no duplica la venta', function (): void {
         ->toContain('collections:generate-from-sale')
         ->toContain('--execute')
         ->toContain('No duplica la venta')
+        ->toContain('TDEC-COR-')
+        ->toContain('corporativa')
         ->toContain('MissingCollectionsFromSaleGenerator');
+});
+
+it('resuelve afiliacion corporativa si no hay individual', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/MissingCollectionsFromSaleGenerator.php');
+
+    expect($source)
+        ->toContain('resolveAffiliation')
+        ->toContain('Affiliation::query()->where(\'code\', $code)')
+        ->toContain('AffiliationCorporate::query()->where(\'code\', $code)')
+        ->toContain('No existe la afiliación individual ni corporativa');
 });

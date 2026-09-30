@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Http\Controllers\AnnualCollectionController;
 use App\Http\Controllers\UtilsController;
 use App\Models\Affiliation;
+use App\Models\AffiliationCorporate;
 use App\Models\AnnualCollection;
 use App\Models\Collection;
 use App\Models\Sale;
@@ -24,6 +25,7 @@ final class MissingCollectionsFromSaleGenerator
     /**
      * @return array{
      *     affiliation_code: string,
+     *     affiliation_kind: 'individual'|'corporate',
      *     sale_id: int,
      *     invoice_number: string,
      *     payment_frequency: string,
@@ -36,11 +38,8 @@ final class MissingCollectionsFromSaleGenerator
     public function generate(string $affiliationCode, ?string $invoiceNumber = null, bool $persist = false, ?string $actor = null): array
     {
         $code = trim($affiliationCode);
-        $affiliation = Affiliation::query()->where('code', $code)->first();
-
-        if (! $affiliation instanceof Affiliation) {
-            throw new InvalidArgumentException('No existe la afiliación '.$code.'.');
-        }
+        $affiliation = $this->resolveAffiliation($code);
+        $isCorporate = $affiliation instanceof AffiliationCorporate;
 
         $saleQuery = Sale::query()->where('affiliation_code', $affiliation->code);
 
@@ -95,6 +94,7 @@ final class MissingCollectionsFromSaleGenerator
 
         $payload = [
             'affiliation_code' => (string) $affiliation->code,
+            'affiliation_kind' => $isCorporate ? 'corporate' : 'individual',
             'sale_id' => (int) $sale->id,
             'invoice_number' => (string) $sale->invoice_number,
             'payment_frequency' => $frequency,
@@ -113,7 +113,7 @@ final class MissingCollectionsFromSaleGenerator
         $lastCollection = null;
 
         DB::transaction(function () use ($affiliation, $sale, $frequency, $cycleStart, $datesToCreate, $actor, &$created, &$lastCollection): void {
-            $affiliation->loadMissing(['individual_quote']);
+            $this->loadAffiliationRelations($affiliation);
             $lastInvoiceNumber = $this->resolveLastCollectionInvoiceNumber();
             $expirationDays = $frequency === 'MENSUAL' ? 30 : 5;
 
@@ -122,24 +122,8 @@ final class MissingCollectionsFromSaleGenerator
                 $collection = new Collection;
                 $collection->sale_id = $sale->id;
                 $collection->include_date = $cycleStart->format('d/m/Y');
-                $collection->owner_code = $affiliation->owner_code;
-                $collection->code_agency = $affiliation->code_agency;
-                $collection->plan_id = $affiliation->plan_id;
-                $collection->coverage_id = $affiliation->coverage_id;
-                $collection->agent_id = $affiliation->agent_id;
                 $collection->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumber);
-                $collection->quote_number = AffiliationQuoteNumber::forIndividual($affiliation);
-                $collection->affiliation_code = $affiliation->code;
-                $collection->affiliate_full_name = $affiliation->full_name_ti;
-                $collection->affiliate_contact = $affiliation->full_name_con ?: $affiliation->full_name_ti;
-                $collection->affiliate_ci_rif = $affiliation->nro_identificacion_ti;
-                $collection->affiliate_phone = $affiliation->phone_ti;
-                $collection->affiliate_email = $affiliation->email_ti;
-                $collection->affiliate_status = $affiliation->status;
-                $collection->type = 'AFILIACION INDIVIDUAL';
                 $collection->service = 'servicio';
-                $collection->persons = (string) ($affiliation->family_members ?? $sale->persons ?? 0);
-                $collection->total_amount = $sale->total_amount;
                 $collection->payment_method = null;
                 $collection->pay_amount_usd = 0.00;
                 $collection->pay_amount_ves = 0.00;
@@ -153,6 +137,8 @@ final class MissingCollectionsFromSaleGenerator
                 $collection->status = 'POR PAGAR';
                 $collection->days = 0;
                 $collection->created_by = $actor;
+                $collection->total_amount = $sale->total_amount;
+                $this->fillCollectionFromAffiliation($collection, $affiliation, $sale);
                 $collection->save();
 
                 $lastInvoiceNumber = (string) $collection->collection_invoice_number;
@@ -169,6 +155,73 @@ final class MissingCollectionsFromSaleGenerator
         $payload['persisted'] = true;
 
         return $payload;
+    }
+
+    private function resolveAffiliation(string $code): Affiliation|AffiliationCorporate
+    {
+        $individual = Affiliation::query()->where('code', $code)->first();
+        if ($individual instanceof Affiliation) {
+            return $individual;
+        }
+
+        $corporate = AffiliationCorporate::query()->where('code', $code)->first();
+        if ($corporate instanceof AffiliationCorporate) {
+            return $corporate;
+        }
+
+        throw new InvalidArgumentException('No existe la afiliación individual ni corporativa '.$code.'.');
+    }
+
+    private function loadAffiliationRelations(Affiliation|AffiliationCorporate $affiliation): void
+    {
+        if ($affiliation instanceof AffiliationCorporate) {
+            $affiliation->loadMissing(['corporate_quote', 'corporateAffiliates']);
+
+            return;
+        }
+
+        $affiliation->loadMissing(['individual_quote']);
+    }
+
+    private function fillCollectionFromAffiliation(Collection $collection, Affiliation|AffiliationCorporate $affiliation, Sale $sale): void
+    {
+        $collection->owner_code = $affiliation->owner_code;
+        $collection->code_agency = $affiliation->code_agency;
+        $collection->agent_id = $affiliation->agent_id;
+        $collection->affiliation_code = $affiliation->code;
+        $collection->affiliate_status = $affiliation->status;
+
+        if ($affiliation instanceof AffiliationCorporate) {
+            $firstAffiliate = $affiliation->corporateAffiliates
+                ->whereIn('status', ['ACTIVO', 'PRE-APROBADA'])
+                ->first();
+
+            $collection->plan_id = $firstAffiliate?->plan_id ?? $sale->plan_id;
+            $collection->coverage_id = $firstAffiliate?->coverage_id ?? $sale->coverage_id;
+            $collection->quote_number = AffiliationQuoteNumber::forCorporate($affiliation);
+            $collection->affiliate_full_name = $affiliation->name_corporate;
+            $collection->affiliate_contact = $affiliation->full_name_contact ?: $affiliation->name_corporate;
+            $collection->affiliate_ci_rif = filled($affiliation->nro_identificacion_contact)
+                ? $affiliation->nro_identificacion_contact
+                : $affiliation->rif;
+            $collection->affiliate_phone = $affiliation->phone_contact ?: $affiliation->phone;
+            $collection->affiliate_email = $affiliation->email_contact ?: $affiliation->email;
+            $collection->type = 'AFILIACION CORPORATIVA';
+            $collection->persons = (string) ($affiliation->poblation ?? $sale->persons ?? 0);
+
+            return;
+        }
+
+        $collection->plan_id = $affiliation->plan_id;
+        $collection->coverage_id = $affiliation->coverage_id;
+        $collection->quote_number = AffiliationQuoteNumber::forIndividual($affiliation);
+        $collection->affiliate_full_name = $affiliation->full_name_ti;
+        $collection->affiliate_contact = $affiliation->full_name_con ?: $affiliation->full_name_ti;
+        $collection->affiliate_ci_rif = $affiliation->nro_identificacion_ti;
+        $collection->affiliate_phone = $affiliation->phone_ti;
+        $collection->affiliate_email = $affiliation->email_ti;
+        $collection->type = 'AFILIACION INDIVIDUAL';
+        $collection->persons = (string) ($affiliation->family_members ?? $sale->persons ?? 0);
     }
 
     /**
