@@ -6,6 +6,7 @@ namespace App\Support\Telemedicine;
 
 use App\Models\TelemedicineAmdInform;
 use App\Models\TelemedicineCase;
+use App\Support\UrlPathEncoder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
@@ -58,7 +59,7 @@ final class TelemedicineAmdBitacoraCatalog
         }
 
         $exists = $filePath !== '' && Storage::disk('public')->exists($filePath);
-        $downloadUrl = $exists ? Storage::disk('public')->url($filePath) : null;
+        $downloadUrl = $exists ? Storage::disk('public')->url(UrlPathEncoder::encode($filePath)) : null;
         $extension = $documentName !== ''
             ? strtoupper((string) pathinfo($documentName, PATHINFO_EXTENSION))
             : '—';

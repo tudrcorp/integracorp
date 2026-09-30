@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use App\Observers\OperationServiceStatisticObserver;
+use App\Observers\TelemedicineConsultationChatSummaryObserver;
 use App\Support\Telemedicine\Concerns\HidesDeletedTelemedicineCaseTraces;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 
-#[ObservedBy([OperationServiceStatisticObserver::class])]
+#[ObservedBy([OperationServiceStatisticObserver::class, TelemedicineConsultationChatSummaryObserver::class])]
 class TelemedicineConsultationPatient extends Model
 {
     use HidesDeletedTelemedicineCaseTraces;
@@ -73,6 +74,14 @@ class TelemedicineConsultationPatient extends Model
         'other_specialist' => 'array',
         'uploaded_documents' => 'array',
     ];
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne<TelemedicineAmdPhysicalExam, $this>
+     */
+    public function amdPhysicalExam(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(TelemedicineAmdPhysicalExam::class, 'telemedicine_consultation_patient_id');
+    }
 
     public function telemedicinePatient()
     {

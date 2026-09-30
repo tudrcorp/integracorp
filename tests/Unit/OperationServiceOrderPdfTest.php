@@ -242,3 +242,88 @@ test('operation service order medication quote blade renders without errors', fu
         ->and($html)->not->toContain('Total Bs.')
         ->and($html)->not->toContain('Tasa BCV');
 });
+
+/**
+ * @param  array<string, mixed>  $coordinationAttributes
+ */
+function serviceOrderWithCase(array $coordinationAttributes, ?string $caseCode, ?string $consultationReference = null): OperationServiceOrder
+{
+    $coord = new App\Models\OperationCoordinationService([
+        'patient' => 'GENESIS SOFIA COVA FIGUEROA',
+        'ci_patient' => '33478468',
+        'phone_holder' => '0414-861.63.71',
+        ...$coordinationAttributes,
+    ]);
+    $coord->setRelation('state', null);
+    $coord->setRelation('city', null);
+    $coord->setRelation('telemedicineCase', $caseCode === null ? null : new App\Models\TelemedicineCase(['code' => $caseCode]));
+    $coord->setRelation('telemedicineConsultationPatient', $consultationReference === null
+        ? null
+        : new App\Models\TelemedicineConsultationPatient(['code_reference' => $consultationReference]));
+
+    $order = new OperationServiceOrder([
+        'order_number' => 'ORD-0285',
+        'service_type' => 'MEDICAMENTOS',
+        'operation_coordination_service_id' => 1,
+        'created_by' => 'x',
+    ]);
+    $order->exists = true;
+    $order->setRelation('operationCoordinationService', $coord);
+    $order->setRelation('supplier', null);
+    $order->setRelation('doctorNurse', null);
+    $order->setRelation('approvedOperationQuote', null);
+    $order->setRelation('telemedicinePriority', null);
+    $order->setRelation('operationInventoryUbication', null);
+    $order->setRelation('operationServiceOrderItems', collect());
+    $order->setAttribute('created_at', now());
+
+    return $order;
+}
+
+test('el encabezado de la orden muestra el código del caso y la referencia', function () {
+    $order = serviceOrderWithCase(['reference_number' => 'REF-58180'], '89928-0732');
+
+    $html = view('documents.operation-service-order-pdf', ['order' => $order, 'logoDataUri' => ''])->render();
+    $header = Illuminate\Support\Str::between($html, 'class="col-title title-cell"', '</td>');
+
+    expect($header)
+        ->toContain('N° <strong>ORD-0285</strong>')
+        ->toContain('Caso: <strong>89928-0732</strong>')
+        ->toContain('Referencia: <strong>REF-58180</strong>');
+});
+
+test('la referencia ya no se mezcla con el teléfono del paciente', function () {
+    $order = serviceOrderWithCase(['reference_number' => 'REF-58180'], '89928-0732');
+
+    $html = view('documents.operation-service-order-pdf', ['order' => $order, 'logoDataUri' => ''])->render();
+
+    expect($html)
+        ->not->toContain('Teléfono / Ref.')
+        ->not->toContain('0414-861.63.71 · REF-58180')
+        ->toContain('0414-861.63.71');
+});
+
+test('si la coordinación no guardó la referencia se toma la de la consulta', function () {
+    $order = serviceOrderWithCase(['reference_number' => null], '89928-0732', 'REF-11111');
+
+    expect(App\Support\Operations\OperationServiceOrderCaseReference::referenceNumber($order))->toBe('REF-11111');
+});
+
+test('una orden sin caso ni referencia muestra guiones sin romper el documento', function () {
+    $order = serviceOrderWithCase(['reference_number' => '  '], null);
+
+    $html = view('documents.operation-service-order-pdf', ['order' => $order, 'logoDataUri' => ''])->render();
+
+    expect(App\Support\Operations\OperationServiceOrderCaseReference::caseCode($order))->toBeNull()
+        ->and(App\Support\Operations\OperationServiceOrderCaseReference::referenceNumber($order))->toBeNull()
+        ->and($html)->toContain('Caso: <strong>—</strong>')
+        ->and($html)->toContain('Referencia: <strong>—</strong>');
+});
+
+test('el servicio de PDF precarga el caso y la consulta para no consultar en la vista', function () {
+    $service = file_get_contents(dirname(__DIR__, 2).'/app/Services/OperationServiceOrderPdfService.php');
+
+    expect($service)
+        ->toContain("'operationCoordinationService.telemedicineCase:id,code'")
+        ->toContain("'operationCoordinationService.telemedicineConsultationPatient:id,code_reference'");
+});

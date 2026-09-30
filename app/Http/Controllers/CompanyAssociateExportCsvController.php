@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\CompanyAssociateStatus;
 use App\Models\CompanyAssociate;
 use App\Support\CsvExportStream;
+use App\Support\Operations\SupplierAffiliateVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -61,7 +62,9 @@ class CompanyAssociateExportCsvController extends Controller
 
         $filename = 'asociados_nuevos_negocios_'.now()->format('Y-m-d_His').'.csv';
 
-        return new StreamedResponse(function () use ($ids, $headers): void {
+        $user = $request->user();
+
+        return new StreamedResponse(function () use ($ids, $headers, $user): void {
             $handle = CsvExportStream::openOutput();
 
             if ($handle === false) {
@@ -70,7 +73,7 @@ class CompanyAssociateExportCsvController extends Controller
 
             fputcsv($handle, $headers);
 
-            CompanyAssociate::query()
+            SupplierAffiliateVisibility::applyToCompanyAssociates(CompanyAssociate::query(), $user)
                 ->with(['company', 'responsible', 'state', 'city'])
                 ->whereIn('id', $ids)
                 ->orderBy('id')

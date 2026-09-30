@@ -97,7 +97,8 @@ it('aplica el filtro a los dos selectores de personas involucradas', function ()
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Support/HelpdeskFormSchema.php');
 
     expect($source)
-        ->toContain('modifyQueryUsing: fn (Builder $query): Builder => self::applySupplierAnalystColaboradorScope($query)')
-        ->toContain('self::applySupplierAnalystColaboradorScope($query);')
-        ->toContain('->options(self::rrhhColaboradorOptionsForHelpdeskMultiselect())');
+        ->toContain('modifyQueryUsing: fn (Builder $query): Builder => self::applyAssigneeDepartmentScope($query, $assigneeDepartments)')
+        ->toContain('self::applyAssigneeDepartmentScope($query, $restrictToDepartments);')
+        ->toContain('return self::applySupplierAnalystColaboradorScope($query);')
+        ->toContain('->options(fn (): array => self::rrhhColaboradorOptionsForHelpdeskMultiselect($assigneeDepartments))');
 });

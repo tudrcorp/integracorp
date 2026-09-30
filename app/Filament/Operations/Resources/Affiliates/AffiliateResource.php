@@ -14,10 +14,15 @@ use App\Models\Affiliate;
 use App\Models\Permission;
 use App\Models\Plan;
 use App\Models\UserPermission;
+use App\Support\Filament\BusinessFilamentActionAccess;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
+use App\Support\Filament\GlobalSearchAffiliateBusinessDetails;
 use App\Support\Filament\GlobalSearchAffiliateStatusLabel;
 use App\Support\Filament\GlobalSearchAffiliationCollectionExpirations;
+use App\Support\Operations\SupplierAffiliateVisibility;
 use BackedEnum;
 use Carbon\Carbon;
+use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
@@ -81,8 +86,24 @@ class AffiliateResource extends Resource
             ),
             'Plan' => static::formatPlanLabel($record->plan),
             'Tipo de plan' => filled($record->plan?->type) ? (string) $record->plan->type : '—',
+            'Unidad de Negocio Específica' => GlobalSearchAffiliateBusinessDetails::specificBusinessUnit(
+                $record->specific_business_unit,
+                $record->affiliation?->specific_business_unit,
+            ),
+            'Proveedor(es) de Servicios' => GlobalSearchAffiliateBusinessDetails::serviceProviders(
+                $record->affiliation?->service_providers,
+            ),
             'Estatus' => GlobalSearchAffiliateStatusLabel::html($record->status),
         ];
+    }
+
+    /**
+     * Base de la tabla, la búsqueda global y la resolución de registros (ver/editar por URL):
+     * un usuario de proveedor solo alcanza a los afiliados que su proveedor atiende.
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return SupplierAffiliateVisibility::applyToAffiliates(parent::getEloquentQuery());
     }
 
     public static function getGlobalSearchEloquentQuery(): Builder
@@ -142,7 +163,8 @@ class AffiliateResource extends Resource
      */
     public static function getNavigationBadge(): ?string
     {
-        $todayCount = static::getModel()::where('status', 'ACTIVO')
+        $todayCount = static::getEloquentQuery()
+            ->where('status', 'ACTIVO')
             ->whereDate('created_at', Carbon::today())
             ->count();
 
@@ -155,6 +177,50 @@ class AffiliateResource extends Resource
     public static function getNavigationBadgeColor(): ?string
     {
         return 'verdeApple';
+    }
+
+    /**
+     * Editar datos personales exige el permiso granular «Editar datos
+     * personales de afiliados individuales» (SUPERADMIN siempre puede). Sin él,
+     * el botón no aparece y la URL de edición responde 403.
+     */
+    public static function canEdit(Model $record): bool
+    {
+        return static::userCanEditPersonalData(Auth::id());
+    }
+
+    /**
+     * Memorizado por petición y usuario: la tabla lo evalúa en cada fila.
+     */
+    private static function userCanEditPersonalData(int|string|null $userId): bool
+    {
+        if ($userId === null) {
+            return false;
+        }
+
+        $panelId = Filament::getCurrentPanel()?->getId();
+
+        /** `once()` memoriza por las variables capturadas: usuario y panel van en `use`. */
+        return once(static function () use ($userId, $panelId): bool {
+            unset($userId, $panelId);
+
+            return static::canAccess()
+                && BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::EDIT_INDIVIDUAL_AFFILIATE_PERSONAL_DATA);
+        });
+    }
+
+    /**
+     * Operaciones no elimina afiliados: la página de edición generada traía un
+     * botón Eliminar que borraba el registro sin rastro.
+     */
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
     }
 
     public static function form(Schema $schema): Schema

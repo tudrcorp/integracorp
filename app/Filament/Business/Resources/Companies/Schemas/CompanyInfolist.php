@@ -195,6 +195,12 @@ class CompanyInfolist
                                     ->icon(Heroicon::OutlinedMapPin)
                                     ->placeholder('—')
                                     ->columnSpan(['default' => 1, 'lg' => 2]),
+                                TextEntry::make('service_providers')
+                                    ->label('Proveedor(es) de Servicios')
+                                    ->badge()
+                                    ->color('info')
+                                    ->placeholder('Sin proveedores asignados')
+                                    ->columnSpan(['default' => 1, 'lg' => 2]),
                             ]),
                     ]),
             ]);

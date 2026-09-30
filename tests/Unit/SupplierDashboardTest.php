@@ -120,15 +120,13 @@ it('no entrega métricas cuando no hay proveedor en sesión', function (): void 
         ->and(SupplierDashboardMetrics::casesByServiceType())->toBe([]);
 });
 
-it('define las seis barras del gráfico en el orden pedido', function (): void {
+it('define las cuatro barras del gráfico en el orden pedido, sin estudios/imágenes ni especialistas', function (): void {
     expect(SupplierDashboardMetrics::SERVICE_TYPE_LABELS)->toBe([
         'Telemedicina',
         'AMD',
         'Medicamentos',
         'Laboratorios',
-        'Estudios/Imágenes',
-        'Especialistas',
-    ]);
+    ])->not->toContain('Estudios/Imágenes')->not->toContain('Especialistas');
 });
 
 it('arma la página con la cabecera, los stats y el gráfico', function (): void {

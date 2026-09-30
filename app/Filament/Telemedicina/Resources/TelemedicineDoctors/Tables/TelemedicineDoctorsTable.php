@@ -53,8 +53,6 @@ class TelemedicineDoctorsTable
     {
         return $table
             ->query(TelemedicineDoctor::query()->where('id', Auth::user()?->doctor_id))
-            ->heading('Mi perfil médico')
-            ->description('Resumen de su ficha profesional. Use «Ver perfil» o «Editar» para actualizar datos, credenciales o firma digital.')
             ->defaultSort('full_name', 'asc')
             ->emptyStateHeading('Perfil no vinculado')
             ->emptyStateDescription('Su usuario aún no tiene un médico asociado. Contacte a operaciones para completar el registro.')

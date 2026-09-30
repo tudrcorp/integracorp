@@ -2,6 +2,8 @@
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Pages;
 
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasAmdPhysicalExamModal;
+use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasConsultationReviewStep;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasInformAmdModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasMedicamentosStepInfoModal;
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\TelemedicineConsultationPatientResource;
@@ -29,6 +31,8 @@ use Illuminate\Support\Facades\Log;
  */
 class EditTelemedicineConsultationPatient extends EditRecord
 {
+    use HasAmdPhysicalExamModal;
+    use HasConsultationReviewStep;
     use HasInformAmdModal;
     use HasMedicamentosStepInfoModal;
 

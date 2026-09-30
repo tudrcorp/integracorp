@@ -23,8 +23,6 @@ class CompanyAssociatesTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->heading('Asociados / Nuevos Negocios')
-            ->description('Usuarios registrados bajo responsables y empresas de nuevos negocios.')
             ->defaultSort('registered_at', 'desc')
             ->deferFilters(false)
             ->recordTitleAttribute('full_name')

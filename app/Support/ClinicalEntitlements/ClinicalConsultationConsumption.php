@@ -121,14 +121,19 @@ final class ClinicalConsultationConsumption
             $out[ClinicalServiceChannel::Type1->value] = (int) $formData['telemedicine_service_list_id'];
         }
 
+        /*
+         * Sólo lo cubierto consume cupo. Los campos «otros» (`other_labs`,
+         * `other_studies`, `other_specialist`) son servicios que el plan no
+         * cubre: se registran, pero no descuentan ni bloquean el beneficio.
+         */
         $complements = array_map('intval', (array) ($formData['complements'] ?? []));
         $hasLabs = $complements !== [] && in_array(2, $complements, true)
-            && (filled($formData['labs'] ?? null) || filled($formData['other_labs'] ?? null));
+            && filled($formData['labs'] ?? null);
         $hasImaging = $complements !== [] && in_array(2, $complements, true)
-            && (filled($formData['studies'] ?? null) || filled($formData['other_studies'] ?? null));
+            && filled($formData['studies'] ?? null);
         $hasMeds = in_array(1, $complements, true);
         $hasSpecialist = in_array(3, $complements, true)
-            && (filled($formData['consult_specialist'] ?? null) || filled($formData['other_specialist'] ?? null));
+            && filled($formData['consult_specialist'] ?? null);
 
         if ($hasMeds) {
             $out[ClinicalServiceChannel::Medication->value] = null;

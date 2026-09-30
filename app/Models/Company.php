@@ -25,7 +25,18 @@ class Company extends Model
         'address',
         'created_by',
         'registration_token',
+        'service_providers',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'service_providers' => 'array',
+        ];
+    }
 
     protected static function booted(): void
     {

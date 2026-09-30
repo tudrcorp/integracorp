@@ -41,7 +41,7 @@ it('en edición solo el creador es editable y el resto queda deshabilitado', fun
 it('el CC de helpdesk lista todos los colaboradores sin exigir usuario de sistema', function (): void {
     $path = dirname(__DIR__, 2).'/app/Support/HelpdeskFormSchema.php';
     $src = file_get_contents($path);
-    $methodStart = strpos($src, 'function rrhhColaboradorOptionsForHelpdeskMultiselect()');
+    $methodStart = strpos($src, 'function rrhhColaboradorOptionsForHelpdeskMultiselect(');
     $nextMethod = strpos($src, 'function rrhhColaboradorOptionsForHelpdeskWorkGroups()', $methodStart ?: 0);
     $methodSrc = $methodStart === false || $nextMethod === false
         ? ''
@@ -50,7 +50,8 @@ it('el CC de helpdesk lista todos los colaboradores sin exigir usuario de sistem
     expect($methodSrc)
         ->not->toContain("whereNotNull('user_id')")
         ->and($src)->toContain("Select::make('cc_colaboradores')")
-        ->and($src)->toContain('->options(self::rrhhColaboradorOptionsForHelpdeskMultiselect())');
+        ->and($methodSrc)->not->toBe('')
+        ->and($src)->toContain('->options(fn (): array => self::rrhhColaboradorOptionsForHelpdeskMultiselect($assigneeDepartments))');
 });
 
 it('permite adjuntar pdf y powerpoints en creación de ticket', function (): void {

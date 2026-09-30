@@ -23,6 +23,7 @@ enum SystemNotificationKey: string
     case CorporatePaymentFrequencyChange = 'corporate_payment_frequency_change';
     case LiveSecurityAlert = 'live_security_alert';
     case LiveSystemAlert = 'live_system_alert';
+    case OperationsAffiliateUpdate = 'operations_affiliate_update';
 
     public function label(): string
     {
@@ -44,6 +45,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange => 'Cambio de frecuencia de pago corporativa',
             self::LiveSecurityAlert => 'Alertas de seguridad',
             self::LiveSystemAlert => 'Alertas de colas y errores',
+            self::OperationsAffiliateUpdate => 'Actualización de afiliados (Operaciones)',
         };
     }
 
@@ -67,6 +69,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange => 'Contactos de Administración (correo y WhatsApp) que reciben el aviso cuando Negocios cambia la frecuencia de pago de una afiliación corporativa, y cuando Administración revierte ese cambio. Además se avisa siempre a todos los usuarios activos del departamento de Administración.',
             self::LiveSecurityAlert => 'Destinatarios del aviso por WhatsApp y correo cuando el monitor en vivo detecta un ataque: fuerza bruta, relleno de credenciales, ataque distribuido a una cuenta, inundación de peticiones o cuenta bloqueada.',
             self::LiveSystemAlert => 'Destinatarios del aviso por WhatsApp y correo cuando una cola se queda sin worker, se atasca o acumula trabajos colgados, cuando se dispara la cantidad de trabajos fallidos, o cuando aparece un error nuevo o vuelve uno ya resuelto.',
+            self::OperationsAffiliateUpdate => 'Equipo de Afiliaciones que recibe, por WhatsApp y correo, el detalle de cada dato personal de un afiliado individual o corporativo que Operaciones actualiza: qué cambió, el valor anterior y el nuevo, quién lo hizo y cuándo.',
         };
     }
 
@@ -90,6 +93,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange => 'Cambio de frecuencia de pago',
             self::LiveSecurityAlert => 'Alertas de seguridad en vivo',
             self::LiveSystemAlert => 'Alertas de colas y errores',
+            self::OperationsAffiliateUpdate => 'Aviso de afiliados actualizados por Operaciones',
         };
     }
 
@@ -113,6 +117,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange => 'Cuando un analista cambia la frecuencia de pago de una afiliación corporativa, el sistema anula los avisos de cobro pendientes, genera los nuevos y avisa a Administración por WhatsApp, correo (con la lista de avisos cancelados y creados) y notificación del panel. El reverso se avisa igual.',
             self::LiveSecurityAlert => 'El monitor en vivo vigila logins fallidos, escáneres, bots y ráfagas de peticiones. Cuando detecta algo crítico avisa a estos contactos y a los usuarios del monitor, una vez por tipo de ataque cada 30 minutos.',
             self::LiveSystemAlert => 'Cada minuto un vigilante revisa las colas, los trabajos fallidos y los errores del sistema. Si algo necesita atención avisa a estos contactos y a los usuarios del monitor, sin depender de la cola (funciona aunque los workers estén caídos), una vez por problema cada 30 minutos.',
+            self::OperationsAffiliateUpdate => 'Cuando un analista de Operaciones guarda cambios en los datos personales de un afiliado individual o corporativo —desde «Editar» o al fijar la dirección con el mapa—, el sistema encola un correo y un WhatsApp con cada campo modificado (antes → después), el analista, la fecha y si también se actualizó el paciente de telemedicina.',
         };
     }
 
@@ -224,6 +229,12 @@ enum SystemNotificationKey: string
                 '3. Problema nuevo detectado',
                 '4. WhatsApp + correo sin pasar por la cola',
             ],
+            self::OperationsAffiliateUpdate => [
+                '1. Operaciones edita el afiliado',
+                '2. Se guardan solo los datos personales',
+                '3. Cola asíncrona',
+                '4. Email + WhatsApp con el detalle',
+            ],
         };
     }
 
@@ -247,6 +258,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange => 'Acción requerida para Administración:',
             self::LiveSecurityAlert => 'Acción requerida:',
             self::LiveSystemAlert => 'Acción requerida:',
+            self::OperationsAffiliateUpdate => 'Acción requerida para Afiliaciones:',
         };
     }
 
@@ -270,6 +282,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange => 'revise el cambio en Administración → Cambios de frecuencia de pago y márquelo como validado. Si no está de acuerdo o hubo una falla, desde allí puede revertirlo: la afiliación y su cobranza vuelven exactamente al estado anterior.',
             self::LiveSecurityAlert => 'abra Negocios → Monitor en vivo para ver la IP, las cuentas atacadas y el detalle. Las cuentas con muchos fallos se bloquean solas por unos minutos; desde el monitor puede desbloquearlas o bloquear a un usuario.',
             self::LiveSystemAlert => 'abra Negocios → Colas y errores: cada problema trae su diagnóstico, la línea de código donde ocurrió y la acción recomendada (reintentar, eliminar o corregir).',
+            self::OperationsAffiliateUpdate => 'revise cada cambio contra el expediente de la afiliación. Si la fecha de nacimiento dejó la edad fuera del rango tarifario, el aviso lo marca: la tarifa no se recalcula sola y debe revisarla con Negocios.',
         };
     }
 
@@ -293,6 +306,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange => 'heroicon-o-arrows-right-left',
             self::LiveSecurityAlert => 'heroicon-o-shield-exclamation',
             self::LiveSystemAlert => 'heroicon-o-queue-list',
+            self::OperationsAffiliateUpdate => 'heroicon-o-user-circle',
         };
     }
 
@@ -325,6 +339,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange => [],
             self::LiveSecurityAlert => [],
             self::LiveSystemAlert => [],
+            self::OperationsAffiliateUpdate => [],
         };
     }
 
@@ -369,6 +384,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange => [],
             self::LiveSecurityAlert => [],
             self::LiveSystemAlert => [],
+            self::OperationsAffiliateUpdate => [],
         };
     }
 
@@ -392,6 +408,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange => 'Sin contactos del departamento configurados. Igual se avisará por correo, WhatsApp y panel a los usuarios activos de Administración.',
             self::LiveSecurityAlert => 'Sin contactos adicionales. Igual se avisará a los usuarios con acceso al monitor en vivo.',
             self::LiveSystemAlert => 'Sin contactos adicionales. Igual se avisará a los usuarios con acceso al monitor en vivo.',
+            self::OperationsAffiliateUpdate => 'Aún no hay destinatarios. Operaciones podrá actualizar los datos del afiliado, pero el equipo de Afiliaciones no recibirá el aviso.',
         };
     }
 
@@ -451,6 +468,9 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert => $empty
                 ? 'Sin contactos adicionales. Se avisará solo a los usuarios del monitor en vivo.'
                 : 'Estos contactos y los usuarios del monitor recibirán las alertas de colas y errores.',
+            self::OperationsAffiliateUpdate => $empty
+                ? 'Sin destinatarios. Los cambios de Operaciones se guardarán, pero Afiliaciones no recibirá el aviso.'
+                : 'Afiliaciones recibirá por correo y WhatsApp el detalle de cada actualización que haga Operaciones.',
         };
     }
 
@@ -468,6 +488,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange,
             self::LiveSecurityAlert,
             self::LiveSystemAlert,
+            self::OperationsAffiliateUpdate,
         ], true);
     }
 
@@ -491,6 +512,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange => 'Si está inactiva, el cambio y su reverso se aplican y quedan registrados, y los usuarios de Administración reciben la notificación del panel, pero no se envía correo ni WhatsApp.',
             self::LiveSecurityAlert => 'Si está inactiva, el monitor sigue detectando y bloqueando temporalmente las cuentas atacadas, pero no se envía WhatsApp ni correo.',
             self::LiveSystemAlert => 'Si está inactiva, el monitor sigue mostrando colas, fallidos y errores, pero no se envía WhatsApp ni correo.',
+            self::OperationsAffiliateUpdate => 'Si está inactiva, Operaciones sigue pudiendo actualizar los datos del afiliado y el cambio queda en la auditoría, pero no se envía correo ni WhatsApp a Afiliaciones.',
         };
     }
 
@@ -517,6 +539,7 @@ enum SystemNotificationKey: string
             self::CorporatePaymentFrequencyChange,
             self::LiveSecurityAlert,
             self::LiveSystemAlert,
+            self::OperationsAffiliateUpdate,
         ];
     }
 }

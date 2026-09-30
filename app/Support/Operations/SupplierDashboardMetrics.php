@@ -42,8 +42,6 @@ final class SupplierDashboardMetrics
         'AMD',
         'Medicamentos',
         'Laboratorios',
-        'Estudios/Imágenes',
-        'Especialistas',
     ];
 
     /** Valores de texto que cuentan como "sin selección" en las tildes de la consulta. */
@@ -169,8 +167,6 @@ final class SupplierDashboardMetrics
             $counts[$label] = match ($label) {
                 'Medicamentos' => self::medicationCaseCount(),
                 'Laboratorios' => self::consultationSelectionCaseCount('labs'),
-                'Estudios/Imágenes' => self::consultationSelectionCaseCount('studies'),
-                'Especialistas' => self::consultationSelectionCaseCount('consult_specialist'),
                 default => self::macroServiceCaseCount($label),
             };
         }

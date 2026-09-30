@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Http\Controllers\NotificationController;
 use App\Mail\TelemedicineConsultationDocumentsMail;
+use App\Support\UrlPathEncoder;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -120,7 +121,7 @@ class TelemedicineConsultationDocumentsNotificationService
 
     public static function telemedicineDocumentPublicUrl(string $filename): string
     {
-        return rtrim((string) config('parameters.PUBLIC_URL'), '/').'/telemedicina-doc/'.$filename;
+        return rtrim((string) config('parameters.PUBLIC_URL'), '/').'/telemedicina-doc/'.UrlPathEncoder::encode($filename);
     }
 
     /**

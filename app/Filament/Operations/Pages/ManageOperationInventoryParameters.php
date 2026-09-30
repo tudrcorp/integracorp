@@ -7,6 +7,7 @@ namespace App\Filament\Operations\Pages;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\OperationInventorySetting;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Operations\OperationInventoryListHeaders;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
@@ -20,7 +21,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 class ManageOperationInventoryParameters extends Page
@@ -53,11 +53,9 @@ class ManageOperationInventoryParameters extends Page
         ]);
     }
 
-    public function getSubheading(): string|Htmlable|null
+    public function getHeading(): string|Htmlable
     {
-        return new HtmlString(
-            '<span class="text-sm text-slate-500 dark:text-slate-400">Configure el umbral de existencia que activa las alertas diarias de stock bajo.</span>'
-        );
+        return OperationInventoryListHeaders::parameters();
     }
 
     public function form(Schema $schema): Schema

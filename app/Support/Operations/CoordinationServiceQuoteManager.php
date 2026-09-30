@@ -32,6 +32,27 @@ final class CoordinationServiceQuoteManager
             ->get();
     }
 
+    /**
+     * Cotizaciones para pintar el cuadro de control: usa la relación que la
+     * tabla precargó para toda la página y sólo consulta si no está cargada.
+     * Las páginas de gestión siguen leyendo con `coordinationQuotes()`.
+     *
+     * @return Collection<int, OperationQuoteGenerator>
+     */
+    public static function coordinationQuotesForDisplay(OperationCoordinationService $record): Collection
+    {
+        if ($record->relationLoaded('operationQuoteGenerators')) {
+            return $record->operationQuoteGenerators->sortByDesc('id')->values();
+        }
+
+        return self::coordinationQuotes($record);
+    }
+
+    public static function hasCoordinationQuotesForDisplay(OperationCoordinationService $record): bool
+    {
+        return self::coordinationQuotesForDisplay($record)->isNotEmpty();
+    }
+
     public static function formatCoordinationQuoteNumber(int $quoteId): string
     {
         return 'COT-'.str_pad((string) $quoteId, 6, '0', STR_PAD_LEFT);
@@ -49,7 +70,7 @@ final class CoordinationServiceQuoteManager
     {
         $map = [];
 
-        self::coordinationQuotes($record)
+        self::coordinationQuotesForDisplay($record)
             ->each(function (OperationQuoteGenerator $quote) use (&$map, $record): void {
                 $items = is_array($quote->items) ? $quote->items : [];
 

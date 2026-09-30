@@ -156,7 +156,8 @@ class Supplier extends Model
         'extra_beneficiary_zelle',
         'extra_beneficiary_address',
         'gestion_integracorp',
-
+        'unidades_negocio_especificas',
+        'integracorp_alias',
     ];
 
     protected $casts = [
@@ -213,6 +214,7 @@ class Supplier extends Model
         'radioterapia' => 'boolean',
         'quimioterapia' => 'boolean',
         'gestion_integracorp' => 'boolean',
+        'unidades_negocio_especificas' => 'array',
     ];
 
     public function city()

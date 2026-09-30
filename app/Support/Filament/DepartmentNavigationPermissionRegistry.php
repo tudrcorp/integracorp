@@ -120,6 +120,7 @@ use App\Filament\Operations\Pages\CalendariosTdg as OperationsCalendariosTdg;
 use App\Filament\Operations\Pages\Dashboard as OperationsEscritorio;
 use App\Filament\Operations\Pages\DashboardOperaciones;
 use App\Filament\Operations\Pages\DashboardProveedor;
+use App\Filament\Operations\Pages\GeneradorDeReportes;
 use App\Filament\Operations\Pages\ManageOperationInventoryParameters;
 use App\Filament\Operations\Resources\AccountsPayables\AccountsPayableResource;
 use App\Filament\Operations\Resources\AccountsReceivables\AccountsReceivableResource;
@@ -331,6 +332,7 @@ final class DepartmentNavigationPermissionRegistry
         OperationsEscritorio::class => ['escritorio'],
         DashboardOperaciones::class => ['dashboard-operaciones'],
         DashboardProveedor::class => ['dashboard-proveedor'],
+        GeneradorDeReportes::class => ['generador-de-reportes'],
 
         // PROYECTOS
         ProjectResource::class => ['proyectos'],

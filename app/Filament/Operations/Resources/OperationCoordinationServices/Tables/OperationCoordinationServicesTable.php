@@ -70,6 +70,7 @@ use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -779,12 +780,10 @@ class OperationCoordinationServicesTable
                                 Select::make('type_service')
                                     ->label('Tipo de Servicio')
                                     ->placeholder('Seleccione…')
-                                    ->options(
-                                        OperationTypeService::query()
-                                            ->orderBy('description', 'asc')
-                                            ->pluck('description', 'description')
-                                            ->all()
-                                    )
+                                    ->options(fn (): array => OperationTypeService::query()
+                                        ->orderBy('description', 'asc')
+                                        ->pluck('description', 'description')
+                                        ->all())
                                     ->searchable()
                                     ->native(false),
                                 Select::make('supplier_service')
@@ -954,12 +953,12 @@ class OperationCoordinationServicesTable
                                                     ->maxLength(255),
                                                 Select::make('telemedicine_priority_id')
                                                     ->label('Prioridad')
-                                                    ->options(TelemedicinePriority::query()->orderBy('name', 'asc')->pluck('name', 'id'))
+                                                    ->options(fn (): array => TelemedicinePriority::query()->orderBy('name', 'asc')->pluck('name', 'id')->all())
                                                     ->required()
                                                     ->native(false),
                                                 Select::make('operation_inventory_ubication_id')
                                                     ->label('Ubicación inventario (medicamentos)')
-                                                    ->options(OperationInventoryUbication::query()->where('is_active', true)->orderBy('name', 'asc')->pluck('name', 'id'))
+                                                    ->options(fn (): array => OperationInventoryUbication::query()->where('is_active', true)->orderBy('name', 'asc')->pluck('name', 'id')->all())
                                                     ->searchable()
                                                     ->preload()
                                                     ->visible(fn (OperationCoordinationService $record): bool => self::serviceOrderType($record) === 'MEDICAMENTOS')
@@ -1006,12 +1005,10 @@ class OperationCoordinationServicesTable
                                         Select::make('type_negotiation')
                                             ->label('Tipo de Negociación')
                                             ->placeholder('Seleccione…')
-                                            ->options(
-                                                OperationTypeNegotiation::query()
-                                                    ->orderBy('description', 'asc')
-                                                    ->pluck('description', 'description')
-                                                    ->all()
-                                            )
+                                            ->options(fn (): array => OperationTypeNegotiation::query()
+                                                ->orderBy('description', 'asc')
+                                                ->pluck('description', 'description')
+                                                ->all())
                                             ->searchable()
                                             ->native(false),
                                         TextInput::make('status_negotiation')
@@ -1199,13 +1196,16 @@ class OperationCoordinationServicesTable
             ])
             ->heading('Cuadro de control')
             ->description('Coordinaciones médicas del sistema: agrupe por caso, revise ítems clínicos y gestione el servicio.')
+            ->searchPlaceholder('Caso, paciente, cédula, referencia, servicio, proveedor o estatus')
             ->defaultSort('date_solicitud', 'desc')
             ->deferLoading()
             ->modifyQueryUsing(function (Builder $query): Builder {
-                // Una pasada de render por consulta: la memoria de ítems clínicos
-                // no debe sobrevivir a una acción que acabe de escribir.
-                CoordinationServiceItemsManager::flushClinicalItemsCache();
-
+                /*
+                 * Filament también llama aquí para la casilla de cada grupo y para
+                 * los conteos: la memoria de ítems clínicos se vacía en la página
+                 * (ListOperationCoordinationServices::getTableRecords), una vez por
+                 * cada lectura real de los registros.
+                 */
                 OperationsSupplierScope::applyCoordinationListScope($query);
 
                 return $query->with([
@@ -1222,6 +1222,9 @@ class OperationCoordinationServicesTable
                     'telemedicinePatientStudies',
                     'telemedicinePatientSpecialties',
                     'telemedicineConsultationPatient.telemedicineGeneralService:id,name',
+                    'operationServiceOrders' => fn (HasMany $orders): HasMany => $orders->select(['id', 'order_number', 'status', 'operation_coordination_service_id']),
+                    'operationServiceOrders.operationServiceOrderItems:id,operation_service_order_id,item_name,category',
+                    'operationQuoteGenerators',
                 ]);
             })
             ->columns([
@@ -1259,27 +1262,13 @@ class OperationCoordinationServicesTable
                     ->state(fn (OperationCoordinationService $record): string => self::patientBusinessLineLabel($record))
                     ->badge()
                     ->color('success')
-                    ->placeholder('—')
-                    ->searchable(query: function (Builder $query, string $search): Builder {
-                        return $query->where(function (Builder $innerQuery) use ($search): void {
-                            $innerQuery
-                                ->whereHas('telemedicinePatient.businessLine', fn (Builder $lineQuery): Builder => $lineQuery->where('definition', 'like', "%{$search}%"))
-                                ->orWhereHas('businessLine', fn (Builder $lineQuery): Builder => $lineQuery->where('definition', 'like', "%{$search}%"));
-                        });
-                    }),
+                    ->placeholder('—'),
                 TextColumn::make('patient_business_unit')
                     ->label('Unidad de negocio')
                     ->state(fn (OperationCoordinationService $record): string => self::patientBusinessUnitLabel($record))
                     ->badge()
                     ->color('info')
-                    ->placeholder('—')
-                    ->searchable(query: function (Builder $query, string $search): Builder {
-                        return $query->where(function (Builder $innerQuery) use ($search): void {
-                            $innerQuery
-                                ->whereHas('telemedicinePatient.businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"))
-                                ->orWhereHas('businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"));
-                        });
-                    }),
+                    ->placeholder('—'),
                 TextColumn::make('patient_specific_business_unit')
                     ->label('Unidad de negocio específica')
                     ->state(fn (OperationCoordinationService $record): string => self::patientSpecificBusinessUnitLabel($record))
@@ -1290,13 +1279,7 @@ class OperationCoordinationServicesTable
                     ->limit(36)
                     ->tooltip(fn (OperationCoordinationService $record): ?string => ($label = self::patientSpecificBusinessUnitLabel($record)) !== '—'
                         ? $label
-                        : null)
-                    ->searchable(query: function (Builder $query, string $search): Builder {
-                        return $query->whereHas(
-                            'telemedicinePatient',
-                            fn (Builder $patientQuery): Builder => $patientQuery->where('specific_business_unit', 'like', "%{$search}%")
-                        );
-                    }),
+                        : null),
                 TextColumn::make('clinical_management_items')
                     ->label('Ítems clínicos')
                     ->getStateUsing(
@@ -1318,15 +1301,13 @@ class OperationCoordinationServicesTable
                     ->icon('heroicon-m-calendar-days')
                     ->datetime('d/m/Y')
                     ->badge()
-                    ->sortable()
-                    ->searchable(),
+                    ->sortable(),
                 TextColumn::make('date_service')
                     ->label('Fecha de Servicio')
                     ->icon('heroicon-m-calendar-days')
                     ->datetime('d/m/Y')
                     ->badge()
-                    ->sortable()
-                    ->searchable(),
+                    ->sortable(),
                 TextColumn::make('managed_by')
                     ->label('Gestionado por')
                     ->badge()
@@ -1335,7 +1316,6 @@ class OperationCoordinationServicesTable
                     ->description(fn (OperationCoordinationService $record): ?string => self::managedByReassignmentDescription($record))
                     ->wrap()
                     ->sortable()
-                    ->searchable()
                     ->action($reassignManagedByToTdgAction)
                     ->tooltip(fn (OperationCoordinationService $record): ?string => self::coordinationIsManagedByTdg($record)
                         ? null
@@ -1369,15 +1349,6 @@ class OperationCoordinationServicesTable
                     ->getStateUsing(fn (OperationCoordinationService $record): ?string => filled($record->general_service)
                         ? (string) $record->general_service
                         : $record->telemedicineConsultationPatient?->telemedicineGeneralService?->name)
-                    ->searchable(query: function (Builder $query, string $search): Builder {
-                        return $query->where(function (Builder $inner) use ($search): void {
-                            $inner->where('general_service', 'like', "%{$search}%")
-                                ->orWhereHas(
-                                    'telemedicineConsultationPatient.telemedicineGeneralService',
-                                    fn (Builder $relation): Builder => $relation->where('name', 'like', "%{$search}%")
-                                );
-                        });
-                    })
                     ->sortable()
                     ->wrap(),
                 TextColumn::make('specific_service')
@@ -1445,8 +1416,7 @@ class OperationCoordinationServicesTable
                     ->label('Prioridad')
                     ->badge()
                     ->color(fn (string $state): string => TelemedicinePriorityFilamentBadge::color($state))
-                    ->icon(fn (string $state): string => TelemedicinePriorityFilamentBadge::icon($state))
-                    ->searchable(),
+                    ->icon(fn (string $state): string => TelemedicinePriorityFilamentBadge::icon($state)),
                 TextColumn::make('patient')
                     ->label('Paciente')
                     ->badge()
@@ -1462,37 +1432,27 @@ class OperationCoordinationServicesTable
                     ->icon('heroicon-m-calendar-days')
                     ->badge()
                     ->color('gray')
-                    ->sortable()
-                    ->searchable(),
+                    ->sortable(),
                 TextColumn::make('relationship_patient')
-                    ->label('Relación del Paciente')
-                    ->searchable(),
+                    ->label('Relación del Paciente'),
                 TextColumn::make('age_patient')
-                    ->label('Edad del Paciente')
-                    ->searchable(),
+                    ->label('Edad del Paciente'),
                 TextColumn::make('contractor')
-                    ->label('Contratante')
-                    ->searchable(),
+                    ->label('Contratante'),
                 TextColumn::make('state_id')
-                    ->label('Estado')
-                    ->searchable(),
+                    ->label('Estado'),
                 TextColumn::make('city_id')
-                    ->label('Ciudad')
-                    ->searchable(),
+                    ->label('Ciudad'),
                 TextColumn::make('address')
-                    ->label('Dirección')
-                    ->searchable(),
+                    ->label('Dirección'),
                 TextColumn::make('phone_holder')
-                    ->label('Teléfono')
-                    ->searchable(),
+                    ->label('Teléfono'),
                 TextColumn::make('symptoms_diagnosis')
-                    ->label('Síntomas y Diagnóstico')
-                    ->searchable(),
+                    ->label('Síntomas y Diagnóstico'),
                 TextColumn::make('type_service')
                     ->label('Tipo de Servicio')
                     ->badge()
                     ->color('gray')
-                    ->searchable()
                     ->tooltip('Edite en la acción «Negociación y precios».')
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('supplier_service')
@@ -1503,29 +1463,24 @@ class OperationCoordinationServicesTable
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('farmadoc')
                     ->label('Farmadoc')
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('type_negotiation')
                     ->label('Tipo de Negociación')
                     ->badge()
                     ->color('gray')
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('status_negotiation')
                     ->label('Estatus de Negociación')
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('neto')
                     ->label('Precio Neto')
                     ->money('USD')
                     ->sortable()
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('porcen_tdec')
                     ->label('% TDEC')
                     ->suffix('%')
                     ->sortable()
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('quote_price')
                     ->money()
@@ -1539,35 +1494,28 @@ class OperationCoordinationServicesTable
                     ->label('Negociación')
                     ->badge()
                     ->color(fn (?string $state): string => $state === 'SI' ? 'success' : 'gray')
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('porcen_discount')
                     ->label('% Descuento')
                     ->suffix('%')
                     ->sortable()
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('price_discount')
                     ->label('Precio de Descuento')
                     ->money('USD')
                     ->sortable()
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('quote_number')
                     ->label('Número de Cotización')
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('approved_number')
                     ->label('Número de Aprobación')
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('service_order_number')
                     ->label('Número Orden de Servicio')
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('bill_number')
                     ->label('Número de Factura')
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('bill_price')
                     ->money()
@@ -1580,36 +1528,29 @@ class OperationCoordinationServicesTable
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('bill_date')
                     ->label('Fecha de Factura')
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('incidence')
                     ->label('Incidencia')
                     ->badge()
                     ->color(fn (?string $state): string => $state === 'SI' ? 'warning' : 'gray')
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('negotiation_description')
                     ->label('Descripción de Negociación')
                     ->badge()
                     ->color('gray')
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('qc_description')
                     ->label('Descripción de QC')
                     ->limit(40)
                     ->tooltip(fn (?string $state): ?string => $state)
-                    ->searchable()
                     ->visible(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament)),
                 TextColumn::make('observations')
-                    ->label('Observaciones')
-                    ->searchable(),
+                    ->label('Observaciones'),
                 TextColumn::make('created_by')
                     ->label('Creado Por')
-                    ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_by')
                     ->label('Actualizado Por')
-                    ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Creado el')
@@ -1660,6 +1601,11 @@ class OperationCoordinationServicesTable
             ])
             ->defaultGroup('telemedicineCase.code')
             ->collapsedGroupsByDefault()
+            /*
+             * Sin esto Filament arma la casilla de cada grupo con la consulta
+             * completa del cuadro (una por grupo en cada render).
+             */
+            ->selectCurrentPageOnly()
             ->modifyUngroupedRecordActionsUsing(function (Action $action): void {
                 if ($action->getName() === 'selectTdgDoctorForAmbulanceFollowUp') {
                     $action->extraAttributes([
@@ -1690,7 +1636,7 @@ class OperationCoordinationServicesTable
                         ->label('Gestionar Cotización')
                         ->icon(Heroicon::OutlinedDocumentCurrencyDollar)
                         ->color('warning')
-                        ->visible(fn (OperationCoordinationService $record): bool => CoordinationServiceQuoteManager::coordinationQuotes($record)->isNotEmpty())
+                        ->visible(fn (OperationCoordinationService $record): bool => CoordinationServiceQuoteManager::hasCoordinationQuotesForDisplay($record))
                         ->url(fn (OperationCoordinationService $record): string => ManageCoordinationServiceQuotes::getUrl(['record' => $record])),
                 ]),
             ], position: RecordActionsPosition::BeforeColumns)

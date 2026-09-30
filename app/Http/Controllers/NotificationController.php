@@ -16,6 +16,7 @@ use App\Support\MassNotificationEmailFailureLogger;
 use App\Support\MassNotificationRecipientDelivery;
 use App\Support\RunReportMessageFormatter;
 use App\Support\ScheduledNotificationPhones;
+use App\Support\UrlPathEncoder;
 use App\Support\WhatsAppBrandImage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -2589,7 +2590,7 @@ TEXT;
             $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone);
             $relativePath = ltrim($relativePath, '/');
             $filePath = public_path('storage/'.$relativePath);
-            $documentUrl = rtrim((string) config('parameters.PUBLIC_URL'), '/').'/'.$relativePath;
+            $documentUrl = rtrim((string) config('parameters.PUBLIC_URL'), '/').'/'.UrlPathEncoder::encode($relativePath);
 
             if ($cleanPhone === null) {
                 Log::warning('WHATSAPP DOC: Teléfono inválido para envío de documento.', [

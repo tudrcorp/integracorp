@@ -52,7 +52,7 @@ it('las tablas e infolist de inventario muestran el número de caso', function (
         ->toContain('telemedicineCase:id,code')
         ->and($list)
         ->toContain("protected static ?string \$title = 'Salidas de Inventario'")
-        ->toContain('getSubheading')
+        ->toContain('OperationInventoryListHeaders::outflows()')
         ->toContain('FilamentIosButton::extraClassForFilamentColor');
 
     $movementsList = file_get_contents(
@@ -61,7 +61,7 @@ it('las tablas e infolist de inventario muestran el número de caso', function (
 
     expect($movementsList)
         ->toContain("protected static ?string \$title = 'Movimientos de Inventario'")
-        ->toContain('getSubheading')
+        ->toContain('OperationInventoryListHeaders::movements()')
         ->toContain('FilamentIosButton::extraClassForFilamentColor')
         ->toContain('Volver al inventario');
 });

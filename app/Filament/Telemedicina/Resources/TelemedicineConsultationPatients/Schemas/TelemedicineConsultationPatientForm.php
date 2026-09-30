@@ -23,6 +23,7 @@ use App\Support\Telemedicine\ProvidesConsultationFormContext;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineConsultationSigningDoctor;
+use App\Support\Telemedicine\TelemedicineConsultationWizardSteps;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationInventoryOptions;
@@ -251,6 +252,12 @@ class TelemedicineConsultationPatientForm
         return true;
     }
 
+    private static function returnToReviewBar(): View
+    {
+        return View::make('filament.telemedicina.consultations.review.back-bar')
+            ->columnSpanFull();
+    }
+
     private static function generalServiceSelect(): Select
     {
         return Select::make('telemedicine_general_service_id')
@@ -359,9 +366,11 @@ class TelemedicineConsultationPatientForm
                 Wizard::make([
 
                     Step::make('Datos del Paciente')
+                        ->key(TelemedicineConsultationWizardSteps::PATIENT, isInheritable: false)
                         ->description('Verifica referencia, caso y datos de contacto del paciente.')
                         ->icon(Heroicon::OutlinedUserCircle)
                         ->schema([
+                            self::returnToReviewBar(),
                             Section::make()
                                 ->heading('Datos del Paciente')
                                 ->description('Información principal sobre el paciente')
@@ -470,6 +479,7 @@ class TelemedicineConsultationPatientForm
                         ]),
 
                     Step::make('Motivo de la Consulta')
+                        ->key(TelemedicineConsultationWizardSteps::REASON, isInheritable: false)
                         ->description('Signos vitales, motivo de consulta y tipo de servicio.')
                         ->icon(Heroicon::OutlinedHeart)
                         ->hidden(function () use ($countCase) {
@@ -486,6 +496,7 @@ class TelemedicineConsultationPatientForm
                             return true;
                         })
                         ->schema([
+                            self::returnToReviewBar(),
                             Fieldset::make('Información sobre Signos Vitales')
                                 ->schema([
                                     TextInput::make('pa')
@@ -749,6 +760,7 @@ class TelemedicineConsultationPatientForm
                         ]),
 
                     Step::make('Cuestionario de Seguimiento')
+                        ->key(TelemedicineConsultationWizardSteps::FOLLOW_UP, isInheritable: false)
                         ->description('Seguimiento clínico, servicio y prioridad.')
                         ->icon(Heroicon::OutlinedClipboardDocumentList)
                         ->hidden(function () use ($countCase) {
@@ -766,6 +778,7 @@ class TelemedicineConsultationPatientForm
                             return false;
                         })
                         ->schema([
+                            self::returnToReviewBar(),
                             self::labImagingResultsPreview($labImagingResultDocuments, $countCase),
                             Fieldset::make('Diagnóstico principal')
                                 ->schema([
@@ -1005,10 +1018,12 @@ class TelemedicineConsultationPatientForm
                         ]),
 
                     Step::make('Medicamentos e Indicaciones')
+                        ->key(TelemedicineConsultationWizardSteps::MEDICATIONS, isInheritable: false)
                         ->description('Inventario TDC, cubierto sin inventario (Operaciones) o no cubierto.')
                         ->icon(Heroicon::OutlinedBeaker)
                         ->hidden(fn (Get $get) => $get('feedbackOne') == true || ! in_array(1, $get('complements')))
                         ->schema([
+                            self::returnToReviewBar(),
                             LivewireField::make('medicamentos_step_modal_trigger')
                                 ->component(\App\Livewire\Forms\MedicamentosStepModalTrigger::class)
                                 ->dehydrated(false)
@@ -1216,10 +1231,12 @@ class TelemedicineConsultationPatientForm
                         ]),
 
                     Step::make('Laboratorios y Estudios de Imagenología')
+                        ->key(TelemedicineConsultationWizardSteps::LABS, isInheritable: false)
                         ->description('Laboratorios e imagenología cubiertos y no cubiertos.')
                         ->icon(Heroicon::OutlinedPhoto)
                         ->hidden(fn (Get $get) => $get('feedbackOne') == true || ! in_array(2, $get('complements')))
                         ->schema([
+                            self::returnToReviewBar(),
                             // ...
                             Grid::make()
                                 ->schema([
@@ -1244,15 +1261,8 @@ class TelemedicineConsultationPatientForm
                                                 ->label('Otros Laboratorio (NO CUBIERTOS)')
                                                 ->options(TelemedicineListLaboratory::where('type', 'NO CUBIERTO')->get()->pluck('name', 'name'))
                                                 ->multiple()
-                                                ->rules([
-                                                    fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Laboratory),
-                                                ])
-                                                ->afterStateUpdated(function (Component $livewire): void {
-                                                    ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Laboratory);
-                                                })
                                                 ->live(onBlur: true)
-                                                ->helperText(fn (Component $livewire): ?string => ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Laboratory)
-                                                    ?? 'Seleccione el/los exámenes de Laboratorio que requiera el paciente'),
+                                                ->helperText('No cubiertos por el plan: se registran y no consumen cupo de laboratorio.'),
                                         ])->columns(1),
                                     Fieldset::make('Imagenología')
                                         ->schema([
@@ -1277,25 +1287,20 @@ class TelemedicineConsultationPatientForm
                                                 ->live()
                                                 ->options(TelemedicineListStudy::where('type', 'NO CUBIERTO')->get()->pluck('name', 'name'))
                                                 ->multiple()
-                                                ->rules([
-                                                    fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Imaging),
-                                                ])
-                                                ->afterStateUpdated(function (Component $livewire): void {
-                                                    ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Imaging);
-                                                })
                                                 ->live(onBlur: true)
-                                                ->helperText(fn (Component $livewire): ?string => ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Imaging)
-                                                    ?? 'Seleccione el/los estudios de Imágenes que requiera el paciente'),
+                                                ->helperText('No cubiertos por el plan: se registran y no consumen cupo de imagenología.'),
                                         ])->columnSpan(2)->columns(1),
                                     // ...
                                 ])->columns(3),
                         ]),
 
                     Step::make('Interconsulta con Especialista')
+                        ->key(TelemedicineConsultationWizardSteps::SPECIALIST, isInheritable: false)
                         ->description('Selecciona especialistas según corresponda.')
                         ->icon(Heroicon::OutlinedUserGroup)
                         ->hidden(fn (Get $get) => $get('feedbackOne') == true || ! in_array(3, $get('complements')))
                         ->schema([
+                            self::returnToReviewBar(),
                             Placeholder::make('specialist_clinical_usage_notice')
                                 ->hiddenLabel()
                                 ->content(TelemedicineConsultationClinicalUi::SPECIALIST_NOT_CONTEMPLATED_MESSAGE)
@@ -1321,16 +1326,19 @@ class TelemedicineConsultationPatientForm
                                         ->label('Otros Especialistas') // BVA
                                         ->options(fn () => TelemedicineListSpecialist::uncoveredNames())
                                         ->multiple()
-                                        ->rules([
-                                            fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Specialist),
-                                        ])
-                                        ->afterStateUpdated(function (Component $livewire): void {
-                                            ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Specialist);
-                                        })
                                         ->live(onBlur: true)
-                                        ->helperText(fn (Component $livewire): ?string => ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Specialist)
-                                            ?? 'Especialistas no cubiertos por el plan.'),
+                                        ->helperText('Especialistas no cubiertos por el plan: se registran y no consumen cupo de especialista.'),
                                 ])->columnSpanFull()->columns(2),
+                        ]),
+
+                    // Obligatorio: el botón «Registrar consulta» sólo existe en este último paso.
+                    Step::make('Revisar y registrar')
+                        ->key(TelemedicineConsultationWizardSteps::REVIEW, isInheritable: false)
+                        ->description('Verifique todo antes de guardar.')
+                        ->icon(Heroicon::OutlinedClipboardDocumentCheck)
+                        ->schema([
+                            View::make('filament.telemedicina.consultations.review.step')
+                                ->columnSpanFull(),
                         ]),
                 ])
                     ->previousAction(fn (Action $action): Action => $action

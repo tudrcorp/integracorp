@@ -8,6 +8,7 @@ use App\Filament\Administration\Resources\Helpdesks\HelpdeskResource as Administ
 use App\Filament\Business\Resources\Helpdesks\HelpdeskResource as BusinessHelpdeskResource;
 use App\Filament\Marketing\Resources\Helpdesks\HelpdeskResource as MarketingHelpdeskResource;
 use App\Filament\Operations\Resources\Helpdesks\HelpdeskResource as OperationsHelpdeskResource;
+use App\Filament\Telemedicina\Resources\Helpdesks\HelpdeskResource as TelemedicineHelpdeskResource;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Panel;
@@ -21,7 +22,21 @@ use Illuminate\Support\Facades\Route;
 final class InternalPanelsQuickNavigation
 {
     /** @var list<string> */
-    private const INTERNAL_HOST_PANEL_IDS = ['business', 'administration', 'operations', 'marketing', 'projects', 'metrics'];
+    private const INTERNAL_HOST_PANEL_IDS = ['business', 'administration', 'operations', 'marketing', 'projects', 'metrics', 'telemedicina'];
+
+    /**
+     * Paneles que muestran «Chat casos» (seguimiento de casos de telemedicina).
+     *
+     * @var list<string>
+     */
+    private const CASE_CHAT_HOST_PANEL_IDS = ['operations', 'telemedicina'];
+
+    /**
+     * Paneles que solo muestran «Crear ticket» y «Chat casos», sin accesos a otros módulos.
+     *
+     * @var list<string>
+     */
+    private const SHORTCUTS_ONLY_HOST_PANEL_IDS = ['telemedicina'];
 
     /**
      * @return list<array{kind: string, url: string, label: string, subtitle: string, tone: int, panel_id: ?string, accessible: bool, denied_message: ?string}>
@@ -57,7 +72,7 @@ final class InternalPanelsQuickNavigation
             ];
         }
 
-        if ($resolvedHost === 'operations') {
+        if (in_array($resolvedHost, self::CASE_CHAT_HOST_PANEL_IDS, true)) {
             $items[] = [
                 'kind' => 'operations-chat',
                 'url' => '#',
@@ -68,6 +83,10 @@ final class InternalPanelsQuickNavigation
                 'accessible' => true,
                 'denied_message' => null,
             ];
+        }
+
+        if (in_array($resolvedHost, self::SHORTCUTS_ONLY_HOST_PANEL_IDS, true)) {
+            return $items;
         }
 
         $panelVisualIndex = 0;
@@ -176,6 +195,12 @@ final class InternalPanelsQuickNavigation
         $helpdeskResourceClass = self::helpdeskResourceClassForHost($hostPanelId);
         if ($helpdeskResourceClass !== null) {
             return $helpdeskResourceClass::getUrl('create', [], false, $hostPanelId);
+        }
+
+        if ($hostPanelId === 'telemedicina') {
+            return TelemedicineHelpdeskResource::canCreate()
+                ? TelemedicineHelpdeskResource::getUrl('create', [], false, 'telemedicina')
+                : null;
         }
 
         // El panel projects no tiene HelpdeskResource propio, por lo que

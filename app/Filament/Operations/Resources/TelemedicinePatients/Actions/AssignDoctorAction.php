@@ -25,6 +25,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AssignDoctorAction
 {
@@ -158,7 +159,13 @@ class AssignDoctorAction
                                     return '';
                                 }
 
-                                return AnotherAddress::where('telemedicine_patient_id', $record->id)->where('id', $get('address_id'))->first()->ambulanceParking == true ? 'La Dirección SI posee estacionamiento para ambulancias' : 'La Dirección NO posee estacionamiento para ambulancias';
+                                $parking = AnotherAddress::where('telemedicine_patient_id', $record->id)->where('id', $get('address_id'))->value('ambulanceParking');
+
+                                return match (true) {
+                                    $parking === null => 'No se registró si la dirección posee estacionamiento para ambulancias',
+                                    (bool) $parking => 'La Dirección SI posee estacionamiento para ambulancias',
+                                    default => 'La Dirección NO posee estacionamiento para ambulancias',
+                                };
                             }),
                         Checkbox::make('new_address')
                             ->inline()
@@ -371,34 +378,38 @@ class AssignDoctorAction
                      */
                     if ($data['feedback'] == false && $data['address_id'] == null) {
 
-                        // ...Creo la nueva ubicacion en la tabla de ubicaciones
-                        $address = new AnotherAddress;
-                        $address->address = $data['address'];
-                        $address->phone_1 = $data['phone_1'];
-                        $address->phone_2 = $data['phone_2'];
-                        $address->city_id = $data['city_id'];
-                        $address->state_id = $data['state_id'];
-                        $address->country_id = $data['country_id'];
-                        $address->ambulanceParking = $data['ambulanceParking'];
-                        $address->relationship = $data['relationship'];
-                        $address->telemedicine_patient_id = $record->id;
-                        $address->save();
+                        // ...La ubicacion y el caso se guardan juntos: si el caso falla, no queda una ubicacion huerfana.
+                        [$address, $case] = DB::transaction(function () use ($record, $data, $doctor): array {
+                            $address = new AnotherAddress;
+                            $address->address = $data['address'];
+                            $address->phone_1 = $data['phone_1'];
+                            $address->phone_2 = filled($data['phone_2'] ?? null) ? $data['phone_2'] : null;
+                            $address->city_id = $data['city_id'];
+                            $address->state_id = $data['state_id'];
+                            $address->country_id = $data['country_id'];
+                            $address->ambulanceParking = (bool) ($data['ambulanceParking'] ?? false);
+                            $address->relationship = $data['relationship'] ?? null;
+                            $address->telemedicine_patient_id = $record->id;
+                            $address->save();
 
-                        $case = TelemedicineCaseFactory::createForPatient($record, [
-                            'telemedicine_doctor_id' => $data['doctor_id'],
-                            'patient_phone' => $address->phone_1,
-                            'patient_phone_2' => $address->phone_2,
-                            'patient_address' => $address->address,
-                            'patient_country_id' => $address->country_id,
-                            'patient_state_id' => $address->state_id,
-                            'patient_city_id' => $address->city_id,
-                            'reason' => $data['reason'],
-                            'ambulanceParking' => $data['ambulanceParking'],
-                            'belongs_to' => $data['belongs_to'] ?? null,
-                            'assigned_by' => Auth::user()->name,
-                            'managed_by' => $doctor->managed_by,
-                            'supplier_id' => OperationsSupplierScope::resolveFromPatient($record),
-                        ]);
+                            $case = TelemedicineCaseFactory::createForPatient($record, [
+                                'telemedicine_doctor_id' => $data['doctor_id'],
+                                'patient_phone' => $address->phone_1,
+                                'patient_phone_2' => $address->phone_2,
+                                'patient_address' => $address->address,
+                                'patient_country_id' => $address->country_id,
+                                'patient_state_id' => $address->state_id,
+                                'patient_city_id' => $address->city_id,
+                                'reason' => $data['reason'],
+                                'ambulanceParking' => $data['ambulanceParking'],
+                                'belongs_to' => $data['belongs_to'] ?? null,
+                                'assigned_by' => Auth::user()->name,
+                                'managed_by' => $doctor->managed_by,
+                                'supplier_id' => OperationsSupplierScope::resolveFromPatient($record),
+                            ]);
+
+                            return [$address, $case];
+                        });
 
                         if ($case) {
 

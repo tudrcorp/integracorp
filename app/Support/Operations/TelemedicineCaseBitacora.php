@@ -8,6 +8,7 @@ use App\Models\ObservationCase;
 use App\Models\OperationCoordinationService;
 use App\Models\OperationMedicalAppointment;
 use App\Models\OperationServiceOrder;
+use App\Models\TelemedicineAmdPhysicalExam;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineFollowUp;
@@ -18,12 +19,14 @@ use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Telemedicine\TelemedicineAmdBitacoraCatalog;
+use App\Support\Telemedicine\TelemedicineAmdPhysicalExamTemplate;
 use App\Support\Telemedicine\TelemedicineCaseDocumentsCatalog;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 final class TelemedicineCaseBitacora
 {
@@ -169,9 +172,11 @@ final class TelemedicineCaseBitacora
                 'email' => trim((string) ($patient?->email ?: $patient?->email_contact ?: '')),
                 'patient_name' => self::patientName($case),
             ],
+            'clinical_summary' => self::clinicalSummary($case->consultations, (int) $case->id),
             'consultations' => self::consultationRows($case->consultations),
             'follow_ups' => self::followUpRows($case->id),
             'amd_reports' => TelemedicineAmdBitacoraCatalog::entries($case),
+            'amd_physical_exams' => self::amdPhysicalExamRows((int) $case->id),
             'observations' => self::observationRows($case->observations),
             'operation_logs' => self::operationLogRows($case->operationLogs),
             'labs' => self::labRows($case->id),
@@ -360,6 +365,160 @@ final class TelemedicineCaseBitacora
                 'IMC' => self::text($consultation->imc),
             ])
             ->all();
+    }
+
+    /**
+     * Largo máximo de cada texto del resumen clínico (~2-3 líneas). La ficha
+     * completa sigue en «Consultas y notas médicas».
+     */
+    public const SUMMARY_TEXT_LIMIT = 280;
+
+    /**
+     * Historia del caso en orden: consulta inicial, seguimientos y alta.
+     *
+     * Los seguimientos y el alta se registran como consultas del mismo caso con
+     * estatus EN SEGUIMIENTO / ALTA MEDICA; `telemedicine_follow_ups` se suma
+     * por si tiene registros. Laboratorios, medicamentos, estudios y
+     * especialistas quedan fuera: tienen sus propias secciones.
+     *
+     * @param  Collection<int, TelemedicineConsultationPatient>|mixed  $consultations
+     * @return list<array{stage: string, tone: string, date: string, doctor: string, reference: string, fields: array<string, string>, truncated: bool}>
+     */
+    public static function clinicalSummary(mixed $consultations, int $caseId): array
+    {
+        $events = collect($consultations)
+            ->map(fn (TelemedicineConsultationPatient $consultation): array => [
+                'at' => $consultation->created_at?->getTimestamp() ?? 0,
+                'id' => (int) $consultation->id,
+                'status' => mb_strtoupper(trim((string) $consultation->status)),
+                'reference' => self::text($consultation->code_reference, 'CONS-'.$consultation->id),
+                'date' => self::dateTime($consultation->created_at),
+                'doctor' => self::text($consultation->telemedicineDoctor?->full_name),
+                /*
+                 * La consulta inicial llena motivo e impresión; los seguimientos
+                 * y el alta responden el cuestionario (cuestion_1…5). Los vacíos
+                 * se omiten, así que cada etapa muestra sólo lo que registró.
+                 */
+                'fields' => [
+                    'Motivo' => $consultation->reason_consultation,
+                    'Impresión diagnóstica' => $consultation->diagnostic_impression,
+                    'Evolución' => $consultation->patient_evolution,
+                    'Cómo se siente' => $consultation->cuestion_1,
+                    'Respuesta al tratamiento' => $consultation->cuestion_2,
+                    'Mejoría de síntomas' => $consultation->cuestion_3,
+                    'Estudios realizados' => $consultation->cuestion_4,
+                    'Ajuste de indicaciones' => $consultation->cuestion_5,
+                    'Observaciones' => $consultation->observations,
+                    'Signos vitales' => self::vitalSigns($consultation),
+                ],
+            ]);
+
+        $followUps = TelemedicineFollowUp::query()
+            ->with('telemedicineDoctor:id,full_name')
+            ->where('telemedicine_case_id', $caseId)
+            ->get()
+            ->map(fn (TelemedicineFollowUp $followUp): array => [
+                'at' => $followUp->created_at?->getTimestamp() ?? 0,
+                'id' => (int) $followUp->id,
+                'status' => 'EN SEGUIMIENTO',
+                'reference' => self::text($followUp->code, 'SEG-'.$followUp->id),
+                'date' => self::dateTime($followUp->created_at),
+                'doctor' => self::text($followUp->telemedicineDoctor?->full_name),
+                'fields' => [
+                    'Motivo' => $followUp->reason_consultation,
+                    'Impresión diagnóstica' => $followUp->diagnostic_impression,
+                    'Patología actual' => $followUp->actual_phatology,
+                    'Cómo se siente' => $followUp->cuestion_1,
+                    'Respuesta al tratamiento' => $followUp->cuestion_2,
+                    'Mejoría de síntomas' => $followUp->cuestion_3,
+                    'Estudios realizados' => $followUp->cuestion_4,
+                    'Ajuste de indicaciones' => $followUp->cuestion_5,
+                    'Próximo seguimiento' => $followUp->next_follow_up,
+                ],
+            ]);
+
+        $followUpNumber = 0;
+        $seenInitial = false;
+
+        return $events
+            ->concat($followUps)
+            ->sortBy([['at', 'asc'], ['id', 'asc']])
+            ->values()
+            ->map(function (array $event) use (&$followUpNumber, &$seenInitial): array {
+                [$stage, $tone] = match (true) {
+                    $event['status'] === 'ALTA MEDICA' => ['Alta médica', 'discharge'],
+                    $event['status'] === 'EN SEGUIMIENTO', $seenInitial => ['Seguimiento '.(++$followUpNumber), 'follow_up'],
+                    default => ['Consulta inicial', 'initial'],
+                };
+
+                $seenInitial = true;
+                $fields = [];
+                $truncated = false;
+
+                foreach ($event['fields'] as $label => $value) {
+                    $text = trim(preg_replace('/\s+/u', ' ', (string) ($value ?? '')) ?? '');
+
+                    if ($text === '' || $text === '—') {
+                        continue;
+                    }
+
+                    if (mb_strlen($text) > self::SUMMARY_TEXT_LIMIT) {
+                        $truncated = true;
+                        $text = Str::limit($text, self::SUMMARY_TEXT_LIMIT, '…');
+                    }
+
+                    $fields[$label] = $text;
+                }
+
+                return [
+                    'stage' => $stage,
+                    'tone' => $tone,
+                    'date' => $event['date'],
+                    'doctor' => $event['doctor'],
+                    'reference' => $event['reference'],
+                    'fields' => $fields,
+                    'truncated' => $truncated,
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * Exámenes físicos AMD del caso, del más antiguo al más reciente.
+     *
+     * @return list<array{date: string, doctor: string, reference: string, vitals: list<array{label: string, value: string}>, systems: list<array{label: string, text: string, is_default: bool}>}>
+     */
+    public static function amdPhysicalExamRows(int $caseId): array
+    {
+        return TelemedicineAmdPhysicalExam::query()
+            ->with(['telemedicineDoctor:id,full_name', 'telemedicineConsultationPatient:id,code_reference'])
+            ->where('telemedicine_case_id', $caseId)
+            ->whereNotNull('telemedicine_consultation_patient_id')
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (TelemedicineAmdPhysicalExam $exam): array => [
+                'date' => self::dateTime($exam->created_at),
+                'doctor' => self::text($exam->telemedicineDoctor?->full_name),
+                'reference' => self::text($exam->telemedicineConsultationPatient?->code_reference, 'CONS-'.$exam->telemedicine_consultation_patient_id),
+                ...TelemedicineAmdPhysicalExamTemplate::display($exam),
+            ])
+            ->all();
+    }
+
+    private static function vitalSigns(TelemedicineConsultationPatient $consultation): string
+    {
+        return collect([
+            'PA' => $consultation->pa,
+            'FC' => $consultation->fc,
+            'FR' => $consultation->fr,
+            'Temp' => $consultation->temp,
+            'Sat' => $consultation->saturacion,
+        ])
+            ->map(fn (mixed $value): string => trim((string) ($value ?? '')))
+            ->filter(fn (string $value): bool => $value !== '' && $value !== '—')
+            ->map(fn (string $value, string $label): string => $label.' '.$value)
+            ->implode(' · ');
     }
 
     /**

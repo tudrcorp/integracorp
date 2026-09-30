@@ -212,10 +212,18 @@
             word-wrap: break-word;
             white-space: pre-wrap;
         }
-        .prose-box {
+        /*
+         * Tabla de una celda y no <div>: DomPDF suma el padding y el borde de un
+         * <div> al 100 % y la caja se sale por la derecha del margen. En la celda
+         * el relleno queda dentro del ancho de la tabla.
+         */
+        table.prose-box {
             width: 100%;
-            max-width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
             margin: 0 0 2px 0;
+        }
+        table.prose-box td {
             padding: 4px 6px;
             background: #f8fafc;
             border: 1px solid #e5e7eb;
@@ -362,22 +370,26 @@
 
     @if($isFollowUp)
         <div class="section-title section-title--block">Diagnóstico principal de la consulta inicial</div>
-        <div class="prose-box">{{ $val($data['diagnostic_impression'] ?? null) }}</div>
+        <table class="prose-box"><tr><td>{{ $val($data['diagnostic_impression'] ?? null) }}</td></tr></table>
 
         <div class="section-title section-title--block">Historia de la enfermedad actual</div>
-        <div class="prose-box">{{ $val($data['current_illness_history'] ?? null) }}</div>
+        <table class="prose-box"><tr><td>{{ $val($data['current_illness_history'] ?? null) }}</td></tr></table>
 
         <div class="section-title section-title--block">Evolución del paciente</div>
-        <div class="prose-box">{{ $val($data['patient_evolution'] ?? null) }}</div>
+        <table class="prose-box"><tr><td>{{ $val($data['patient_evolution'] ?? null) }}</td></tr></table>
+
+        @if($isLong)
+            @include('documents.partials.informe-examen-fisico-amd', ['exam' => $data['physical_exam'] ?? null])
+        @endif
     @else
         <div class="section-title section-title--block">Motivo de consulta</div>
-        <div class="prose-box">{{ $val($data['reason'] ?? null) }}</div>
+        <table class="prose-box"><tr><td>{{ $val($data['reason'] ?? null) }}</td></tr></table>
 
         <div class="section-title section-title--block">Enfermedad actual</div>
-        <div class="prose-box">{{ $val($data['actual_phatology'] ?? null) }}</div>
+        <table class="prose-box"><tr><td>{{ $val($data['actual_phatology'] ?? null) }}</td></tr></table>
 
         <div class="section-title section-title--block">Antecedentes</div>
-        <div class="prose-box">{{ $val($data['background'] ?? null) }}</div>
+        <table class="prose-box"><tr><td>{{ $val($data['background'] ?? null) }}</td></tr></table>
 
         @php
             /** Una sección se muestra si tiene al menos un dato; si están todos vacíos se oculta (un 0 sí es dato). */
@@ -435,8 +447,12 @@
         </div>
         @endif
 
+        @if($isLong)
+            @include('documents.partials.informe-examen-fisico-amd', ['exam' => $data['physical_exam'] ?? null])
+        @endif
+
         <div class="section-title section-title--block">Impresión diagnóstica</div>
-        <div class="prose-box">{{ $val($data['diagnostic_impression'] ?? null) }}</div>
+        <table class="prose-box"><tr><td>{{ $val($data['diagnostic_impression'] ?? null) }}</td></tr></table>
 
         <div class="keep-together">
             <div class="section-title section-title--block">Plan terapéutico</div>

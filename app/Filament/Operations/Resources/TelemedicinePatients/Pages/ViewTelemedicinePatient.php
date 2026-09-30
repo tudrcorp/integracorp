@@ -8,6 +8,7 @@ use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRe
 use App\Filament\Operations\Resources\TelemedicinePatients\Actions\ReportSiniestralidadAction;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Models\TelemedicinePatient;
+use App\Support\Filament\FilamentIosActionsMenu;
 use App\Support\Filament\TelemedicinePatientPageHeader;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -40,34 +41,27 @@ class ViewTelemedicinePatient extends ViewRecord
     private const TICKET_BUTTON_GRAY_CLASS = 'ticket-btn-ios-gray shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
     /**
-     * Idéntico a Crear Ticket / Crear Nuevo Paciente: .ticket-btn-ios en theme.css (verde, sombras iOS, hover).
-     */
-    private const TICKET_BUTTON_CLASS = 'aviso-btn-ios-primary shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
-
-    /**
      * Misma forma iOS que primary/gris; paleta roja tipo danger (theme.css .aviso-btn-ios-danger).
      */
     private const TICKET_BUTTON_DANGER_CLASS = 'aviso-btn-ios-danger shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
+    /**
+     * Las acciones de la ficha van agrupadas en el menú iOS «Acciones», igual
+     * que en el asistente de consulta de telemedicina.
+     */
     protected function getHeaderActions(): array
     {
         return [
-            ReportSiniestralidadAction::make(),
-            AssignDoctorAction::make()
-                ->extraAttributes([
-                    'class' => self::TICKET_BUTTON_CLASS,
-                ]),
-            RegisterTpaRetailServicesAction::make()
-                ->extraAttributes([
-                    'class' => self::TICKET_BUTTON_CLASS,
-                ]),
-            EditAction::make()
-                ->label('Editar Paciente')
-                ->icon('heroicon-o-pencil')
-                ->color('primary')
-                ->extraAttributes([
-                    'class' => self::TICKET_BUTTON_CLASS,
-                ]),
+            FilamentIosActionsMenu::make([
+                AssignDoctorAction::make(),
+                RegisterTpaRetailServicesAction::make(),
+                ReportSiniestralidadAction::make()
+                    ->extraAttributes([]),
+                EditAction::make()
+                    ->label('Editar Paciente')
+                    ->icon('heroicon-o-pencil')
+                    ->color('primary'),
+            ]),
         ];
     }
 }

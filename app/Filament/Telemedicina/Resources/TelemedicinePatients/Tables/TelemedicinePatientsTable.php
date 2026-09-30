@@ -72,7 +72,6 @@ class TelemedicinePatientsTable
     {
         return $table
             ->heading('Pacientes asignados')
-            ->description('Pacientes con casos activos bajo su atención. Use las acciones para ver ficha, historia clínica o registrar una consulta.')
             ->defaultSort('full_name', 'asc')
             ->emptyStateHeading('Sin pacientes asignados')
             ->emptyStateDescription('No tiene pacientes con casos activos en este momento, o su usuario no tiene médico vinculado.')

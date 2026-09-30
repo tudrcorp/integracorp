@@ -196,6 +196,11 @@ Route::get('operations/telemedicine-patients/{patient}/siniestralidad-detalle/pd
     ->middleware(['web', 'auth'])
     ->name('operations.telemedicine-patients.siniestralidad-detalle.pdf');
 
+Route::get('operations/reportes/descargar/{file}', App\Http\Controllers\OperationReportDownloadController::class)
+    ->middleware(['web', 'auth'])
+    ->where('file', 'reporte-operaciones-[a-z0-9-]+\.(xlsx|csv|pdf)')
+    ->name('operations.reports.download');
+
 Route::get('operations/operation-service-orders/report/preview', [App\Http\Controllers\OperationServiceOrderTableReportPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
     ->name('operations.operation-service-orders.report.preview');

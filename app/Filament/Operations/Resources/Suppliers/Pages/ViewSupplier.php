@@ -58,6 +58,19 @@ class ViewSupplier extends ViewRecord
 
         /** @var Supplier $supplier */
         $supplier = $this->getRecord();
+
+        if ($value && SupplierIntegracorpManagement::normalizeAlias($supplier->integracorp_alias) === null) {
+            $this->gestionIntegracorp = (bool) $supplier->gestion_integracorp;
+
+            Notification::make()
+                ->title('Falta el alias del proveedor')
+                ->body('Para habilitar la gestión en Integracorp registre el alias del proveedor desde «Editar» → «Gestion de Procesos en Integracorp».')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         $previous = (bool) $supplier->gestion_integracorp;
         $supplier->gestion_integracorp = $value;
         $supplier->save();

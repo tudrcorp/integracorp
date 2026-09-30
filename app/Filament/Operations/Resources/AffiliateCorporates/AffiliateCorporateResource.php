@@ -13,9 +13,14 @@ use App\Filament\Operations\Resources\AffiliateCorporates\Tables\AffiliateCorpor
 use App\Models\AffiliateCorporate;
 use App\Models\Permission;
 use App\Models\UserPermission;
+use App\Support\Filament\BusinessFilamentActionAccess;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
+use App\Support\Filament\GlobalSearchAffiliateBusinessDetails;
 use App\Support\Filament\GlobalSearchAffiliateStatusLabel;
 use App\Support\Filament\GlobalSearchAffiliationCollectionExpirations;
+use App\Support\Operations\SupplierAffiliateVisibility;
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
@@ -110,8 +115,24 @@ class AffiliateCorporateResource extends Resource
             ),
             'Plan' => static::formatPlanDescription($record),
             'Tipo de plan' => filled($record->plan?->type) ? (string) $record->plan->type : '—',
+            'Unidad de Negocio Específica' => GlobalSearchAffiliateBusinessDetails::specificBusinessUnit(
+                $record->specific_business_unit,
+                $corp?->specific_business_unit,
+            ),
+            'Proveedor(es) de Servicios' => GlobalSearchAffiliateBusinessDetails::serviceProviders(
+                $corp?->service_providers,
+            ),
             'Estatus' => GlobalSearchAffiliateStatusLabel::html($record->status),
         ];
+    }
+
+    /**
+     * Base de la tabla, la búsqueda global y la resolución de registros (ver/editar por URL):
+     * un usuario de proveedor solo alcanza a los afiliados que su proveedor atiende.
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return SupplierAffiliateVisibility::applyToAffiliateCorporates(parent::getEloquentQuery());
     }
 
     public static function getGlobalSearchEloquentQuery(): Builder
@@ -163,6 +184,50 @@ class AffiliateCorporateResource extends Resource
         }
 
         return filled($plan->description) ? (string) $plan->description : '—';
+    }
+
+    /**
+     * Editar datos personales exige el permiso granular «Editar datos
+     * personales de afiliados corporativos» (SUPERADMIN siempre puede). Sin
+     * él, el botón no aparece y la URL de edición responde 403.
+     */
+    public static function canEdit(Model $record): bool
+    {
+        return static::userCanEditPersonalData(Auth::id());
+    }
+
+    /**
+     * Memorizado por petición, usuario y panel: la tabla lo evalúa en cada fila.
+     */
+    private static function userCanEditPersonalData(int|string|null $userId): bool
+    {
+        if ($userId === null) {
+            return false;
+        }
+
+        $panelId = Filament::getCurrentPanel()?->getId();
+
+        /** `once()` memoriza por las variables capturadas: usuario y panel van en `use`. */
+        return once(static function () use ($userId, $panelId): bool {
+            unset($userId, $panelId);
+
+            return static::canAccess()
+                && BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::EDIT_CORPORATE_AFFILIATE_PERSONAL_DATA);
+        });
+    }
+
+    /**
+     * Operaciones no elimina afiliados: la página de edición generada traía un
+     * botón Eliminar que borraba el registro sin rastro.
+     */
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
     }
 
     public static function form(Schema $schema): Schema

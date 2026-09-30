@@ -67,13 +67,28 @@ final class TelemedicineCaseFilamentListQuery
      */
     public static function applyDashboardWidgetCaseConstraints(Builder $query): Builder
     {
+        return self::applyDashboardScope($query, includeDischarged: false);
+    }
+
+    /**
+     * Casos que ve el médico en su dashboard. Las tarjetas de estadísticas usan
+     * el mismo alcance que la tabla (con altas, que la tabla oculta) para que
+     * los números coincidan con lo que el médico tiene en pantalla.
+     *
+     * @param  Builder<TelemedicineCase>  $query
+     * @return Builder<TelemedicineCase>
+     */
+    public static function applyDashboardScope(Builder $query, bool $includeDischarged = false): Builder
+    {
         $user = Auth::user();
 
         if ($user === null || ! $user instanceof User || $user->doctor_id === null) {
             return $query->whereRaw('0 = 1');
         }
 
-        $query->where('status', '!=', 'ALTA MEDICA');
+        if (! $includeDischarged) {
+            $query->where('status', '!=', 'ALTA MEDICA');
+        }
 
         if (self::userIsInTdgTelemedicinaContext($user)) {
             self::constrainToTdgDoctorsCases($query);
@@ -120,6 +135,19 @@ final class TelemedicineCaseFilamentListQuery
         }
 
         return $query;
+    }
+
+    /**
+     * Buscador global del panel médico: el mismo alcance de la Bitácora, altas
+     * médicas incluidas, para que el médico encuentre también a un paciente que
+     * regresa. Ver {@see TelemedicineCaseGlobalSearch}.
+     *
+     * @param  Builder<TelemedicineCase>  $query
+     * @return Builder<TelemedicineCase>
+     */
+    public static function applyTelemedicinaGlobalSearchConstraints(Builder $query): Builder
+    {
+        return self::applyTelemedicinaBitacoraConstraints($query);
     }
 
     /**

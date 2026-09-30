@@ -27,8 +27,6 @@ class TelemedicineDoctorsTable
     {
         return $table
             ->defaultSort('full_name', 'asc')
-            ->heading('Directorio médico')
-            ->description('Datos de contacto, identificación profesional, especialidad y sello digital. Use «Editar» para actualizar ficha o sello.')
             ->modifyQueryUsing(function (Builder $query): Builder {
                 OperationsSupplierScope::applyToQuery($query);
 

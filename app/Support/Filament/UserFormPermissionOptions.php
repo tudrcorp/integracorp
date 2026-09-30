@@ -98,6 +98,7 @@ class UserFormPermissionOptions
         'dashboard' => ['escritorio'],
         'dashboardoperaciones' => ['dashboard-operaciones'],
         'dashboardproveedor' => ['dashboard-proveedor'],
+        'generadordereportes' => ['generador-de-reportes'],
         'projectresource' => ['proyectos'],
         'epicresource' => ['epicas'],
         'subprojectresource' => ['subproyectos'],

@@ -7,17 +7,23 @@ use App\Support\Telemedicine\TelemedicineInformeLargoDataBuilder;
 
 $basePath = dirname(__DIR__, 2);
 
-it('nombra el archivo del informe medico con el sufijo Informe-Medico', function (): void {
+it('nombra el archivo del informe medico con el sufijo Informe-Médico, con tilde', function (): void {
     $name = TelemedicineInformeLargoDataBuilder::pdfDocumentName([
         'ci_patient' => 'V-12345678',
         'code_reference' => 'REF-100',
     ]);
 
-    expect($name)->toBe('V-12345678-REF-100-Informe-Medico.pdf')
+    expect($name)->toBe('V-12345678-REF-100-Informe-Médico.pdf')
         ->and(TelemedicineInformeLargoDataBuilder::pdfDocumentName(
             ['ci_patient' => '16007868', 'code_reference' => 'REF-60294'],
             TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
-        ))->toBe('16007868-REF-60294-Informe-Medico.pdf');
+        ))->toBe('16007868-REF-60294-Informe-Médico.pdf');
+});
+
+it('la tilde del sufijo es la é precompuesta (NFC), no una e con acento combinado', function (): void {
+    expect(TelemedicineInformeLargoDataBuilder::FILE_SUFFIX_INFORME_MEDICO)
+        ->toBe("Informe-M\u{00E9}dico")
+        ->and(mb_strlen(TelemedicineInformeLargoDataBuilder::FILE_SUFFIX_INFORME_MEDICO))->toBe(14);
 });
 
 it('la clave interna del informe medico no cambia: la usa la regeneracion de documentos', function (): void {

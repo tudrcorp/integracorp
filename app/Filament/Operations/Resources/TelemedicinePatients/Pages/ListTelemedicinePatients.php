@@ -5,8 +5,11 @@ namespace App\Filament\Operations\Resources\TelemedicinePatients\Pages;
 use App\Filament\Operations\Resources\TelemedicinePatients\Actions\ReportSiniestralidadAction;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Operations\OperationsListHeaderCounts;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\HtmlString;
 
 class ListTelemedicinePatients extends ListRecords
 {
@@ -21,6 +24,34 @@ class ListTelemedicinePatients extends ListRecords
     protected static string $resource = TelemedicinePatientResource::class;
 
     protected static ?string $title = 'Lista de Pacientes';
+
+    public function getHeading(): string|Htmlable
+    {
+        $summary = OperationsListHeaderCounts::aggregate($this->getTable()->getQuery(), [
+            'individual' => ['telemedicine_patients.type_affiliation = ?', ['INDIVIDUAL']],
+            'corporate' => ['telemedicine_patients.type_affiliation = ?', ['CORPORATIVO']],
+            'open_case' => [
+                'EXISTS (SELECT 1 FROM telemedicine_cases AS tc WHERE tc.telemedicine_patient_id = telemedicine_patients.id AND tc.status NOT IN (?, ?))',
+                ['ALTA MEDICA', 'ELIMINADO'],
+            ],
+            'month' => ['telemedicine_patients.created_at >= ?', [OperationsListHeaderCounts::startOfMonth()]],
+        ]);
+
+        return new HtmlString(view('filament.operations.partials.list-header', [
+            'icon' => 'heroicon-o-user-group',
+            'eyebrow' => 'Telemedicina · Pacientes',
+            'title' => 'Pacientes',
+            'total' => $summary['total'],
+            'totalHint' => 'Pacientes que puede consultar',
+            'description' => 'Pacientes afiliados y externos de telemedicina. Muestre las columnas ocultas para ver domicilio y datos de afiliación.',
+            'stats' => [
+                ['label' => 'Con caso abierto', 'value' => $summary['open_case'], 'icon' => 'heroicon-m-clipboard-document-list', 'tone' => 'warning', 'hint' => 'Pacientes con al menos un caso sin alta médica'],
+                ['label' => 'Individuales', 'value' => $summary['individual'], 'icon' => 'heroicon-m-user', 'tone' => 'info', 'hint' => 'Pacientes de afiliaciones individuales'],
+                ['label' => 'Corporativos', 'value' => $summary['corporate'], 'icon' => 'heroicon-m-building-office-2', 'tone' => 'info', 'hint' => 'Pacientes de afiliaciones corporativas'],
+                ['label' => 'Nuevos este mes', 'value' => $summary['month'], 'icon' => 'heroicon-m-sparkles', 'tone' => 'primary', 'hint' => 'Pacientes registrados en el mes en curso'],
+            ],
+        ])->render());
+    }
 
     protected function getHeaderActions(): array
     {

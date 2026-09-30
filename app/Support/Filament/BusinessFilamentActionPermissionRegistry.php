@@ -30,6 +30,10 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const MANAGE_SUPPLIER_INTEGRACORP_PROCESSES = 'gestionar-procesos-integracorp-proveedores';
 
+    public const EDIT_INDIVIDUAL_AFFILIATE_PERSONAL_DATA = 'editar-afiliados-individuales';
+
+    public const EDIT_CORPORATE_AFFILIATE_PERSONAL_DATA = 'editar-afiliados-corporativos';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -104,6 +108,16 @@ final class BusinessFilamentActionPermissionRegistry
             self::MANAGE_SUPPLIER_INTEGRACORP_PROCESSES => [
                 'name' => 'Gestión de Procesos en Integracorp',
                 'group' => 'PROVEEDORES JURÍDICOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::EDIT_INDIVIDUAL_AFFILIATE_PERSONAL_DATA => [
+                'name' => 'Editar datos personales de afiliados individuales',
+                'group' => 'AFILIADOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::EDIT_CORPORATE_AFFILIATE_PERSONAL_DATA => [
+                'name' => 'Editar datos personales de afiliados corporativos',
+                'group' => 'AFILIADOS',
                 'modules' => ['OPERACIONES'],
             ],
         ];

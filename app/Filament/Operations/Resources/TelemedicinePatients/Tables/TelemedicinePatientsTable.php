@@ -31,8 +31,6 @@ class TelemedicinePatientsTable
     {
         // dd(Auth::user()?->departament ?? []);
         return $table
-            ->heading('Listado de pacientes')
-            ->description('Pacientes afiliados y externos. Use columnas ocultas para ver domicilio y datos de afiliación.')
             ->defaultSort('created_at', 'desc')
             ->modifyQueryUsing(function (Builder $query): Builder {
                 $query->with([

@@ -65,8 +65,6 @@ class TelemedicineCasesTable
 
                 return $query;
             })
-            ->heading('Casos de Telemedicina')
-            ->description('Listado de casos de Telemedicina, desde aqui puedes ver el detalle del caso registrar y seguimientos')
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('managed_by')

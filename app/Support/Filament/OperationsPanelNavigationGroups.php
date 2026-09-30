@@ -46,6 +46,10 @@ final class OperationsPanelNavigationGroups
                 ->icon('heroicon-o-cog-8-tooth')
                 ->collapsed(),
             NavigationGroup::make()
+                ->label('REPORTES')
+                ->icon('heroicon-o-document-chart-bar')
+                ->collapsed(),
+            NavigationGroup::make()
                 ->label('ZONA DE DESCARGA')
                 ->icon('heroicon-o-cloud-arrow-down')
                 ->collapsed(),

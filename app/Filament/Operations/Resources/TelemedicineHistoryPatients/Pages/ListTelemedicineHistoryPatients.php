@@ -3,8 +3,11 @@
 namespace App\Filament\Operations\Resources\TelemedicineHistoryPatients\Pages;
 
 use App\Filament\Operations\Resources\TelemedicineHistoryPatients\TelemedicineHistoryPatientResource;
+use App\Support\Operations\OperationsListHeaderCounts;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\HtmlString;
 
 class ListTelemedicineHistoryPatients extends ListRecords
 {
@@ -16,6 +19,32 @@ class ListTelemedicineHistoryPatients extends ListRecords
     protected static string $resource = TelemedicineHistoryPatientResource::class;
 
     protected static ?string $title = 'Historias Clínicas';
+
+    public function getHeading(): string|Htmlable
+    {
+        $summary = OperationsListHeaderCounts::aggregate(
+            $this->getTable()->getQuery(),
+            [
+                'month' => ['telemedicine_history_patients.created_at >= ?', [OperationsListHeaderCounts::startOfMonth()]],
+                'today' => ['telemedicine_history_patients.created_at >= ?', [OperationsListHeaderCounts::startOfToday()]],
+            ],
+            ['patients' => 'telemedicine_history_patients.telemedicine_patient_id'],
+        );
+
+        return new HtmlString(view('filament.operations.partials.list-header', [
+            'icon' => 'heroicon-o-document-text',
+            'eyebrow' => 'Telemedicina · Antecedentes',
+            'title' => 'Historias clínicas',
+            'total' => $summary['total'],
+            'totalHint' => 'Historias clínicas que puede consultar',
+            'description' => 'Antecedentes médicos de cada paciente. El código y el paciente abren el detalle; use los filtros para acotar por médico, fechas o antecedentes.',
+            'stats' => [
+                ['label' => 'Pacientes', 'value' => $summary['patients'], 'icon' => 'heroicon-m-users', 'tone' => 'info', 'hint' => 'Pacientes distintos con historia clínica'],
+                ['label' => 'Este mes', 'value' => $summary['month'], 'icon' => 'heroicon-m-calendar-days', 'tone' => 'success', 'hint' => 'Historias creadas en el mes en curso'],
+                ['label' => 'Hoy', 'value' => $summary['today'], 'icon' => 'heroicon-m-sparkles', 'tone' => 'primary', 'hint' => 'Historias creadas hoy'],
+            ],
+        ])->render());
+    }
 
     protected function getHeaderActions(): array
     {

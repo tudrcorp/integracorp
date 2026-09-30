@@ -16,6 +16,7 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 use Livewire\Attributes\Computed;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -84,12 +85,44 @@ trait InteractsWithTelemedicineCaseBitacora
 
     public function getHeading(): string|Htmlable
     {
-        return 'Bitácora de Caso';
+        return new HtmlString(view('filament.telemedicina.bitacora.header', [
+            'case' => self::headerCase($this->hasSelectedCase() ? $this->dossier : null),
+            'gradient' => $this->bitacoraScope() === TelemedicineCaseBitacora::SCOPE_TELEMEDICINA
+                ? 'from-[#0a74d6] to-[#005ca9] shadow-[#005ca9]/25'
+                : 'from-[#4aa3e3] to-[#1f6fae] shadow-[#2d89ca]/25',
+        ])->render());
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'Busque por código de caso, nombre o cédula del paciente. La bitácora reúne el expediente hasta el alta médica.';
+        return null;
+    }
+
+    /**
+     * Toma del expediente ya armado (y cacheado por request) solo lo que muestra el encabezado.
+     *
+     * @param  array<string, mixed>|null  $dossier
+     * @return array{code: string, status: ?string, priority: ?string, patient: ?string, document: ?string, doctor: ?string, opened_at: ?string, updated_at: ?string}|null
+     */
+    public static function headerCase(?array $dossier): ?array
+    {
+        if ($dossier === null) {
+            return null;
+        }
+
+        $header = is_array($dossier['header'] ?? null) ? $dossier['header'] : [];
+        $patient = is_array($dossier['patient'] ?? null) ? $dossier['patient'] : [];
+
+        return [
+            'code' => (string) ($dossier['code'] ?? ''),
+            'status' => $dossier['status'] ?? null,
+            'priority' => $header['Prioridad'] ?? null,
+            'patient' => $patient['Nombre'] ?? null,
+            'document' => $patient['Cédula'] ?? null,
+            'doctor' => $header['Médico'] ?? null,
+            'opened_at' => $header['Apertura'] ?? null,
+            'updated_at' => $header['Última actualización'] ?? null,
+        ];
     }
 
     /**

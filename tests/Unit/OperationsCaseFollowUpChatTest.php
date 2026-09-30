@@ -29,7 +29,7 @@ it('registra el chat flotante de casos en el panel de operaciones', function ():
 
 it('centraliza la logica del chat de seguimiento en CaseFollowUpChatManager', function (): void {
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CaseFollowUpChatManager.php'))
-        ->toContain('final class CaseFollowUpChatManager')
+        ->toMatch('/final\s+class\s+CaseFollowUpChatManager\b/')
         ->toContain("public const FOLLOW_UP_STATUS = 'EN SEGUIMIENTO'")
         ->toContain('function sendMessage(')
         ->toContain('OperationsSupplierScope::applyToQuery')
@@ -46,7 +46,7 @@ it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', functio
     $theme = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
 
     expect($component)
-        ->toContain('class CaseFollowUpChatPanel')
+        ->toMatch('/\bclass\s+CaseFollowUpChatPanel\b/')
         ->toContain('function sendMessage(')
         ->toContain('function pollHeartbeat(')
         ->toContain('function updatedSelectedCaseId(')
@@ -85,7 +85,7 @@ it('auto desplaza al ultimo mensaje cuando llega uno nuevo por polling', functio
         ->toContain('bindComposerResizeObserver')
         ->toContain('scrollMessagesToBottom')
         ->toContain('x-ref="composerInput"')
-        ->toContain('wire:model.live="messageBody"')
+        ->toContain('wire:model="messageBody"')
         ->toContain('x-ref="messagesEnd"')
         ->toContain('operations-case-chat-scroll-bottom')
         ->toContain('isAuthenticatedOperationsArea')
