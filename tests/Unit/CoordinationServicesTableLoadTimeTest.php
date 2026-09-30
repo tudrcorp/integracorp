@@ -68,7 +68,8 @@ it('oculta por defecto las columnas financieras y de detalle del paciente', func
     'porcen_discount', 'price_discount', 'quote_number', 'approved_number', 'bill_number', 'bill_price',
     'bill_date', 'negotiation_description', 'birth_date_patient', 'relationship_patient', 'age_patient',
     'contractor', 'state_id', 'city_id', 'address', 'phone_holder', 'symptoms_diagnosis', 'observations',
-    'incidence', 'qc_description', 'farmadoc',
+    'incidence', 'qc_description', 'farmadoc', 'ci_patient', 'type_service', 'supplier_service',
+    'service_order_number', 'patient',
 ]);
 
 it('mantiene visibles las columnas con las que se opera', function (string $column): void {
@@ -81,7 +82,7 @@ it('mantiene visibles las columnas con las que se opera', function (string $colu
         ->and($tableColumn->isToggledHiddenByDefault())->toBeFalse();
 })->with([
     'telemedicineCase.code', 'clinical_management_items', 'servicie', 'specific_service', 'status',
-    'telemedicinePriority.name', 'patient', 'ci_patient', 'supplier_service', 'service_order_number', 'updated_at',
+    'telemedicinePriority.name', 'updated_at',
 ]);
 
 /*
@@ -201,4 +202,81 @@ it('la tabla de coordinaciones tiene los índices del cuadro de control', functi
     ))->pluck('name')->all();
 
     expect($indexes)->toContain('ocs_supplier_id_index', 'ocs_telemedicine_case_id_index', 'ocs_status_index', 'ocs_managed_by_index');
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * Cédula en el encabezado del grupo y búsqueda con columnas ocultas
+ * ---------------------------------------------------------------------------
+ */
+
+it('el encabezado del grupo muestra código, paciente y cédula', function (): void {
+    Filament::setCurrentPanel('operations');
+    $this->actingAs(analistaDeOperacionesParaCuadro());
+
+    $coordinacion = OperationCoordinationService::query()
+        ->with('telemedicineCase')
+        ->whereNotNull('telemedicine_case_id')
+        ->whereNotNull('ci_patient')
+        ->where('ci_patient', '!=', '')
+        ->latest('id')
+        ->first();
+
+    if (! $coordinacion instanceof OperationCoordinationService || $coordinacion->telemedicineCase === null) {
+        $this->markTestSkipped('No hay coordinaciones con caso y cédula.');
+    }
+
+    $titulo = Livewire::test(ListOperationCoordinationServices::class)
+        ->instance()
+        ->getTable()
+        ->getGrouping()
+        ->getTitle($coordinacion);
+
+    expect($titulo)
+        ->toStartWith(mb_strtoupper(trim((string) $coordinacion->telemedicineCase->code)))
+        ->toEndWith('C.I. '.trim((string) $coordinacion->ci_patient));
+});
+
+it('el encabezado del grupo omite la cédula cuando no hay', function (): void {
+    Filament::setCurrentPanel('operations');
+    $this->actingAs(analistaDeOperacionesParaCuadro());
+
+    $coordinacion = new OperationCoordinationService(['ci_patient' => '']);
+    $coordinacion->setRelation('telemedicineCase', new TelemedicineCase(['code' => 'tm-1', 'patient_name' => 'PACIENTE PRUEBA']));
+
+    $titulo = Livewire::test(ListOperationCoordinationServices::class)
+        ->instance()
+        ->getTable()
+        ->getGrouping()
+        ->getTitle($coordinacion);
+
+    expect($titulo)->toBe('TM-1 · PACIENTE PRUEBA');
+});
+
+it('la búsqueda por cédula sigue funcionando con la columna oculta', function (): void {
+    Filament::setCurrentPanel('operations');
+    $this->actingAs(analistaDeOperacionesParaCuadro());
+
+    $coordinacion = OperationCoordinationServicesTable::applyHideFullyFinalizedScope(
+        OperationsSupplierScope::coordinationServiceQuery()
+    )
+        ->whereNotNull('ci_patient')
+        ->where('ci_patient', '!=', '')
+        ->latest('id')
+        ->first();
+
+    if (! $coordinacion instanceof OperationCoordinationService) {
+        $this->markTestSkipped('No hay coordinaciones visibles con cédula.');
+    }
+
+    $records = Livewire::test(ListOperationCoordinationServices::class)
+        ->call('loadTable')
+        ->set('tableSearch', (string) $coordinacion->ci_patient)
+        ->instance()
+        ->getTableRecords();
+
+    expect($records->total())->toBeGreaterThan(0)
+        ->and($records->getCollection()->contains(
+            fn (OperationCoordinationService $record): bool => (string) $record->ci_patient === (string) $coordinacion->ci_patient
+        ))->toBeTrue();
 });
