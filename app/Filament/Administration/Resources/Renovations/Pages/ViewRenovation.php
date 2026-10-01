@@ -7,10 +7,10 @@ namespace App\Filament\Administration\Resources\Renovations\Pages;
 use App\Filament\Administration\Resources\Affiliations\AffiliationResource;
 use App\Filament\Administration\Resources\Renovations\RenovationResource;
 use App\Models\Renovation;
+use App\Support\Filament\RecordPageHeader;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\HtmlString;
 
 class ViewRenovation extends ViewRecord
 {
@@ -42,22 +42,32 @@ class ViewRenovation extends ViewRecord
 
     public function getTitle(): string|Htmlable
     {
+        return 'Renovación '.($this->getRecord()->code_affiliation ?? '');
+    }
+
+    public function getHeading(): string|Htmlable
+    {
         /** @var Renovation $record */
         $record = $this->getRecord();
-        $code = (string) ($record->code_affiliation ?? '—');
-        $status = (string) ($record->status ?? '—');
-        $days = $record->remaining_days;
-        $daysLabel = $days === null ? '—' : (string) $days.' días';
+        $record->loadMissing(['affiliation:id,full_name_ti,nro_identificacion_ti', 'plan:id,description', 'previousPlan:id,description']);
 
-        return new HtmlString(
-            '<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;">'
-            .'<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-white">'
-            .'Renovación · '.e($code)
-            .'</span>'
-            .'<span class="text-lg font-semibold text-gray-700 dark:text-gray-200">'
-            .e($status).' · '.e($daysLabel)
-            .'</span>'
-            .'</div>'
+        $previousPlan = $record->previousPlan?->description;
+        $planChanged = filled($previousPlan) && $previousPlan !== $record->plan?->description;
+
+        return RecordPageHeader::render(
+            eyebrow: 'Renovación · '.($record->code_affiliation ?? 'Sin código'),
+            title: (string) ($record->affiliation?->full_name_ti ?: 'Titular no disponible'),
+            status: RecordPageHeader::statusFor($record->status),
+            chips: [
+                RecordPageHeader::remainingDaysTag($record->remaining_days),
+                $record->is_negotiation_candidate ? RecordPageHeader::tag('Candidata a negociación', RecordPageHeader::TONE_VIOLET) : null,
+                $planChanged ? RecordPageHeader::tag('Cambio de plan', RecordPageHeader::TONE_WARNING) : null,
+            ],
+            facts: [
+                'Fecha de renovación' => $record->date_renewal?->format('d/m/Y'),
+                'Plan' => $planChanged ? $previousPlan.' → '.$record->plan?->description : $record->plan?->description,
+                'Frecuencia' => $record->payment_frequency,
+            ],
         );
     }
 }

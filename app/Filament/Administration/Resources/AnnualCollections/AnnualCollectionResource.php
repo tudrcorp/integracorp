@@ -1,22 +1,28 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Administration\Resources\AnnualCollections;
 
-use App\Filament\Administration\Resources\AnnualCollections\Pages\CreateAnnualCollection;
-use App\Filament\Administration\Resources\AnnualCollections\Pages\EditAnnualCollection;
 use App\Filament\Administration\Resources\AnnualCollections\Pages\ListAnnualCollections;
-use App\Filament\Administration\Resources\AnnualCollections\Pages\ViewAnnualCollection;
-use App\Filament\Administration\Resources\AnnualCollections\Schemas\AnnualCollectionForm;
-use App\Filament\Administration\Resources\AnnualCollections\Schemas\AnnualCollectionInfolist;
 use App\Filament\Administration\Resources\AnnualCollections\Tables\AnnualCollectionsTable;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\AnnualCollection;
+use App\Support\Collections\CollectionReceivableReport;
 use BackedEnum;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
+/**
+ * Cobranza por mes: reporte de cuentas por cobrar (solo afiliaciones con cuotas
+ * pendientes).
+ *
+ * Es de consulta: no crea, edita ni borra registros. Las filas nacen al registrar el
+ * pago de una afiliación y sus cuotas se marcan como pagadas desde ese flujo.
+ */
 class AnnualCollectionResource extends Resource
 {
     use AuthorizesDepartmentNavigation;
@@ -29,14 +35,13 @@ class AnnualCollectionResource extends Resource
 
     protected static ?string $navigationLabel = 'Cobranza Por Mes';
 
-    public static function form(Schema $schema): Schema
-    {
-        return AnnualCollectionForm::configure($schema);
-    }
+    protected static ?string $modelLabel = 'cuenta por cobrar';
 
-    public static function infolist(Schema $schema): Schema
+    protected static ?string $pluralModelLabel = 'cuentas por cobrar';
+
+    public static function getEloquentQuery(): Builder
     {
-        return AnnualCollectionInfolist::configure($schema);
+        return CollectionReceivableReport::scopePending(parent::getEloquentQuery());
     }
 
     public static function table(Table $table): Table
@@ -44,20 +49,30 @@ class AnnualCollectionResource extends Resource
         return AnnualCollectionsTable::configure($table);
     }
 
-    public static function getRelations(): array
+    public static function canCreate(): bool
     {
-        return [
-            //
-        ];
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
     }
 
     public static function getPages(): array
     {
         return [
             'index' => ListAnnualCollections::route('/'),
-            'create' => CreateAnnualCollection::route('/create'),
-            'view' => ViewAnnualCollection::route('/{record}'),
-            'edit' => EditAnnualCollection::route('/{record}/edit'),
         ];
     }
 }

@@ -7,10 +7,10 @@ namespace App\Filament\Administration\Resources\AffiliationCorporateRenovationHi
 use App\Filament\Administration\Resources\AffiliationCorporateRenovationHistories\AffiliationCorporateRenovationHistoryResource;
 use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Models\AffiliationCorporateRenovationHistory;
+use App\Support\Filament\RecordPageHeader;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\HtmlString;
 
 class ViewAffiliationCorporateRenovationHistory extends ViewRecord
 {
@@ -42,20 +42,34 @@ class ViewAffiliationCorporateRenovationHistory extends ViewRecord
 
     public function getTitle(): string|Htmlable
     {
+        return 'Renovación corporativa aceptada '.($this->getRecord()->code_affiliation ?? '');
+    }
+
+    public function getHeading(): string|Htmlable
+    {
         /** @var AffiliationCorporateRenovationHistory $record */
         $record = $this->getRecord();
-        $code = (string) ($record->code_affiliation ?? '—');
-        $acceptedAt = $record->accepted_at?->format('d/m/Y H:i') ?? '—';
+        $record->loadMissing(['affiliationCorporate:id,name_corporate', 'plan:id,description', 'previousPlan:id,description']);
 
-        return new HtmlString(
-            '<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;">'
-            .'<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-white">'
-            .'Renovación corporativa aceptada · '.e($code)
-            .'</span>'
-            .'<span class="text-lg font-semibold text-gray-700 dark:text-gray-200">'
-            .e($acceptedAt)
-            .'</span>'
-            .'</div>'
+        $previousPlan = $record->previousPlan?->description;
+        $planChanged = filled($previousPlan) && $previousPlan !== $record->plan?->description;
+        $period = filled($record->previous_effective_date) && filled($record->new_effective_date)
+            ? $record->previous_effective_date.' → '.$record->new_effective_date
+            : ($record->new_effective_date ?: null);
+
+        return RecordPageHeader::render(
+            eyebrow: 'Renovación corporativa aceptada · '.($record->code_affiliation ?? 'Sin código'),
+            title: (string) ($record->affiliationCorporate?->name_corporate ?: 'Empresa no disponible'),
+            status: RecordPageHeader::tag('ACEPTADA', RecordPageHeader::TONE_SUCCESS),
+            chips: [
+                $record->is_negotiation_candidate ? RecordPageHeader::tag('Candidata a negociación', RecordPageHeader::TONE_VIOLET) : null,
+                $planChanged ? RecordPageHeader::tag('Cambio de plan', RecordPageHeader::TONE_WARNING) : null,
+            ],
+            facts: [
+                'Aceptada el' => $record->accepted_at?->format('d/m/Y h:i A'),
+                'Aceptada por' => $record->accepted_by,
+                'Vigencia' => $period,
+            ],
         );
     }
 }
