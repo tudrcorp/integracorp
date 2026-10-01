@@ -72,9 +72,15 @@ it('registra permiso de navegacion y tipado de ventas para nuevos negocios', fun
         ->toContain('paidMembershipCompany')
         ->toContain("'company_id'");
 
+    $saleDeletion = file_get_contents(dirname(__DIR__, 2).'/app/Support/Sales/SaleDeletion.php');
+
     expect($salesTable)
         ->toContain("'NUEVOS NEGOCIOS' => 'warning'")
-        ->toContain('paidMembershipCompany()->delete()');
+        ->toContain('SaleDeletion::delete($records)');
+
+    expect($saleDeletion)
+        ->toContain("'NUEVOS NEGOCIOS' => 'company'")
+        ->toContain('CompanyPaidMembership::query()');
 
     expect($saleInfolist)
         ->toContain("'NUEVOS NEGOCIOS' => 'warning'")

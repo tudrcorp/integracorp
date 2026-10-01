@@ -6,6 +6,7 @@ use App\Http\Controllers\LogController;
 use App\Mail\MailAvisoDeCobro;
 use App\Models\Collection;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -15,174 +16,175 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Str;
 
 class CollectionsTable
 {
+    public const STATUS_OVERDUE = 'VENCIDO';
+
     public static function configure(Table $table): Table
     {
         return $table
-            ->heading('Cobranza')
-            ->description('Registro de indicadores de cobranza según frecuencia de cobro')
+            ->heading('Cuotas de cobranza')
+            ->description('Una fila por cuota. Las cuotas por pagar cuya fecha ya pasó se marcan como vencidas. Use los filtros para acotar por estado, fecha de próximo pago o plan.')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'plan:id,description',
+                'agent:id,name',
+                'coverage:id,price',
+            ]))
             ->defaultSort('created_at', 'desc')
+            ->searchPlaceholder('Buscar por afiliado, cédula, aviso o afiliación')
+            ->searchDebounce('350ms')
+            ->striped()
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
             ->columns([
-                TextColumn::make('include_date')
-                    ->label('Fecha')
-                    ->badge()
-                    ->sortable()
-                    ->icon('heroicon-s-calendar-days')
-                    ->searchable(),
-                TextColumn::make('collection_invoice_number')
-                    ->sortable()
-                    ->badge()
-                    ->icon('heroicon-s-document-text')
-                    ->label('Nro. de Aviso')
-                    ->searchable(),
-                TextColumn::make('quote_number')
-                    ->sortable()
-                    ->badge()
-                    ->icon('heroicon-m-tag')
-                    ->label('Cotización')
-                    ->searchable(),
-                TextColumn::make('affiliation_code')
-                    ->sortable()
-                    ->badge()
-                    ->icon('heroicon-s-user-group')
-                    ->label('Afiliación')
-                    ->searchable(),
-
-                TextColumn::make('code_agency')
-                    ->sortable()
-                    ->badge()
-                    ->icon('heroicon-s-building-library')
-                    ->label('Agencia')
-                    ->searchable(),
-                TextColumn::make('agent.name')
-                    ->sortable()
-                    ->badge()
-                    ->icon('heroicon-m-user')
-                    ->label('Agente')
-                    ->numeric()
-                    ->searchable(),
                 TextColumn::make('affiliate_full_name')
-                    ->sortable()
                     ->label('Afiliado')
-                    ->searchable(),
-                TextColumn::make('affiliate_contact')
+                    ->weight('semibold')
+                    ->wrap()
+                    ->description(fn (Collection $record): string => collect([
+                        filled($record->affiliate_ci_rif) ? 'C.I./R.I.F. '.$record->affiliate_ci_rif : null,
+                        $record->affiliation_code,
+                    ])->filter()->implode(' · '))
                     ->sortable()
-                    ->label('Contacto')
-                    ->searchable(),
-                TextColumn::make('affiliate_ci_rif')
+                    ->searchable(['affiliate_full_name', 'affiliate_ci_rif', 'affiliation_code']),
+                TextColumn::make('collection_invoice_number')
+                    ->label('Nro. de aviso')
+                    ->icon(Heroicon::OutlinedDocumentText)
+                    ->iconColor('gray')
+                    ->description(fn (Collection $record): ?string => filled($record->include_date) ? 'Emitido el '.$record->include_date : null)
                     ->sortable()
-                    ->label('C.I./R.I.F.')
                     ->searchable(),
-                TextColumn::make('affiliate_phone')
+                TextColumn::make('code_agency')
+                    ->label('Agencia / agente')
+                    ->description(fn (Collection $record): string => $record->agent?->name ?: 'Sin agente')
                     ->sortable()
-                    ->label('Número de teléfono')
-                    ->searchable(),
-                TextColumn::make('affiliate_email')
-                    ->sortable()
-                    ->label('Correo')
-                    ->searchable(),
-                TextColumn::make('affiliate_status')
-                    ->sortable()
-                    ->label('Estatus afiliación')
-                    ->badge()
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            'ACTIVA' => 'success',
-                            'INACTIVA' => 'danger',
-                            default => 'secondary',
-                        };
-                    })
                     ->searchable(),
                 TextColumn::make('plan.description')
-                    ->sortable()
                     ->label('Plan')
                     ->badge()
-                    ->color(function ($state) {
-                        return match ($state) {
-                            'PLAN INICIAL' => 'azul',
-                            'PLAN IDEAL' => 'azulOscuro',
-                            'PLAN ESPECIAL' => 'verde',
-                            default => 'secondary',
-                        };
+                    ->color(fn (?string $state): string => match ($state) {
+                        'PLAN INICIAL' => 'azul',
+                        'PLAN IDEAL' => 'azulOscuro',
+                        'PLAN ESPECIAL' => 'verde',
+                        default => 'gray',
                     })
-                    ->searchable(),
-                TextColumn::make('coverage.price')
-                    ->sortable()
-                    ->suffix('US$')
-                    ->numeric()
+                    ->description(fn (Collection $record): ?string => filled($record->payment_frequency) ? 'Pago '.Str::lower((string) $record->payment_frequency) : null)
+                    ->placeholder('Sin plan')
                     ->sortable(),
-                // TextColumn::make('service')
-                //     ->searchable(),
-                TextColumn::make('persons')
+                TextColumn::make('total_amount')
+                    ->label('Monto')
+                    ->money('USD')
+                    ->weight('semibold')
+                    ->alignEnd()
+                    ->sortable(),
+                TextInputColumn::make('next_payment_date')
+                    ->label('Próximo pago')
+                    ->tooltip('Puede corregir la fecha aquí mismo (formato dd/mm/aaaa).')
+                    ->placeholder('dd/mm/aaaa')
                     ->sortable()
-                    ->label('Población')
                     ->searchable(),
-                TextColumn::make('type')
+                TextColumn::make('status')
+                    ->label('Estado')
+                    ->badge()
+                    ->state(fn (Collection $record): string => self::displayStatus($record))
+                    ->color(fn (string $state): string => match ($state) {
+                        'PAGADO' => 'success',
+                        'POR PAGAR' => 'warning',
+                        self::STATUS_OVERDUE, 'ANULADO', 'CANCELADO' => 'danger',
+                        default => 'gray',
+                    })
+                    ->icon(fn (string $state): Heroicon => match ($state) {
+                        'PAGADO' => Heroicon::CheckCircle,
+                        self::STATUS_OVERDUE => Heroicon::ExclamationTriangle,
+                        'ANULADO', 'CANCELADO' => Heroicon::XCircle,
+                        default => Heroicon::Clock,
+                    })
+                    ->description(fn (Collection $record): ?string => self::dueLabel($record))
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('status', $direction)),
+                TextColumn::make('affiliate_phone')
+                    ->label('Contacto')
+                    ->icon(Heroicon::OutlinedPhone)
+                    ->iconColor('gray')
+                    ->description(fn (Collection $record): ?string => $record->affiliate_email)
+                    ->placeholder('Sin teléfono')
+                    ->searchable(['affiliate_phone', 'affiliate_email', 'affiliate_contact'])
+                    ->toggleable(),
+                TextColumn::make('affiliate_contact')
+                    ->label('Persona de contacto')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('affiliate_status')
+                    ->label('Estatus afiliación')
+                    ->badge()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'ACTIVA', 'ACTIVO' => 'success',
+                        'INACTIVA', 'EXCLUIDA', 'EXCLUIDO' => 'danger',
+                        default => 'gray',
+                    })
                     ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('quote_number')
+                    ->label('Cotización')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            'AFILIACION INDIVIDUAL' => 'primary',
-                            'AFILIACION CORPORATIVA' => 'verdeOpaco',
-                        };
-                    })
-                    ->searchable(),
-                TextColumn::make('reference')
-                    ->sortable()
-                    ->label('Referencia')
-                    ->searchable(),
+                    ->formatStateUsing(fn (?string $state): string => self::isCorporate($state) ? 'Corporativa' : 'Individual')
+                    ->color(fn (?string $state): string => self::isCorporate($state) ? 'verdeOpaco' : 'primary')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('persons')
+                    ->label('Población')
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('coverage.price')
+                    ->label('Cobertura')
+                    ->money('USD')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('payment_method')
-                    ->sortable()
-                    ->label('Metodo de pago')
-                    ->searchable(),
-                TextColumn::make('payment_frequency')
-                    ->sortable()
-                    ->label('Frecuencia de pago')
-                    ->searchable(),
-                TextInputColumn::make('next_payment_date')
-                    ->sortable()
-                    ->label('Proximo pago')
-                    ->searchable(),
-                TextColumn::make('total_amount')
-                    ->sortable()
-                    ->label('Monto total')
-                    ->numeric()
-                    ->suffix('US$')
-                    ->sortable(),
-                TextColumn::make('status')
-                    ->sortable()
-                    ->badge()
-                    ->label('Estado')
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            'PAGADO' => 'success',
-                            'POR PAGAR' => 'warning',
-                            'CANCELADO' => 'danger',
-                            default => 'secondary',
-                        };
-                    })
-                    ->searchable(),
+                    ->label('Método de pago')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('reference')
+                    ->label('Referencia')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('status')
+                    ->options([
+                        'POR PAGAR' => 'Por pagar',
+                        self::STATUS_OVERDUE => 'Vencidas (por pagar con fecha pasada)',
+                        'PAGADO' => 'Pagado',
+                        'ANULADO' => 'Anulado',
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
+                        null, '' => $query,
+                        self::STATUS_OVERDUE => $query->where('status', 'POR PAGAR')->whereDate('filter_next_payment_date', '<', CarbonImmutable::today()),
+                        default => $query->where('status', $data['value']),
+                    })
+                    ->placeholder('Todos los estados')
+                    ->label('Estado'),
                 Filter::make('filter_next_payment_date')
-                    ->form([
+                    ->label('Próximo pago')
+                    ->schema([
                         DatePicker::make('desde')
+                            ->label('Próximo pago desde')
                             ->format('Y-m-d'),
                         DatePicker::make('hasta')
+                            ->label('Próximo pago hasta')
                             ->format('Y-m-d'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
@@ -199,25 +201,27 @@ class CollectionsTable
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['desde'] ?? null) {
-                            $indicators['desde'] = 'Venta desde '.Carbon::parse($data['desde'])->toFormattedDateString();
+                            $indicators['desde'] = 'Próximo pago desde '.Carbon::parse($data['desde'])->format('d/m/Y');
                         }
                         if ($data['hasta'] ?? null) {
-                            $indicators['hasta'] = 'Venta hasta '.Carbon::parse($data['hasta'])->toFormattedDateString();
+                            $indicators['hasta'] = 'Próximo pago hasta '.Carbon::parse($data['hasta'])->format('d/m/Y');
                         }
 
                         return $indicators;
                     }),
                 SelectFilter::make('payment_frequency')
                     ->options([
-                        'ANUAL' => 'ANUAL',
-                        'SEMESTRAL' => 'SEMESTRAL',
-                        'TRIMESTRAL' => 'TRIMESTRAL',
-                        'MENSUAL' => 'MENSUAL',
+                        'ANUAL' => 'Anual',
+                        'SEMESTRAL' => 'Semestral',
+                        'TRIMESTRAL' => 'Trimestral',
+                        'MENSUAL' => 'Mensual',
                     ])
-                    ->label('Frecuencia de Pago'),
+                    ->placeholder('Todas')
+                    ->label('Frecuencia de pago'),
                 SelectFilter::make('plan_id')
                     ->relationship('plan', 'description')
-                    ->label('Planes'),
+                    ->placeholder('Todos los planes')
+                    ->label('Plan'),
                 SelectFilter::make('payment_method')
                     ->options([
                         'EFECTIVO US$' => 'EFECTIVO US$',
@@ -225,13 +229,8 @@ class CollectionsTable
                         'PAGO MOVIL VES' => 'PAGO MOVIL VES',
                         'TRANSFERENCIA VES' => 'TRANSFERENCIA VES',
                     ])
-                    ->label('Metodo de Pago'),
-                SelectFilter::make('status')
-                    ->options([
-                        'POR PAGAR' => 'POR PAGAR',
-                        'PAGADO' => 'PAGADO',
-                    ])
-                    ->label('Estatus'),
+                    ->placeholder('Todos')
+                    ->label('Método de pago'),
                 SelectFilter::make('bank')
                     ->options([
                         'CHASE BANK' => 'CHASE BANK',
@@ -242,9 +241,13 @@ class CollectionsTable
                         'BANCO DE VENEZUELA - US$' => 'BANCO DE VENEZUELA - US$',
                         'BANCO DE VENEZUELA - VES' => 'BANCO DE VENEZUELA - VES',
                     ])
+                    ->placeholder('Todos')
                     ->label('Banco'),
-
-            ])
+            ], layout: FiltersLayout::AboveContentCollapsible)
+            ->filtersFormColumns(3)
+            ->emptyStateIcon(Heroicon::OutlinedClipboardDocumentList)
+            ->emptyStateHeading('No hay cuotas con estos filtros')
+            ->emptyStateDescription('Pruebe quitando filtros o ampliando el rango de fechas de próximo pago.')
             ->recordActions([
                 ActionGroup::make([
 
@@ -376,5 +379,57 @@ class CollectionsTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * Estado para mostrar: una cuota POR PAGAR con la fecha de próximo pago ya pasada
+     * se muestra como VENCIDO. No cambia el estado guardado.
+     */
+    public static function displayStatus(Collection $record, ?CarbonImmutable $today = null): string
+    {
+        $status = Str::upper(trim((string) $record->status));
+        $days = self::daysUntilDue($record, $today);
+
+        if ($status === 'POR PAGAR' && $days !== null && $days < 0) {
+            return self::STATUS_OVERDUE;
+        }
+
+        return $status !== '' ? $status : 'SIN ESTADO';
+    }
+
+    public static function dueLabel(Collection $record, ?CarbonImmutable $today = null): ?string
+    {
+        if (Str::upper(trim((string) $record->status)) !== 'POR PAGAR') {
+            return null;
+        }
+
+        $days = self::daysUntilDue($record, $today);
+
+        return match (true) {
+            $days === null => null,
+            $days < 0 => abs($days).' '.(abs($days) === 1 ? 'día' : 'días').' de atraso',
+            $days === 0 => 'Vence hoy',
+            default => 'Vence en '.$days.' '.($days === 1 ? 'día' : 'días'),
+        };
+    }
+
+    public static function isCorporate(?string $type): bool
+    {
+        return str_contains(Str::upper(Str::ascii((string) $type)), 'CORPORATIVA');
+    }
+
+    private static function daysUntilDue(Collection $record, ?CarbonImmutable $today = null): ?int
+    {
+        if (blank($record->filter_next_payment_date)) {
+            return null;
+        }
+
+        try {
+            $due = CarbonImmutable::parse((string) $record->filter_next_payment_date)->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return (int) ($today ?? CarbonImmutable::today())->diffInDays($due, false);
     }
 }

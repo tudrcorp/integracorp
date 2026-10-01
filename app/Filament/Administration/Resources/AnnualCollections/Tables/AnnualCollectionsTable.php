@@ -1,322 +1,255 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Filament\Administration\Resources\AnnualCollections\Tables;
 
-use App\Http\Controllers\AnnualCollectionController;
+use App\Filament\Exports\CollectionReceivableExporter;
 use App\Http\Controllers\CollectionController;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
+use App\Models\Agency;
 use App\Models\AnnualCollection;
 use App\Models\Collection;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
-use Carbon\Carbon;
-use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\ViewAction;
+use App\Support\Collections\CollectionReceivableReport;
+use App\Support\SecurityAudit;
+use Carbon\CarbonImmutable;
+use Filament\Actions\ExportAction;
+use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Placeholder;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
-use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\HtmlString;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
+/**
+ * Reporte de cuentas por cobrar: una fila por afiliación y año de contrato con su
+ * próxima cuota pendiente, con las columnas y el orden del «Reporte global de cuentas
+ * por cobrar» que usa Administración.
+ */
 class AnnualCollectionsTable
 {
     public static function configure(Table $table): Table
     {
-        $monthColumns = [
-            'month_1' => 'Enero',
-            'month_2' => 'Febrero',
-            'month_3' => 'Marzo',
-            'month_4' => 'Abril',
-            'month_5' => 'Mayo',
-            'month_6' => 'Junio',
-            'month_7' => 'Julio',
-            'month_8' => 'Agosto',
-            'month_9' => 'Septiembre',
-            'month_10' => 'Octubre',
-            'month_11' => 'Noviembre',
-            'month_12' => 'Diciembre',
-        ];
-
         return $table
-            ->heading('Cobranza anual')
-            ->description(new HtmlString(
-                '<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Registro de cobranza por meses del año</p>'.
-                '<div class="inline-flex items-center gap-2 rounded-full bg-success-500/15 dark:bg-success-500/25 px-3 py-1.5 text-sm font-medium text-success-700 dark:text-success-400 border-b-2 border-success-600 dark:border-success-500 shadow-sm">'.
-                '<svg class="size-4 shrink-0 text-success-600 dark:text-success-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>'.
-                '<span>Las columnas con check en verde indican los meses en que el cliente debe pagar su afiliación.</span>'.
-                '</div>'
-            ))
-            ->defaultSort('created_at', 'desc')
-            ->columns([
-                TextColumn::make('sale_id')
-                    ->label('ID Venta')
-                    ->sortable()
-                    ->numeric()
-                    ->searchable()
-                    ->badge()
-                    ->alignCenter()
-                    ->color('primary')
-                    ->weight('bold')
-                    ->extraCellAttributes(fn (): array => ['class' => 'bg-primary-500/10 dark:bg-primary-500/20 border-b-2 border-primary-600 dark:border-primary-400']),
-                TextColumn::make('include_date')
-                    ->label('Fecha inclusión')
-                    ->sortable()
-                    ->searchable()
-                    ->icon('heroicon-s-calendar-days'),
-                TextColumn::make('owner_code')
-                    ->label('Cód. propietario')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('code_agency')
-                    ->label('Cód. agencia')
-                    ->sortable()
-                    ->searchable()
-                    ->icon('heroicon-s-building-library'),
-                TextColumn::make('agent.name')
-                    ->label('Agente')
-                    ->sortable()
-                    ->searchable()
-                    ->icon('heroicon-m-user'),
-                TextColumn::make('collection_invoice_number')
-                    ->label('Nro. factura')
-                    ->sortable()
-                    ->alignCenter()
-                    ->searchable()
-                    ->icon('heroicon-s-document-text')
-                    ->badge()
-                    ->color('success')
-                    ->weight('bold')
-                    ->extraCellAttributes(fn (): array => ['class' => 'bg-success-500/10 dark:bg-success-500/20 border-b-2 border-success-600 dark:border-success-400']),
-                TextColumn::make('quote_number')
-                    ->label('Nro. cotización')
-                    ->sortable()
-                    ->searchable()
-                    ->icon('heroicon-m-tag'),
-                TextColumn::make('affiliation_code')
-                    ->label('Cód. afiliación')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('affiliate_full_name')
-                    ->label('Afiliado')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('affiliate_contact')
-                    ->label('Contacto')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('affiliate_ci_rif')
-                    ->label('C.I./R.I.F.')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('affiliate_phone')
-                    ->label('Teléfono')
-                    ->sortable()
-                    ->searchable()
-                    ->icon('heroicon-m-phone'),
-                TextColumn::make('affiliate_email')
-                    ->label('Correo')
-                    ->sortable()
-                    ->searchable()
-                    ->icon('heroicon-m-envelope')
-                    ->limit(30),
-                TextColumn::make('affiliate_status')
-                    ->label('Est. afiliación')
-                    ->sortable()
-                    ->searchable()
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'ACTIVA' => 'success',
-                        'INACTIVA' => 'danger',
-                        default => 'gray',
-                    }),
-                TextColumn::make('plan.description')
-                    ->label('Plan')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('coverage.price')
-                    ->label('Cobertura (US$)')
-                    ->sortable()
-                    ->numeric(decimalPlaces: 2)
-                    ->suffix(' US$'),
-                TextColumn::make('service')
-                    ->label('Servicio')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('persons')
-                    ->label('Población')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('type')
-                    ->label('Tipo')
-                    ->sortable()
-                    ->searchable()
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'AFILIACION INDIVIDUAL' => 'primary',
-                        'AFILIACION CORPORATIVA' => 'success',
-                        default => 'gray',
-                    }),
-                TextColumn::make('expiration_date')
-                    ->label('Vencimiento')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('status')
-                    ->label('Estado')
-                    ->sortable()
-                    ->searchable()
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'PAGADO' => 'success',
-                        'POR PAGAR' => 'warning',
-                        'CANCELADO' => 'danger',
-                        default => 'gray',
-                    }),
-                TextColumn::make('remaining_days')
-                    ->label('Días restantes')
-                    ->sortable()
-                    ->searchable()
-                    ->numeric()
-                    ->badge()
-                    ->color(fn (AnnualCollection $record): string => match ($record->remaining_days) {
-                        $record->remaining_days <= 0 => 'danger',
-                        $record->remaining_days <= 30 => 'warning',
-                        default => 'success',
-                    }),
-                TextColumn::make('created_at')
-                    ->label('Creado')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable(),
-                TextColumn::make('updated_at')
-                    ->label('Actualizado')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable(),
-                ...array_map(
-                    function (string $column, string $label): IconColumn {
-                        return IconColumn::make($column)
-                            ->label($label)
-                            ->boolean()
-                            ->trueIcon(Heroicon::OutlinedXCircle)
-                            ->trueColor('danger')
-                            ->falseIcon(Heroicon::OutlinedCheckCircle)
-                            ->falseColor('success')
-                            ->alignCenter()
-                            ->extraCellAttributes(fn ($record): array => $record->{$column}
-                                ? ['class' => 'bg-danger-500/15 dark:bg-danger-500/25 border-b-2 border-danger-600 dark:border-danger-400 cursor-pointer']
-                                : ['class' => 'bg-success-500/15 dark:bg-success-500/25 border-b-2 border-success-600 dark:border-success-400'])
-                            ->action(
-                                Action::make('edit_next_payment_'.$column)
-                                    ->visible(fn (AnnualCollection $record): bool => (bool) $record->{$column})
-                                    ->modalHeading('Próxima fecha de pago')
-                                    ->modalDescription('Edite la fecha y use los enlaces para el aviso de cobro.')
-                                    ->modalIcon('heroicon-o-calendar-days')
-                                    ->modalWidth(Width::SevenExtraLarge)
-                                    ->modalFooterActionsAlignment('center')
-                                    ->form([
-                                        Hidden::make('_record_id'),
-                                        Hidden::make('_source_month_column'),
-                                        Section::make('Fecha de pago')
-                                            ->description('La fecha se guarda automáticamente al salir del campo. No es necesario pulsar Guardar.')
-                                            ->icon('heroicon-o-calendar')
-                                            ->schema([
-                                                DatePicker::make('next_payment_date')
-                                                    ->label('Próxima fecha de pago')
-                                                    ->required()
-                                                    ->format('d/m/Y')
-                                                    ->native(false)
-                                                    ->displayFormat('d/m/Y')
-                                                    ->live(onBlur: true)
-                                                    ->afterStateUpdated(function (?string $state, $get): void {
-                                                        $recordId = $get('_record_id');
-                                                        if (! $state || ! $recordId) {
-                                                            return;
-                                                        }
-                                                        $record = AnnualCollection::find($recordId);
-                                                        if (! $record) {
-                                                            return;
-                                                        }
-                                                        $collection = $record->collections()->first();
-                                                        if (! $collection) {
-                                                            return;
-                                                        }
-                                                        $date = self::parseDateToDmy($state);
-                                                        $collection->update([
-                                                            'next_payment_date' => $date,
-                                                            'filter_next_payment_date' => self::parseDateToYmd($state),
-                                                        ]);
-                                                        $sourceColumn = $get('_source_month_column');
-                                                        if ($sourceColumn) {
-                                                            $monthNumber = AnnualCollectionController::extractMonth($date);
-                                                            $newColumn = 'month_'.$monthNumber;
-                                                            if ($newColumn !== $sourceColumn) {
-                                                                $record->update([
-                                                                    $sourceColumn => false,
-                                                                    $newColumn => true,
-                                                                ]);
-                                                            }
-                                                        }
-                                                        Notification::make()
-                                                            ->title('Fecha actualizada')
-                                                            ->body('Próxima fecha de pago guardada. Puede regenerar o descargar el PDF.')
-                                                            ->success()
-                                                            ->send();
-                                                    }),
-                                            ])
-                                            ->columns(1),
-                                        Section::make('Aviso de cobro')
-                                            ->description('Generar o regenerar el PDF del aviso de cobro con la fecha actual.')
-                                            ->icon('heroicon-o-document-arrow-down')
-                                            ->schema([
-                                                Placeholder::make('aviso_actions')
-                                                    ->label('')
-                                                    ->content(function ($get): HtmlString {
-                                                        $record = AnnualCollection::find($get('_record_id'));
-                                                        $collection = $record?->collections()->first();
-
-                                                        return new HtmlString(view(
-                                                            'filament.administration.annual-collections.aviso-cobro-actions',
-                                                            ['collection' => $collection],
-                                                        )->render());
-                                                    }),
-                                            ])
-                                            ->columns(1)
-                                            ->collapsible(),
-                                    ])
-                                    ->fillForm(fn (AnnualCollection $record): array => [
-                                        '_record_id' => $record->getKey(),
-                                        '_source_month_column' => $column,
-                                        'next_payment_date' => $record->collections()->first()?->next_payment_date
-                                            ? self::parseDateToYmd($record->collections()->first()->next_payment_date)
-                                            : null,
-                                    ])
-                                    ->action(fn () => null)
-                                    ->modalSubmitActionLabel('Cerrar'),
-                            );
-                    },
-                    array_keys($monthColumns),
-                    array_values($monthColumns)
-                ),
+            ->heading('Reporte global de cuentas por cobrar · Planes Tu Doctor en Casa')
+            ->description('Fecha actual: '.CarbonImmutable::today()->format('d/m/Y').'. Una fila por afiliación con su próxima cuota pendiente. Use el filtro «Vencimiento» para ver o descargar por días de atraso.')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(CollectionReceivableReport::eagerLoads()))
+            ->defaultSort(fn (Builder $query): Builder => $query->orderByRaw(CollectionReceivableReport::nextDueSql().' asc'))
+            ->striped()
+            ->columns(self::columns())
+            ->filters(self::filters(), layout: FiltersLayout::AboveContentCollapsible)
+            ->filtersFormColumns(4)
+            ->headerActions([
+                self::exportAction(),
             ])
-            ->filters([
-                //
-            ])
-            ->recordActions([
-                ViewAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->recordActions([])
+            ->toolbarActions([])
+            ->emptyStateIcon(Heroicon::OutlinedCheckBadge)
+            ->emptyStateHeading('No hay cuotas pendientes')
+            ->emptyStateDescription('No hay afiliaciones con cuotas por cobrar con los filtros aplicados. Pruebe quitando filtros o cambiando el rango de vencimiento.');
     }
 
+    /**
+     * @return array<int, TextColumn>
+     */
+    private static function columns(): array
+    {
+        return [
+            TextColumn::make('include_date')
+                ->label('Fecha de inclusión o emisión')
+                ->sortable(query: fn (Builder $query, string $direction): Builder => $query
+                    ->orderByRaw("STR_TO_DATE(include_date, '%d/%m/%Y') ".($direction === 'desc' ? 'desc' : 'asc'))),
+            TextColumn::make('affiliate_full_name')
+                ->label('Afiliado o titular')
+                ->weight('semibold')
+                ->description(fn (AnnualCollection $record): ?string => $record->affiliation_code)
+                ->wrap()
+                ->searchable(['affiliate_full_name', 'affiliation_code']),
+            TextColumn::make('affiliate_ci_rif')
+                ->label('C.I./R.I.F.')
+                ->searchable(),
+            TextColumn::make('payer_name')
+                ->label('Tomador')
+                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::payerName($record))
+                ->wrap()
+                ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(function (Builder $query) use ($search): void {
+                    $query
+                        ->whereHas('affiliationByCode', fn (Builder $affiliation): Builder => $affiliation->where('full_name_payer', 'like', "%{$search}%"))
+                        ->orWhereHas('affiliationCorporateByCode', fn (Builder $affiliation): Builder => $affiliation->where('name_corporate', 'like', "%{$search}%"));
+                })),
+            TextColumn::make('payer_document')
+                ->label('C.I./R.I.F. tomador')
+                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::payerDocument($record)),
+            TextColumn::make('affiliate_phone')
+                ->label('Teléfono')
+                ->searchable()
+                ->toggleable(),
+            TextColumn::make('affiliate_email')
+                ->label('Email')
+                ->searchable()
+                ->toggleable(),
+            TextColumn::make('plan_label')
+                ->label('Plan')
+                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::planLabel($record))
+                ->badge()
+                ->color('info'),
+            TextColumn::make('persons')
+                ->label('Población')
+                ->alignCenter(),
+            TextColumn::make('agency_label')
+                ->label('Agencia')
+                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::agencyLabel($record))
+                ->wrap(),
+            TextColumn::make('agent.name')
+                ->label('Agente')
+                ->placeholder('Sin agente')
+                ->wrap(),
+            TextColumn::make('annual_fee')
+                ->label('Tarifa anual')
+                ->state(fn (AnnualCollection $record): ?float => CollectionReceivableReport::annualFee($record))
+                ->money('USD')
+                ->alignEnd(),
+            TextColumn::make('effective_date')
+                ->label('Fecha de vigencia')
+                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::effectiveDate($record)),
+            TextColumn::make('payment_frequency')
+                ->label('Fraccionamiento de cuotas')
+                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::paymentFrequency($record))
+                ->badge()
+                ->color('gray'),
+            TextColumn::make('installment')
+                ->label('Periodos de pago')
+                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::installmentLabel($record))
+                ->alignCenter(),
+            TextColumn::make('installment_amount')
+                ->label('Monto de la cuota')
+                ->state(fn (AnnualCollection $record): ?float => CollectionReceivableReport::installmentAmount($record))
+                ->money('USD')
+                ->alignEnd()
+                ->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('due_date')
+                ->label('Fecha de vencimiento')
+                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::dueDate($record)?->format('d/m/Y'))
+                ->weight('semibold')
+                ->sortable(query: fn (Builder $query, string $direction): Builder => $query
+                    ->orderByRaw(CollectionReceivableReport::nextDueSql().' '.($direction === 'desc' ? 'desc' : 'asc'))),
+            TextColumn::make('collection_status')
+                ->label('Estatus de cobro')
+                ->state(fn (AnnualCollection $record): string => CollectionReceivableReport::collectionStatus($record))
+                ->badge()
+                ->color(fn (string $state): string => $state === CollectionReceivableReport::STATUS_OVERDUE ? 'danger' : 'warning'),
+            TextColumn::make('days')
+                ->label('Días')
+                ->state(fn (AnnualCollection $record): string => CollectionReceivableReport::daysLabel($record))
+                ->color(fn (AnnualCollection $record): string => CollectionReceivableReport::collectionStatus($record) === CollectionReceivableReport::STATUS_OVERDUE ? 'danger' : 'gray')
+                ->weight('semibold'),
+            TextColumn::make('affiliate_status_label')
+                ->label('Estatus del afiliado o titular')
+                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::affiliateStatus($record))
+                ->badge()
+                ->color(fn (?string $state): string => match ($state) {
+                    'ACTIVA', 'ACTIVO' => 'success',
+                    'EXCLUIDA', 'EXCLUIDO', 'INACTIVA', 'INACTIVO', 'ANULADA' => 'danger',
+                    default => 'warning',
+                }),
+        ];
+    }
+
+    /**
+     * @return array<int, Filter|SelectFilter>
+     */
+    private static function filters(): array
+    {
+        return [
+            SelectFilter::make('aging')
+                ->label('Vencimiento')
+                ->placeholder('Todas las cuotas pendientes')
+                ->options(CollectionReceivableReport::agingOptions())
+                ->query(fn (Builder $query, array $data): Builder => CollectionReceivableReport::applyAging($query, $data['value'] ?? null)),
+            SelectFilter::make('collection_status')
+                ->label('Estatus de cobro')
+                ->placeholder('Por pagar y vencidas')
+                ->options([
+                    CollectionReceivableReport::STATUS_PENDING => 'Por pagar (aún no vence)',
+                    CollectionReceivableReport::STATUS_OVERDUE => 'Vencido',
+                ])
+                ->query(fn (Builder $query, array $data): Builder => CollectionReceivableReport::applyCollectionStatus($query, $data['value'] ?? null)),
+            SelectFilter::make('affiliate_status')
+                ->label('Estatus del afiliado o titular')
+                ->placeholder('Todos los estatus')
+                ->multiple()
+                ->options([
+                    'ACTIVA' => 'Activa',
+                    'PRE-APROBADA' => 'Pre-aprobada',
+                    'EXCLUIDO' => 'Excluido',
+                ])
+                ->query(fn (Builder $query, array $data): Builder => CollectionReceivableReport::applyAffiliateStatus($query, $data['values'] ?? [])),
+            SelectFilter::make('code_agency')
+                ->label('Agencia')
+                ->relationship('agencyByCode', 'name_corporative')
+                ->getOptionLabelFromRecordUsing(fn (Agency $record): string => trim($record->code.' · '.$record->name_corporative, ' ·'))
+                ->searchable()
+                ->preload(),
+            SelectFilter::make('agent_id')
+                ->label('Agente')
+                ->relationship('agent', 'name')
+                ->searchable()
+                ->preload(),
+            SelectFilter::make('plan_id')
+                ->label('Plan')
+                ->relationship('plan', 'description')
+                ->preload(),
+            Filter::make('due_between')
+                ->label('Fecha de vencimiento')
+                ->schema([
+                    DatePicker::make('from')->label('Vence desde'),
+                    DatePicker::make('until')->label('Vence hasta'),
+                ])
+                ->query(fn (Builder $query, array $data): Builder => CollectionReceivableReport::applyDueBetween($query, $data['from'] ?? null, $data['until'] ?? null))
+                ->indicateUsing(function (array $data): array {
+                    $indicators = [];
+
+                    if ($data['from'] ?? null) {
+                        $indicators['from'] = 'Vence desde '.CarbonImmutable::parse($data['from'])->format('d/m/Y');
+                    }
+
+                    if ($data['until'] ?? null) {
+                        $indicators['until'] = 'Vence hasta '.CarbonImmutable::parse($data['until'])->format('d/m/Y');
+                    }
+
+                    return $indicators;
+                }),
+        ];
+    }
+
+    private static function exportAction(): ExportAction
+    {
+        return ExportAction::make('exportReceivables')
+            ->label('Descargar reporte')
+            ->icon(Heroicon::OutlinedArrowDownTray)
+            ->color('success')
+            ->exporter(CollectionReceivableExporter::class)
+            ->formats([ExportFormat::Xlsx, ExportFormat::Csv])
+            ->fileName(fn (): string => 'reporte-cxc-'.CarbonImmutable::today()->format('Y-m-d'))
+            ->modalHeading('Descargar reporte de cuentas por cobrar')
+            ->modalDescription('Se descargan las filas que ve en la tabla, con los filtros y la búsqueda aplicados. Recibirá una notificación cuando el archivo esté listo.')
+            ->before(function (): void {
+                SecurityAudit::log('AUDIT_ADMIN_RECEIVABLES_EXPORT_REQUESTED', 'administration.annual-collections.export', [
+                    'panel' => 'administration',
+                ], Auth::user());
+            });
+    }
+
+    /**
+     * Regenera el PDF del aviso de cobro de una cuota. Lo usan `AvisoCobroController`
+     * y la ruta de regeneración en `routes/web.php`.
+     */
     public static function runRegeneratePdf(Collection $record): bool
     {
         try {
@@ -364,37 +297,5 @@ class AnnualCollectionsTable
         }
 
         return false;
-    }
-
-    private static function parseDateToYmd(?string $value): ?string
-    {
-        if (empty($value)) {
-            return null;
-        }
-        try {
-            if (str_contains($value, '/')) {
-                return Carbon::createFromFormat('d/m/Y', $value)->format('Y-m-d');
-            }
-
-            return Carbon::parse($value)->format('Y-m-d');
-        } catch (\Throwable) {
-            return null;
-        }
-    }
-
-    private static function parseDateToDmy(?string $value): ?string
-    {
-        if (empty($value)) {
-            return null;
-        }
-        try {
-            if (str_contains($value, '/')) {
-                return Carbon::createFromFormat('d/m/Y', $value)->format('d/m/Y');
-            }
-
-            return Carbon::parse($value)->format('d/m/Y');
-        } catch (\Throwable) {
-            return null;
-        }
     }
 }

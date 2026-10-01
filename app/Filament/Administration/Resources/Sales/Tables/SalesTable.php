@@ -15,6 +15,7 @@ use App\Support\Filament\Administration\InvoiceDocumentNumber;
 use App\Support\Filament\Administration\SaleReciboPagoEmailRecipients;
 use App\Support\Filament\Administration\SaleReciboPagoTestDeliveryForm;
 use App\Support\Filament\Administration\SaleReciboPagoWhatsAppRecipients;
+use App\Support\Sales\SaleDeletion;
 use App\Support\SecurityAudit;
 use App\Support\WhiteCompanies\WhiteCompanySaleAmountLegend;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -42,6 +43,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
+use InvalidArgumentException;
 use Throwable;
 
 class SalesTable
@@ -1101,8 +1103,9 @@ class SalesTable
             ->icon('heroicon-m-trash')
             ->label('Eliminar Registro(s)')
             ->modalHeading('ELIMINAR REGISTRO DE VENTA(S)')
-            ->modalDescription('Esta accion eliminara los registros de venta seleccionados, asi como sus respectivas facturas y comisiones.')
-            ->action(function (Collection $records) {
+            ->modalDescription('Se eliminarán las ventas seleccionadas junto con su recibo de pago, comisión, cuotas de cobranza, cobranza anual, movimientos de crédito de empresa aliada y PDFs generados. La afiliación y sus afiliados no se modifican. Esta acción no se puede deshacer.')
+            ->modalSubmitActionLabel('Sí, eliminar')
+            ->action(function (Collection $records): void {
                 $recordIds = $records->pluck('id')->map(fn ($id): int => (int) $id)->values()->all();
 
                 SecurityAudit::log('AUDIT_ADMIN_SALES_BULK_DELETE_ATTEMPTED', 'administration.sales.bulk-delete', [
@@ -1111,25 +1114,41 @@ class SalesTable
                     'record_ids' => $recordIds,
                 ], Auth::user());
 
+                $blocked = SaleDeletion::blockedSales($records);
+
+                if ($blocked !== []) {
+                    SecurityAudit::log('AUDIT_ADMIN_SALES_BULK_DELETE_BLOCKED', 'administration.sales.bulk-delete', [
+                        'panel' => 'administration',
+                        'records_count' => count($recordIds),
+                        'record_ids' => $recordIds,
+                        'blocked' => $blocked,
+                    ], Auth::user());
+
+                    Notification::make()
+                        ->title('No se eliminó ninguna venta')
+                        ->body(implode(' ', $blocked).' Quite esas ventas de la selección e intente de nuevo.')
+                        ->icon('heroicon-s-exclamation-triangle')
+                        ->warning()
+                        ->persistent()
+                        ->send();
+
+                    return;
+                }
+
                 try {
-                    foreach ($records as $record) {
-                        $record->paidMembershipIndividual()->delete();
-                        $record->paidMembershipCorporate()->delete();
-                        $record->paidMembershipCompany()->delete();
-                        $record->commission()->delete();
-                        $record->collections()->delete();
-                        $record->delete();
-                    }
+                    $report = SaleDeletion::delete($records);
 
                     SecurityAudit::log('AUDIT_ADMIN_SALES_BULK_DELETED', 'administration.sales.bulk-delete', [
                         'panel' => 'administration',
                         'records_count' => count($recordIds),
                         'record_ids' => $recordIds,
+                        'invoice_numbers' => $records->pluck('invoice_number')->values()->all(),
+                        'deleted' => $report,
                     ], Auth::user());
 
                     Notification::make()
                         ->title('¡ELIMINADO CON EXITO!')
-                        ->body('Los registros de venta se han eliminado exitosamente.')
+                        ->body(self::saleDeletionSummary($report))
                         ->icon('heroicon-s-check-circle')
                         ->iconColor('success')
                         ->success()
@@ -1146,14 +1165,33 @@ class SalesTable
                     ], Auth::user());
 
                     Notification::make()
-                        ->title('ERROR')
-                        ->body($th->getMessage().' Linea: '.$th->getLine().' Archivo: '.$th->getFile())
+                        ->title('No se eliminó ninguna venta')
+                        ->body($th instanceof InvalidArgumentException
+                            ? $th->getMessage()
+                            : 'Ocurrió un error y no se borró nada. Intente de nuevo o contacte a soporte.')
                         ->icon('heroicon-s-x-circle')
                         ->iconColor('danger')
                         ->danger()
                         ->send();
                 }
             });
+    }
+
+    /**
+     * @param  array{sales: int, paid_receipts: int, commissions: int, collections: int, annual_collections: int, credit_reconciliations: int, files: int}  $report
+     */
+    public static function saleDeletionSummary(array $report): string
+    {
+        return sprintf(
+            'Ventas: %d · Recibos de pago: %d · Comisiones: %d · Cuotas de cobranza: %d · Cobranza anual: %d · Movimientos de crédito: %d · PDFs: %d.',
+            $report['sales'],
+            $report['paid_receipts'],
+            $report['commissions'],
+            $report['collections'],
+            $report['annual_collections'],
+            $report['credit_reconciliations'],
+            $report['files'],
+        );
     }
 
     private static function exportBulkSalesAction(): ExportBulkAction
