@@ -336,7 +336,8 @@ it('cambia la frecuencia y reemplaza los avisos pendientes por el mismo saldo', 
         ->and($pending->pluck('next_payment_date')->all())->toBe([
             '10/10/2026', '10/11/2026', '10/12/2026', '10/01/2027', '10/02/2027', '10/03/2027', '10/04/2027', '10/05/2027', '10/06/2027',
         ])
-        ->and($pending->first()->expiration_date)->toBe('09/11/2026')
+        /** Regla de negocio: la expiración es igual a la fecha de próximo pago (CollectionDueDate). */
+        ->and($pending->first()->expiration_date)->toBe('10/10/2026')
         ->and($pending->first()->collection_invoice_number)->toEndWith('-00104')
         ->and($pending->last()->collection_invoice_number)->toEndWith('-00112')
         ->and($pending->pluck('payment_frequency')->unique()->all())->toBe(['MENSUAL'])

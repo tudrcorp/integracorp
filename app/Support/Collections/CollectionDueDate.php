@@ -13,9 +13,11 @@ use Throwable;
  * Fuente única de la fecha de vencimiento de una cuota y de sus días.
  *
  * La fecha oficial es `collections.next_payment_date` (la que ve y edita el analista
- * y la que se imprime en el aviso de cobro). `filter_next_payment_date` es solo su
- * copia en formato fecha para filtrar y ordenar en SQL: se deriva de la oficial cada
- * vez que se guarda la cuota ({@see syncColumns()}), así que no puede separarse.
+ * y la que se imprime en el aviso de cobro). Cada vez que se guarda la cuota
+ * ({@see syncColumns()}) se derivan de ella:
+ * - `filter_next_payment_date`: su copia en formato fecha para filtrar y ordenar en SQL.
+ * - `expiration_date`: regla de negocio, siempre igual a la oficial. Algunos flujos
+ *   viejos le sumaban 5 o 30 días; el guardado lo corrige.
  *
  * Los días no se guardan: se calculan contra la fecha de hoy cada vez que se leen,
  * por eso nunca quedan viejos.
@@ -91,28 +93,24 @@ final class CollectionDueDate
     }
 
     /**
-     * Deja las dos columnas coherentes a partir de la oficial. Se llama al guardar la
-     * cuota, por cualquier vía (formulario, edición en la tabla, controladores, jobs).
+     * Deja las tres columnas de fecha coherentes a partir de la oficial. Se llama al
+     * guardar la cuota, por cualquier vía (acciones, controladores, jobs, tinker).
      */
     public static function syncColumns(Collection $collection): void
     {
         $official = self::parse($collection->next_payment_date);
 
-        if ($official !== null) {
-            $collection->next_payment_date = $official->format(self::DISPLAY_FORMAT);
-            $collection->filter_next_payment_date = $official->format(self::STORAGE_FORMAT);
+        if ($official === null && blank($collection->next_payment_date)) {
+            $official = self::parse($collection->filter_next_payment_date);
+        }
 
+        if ($official === null) {
             return;
         }
 
-        if (blank($collection->next_payment_date)) {
-            $fallback = self::parse($collection->filter_next_payment_date);
-
-            if ($fallback !== null) {
-                $collection->next_payment_date = $fallback->format(self::DISPLAY_FORMAT);
-                $collection->filter_next_payment_date = $fallback->format(self::STORAGE_FORMAT);
-            }
-        }
+        $collection->next_payment_date = $official->format(self::DISPLAY_FORMAT);
+        $collection->filter_next_payment_date = $official->format(self::STORAGE_FORMAT);
+        $collection->expiration_date = $official->format(self::DISPLAY_FORMAT);
     }
 
     /**

@@ -40,13 +40,14 @@ it('la fecha oficial es la de próximo pago aunque la de filtro diga otra cosa',
         ->and(CollectionDueDate::daysLabel($collection, $today))->toBe('Faltan 14 días');
 });
 
-it('deriva la fecha de filtro desde la oficial y normaliza el formato al guardar', function (array $attributes, string $official, string $filter): void {
+it('deriva la fecha de filtro y la expiración desde la oficial y normaliza el formato al guardar', function (array $attributes, string $official, string $filter): void {
     $collection = new Collection($attributes);
 
     CollectionDueDate::syncColumns($collection);
 
     expect($collection->next_payment_date)->toBe($official)
-        ->and($collection->filter_next_payment_date)->toBe($filter);
+        ->and($collection->filter_next_payment_date)->toBe($filter)
+        ->and($collection->expiration_date)->toBe($official);
 })->with([
     'desincronizada' => [['next_payment_date' => '15/10/2026', 'filter_next_payment_date' => '2025-10-15'], '15/10/2026', '2026-10-15'],
     'con guiones' => [['next_payment_date' => '26-01-2027', 'filter_next_payment_date' => '2027-01-26'], '26/01/2027', '2027-01-26'],
@@ -85,6 +86,8 @@ it('la reparación clasifica cada cuota antes de tocarla', function (array $attr
     expect(CollectionDueDateRepair::classify(new Collection($attributes))['action'] ?? null)->toBe($action);
 })->with([
     'ya sincronizada' => [['next_payment_date' => '15/10/2026', 'filter_next_payment_date' => '2026-10-15', 'expiration_date' => '15/10/2026'], null],
+    'expiración con días extra' => [['next_payment_date' => '15/10/2026', 'filter_next_payment_date' => '2026-10-15', 'expiration_date' => '20/10/2026'], CollectionDueDateRepair::ACTION_EXPIRATION],
+    'expiración con guiones' => [['next_payment_date' => '15/10/2026', 'filter_next_payment_date' => '2026-10-15', 'expiration_date' => '15-10-2026'], CollectionDueDateRepair::ACTION_FORMAT],
     'expiración cuadra con la oficial' => [['next_payment_date' => '15/10/2026', 'filter_next_payment_date' => '2025-10-15', 'expiration_date' => '20/10/2026'], CollectionDueDateRepair::ACTION_SYNC],
     'solo formato' => [['next_payment_date' => '26-01-2027', 'filter_next_payment_date' => '2027-01-26', 'expiration_date' => '26-01-2027'], CollectionDueDateRepair::ACTION_FORMAT],
     'sin filtro' => [['next_payment_date' => '09/12/2026', 'filter_next_payment_date' => null, 'expiration_date' => null], CollectionDueDateRepair::ACTION_SYNC],
@@ -94,10 +97,12 @@ it('la reparación clasifica cada cuota antes de tocarla', function (array $attr
     'sin ninguna fecha' => [['next_payment_date' => null, 'filter_next_payment_date' => null], null],
 ]);
 
-it('la edición en la tabla de Gestión de Cobranza valida el formato de la fecha', function (): void {
+it('Gestión de Cobranza no edita fechas en la tabla: se corrigen con «Ajustar cuota»', function (): void {
     $table = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Collections/Tables/CollectionsTable.php');
 
     expect($table)
-        ->toContain("->rules(['required', 'date_format:d/m/Y'])")
+        ->not->toContain('TextInputColumn')
+        ->toContain("Action::make('adjust_collection')")
+        ->toContain('CollectionAdjuster::adjust($record, $data, Auth::user())')
         ->toContain('CollectionDueDate::displayStatus($record, $today)');
 });
