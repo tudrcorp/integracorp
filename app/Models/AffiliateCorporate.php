@@ -66,6 +66,15 @@ class AffiliateCorporate extends Model
         return $this->belongsTo(Coverage::class);
     }
 
+    /**
+     * Vouchers ILS por beneficio/cobertura. El voucher único de `vaucherIls`
+     * queda como histórico.
+     */
+    public function ilsVouchers(): HasMany
+    {
+        return $this->hasMany(AffiliateCorporateIlsVoucher::class);
+    }
+
     public function businessUnit(): BelongsTo
     {
         return $this->belongsTo(BusinessUnit::class);

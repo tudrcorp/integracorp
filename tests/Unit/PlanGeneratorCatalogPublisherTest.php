@@ -300,7 +300,9 @@ it('los dos flujos de afiliación publican el plan antes de crear', function ():
     expect($corporativo)
         ->toContain('PlanGeneratorCatalogPublisher::publish')
         ->toContain('$data = $this->publishPlanGeneratorCatalogPlan($data);')
-        ->toContain('corporatePlanRowsForColumn')
+        // Una fila por cobertura y rango, ahora con la población realmente
+        // ubicada en cada cobertura y no con la cotizada.
+        ->toContain('PlanGeneratorCoverageAssignment::affiliationPlacements($plan, $catalog)')
         // `affiliation_corporates` no tiene esas columnas: los FKs van en
         // `afilliation_corporate_plans`.
         ->not->toContain("\$data['plan_id'] =");

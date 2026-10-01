@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers;
 
+use App\Filament\Business\Resources\AffiliationCorporates\Support\CorporateAffiliateIlsVoucherForm;
 use App\Http\Controllers\AffiliateCorporateController;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliateCorporateUpgrade;
@@ -14,10 +15,10 @@ use App\Models\BusinessLine;
 use App\Models\BusinessUnit;
 use App\Models\Plan;
 use App\Support\AffiliateVaucherIlsRemainingDays;
+use App\Support\AffiliationCorporates\CorporateAffiliateIlsVoucherManager;
 use App\Support\AffiliationCorporates\CorporateAffiliatePlanSynchronizer;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\AffiliationCorporates\CorporateAffiliateUpgradeManager;
-use App\Support\AffiliationCorporates\CorporateAffiliateVoucherIlsUpdater;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\FilamentDateDisplay;
@@ -33,7 +34,6 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -315,6 +315,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     'businessLine:id,definition',
                     'businessUnit:id,definition',
                     'activeUpgrades',
+                    'ilsVouchers',
                 ])
                 ->withActiveUpgradesTotal()
                 ->orderBy('last_name')
@@ -457,8 +458,30 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->tooltip(fn (AffiliateCorporate $record): ?string => self::upgradesTooltip($record))
                     ->sortable(),
                 ColumnGroup::make('Voucher ILS', [
+                    TextColumn::make('ils_vouchers_by_benefit')
+                        ->label('Por beneficio')
+                        ->badge()
+                        ->icon(Heroicon::Ticket)
+                        ->state(function (AffiliateCorporate $record): string {
+                            $status = CorporateAffiliateIlsVoucherManager::statusFor($record);
+
+                            return $status['expected'] === 0
+                                ? 'Sin beneficios con tope'
+                                : $status['loaded'].' de '.$status['expected'];
+                        })
+                        ->color(function (AffiliateCorporate $record): string {
+                            $status = CorporateAffiliateIlsVoucherManager::statusFor($record);
+
+                            return match (true) {
+                                $status['expected'] === 0 => 'gray',
+                                $status['loaded'] >= $status['expected'] => 'success',
+                                default => 'warning',
+                            };
+                        })
+                        ->tooltip(fn (AffiliateCorporate $record): ?string => implode(' · ', CorporateAffiliateIlsVoucherManager::statusFor($record)['lines']) ?: null),
                     TextColumn::make('vaucherIls')
-                        ->label('Código')
+                        ->label('Voucher anterior')
+                        ->tooltip('Voucher único cargado antes de los vouchers por beneficio. Queda como histórico.')
                         ->icon(Heroicon::Ticket)
                         ->badge()
                         ->color('info')
@@ -466,7 +489,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->searchable()
                         ->sortable(),
                     TextColumn::make('ils_status')
-                        ->label('Estado ILS')
+                        ->label('Estado anterior')
+                        ->toggleable(isToggledHiddenByDefault: true)
                         ->badge()
                         ->state(fn (AffiliateCorporate $record): string => $this->affiliateHasVoucherIls($record) ? 'Cargado' : 'Pendiente')
                         ->color(fn (AffiliateCorporate $record): string => $this->affiliateHasVoucherIls($record) ? 'success' : 'warning'),
@@ -758,82 +782,22 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->modalDescription('Actualice los datos del afiliado. No se ocultan campos: revise cada sección.')
                         ->visible(fn (): bool => self::userIsBusinessAdmin()),
                     Action::make('upload_info_ils')
-                        ->label('Voucher ILS')
+                        ->label('Vouchers ILS')
                         ->color('info')
                         ->icon(Heroicon::Ticket)
-                        ->requiresConfirmation()
-                        ->modalWidth(Width::TwoExtraLarge)
-                        ->modalHeading('Activar cobertura ILS')
-                        ->modalDescription('Ingrese voucher, vigencia y adjunte el comprobante. Campos obligatorios marcados con validación.')
-                        ->form([
-                            Section::make('Datos del voucher')
-                                ->description('Vigencia del beneficio ILS y documento de respaldo.')
-                                ->icon(Heroicon::Ticket)
-                                ->schema([
-                                    Grid::make(2)->schema([
-                                        TextInput::make('vaucherIls')
-                                            ->label('Voucher ILS')
-                                            ->required(),
-                                    ]),
-                                    Grid::make(3)->schema([
-                                        DatePicker::make('dateInit')
-                                            ->label('Desde')
-                                            ->format('d/m/Y')
-                                            ->displayFormat('d/m/Y')
-                                            ->required(),
-                                        DatePicker::make('dateEnd')
-                                            ->label('Hasta')
-                                            ->live()
-                                            ->format('d/m/Y')
-                                            ->displayFormat('d/m/Y')
-                                            ->afterStateUpdated(function (Set $set, $state, Get $get): void {
-                                                $days = CorporateAffiliateVoucherIlsUpdater::calculateNumberDays($get('dateInit'), $state);
-                                                $set('numberDays', $days ?? 0);
-                                            })
-                                            ->required(),
-                                        TextInput::make('numberDays')
-                                            ->label('Días de vigencia')
-                                            ->disabled()
-                                            ->dehydrated()
-                                            ->required(),
-
-                                    ]),
-                                    Grid::make(1)->schema([
-                                        FileUpload::make('document_ils')
-                                            ->label('Documento / comprobante ILS')
-                                            ->disk('public')
-                                            ->directory('vauches')
-                                            ->required()
-                                            ->downloadable()
-                                            ->openable(),
-                                    ]),
-                                ]),
-                        ])
-                        ->action(function (AffiliateCorporate $record, array $data): void {
-
-                            try {
-                                CorporateAffiliateVoucherIlsUpdater::save($record, $data);
-
-                                Notification::make()
-                                    ->success()
-                                    ->title('Voucher ILS activado')
-                                    ->send();
-                            } catch (\Throwable $th) {
-                                Log::error($th->getMessage());
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Error')
-                                    ->body('No se pudo activar el voucher ILS. Intente de nuevo.')
-                                    ->send();
-                            }
-                        })
-                        ->hidden(function (AffiliateCorporate $record): bool {
-                            if ($record->vaucherIls != null) {
-                                return true;
-                            }
-
-                            return ! self::userIsBusinessAdmin();
-                        }),
+                        ->modalWidth(Width::FourExtraLarge)
+                        ->modalHeading(fn (AffiliateCorporate $record): string => 'Vouchers ILS de '.trim($record->last_name.' '.$record->first_name))
+                        ->modalDescription(fn (AffiliateCorporate $record): string => CorporateAffiliateIlsVoucherForm::description(collect([$record])))
+                        ->modalSubmitActionLabel('Guardar vouchers')
+                        ->mountUsing(fn (Action $action, ?Schema $schema, AffiliateCorporate $record) => CorporateAffiliateIlsVoucherForm::mount($action, $schema, collect([$record])))
+                        ->schema(fn (AffiliateCorporate $record): array => CorporateAffiliateIlsVoucherForm::components(collect([$record])))
+                        ->action(fn (Action $action, AffiliateCorporate $record, array $data) => CorporateAffiliateIlsVoucherForm::save(
+                            $action,
+                            $this->getOwnerRecord(),
+                            [$record->getKey()],
+                            $data,
+                        ))
+                        ->visible(fn (): bool => self::userIsBusinessAdmin()),
                     Action::make('changet_status')
                         ->label('Dar de baja')
                         ->icon(Heroicon::Trash)
@@ -865,76 +829,22 @@ class CorporateAffiliatesRelationManager extends RelationManager
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('asigned_vaucher_ils')
-                        ->modalHeading('Asignar voucher ILS')
-                        ->modalDescription('Se aplicará la misma información a todos los registros seleccionados.')
-                        ->requiresConfirmation()
-                        ->modalWidth(Width::TwoExtraLarge)
+                        ->label('Asignar vouchers ILS')
                         ->color('info')
                         ->icon(Heroicon::Ticket)
-                        ->form([
-                            Section::make('Datos del voucher')
-                                ->description('Vigencia y comprobante para los afiliados seleccionados.')
-                                ->icon(Heroicon::Ticket)
-                                ->schema([
-                                    Grid::make(2)->schema([
-                                        TextInput::make('vaucherIls')
-                                            ->label('Voucher ILS')
-                                            ->required(),
-                                    ]),
-                                    Grid::make(3)->schema([
-                                        DatePicker::make('dateInit')
-                                            ->label('Desde')
-                                            ->format('d/m/Y')
-                                            ->displayFormat('d/m/Y')
-                                            ->required(),
-                                        DatePicker::make('dateEnd')
-                                            ->label('Hasta')
-                                            ->live()
-                                            ->format('d/m/Y')
-                                            ->displayFormat('d/m/Y')
-                                            ->afterStateUpdated(function (Set $set, $state, Get $get): void {
-                                                $days = CorporateAffiliateVoucherIlsUpdater::calculateNumberDays($get('dateInit'), $state);
-                                                $set('numberDays', $days ?? 0);
-                                            })
-                                            ->required(),
-                                        TextInput::make('numberDays')
-                                            ->label('Días de vigencia')
-                                            ->disabled()
-                                            ->dehydrated()
-                                            ->required(),
-
-                                    ]),
-                                    Grid::make(1)->schema([
-                                        FileUpload::make('document_ils')
-                                            ->label('Documento / comprobante ILS')
-                                            ->disk('public')
-                                            ->directory('vauches')
-                                            ->required()
-                                            ->downloadable()
-                                            ->openable(),
-                                    ]),
-                                ]),
-                        ])
-                        ->action(function (Collection $records, array $data): void {
-
-                            try {
-                                foreach ($records as $record) {
-                                    CorporateAffiliateVoucherIlsUpdater::save($record, $data);
-                                }
-
-                                Notification::make()
-                                    ->success()
-                                    ->title('Voucher ILS asignado')
-                                    ->send();
-                            } catch (\Throwable $th) {
-                                Log::error($th->getMessage());
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Error')
-                                    ->body('No se pudo asignar el voucher ILS.')
-                                    ->send();
-                            }
-                        }),
+                        ->modalWidth(Width::FourExtraLarge)
+                        ->modalHeading('Asignar vouchers ILS por beneficio')
+                        ->modalDescription(fn (Collection $records): string => CorporateAffiliateIlsVoucherForm::description($records))
+                        ->modalSubmitActionLabel('Guardar vouchers')
+                        ->mountUsing(fn (BulkAction $action, ?Schema $schema, Collection $records) => CorporateAffiliateIlsVoucherForm::mount($action, $schema, $records))
+                        ->schema(fn (Collection $records): array => CorporateAffiliateIlsVoucherForm::components($records))
+                        ->deselectRecordsAfterCompletion()
+                        ->action(fn (BulkAction $action, Collection $records, array $data) => CorporateAffiliateIlsVoucherForm::save(
+                            $action,
+                            $this->getOwnerRecord(),
+                            $records->modelKeys(),
+                            $data,
+                        )),
                     BulkAction::make('sync_with_affiliation_bulk')
                         ->label('Sincronizar con la afiliación')
                         ->icon(Heroicon::ArrowPathRoundedSquare)
