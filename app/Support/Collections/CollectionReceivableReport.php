@@ -6,7 +6,6 @@ namespace App\Support\Collections;
 
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
-use App\Models\AnnualCollection;
 use App\Models\Collection;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,22 +13,23 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Reporte de cuentas por cobrar (CXC) sobre «Cobranza por mes».
+ * Reporte de cuentas por cobrar (CXC) de «Cobranza por mes».
  *
- * Cada fila es un año de contrato de una afiliación (`annual_collections`) y muestra
- * su **próxima cuota pendiente** (`collections` del mismo `sale_id` con estatus
- * POR PAGAR, la de vencimiento más cercano). `annual_collections` no guarda
- * frecuencia, monto ni un estatus fiable (todas dicen POR PAGAR), así que el
- * vencimiento, el estatus VENCIDO, los días y el número de cuota salen de esa cuota
- * y se calculan contra la fecha de hoy.
+ * Sale **solo de las cuotas reales** (`collections`): una fila por afiliación, que es
+ * su próxima cuota pendiente (POR PAGAR con el vencimiento más cercano). No lee
+ * `annual_collections`, que no tiene fila para todas las afiliaciones y guarda copias
+ * de fechas y días que se desincronizan.
+ *
+ * La fecha y los días vienen de {@see CollectionDueDate}, la misma clase que usa
+ * «Gestión de Cobranza», así que las dos tablas siempre coinciden.
  */
 final class CollectionReceivableReport
 {
-    public const PENDING_STATUS = 'POR PAGAR';
+    public const PENDING_STATUS = CollectionDueDate::PENDING_STATUS;
 
-    public const STATUS_PENDING = 'POR PAGAR';
+    public const STATUS_PENDING = CollectionDueDate::PENDING_STATUS;
 
-    public const STATUS_OVERDUE = 'VENCIDO';
+    public const STATUS_OVERDUE = CollectionDueDate::STATUS_OVERDUE;
 
     public const AGING_DUE_SOON = 'vence_7';
 
@@ -51,7 +51,6 @@ final class CollectionReceivableReport
     public static function eagerLoads(): array
     {
         return [
-            'pendingCollections:id,sale_id,include_date,payment_frequency,filter_next_payment_date,total_amount,status',
             'plan:id,description',
             'agent:id,name',
             'agencyByCode:id,code,name_corporative',
@@ -63,17 +62,22 @@ final class CollectionReceivableReport
     }
 
     /**
-     * SQL del vencimiento de la próxima cuota pendiente de la fila, para filtrar y
-     * ordenar en la base.
+     * Una fila por afiliación: su cuota pendiente de vencimiento más cercano.
      */
-    public static function nextDueSql(): string
+    public static function scopeNextPendingPerAffiliation(Builder $query): Builder
     {
-        return "(select min(pending.filter_next_payment_date) from collections as pending where pending.sale_id = annual_collections.sale_id and pending.status = '".self::PENDING_STATUS."')";
-    }
+        $table = $query->getModel()->getTable();
+        $pending = self::PENDING_STATUS;
 
-    public static function scopePending(Builder $query): Builder
-    {
-        return $query->whereHas('pendingCollections');
+        return $query
+            ->where("{$table}.status", $pending)
+            ->whereRaw(
+                "{$table}.id = (select next_installment.id from collections as next_installment"
+                ." where next_installment.affiliation_code = {$table}.affiliation_code"
+                .' and next_installment.status = ?'
+                .' order by next_installment.filter_next_payment_date asc, next_installment.id asc limit 1)',
+                [$pending],
+            );
     }
 
     /**
@@ -94,15 +98,15 @@ final class CollectionReceivableReport
     public static function applyAging(Builder $query, ?string $bucket, ?CarbonImmutable $today = null): Builder
     {
         $today ??= CarbonImmutable::today();
-        $due = self::nextDueSql();
+        $column = $query->getModel()->getTable().'.filter_next_payment_date';
 
         return match ($bucket) {
-            self::AGING_DUE_SOON => $query->whereRaw("{$due} between ? and ?", [$today->toDateString(), $today->addDays(7)->toDateString()]),
-            self::AGING_NOT_DUE => $query->whereRaw("{$due} >= ?", [$today->toDateString()]),
-            self::AGING_OVERDUE_1_30 => $query->whereRaw("{$due} between ? and ?", [$today->subDays(30)->toDateString(), $today->subDay()->toDateString()]),
-            self::AGING_OVERDUE_31_60 => $query->whereRaw("{$due} between ? and ?", [$today->subDays(60)->toDateString(), $today->subDays(31)->toDateString()]),
-            self::AGING_OVERDUE_61_90 => $query->whereRaw("{$due} between ? and ?", [$today->subDays(90)->toDateString(), $today->subDays(61)->toDateString()]),
-            self::AGING_OVERDUE_90_PLUS => $query->whereRaw("{$due} < ?", [$today->subDays(90)->toDateString()]),
+            self::AGING_DUE_SOON => $query->whereBetween($column, [$today->toDateString(), $today->addDays(7)->toDateString()]),
+            self::AGING_NOT_DUE => $query->where($column, '>=', $today->toDateString()),
+            self::AGING_OVERDUE_1_30 => $query->whereBetween($column, [$today->subDays(30)->toDateString(), $today->subDay()->toDateString()]),
+            self::AGING_OVERDUE_31_60 => $query->whereBetween($column, [$today->subDays(60)->toDateString(), $today->subDays(31)->toDateString()]),
+            self::AGING_OVERDUE_61_90 => $query->whereBetween($column, [$today->subDays(90)->toDateString(), $today->subDays(61)->toDateString()]),
+            self::AGING_OVERDUE_90_PLUS => $query->where($column, '<', $today->subDays(90)->toDateString()),
             default => $query,
         };
     }
@@ -110,27 +114,27 @@ final class CollectionReceivableReport
     public static function applyCollectionStatus(Builder $query, ?string $status, ?CarbonImmutable $today = null): Builder
     {
         $today ??= CarbonImmutable::today();
-        $due = self::nextDueSql();
+        $column = $query->getModel()->getTable().'.filter_next_payment_date';
 
         return match ($status) {
-            self::STATUS_OVERDUE => $query->whereRaw("{$due} < ?", [$today->toDateString()]),
-            self::STATUS_PENDING => $query->whereRaw("{$due} >= ?", [$today->toDateString()]),
+            self::STATUS_OVERDUE => $query->where($column, '<', $today->toDateString()),
+            self::STATUS_PENDING => $query->where($column, '>=', $today->toDateString()),
             default => $query,
         };
     }
 
     public static function applyDueBetween(Builder $query, ?string $from, ?string $until): Builder
     {
-        $due = self::nextDueSql();
+        $column = $query->getModel()->getTable().'.filter_next_payment_date';
 
         return $query
-            ->when($from, fn (Builder $query, string $date): Builder => $query->whereRaw("{$due} >= ?", [CarbonImmutable::parse($date)->toDateString()]))
-            ->when($until, fn (Builder $query, string $date): Builder => $query->whereRaw("{$due} <= ?", [CarbonImmutable::parse($date)->toDateString()]));
+            ->when($from, fn (Builder $query, string $date): Builder => $query->whereDate($column, '>=', $date))
+            ->when($until, fn (Builder $query, string $date): Builder => $query->whereDate($column, '<=', $date));
     }
 
     /**
      * Filtra por el estatus vigente de la afiliación (individual o corporativa). Si la
-     * afiliación ya no existe se usa el estatus copiado en la fila.
+     * afiliación ya no existe se usa el estatus copiado en la cuota.
      *
      * @param  list<string>  $statuses
      */
@@ -153,78 +157,32 @@ final class CollectionReceivableReport
         });
     }
 
-    public static function nextInstallment(AnnualCollection $row): ?Collection
+    public static function dueDate(Collection $collection): ?CarbonImmutable
     {
-        $installment = $row->pendingCollections->first();
-
-        return $installment instanceof Collection ? $installment : null;
+        return CollectionDueDate::of($collection);
     }
 
-    public static function dueDate(AnnualCollection $row): ?CarbonImmutable
+    public static function collectionStatus(Collection $collection, ?CarbonImmutable $today = null): string
     {
-        $value = self::nextInstallment($row)?->filter_next_payment_date;
-
-        if (blank($value)) {
-            return null;
-        }
-
-        try {
-            return CarbonImmutable::parse((string) $value)->startOfDay();
-        } catch (Throwable) {
-            return null;
-        }
+        return CollectionDueDate::collectionStatus($collection, $today);
     }
 
-    /**
-     * Días hasta el vencimiento de la próxima cuota: negativo si ya venció.
-     */
-    public static function daysUntilDue(AnnualCollection $row, ?CarbonImmutable $today = null): ?int
+    public static function daysCount(Collection $collection, ?CarbonImmutable $today = null): ?int
     {
-        $due = self::dueDate($row);
-
-        if ($due === null) {
-            return null;
-        }
-
-        return (int) ($today ?? CarbonImmutable::today())->diffInDays($due, false);
+        return CollectionDueDate::daysCount($collection, $today);
     }
 
-    public static function collectionStatus(AnnualCollection $row, ?CarbonImmutable $today = null): string
+    public static function daysLabel(Collection $collection, ?CarbonImmutable $today = null): string
     {
-        $days = self::daysUntilDue($row, $today);
-
-        return $days !== null && $days < 0 ? self::STATUS_OVERDUE : self::STATUS_PENDING;
+        return CollectionDueDate::daysLabel($collection, $today) ?? 'Sin fecha';
     }
 
-    /**
-     * Días en positivo para el reporte: de atraso si está vencida, para vencer si no.
-     */
-    public static function daysCount(AnnualCollection $row, ?CarbonImmutable $today = null): ?int
+    public static function paymentFrequency(Collection $collection): ?string
     {
-        $days = self::daysUntilDue($row, $today);
-
-        return $days === null ? null : abs($days);
-    }
-
-    public static function daysLabel(AnnualCollection $row, ?CarbonImmutable $today = null): string
-    {
-        $days = self::daysUntilDue($row, $today);
-
-        return match (true) {
-            $days === null => 'Sin fecha',
-            $days < 0 => abs($days).' '.(abs($days) === 1 ? 'día' : 'días').' de atraso',
-            $days === 0 => 'Vence hoy',
-            default => 'Faltan '.$days.' '.($days === 1 ? 'día' : 'días'),
-        };
-    }
-
-    public static function paymentFrequency(AnnualCollection $row): ?string
-    {
-        $frequency = self::isCorporate($row)
-            ? self::corporateAffiliation($row)?->payment_frequency
-            : self::individualAffiliation($row)?->payment_frequency;
-
-        $frequency = self::clean($frequency) ?? self::clean(self::nextInstallment($row)?->payment_frequency);
+        $frequency = self::clean($collection->payment_frequency)
+            ?? self::clean(self::isCorporate($collection)
+                ? self::corporateAffiliation($collection)?->payment_frequency
+                : self::individualAffiliation($collection)?->payment_frequency);
 
         return $frequency === null ? null : Str::upper($frequency);
     }
@@ -241,17 +199,18 @@ final class CollectionReceivableReport
     }
 
     /**
-     * Número de la próxima cuota dentro del año de contrato, p. ej. «2 de 4».
+     * Número de la cuota dentro del año de contrato, p. ej. «2 de 4».
      *
-     * Sale de los meses entre el inicio del período (`include_date`) y el vencimiento
-     * de la cuota; no depende de que exista la fila de la primera cuota, que en los
-     * datos no siempre se creó.
+     * Las cuotas de un año se crean juntas con la misma `include_date` (inicio del
+     * período), así que el número sale de los meses entre esa fecha y el vencimiento.
+     * Si una renovación dejó la `include_date` del año anterior, el resultado se lleva
+     * al año de contrato que corresponde.
      */
-    public static function installmentLabel(AnnualCollection $row): ?string
+    public static function installmentLabel(Collection $collection): ?string
     {
-        $perYear = self::installmentsPerYear(self::paymentFrequency($row));
-        $due = self::dueDate($row);
-        $start = self::parseDisplayDate(self::nextInstallment($row)?->include_date ?? $row->include_date);
+        $perYear = self::installmentsPerYear(self::paymentFrequency($collection));
+        $due = self::dueDate($collection);
+        $start = CollectionDueDate::parse($collection->include_date);
 
         if ($perYear === null || $due === null || $start === null) {
             return null;
@@ -262,65 +221,63 @@ final class CollectionReceivableReport
         }
 
         $monthsPerInstallment = intdiv(12, $perYear);
-        $elapsedMonths = (int) round($start->diffInMonths($due, false));
-        $number = intdiv(max($elapsedMonths, 0), $monthsPerInstallment) + 1;
+        $elapsedMonths = max((int) round($start->diffInMonths($due, false)), 0) % 12;
+        $number = intdiv($elapsedMonths, $monthsPerInstallment) + 1;
 
         return min($number, $perYear).' de '.$perYear;
     }
 
-    public static function installmentAmount(AnnualCollection $row): ?float
+    public static function installmentAmount(Collection $collection): ?float
     {
-        $amount = self::nextInstallment($row)?->total_amount;
-
-        return is_numeric($amount) ? (float) $amount : null;
+        return is_numeric($collection->total_amount) ? (float) $collection->total_amount : null;
     }
 
-    public static function isCorporate(AnnualCollection $row): bool
+    public static function isCorporate(Collection $collection): bool
     {
-        return str_contains(Str::upper(Str::ascii((string) $row->type)), 'CORPORATIVA');
+        return str_contains(Str::upper(Str::ascii((string) $collection->type)), 'CORPORATIVA');
     }
 
-    public static function holderName(AnnualCollection $row): ?string
+    public static function holderName(Collection $collection): ?string
     {
-        return self::clean($row->affiliate_full_name);
+        return self::clean($collection->affiliate_full_name);
     }
 
-    public static function holderDocument(AnnualCollection $row): ?string
+    public static function holderDocument(Collection $collection): ?string
     {
-        return self::clean($row->affiliate_ci_rif);
+        return self::clean($collection->affiliate_ci_rif);
     }
 
     /**
      * Tomador = quien paga. En individuales es el pagador de la afiliación; en
      * corporativas es la empresa contratante.
      */
-    public static function payerName(AnnualCollection $row): ?string
+    public static function payerName(Collection $collection): ?string
     {
-        if (self::isCorporate($row)) {
-            return self::clean(self::corporateAffiliation($row)?->name_corporate) ?? self::holderName($row);
+        if (self::isCorporate($collection)) {
+            return self::clean(self::corporateAffiliation($collection)?->name_corporate) ?? self::holderName($collection);
         }
 
-        return self::clean(self::individualAffiliation($row)?->full_name_payer) ?? self::holderName($row);
+        return self::clean(self::individualAffiliation($collection)?->full_name_payer) ?? self::holderName($collection);
     }
 
-    public static function payerDocument(AnnualCollection $row): ?string
+    public static function payerDocument(Collection $collection): ?string
     {
-        if (self::isCorporate($row)) {
-            return self::clean(self::corporateAffiliation($row)?->rif) ?? self::holderDocument($row);
+        if (self::isCorporate($collection)) {
+            return self::clean(self::corporateAffiliation($collection)?->rif) ?? self::holderDocument($collection);
         }
 
-        return self::clean(self::individualAffiliation($row)?->nro_identificacion_payer) ?? self::holderDocument($row);
+        return self::clean(self::individualAffiliation($collection)?->nro_identificacion_payer) ?? self::holderDocument($collection);
     }
 
-    public static function planLabel(AnnualCollection $row): ?string
+    public static function planLabel(Collection $collection): ?string
     {
-        $plan = self::clean($row->plan?->description);
+        $plan = self::clean($collection->plan?->description);
 
-        if ($plan !== null || ! self::isCorporate($row)) {
+        if ($plan !== null || ! self::isCorporate($collection)) {
             return $plan;
         }
 
-        $plans = self::corporateAffiliation($row)?->affiliationCorporatePlans
+        $plans = self::corporateAffiliation($collection)?->affiliationCorporatePlans
             ?->map(fn ($corporatePlan): ?string => self::clean($corporatePlan->plan?->description))
             ->filter()
             ->unique()
@@ -330,10 +287,10 @@ final class CollectionReceivableReport
         return $plans === [] ? null : implode(' / ', $plans);
     }
 
-    public static function agencyLabel(AnnualCollection $row): ?string
+    public static function agencyLabel(Collection $collection): ?string
     {
-        $name = self::clean($row->agencyByCode?->name_corporative);
-        $code = self::clean($row->code_agency);
+        $name = self::clean($collection->agencyByCode?->name_corporative);
+        $code = self::clean($collection->code_agency);
 
         return match (true) {
             $name !== null && $code !== null => $code.' · '.$name,
@@ -341,39 +298,39 @@ final class CollectionReceivableReport
         };
     }
 
-    public static function annualFee(AnnualCollection $row): ?float
+    public static function annualFee(Collection $collection): ?float
     {
-        $fee = self::isCorporate($row)
-            ? self::corporateAffiliation($row)?->fee_anual
-            : self::individualAffiliation($row)?->fee_anual;
+        $fee = self::isCorporate($collection)
+            ? self::corporateAffiliation($collection)?->fee_anual
+            : self::individualAffiliation($collection)?->fee_anual;
 
         return is_numeric($fee) ? (float) $fee : null;
     }
 
-    public static function effectiveDate(AnnualCollection $row): ?string
+    public static function effectiveDate(Collection $collection): ?string
     {
-        return self::clean(self::isCorporate($row)
-            ? self::corporateAffiliation($row)?->effective_date
-            : self::individualAffiliation($row)?->effective_date);
+        return self::clean(self::isCorporate($collection)
+            ? self::corporateAffiliation($collection)?->effective_date
+            : self::individualAffiliation($collection)?->effective_date);
     }
 
     /**
-     * Estatus vigente de la afiliación; si ya no existe, el que se copió en la fila.
+     * Estatus vigente de la afiliación; si ya no existe, el que se copió en la cuota.
      */
-    public static function affiliateStatus(AnnualCollection $row): ?string
+    public static function affiliateStatus(Collection $collection): ?string
     {
-        $status = self::isCorporate($row)
-            ? self::corporateAffiliation($row)?->status
-            : self::individualAffiliation($row)?->status;
+        $status = self::isCorporate($collection)
+            ? self::corporateAffiliation($collection)?->status
+            : self::individualAffiliation($collection)?->status;
 
-        $status = self::clean($status) ?? self::clean($row->affiliate_status);
+        $status = self::clean($status) ?? self::clean($collection->affiliate_status);
 
         return $status === null ? null : Str::upper($status);
     }
 
     /**
-     * Totales del resumen sobre **todas** las cuotas pendientes de las filas de la
-     * consulta (no solo la próxima), calculados en la base sin cargar filas. Recibe
+     * Totales del resumen sobre **todas** las cuotas pendientes de las afiliaciones de
+     * la consulta (no solo la próxima), calculados en la base sin cargar filas. Recibe
      * la consulta de la tabla para respetar filtros y búsqueda.
      *
      * @return array{rows_count: int, pending_count: int, pending_amount: float, overdue_count: int, overdue_amount: float, due_soon_count: int, due_soon_amount: float}
@@ -386,7 +343,7 @@ final class CollectionReceivableReport
 
         $rows = $query !== null
             ? (clone $query)->reorder()
-            : self::scopePending(AnnualCollection::query());
+            : self::scopeNextPendingPerAffiliation(Collection::query());
 
         $rows->setEagerLoads([]);
         $rows->getQuery()->columns = null;
@@ -397,7 +354,7 @@ final class CollectionReceivableReport
 
         $totals = Collection::query()
             ->where('status', self::PENDING_STATUS)
-            ->whereIn('sale_id', (clone $rows)->select('annual_collections.sale_id'))
+            ->whereIn('affiliation_code', (clone $rows)->select($rows->getModel()->getTable().'.affiliation_code'))
             ->selectRaw('COUNT(*) as pending_count, COALESCE(SUM(total_amount), 0) as pending_amount')
             ->selectRaw('SUM(CASE WHEN filter_next_payment_date < ? THEN 1 ELSE 0 END) as overdue_count', [$todayString])
             ->selectRaw('COALESCE(SUM(CASE WHEN filter_next_payment_date < ? THEN total_amount ELSE 0 END), 0) as overdue_amount', [$todayString])
@@ -417,40 +374,27 @@ final class CollectionReceivableReport
         ];
     }
 
-    private static function individualAffiliation(AnnualCollection $row): ?Affiliation
+    private static function individualAffiliation(Collection $collection): ?Affiliation
     {
-        $affiliation = $row->affiliationByCode;
+        $affiliation = $collection->affiliationByCode;
 
         return $affiliation instanceof Affiliation ? $affiliation : null;
     }
 
-    private static function corporateAffiliation(AnnualCollection $row): ?AffiliationCorporate
+    private static function corporateAffiliation(Collection $collection): ?AffiliationCorporate
     {
-        $affiliation = $row->affiliationCorporateByCode;
+        $affiliation = $collection->affiliationCorporateByCode;
 
         return $affiliation instanceof AffiliationCorporate ? $affiliation : null;
     }
 
-    private static function parseDisplayDate(mixed $value): ?CarbonImmutable
+    private static function clean(mixed $value): ?string
     {
-        $value = trim((string) ($value ?? ''));
-
-        if ($value === '') {
-            return null;
-        }
-
         try {
-            return preg_match('#^\d{2}/\d{2}/\d{4}$#', $value) === 1
-                ? CarbonImmutable::createFromFormat('d/m/Y', $value)->startOfDay()
-                : CarbonImmutable::parse($value)->startOfDay();
+            $value = trim((string) ($value ?? ''));
         } catch (Throwable) {
             return null;
         }
-    }
-
-    private static function clean(mixed $value): ?string
-    {
-        $value = trim((string) ($value ?? ''));
 
         return $value === '' || $value === 'N/A' ? null : $value;
     }

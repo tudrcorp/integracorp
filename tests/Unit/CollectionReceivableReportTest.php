@@ -7,7 +7,6 @@ use App\Filament\Exports\CollectionReceivableExporter;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\AfilliationCorporatePlan;
-use App\Models\AnnualCollection;
 use App\Models\Collection;
 use App\Models\Plan;
 use App\Support\Collections\CollectionReceivableReport;
@@ -20,39 +19,30 @@ uses(Tests\TestCase::class);
 /**
  * Solo lectura: arma modelos en memoria y SQL sin ejecutarlo contra la base.
  */
-function receivableCollection(array $attributes = []): AnnualCollection
+function receivableCollection(array $attributes = []): Collection
 {
-    $installmentKeys = ['payment_frequency', 'filter_next_payment_date', 'total_amount'];
-    $installment = new Collection([
-        'include_date' => $attributes['include_date'] ?? '09/07/2026',
-        'payment_frequency' => 'TRIMESTRAL',
-        'filter_next_payment_date' => '2026-10-09',
-        'total_amount' => 147.25,
-        'status' => 'POR PAGAR',
-        ...array_intersect_key($attributes, array_flip($installmentKeys)),
-    ]);
-
-    $row = new AnnualCollection([
+    $collection = new Collection([
         'include_date' => '09/07/2026',
         'affiliate_full_name' => 'ROSA PÉREZ',
         'affiliate_ci_rif' => '6896503',
         'affiliate_status' => 'ACTIVA',
         'type' => 'AFILIACION INDIVIDUAL',
-        ...array_diff_key($attributes, array_flip($installmentKeys)),
+        'payment_frequency' => 'TRIMESTRAL',
+        'next_payment_date' => '09/10/2026',
+        'total_amount' => 147.25,
+        'status' => 'POR PAGAR',
+        ...$attributes,
     ]);
 
-    $row->setRelation('pendingCollections', new EloquentCollection(
-        array_key_exists('filter_next_payment_date', $attributes) && $attributes['filter_next_payment_date'] === false ? [] : [$installment],
-    ));
-    $row->setRelation('affiliationByCode', null);
-    $row->setRelation('affiliationCorporateByCode', null);
+    $collection->setRelation('affiliationByCode', null);
+    $collection->setRelation('affiliationCorporateByCode', null);
 
-    return $row;
+    return $collection;
 }
 
 it('calcula el estatus de cobro y los días contra la fecha de hoy', function (string $due, string $status, string $label, int $count): void {
     $today = CarbonImmutable::parse('2026-10-01');
-    $collection = receivableCollection(['filter_next_payment_date' => $due]);
+    $collection = receivableCollection(['next_payment_date' => $due]);
 
     expect(CollectionReceivableReport::collectionStatus($collection, $today))->toBe($status)
         ->and(CollectionReceivableReport::daysLabel($collection, $today))->toBe($label)
@@ -68,7 +58,7 @@ it('calcula el estatus de cobro y los días contra la fecha de hoy', function (s
 it('numera la cuota dentro del año de contrato', function (string $frequency, string $due, ?string $label): void {
     expect(CollectionReceivableReport::installmentLabel(receivableCollection([
         'payment_frequency' => $frequency,
-        'filter_next_payment_date' => $due,
+        'next_payment_date' => $due,
     ])))->toBe($label);
 })->with([
     'primera trimestral' => ['TRIMESTRAL', '2026-07-09', '1 de 4'],
@@ -79,12 +69,10 @@ it('numera la cuota dentro del año de contrato', function (string $frequency, s
     'frecuencia desconocida' => ['OTRA', '2026-10-09', null],
 ]);
 
-it('sin cuota pendiente no inventa vencimiento, estatus ni días', function (): void {
-    $collection = receivableCollection(['filter_next_payment_date' => false]);
+it('sin fecha de vencimiento no inventa estatus ni días', function (): void {
+    $collection = receivableCollection(['next_payment_date' => null, 'filter_next_payment_date' => null]);
 
-    expect(CollectionReceivableReport::nextInstallment($collection))->toBeNull()
-        ->and(CollectionReceivableReport::installmentAmount($collection))->toBeNull()
-        ->and(CollectionReceivableReport::daysLabel($collection))->toBe('Sin fecha')
+    expect(CollectionReceivableReport::daysLabel($collection))->toBe('Sin fecha')
         ->and(CollectionReceivableReport::daysCount($collection))->toBeNull()
         ->and(CollectionReceivableReport::collectionStatus($collection))->toBe('POR PAGAR')
         ->and(CollectionReceivableReport::installmentLabel($collection))->toBeNull();
@@ -136,14 +124,11 @@ it('en una corporativa el tomador es la empresa y el plan sale de sus planes', f
         ->and(CollectionReceivableReport::annualFee($collection))->toBe(11988.0);
 });
 
-it('los rangos de vencimiento filtran por el vencimiento de la próxima cuota pendiente', function (string $bucket, array $expectedBindings): void {
+it('los rangos de vencimiento filtran por la fecha de la cuota', function (string $bucket, array $expectedBindings): void {
     $today = CarbonImmutable::parse('2026-10-01');
-    $query = CollectionReceivableReport::applyAging(AnnualCollection::query(), $bucket, $today);
+    $query = CollectionReceivableReport::applyAging(Collection::query(), $bucket, $today);
 
-    expect($query->toSql())
-        ->toContain('min(pending.filter_next_payment_date)')
-        ->toContain('pending.sale_id = annual_collections.sale_id')
-        ->toContain("pending.status = 'POR PAGAR'")
+    expect($query->toSql())->toContain('collections`.`filter_next_payment_date')
         ->and($query->getBindings())->toBe($expectedBindings);
 })->with([
     'próximos 7 días' => [CollectionReceivableReport::AGING_DUE_SOON, ['2026-10-01', '2026-10-08']],
@@ -154,32 +139,43 @@ it('los rangos de vencimiento filtran por el vencimiento de la próxima cuota pe
     'más de 90' => [CollectionReceivableReport::AGING_OVERDUE_90_PLUS, ['2026-07-03']],
 ]);
 
-it('toma la próxima cuota pendiente y la frecuencia de la afiliación', function (): void {
-    $row = receivableCollection();
-    $row->setRelation('affiliationByCode', new Affiliation(['payment_frequency' => 'semestral']));
-
-    expect(CollectionReceivableReport::paymentFrequency($row))->toBe('SEMESTRAL')
-        ->and(CollectionReceivableReport::installmentAmount($row))->toBe(147.25)
-        ->and(CollectionReceivableReport::dueDate($row)?->toDateString())->toBe('2026-10-09');
+it('numera bien la cuota aunque una renovación dejó la fecha de inclusión del año anterior', function (): void {
+    expect(CollectionReceivableReport::installmentLabel(receivableCollection([
+        'include_date' => '15/04/2025',
+        'next_payment_date' => '15/10/2026',
+    ])))->toBe('3 de 4');
 });
 
-it('Cobranza por mes solo lista afiliaciones con cuotas pendientes y no permite crear, editar ni borrar', function (): void {
+it('usa la frecuencia de la cuota y, si falta, la de la afiliación', function (): void {
+    $withoutFrequency = receivableCollection(['payment_frequency' => null]);
+    $withoutFrequency->setRelation('affiliationByCode', new Affiliation(['payment_frequency' => 'semestral']));
+
+    expect(CollectionReceivableReport::paymentFrequency(receivableCollection()))->toBe('TRIMESTRAL')
+        ->and(CollectionReceivableReport::paymentFrequency($withoutFrequency))->toBe('SEMESTRAL')
+        ->and(CollectionReceivableReport::installmentAmount(receivableCollection()))->toBe(147.25);
+});
+
+it('Cobranza por mes sale de las cuotas reales: una fila por afiliación con su próxima cuota pendiente', function (): void {
     $query = AnnualCollectionResource::getEloquentQuery();
 
-    expect($query->toSql())->toContain('exists (select * from `collections`')
-        ->and($query->getBindings())->toContain('POR PAGAR')
+    expect(AnnualCollectionResource::getModel())->toBe(Collection::class)
+        ->and(AnnualCollectionResource::getSlug())->toBe('annual-collections')
+        ->and($query->toSql())
+        ->toContain('select next_installment.id from collections as next_installment')
+        ->toContain('order by next_installment.filter_next_payment_date asc, next_installment.id asc limit 1')
+        ->not->toContain('annual_collections')
+        ->and($query->getBindings())->toBe(['POR PAGAR', 'POR PAGAR'])
         ->and(array_keys(AnnualCollectionResource::getPages()))->toBe(['index'])
         ->and(AnnualCollectionResource::canCreate())->toBeFalse()
         ->and(AnnualCollectionResource::canDeleteAny())->toBeFalse()
-        ->and(AnnualCollectionResource::canEdit(new AnnualCollection))->toBeFalse();
+        ->and(AnnualCollectionResource::canEdit(new Collection))->toBeFalse();
 });
 
-it('Gestión de Cobranza queda como estaba', function (): void {
+it('Gestión de Cobranza conserva sus acciones y sus páginas', function (): void {
     $root = dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Collections';
 
     expect(file_get_contents($root.'/Tables/CollectionsTable.php'))
         ->toContain("Action::make('send_email')")
-        ->not->toContain('CollectionReceivableReport')
         ->and(is_file($root.'/Pages/EditCollection.php'))->toBeTrue()
         ->and(is_file($root.'/Pages/CreateCollection.php'))->toBeTrue();
 });
@@ -218,7 +214,7 @@ it('el exportador saca las columnas en el orden del Excel con los valores calcul
         'affiliate_email' => 'rosa@example.com',
         'persons' => '1',
         'code_agency' => 'TDG-101',
-        'filter_next_payment_date' => CarbonImmutable::today()->subDays(3)->toDateString(),
+        'next_payment_date' => CarbonImmutable::today()->subDays(3)->format('d/m/Y'),
     ]);
     $collection->setRelation('plan', new Plan(['description' => 'PLAN ESPECIAL']));
     $collection->setRelation('agent', null);

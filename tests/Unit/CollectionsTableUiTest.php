@@ -20,7 +20,7 @@ it('muestra como vencida una cuota por pagar con la fecha pasada sin cambiar su 
     'vencida' => ['POR PAGAR', '2026-09-20', 'VENCIDO', '11 días de atraso'],
     'vencida ayer' => ['POR PAGAR', '2026-09-30', 'VENCIDO', '1 día de atraso'],
     'vence hoy' => ['POR PAGAR', '2026-10-01', 'POR PAGAR', 'Vence hoy'],
-    'por vencer' => ['POR PAGAR', '2026-10-09', 'POR PAGAR', 'Vence en 8 días'],
+    'por vencer' => ['POR PAGAR', '2026-10-09', 'POR PAGAR', 'Faltan 8 días'],
     'sin fecha' => ['POR PAGAR', null, 'POR PAGAR', null],
     'pagada con fecha pasada' => ['PAGADO', '2026-09-20', 'PAGADO', null],
     'anulada' => ['ANULADO', '2026-12-09', 'ANULADO', null],
