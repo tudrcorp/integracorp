@@ -13,6 +13,9 @@ use App\Models\PlanGenerator;
  * La regla que importa: **no se continúa mientras el import esté en cola**. El
  * padrón se copia a `affiliate_corporates` al crear la afiliación, así que
  * hacerlo a medio importar dejaría afiliados fuera y nadie se enteraría.
+ *
+ * Tampoco se continúa mientras alguien no esté ubicado en una cobertura que le
+ * corresponda por edad (`PlanGeneratorCoverageAssignment`).
  */
 final class PlanGeneratorPopulationStatus
 {
@@ -29,7 +32,9 @@ final class PlanGeneratorPopulationStatus
     {
         $payload = PlanGeneratorPreAffiliationSession::get();
 
-        return max(0, (int) ($payload['total_persons'] ?? 0));
+        // `total_persons` pasa a ser la población real al continuar; la
+        // cotizada queda en `quoted_persons`.
+        return max(0, (int) ($payload['quoted_persons'] ?? $payload['total_persons'] ?? 0));
     }
 
     public static function isImportRunning(PlanGenerator $plan): bool
@@ -113,6 +118,6 @@ final class PlanGeneratorPopulationStatus
             return 'Importe el padrón de población antes de continuar.';
         }
 
-        return null;
+        return PlanGeneratorCoverageAssignment::blockedReason(PlanGeneratorCoverageAssignment::report($plan));
     }
 }

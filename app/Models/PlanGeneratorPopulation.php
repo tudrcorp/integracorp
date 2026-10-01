@@ -18,6 +18,9 @@ class PlanGeneratorPopulation extends Model
     protected $fillable = [
         'plan_generator_id',
         'import_id',
+        'column_key',
+        'coverage_assigned_by',
+        'coverage_assigned_at',
         'last_name',
         'first_name',
         'nro_identificacion',
@@ -42,6 +45,7 @@ class PlanGeneratorPopulation extends Model
         return [
             'plan_generator_id' => 'integer',
             'import_id' => 'integer',
+            'coverage_assigned_at' => 'datetime',
         ];
     }
 

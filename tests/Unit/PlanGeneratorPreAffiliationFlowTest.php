@@ -50,6 +50,7 @@ beforeEach(function (): void {
 
 afterEach(function (): void {
     DB::rollBack();
+    \App\Support\PlanGenerators\PlanGeneratorCoverageAssignment::flush();
 });
 
 /**
@@ -347,7 +348,18 @@ it('no deja continuar sin población y sí cuando el padrón está completo', fu
     ]);
 
     expect(PlanGeneratorPopulationStatus::importedCount($plan->fresh()))->toBe(1)
-        ->and(PlanGeneratorPopulationStatus::canContinue($plan->fresh()))->toBeTrue();
+        // Importado no basta: falta ubicarlo en una cobertura.
+        ->and(PlanGeneratorPopulationStatus::canContinue($plan->fresh()))->toBeFalse()
+        ->and(PlanGeneratorPopulationStatus::blockedReason($plan->fresh()))->toContain('Faltan 1 persona(s)');
+
+    \App\Support\PlanGenerators\PlanGeneratorCoverageAssignment::assign(
+        $plan,
+        $plan->populations()->pluck('id')->all(),
+        'col-a',
+        'PEST',
+    );
+
+    expect(PlanGeneratorPopulationStatus::canContinue($plan->fresh()))->toBeTrue();
 });
 
 it('un import en curso bloquea el paso a la afiliación', function (): void {
@@ -365,6 +377,7 @@ it('un import en curso bloquea el paso a la afiliación', function (): void {
         'nro_identificacion' => '12345678',
         'birth_date' => '1990-01-01',
         'age' => '35',
+        'column_key' => 'col-a',
     ]);
 
     $import = Import::query()->create([
@@ -419,6 +432,7 @@ it('la página de población expone importación, vaciado y el paso a la afiliac
 
     PlanGeneratorPopulation::query()->create([
         'plan_generator_id' => $plan->getKey(),
+        'column_key' => 'col-a',
         'last_name' => 'GARCIA',
         'first_name' => 'LUIS',
         'nro_identificacion' => '12345678',
@@ -468,7 +482,7 @@ it('el flujo corporativo copia el padrón a los afiliados y bloquea si el import
     expect($create)
         ->toContain('protected function beforeCreate(): void')
         ->toContain('PlanGeneratorPopulationStatus::blockedReason')
-        ->toContain('$this->halt();')
+        ->toContain('$this->halt(shouldRollbackDatabaseTransaction: true);')
         ->toContain('copyPlanGeneratorPopulation')
         ->toContain('AffiliateCorporate::query()->insert($rows)')
         // Por lotes: un padrón corporativo pasa de mil filas con facilidad.

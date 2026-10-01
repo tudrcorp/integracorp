@@ -11,14 +11,20 @@ use App\Models\CorporateQuoteData;
 use App\Models\DetailCorporateQuote;
 use App\Models\PlanGenerator;
 use App\Models\PlanGeneratorPopulation;
+use App\Services\CorporateAffiliateRemovalService;
+use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
 use App\Support\PlanGenerators\PlanGeneratorCatalogPublisher;
+use App\Support\PlanGenerators\PlanGeneratorCoverageAssignment;
 use App\Support\PlanGenerators\PlanGeneratorPopulationStatus;
-use App\Support\PlanGenerators\PlanGeneratorPreAffiliationOptions;
 use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
+use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
+use Throwable;
 
 class CreateAffiliationCorporate extends CreateRecord
 {
@@ -51,10 +57,15 @@ class CreateAffiliationCorporate extends CreateRecord
 
     /**
      * No se crea la afiliación mientras el padrón del plan generado siga
-     * importándose: `afterCreateFromPlanGenerator()` copia la población a
-     * `affiliate_corporates` y hacerlo a medio importar dejaría afiliados fuera
-     * sin que nadie se entere. La página de población ya deshabilita el botón;
-     * esta guarda cubre a quien entre por URL directa.
+     * importándose o tenga a alguien fuera de una cobertura que le corresponda:
+     * `afterCreateFromPlanGenerator()` copia la población a
+     * `affiliate_corporates` con su plan y su tarifa, y hacerlo a medias dejaría
+     * afiliados fuera o mal cobrados sin que nadie se entere. La página de
+     * población ya deshabilita el botón; esta guarda cubre a quien entre por
+     * URL directa o cambie asignaciones en otra pestaña.
+     *
+     * Se revierte la transacción: el catálogo ya se publicó en
+     * `mutateFormDataBeforeCreate()` y no debe quedar a medias.
      */
     protected function beforeCreate(): void
     {
@@ -66,18 +77,28 @@ class CreateAffiliationCorporate extends CreateRecord
 
         $reason = PlanGeneratorPopulationStatus::blockedReason($plan);
 
+        // Los totales del formulario salen de la foto que se tomó al pulsar
+        // «Continuar». Si las asignaciones cambiaron después, esos montos ya no
+        // son los de la población real.
+        if ($reason === null
+            && PlanGeneratorPreAffiliationSession::assignmentSignature() !== PlanGeneratorCoverageAssignment::report($plan)['signature']) {
+            $reason = 'Las coberturas del padrón cambiaron después de continuar. Vuelva a «Población de la pre-afiliación» y pulse «Continuar a la pre-afiliación» para recalcular los montos.';
+        }
+
         if ($reason === null) {
             return;
         }
 
         Notification::make()
-            ->title('La población todavía no está lista')
+            ->title(str_starts_with($reason, PlanGeneratorCoverageAssignment::PLAN_FAILURE_PREFIX)
+                ? 'Falla en la creación del plan'
+                : 'La población todavía no está lista')
             ->body($reason)
             ->warning()
             ->persistent()
             ->send();
 
-        $this->halt();
+        $this->halt(shouldRollbackDatabaseTransaction: true);
     }
 
     /**
@@ -129,15 +150,17 @@ class CreateAffiliationCorporate extends CreateRecord
 
     protected function afterCreate(): void
     {
+        // Fuera del try de abajo: ese bloque registra el error y deja la
+        // afiliación creada sin afiliados. El generador revierte todo.
+        if (PlanGeneratorPreAffiliationSession::isActive()) {
+            $this->afterCreateFromPlanGenerator($this->getRecord());
+
+            return;
+        }
+
         try {
 
             $record = $this->getRecord();
-
-            if (PlanGeneratorPreAffiliationSession::isActive()) {
-                $this->afterCreateFromPlanGenerator($record);
-
-                return;
-            }
 
             /**
              * Actualizacion de la cotizacion
@@ -220,104 +243,204 @@ class CreateAffiliationCorporate extends CreateRecord
 
     private function afterCreateFromPlanGenerator(AffiliationCorporate $record): void
     {
+        $plan = $this->planGeneratorFromSession();
+        $catalog = $this->planGeneratorCatalog;
+
+        if ($plan === null || $catalog === null) {
+            $this->createAggregatedPlanGeneratorRows($record);
+
+            return;
+        }
+
+        try {
+            $placements = PlanGeneratorCoverageAssignment::affiliationPlacements($plan, $catalog);
+
+            foreach ($placements['plan_rows'] as $row) {
+                AfilliationCorporatePlan::create([
+                    'affiliation_corporate_id' => $record->id,
+                    'code_affiliation' => $record->code,
+                    'plan_id' => $row['plan_id'],
+                    'coverage_id' => $row['coverage_id'],
+                    'age_range_id' => $row['age_range_id'],
+                    'total_persons' => $row['total_persons'],
+                    'payment_frequency' => $record->payment_frequency,
+                    'fee' => $row['fee'],
+                    'subtotal_anual' => $row['subtotal_anual'],
+                    'subtotal_quarterly' => $row['subtotal_quarterly'],
+                    'subtotal_biannual' => $row['subtotal_biannual'],
+                    'subtotal_monthly' => $row['subtotal_monthly'],
+                    'status' => 'PRE-AFILIADO',
+                    'created_by' => Auth::user()->name,
+                ]);
+            }
+
+            $imported = $this->copyPlanGeneratorPopulation($plan, $record, $placements['affiliates']);
+
+            if ($imported !== $placements['total_persons']) {
+                throw new RuntimeException('Se copiaron '.$imported.' afiliado(s) de '.$placements['total_persons']
+                    .' ubicados en el padrón. El padrón cambió mientras se creaba la afiliación.');
+            }
+
+            // Montos de la población real ubicada, no los que llegan del
+            // formulario: así la cabecera cuadra con «Plan(es) Afiliado(s)».
+            $record->poblation = $imported;
+            $record->fee_anual = $placements['annual'];
+            $record->total_amount = round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount(
+                $placements['annual'],
+                $record->payment_frequency,
+            ), 2);
+            $record->save();
+        } catch (Throwable $exception) {
+            Log::error('Pre-afiliación corporativa desde el generador revertida', [
+                'plan_generator_id' => $plan->getKey(),
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
+            $isPlanFailure = str_starts_with($exception->getMessage(), PlanGeneratorCoverageAssignment::PLAN_FAILURE_PREFIX);
+
+            Notification::make()
+                ->title($isPlanFailure ? 'Falla en la creación del plan' : 'No se creó la pre-afiliación')
+                ->body(($exception instanceof RuntimeException ? $exception->getMessage() : 'Ocurrió un error inesperado.')
+                    .' No se guardó nada: la afiliación, sus planes y sus afiliados se revirtieron.')
+                ->danger()
+                ->persistent()
+                ->send();
+
+            throw (new Halt)->rollBackDatabaseTransaction();
+        }
+
+        SecurityAudit::log('AUDIT_BUSINESS_PLAN_GENERATOR_CORPORATE_AFFILIATION_CREATED', 'business.affiliation-corporates.create-from-plan-generator', [
+            'plan_generator_id' => $plan->getKey(),
+            'affiliation_corporate_id' => $record->getKey(),
+            'affiliates' => $imported,
+            'plan_rows' => count($placements['plan_rows']),
+            'fee_anual' => $placements['annual'],
+            'assignment_signature' => $placements['signature'],
+        ]);
+
+        PlanGeneratorPreAffiliationSession::forget();
+
+        Notification::make()
+            ->title('Pre-afiliación corporativa creada')
+            ->body('Se cargaron '.$imported.' afiliado(s), cada uno en la cobertura y el rango de edad que le asignó.')
+            ->success()
+            ->send();
+    }
+
+    /**
+     * Camino previo para una sesión del generador sin plan corporativo
+     * resoluble: guarda la fila agregada de cada cobertura, sin padrón.
+     */
+    private function createAggregatedPlanGeneratorRows(AffiliationCorporate $record): void
+    {
         $payload = PlanGeneratorPreAffiliationSession::get();
         $dataRecords = is_array($payload['data_records'] ?? null) ? $payload['data_records'] : [];
-        $catalog = $this->planGeneratorCatalog;
 
         foreach ($dataRecords as $dataRecord) {
             if (! is_array($dataRecord)) {
                 continue;
             }
 
-            // Con el plan publicado en el catálogo, cada cobertura elegida se
-            // abre en una fila por rango etario, que es lo que muestra la tabla
-            // «Plan(es) Afiliado(s)» y lo que hace el flujo de cotizaciones
-            // corporativas de Negocios. Sin catálogo se guarda la fila agregada
-            // de siempre, para no perder la afiliación.
-            $rows = $catalog === null
-                ? [$dataRecord]
-                : PlanGeneratorPreAffiliationOptions::corporatePlanRowsForColumn(
-                    $catalog['plan'],
-                    $dataRecord,
-                    $catalog,
-                );
-
-            foreach ($rows as $row) {
-                AfilliationCorporatePlan::create([
-                    'affiliation_corporate_id' => $record->id,
-                    'code_affiliation' => $record->code,
-                    'plan_id' => $row['plan_id'] ?? 0,
-                    'coverage_id' => $row['coverage_id'] ?? null,
-                    'age_range_id' => $row['age_range_id'] ?? 0,
-                    'total_persons' => $row['total_persons'] ?? 0,
-                    'payment_frequency' => $record->payment_frequency,
-                    'fee' => $row['fee'] ?? 0,
-                    'subtotal_anual' => $row['subtotal_anual'] ?? 0,
-                    'subtotal_quarterly' => $row['subtotal_quarterly'] ?? 0,
-                    'subtotal_biannual' => $row['subtotal_biannual'] ?? 0,
-                    'subtotal_monthly' => $row['subtotal_monthly'] ?? 0,
-                    'status' => 'PRE-AFILIADO',
-                    'created_by' => Auth::user()->name,
-                ]);
-            }
+            AfilliationCorporatePlan::create([
+                'affiliation_corporate_id' => $record->id,
+                'code_affiliation' => $record->code,
+                'plan_id' => $dataRecord['plan_id'] ?? 0,
+                'coverage_id' => $dataRecord['coverage_id'] ?? null,
+                'age_range_id' => $dataRecord['age_range_id'] ?? 0,
+                'total_persons' => $dataRecord['total_persons'] ?? 0,
+                'payment_frequency' => $record->payment_frequency,
+                'fee' => $dataRecord['fee'] ?? 0,
+                'subtotal_anual' => $dataRecord['subtotal_anual'] ?? 0,
+                'subtotal_quarterly' => $dataRecord['subtotal_quarterly'] ?? 0,
+                'subtotal_biannual' => $dataRecord['subtotal_biannual'] ?? 0,
+                'subtotal_monthly' => $dataRecord['subtotal_monthly'] ?? 0,
+                'status' => 'PRE-AFILIADO',
+                'created_by' => Auth::user()->name,
+            ]);
         }
 
-        $plan = $this->planGeneratorFromSession();
-        $imported = $plan === null ? 0 : $this->copyPlanGeneratorPopulation($plan, $record);
-
-        $record->poblation = $imported > 0
-            ? $imported
-            : (int) ($payload['total_persons'] ?? 0);
+        $record->poblation = (int) ($payload['total_persons'] ?? 0);
         $record->save();
 
         PlanGeneratorPreAffiliationSession::forget();
 
         Notification::make()
             ->title('Pre-afiliación corporativa creada')
-            ->body($imported > 0
-                ? 'Se vincularon los planes del generador y se cargaron '.$imported.' afiliado(s) desde la población importada.'
-                : 'Los planes del generador fueron vinculados. Agregue los afiliados corporativos manualmente.')
+            ->body('Los planes del generador fueron vinculados. Agregue los afiliados corporativos manualmente.')
             ->success()
             ->send();
     }
 
     /**
      * Copia el padrón importado del plan generado a los afiliados corporativos,
-     * igual que el flujo de cotizaciones corporativas copia
-     * `corporate_quote_data`.
+     * cada uno con el plan, la cobertura y la tarifa anual del rango de edad en
+     * que el analista lo ubicó.
      *
      * Se inserta por lotes: un padrón corporativo pasa de las mil filas con
-     * facilidad y un `save()` por fila cuelga el request.
+     * facilidad y un `save()` por fila cuelga el request. Una fila que no esté
+     * en `$placements` no se copia, y el llamador lo detecta por el conteo.
+     *
+     * @param  array<int, array{plan_id: int, coverage_id: int, fee: float}>  $placements
      */
-    private function copyPlanGeneratorPopulation(PlanGenerator $plan, AffiliationCorporate $record): int
+    private function copyPlanGeneratorPopulation(PlanGenerator $plan, AffiliationCorporate $record, array $placements): int
     {
         $now = now();
         $inserted = 0;
+        $frequency = (string) $record->payment_frequency;
+        // `affiliate_corporates.created_by` es entero: guarda el id del usuario.
+        $createdBy = Auth::id();
+        $specificBusinessUnit = AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit($record->specific_business_unit);
 
         $plan->populations()
             ->getQuery()
+            ->reorder()
             ->orderBy('id')
-            ->chunkById(500, function ($populations) use ($record, $now, &$inserted): void {
-                $rows = $populations->map(fn (PlanGeneratorPopulation $population): array => [
-                    'affiliation_corporate_id' => $record->id,
-                    'last_name' => $population->last_name,
-                    'first_name' => $population->first_name,
-                    'nro_identificacion' => $population->nro_identificacion,
-                    'birth_date' => $population->birth_date,
-                    'age' => $population->age,
-                    'sex' => $population->sex,
-                    'phone' => $population->phone,
-                    'email' => $population->email,
-                    'condition_medical' => $population->condition_medical,
-                    'initial_date' => $population->initial_date,
-                    'position_company' => $population->position_company,
-                    'address' => $population->address,
-                    'full_name_emergency' => $population->full_name_emergency,
-                    'phone_emergency' => $population->phone_emergency,
-                    'status' => 'PRE-APROBADA',
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ])->all();
+            ->chunkById(500, function ($populations) use ($record, $now, $placements, $frequency, $createdBy, $specificBusinessUnit, &$inserted): void {
+                $rows = [];
+
+                foreach ($populations as $population) {
+                    /** @var PlanGeneratorPopulation $population */
+                    $placement = $placements[(int) $population->getKey()] ?? null;
+
+                    if ($placement === null) {
+                        continue;
+                    }
+
+                    $fee = $placement['fee'];
+
+                    $rows[] = [
+                        'affiliation_corporate_id' => $record->id,
+                        'last_name' => $population->last_name,
+                        'first_name' => $population->first_name,
+                        'nro_identificacion' => $population->nro_identificacion,
+                        'birth_date' => $population->birth_date,
+                        'age' => $population->age,
+                        'sex' => $population->sex,
+                        'phone' => $population->phone,
+                        'email' => $population->email,
+                        'condition_medical' => $population->condition_medical,
+                        'initial_date' => $population->initial_date,
+                        'position_company' => $population->position_company,
+                        'address' => $population->address,
+                        'full_name_emergency' => $population->full_name_emergency,
+                        'phone_emergency' => $population->phone_emergency,
+                        'plan_id' => $placement['plan_id'],
+                        'coverage_id' => $placement['coverage_id'],
+                        'fee' => $fee,
+                        'subtotal_anual' => $fee,
+                        'payment_frequency' => $frequency,
+                        'subtotal_payment_frequency' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($fee, $frequency), 2),
+                        'subtotal_daily' => round($fee / 30, 2),
+                        'business_unit_id' => $record->business_unit_id,
+                        'specific_business_unit' => $specificBusinessUnit,
+                        'business_line_id' => $record->business_line_id,
+                        'status' => 'PRE-APROBADA',
+                        'created_by' => $createdBy,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
 
                 if ($rows === []) {
                     return;

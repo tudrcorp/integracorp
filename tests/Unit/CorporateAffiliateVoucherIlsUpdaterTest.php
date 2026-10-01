@@ -25,7 +25,16 @@ it('centraliza la logica de voucher ils para afiliados corporativos', function (
         ->toContain('formatDateForStorage')
         ->toContain('numberDays');
 
+    // Las acciones de la tabla ya no escriben el voucher único: cargan un
+    // voucher por beneficio con tope (CorporateAffiliateIlsVoucherManager).
+    // El cálculo de días del updater sigue en uso desde el modal.
+    $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Support/CorporateAffiliateIlsVoucherForm.php');
+
     expect($relationManager)
-        ->toContain('CorporateAffiliateVoucherIlsUpdater::save')
-        ->toContain("->directory('vauches')");
+        ->toContain('CorporateAffiliateIlsVoucherForm::save')
+        ->not->toContain('CorporateAffiliateVoucherIlsUpdater::save');
+
+    expect($form)
+        ->toContain('CorporateAffiliateVoucherIlsUpdater::calculateNumberDays')
+        ->toContain('->directory(CorporateAffiliateIlsVoucherManager::DOCUMENT_DIRECTORY)');
 });

@@ -82,9 +82,97 @@ final class PlanGeneratorPreAffiliationSession
             )),
         ];
         $payload['total_persons'] = max(1, $population);
+        $payload['quoted_persons'] = max(1, $population);
         $payload['data_records'] = $records;
 
         self::put($payload);
+    }
+
+    /**
+     * Reemplaza los registros cotizados por la población **real** que el
+     * analista ubicó en cada cobertura (`PlanGeneratorCoverageAssignment`).
+     *
+     * El formulario de afiliación compara `persons` contra la suma de
+     * `total_persons` de los registros y calcula el total a pagar desde sus
+     * subtotales. Con la población cotizada, dos coberturas sumaban el doble de
+     * personas y el total nunca se calculaba. La firma deja a la creación
+     * verificar que nadie cambió las asignaciones después de continuar.
+     *
+     * Las coberturas elegidas sin nadie asignado no generan registro: no hay a
+     * quién cobrarle.
+     *
+     * @param  array<string, mixed>  $report  PlanGeneratorCoverageAssignment::report()
+     */
+    public static function storeCorporateAssignment(PlanGenerator $plan, array $report): void
+    {
+        $payload = self::get();
+
+        if ($payload === null || ($payload['type'] ?? null) !== self::TYPE_CORPORATE) {
+            return;
+        }
+
+        $records = [];
+        $persons = 0;
+
+        foreach ($report['by_coverage'] as $columnKey => $amounts) {
+            if ($amounts['persons'] === 0) {
+                continue;
+            }
+
+            $annual = (float) $amounts['annual'];
+            $persons += $amounts['persons'];
+
+            $records[] = self::dataRecordFromRow($plan, [
+                'column_key' => $columnKey,
+                'column_label' => $report['coverages'][$columnKey]['label'] ?? null,
+                'population' => $amounts['persons'],
+                'fee' => $annual / $amounts['persons'],
+                'subtotal_anual' => $annual,
+                'subtotal_biannual' => $annual / 2,
+                'subtotal_quarterly' => $annual / 4,
+                'subtotal_monthly' => $annual / 12,
+            ], self::TYPE_CORPORATE);
+        }
+
+        $payload['quoted_persons'] ??= $payload['total_persons'] ?? 0;
+        $payload['total_persons'] = $persons;
+        $payload['data_records'] = $records;
+        $payload['assignment_signature'] = $report['signature'];
+
+        self::put($payload);
+    }
+
+    /**
+     * Claves de las coberturas elegidas en «Aprobar cotización». Las sesiones
+     * anteriores a guardar `selection.column_keys` se leen de los registros.
+     *
+     * @return list<string>
+     */
+    public static function selectedColumnKeys(): array
+    {
+        $payload = self::get();
+
+        if ($payload === null) {
+            return [];
+        }
+
+        $keys = $payload['selection']['column_keys'] ?? null;
+
+        if (! is_array($keys)) {
+            $keys = array_column(array_filter((array) ($payload['data_records'] ?? []), 'is_array'), 'column_key');
+        }
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $key): string => is_string($key) ? $key : '', $keys),
+            static fn (string $key): bool => $key !== '',
+        )));
+    }
+
+    public static function assignmentSignature(): ?string
+    {
+        $signature = self::get()['assignment_signature'] ?? null;
+
+        return is_string($signature) && $signature !== '' ? $signature : null;
     }
 
     /**
