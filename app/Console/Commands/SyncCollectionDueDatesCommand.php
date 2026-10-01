@@ -15,7 +15,7 @@ class SyncCollectionDueDatesCommand extends Command
     protected $signature = 'collections:sync-due-dates
                             {--execute : Sin este flag solo muestra la vista previa}';
 
-    protected $description = 'Sincroniza la fecha de filtro de las cuotas con su fecha oficial de próximo pago. Sin --execute no escribe nada.';
+    protected $description = 'Alinea la fecha de filtro y la expiración de las cuotas con su fecha oficial de próximo pago. Sin --execute no escribe nada.';
 
     public function handle(): int
     {
@@ -44,8 +44,9 @@ class SyncCollectionDueDatesCommand extends Command
 
         $counts = array_count_values(array_column($plan, 'action'));
         $this->line(sprintf(
-            'Sincronizar: %d · Corregir formato: %d · Revisión manual (no se tocan): %d',
+            'Sincronizar: %d · Igualar expiración: %d · Corregir formato: %d · Revisión manual (no se tocan): %d',
             $counts[CollectionDueDateRepair::ACTION_SYNC] ?? 0,
+            $counts[CollectionDueDateRepair::ACTION_EXPIRATION] ?? 0,
             $counts[CollectionDueDateRepair::ACTION_FORMAT] ?? 0,
             $counts[CollectionDueDateRepair::ACTION_REVIEW] ?? 0,
         ));
@@ -71,13 +72,15 @@ class SyncCollectionDueDatesCommand extends Command
         SecurityAudit::log('AUDIT_COLLECTIONS_DUE_DATES_SYNCED', 'console.collections.sync-due-dates', [
             'synced' => $result['sync'],
             'formatted' => $result['format'],
+            'expiration_aligned' => $result['expiration'],
             'skipped' => $result['skipped'],
             'backup' => $backupPath,
         ]);
 
         $this->info(sprintf(
-            'Listo. Sincronizadas: %d · Formato corregido: %d · Sin tocar: %d',
+            'Listo. Sincronizadas: %d · Expiración igualada: %d · Formato corregido: %d · Sin tocar: %d',
             $result['sync'],
+            $result['expiration'],
             $result['format'],
             $result['skipped'],
         ));
@@ -90,6 +93,7 @@ class SyncCollectionDueDatesCommand extends Command
         return match ($action) {
             CollectionDueDateRepair::ACTION_SYNC => 'Sincronizar',
             CollectionDueDateRepair::ACTION_FORMAT => 'Formato',
+            CollectionDueDateRepair::ACTION_EXPIRATION => 'Igualar expiración',
             default => 'Revisar',
         };
     }

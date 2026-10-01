@@ -5,31 +5,42 @@ namespace App\Filament\Administration\Resources\Collections\Tables;
 use App\Http\Controllers\LogController;
 use App\Mail\MailAvisoDeCobro;
 use App\Models\Collection;
+use App\Support\Collections\CollectionAdjuster;
+use App\Support\Collections\CollectionAdjustmentAccess;
 use App\Support\Collections\CollectionDueDate;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class CollectionsTable
 {
@@ -40,11 +51,13 @@ class CollectionsTable
         return $table
             ->heading('Cuotas de cobranza')
             ->description('Una fila por cuota. Las cuotas por pagar cuya fecha ya pasó se marcan como vencidas. Use los filtros para acotar por estado, fecha de próximo pago o plan.')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'plan:id,description',
-                'agent:id,name',
-                'coverage:id,price',
-            ]))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->with([
+                    'plan:id,description',
+                    'agent:id,name',
+                    'coverage:id,price',
+                ])
+                ->withCount('adjustments'))
             ->defaultSort('created_at', 'desc')
             ->searchPlaceholder('Buscar por afiliado, cédula, aviso o afiliación')
             ->searchDebounce('350ms')
@@ -92,16 +105,15 @@ class CollectionsTable
                     ->weight('semibold')
                     ->alignEnd()
                     ->sortable(),
-                TextInputColumn::make('next_payment_date')
+                TextColumn::make('next_payment_date')
                     ->label('Próximo pago')
-                    ->tooltip('Puede corregir la fecha aquí mismo (formato dd/mm/aaaa). Los días y el estado se recalculan solos.')
-                    ->placeholder('dd/mm/aaaa')
-                    ->rules(['required', 'date_format:d/m/Y'])
-                    ->validationMessages([
-                        'required' => 'Escriba la fecha de próximo pago.',
-                        'date_format' => 'Use el formato dd/mm/aaaa, por ejemplo 15/10/2026.',
-                    ])
-                    ->sortable()
+                    ->icon(Heroicon::OutlinedCalendarDays)
+                    ->iconColor('gray')
+                    ->tooltip('Para corregir la fecha o el estado use «Ajustar cuota» en el menú de la fila.')
+                    ->description(fn (Collection $record): ?string => ($record->adjustments_count ?? 0) > 0
+                        ? 'Ajustada a mano ('.$record->adjustments_count.')'
+                        : null)
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('filter_next_payment_date', $direction === 'desc' ? 'desc' : 'asc'))
                     ->searchable(),
                 TextColumn::make('status')
                     ->label('Estado')
@@ -183,6 +195,10 @@ class CollectionsTable
                     })
                     ->placeholder('Todos los estados')
                     ->label('Estado'),
+                Filter::make('with_adjustments')
+                    ->label('Solo cuotas con ajustes manuales')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => $query->whereHas('adjustments')),
                 Filter::make('filter_next_payment_date')
                     ->label('Próximo pago')
                     ->schema([
@@ -378,13 +394,207 @@ class CollectionsTable
                         ->modalCancelActionLabel('Cerrar')
                         ->action(fn () => null),
 
+                    self::adjustAction(),
+                    self::adjustmentHistoryAction(),
+
                 ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    self::markAsPaidBulkAction(),
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * Corrige fecha y estado de una cuota con motivo y bitácora ({@see CollectionAdjuster}).
+     * Reemplaza la edición directa de la fecha en la tabla y por SQL.
+     */
+    public static function adjustAction(): Action
+    {
+        return Action::make('adjust_collection')
+            ->label('Ajustar cuota')
+            ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
+            ->color('warning')
+            ->visible(fn (): bool => CollectionAdjustmentAccess::userCan(Auth::user()))
+            ->modalHeading(fn (Collection $record): string => 'Ajustar cuota '.($record->collection_invoice_number ?: '#'.$record->getKey()))
+            ->modalDescription(fn (Collection $record): string => trim(($record->affiliate_full_name ?? '').' · '.($record->affiliation_code ?? ''), ' ·')
+                .'. Corrija la fecha de próximo pago o el estado. La expiración, los días y los filtros se recalculan solos, y el cambio queda registrado con su motivo.')
+            ->modalIcon(Heroicon::OutlinedAdjustmentsHorizontal)
+            ->modalWidth(Width::TwoExtraLarge)
+            ->modalSubmitActionLabel('Guardar ajuste')
+            ->fillForm(fn (Collection $record): array => [
+                'date' => CollectionDueDate::of($record)?->format('Y-m-d'),
+                'status' => array_key_exists(Str::upper((string) $record->status), CollectionAdjuster::statusOptions())
+                    ? Str::upper((string) $record->status)
+                    : null,
+                'expected_updated_at' => (string) $record->getRawOriginal('updated_at'),
+            ])
+            ->schema([
+                Hidden::make('expected_updated_at'),
+                Grid::make(2)->schema([
+                    DatePicker::make('date')
+                        ->label('Fecha de próximo pago')
+                        ->helperText('La expiración queda igual a esta fecha.')
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->closeOnDateSelection()
+                        ->required()
+                        ->live(),
+                    Select::make('status')
+                        ->label('Estado')
+                        ->options(CollectionAdjuster::statusOptions())
+                        ->helperText('«Pagado» aquí es un ajuste: no crea venta, recibo ni comisión.')
+                        ->native(false)
+                        ->required()
+                        ->live(),
+                ]),
+                Checkbox::make('confirm_unusual_date')
+                    ->label('Confirmo que la fecha es correcta aunque está lejos de hoy')
+                    ->visible(fn (Get $get): bool => CollectionAdjuster::isUnusualDate(CollectionDueDate::parse($get('date'))))
+                    ->accepted()
+                    ->validationMessages(['accepted' => 'Confirme que la fecha es correcta o corríjala.']),
+                Textarea::make('reason')
+                    ->label('Motivo del ajuste')
+                    ->placeholder('Ej.: pago verificado en el estado de cuenta del 12/03/2025; era data vieja sin registrar.')
+                    ->required()
+                    ->minLength(CollectionAdjuster::MIN_REASON_LENGTH)
+                    ->maxLength(1000)
+                    ->rows(3)
+                    ->validationMessages([
+                        'required' => 'Explique el motivo del ajuste.',
+                        'min' => 'El motivo debe tener al menos '.CollectionAdjuster::MIN_REASON_LENGTH.' caracteres.',
+                    ]),
+                Placeholder::make('preview')
+                    ->label('Vista previa del cambio')
+                    ->content(fn (Get $get, Collection $record): HtmlString => self::adjustmentPreview($record, $get('date'), $get('status'))),
+            ])
+            ->action(function (Collection $record, array $data, Action $action): void {
+                try {
+                    CollectionAdjuster::adjust($record, $data, Auth::user());
+                } catch (InvalidArgumentException $exception) {
+                    Notification::make()
+                        ->title('No se guardó el ajuste')
+                        ->body($exception->getMessage())
+                        ->danger()
+                        ->send();
+
+                    $action->halt();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Cuota ajustada')
+                    ->body('El cambio quedó registrado en el historial de la cuota.')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    public static function adjustmentHistoryAction(): Action
+    {
+        return Action::make('adjustment_history')
+            ->label('Historial de ajustes')
+            ->icon(Heroicon::OutlinedClock)
+            ->color('gray')
+            ->visible(fn (Collection $record): bool => ($record->adjustments_count ?? 0) > 0)
+            ->modalHeading(fn (Collection $record): string => 'Historial de ajustes · '.($record->collection_invoice_number ?: '#'.$record->getKey()))
+            ->modalWidth(Width::ThreeExtraLarge)
+            ->modalContent(fn (Collection $record): ViewContract => View::make('filament.administration.collections.adjustment-history', [
+                'adjustments' => $record->adjustments()->limit(100)->get(),
+                'labels' => self::adjustmentFieldLabels(),
+            ]))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar');
+    }
+
+    public static function markAsPaidBulkAction(): BulkAction
+    {
+        return BulkAction::make('mark_paid_historical')
+            ->label('Marcar como pagadas (data histórica)')
+            ->icon(Heroicon::OutlinedCheckBadge)
+            ->color('success')
+            ->visible(fn (): bool => CollectionAdjustmentAccess::userCan(Auth::user()))
+            ->modalHeading('Marcar cuotas como pagadas')
+            ->modalDescription(fn (EloquentCollection $records): string => 'Se marcarán '.$records->count().' '.($records->count() === 1 ? 'cuota' : 'cuotas')
+                .' como pagadas por ajuste de data histórica. No se crea venta, recibo ni comisión, y cada cuota queda en su historial con este motivo. '
+                .'Solo se aceptan cuotas «por pagar»; máximo '.CollectionAdjuster::MAX_BULK.' por vez. Si alguna no cumple, no se marca ninguna.')
+            ->modalIcon(Heroicon::OutlinedCheckBadge)
+            ->modalSubmitActionLabel('Marcar como pagadas')
+            ->schema([
+                Textarea::make('reason')
+                    ->label('Motivo del ajuste')
+                    ->placeholder('Ej.: cuotas de 2024 pagadas en efectivo, verificadas con el cliente; data vieja sin registrar.')
+                    ->required()
+                    ->minLength(CollectionAdjuster::MIN_REASON_LENGTH)
+                    ->maxLength(1000)
+                    ->rows(3),
+            ])
+            ->deselectRecordsAfterCompletion()
+            ->action(function (EloquentCollection $records, array $data, BulkAction $action): void {
+                try {
+                    $count = CollectionAdjuster::markManyAsPaid($records, $data['reason'] ?? null, Auth::user());
+                } catch (InvalidArgumentException $exception) {
+                    Notification::make()
+                        ->title('No se marcó ninguna cuota')
+                        ->body($exception->getMessage())
+                        ->danger()
+                        ->persistent()
+                        ->send();
+
+                    $action->halt();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Cuotas marcadas como pagadas')
+                    ->body($count.' '.($count === 1 ? 'cuota quedó' : 'cuotas quedaron').' registradas en su historial de ajustes.')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function adjustmentFieldLabels(): array
+    {
+        return [
+            'next_payment_date' => 'Próximo pago',
+            'expiration_date' => 'Expiración',
+            'status' => 'Estado',
+        ];
+    }
+
+    private static function adjustmentPreview(Collection $record, mixed $date, mixed $status): HtmlString
+    {
+        $changes = CollectionAdjuster::previewChanges($record, $date, is_string($status) ? $status : null);
+        $blocked = is_string($status) && $status !== '' ? CollectionAdjuster::blockingReason($record, $status) : null;
+        $labels = self::adjustmentFieldLabels();
+
+        $html = '';
+
+        if ($blocked !== null) {
+            $html .= '<div style="margin-bottom:8px;padding:8px 10px;border-radius:10px;background:rgba(220,38,38,.1);color:#dc2626;font-size:.85rem;font-weight:600;">'.e($blocked).'</div>';
+        }
+
+        if ($changes === []) {
+            return new HtmlString($html.'<span class="text-gray-600 dark:text-gray-300" style="font-size:.85rem;">Sin cambios todavía.</span>');
+        }
+
+        foreach ($changes as $field => $change) {
+            $html .= '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;font-size:.85rem;padding:2px 0;">'
+                .'<span class="text-gray-600 dark:text-gray-300" style="min-width:110px;font-weight:600;">'.e($labels[$field] ?? $field).'</span>'
+                .'<span style="text-decoration:line-through;opacity:.7;">'.e($change['before'] ?? '—').'</span>'
+                .'<span>→</span>'
+                .'<span class="text-gray-900 dark:text-white" style="font-weight:700;">'.e($change['after'] ?? '—').'</span>'
+                .'</div>';
+        }
+
+        return new HtmlString($html);
     }
 
     /**

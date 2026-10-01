@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Support\Collections\CollectionDueDate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Collection extends Model
 {
@@ -117,5 +118,13 @@ class Collection extends Model
     public function agencyByCode(): BelongsTo
     {
         return $this->belongsTo(Agency::class, 'code_agency', 'code');
+    }
+
+    /**
+     * Ajustes manuales hechos desde «Ajustar cuota», del más reciente al más antiguo.
+     */
+    public function adjustments(): HasMany
+    {
+        return $this->hasMany(CollectionAdjustment::class)->latest('id');
     }
 }

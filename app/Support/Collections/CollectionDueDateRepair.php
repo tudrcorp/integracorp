@@ -9,22 +9,25 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Repara cuotas cuya fecha oficial (`next_payment_date`) y su copia para filtros
- * (`filter_next_payment_date`) quedaron distintas, o cuya fecha oficial está escrita
- * con guiones.
+ * Repara cuotas cuyas fechas no cumplen la regla de {@see CollectionDueDate}: la
+ * oficial (`next_payment_date`) en `dd/mm/aaaa`, y `filter_next_payment_date` y
+ * `expiration_date` iguales a ella.
  *
  * Clasifica antes de tocar nada:
- * - `sync`: la fecha de expiración cuadra con la oficial (se graba con ella, hasta
- *   30 días después) → la copia se recalcula desde la oficial.
- * - `format`: misma fecha, solo cambia el formato (`dd-mm-aaaa` → `dd/mm/aaaa`).
- * - `review`: no hay evidencia suficiente (oficial ilegible, o la expiración cuadra
- *   con la copia y no con la oficial). Se lista y **no se toca**.
+ * - `sync`: la copia para filtros es otra fecha y la expiración respalda a la oficial
+ *   (se grababa con ella, hasta 30 días después) → se recalcula desde la oficial.
+ * - `expiration`: la copia ya coincide; solo la expiración es otra fecha → se iguala.
+ * - `format`: mismas fechas escritas con otro formato (`dd-mm-aaaa` → `dd/mm/aaaa`).
+ * - `review`: no hay evidencia suficiente (oficial ilegible, o la expiración respalda
+ *   a la copia y no a la oficial). Se lista y **no se toca**.
  */
 final class CollectionDueDateRepair
 {
     public const ACTION_SYNC = 'sync';
 
     public const ACTION_FORMAT = 'format';
+
+    public const ACTION_EXPIRATION = 'expiration';
 
     public const ACTION_REVIEW = 'review';
 
@@ -56,14 +59,20 @@ final class CollectionDueDateRepair
         }
 
         $sameDay = $filter !== null && $filter->equalTo($official);
-        $canonical = $rawOfficial === $official->format(CollectionDueDate::DISPLAY_FORMAT);
-
-        if ($sameDay && $canonical) {
-            return null;
-        }
 
         if ($sameDay) {
-            return ['action' => self::ACTION_FORMAT, 'reason' => 'Misma fecha escrita con otro formato.'] + $base;
+            $display = $official->format(CollectionDueDate::DISPLAY_FORMAT);
+            $rawExpiration = trim((string) ($collection->expiration_date ?? ''));
+
+            if ($expiration === null || ! $expiration->equalTo($official)) {
+                return ['action' => self::ACTION_EXPIRATION, 'reason' => 'La expiración no coincide con la fecha de próximo pago.'] + $base;
+            }
+
+            if ($rawOfficial !== $display || $rawExpiration !== $display) {
+                return ['action' => self::ACTION_FORMAT, 'reason' => 'Mismas fechas escritas con otro formato.'] + $base;
+            }
+
+            return null;
         }
 
         if (self::expirationMatches($expiration, $official)) {
@@ -114,19 +123,19 @@ final class CollectionDueDateRepair
     }
 
     /**
-     * Aplica solo `sync` y `format`, en una transacción. Guarda por Eloquent para que
+     * Aplica todo menos `review`, en una transacción. Guarda por Eloquent para que
      * el evento `saving` derive la copia desde la oficial ({@see CollectionDueDate::syncColumns()}).
      *
      * @param  list<array{id: int, action: string}>  $plan
-     * @return array{sync: int, format: int, skipped: int}
+     * @return array{sync: int, format: int, expiration: int, skipped: int}
      */
     public static function apply(array $plan): array
     {
-        $result = ['sync' => 0, 'format' => 0, 'skipped' => 0];
+        $result = ['sync' => 0, 'format' => 0, 'expiration' => 0, 'skipped' => 0];
 
         DB::transaction(function () use ($plan, &$result): void {
             foreach ($plan as $row) {
-                if (! in_array($row['action'], [self::ACTION_SYNC, self::ACTION_FORMAT], true)) {
+                if (! in_array($row['action'], [self::ACTION_SYNC, self::ACTION_FORMAT, self::ACTION_EXPIRATION], true)) {
                     $result['skipped']++;
 
                     continue;
