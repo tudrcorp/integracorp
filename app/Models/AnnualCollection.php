@@ -104,31 +104,4 @@ class AnnualCollection extends Model
     {
         return $this->hasMany(Collection::class, 'sale_id', 'sale_id');
     }
-
-    /**
-     * Cuotas pendientes del mismo año de contrato, de la más próxima a la más lejana.
-     * La primera es la que el reporte de cuentas por cobrar muestra.
-     */
-    public function pendingCollections(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(Collection::class, 'sale_id', 'sale_id')
-            ->where('status', 'POR PAGAR')
-            ->orderBy('filter_next_payment_date')
-            ->orderBy('id');
-    }
-
-    public function affiliationByCode(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(Affiliation::class, 'affiliation_code', 'code');
-    }
-
-    public function affiliationCorporateByCode(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(AffiliationCorporate::class, 'affiliation_code', 'code');
-    }
-
-    public function agencyByCode(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(Agency::class, 'code_agency', 'code');
-    }
 }

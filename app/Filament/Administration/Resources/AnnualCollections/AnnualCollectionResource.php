@@ -7,7 +7,7 @@ namespace App\Filament\Administration\Resources\AnnualCollections;
 use App\Filament\Administration\Resources\AnnualCollections\Pages\ListAnnualCollections;
 use App\Filament\Administration\Resources\AnnualCollections\Tables\AnnualCollectionsTable;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
-use App\Models\AnnualCollection;
+use App\Models\Collection;
 use App\Support\Collections\CollectionReceivableReport;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,17 +17,19 @@ use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 /**
- * Cobranza por mes: reporte de cuentas por cobrar (solo afiliaciones con cuotas
- * pendientes).
+ * Cobranza por mes: reporte de cuentas por cobrar.
  *
- * Es de consulta: no crea, edita ni borra registros. Las filas nacen al registrar el
- * pago de una afiliación y sus cuotas se marcan como pagadas desde ese flujo.
+ * Sale de las cuotas reales (`collections`), no de `annual_collections`: una fila por
+ * afiliación con su próxima cuota pendiente. Es de consulta: no crea, edita ni borra.
  */
 class AnnualCollectionResource extends Resource
 {
     use AuthorizesDepartmentNavigation;
 
-    protected static ?string $model = AnnualCollection::class;
+    protected static ?string $model = Collection::class;
+
+    /** El modelo es `Collection`: sin esto el slug chocaría con Gestión de Cobranza. */
+    protected static ?string $slug = 'annual-collections';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-list';
 
@@ -41,7 +43,7 @@ class AnnualCollectionResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return CollectionReceivableReport::scopePending(parent::getEloquentQuery());
+        return CollectionReceivableReport::scopeNextPendingPerAffiliation(parent::getEloquentQuery());
     }
 
     public static function table(Table $table): Table

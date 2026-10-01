@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\Collections\CollectionDueDate;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Collection extends Model
 {
@@ -39,8 +41,19 @@ class Collection extends Model
         'created_by',
         'bank',
         'filter_next_payment_date',
-        
+
     ];
+
+    /**
+     * La fecha oficial de la cuota es `next_payment_date`; `filter_next_payment_date`
+     * se deriva de ella al guardar, así que nunca quedan distintas.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Collection $collection): void {
+            CollectionDueDate::syncColumns($collection);
+        });
+    }
 
     public function affiliation()
     {
@@ -87,5 +100,22 @@ class Collection extends Model
         return $this->belongsTo(Agent::class);
     }
 
-    
+    /**
+     * La cuota guarda el código de la afiliación, no su id: `affiliation()` apunta a
+     * una columna `affiliation_id` que esta tabla no tiene.
+     */
+    public function affiliationByCode(): BelongsTo
+    {
+        return $this->belongsTo(Affiliation::class, 'affiliation_code', 'code');
+    }
+
+    public function affiliationCorporateByCode(): BelongsTo
+    {
+        return $this->belongsTo(AffiliationCorporate::class, 'affiliation_code', 'code');
+    }
+
+    public function agencyByCode(): BelongsTo
+    {
+        return $this->belongsTo(Agency::class, 'code_agency', 'code');
+    }
 }

@@ -5,6 +5,7 @@ namespace App\Filament\Administration\Resources\Collections\Tables;
 use App\Http\Controllers\LogController;
 use App\Mail\MailAvisoDeCobro;
 use App\Models\Collection;
+use App\Support\Collections\CollectionDueDate;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -32,7 +33,7 @@ use Illuminate\Support\Str;
 
 class CollectionsTable
 {
-    public const STATUS_OVERDUE = 'VENCIDO';
+    public const STATUS_OVERDUE = CollectionDueDate::STATUS_OVERDUE;
 
     public static function configure(Table $table): Table
     {
@@ -93,8 +94,13 @@ class CollectionsTable
                     ->sortable(),
                 TextInputColumn::make('next_payment_date')
                     ->label('Próximo pago')
-                    ->tooltip('Puede corregir la fecha aquí mismo (formato dd/mm/aaaa).')
+                    ->tooltip('Puede corregir la fecha aquí mismo (formato dd/mm/aaaa). Los días y el estado se recalculan solos.')
                     ->placeholder('dd/mm/aaaa')
+                    ->rules(['required', 'date_format:d/m/Y'])
+                    ->validationMessages([
+                        'required' => 'Escriba la fecha de próximo pago.',
+                        'date_format' => 'Use el formato dd/mm/aaaa, por ejemplo 15/10/2026.',
+                    ])
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('status')
@@ -383,53 +389,23 @@ class CollectionsTable
 
     /**
      * Estado para mostrar: una cuota POR PAGAR con la fecha de próximo pago ya pasada
-     * se muestra como VENCIDO. No cambia el estado guardado.
+     * se muestra como VENCIDO. No cambia el estado guardado. Mismo cálculo que
+     * «Cobranza por mes» ({@see CollectionDueDate}).
      */
     public static function displayStatus(Collection $record, ?CarbonImmutable $today = null): string
     {
-        $status = Str::upper(trim((string) $record->status));
-        $days = self::daysUntilDue($record, $today);
-
-        if ($status === 'POR PAGAR' && $days !== null && $days < 0) {
-            return self::STATUS_OVERDUE;
-        }
-
-        return $status !== '' ? $status : 'SIN ESTADO';
+        return CollectionDueDate::displayStatus($record, $today);
     }
 
     public static function dueLabel(Collection $record, ?CarbonImmutable $today = null): ?string
     {
-        if (Str::upper(trim((string) $record->status)) !== 'POR PAGAR') {
-            return null;
-        }
+        $label = CollectionDueDate::daysLabel($record, $today);
 
-        $days = self::daysUntilDue($record, $today);
-
-        return match (true) {
-            $days === null => null,
-            $days < 0 => abs($days).' '.(abs($days) === 1 ? 'día' : 'días').' de atraso',
-            $days === 0 => 'Vence hoy',
-            default => 'Vence en '.$days.' '.($days === 1 ? 'día' : 'días'),
-        };
+        return $label === 'Sin fecha' ? null : $label;
     }
 
     public static function isCorporate(?string $type): bool
     {
         return str_contains(Str::upper(Str::ascii((string) $type)), 'CORPORATIVA');
-    }
-
-    private static function daysUntilDue(Collection $record, ?CarbonImmutable $today = null): ?int
-    {
-        if (blank($record->filter_next_payment_date)) {
-            return null;
-        }
-
-        try {
-            $due = CarbonImmutable::parse((string) $record->filter_next_payment_date)->startOfDay();
-        } catch (\Throwable) {
-            return null;
-        }
-
-        return (int) ($today ?? CarbonImmutable::today())->diffInDays($due, false);
     }
 }

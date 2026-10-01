@@ -9,7 +9,6 @@ use App\Http\Controllers\CollectionController;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\Agency;
-use App\Models\AnnualCollection;
 use App\Models\Collection;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use App\Support\Collections\CollectionReceivableReport;
@@ -28,9 +27,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Reporte de cuentas por cobrar: una fila por afiliación y año de contrato con su
- * próxima cuota pendiente, con las columnas y el orden del «Reporte global de cuentas
- * por cobrar» que usa Administración.
+ * Reporte de cuentas por cobrar: una fila por afiliación con su próxima cuota
+ * pendiente (cuotas reales de `collections`), con las columnas y el orden del
+ * «Reporte global de cuentas por cobrar» que usa Administración.
  */
 class AnnualCollectionsTable
 {
@@ -40,7 +39,7 @@ class AnnualCollectionsTable
             ->heading('Reporte global de cuentas por cobrar · Planes Tu Doctor en Casa')
             ->description('Fecha actual: '.CarbonImmutable::today()->format('d/m/Y').'. Una fila por afiliación con su próxima cuota pendiente. Use el filtro «Vencimiento» para ver o descargar por días de atraso.')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(CollectionReceivableReport::eagerLoads()))
-            ->defaultSort(fn (Builder $query): Builder => $query->orderByRaw(CollectionReceivableReport::nextDueSql().' asc'))
+            ->defaultSort('filter_next_payment_date', 'asc')
             ->striped()
             ->columns(self::columns())
             ->filters(self::filters(), layout: FiltersLayout::AboveContentCollapsible)
@@ -64,11 +63,11 @@ class AnnualCollectionsTable
             TextColumn::make('include_date')
                 ->label('Fecha de inclusión o emisión')
                 ->sortable(query: fn (Builder $query, string $direction): Builder => $query
-                    ->orderByRaw("STR_TO_DATE(include_date, '%d/%m/%Y') ".($direction === 'desc' ? 'desc' : 'asc'))),
+                    ->orderByRaw("STR_TO_DATE(collections.include_date, '%d/%m/%Y') ".($direction === 'desc' ? 'desc' : 'asc'))),
             TextColumn::make('affiliate_full_name')
                 ->label('Afiliado o titular')
                 ->weight('semibold')
-                ->description(fn (AnnualCollection $record): ?string => $record->affiliation_code)
+                ->description(fn (Collection $record): ?string => $record->affiliation_code)
                 ->wrap()
                 ->searchable(['affiliate_full_name', 'affiliation_code']),
             TextColumn::make('affiliate_ci_rif')
@@ -76,7 +75,7 @@ class AnnualCollectionsTable
                 ->searchable(),
             TextColumn::make('payer_name')
                 ->label('Tomador')
-                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::payerName($record))
+                ->state(fn (Collection $record): ?string => CollectionReceivableReport::payerName($record))
                 ->wrap()
                 ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(function (Builder $query) use ($search): void {
                     $query
@@ -85,7 +84,7 @@ class AnnualCollectionsTable
                 })),
             TextColumn::make('payer_document')
                 ->label('C.I./R.I.F. tomador')
-                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::payerDocument($record)),
+                ->state(fn (Collection $record): ?string => CollectionReceivableReport::payerDocument($record)),
             TextColumn::make('affiliate_phone')
                 ->label('Teléfono')
                 ->searchable()
@@ -96,7 +95,7 @@ class AnnualCollectionsTable
                 ->toggleable(),
             TextColumn::make('plan_label')
                 ->label('Plan')
-                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::planLabel($record))
+                ->state(fn (Collection $record): ?string => CollectionReceivableReport::planLabel($record))
                 ->badge()
                 ->color('info'),
             TextColumn::make('persons')
@@ -104,7 +103,7 @@ class AnnualCollectionsTable
                 ->alignCenter(),
             TextColumn::make('agency_label')
                 ->label('Agencia')
-                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::agencyLabel($record))
+                ->state(fn (Collection $record): ?string => CollectionReceivableReport::agencyLabel($record))
                 ->wrap(),
             TextColumn::make('agent.name')
                 ->label('Agente')
@@ -112,46 +111,46 @@ class AnnualCollectionsTable
                 ->wrap(),
             TextColumn::make('annual_fee')
                 ->label('Tarifa anual')
-                ->state(fn (AnnualCollection $record): ?float => CollectionReceivableReport::annualFee($record))
+                ->state(fn (Collection $record): ?float => CollectionReceivableReport::annualFee($record))
                 ->money('USD')
                 ->alignEnd(),
             TextColumn::make('effective_date')
                 ->label('Fecha de vigencia')
-                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::effectiveDate($record)),
+                ->state(fn (Collection $record): ?string => CollectionReceivableReport::effectiveDate($record)),
             TextColumn::make('payment_frequency')
                 ->label('Fraccionamiento de cuotas')
-                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::paymentFrequency($record))
+                ->state(fn (Collection $record): ?string => CollectionReceivableReport::paymentFrequency($record))
                 ->badge()
                 ->color('gray'),
             TextColumn::make('installment')
                 ->label('Periodos de pago')
-                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::installmentLabel($record))
+                ->state(fn (Collection $record): ?string => CollectionReceivableReport::installmentLabel($record))
                 ->alignCenter(),
             TextColumn::make('installment_amount')
                 ->label('Monto de la cuota')
-                ->state(fn (AnnualCollection $record): ?float => CollectionReceivableReport::installmentAmount($record))
+                ->state(fn (Collection $record): ?float => CollectionReceivableReport::installmentAmount($record))
                 ->money('USD')
                 ->alignEnd()
                 ->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('due_date')
                 ->label('Fecha de vencimiento')
-                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::dueDate($record)?->format('d/m/Y'))
+                ->state(fn (Collection $record): ?string => CollectionReceivableReport::dueDate($record)?->format('d/m/Y'))
                 ->weight('semibold')
                 ->sortable(query: fn (Builder $query, string $direction): Builder => $query
-                    ->orderByRaw(CollectionReceivableReport::nextDueSql().' '.($direction === 'desc' ? 'desc' : 'asc'))),
+                    ->orderBy('filter_next_payment_date', $direction === 'desc' ? 'desc' : 'asc')),
             TextColumn::make('collection_status')
                 ->label('Estatus de cobro')
-                ->state(fn (AnnualCollection $record): string => CollectionReceivableReport::collectionStatus($record))
+                ->state(fn (Collection $record): string => CollectionReceivableReport::collectionStatus($record))
                 ->badge()
                 ->color(fn (string $state): string => $state === CollectionReceivableReport::STATUS_OVERDUE ? 'danger' : 'warning'),
             TextColumn::make('days')
                 ->label('Días')
-                ->state(fn (AnnualCollection $record): string => CollectionReceivableReport::daysLabel($record))
-                ->color(fn (AnnualCollection $record): string => CollectionReceivableReport::collectionStatus($record) === CollectionReceivableReport::STATUS_OVERDUE ? 'danger' : 'gray')
+                ->state(fn (Collection $record): string => CollectionReceivableReport::daysLabel($record))
+                ->color(fn (Collection $record): string => CollectionReceivableReport::collectionStatus($record) === CollectionReceivableReport::STATUS_OVERDUE ? 'danger' : 'gray')
                 ->weight('semibold'),
             TextColumn::make('affiliate_status_label')
                 ->label('Estatus del afiliado o titular')
-                ->state(fn (AnnualCollection $record): ?string => CollectionReceivableReport::affiliateStatus($record))
+                ->state(fn (Collection $record): ?string => CollectionReceivableReport::affiliateStatus($record))
                 ->badge()
                 ->color(fn (?string $state): string => match ($state) {
                     'ACTIVA', 'ACTIVO' => 'success',
