@@ -195,16 +195,18 @@ class OperationAccountsPayableForm
                             ->validationMessages([
                                 'min_date' => 'El pago no puede ser anterior a la fecha de la factura.',
                             ]),
-                        Select::make('national_bank')
-                            ->label('Banco nacional')
-                            ->options(BankCatalog::national())
-                            ->searchable()
-                            ->visible(fn (Get $get): bool => ! self::isPending($get)),
-                        Select::make('international_bank')
-                            ->label('Banco internacional')
-                            ->options(BankCatalog::international())
-                            ->searchable()
-                            ->visible(fn (Get $get): bool => ! self::isPending($get)),
+                        BankCatalog::configureNationalSelect(
+                            Select::make('national_bank')
+                                ->label('Banco nacional')
+                                ->helperText('Si no aparece en la lista, usa «Agregar banco».')
+                                ->visible(fn (Get $get): bool => ! self::isPending($get)),
+                        ),
+                        BankCatalog::configureInternationalSelect(
+                            Select::make('international_bank')
+                                ->label('Banco internacional')
+                                ->helperText('Si no aparece en la lista, usa «Agregar banco».')
+                                ->visible(fn (Get $get): bool => ! self::isPending($get)),
+                        ),
                         TextInput::make('payment_amount_usd')
                             ->label('Monto del pago en US$')
                             ->numeric()

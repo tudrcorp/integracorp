@@ -81,6 +81,22 @@ it('oculta el inbox del Product Owner a la cola global de sistemas', function ()
         ->toContain('HelpdeskBusinessScrumRoles::isProductOwnerUser');
 });
 
+it('oculta el inbox del Product Owner a la cola global de sistemas', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Support/HelpdeskTicketVisibility.php';
+
+    expect(file_get_contents($path))
+        ->toContain('hideProductOwnerInboxUnlessMine')
+        ->toContain('HelpdeskBusinessScrumRoles::isProductOwnerUser');
+});
+
+it('oculta el inbox del Product Owner a la cola global de sistemas', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Support/HelpdeskTicketVisibility.php';
+
+    expect(file_get_contents($path))
+        ->toContain('hideProductOwnerInboxUnlessMine')
+        ->toContain('HelpdeskBusinessScrumRoles::isProductOwnerUser');
+});
+
 it('tabs de cola global solo se registran para SISTEMAS o SUPERADMIN', function (): void {
     $path = dirname(__DIR__, 2).'/app/Support/HelpdeskTableConfigurator.php';
 

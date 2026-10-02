@@ -115,7 +115,7 @@ class CorporateQuoteRequestsByAgencyTable extends TableWidget
             typeRelation: 'typeAgency',
             searchPlaceholder: 'Buscar agencia o código…',
             emptyHeading: 'Sin solicitudes por agencia',
-            emptyDescription: 'Las solicitudes Dress Taylor aparecerán aquí agrupadas por agencia.',
+            emptyDescription: 'Las solicitudes Taylor Made aparecerán aquí agrupadas por agencia.',
             heading: false,
         )
             ->recordActionsColumnLabel('')
@@ -127,9 +127,9 @@ class CorporateQuoteRequestsByAgencyTable extends TableWidget
                     ->extraAttributes(['class' => 'iq-ranking-filter-btn'])
                     ->action(fn (Agency $record): mixed => $this->selectAgency($record)),
                 Action::make('viewRequestsWithoutAgent')
-                    ->label('Ver solicitudes sin agente')
-                    ->tooltip('Solicitudes de esta agencia que no tienen un agente asignado')
-                    ->icon(Heroicon::OutlinedNoSymbol)
+                    ->label('Ver solicitudes por agencia')
+                    ->tooltip('Ver solicitudes de esta agencia en el listado')
+                    ->icon(Heroicon::DocumentText)
                     ->color(fn (Agency $record): string => $this->selectedAgencyIdForUnassignedRequests === $record->id ? 'warning' : 'gray')
                     ->extraAttributes(fn (Agency $record): array => [
                         'class' => $this->selectedAgencyIdForUnassignedRequests === $record->id

@@ -24,9 +24,9 @@ it('registra los widgets de resumen, ranking y canal en el listado de solicitude
 
     expect($page->exposedHeaderWidgets())->toBe([
         StatsOverviewTotalCorporateQuoteRequest::class,
+        CorporateQuoteRequestChannelChart::class,
         CorporateQuoteRequestsByAgencyTable::class,
         CorporateQuoteRequestsByAgentTable::class,
-        CorporateQuoteRequestChannelChart::class,
     ]);
 
     expect($page->exposedHeaderWidgetsColumns())->toBe([

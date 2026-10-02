@@ -28,6 +28,22 @@ it('mapea el estatus revertido sin romper las pestañas', function (): void {
         ->and(array_keys($definitions))->toHaveCount(count(HelpdeskTaskStatusOptions::all()));
 });
 
+it('mapea el estatus revertido sin romper las pestañas', function (): void {
+    $definitions = HelpdeskTableConfigurator::statusTabDefinitions();
+
+    expect($definitions)->toHaveKey('revertido')
+        ->and($definitions['revertido'][0])->toBe(HelpdeskTaskStatusOptions::STATUS_REVERTED)
+        ->and(array_keys($definitions))->toHaveCount(count(HelpdeskTaskStatusOptions::all()));
+});
+
+it('mapea el estatus revertido sin romper las pestañas', function (): void {
+    $definitions = HelpdeskTableConfigurator::statusTabDefinitions();
+
+    expect($definitions)->toHaveKey('revertido')
+        ->and($definitions['revertido'][0])->toBe(HelpdeskTaskStatusOptions::STATUS_REVERTED)
+        ->and(array_keys($definitions))->toHaveCount(count(HelpdeskTaskStatusOptions::all()));
+});
+
 it('HelpdeskTableConfigurator expone tabs de cola global cuando el usuario puede verla', function (): void {
     $path = dirname(__DIR__, 2).'/app/Support/HelpdeskTableConfigurator.php';
 

@@ -438,6 +438,7 @@ class AffiliationsTable
                         'ANUAL' => 'ANUAL',
                         'TRIMESTRAL' => 'TRIMESTRAL',
                         'SEMESTRAL' => 'SEMESTRAL',
+                        'MENSUAL' => 'MENSUAL',
                     ]),
                 AffiliationWhiteCompany::tableFilter(),
             ])

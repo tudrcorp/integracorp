@@ -149,3 +149,23 @@ it('muestra VIP de facturación y línea directa en el infolist de agente', func
         ->toContain("->label('VIP (facturación)')")
         ->toContain("->label('Línea directa')");
 });
+
+it('muestra VIP de facturación y línea directa en el infolist de agente', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/AgentInfolist.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain('CommercialVipFacturacion::nameWithVipStarsHtml')
+        ->toContain("->label('VIP (facturación)')")
+        ->toContain("->label('Línea directa')");
+});
+
+it('muestra VIP de facturación y línea directa en el infolist de agente', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Shared/CommercialStructure/AgentInfolist.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain('CommercialVipFacturacion::nameWithVipStarsHtml')
+        ->toContain("->label('VIP (facturación)')")
+        ->toContain("->label('Línea directa')");
+});

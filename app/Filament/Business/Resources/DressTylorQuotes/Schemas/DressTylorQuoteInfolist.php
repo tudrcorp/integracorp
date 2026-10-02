@@ -15,7 +15,7 @@ class DressTylorQuoteInfolist
     {
         return $schema
             ->components([
-                Section::make('Cotización Dress Tylor')
+                Section::make('Cotización Taylor Made')
                     ->description(fn (DressTylorQuote $record) => $record->quote_structure
                         ? 'Estructura guardada el '.($record->updated_at?->format('d/m/Y H:i') ?? $record->created_at->format('d/m/Y H:i'))
                         : 'Sin estructura de cotización guardada.')

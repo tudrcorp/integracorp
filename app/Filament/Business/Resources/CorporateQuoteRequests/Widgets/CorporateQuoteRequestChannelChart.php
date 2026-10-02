@@ -19,7 +19,7 @@ class CorporateQuoteRequestChannelChart extends ChartWidget
 
     protected ?string $heading = 'SOLICITUDES POR AGENTE O AGENCIA';
 
-    protected ?string $description = 'Histórico mensual de solicitudes Dress Taylor. Pasa el cursor sobre un mes para ver el desglose TDEC / TDEV.';
+    protected ?string $description = 'Histórico mensual de solicitudes Taylor Made. Pasa el cursor sobre un mes para ver el desglose TDEC / TDEV.';
 
     protected ?string $maxHeight = '480px';
 
@@ -113,7 +113,7 @@ class CorporateQuoteRequestChannelChart extends ChartWidget
         return [
             'datasets' => [
                 $this->makeBarDataset(
-                    "Solicitudes Dress Taylor ({$year})",
+                    "Solicitudes Taylor Made ({$year})",
                     $values,
                     [
                         'tdecCounts' => $companyCounts['tdec'],

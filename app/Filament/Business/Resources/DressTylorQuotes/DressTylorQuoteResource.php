@@ -27,7 +27,7 @@ class DressTylorQuoteResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'COTIZACIONES';
 
-    protected static ?string $navigationLabel = 'Cotizador';
+    protected static ?string $navigationLabel = 'Cotizador Taylor Made';
 
     public static function form(Schema $schema): Schema
     {

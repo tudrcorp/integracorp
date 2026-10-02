@@ -89,7 +89,7 @@ it('etiqueta dress tylor en el listado de cotización', function (): void {
         'type' => 'DRESS-TAILOR',
     ]);
 
-    expect(PlanQuotability::optionLabel($plan))->toBe('Plan a medida (Dress Tylor)')
+    expect(PlanQuotability::optionLabel($plan))->toBe('Plan a medida (Taylor Made)')
         ->and(PlanQuotability::tableLabel($plan))->toBe('No cotizable');
 });
 

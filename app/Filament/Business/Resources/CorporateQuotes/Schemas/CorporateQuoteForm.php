@@ -152,7 +152,7 @@ class CorporateQuoteForm
                                                     ->label('Categoría de planes')
                                                     ->options([
                                                         QuoteAgeRangeSelection::TYPE_BASICO => 'Básico',
-                                                        QuoteAgeRangeSelection::TYPE_DRESS_TAILOR => 'Dress Tylor',
+                                                        QuoteAgeRangeSelection::TYPE_DRESS_TAILOR => 'Taylor Made',
                                                     ])
                                                     ->default(QuoteAgeRangeSelection::TYPE_BASICO)
                                                     ->inline()

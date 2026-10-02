@@ -2,31 +2,28 @@
 
 namespace App\Filament\Agents\Resources\Agents\Pages;
 
+use App\Filament\Agents\Resources\Agents\AgentResource;
 use App\Models\Agent;
-use App\Models\Agency;
-use Livewire\Component;
-use Filament\Pages\Page;
+use App\Support\Filament\CommercialNetworkAccess;
 use Filament\Actions\Action;
-use Filament\Actions\ViewAction;
-use Filament\Support\Enums\Width;
-use Filament\Actions\DeleteAction;
-use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
-use App\Filament\Agents\Resources\Agents\AgentResource;
-use App\Filament\Agents\Resources\IndividualQuotes\IndividualQuoteResource;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
 
 class EditAgent extends EditRecord
 {
     protected static string $resource = AgentResource::class;
 
-    public function getTitle(): string | Htmlable
+    public function getTitle(): string|Htmlable
     {
         $name = $this->record->name;
-        return 'Agente: ' . $name;
+
+        return 'Agente: '.$name;
     }
 
     protected function getHeaderActions(): array
@@ -47,10 +44,10 @@ class EditAgent extends EditRecord
                                 ->label('Selecciona el tipo de Gráfico')
                                 ->helperText('Por default se muestran los gráficos tipo barras.')
                                 ->options([
-                                    'bar'   => 'Barras',
-                                    'line'  => 'Lineas',
+                                    'bar' => 'Barras',
+                                    'line' => 'Lineas',
                                 ])
-                                ->default(fn() => Agent::where('id', Auth::user()->agent_id)->first()->type_chart),
+                                ->default(fn () => CommercialNetworkAccess::chartTypeForUser(Auth::user())),
 
                         ])->columns(1),
                 ])
@@ -84,7 +81,7 @@ class EditAgent extends EditRecord
                                 ->offIcon('heroicon-m-arrow-small-left')
                                 ->onColor('success')
                                 ->offColor('danger')
-                                ->default(fn() => Agent::where('id', Auth::user()->agent_id)->first()->conf_position_menu == true ? true : false),
+                                ->default(fn () => Agent::where('id', Auth::user()->agent_id)->first()->conf_position_menu == true ? true : false),
 
                         ])->columns(1),
                 ])
@@ -104,10 +101,9 @@ class EditAgent extends EditRecord
                 ->button()
                 ->icon('heroicon-s-arrow-left')
                 ->color('gray')
-                //redirect to dashboard general
+                // redirect to dashboard general
                 ->url(route('filament.agents.pages.dashboard')),
-                
+
         ];
     }
-
 }

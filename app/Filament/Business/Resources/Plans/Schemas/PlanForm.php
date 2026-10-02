@@ -189,7 +189,7 @@ class PlanForm
                                     ->label('Categoría del Plan')
                                     ->options([
                                         'BASICO' => 'BASICO',
-                                        'DRESS-TAILOR' => 'DRESS-TAILOR',
+                                        'DRESS-TAILOR' => 'Taylor Made',
                                     ])
                                     ->default('BASICO')
                                     ->required()

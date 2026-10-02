@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Set;
+use InvalidArgumentException;
+
 /**
  * Catálogo de bancos usado por los formularios que registran pagos.
  *
- * Las listas replican las que ya viven embebidas en los formularios de aliados
- * corporativos, agencias y agentes. Se centralizan aquí para que los módulos
- * nuevos no vuelvan a copiarlas; los formularios existentes se dejan intactos.
+ * Catálogo compartido para selects de banco en agencias, agentes y pagos.
+ * Permite buscar, elegir de la lista o agregar un banco manual (guardado en mayúsculas).
  */
 final class BankCatalog
 {
@@ -38,6 +42,7 @@ final class BankCatalog
             'BANFANB' => 'BANFANB',
             'BANCARIBE' => 'BANCARIBE',
             'BANCO ACTIVO' => 'BANCO ACTIVO',
+            'BANCO VENEZOLANO DE CREDITO' => 'BANCO VENEZOLANO DE CREDITO',
         ];
     }
 
@@ -71,6 +76,70 @@ final class BankCatalog
             'BANCAMIGA' => 'BANCAMIGA',
             'BANCO DEL TESORO' => 'BANCO DEL TESORO',
             'PROVINCIAL' => 'PROVINCIAL',
+            'STATE EMPLOYEES CREDIT UNION (SECU)' => 'STATE EMPLOYEES CREDIT UNION (SECU)',
+            'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
+            'ENCORE BANK' => 'ENCORE BANK',
+            'BANCO LATINOAMERICANO DE COMERCIO EXTERIOR (BLADEX)' => 'BANCO LATINOAMERICANO DE COMERCIO EXTERIOR (BLADEX)',
+            'HSBC BANK PANAMÁ' => 'HSBC BANK PANAMÁ',
+            'SCOTIABANK PANAMÁ' => 'SCOTIABANK PANAMÁ',
+            'CITIBANK PANAMÁ' => 'CITIBANK PANAMÁ',
+            'BANCO SANTANDER PANAMÁ' => 'BANCO SANTANDER PANAMÁ',
+            'BANCO DAVIVIENDA PANAMÁ' => 'BANCO DAVIVIENDA PANAMÁ',
+            'BANCO ALIADO' => 'BANCO ALIADO',
+            'MULTIBANK' => 'MULTIBANK',
         ];
+    }
+
+    public static function normalizeStoredBank(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return $value !== '' ? mb_strtoupper($value, 'UTF-8') : null;
+    }
+
+    public static function configureNationalSelect(Select $select): Select
+    {
+        return self::configureSearchableSelectWithManualOption($select, self::national());
+    }
+
+    public static function configureInternationalSelect(Select $select): Select
+    {
+        return self::configureSearchableSelectWithManualOption($select, self::international());
+    }
+
+    /**
+     * @param  array<string, string>  $options
+     */
+    private static function configureSearchableSelectWithManualOption(Select $select, array $options): Select
+    {
+        return $select
+            ->options($options)
+            ->searchable()
+            ->getOptionLabelUsing(fn ($value): ?string => is_string($value) && $value !== '' ? $value : null)
+            ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeStoredBank($state))
+            ->createOptionModalHeading('Agregar banco')
+            ->createOptionForm([
+                TextInput::make('name')
+                    ->label('Nombre del banco')
+                    ->required()
+                    ->maxLength(255)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function (Set $set, ?string $state): void {
+                        $set('name', self::normalizeStoredBank($state) ?? '');
+                    }),
+            ])
+            ->createOptionUsing(function (array $data): string {
+                $name = self::normalizeStoredBank($data['name'] ?? null);
+
+                if ($name === null) {
+                    throw new InvalidArgumentException('Indica el nombre del banco.');
+                }
+
+                return $name;
+            });
     }
 }

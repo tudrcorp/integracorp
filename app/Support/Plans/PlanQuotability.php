@@ -166,7 +166,7 @@ final class PlanQuotability
             return $description;
         }
 
-        return $description.' (Dress Tylor)';
+        return $description.' (Taylor Made)';
     }
 
     /**

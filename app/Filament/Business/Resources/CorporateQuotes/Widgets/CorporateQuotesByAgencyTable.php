@@ -127,9 +127,9 @@ class CorporateQuotesByAgencyTable extends TableWidget
                     ->extraAttributes(['class' => 'iq-ranking-filter-btn'])
                     ->action(fn (Agency $record): mixed => $this->selectAgency($record)),
                 Action::make('viewQuotesWithoutAgent')
-                    ->label('Ver cotizaciones sin agente')
-                    ->tooltip('Cotizaciones de esta agencia que no tienen un agente asignado')
-                    ->icon(Heroicon::OutlinedNoSymbol)
+                    ->label('Ver cotizaciones por agencia')
+                    ->tooltip('Ver cotizaciones de esta agencia en el listado')
+                    ->icon(Heroicon::DocumentText)
                     ->color(fn (Agency $record): string => $this->selectedAgencyIdForUnassignedQuotes === $record->id ? 'warning' : 'gray')
                     ->extraAttributes(fn (Agency $record): array => [
                         'class' => $this->selectedAgencyIdForUnassignedQuotes === $record->id

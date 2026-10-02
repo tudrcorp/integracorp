@@ -2,13 +2,12 @@
 
 namespace App\Filament\Agents\Widgets;
 
-use Carbon\Carbon;
-use App\Models\Agent;
-use Flowframe\Trend\Trend;
-use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
-use Flowframe\Trend\TrendValue;
+use App\Support\Filament\CommercialNetworkAccess;
+use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
+use Flowframe\Trend\Trend;
+use Flowframe\Trend\TrendValue;
 use Illuminate\Support\Facades\Auth;
 
 class IndividualQuoteChart extends ChartWidget
@@ -42,16 +41,16 @@ class IndividualQuoteChart extends ChartWidget
 
         if ($activeFilter === 'today') {
             $rangeStartDate = now()->startOfDay();
-            $rangeEndDate   = now()->endOfDay();
+            $rangeEndDate = now()->endOfDay();
         } elseif ($activeFilter === 'week') {
             $rangeStartDate = now()->startOfWeek();
-            $rangeEndDate   = now()->endOfWeek();
+            $rangeEndDate = now()->endOfWeek();
         } elseif ($activeFilter === 'month') {
             $rangeStartDate = now()->startOfMonth();
-            $rangeEndDate   = now()->endOfMonth();
+            $rangeEndDate = now()->endOfMonth();
         } elseif ($activeFilter === 'year') {
-            $rangeStartDate     = now()->startOfYear();
-            $rangeEndDate       = now()->endOfYear();
+            $rangeStartDate = now()->startOfYear();
+            $rangeEndDate = now()->endOfYear();
         }
 
         $data = Trend::query(IndividualQuote::where('agent_id', Auth::user()->agent_id))
@@ -66,7 +65,7 @@ class IndividualQuoteChart extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Cotizaciones Individuales',
-                    'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
+                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate),
                     // 'data' => [30, 10, 5, 2, 21, 32, 45, 74, 65, 0, 0, 0],
                     'backgroundColor' => [
                         '#FFE6E6', // Rosado muy claro
@@ -123,10 +122,10 @@ class IndividualQuoteChart extends ChartWidget
                     'fill' => true,
                 ],
             ],
-            'labels' => ($data->map(fn(TrendValue $value) => Carbon::parse($value->date)->isoFormat('DD-MMM'))->toArray()),
+            'labels' => ($data->map(fn (TrendValue $value) => Carbon::parse($value->date)->isoFormat('DD-MMM'))->toArray()),
         ];
     }
-    
+
     protected function getOptions(): array
     {
         return [
@@ -140,10 +139,10 @@ class IndividualQuoteChart extends ChartWidget
 
     protected function getType(): string
     {
-        return Agent::where('id', Auth::user()->agent_id)->first()->type_chart;
+        return CommercialNetworkAccess::chartTypeForUser(Auth::user());
     }
 
-    public function getColumns(): int | string | array
+    public function getColumns(): int|string|array
     {
         return 12;
     }

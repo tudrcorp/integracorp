@@ -34,3 +34,21 @@ it('incluye linea y unidad de negocio en la tabla de afiliados corporativos', fu
         ->toContain('affiliationCorporate.businessLine:id,definition')
         ->toContain('affiliationCorporate.businessUnit:id,definition');
 });
+
+it('incluye direccion de residencia en la tabla de afiliados corporativos', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/AffiliateCorporates/Tables/AffiliateCorporatesTable.php');
+
+    expect($source)
+        ->toContain("TextColumn::make('address')")
+        ->toContain("->label('Dirección de residencia')")
+        ->toContain('Heroicon::OutlinedMapPin');
+});
+
+it('incluye direccion de residencia en la tabla de afiliados corporativos', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/AffiliateCorporates/Tables/AffiliateCorporatesTable.php');
+
+    expect($source)
+        ->toContain("TextColumn::make('address')")
+        ->toContain("->label('Dirección de residencia')")
+        ->toContain('Heroicon::OutlinedMapPin');
+});

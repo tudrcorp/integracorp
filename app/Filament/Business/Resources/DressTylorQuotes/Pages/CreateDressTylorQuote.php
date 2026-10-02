@@ -11,7 +11,7 @@ class CreateDressTylorQuote extends CreateRecord
 {
     protected static string $resource = DressTylorQuoteResource::class;
 
-    protected static ?string $title = 'Creación de Cotizaciones Dress Tylor';
+    protected static ?string $title = 'Creación de Cotizaciones Taylor Made';
 
     protected function getHeaderActions(): array
     {

@@ -2,12 +2,12 @@
 
 namespace App\Filament\Agents\Widgets;
 
-use Carbon\Carbon;
-use App\Models\Agent;
-use Flowframe\Trend\Trend;
 use App\Models\CorporateQuote;
-use Flowframe\Trend\TrendValue;
+use App\Support\Filament\CommercialNetworkAccess;
+use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
+use Flowframe\Trend\Trend;
+use Flowframe\Trend\TrendValue;
 use Illuminate\Support\Facades\Auth;
 
 class CorporateQuoteChart extends ChartWidget
@@ -41,16 +41,16 @@ class CorporateQuoteChart extends ChartWidget
 
         if ($activeFilter === 'today') {
             $rangeStartDate = now()->startOfDay();
-            $rangeEndDate   = now()->endOfDay();
+            $rangeEndDate = now()->endOfDay();
         } elseif ($activeFilter === 'week') {
             $rangeStartDate = now()->startOfWeek();
-            $rangeEndDate   = now()->endOfWeek();
+            $rangeEndDate = now()->endOfWeek();
         } elseif ($activeFilter === 'month') {
             $rangeStartDate = now()->startOfMonth();
-            $rangeEndDate   = now()->endOfMonth();
+            $rangeEndDate = now()->endOfMonth();
         } elseif ($activeFilter === 'year') {
-            $rangeStartDate     = now()->startOfYear();
-            $rangeEndDate       = now()->endOfYear();
+            $rangeStartDate = now()->startOfYear();
+            $rangeEndDate = now()->endOfYear();
         }
 
         $data = Trend::query(CorporateQuote::where('agent_id', Auth::user()->agent_id))
@@ -65,7 +65,7 @@ class CorporateQuoteChart extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Cotizaciones Corporativas',
-                    'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
+                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate),
                     // 'data' => [30, 10, 5, 40, 21, 32, 1, 74, 65, 45, 77, 89],
                     'backgroundColor' => [
                         '#D2D2FF', // Rosado muy claro
@@ -122,7 +122,7 @@ class CorporateQuoteChart extends ChartWidget
                     'fill' => true,
                 ],
             ],
-            'labels' => ($data->map(fn(TrendValue $value) => Carbon::parse($value->date)->isoFormat('DD-MMM'))->toArray()),
+            'labels' => ($data->map(fn (TrendValue $value) => Carbon::parse($value->date)->isoFormat('DD-MMM'))->toArray()),
         ];
     }
 
@@ -139,6 +139,6 @@ class CorporateQuoteChart extends ChartWidget
 
     protected function getType(): string
     {
-        return Agent::where('id', Auth::user()->agent_id)->first()->type_chart;
+        return CommercialNetworkAccess::chartTypeForUser(Auth::user());
     }
 }

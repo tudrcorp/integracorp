@@ -125,6 +125,7 @@ class AffiliationCorporateForm
                                                 'ANUAL' => 'ANUAL',
                                                 'SEMESTRAL' => 'SEMESTRAL',
                                                 'TRIMESTRAL' => 'TRIMESTRAL',
+                                                'MENSUAL' => 'MENSUAL',
                                             ])
                                             ->searchable()
                                             ->live()
@@ -255,6 +256,43 @@ class AffiliationCorporateForm
                                                     // -------------------------------------------------------------------------------------------------------------------------------------------------
 
                                                     $set('total_amount', $subtotal_anual / 2);
+                                                }
+
+                                                if ($get('payment_frequency') == 'MENSUAL') {
+
+                                                    // 4.- Verifico si el numero de personas de la poblacion es diferente al total de personas
+                                                    // -------------------------------------------------------------------------------------------------------------------------------------------------
+                                                    if ($total_persons != $poblacion) {
+
+                                                        Notification::make()
+                                                            ->color('info')
+                                                            ->iconColor('info')
+                                                            ->icon('heroicon-o-information-circle')
+                                                            ->title('RECOMENDACIÓN')
+                                                            ->body('Regresa al paso anterior donde seleccionaste la cobertura para afiliar y verifica que el numero de personas sea la correcta.')
+                                                            ->persistent()
+                                                            ->actions([
+                                                                Action::make('back')
+                                                                    ->button()
+                                                                    ->label('Regresar')
+                                                                    ->color('info')
+                                                                    ->url(CorporateQuoteResource::getUrl('edit', ['record' => $corporate_quote_id])),
+                                                            ])
+                                                            ->send();
+                                                        Notification::make()
+                                                            ->color('warning')
+                                                            ->iconColor('warning')
+                                                            ->icon('heroicon-o-exclamation-triangle')
+                                                            ->title('ATENCIÓN')
+                                                            ->body('El número de personas de la población no coincide con el total de personas de la cotización.')
+                                                            ->persistent()
+                                                            ->send();
+
+                                                        return;
+                                                    }
+                                                    // -------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                                    $set('total_amount', $subtotal_anual / 12);
                                                 }
 
                                                 $set('fee_anual', $subtotal_anual);

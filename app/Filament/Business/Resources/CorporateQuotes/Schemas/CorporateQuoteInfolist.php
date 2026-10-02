@@ -111,7 +111,7 @@ class CorporateQuoteInfolist
                                                     ]),
                                             ]),
                                     ]),
-                                Section::make('Cotización Dress-Tailor')
+                                Section::make('Cotización Taylor Made')
                                     ->icon(Heroicon::OutlinedDocumentMagnifyingGlass)
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,

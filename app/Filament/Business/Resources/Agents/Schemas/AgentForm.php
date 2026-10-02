@@ -16,6 +16,7 @@ use App\Models\Country;
 use App\Models\Region;
 use App\Models\State;
 use App\Models\User;
+use App\Support\BankCatalog;
 use App\Support\CountrySelectOptions;
 use Closure;
 use Filament\Forms\Components\DatePicker;
@@ -561,29 +562,10 @@ class AgentForm
                                             ->schema([
                                                 TextInput::make('local_beneficiary_account_number')
                                                     ->label('Número de cuenta del beneficiario'),
-                                                Select::make('local_beneficiary_account_bank')
-                                                    ->label('Banco del beneficiario')
-                                                    ->options([
-                                                        'BANCO DE VENEZUELA' => 'BANCO DE VENEZUELA',
-                                                        'BANCO BICENTENARIO' => 'BANCO BICENTENARIO',
-                                                        'BANCO MERCANTIL' => 'BANCO MERCANTIL',
-                                                        'BANCO PROVINCIAL' => 'BANCO PROVINCIAL',
-                                                        'BANCO CARONI' => 'BANCO CARONI',
-                                                        'BANCO DEL CARIBE' => 'BANCO DEL CARIBE',
-                                                        'BANCO DEL TESORO' => 'BANCO DEL TESORO',
-                                                        'BANCO NACIONAL DE CREDITO' => 'BANCO NACIONAL DE CREDITO',
-                                                        'BANESCO' => 'BANESCO',
-                                                        'FONDO COMUN' => 'FONDO COMUN',
-                                                        'BANCO CANARIAS' => 'BANCO CANARIAS',
-                                                        'BANCO DEL SUR' => 'BANCO DEL SUR',
-                                                        'BANCO AGRICOLA DE VENEZUELA' => 'BANCO AGRICOLA DE VENEZUELA',
-                                                        'BANPLUS' => 'BANPLUS',
-                                                        'MI BANCO' => 'MI BANCO',
-                                                        'BANCAMIGA' => 'BANCAMIGA',
-                                                        'BANFANB' => 'BANFANB',
-                                                        'BANCARIBE' => 'BANCARIBE',
-                                                        'BANCO ACTIVO' => 'BANCO ACTIVO',
-                                                    ]),
+                                                BankCatalog::configureNationalSelect(
+                                                    Select::make('local_beneficiary_account_bank')
+                                                        ->label('Banco del beneficiario')
+                                                ),
                                                 Select::make('local_beneficiary_account_type')
                                                     ->label('Tipo de cuenta del beneficiario')
                                                     ->options([
@@ -599,29 +581,10 @@ class AgentForm
                                             ->schema([
                                                 TextInput::make('local_beneficiary_account_number_mon_inter')
                                                     ->label('Número de cuenta del beneficiario'),
-                                                Select::make('local_beneficiary_account_bank_mon_inter')
-                                                    ->label('Banco del beneficiario')
-                                                    ->options([
-                                                        'BANCO DE VENEZUELA' => 'BANCO DE VENEZUELA',
-                                                        'BANCO BICENTENARIO' => 'BANCO BICENTENARIO',
-                                                        'BANCO MERCANTIL' => 'BANCO MERCANTIL',
-                                                        'BANCO PROVINCIAL' => 'BANCO PROVINCIAL',
-                                                        'BANCO CARONI' => 'BANCO CARONI',
-                                                        'BANCO DEL CARIBE' => 'BANCO DEL CARIBE',
-                                                        'BANCO DEL TESORO' => 'BANCO DEL TESORO',
-                                                        'BANCO NACIONAL DE CREDITO' => 'BANCO NACIONAL DE CREDITO',
-                                                        'BANESCO' => 'BANESCO',
-                                                        'FONDO COMUN' => 'FONDO COMUN',
-                                                        'BANCO CANARIAS' => 'BANCO CANARIAS',
-                                                        'BANCO DEL SUR' => 'BANCO DEL SUR',
-                                                        'BANCO AGRICOLA DE VENEZUELA' => 'BANCO AGRICOLA DE VENEZUELA',
-                                                        'BANPLUS' => 'BANPLUS',
-                                                        'MI BANCO' => 'MI BANCO',
-                                                        'BANCAMIGA' => 'BANCAMIGA',
-                                                        'BANFANB' => 'BANFANB',
-                                                        'BANCARIBE' => 'BANCARIBE',
-                                                        'BANCO ACTIVO' => 'BANCO ACTIVO',
-                                                    ]),
+                                                BankCatalog::configureNationalSelect(
+                                                    Select::make('local_beneficiary_account_bank_mon_inter')
+                                                        ->label('Banco del beneficiario')
+                                                ),
                                                 Select::make('local_beneficiary_account_type_mon_inter')
                                                     ->label('Tipo de cuenta del beneficiario')
                                                     ->options([
@@ -656,10 +619,10 @@ class AgentForm
                                                     ->maxLength(255),
                                                 TextInput::make('extra_beneficiary_ci_rif')
                                                     ->label('Nro. CI / RIF / ID / pasaporte')
-                                                    ->numeric()
-                                                    ->validationMessages([
-                                                        'numeric' => 'Campo tipo numérico',
-                                                    ])
+                                                    ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                                        $set('extra_beneficiary_ci_rif', strtoupper((string) $state));
+                                                    })
+                                                    ->live(onBlur: true)
                                                     ->maxLength(255),
                                                 TextInput::make('extra_beneficiary_account_number')
                                                     ->label('Número de cuenta')
@@ -669,47 +632,10 @@ class AgentForm
                                                     ])
                                                     ->live()
                                                     ->maxLength(255),
-                                                Select::make('extra_beneficiary_account_bank')
-                                                    ->label('Banco')
-                                                    ->searchable()
-                                                    ->preload()
-                                                    ->options([
-                                                        'FACEBANK INTERNATIONAL' => 'FACEBANK INTERNATIONAL',
-                                                        'JPMORGAN CHASE & CO' => 'JPMORGAN CHASE & CO',
-                                                        'BANK OF AMERICA' => 'BANK OF AMERICA',
-                                                        'WELLS FARGO' => 'WELLS FARGO',
-                                                        'CITIBANK (CITIGROUP)' => 'CITIBANK (CITIGROUP)',
-                                                        'U.S. BANK' => 'U.S. BANK',
-                                                        'PNC FINANCIAL SERVICES' => 'PNC FINANCIAL SERVICES',
-                                                        'TRUIST FINANCIAL CORPORATION' => 'TRUIST FINANCIAL CORPORATION',
-                                                        'CAPITAL ONE' => 'CAPITAL ONE',
-                                                        'TD BANK (TORONTO-DOMINION BANK)' => 'TD BANK (TORONTO-DOMINION BANK)',
-                                                        'HSBC BANK USA' => 'HSBC BANK USA',
-                                                        'FIFTH THIRD BANK' => 'FIFTH THIRD BANK',
-                                                        'REGIONS FINANCIAL CORPORATION' => 'REGIONS FINANCIAL CORPORATION',
-                                                        'HUNTINGTON NATIONAL BANK' => 'HUNTINGTON NATIONAL BANK',
-                                                        'NAVY FEDERAL CREDIT UNION' => 'NAVY FEDERAL CREDIT UNION',
-                                                        'STATE EMPLOYEES CREDIT UNION (SECU)' => 'STATE EMPLOYEES CREDIT UNION (SECU)',
-                                                        'BANCO NACIONAL DE PANAMÁ (BNP)' => 'BANCO NACIONAL DE PANAMÁ (BNP)',
-                                                        'CAJA DE AHORROS' => 'CAJA DE AHORROS',
-                                                        'BANCO GENERAL' => 'BANCO GENERAL',
-                                                        'GLOBAL BANK' => 'GLOBAL BANK',
-                                                        'BANESCO PANAMÁ' => 'BANESCO PANAMÁ',
-                                                        'EL BANCO MERCANTIL PANAMÁ' => 'EL BANCO MERCANTIL PANAMÁ',
-                                                        'ENCORE BANK' => 'ENCORE BANK',
-                                                        'METROBANK' => 'METROBANK',
-                                                        'BANCO LATINOAMERICANO DE COMERCIO EXTERIOR (BLADEX)' => 'BANCO LATINOAMERICANO DE COMERCIO EXTERIOR (BLADEX)',
-                                                        'HSBC BANK PANAMÁ' => 'HSBC BANK PANAMÁ',
-                                                        'SCOTIABANK PANAMÁ' => 'SCOTIABANK PANAMÁ',
-                                                        'CITIBANK PANAMÁ' => 'CITIBANK PANAMÁ',
-                                                        'BANCO SANTANDER PANAMÁ' => 'BANCO SANTANDER PANAMÁ',
-                                                        'BANCO DAVIVIENDA PANAMÁ' => 'BANCO DAVIVIENDA PANAMÁ',
-                                                        'BANCO ALIADO' => 'BANCO ALIADO',
-                                                        'MULTIBANK' => 'MULTIBANK',
-                                                        'BANCAMIGA' => 'BANCAMIGA',
-                                                        'BANCO DEL TESORO' => 'BANCO DEL TESORO',
-                                                        'PROVINCIAL' => 'PROVINCIAL',
-                                                    ]),
+                                                BankCatalog::configureInternationalSelect(
+                                                    Select::make('extra_beneficiary_account_bank')
+                                                        ->label('Banco')
+                                                ),
                                                 TextInput::make('extra_beneficiary_address')
                                                     ->label('Dirección')
                                                     ->afterStateUpdated(function (Set $set, ?string $state): void {

@@ -30,6 +30,24 @@ it('ViewAffiliateCorporate muestra el estatus real del afiliado en el título', 
         ->not->toContain('<span style="font-size: 10px;">●</span> ACTIVO');
 });
 
+it('ViewAffiliateCorporate muestra el estatus real del afiliado en el título', function (): void {
+    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/AffiliateCorporates/Pages/ViewAffiliateCorporate.php');
+    expect($page)->not->toBeFalse();
+
+    expect($page)
+        ->toContain('AffiliateStatusHeaderBadge::html($affiliate->status)')
+        ->not->toContain('<span style="font-size: 10px;">●</span> ACTIVO');
+});
+
+it('ViewAffiliateCorporate muestra el estatus real del afiliado en el título', function (): void {
+    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/AffiliateCorporates/Pages/ViewAffiliateCorporate.php');
+    expect($page)->not->toBeFalse();
+
+    expect($page)
+        ->toContain('AffiliateStatusHeaderBadge::html($affiliate->status)')
+        ->not->toContain('<span style="font-size: 10px;">●</span> ACTIVO');
+});
+
 it('AssociateAffiliateCorporateWithTelemedicinePatientService valida afiliación y estado activo', function (): void {
     $service = file_get_contents(dirname(__DIR__, 2).'/app/Services/AssociateAffiliateCorporateWithTelemedicinePatientService.php');
     expect($service)->not->toBeFalse();

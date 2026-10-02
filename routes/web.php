@@ -58,9 +58,15 @@ use Illuminate\Support\Facades\URL;
 use Livewire\Volt\Volt;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+Volt::route('/', 'volt.integracorp.hub-login')->name('home');
+
+Volt::route('/recuperar-contrasena', 'volt.integracorp.hub-forgot-password')->name('integracorp.hub.password.request');
+
+Volt::route('/restablecer-contrasena/{token}', 'volt.integracorp.hub-reset-password')->name('integracorp.hub.password.reset');
+
+Route::middleware('auth')->group(function (): void {
+    Volt::route('/modulos', 'volt.integracorp.hub-modules')->name('integracorp.hub.modules');
+});
 
 Route::post('/', function () {
     Filament::auth()->logout();

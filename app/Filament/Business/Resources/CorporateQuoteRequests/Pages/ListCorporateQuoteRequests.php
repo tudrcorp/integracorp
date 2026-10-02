@@ -18,7 +18,7 @@ class ListCorporateQuoteRequests extends ListRecords
 
     protected static string $resource = CorporateQuoteRequestResource::class;
 
-    protected static ?string $title = 'Solicitudes Dress Taylor';
+    protected static ?string $title = 'Solicitudes Taylor Made';
 
     #[On('corporate-quote-requests-filter-by-agent')]
     public function filterRequestsByAgent(int|string $agentId, string $agentName): void
@@ -88,9 +88,9 @@ class ListCorporateQuoteRequests extends ListRecords
     {
         return [
             StatsOverviewTotalCorporateQuoteRequest::class,
+            CorporateQuoteRequestChannelChart::class,
             CorporateQuoteRequestsByAgencyTable::class,
             CorporateQuoteRequestsByAgentTable::class,
-            CorporateQuoteRequestChannelChart::class,
         ];
     }
 }

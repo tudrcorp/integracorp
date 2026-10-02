@@ -195,16 +195,16 @@ final class AccountsPayablePaymentReceiptActions
                                     'required' => 'Indica la fecha del pago.',
                                     'before_or_equal' => 'La fecha del pago no puede ser posterior a hoy.',
                                 ]),
-                            Select::make('national_bank')
-                                ->label('Banco nacional')
-                                ->options(BankCatalog::national())
-                                ->searchable()
-                                ->helperText('Banco emisor o receptor en Venezuela, si aplica.'),
-                            Select::make('international_bank')
-                                ->label('Banco internacional')
-                                ->options(BankCatalog::international())
-                                ->searchable()
-                                ->helperText('Banco del exterior, si el pago fue en divisas.'),
+                            BankCatalog::configureNationalSelect(
+                                Select::make('national_bank')
+                                    ->label('Banco nacional')
+                                    ->helperText('Banco emisor o receptor en Venezuela, si aplica. Si no está en la lista, agrégalo manualmente.'),
+                            ),
+                            BankCatalog::configureInternationalSelect(
+                                Select::make('international_bank')
+                                    ->label('Banco internacional')
+                                    ->helperText('Banco del exterior, si el pago fue en divisas. Si no está en la lista, agrégalo manualmente.'),
+                            ),
                             TextInput::make('payment_amount_usd')
                                 ->label('Monto del pago en US$')
                                 ->prefix('US$')

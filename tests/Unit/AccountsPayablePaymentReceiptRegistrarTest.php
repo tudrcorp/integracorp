@@ -44,6 +44,30 @@ it('registra el comprobante y los datos de pago en una factura pendiente', funct
         ->and($resultado->updated_by)->toBe('Analista QA');
 });
 
+it('guarda bancos personalizados en mayusculas al registrar comprobante', function (): void {
+    Storage::fake('public');
+
+    $factura = OperationAccountsPayable::factory()->create([
+        'invoice_amount' => 50,
+        'invoice_currency' => 'USD',
+        'payment_status' => StatusCuentaPorPagar::PendientePorPagar->value,
+    ]);
+
+    $resultado = AccountsPayablePaymentReceiptRegistrar::apply($factura, [
+        'payment_receipt_path' => 'operation-accounts-payables/payment-receipts/comprobante.pdf',
+        'payment_status' => StatusCuentaPorPagar::Pagada->value,
+        'payment_reference' => 'REF-99',
+        'payment_date' => '2026-09-11',
+        'national_bank' => 'banco nuevo local',
+        'international_bank' => 'banco nuevo exterior',
+        'payment_amount_usd' => 50,
+        'payment_amount_ves' => null,
+    ], 'Analista QA');
+
+    expect($resultado->national_bank)->toBe('BANCO NUEVO LOCAL')
+        ->and($resultado->international_bank)->toBe('BANCO NUEVO EXTERIOR');
+});
+
 it('aplica el mismo comprobante a varias facturas y usa el monto de cada una si no se indica', function (): void {
     $primera = OperationAccountsPayable::factory()->create([
         'invoice_amount' => 100,
