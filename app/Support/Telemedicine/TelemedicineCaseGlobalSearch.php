@@ -217,8 +217,8 @@ final class TelemedicineCaseGlobalSearch
         }
 
         $user = Auth::user();
-        $showDoctor = TelemedicineCaseFilamentListQuery::userIsInTdgTelemedicinaContext($user);
         $ownDoctorId = $user instanceof User ? $user->doctor_id : null;
+        $showDoctor = $ownDoctorId !== null;
 
         return $cases->map(fn (TelemedicineCase $case): GlobalSearchResult => new GlobalSearchResult(
             title: self::title($case),

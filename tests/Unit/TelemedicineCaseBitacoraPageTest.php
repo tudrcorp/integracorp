@@ -250,7 +250,7 @@ it('registra Bitácora de Caso en el panel de telemedicina para los médicos', f
     $method = substr($query, $methodStart, $methodEnd - $methodStart);
 
     expect($method)
-        ->toContain("where('telemedicine_doctor_id', \$user->doctor_id)")
+        ->toContain('constrainToDoctorTeamCases($query, (int) $user->doctor_id)')
         ->toContain('constrainToTdgDoctorsCases')
         ->not->toContain("status', '!=', 'ALTA MEDICA");
 });

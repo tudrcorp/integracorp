@@ -19,6 +19,8 @@ class TelemedicineCase extends Model
     protected $fillable = [
         'telemedicine_patient_id',
         'telemedicine_doctor_id',
+        'assigned_to_medical_team',
+        'medical_team_supplier_id',
         'telemedicine_priority_id',
         'patient_name',
         'patient_age',
@@ -53,6 +55,8 @@ class TelemedicineCase extends Model
     {
         return [
             'logically_deleted_at' => 'datetime',
+            'assigned_to_medical_team' => 'boolean',
+            'medical_team_supplier_id' => 'integer',
         ];
     }
 
@@ -64,6 +68,14 @@ class TelemedicineCase extends Model
     public function telemedicineDoctor()
     {
         return $this->belongsTo(TelemedicineDoctor::class, 'telemedicine_doctor_id');
+    }
+
+    /**
+     * Proveedor del equipo médico de guardia; nulo en un caso de equipo significa el equipo TDG.
+     */
+    public function medicalTeamSupplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class, 'medical_team_supplier_id');
     }
 
     public function consultations()

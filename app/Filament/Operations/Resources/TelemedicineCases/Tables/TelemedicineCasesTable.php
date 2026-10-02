@@ -12,6 +12,7 @@ use App\Support\Operations\CaseFollowUpChatManager;
 use App\Support\Telemedicine\TelemedicineCaseCreatedAtChangeAction;
 use App\Support\Telemedicine\TelemedicineCaseIdentity;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
+use App\Support\Telemedicine\TelemedicineMedicalTeam;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -63,7 +64,7 @@ class TelemedicineCasesTable
 
                 OperationsSupplierScope::applyToQuery($query);
 
-                return $query;
+                return $query->with('medicalTeamSupplier:id,name,integracorp_alias');
             })
             ->defaultSort('created_at', 'desc')
             ->columns([
@@ -89,7 +90,7 @@ class TelemedicineCasesTable
                     ->label('Paciente')
                     ->description(fn ($record): string => filled($record->telemedicineDoctor?->full_name)
                         ? 'Asignado a Dr(a):'.$record->telemedicineDoctor->full_name
-                        : 'Sin médico asignado')
+                        : ($record->assigned_to_medical_team ? 'Asignado al '.TelemedicineMedicalTeam::teamLabel($record) : 'Sin médico asignado'))
                     ->sortable(),
                 TextColumn::make('patient_age')
                     ->label('Edad')
@@ -270,7 +271,7 @@ class TelemedicineCasesTable
                                     $coordination = OperationCoordinationService::query()->create([
                                         'telemedicine_patient_id' => $record->telemedicine_patient_id,
                                         'telemedicine_case_id' => $record->id,
-                                        'telemedicine_doctor_id' => $record->telemedicine_doctor_id,
+                                        'telemedicine_doctor_id' => $record->telemedicine_doctor_id ?? $latestConsultation?->telemedicine_doctor_id,
                                         'telemedicine_consultation_patient_id' => $latestConsultation?->id,
                                         'date_solicitud' => now(),
                                         'date_service' => now(),

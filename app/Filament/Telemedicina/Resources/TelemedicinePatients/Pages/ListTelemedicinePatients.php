@@ -4,6 +4,7 @@ namespace App\Filament\Telemedicina\Resources\TelemedicinePatients\Pages;
 
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Models\TelemedicineCase;
+use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
@@ -27,7 +28,7 @@ class ListTelemedicinePatients extends ListRecords
 
     /**
      * Conteos del encabezado en una sola consulta, con el mismo alcance que la tabla:
-     * casos del médico, sin «PACIENTE DE ALTA» y respetando el scope que oculta los eliminados.
+     * casos del equipo de guardia del médico, sin «PACIENTE DE ALTA» y respetando el scope que oculta los eliminados.
      *
      * @return array{patients: int, assigned: int, follow_up: int, discharged: int}
      */
@@ -39,8 +40,7 @@ class ListTelemedicinePatients extends ListRecords
             return $empty;
         }
 
-        $row = TelemedicineCase::query()
-            ->where('telemedicine_doctor_id', $doctorId)
+        $row = TelemedicineCaseFilamentListQuery::constrainToDoctorTeamCases(TelemedicineCase::query(), $doctorId)
             ->where('status', '!=', 'PACIENTE DE ALTA')
             ->whereHas('telemedicinePatient')
             ->toBase()

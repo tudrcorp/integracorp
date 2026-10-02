@@ -57,6 +57,7 @@ use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineConsultationSigningDoctor;
 use App\Support\Telemedicine\TelemedicineFollowUpReportDocument;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
+use App\Support\Telemedicine\TelemedicineMedicalTeam;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
 use App\Support\Telemedicine\TelemedicinePatientCareHistory;
@@ -1696,6 +1697,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             $case = TelemedicineCase::where('id', $caseId)->first();
                             $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
                             $case->updated_at = now();
+                            TelemedicineMedicalTeam::applyUpdatingDoctor($case, (int) $record['telemedicine_doctor_id']);
                             $case->status = 'EN SEGUIMIENTO';
                             $case->save();
 
@@ -1705,6 +1707,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             $case = TelemedicineCase::where('id', $caseId)->first();
                             $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
                             $case->updated_at = now();
+                            TelemedicineMedicalTeam::applyUpdatingDoctor($case, (int) $record['telemedicine_doctor_id']);
                             $case->status = 'ALTA MEDICA';
                             $case->save();
 
@@ -1721,6 +1724,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                         $case = TelemedicineCase::where('id', $record['telemedicine_case_id'])->first();
                         $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
                         $case->updated_at = now();
+                        TelemedicineMedicalTeam::applyUpdatingDoctor($case, (int) $record['telemedicine_doctor_id']);
                         $case->status = 'EN SEGUIMIENTO';
                         $case->save();
                     }

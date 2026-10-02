@@ -15,11 +15,13 @@ use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Telemedicine\ConsultationCreateRoute;
 use App\Support\Telemedicine\TelemedicineCaseDerivedService;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
+use App\Support\Telemedicine\TelemedicineCaseFollowUpRescheduler;
 use App\Support\Telemedicine\TelemedicineCaseFollowUpSchedule;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
@@ -124,12 +126,10 @@ class TelemedicineCaseTableDash extends TableWidget
             return null;
         }
 
-        if (
-            ! TelemedicineCaseFilamentListQuery::userIsInTdgTelemedicinaContext($user)
-            && $case->telemedicine_doctor_id !== $user->doctor_id
-        ) {
+        if (! TelemedicineCaseFilamentListQuery::caseBelongsToUserDoctorTeam($user, $case)) {
             Notification::make()
                 ->title('No autorizado')
+                ->body('El caso no pertenece a su equipo médico.')
                 ->danger()
                 ->send();
 
@@ -674,6 +674,94 @@ class TelemedicineCaseTableDash extends TableWidget
                             }
                         }),
 
+                    Action::make('rescheduleFollowUp')
+                        ->label('Reasignar seguimiento')
+                        ->icon('heroicon-s-clock')
+                        ->color('info')
+                        ->visible(fn (TelemedicineCase $record): bool => TelemedicineCaseFollowUpRescheduler::caseCanBeRescheduled($record))
+                        ->modalWidth(Width::Large)
+                        ->modalHeading('Reasignar seguimiento')
+                        ->modalDescription(function (TelemedicineCase $record): string {
+                            $current = TelemedicineCaseFollowUpSchedule::describe($record->getAttribute('next_follow_up_at'), false);
+
+                            return 'Seguimiento actual: '.trim($current['label'].' '.($current['detail'] ?? '')).'. El nuevo tiempo cuenta desde ahora y quedará registrado en la bitácora del caso.';
+                        })
+                        ->modalIcon('heroicon-s-clock')
+                        ->modalIconColor('info')
+                        ->modalSubmitActionLabel('Reasignar seguimiento')
+                        ->modalSubmitAction(
+                            fn (Action $action) => $action
+                                ->color('info')
+                                ->extraAttributes([
+                                    'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                                ])
+                        )
+                        ->modalCancelAction(
+                            fn (Action $action) => $action
+                                ->color('gray')
+                                ->extraAttributes([
+                                    'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                                ])
+                        )
+                        ->modalCancelActionLabel('Cancelar')
+                        ->form([
+                            Select::make('priorityMonitoring')
+                                ->label('Próximo Seguimiento')
+                                ->placeholder('Seleccione cuándo será el próximo seguimiento')
+                                ->options(TelemedicineCaseFollowUpSchedule::OPTIONS)
+                                ->required()
+                                ->native(false)
+                                ->validationMessages([
+                                    'required' => 'Seleccione el próximo seguimiento.',
+                                ]),
+                            Textarea::make('observation')
+                                ->label('Observación')
+                                ->placeholder('Motivo de la reasignación: acuerdo con el paciente, cambio de guardia, resultados pendientes…')
+                                ->helperText('Obligatoria. Quedará en la bitácora del caso (máximo '.TelemedicineCaseFollowUpRescheduler::OBSERVATION_MAX_LENGTH.' caracteres).')
+                                ->required()
+                                ->minLength(TelemedicineCaseFollowUpRescheduler::OBSERVATION_MIN_LENGTH)
+                                ->maxLength(TelemedicineCaseFollowUpRescheduler::OBSERVATION_MAX_LENGTH)
+                                ->rows(4)
+                                ->columnSpanFull(),
+                        ])
+                        ->action(function (TelemedicineCase $record, array $data): void {
+                            if (! $this->guardDashboardCaseInteraction($record)) {
+                                return;
+                            }
+
+                            try {
+                                $reschedule = TelemedicineCaseFollowUpRescheduler::reschedule(
+                                    $record,
+                                    $data['priorityMonitoring'] ?? null,
+                                    $data['observation'] ?? null,
+                                    Auth::user(),
+                                );
+
+                                Notification::make()
+                                    ->title('Seguimiento reasignado')
+                                    ->body('Próximo seguimiento: '.$reschedule->next_follow_up_at->format('d/m/Y h:i A').'. Quedó registrado en la bitácora del caso.')
+                                    ->success()
+                                    ->send();
+                            } catch (\DomainException $exception) {
+                                Notification::make()
+                                    ->title('No se reasignó el seguimiento')
+                                    ->body($exception->getMessage())
+                                    ->danger()
+                                    ->send();
+                            } catch (\Throwable $exception) {
+                                Log::error('Error al reasignar el seguimiento del caso de telemedicina.', [
+                                    'telemedicine_case_id' => $record->id,
+                                    'error' => $exception->getMessage(),
+                                ]);
+
+                                Notification::make()
+                                    ->title('No se reasignó el seguimiento')
+                                    ->body('Ocurrió un error inesperado. Intente nuevamente.')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+
                     RegenerateTelemedicineCaseDocumentsAction::make(
                         beforeAction: function (TelemedicineCase $record): bool {
                             return $this->guardDashboardCaseInteraction($record);
@@ -732,13 +820,10 @@ class TelemedicineCaseTableDash extends TableWidget
             return null;
         }
 
-        if (
-            ! TelemedicineCaseFilamentListQuery::userIsInTdgTelemedicinaContext($user)
-            && $record->telemedicine_doctor_id !== $user->doctor_id
-        ) {
+        if (! TelemedicineCaseFilamentListQuery::caseBelongsToUserDoctorTeam($user, $record)) {
             Notification::make()
                 ->title('No autorizado')
-                ->body('No se encontró el caso o no está asignado a su usuario.')
+                ->body('No se encontró el caso o no pertenece a su equipo médico.')
                 ->danger()
                 ->send();
 

@@ -12,16 +12,17 @@ uses(Tests\TestCase::class);
 beforeEach(fn () => DB::beginTransaction());
 afterEach(fn () => DB::rollBack());
 
-it('resume los casos del médico con el mismo alcance que la tabla de pacientes', function (): void {
-    [$doctorId, $otherDoctorId] = TelemedicineDoctor::query()->orderBy('id')->limit(2)->pluck('id')->all();
+it('resume los casos del equipo de guardia del médico con el mismo alcance que la tabla de pacientes', function (): void {
+    [$doctorId, $colleagueDoctorId] = TelemedicineDoctor::query()->where('managed_by', 'TDG')->orderBy('id')->limit(2)->pluck('id')->all();
+    $otherTeamDoctorId = TelemedicineDoctor::query()->whereNotNull('supplier_id')->orderBy('id')->value('id');
     [$patientA, $patientB] = TelemedicinePatient::query()->orderBy('id')->limit(2)->pluck('id')->all();
 
     $before = ListTelemedicinePatients::summary($doctorId);
 
     $now = now();
-    $case = fn (int $doctor, int $patient, string $status, string $code): int => DB::table('telemedicine_cases')->insertGetId([
+    $case = fn (int $doctor, int $patient, string $status, string $code, string $managedBy = 'TDG'): int => DB::table('telemedicine_cases')->insertGetId([
         'telemedicine_patient_id' => $patient, 'telemedicine_doctor_id' => $doctor, 'code' => $code, 'status' => $status,
-        'managed_by' => 'TDG', 'created_at' => $now, 'updated_at' => $now,
+        'managed_by' => $managedBy, 'created_at' => $now, 'updated_at' => $now,
     ]);
 
     $case($doctorId, $patientA, 'ASIGNADO', 'ZZHDR-1');
@@ -29,11 +30,12 @@ it('resume los casos del médico con el mismo alcance que la tabla de pacientes'
     $case($doctorId, $patientB, 'ALTA MEDICA', 'ZZHDR-3');
     $case($doctorId, $patientB, 'PACIENTE DE ALTA', 'ZZHDR-4');
     $case($doctorId, $patientB, 'ELIMINADO', 'ZZHDR-5');
-    $case($otherDoctorId, $patientA, 'ASIGNADO', 'ZZHDR-6');
+    $case($colleagueDoctorId, $patientA, 'ASIGNADO', 'ZZHDR-6');
+    $case($otherTeamDoctorId, $patientA, 'ASIGNADO', 'ZZHDR-7', 'PROVEEDOR');
 
     $after = ListTelemedicinePatients::summary($doctorId);
 
-    expect($after['assigned'] - $before['assigned'])->toBe(1)
+    expect($after['assigned'] - $before['assigned'])->toBe(2)
         ->and($after['follow_up'] - $before['follow_up'])->toBe(1)
         ->and($after['discharged'] - $before['discharged'])->toBe(1)
         ->and($after['patients'])->toBeGreaterThanOrEqual(2)

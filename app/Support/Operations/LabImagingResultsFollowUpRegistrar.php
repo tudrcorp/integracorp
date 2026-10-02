@@ -803,7 +803,7 @@ final class LabImagingResultsFollowUpRegistrar
         array $resultDocuments,
         ?TelemedicineConsultationPatient $last = null,
     ): array {
-        $doctorId = $case->telemedicine_doctor_id ?? $coordination->telemedicine_doctor_id;
+        $doctorId = $case->telemedicine_doctor_id ?? $coordination->telemedicine_doctor_id ?? $last?->telemedicine_doctor_id;
         $assignedBy = $last?->assigned_by;
 
         $attributes = [

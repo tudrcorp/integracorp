@@ -748,6 +748,7 @@ class TelemedicineConsultationPatientForm
                                                     120 => '120 minutos',
                                                     150 => '150 minutos',
                                                     180 => '180 minutos',
+                                                    24 => '24 horas',
                                                 ]),
                                         ]),
                                     Textarea::make('observations')

@@ -60,9 +60,8 @@ class TelemedicinePatientsTable
             return null;
         }
 
-        return TelemedicineCase::query()
+        return TelemedicineCaseFilamentListQuery::constrainToDoctorTeamCases(TelemedicineCase::query(), (int) $doctorId)
             ->where('telemedicine_patient_id', $record->id)
-            ->where('telemedicine_doctor_id', $doctorId)
             ->where('status', '!=', 'PACIENTE DE ALTA')
             ->latest('updated_at')
             ->first();
@@ -74,7 +73,7 @@ class TelemedicinePatientsTable
             ->heading('Pacientes asignados')
             ->defaultSort('full_name', 'asc')
             ->emptyStateHeading('Sin pacientes asignados')
-            ->emptyStateDescription('No tiene pacientes con casos activos en este momento, o su usuario no tiene médico vinculado.')
+            ->emptyStateDescription('Su equipo médico no tiene pacientes con casos activos en este momento, o su usuario no tiene médico vinculado.')
             ->emptyStateIcon(Heroicon::OutlinedUserGroup)
             ->recordActionsColumnLabel('')
             ->extraAttributes([
@@ -94,15 +93,15 @@ class TelemedicinePatientsTable
                         'plan',
                         'coverage',
                         'telemedicineCases' => function ($caseQuery) use ($doctorId): void {
+                            TelemedicineCaseFilamentListQuery::constrainToDoctorTeamCases($caseQuery->getQuery(), (int) $doctorId);
+
                             $caseQuery
-                                ->where('telemedicine_doctor_id', $doctorId)
                                 ->where('status', '!=', 'PACIENTE DE ALTA')
                                 ->latest('updated_at');
                         },
                     ])
                     ->whereHas('telemedicineCases', function (Builder $caseQuery) use ($doctorId): void {
-                        $caseQuery
-                            ->where('telemedicine_doctor_id', $doctorId)
+                        TelemedicineCaseFilamentListQuery::constrainToDoctorTeamCases($caseQuery, (int) $doctorId)
                             ->where('status', '!=', 'PACIENTE DE ALTA');
                     });
             })

@@ -226,7 +226,7 @@ final class ConsultationChatSummary
         return collect([
             self::clean($consultation->telemedicinePriority?->name),
             filled($consultation->priorityMonitoring) && is_numeric($consultation->priorityMonitoring)
-                ? 'cada '.(int) $consultation->priorityMonitoring.' min'
+                ? 'próximo seguimiento: '.TelemedicineCaseFollowUpSchedule::optionLabel($consultation->priorityMonitoring)
                 : self::clean($consultation->priorityMonitoring),
         ])->filter()->implode(' · ');
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Telemedicine;
 
 use App\Models\TelemedicineCase;
+use App\Models\TelemedicineCaseFollowUpReschedule;
 use App\Models\TelemedicineConsultationPatient;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -57,18 +58,60 @@ final class TelemedicineCaseFollowUpSchedule
     }
 
     /**
+     * Opciones de «Próximo Seguimiento»: las mismas del formulario de seguimiento.
+     *
+     * @var array<int, string>
+     */
+    public const OPTIONS = [
+        30 => '30 minutos',
+        60 => '60 minutos',
+        90 => '90 minutos',
+        120 => '120 minutos',
+        150 => '150 minutos',
+        180 => '180 minutos',
+        24 => '24 horas',
+        48 => '48 horas',
+        72 => '72 horas',
+    ];
+
+    /**
+     * Etiqueta de un valor guardado: 24/48/72 son horas, el resto minutos (igual que {@see minutesFor()}).
+     */
+    public static function optionLabel(mixed $priorityMonitoring): string
+    {
+        $value = is_numeric($priorityMonitoring) ? (int) $priorityMonitoring : 0;
+
+        if ($value <= 0) {
+            return '—';
+        }
+
+        return self::OPTIONS[$value] ?? $value.' minutos';
+    }
+
+    /**
      * Expresión SQL con la fecha del próximo seguimiento del caso de la fila.
+     *
+     * Manda la última reprogramación ({@see TelemedicineCaseFollowUpReschedule})
+     * si es igual o más reciente que la última consulta; si después llega una
+     * consulta nueva, vuelve a mandar la consulta.
      */
     public static function nextFollowUpSql(): string
     {
         $cases = (new TelemedicineCase)->getTable();
         $consultations = (new TelemedicineConsultationPatient)->getTable();
+        $reschedules = (new TelemedicineCaseFollowUpReschedule)->getTable();
         $hours = implode(', ', self::HOUR_VALUES);
 
-        return "(select date_add(lc.created_at, interval (case when lc.priorityMonitoring in ({$hours}) then lc.priorityMonitoring * 60 else lc.priorityMonitoring end) minute)"
+        $fromConsultation = "(select date_add(lc.created_at, interval (case when lc.priorityMonitoring in ({$hours}) then lc.priorityMonitoring * 60 else lc.priorityMonitoring end) minute)"
             ." from {$consultations} lc"
             ." where lc.id = (select max(cmx.id) from {$consultations} cmx where cmx.telemedicine_case_id = {$cases}.id)"
             .' and lc.priorityMonitoring > 0)';
+
+        $fromReschedule = "(select rs.next_follow_up_at from {$reschedules} rs"
+            ." where rs.id = (select max(rsx.id) from {$reschedules} rsx where rsx.telemedicine_case_id = {$cases}.id)"
+            ." and rs.created_at >= coalesce((select rc.created_at from {$consultations} rc where rc.id = (select max(rcx.id) from {$consultations} rcx where rcx.telemedicine_case_id = {$cases}.id)), '1000-01-01'))";
+
+        return "coalesce({$fromReschedule}, {$fromConsultation})";
     }
 
     /**

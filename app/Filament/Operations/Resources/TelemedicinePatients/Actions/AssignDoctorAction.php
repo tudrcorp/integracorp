@@ -12,12 +12,14 @@ use App\Models\TelemedicinePatient;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\SecurityAudit;
 use App\Support\Telemedicine\TelemedicineCaseFactory;
+use App\Support\Telemedicine\TelemedicineMedicalTeam;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
@@ -43,9 +45,31 @@ class AssignDoctorAction
                 // ...Informacion del Doctor
                 Fieldset::make('Asignar Doctor')
                     ->schema([
+                        Toggle::make('assign_to_medical_team')
+                            ->label('Asignar al Equipo Médico')
+                            ->helperText('El caso entra al panel de telemedicina sin médico particular y lo toma cualquier médico de guardia del equipo.')
+                            ->default(false)
+                            ->live()
+                            ->visible(fn (): bool => TelemedicineMedicalTeam::optionsForCurrentUser() !== []),
+                        Select::make('medical_team')
+                            ->label('Equipo médico')
+                            ->placeholder('Seleccione el equipo de guardia')
+                            ->options(fn (): array => TelemedicineMedicalTeam::optionsForCurrentUser())
+                            ->default(function (): ?string {
+                                $options = TelemedicineMedicalTeam::optionsForCurrentUser();
+
+                                return count($options) === 1 ? (string) array_key_first($options) : null;
+                            })
+                            ->required()
+                            ->validationMessages([
+                                'required' => 'Seleccione el equipo médico que recibirá el caso.',
+                            ])
+                            ->helperText('TDG o el proveedor cuyos médicos atenderán el caso.')
+                            ->visible(fn (Get $get): bool => (bool) $get('assign_to_medical_team')),
                         Select::make('doctor_id')
                             ->label('Doctor')
                             ->required()
+                            ->hidden(fn (Get $get): bool => (bool) $get('assign_to_medical_team'))
                             ->live()
                             ->searchable()
                             ->helperText('Analistas TDG ven todos los médicos registrados (TDG y proveedores). Entre paréntesis: proveedor y grupo.')
@@ -109,7 +133,8 @@ class AssignDoctorAction
                             })
                             ->searchable()
                             ->required()
-                            ->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst()),
+                            ->visible(fn (Get $get): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst()
+                                && ! $get('assign_to_medical_team')),
                         Grid::make()
                             ->schema([
                                 Textarea::make('reason')
@@ -266,7 +291,47 @@ class AssignDoctorAction
             ])
             ->action(function (TelemedicinePatient $record, array $data) {
                 try {
-                    $doctor = TelemedicineDoctor::query()->findOrFail($data['doctor_id']);
+                    $assignToTeam = (bool) ($data['assign_to_medical_team'] ?? false);
+                    $doctor = null;
+
+                    if ($assignToTeam) {
+                        $team = TelemedicineMedicalTeam::resolveForCurrentUser($data['medical_team'] ?? null);
+
+                        if ($team === null) {
+                            Notification::make()
+                                ->title('Equipo médico no válido')
+                                ->body('Seleccione un equipo médico de la lista. No se creó el caso.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $assignment = [
+                            'telemedicine_doctor_id' => null,
+                            'assigned_to_medical_team' => true,
+                            'medical_team_supplier_id' => $team['supplier_id'],
+                            'managed_by' => $team['managed_by'],
+                            'belongs_to' => null,
+                        ];
+                        $successMessage = 'El caso fue asignado al '.(TelemedicineMedicalTeam::optionsForCurrentUser()[(string) $data['medical_team']] ?? TelemedicineMedicalTeam::LABEL).'. Lo tomará el médico de guardia.';
+                    } else {
+                        $doctor = TelemedicineDoctor::query()->findOrFail($data['doctor_id']);
+
+                        $assignment = [
+                            'telemedicine_doctor_id' => $doctor->id,
+                            'assigned_to_medical_team' => false,
+                            'medical_team_supplier_id' => null,
+                            'managed_by' => $doctor->managed_by,
+                            'belongs_to' => $data['belongs_to'] ?? null,
+                        ];
+                        $successMessage = 'El paciente ha sido asignado exitosamente.';
+                    }
+
+                    $teamAudit = $assignToTeam ? [
+                        'medical_team' => (string) $data['medical_team'],
+                        'medical_team_supplier_id' => $assignment['medical_team_supplier_id'],
+                    ] : [];
 
                     SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_CASE_ASSIGNMENT_STARTED', 'operations.telemedicine-patients.assign-doctor', [
                         'telemedicine_patient_id' => $record->id,
@@ -274,6 +339,7 @@ class AssignDoctorAction
                         'doctor_id' => $data['doctor_id'] ?? null,
                         'feedback' => $data['feedback'] ?? null,
                         'address_id' => $data['address_id'] ?? null,
+                        ...$teamAudit,
                     ]);
                     /**
                      * CASO 1: El paciente tiene la misma ubicacion que la registrada en la afiliacion
@@ -281,26 +347,27 @@ class AssignDoctorAction
                     if ($data['feedback'] == true) {
 
                         $case = TelemedicineCaseFactory::createForPatient($record, [
-                            'telemedicine_doctor_id' => $data['doctor_id'],
+                            ...$assignment,
                             'reason' => $data['reason'],
                             'ambulanceParking' => $data['ambulanceParking'],
-                            'belongs_to' => $data['belongs_to'] ?? null,
                             'assigned_by' => Auth::user()->name,
-                            'managed_by' => $doctor->managed_by,
                             'supplier_id' => OperationsSupplierScope::resolveFromPatient($record),
                         ]);
 
                         if ($case) {
 
                             $name_patient = $case['patient_name'];
-                            $name = $doctor->full_name;
-                            $phone = $doctor->phone;
+                            $name = $doctor?->full_name;
+                            $phone = $doctor?->phone;
                             $address = $record->address;
                             $code = $case->code;
                             $reason = $data['reason'];
-                            $email = $doctor->email;
+                            $email = $doctor?->email;
 
-                            AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
+                            // ...Asignado al equipo: sin notificación, el caso aparece en el escritorio del médico de guardia.
+                            if ($doctor !== null) {
+                                AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
+                            }
 
                             SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_CASE_ASSIGNED', 'operations.telemedicine-patients.assign-doctor', [
                                 'telemedicine_patient_id' => $record->id,
@@ -308,12 +375,13 @@ class AssignDoctorAction
                                 'telemedicine_case_code' => $case->code,
                                 'doctor_id' => $data['doctor_id'] ?? null,
                                 'flow' => 'same_registered_address',
-                                'job' => AssignedCase::class,
+                                'job' => $doctor !== null ? AssignedCase::class : null,
+                                ...$teamAudit,
                             ]);
 
                             Notification::make()
                                 ->title('Paciente Asignado')
-                                ->body('El paciente ha sido asignado exitosamente.')
+                                ->body($successMessage)
                                 ->success()
                                 ->send();
                         }
@@ -328,7 +396,7 @@ class AssignDoctorAction
                         $address = AnotherAddress::find($data['address_id']);
 
                         $case = TelemedicineCaseFactory::createForPatient($record, [
-                            'telemedicine_doctor_id' => $data['doctor_id'],
+                            ...$assignment,
                             'patient_phone' => $address['phone_1'],
                             'patient_phone_2' => $address['phone_2'],
                             'patient_address' => $address['address'],
@@ -337,23 +405,24 @@ class AssignDoctorAction
                             'patient_city_id' => $address['city_id'],
                             'reason' => $data['reason'],
                             'ambulanceParking' => $data['ambulanceParking'],
-                            'belongs_to' => $data['belongs_to'] ?? null,
                             'assigned_by' => Auth::user()->name,
-                            'managed_by' => $doctor->managed_by,
                             'supplier_id' => OperationsSupplierScope::resolveFromPatient($record),
                         ]);
 
                         if ($case) {
 
                             $name_patient = $case['patient_name'];
-                            $name = $doctor->full_name;
-                            $phone = $doctor->phone;
+                            $name = $doctor?->full_name;
+                            $phone = $doctor?->phone;
                             $address = $address['address'];
                             $code = $case->code;
                             $reason = $data['reason'];
-                            $email = $doctor->email;
+                            $email = $doctor?->email;
 
-                            AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
+                            // ...Asignado al equipo: sin notificación, el caso aparece en el escritorio del médico de guardia.
+                            if ($doctor !== null) {
+                                AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
+                            }
 
                             SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_CASE_ASSIGNED', 'operations.telemedicine-patients.assign-doctor', [
                                 'telemedicine_patient_id' => $record->id,
@@ -362,12 +431,13 @@ class AssignDoctorAction
                                 'doctor_id' => $data['doctor_id'] ?? null,
                                 'flow' => 'selected_registered_address',
                                 'address_id' => $data['address_id'] ?? null,
-                                'job' => AssignedCase::class,
+                                'job' => $doctor !== null ? AssignedCase::class : null,
+                                ...$teamAudit,
                             ]);
 
                             Notification::make()
                                 ->title('Paciente Asignado')
-                                ->body('El paciente ha sido asignado exitosamente.')
+                                ->body($successMessage)
                                 ->success()
                                 ->send();
                         }
@@ -379,7 +449,7 @@ class AssignDoctorAction
                     if ($data['feedback'] == false && $data['address_id'] == null) {
 
                         // ...La ubicacion y el caso se guardan juntos: si el caso falla, no queda una ubicacion huerfana.
-                        [$address, $case] = DB::transaction(function () use ($record, $data, $doctor): array {
+                        [$address, $case] = DB::transaction(function () use ($record, $data, $assignment): array {
                             $address = new AnotherAddress;
                             $address->address = $data['address'];
                             $address->phone_1 = $data['phone_1'];
@@ -393,7 +463,7 @@ class AssignDoctorAction
                             $address->save();
 
                             $case = TelemedicineCaseFactory::createForPatient($record, [
-                                'telemedicine_doctor_id' => $data['doctor_id'],
+                                ...$assignment,
                                 'patient_phone' => $address->phone_1,
                                 'patient_phone_2' => $address->phone_2,
                                 'patient_address' => $address->address,
@@ -402,9 +472,7 @@ class AssignDoctorAction
                                 'patient_city_id' => $address->city_id,
                                 'reason' => $data['reason'],
                                 'ambulanceParking' => $data['ambulanceParking'],
-                                'belongs_to' => $data['belongs_to'] ?? null,
                                 'assigned_by' => Auth::user()->name,
-                                'managed_by' => $doctor->managed_by,
                                 'supplier_id' => OperationsSupplierScope::resolveFromPatient($record),
                             ]);
 
@@ -414,15 +482,18 @@ class AssignDoctorAction
                         if ($case) {
 
                             $name_patient = $case['patient_name'];
-                            $name = $doctor->full_name;
-                            $phone = $doctor->phone;
+                            $name = $doctor?->full_name;
+                            $phone = $doctor?->phone;
                             $newAddressId = $address->id;
                             $address = $address->address;
                             $code = $case->code;
                             $reason = $data['reason'];
-                            $email = $doctor->email;
+                            $email = $doctor?->email;
 
-                            AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
+                            // ...Asignado al equipo: sin notificación, el caso aparece en el escritorio del médico de guardia.
+                            if ($doctor !== null) {
+                                AssignedCase::dispatch($phone, $name, $code, $reason, $name_patient, $email, $address);
+                            }
 
                             SecurityAudit::log('AUDIT_OPERATIONS_TELEMEDICINE_CASE_ASSIGNED', 'operations.telemedicine-patients.assign-doctor', [
                                 'telemedicine_patient_id' => $record->id,
@@ -431,12 +502,13 @@ class AssignDoctorAction
                                 'doctor_id' => $data['doctor_id'] ?? null,
                                 'flow' => 'new_address',
                                 'new_address_id' => $newAddressId,
-                                'job' => AssignedCase::class,
+                                'job' => $doctor !== null ? AssignedCase::class : null,
+                                ...$teamAudit,
                             ]);
 
                             Notification::make()
                                 ->title('Paciente Asignado')
-                                ->body('El paciente ha sido asignado exitosamente.')
+                                ->body($successMessage)
                                 ->success()
                                 ->send();
                         }

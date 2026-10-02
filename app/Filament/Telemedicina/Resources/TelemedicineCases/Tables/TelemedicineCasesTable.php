@@ -8,6 +8,7 @@ use App\Models\TelemedicineCase;
 use App\Models\TelemedicinePatient;
 use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
+use App\Support\Telemedicine\TelemedicineMedicalTeam;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -30,12 +31,12 @@ class TelemedicineCasesTable
             // ->description('Listado con el mismo estilo que el escritorio. Solo ve sus casos asignados. Los casos salen de la lista cuando el caso está en ALTA MÉDICA (TDG y resto). En ATENMEDI además se ocultan casos con alguna consulta en alta médica o con traslado en ambulancia en alguna consulta.')
             ->defaultSort('created_at', 'desc')
             ->emptyStateHeading('Sin casos para mostrar')
-            ->emptyStateDescription('No hay casos que cumplan los filtros de su perfil, o aún no tiene asignaciones.')
+            ->emptyStateDescription('No hay casos activos de su equipo médico que cumplan los filtros.')
             ->emptyStateIcon(Heroicon::OutlinedClipboardDocumentList)
             ->recordActionsColumnLabel('')
             ->modifyQueryUsing(function (Builder $query): Builder {
                 return TelemedicineCaseFilamentListQuery::applyTelemedicinaResourceCasesConstraints(
-                    $query->with(['telemedicineDoctor', 'telemedicinePatient', 'priority'])
+                    $query->with(['telemedicineDoctor', 'telemedicinePatient', 'priority', 'medicalTeamSupplier:id,name,integracorp_alias'])
                 );
             })
             ->extraAttributes([
@@ -57,7 +58,7 @@ class TelemedicineCasesTable
                     ->badge()
                     ->icon('healthicons-f-boy-1015y')
                     ->color('primary')
-                    ->description(fn (TelemedicineCase $record): string => 'Dr(a). '.($record->telemedicineDoctor?->full_name ?? '—'))
+                    ->description(fn (TelemedicineCase $record): string => TelemedicineMedicalTeam::assigneeLabel($record))
                     ->searchable(query: function (Builder $query, string $search): Builder {
                         return $query->where(function (Builder $q) use ($search): void {
                             $q->where('patient_name', 'like', "%{$search}%")

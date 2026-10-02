@@ -39,7 +39,7 @@ class TelemedicinePatientSpecialtiesRelationManager extends RelationManager
     {
         return $table
             ->heading('Especialidades solicitadas')
-            ->description(fn (RelationManager $livewire): string => 'Indicador por el Dr(a): '.$livewire->ownerRecord->telemedicineDoctor->full_name.'. No se pueden seleccionar registros con estatus EN GESTION.')
+            ->description(fn (RelationManager $livewire): string => 'Indicador por el Dr(a): '.($livewire->ownerRecord->telemedicineDoctor?->full_name ?? '—').'. No se pueden seleccionar registros con estatus EN GESTION.')
             ->checkIfRecordIsSelectableUsing(fn ($record): bool => ($record->status ?? null) !== 'EN GESTION')
             ->columns([
                 TextColumn::make('specialty')

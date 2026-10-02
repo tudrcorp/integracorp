@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Schemas;
 
 use App\Models\TelemedicineConsultationPatient;
+use App\Support\Telemedicine\TelemedicineCaseFollowUpSchedule;
 use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Infolists\Components\TextEntry;
@@ -307,7 +308,7 @@ class TelemedicineConsultationPatientInfolist
                                             ->schema([
                                                 TextEntry::make('priorityMonitoring')
                                                     ->label('Prioridad de monitoreo')
-                                                    ->suffix(' minutos')
+                                                    ->formatStateUsing(fn (mixed $state): string => TelemedicineCaseFollowUpSchedule::optionLabel($state))
                                                     ->placeholder('—'),
                                                 TextEntry::make('observations')
                                                     ->label('Observaciones')
