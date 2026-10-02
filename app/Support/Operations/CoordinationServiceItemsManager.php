@@ -99,9 +99,9 @@ final class CoordinationServiceItemsManager
     }
 
     /**
-     * Delega en la matriz de acceso por rol. El cubierto sin inventario
-     * lo gestiona el analista TDG; el cubierto de inventario sigue la regla
-     * proveedor / managed_by = TDG.
+     * Delega en la matriz de acceso por rol ({@see CoordinationServiceAccess::itemOwner()}):
+     * un solo responsable por ítem, el mismo para medicamentos de inventario,
+     * medicamentos manuales cubiertos, laboratorios, estudios y especialistas.
      */
     public static function coveredItemIsManageableByTdg(
         OperationCoordinationService $record,
@@ -284,7 +284,7 @@ final class CoordinationServiceItemsManager
             });
 
         $studies
-            ->each(function (TelemedicinePatientStudy $item) use ($items): void {
+            ->each(function (TelemedicinePatientStudy $item) use ($items, $record): void {
                 $coverage = self::coverageValue('IMAGENOLOGIA', $item);
                 $items->push([
                     'key' => 'study:'.$item->id,
@@ -297,7 +297,8 @@ final class CoordinationServiceItemsManager
                     'courtesy_status' => CoordinationServiceCourtesy::itemIsCourtesy($item->courtesy_status ?? null)
                         ? CoordinationServiceCourtesy::STATUS
                         : null,
-                    'selectable' => self::isManagementItemSelectable((string) ($item->status ?? '')),
+                    'selectable' => self::isManagementItemSelectable((string) ($item->status ?? ''))
+                        && self::coveredItemIsManageableByTdg($record, 'Estudio', $coverage),
                 ]);
             });
 
@@ -318,7 +319,8 @@ final class CoordinationServiceItemsManager
                     'courtesy_status' => CoordinationServiceCourtesy::itemIsCourtesy($item->courtesy_status ?? null)
                         ? CoordinationServiceCourtesy::STATUS
                         : null,
-                    'selectable' => self::isManagementItemSelectable((string) ($item->status ?? '')),
+                    'selectable' => self::isManagementItemSelectable((string) ($item->status ?? ''))
+                        && self::coveredItemIsManageableByTdg($record, $isTpaStandaloneServiceItem ? 'Servicio' : 'Especialista', $coverage),
                 ]);
             });
 

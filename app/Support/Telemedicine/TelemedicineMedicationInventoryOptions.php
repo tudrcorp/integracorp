@@ -9,6 +9,7 @@ use App\Models\TelemedicineCase;
 use App\Models\TelemedicineDoctor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 final class TelemedicineMedicationInventoryOptions
 {
@@ -71,6 +72,27 @@ final class TelemedicineMedicationInventoryOptions
         }
 
         return true;
+    }
+
+    /**
+     * El médico de un proveedor indica con el campo manual «Cubierto por …» que su
+     * proveedor cubre el medicamento: los proveedores no tienen inventario propio
+     * registrado en IntegraCorp y el inventario TDC (y su cobertura) es de TDG.
+     */
+    public static function prescriberUsesProviderCoverage(?TelemedicineDoctor $doctor): bool
+    {
+        return $doctor !== null && filled($doctor->supplier_id);
+    }
+
+    /**
+     * Encabezado de la columna manual de cubiertos para el médico de un proveedor.
+     */
+    public static function providerCoverageLabel(?TelemedicineDoctor $doctor): string
+    {
+        $supplier = $doctor?->supplier;
+        $name = Str::squish((string) ($supplier?->integracorp_alias ?: $supplier?->name ?: ''));
+
+        return $name !== '' ? 'Cubierto por '.$name : 'Cubierto por el proveedor';
     }
 
     public static function shouldDeductInventory(?TelemedicineDoctor $doctor, ?TelemedicineCase $case): bool

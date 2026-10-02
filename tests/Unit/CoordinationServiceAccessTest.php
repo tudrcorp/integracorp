@@ -53,16 +53,18 @@ it('el proveedor ve coordinaciones propias con asignación TDG aunque no haya me
         ->and(CoordinationServiceAccess::providerCanSeeCoordination($otherSupplier, 10))->toBeFalse();
 });
 
-it('TDG gestiona cubierto sin inventario aunque la coordinación no sea TDG', function (): void {
+it('el cubierto sin inventario lo gestiona quien gestiona el servicio, no TDG por defecto', function (): void {
     Auth::login(makeCoordinationAccessUser(null));
 
-    $noTdg = new OperationCoordinationService(['managed_by' => 'ATENMEDI']);
+    $noTdg = new OperationCoordinationService(['supplier_id' => 22, 'managed_by' => 'ATENMEDI', 'assigned_to_supplier_by_tdg' => false]);
+    $tdg = new OperationCoordinationService(['supplier_id' => 22, 'managed_by' => 'TDG', 'assigned_to_supplier_by_tdg' => false]);
 
     expect(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Medicamento', true))->toBeFalse()
-        ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Medicamento', true, isCoveredWithoutInventory: true))->toBeTrue();
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Medicamento', true, isCoveredWithoutInventory: true))->toBeFalse()
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($tdg, 'Medicamento', true, isCoveredWithoutInventory: true))->toBeTrue();
 });
 
-it('proveedor no gestiona cubierto sin inventario', function (): void {
+it('proveedor gestiona el cubierto sin inventario de su servicio', function (): void {
     Auth::login(makeCoordinationAccessUser(22));
 
     $noTdg = new OperationCoordinationService([
@@ -72,22 +74,25 @@ it('proveedor no gestiona cubierto sin inventario', function (): void {
     ]);
 
     expect(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Medicamento', true))->toBeTrue()
-        ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Medicamento', true, isCoveredWithoutInventory: true))->toBeFalse();
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Medicamento', true, isCoveredWithoutInventory: true))->toBeTrue();
 });
 
-it('TDG gestiona med/lab cubiertos solo si managed_by es TDG', function (): void {
+it('TDG gestiona ítems cubiertos solo si managed_by es TDG', function (): void {
     Auth::login(makeCoordinationAccessUser(null));
 
-    $noTdg = new OperationCoordinationService(['managed_by' => 'ATENMEDI']);
-    $tdg = new OperationCoordinationService(['managed_by' => 'TDG']);
+    $noTdg = new OperationCoordinationService(['supplier_id' => 22, 'managed_by' => 'ATENMEDI', 'assigned_to_supplier_by_tdg' => false]);
+    $tdg = new OperationCoordinationService(['supplier_id' => 22, 'managed_by' => 'TDG', 'assigned_to_supplier_by_tdg' => false]);
 
     expect(OperationsSupplierScope::authenticatedUserIsTdgAnalyst())->toBeTrue()
         ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Medicamento', true))->toBeFalse()
         ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Laboratorio', true))->toBeFalse()
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Estudio', true))->toBeFalse()
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Especialista', true))->toBeFalse()
         ->and(CoordinationServiceAccess::itemIsManageableByUser($tdg, 'Medicamento', true))->toBeTrue()
         ->and(CoordinationServiceAccess::itemIsManageableByUser($tdg, 'Laboratorio', true))->toBeTrue()
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($tdg, 'Estudio', true))->toBeTrue()
         ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Medicamento', false))->toBeTrue()
-        ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Estudio', true))->toBeTrue();
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($noTdg, 'Estudio', false))->toBeTrue();
 });
 
 it('proveedor gestiona med/lab cubiertos si managed_by no es TDG', function (): void {
@@ -207,7 +212,7 @@ it('CoordinationServiceItemsManager filtra visibilidad y gestionabilidad por Coo
 it('coveredItemIsManageableByTdg delega en la matriz por rol autenticado', function (): void {
     Auth::login(makeCoordinationAccessUser(null));
 
-    $noTdg = new OperationCoordinationService(['managed_by' => 'ATENMEDI']);
+    $noTdg = new OperationCoordinationService(['supplier_id' => 7, 'managed_by' => 'ATENMEDI']);
 
     expect(CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', true))->toBeFalse();
 
@@ -215,4 +220,40 @@ it('coveredItemIsManageableByTdg delega en la matriz por rol autenticado', funct
     Auth::login(makeCoordinationAccessUser(7));
 
     expect(CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', true))->toBeTrue();
+});
+
+it('cada ítem tiene un solo responsable: TDG o el proveedor, nunca los dos', function (string $managedBy, bool $assigned, ?bool $coverage, string $owner): void {
+    $record = new OperationCoordinationService(['supplier_id' => 22, 'managed_by' => $managedBy, 'assigned_to_supplier_by_tdg' => $assigned]);
+    $tdg = makeCoordinationAccessUser(null);
+    $provider = makeCoordinationAccessUser(22);
+    $otherProvider = makeCoordinationAccessUser(23);
+
+    expect(CoordinationServiceAccess::itemOwner($record, $coverage))->toBe($owner)
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($record, 'Medicamento', $coverage, $tdg))->toBe($owner === CoordinationServiceAccess::OWNER_TDG)
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($record, 'Medicamento', $coverage, $provider))->toBe($owner === CoordinationServiceAccess::OWNER_SUPPLIER)
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($record, 'Medicamento', $coverage, $otherProvider))->toBeFalse();
+})->with([
+    'servicio de proveedor, cubierto' => ['ATENMEDI', false, true, CoordinationServiceAccess::OWNER_SUPPLIER],
+    'servicio de proveedor, no cubierto' => ['ATENMEDI', false, false, CoordinationServiceAccess::OWNER_TDG],
+    'servicio de proveedor asignado, no cubierto' => ['ATENMEDI', true, false, CoordinationServiceAccess::OWNER_SUPPLIER],
+    'servicio TDG, cubierto' => ['TDG', false, true, CoordinationServiceAccess::OWNER_TDG],
+    'servicio TDG asignado, cubierto' => ['TDG', true, true, CoordinationServiceAccess::OWNER_TDG],
+    'servicio TDG asignado, no cubierto' => ['TDG', true, false, CoordinationServiceAccess::OWNER_SUPPLIER],
+    'servicio TDG, cobertura desconocida' => ['TDG', false, null, CoordinationServiceAccess::OWNER_TDG],
+]);
+
+it('un servicio sin proveedor siempre lo gestiona TDG', function (): void {
+    $record = new OperationCoordinationService(['supplier_id' => null, 'managed_by' => 'ATENMEDI', 'assigned_to_supplier_by_tdg' => true]);
+
+    expect(CoordinationServiceAccess::itemOwner($record, true))->toBe(CoordinationServiceAccess::OWNER_TDG)
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($record, 'Medicamento', true, makeCoordinationAccessUser(22)))->toBeFalse();
+});
+
+it('evalúa al usuario recibido y no al de la sesión', function (): void {
+    Auth::login(makeCoordinationAccessUser(null));
+
+    $record = new OperationCoordinationService(['supplier_id' => 22, 'managed_by' => 'ATENMEDI', 'assigned_to_supplier_by_tdg' => false]);
+
+    expect(CoordinationServiceAccess::itemIsManageableByUser($record, 'Medicamento', true, makeCoordinationAccessUser(22)))->toBeTrue()
+        ->and(CoordinationServiceAccess::itemIsManageableByUser($record, 'Medicamento', true))->toBeFalse();
 });

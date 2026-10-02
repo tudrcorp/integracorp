@@ -7,6 +7,7 @@ namespace App\Filament\Operations\Resources\OperationCoordinationServices\Pages;
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Schemas\ManageCoordinationServiceItemsForm;
 use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrderResource;
+use App\Models\OperationCoordinationService;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use Filament\Actions\Action;
@@ -145,6 +146,15 @@ class ManageCoordinationServiceItems extends Page
     {
         try {
             $this->beginDatabaseTransaction();
+
+            /*
+             * Un solo analista gestiona un ítem a la vez: se bloquea la coordinación y se
+             * relee antes de validar. Si otro la gestionó entre tanto (ítem ya EN GESTION)
+             * o cambió el responsable («Tomar gestión TDG»), la validación de opciones
+             * habilitadas rechaza la selección en lugar de crear una segunda orden.
+             */
+            OperationCoordinationService::query()->whereKey($this->getRecord()->getKey())->lockForUpdate()->first();
+            $this->getRecord()->refresh();
 
             $data = $this->form->getState();
 

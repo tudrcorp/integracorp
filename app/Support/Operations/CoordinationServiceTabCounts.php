@@ -38,10 +38,11 @@ final class CoordinationServiceTabCounts
     private const VERSION_KEY = 'operations:coordination-tab-counts:version';
 
     /**
-     * `v2`: las pestañas de trabajo excluyen los servicios finalizados; la versión
-     * evita servir conteos guardados con la regla anterior.
+     * Versión de la regla de conteo; subirla evita servir conteos guardados con la anterior.
+     * `v2`: las pestañas de trabajo excluyen los servicios finalizados.
+     * `v3`: el proveedor también ve servicios con estudios o especialistas cubiertos.
      */
-    private const KEY_PREFIX = 'operations:coordination-tab-counts:v2';
+    private const KEY_PREFIX = 'operations:coordination-tab-counts:v3';
 
     /**
      * @param  Closure(): array<string, int>  $compute

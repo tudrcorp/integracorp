@@ -360,6 +360,16 @@ class TelemedicineConsultationPatientForm
         $labImagingResultDocuments = filled($caseId)
             ? LabImagingResultsFollowUpRegistrar::previewDocumentsForCase((int) $caseId)
             : [];
+        /*
+         * Quien prescribe es el médico en sesión (el firmante), no el asignado al caso.
+         * Si es de un proveedor, no usa el inventario TDC: registra el medicamento como
+         * «Cubierto por <proveedor>» o «No cubierto».
+         */
+        $prescriber = TelemedicineConsultationSigningDoctor::forUser(Auth::user()) ?? self::caseWithDoctor($case)?->telemedicineDoctor;
+        $providerCoverage = TelemedicineMedicationInventoryOptions::prescriberUsesProviderCoverage($prescriber);
+        $coveredColumnLabel = $providerCoverage
+            ? TelemedicineMedicationInventoryOptions::providerCoverageLabel($prescriber)
+            : 'Cubierto (Operaciones)';
 
         return $schema
             ->components([
@@ -1020,7 +1030,9 @@ class TelemedicineConsultationPatientForm
 
                     Step::make('Medicamentos e Indicaciones')
                         ->key(TelemedicineConsultationWizardSteps::MEDICATIONS, isInheritable: false)
-                        ->description('Inventario TDC, cubierto sin inventario (Operaciones) o no cubierto.')
+                        ->description($providerCoverage
+                            ? $coveredColumnLabel.' o no cubierto.'
+                            : 'Inventario TDC, cubierto sin inventario (Operaciones) o no cubierto.')
                         ->icon(Heroicon::OutlinedBeaker)
                         ->hidden(fn (Get $get) => $get('feedbackOne') == true || ! in_array(1, $get('complements')))
                         ->schema([
@@ -1031,17 +1043,17 @@ class TelemedicineConsultationPatientForm
                                 ->hiddenLabel()
                                 ->columnSpanFull(),
                             Repeater::make('medications')
-                                ->table([
-                                    TableColumn::make('Inventario TDC')->width('16%'),
-                                    TableColumn::make('Cubierto (Operaciones)')->width('16%'),
-                                    TableColumn::make('No cubierto')->width('16%'),
-                                    TableColumn::make('Indicaciones')->width('27%'),
+                                ->table(array_values(array_filter([
+                                    $providerCoverage ? null : TableColumn::make('Inventario TDC')->width('16%'),
+                                    TableColumn::make($coveredColumnLabel)->width($providerCoverage ? '22%' : '16%'),
+                                    TableColumn::make('No cubierto')->width($providerCoverage ? '22%' : '16%'),
+                                    TableColumn::make('Indicaciones')->width($providerCoverage ? '29%' : '27%'),
                                     TableColumn::make('Cantidad')->width('12%'),
-                                    TableColumn::make('Duración(en días)')->width('13%'),
-                                ])
+                                    TableColumn::make('Duración(en días)')->width($providerCoverage ? '15%' : '13%'),
+                                ])))
                                 ->rules([
-                                    function (): \Closure {
-                                        return function (string $attribute, mixed $value, \Closure $fail): void {
+                                    function () use ($providerCoverage, $coveredColumnLabel): \Closure {
+                                        return function (string $attribute, mixed $value, \Closure $fail) use ($providerCoverage, $coveredColumnLabel): void {
                                             if (! is_array($value)) {
                                                 return;
                                             }
@@ -1051,6 +1063,10 @@ class TelemedicineConsultationPatientForm
                                                     $exclusiveError = TelemedicineMedicationCoverage::exclusiveSourceError($row, $rowNumber);
                                                     if ($exclusiveError !== null) {
                                                         $fail($exclusiveError);
+                                                    }
+
+                                                    if ($providerCoverage && TelemedicineMedicationCoverage::rowHasInventory($row)) {
+                                                        $fail(TelemedicineMedicationCoverage::providerInventoryError($rowNumber, $coveredColumnLabel));
                                                     }
 
                                                     $hasInventory = TelemedicineMedicationCoverage::rowHasInventory($row);
@@ -1064,69 +1080,71 @@ class TelemedicineConsultationPatientForm
                                     },
                                 ])
                                 ->schema([
-                                    Select::make('operation_inventory_id')
-                                        ->options(function () use ($case): array {
-                                            $caseModel = self::caseWithDoctor($case);
+                                    ...($providerCoverage ? [] : [
+                                        Select::make('operation_inventory_id')
+                                            ->options(function () use ($case): array {
+                                                $caseModel = self::caseWithDoctor($case);
 
-                                            return TelemedicineMedicationInventoryOptions::optionsForCase(
-                                                $caseModel,
-                                                $caseModel?->telemedicineDoctor,
-                                            );
-                                        })
-                                        ->getSearchResultsUsing(function (string $search) use ($case): array {
-                                            $caseModel = self::caseWithDoctor($case);
+                                                return TelemedicineMedicationInventoryOptions::optionsForCase(
+                                                    $caseModel,
+                                                    $caseModel?->telemedicineDoctor,
+                                                );
+                                            })
+                                            ->getSearchResultsUsing(function (string $search) use ($case): array {
+                                                $caseModel = self::caseWithDoctor($case);
 
-                                            return TelemedicineMedicationInventoryOptions::searchOptionsForCase(
-                                                $caseModel,
-                                                $search,
-                                                $caseModel?->telemedicineDoctor,
-                                            );
-                                        })
-                                        ->getOptionLabelUsing(function ($value): ?string {
-                                            if (! filled($value)) {
-                                                return null;
-                                            }
+                                                return TelemedicineMedicationInventoryOptions::searchOptionsForCase(
+                                                    $caseModel,
+                                                    $search,
+                                                    $caseModel?->telemedicineDoctor,
+                                                );
+                                            })
+                                            ->getOptionLabelUsing(function ($value): ?string {
+                                                if (! filled($value)) {
+                                                    return null;
+                                                }
 
-                                            $name = OperationInventory::query()->whereKey($value)->value('name');
+                                                $name = OperationInventory::query()->whereKey($value)->value('name');
 
-                                            return filled($name) ? (string) $name : null;
-                                        })
-                                        ->searchable()
-                                        ->preload()
-                                        ->live(onBlur: false)
-                                        // ->helperText(function () use ($case): ?string {
-                                        //     if ($case === null) {
-                                        //         return null;
-                                        //     }
+                                                return filled($name) ? (string) $name : null;
+                                            })
+                                            ->searchable()
+                                            ->preload()
+                                            ->live(onBlur: false)
+                                            // ->helperText(function () use ($case): ?string {
+                                            //     if ($case === null) {
+                                            //         return null;
+                                            //     }
 
-                                        //     $case->loadMissing('telemedicineDoctor');
+                                            //     $case->loadMissing('telemedicineDoctor');
 
-                                        //     if (TelemedicineMedicationInventoryOptions::shouldDeductInventory(
-                                        //         $case->telemedicineDoctor,
-                                        //         $case,
-                                        //     )) {
-                                        //         $warehouse = TelemedicineMedicationInventoryOptions::warehouseNameForBelongsTo($case->belongs_to);
+                                            //     if (TelemedicineMedicationInventoryOptions::shouldDeductInventory(
+                                            //         $case->telemedicineDoctor,
+                                            //         $case,
+                                            //     )) {
+                                            //         $warehouse = TelemedicineMedicationInventoryOptions::warehouseNameForBelongsTo($case->belongs_to);
 
-                                        //         return filled($warehouse)
-                                        //             ? "Inventario del almacén {$warehouse} (categoría Medicamento, existencia > 0)."
-                                        //             : null;
-                                        //     }
+                                            //         return filled($warehouse)
+                                            //             ? "Inventario del almacén {$warehouse} (categoría Medicamento, existencia > 0)."
+                                            //             : null;
+                                            //     }
 
-                                        //     if (TelemedicineMedicationInventoryOptions::doctorBelongsToProvider($case->telemedicineDoctor)) {
-                                        //         return 'Catálogo de medicamentos (sin duplicados). No descuenta inventario.';
-                                        //     }
+                                            //     if (TelemedicineMedicationInventoryOptions::doctorBelongsToProvider($case->telemedicineDoctor)) {
+                                            //         return 'Catálogo de medicamentos (sin duplicados). No descuenta inventario.';
+                                            //     }
 
-                                        //     return null;
-                                        // })
-                                        ->afterStateUpdated(function ($state, Set $set): void {
-                                            if (filled($state)) {
-                                                $set('covered_medicines', null);
-                                                $set('medicines', null);
-                                                $set('quantity', 1);
-                                            }
-                                        }),
+                                            //     return null;
+                                            // })
+                                            ->afterStateUpdated(function ($state, Set $set): void {
+                                                if (filled($state)) {
+                                                    $set('covered_medicines', null);
+                                                    $set('medicines', null);
+                                                    $set('quantity', 1);
+                                                }
+                                            }),
+                                    ]),
                                     TextInput::make('covered_medicines')
-                                        ->placeholder('Cubierto, sin inventario')
+                                        ->placeholder($providerCoverage ? $coveredColumnLabel : 'Cubierto, sin inventario')
                                         ->live(onBlur: false)
                                         ->afterStateUpdated(function ($state, Set $set): void {
                                             if (filled($state)) {

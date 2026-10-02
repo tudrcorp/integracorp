@@ -19,10 +19,12 @@ use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\Opera
 use App\Models\OperationCoordinationService;
 use App\Models\Permission;
 use App\Models\UserPermission;
+use App\Support\Filament\Operations\OperationsSupplierScope;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
@@ -62,6 +64,16 @@ class OperationCoordinationServiceResource extends Resource
             TelemedicinePatientStudiesRelationManager::class,
             TelemedicinePatientSpecialtiesRelationManager::class,
         ];
+    }
+
+    /**
+     * Ver, editar, gestionar ítems y cotizar solo resuelven coordinaciones que el
+     * usuario ve en el cuadro: un analista de proveedor que escriba en la URL el id
+     * de un servicio ajeno recibe 404, no la ficha.
+     */
+    public static function getRecordRouteBindingEloquentQuery(): Builder
+    {
+        return OperationsSupplierScope::applyCoordinationListScope(parent::getRecordRouteBindingEloquentQuery());
     }
 
     public static function getPages(): array

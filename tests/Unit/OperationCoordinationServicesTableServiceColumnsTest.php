@@ -462,14 +462,15 @@ it('deshabilita medicamentos y laboratorios cubiertos para TDG salvo que la coor
     ]);
     \Illuminate\Support\Facades\Auth::login($tdgUser);
 
-    $noTdg = new \App\Models\OperationCoordinationService(['managed_by' => 'ATENMEDI']);
-    $tdg = new \App\Models\OperationCoordinationService(['managed_by' => 'TDG']);
+    $noTdg = new \App\Models\OperationCoordinationService(['supplier_id' => 15, 'managed_by' => 'ATENMEDI']);
+    $tdg = new \App\Models\OperationCoordinationService(['supplier_id' => 15, 'managed_by' => 'TDG']);
 
     expect(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', true))->toBeFalse()
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Laboratorio', true))->toBeFalse()
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Medicamento', true))->toBeTrue()
         ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($tdg, 'Laboratorio', true))->toBeTrue()
-        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', true, true))->toBeTrue();
+        // El cubierto sin inventario de un servicio de proveedor lo gestiona el proveedor, no TDG.
+        ->and(\App\Support\Operations\CoordinationServiceItemsManager::coveredItemIsManageableByTdg($noTdg, 'Medicamento', true, true))->toBeFalse();
 
     \Illuminate\Support\Facades\Auth::logout();
 });

@@ -39,6 +39,7 @@ use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderProviderSelection;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
 use App\Support\Operations\ReassignAmbulanceCoordinationToTdgDoctor;
+use App\Support\Operations\TakeCoordinationServiceManagementByTdg;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
 use App\Support\Telemedicine\TelemedicineMedicalTeam;
@@ -529,7 +530,7 @@ class OperationCoordinationServicesTable
 
                 return new HtmlString(
                     '<div class="space-y-3 text-sm text-gray-600 dark:text-gray-300">'
-                    .'<p>Asigna esta coordinación a los analistas de un proveedor. Podrán ver y gestionar todos los ítems del servicio (no solo medicamentos/labs cubiertos).</p>'
+                    .'<p>Asigna esta coordinación a los analistas de un proveedor. Podrán ver el servicio y gestionar sus ítems no cubiertos; los cubiertos los gestiona quien gestiona el servicio.</p>'
                     .'<p>Proveedor actual: <span class="font-semibold text-gray-900 dark:text-white">'.e($currentSupplier).'</span></p>'
                     .'<p>Referencia: <span class="font-semibold text-gray-900 dark:text-white">'.e($record->reference_number ?? '—').'</span></p>'
                     .'</div>'
@@ -613,11 +614,89 @@ class OperationCoordinationServicesTable
 
                 Notification::make()
                     ->title('Coordinación asignada a proveedor')
-                    ->body('La coordinación quedó asignada a '.$supplierName.'. Sus analistas podrán gestionar todos los ítems del servicio.')
+                    ->body('La coordinación quedó asignada a '.$supplierName.'. Sus analistas podrán gestionar los ítems no cubiertos del servicio.')
                     ->success()
                     ->send();
             })
             ->visible(fn (): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst());
+
+        $takeCoordinationManagementByTdgAction = Action::make('takeCoordinationManagementByTdg')
+            ->label('Tomar gestión TDG')
+            ->icon(Heroicon::OutlinedArrowUturnLeft)
+            ->color('danger')
+            ->modalHeading('Tomar la gestión del servicio para TDG')
+            ->modalDescription(function (OperationCoordinationService $record): Htmlable {
+                $supplierName = TelemedicineMedicalTeam::caseManagerLabel($record->telemedicineCase)
+                    ?? (string) (Supplier::query()->whereKey($record->supplier_id)->value('name') ?? 'el proveedor');
+
+                return new HtmlString(
+                    '<div class="space-y-3 text-sm text-gray-600 dark:text-gray-300">'
+                    .'<p>Hoy gestiona este servicio <span class="font-semibold text-gray-900 dark:text-white">'.e($supplierName).'</span>. '
+                    .'Al confirmar, <span class="font-semibold">todos sus ítems pasan a TDG</span> y el proveedor deja de poder gestionarlos.</p>'
+                    .'<p>No se puede tomar si el proveedor tiene ítems EN GESTION: finalícelos o reviértalos primero para no duplicar órdenes.</p>'
+                    .'<p>Referencia: <span class="font-semibold text-gray-900 dark:text-white">'.e($record->reference_number ?? '—').'</span></p>'
+                    .'</div>'
+                );
+            })
+            ->modalIcon(Heroicon::OutlinedArrowUturnLeft)
+            ->modalIconColor('danger')
+            ->modalWidth(Width::ExtraLarge)
+            ->modalSubmitActionLabel('Sí, tomar la gestión')
+            ->modalCancelActionLabel('Cancelar')
+            ->modalSubmitAction(
+                fn (Action $action): Action => $action
+                    ->color('danger')
+                    ->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('danger'),
+                    ])
+            )
+            ->modalCancelAction(
+                fn (Action $action): Action => $action
+                    ->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                    ])
+            )
+            ->closeModalByClickingAway(false)
+            ->form([
+                Textarea::make('take_over_reason')
+                    ->label('Motivo')
+                    ->placeholder('Ej.: el proveedor no ha gestionado el medicamento en el tiempo acordado…')
+                    ->helperText('Obligatorio. Mínimo '.TakeCoordinationServiceManagementByTdg::REASON_MIN_LENGTH.' caracteres. Se guarda en observaciones y en la bitácora del caso.')
+                    ->required()
+                    ->minLength(TakeCoordinationServiceManagementByTdg::REASON_MIN_LENGTH)
+                    ->maxLength(2000)
+                    ->rows(4)
+                    ->columnSpanFull()
+                    ->validationMessages([
+                        'required' => 'Debes indicar el motivo.',
+                        'min' => 'El motivo debe tener al menos '.TakeCoordinationServiceManagementByTdg::REASON_MIN_LENGTH.' caracteres.',
+                    ]),
+            ])
+            ->action(function (OperationCoordinationService $record, array $data): void {
+                try {
+                    TakeCoordinationServiceManagementByTdg::execute(
+                        $record,
+                        (string) ($data['take_over_reason'] ?? ''),
+                        Auth::user(),
+                    );
+                } catch (InvalidArgumentException $exception) {
+                    Notification::make()
+                        ->title('No se tomó la gestión')
+                        ->body($exception->getMessage())
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('TDG tomó la gestión del servicio')
+                    ->body('Todos los ítems pendientes de la referencia '.($record->reference_number ?? '—').' quedaron a cargo de TDG. Quedó registrado en la bitácora del caso.')
+                    ->success()
+                    ->send();
+            })
+            ->visible(fn (OperationCoordinationService $record): bool => OperationsSupplierScope::authenticatedUserIsTdgAnalyst()
+                && TakeCoordinationServiceManagementByTdg::canBeTakenOver($record));
 
         $clinicCoordinationDocumentsAction = Action::make('clinicCoordinationDocuments')
             ->label(fn (OperationCoordinationService $record): string => $record->status === 'FINALIZADO'
@@ -1652,6 +1731,7 @@ class OperationCoordinationServicesTable
                     $clinicCoordinationDocumentsAction,
                     $selectTdgDoctorForAmbulanceAction,
                     $assignCoordinationToSupplierAction,
+                    $takeCoordinationManagementByTdgAction,
                     CoordinationServiceCourtesyActions::makeMarkRecordAction(),
                     CoordinationServiceCourtesyActions::makeReverseRecordAction(),
                     Action::make('manage_service_items')
