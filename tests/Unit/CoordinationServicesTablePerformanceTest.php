@@ -117,8 +117,8 @@ it('la página vacía la memoria cada vez que vuelve a leer los registros', func
     $tabla = file_get_contents(base_path('app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php'));
     $pagina = file_get_contents(base_path('app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ListOperationCoordinationServices.php'));
 
-    // La tabla ya no se difiere: traer las filas en la misma petición ahorra un viaje completo.
-    expect($tabla)->not->toContain('->deferLoading()')
+    // Carga diferida: la página se pinta de inmediato y las filas llegan después, sin los finalizados.
+    expect($tabla)->toContain('->deferLoading()')
         ->and($pagina)->toContain('CoordinationServiceItemsManager::flushClinicalItemsCache()');
 });
 
