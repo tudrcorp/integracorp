@@ -59,6 +59,7 @@ use App\Support\Telemedicine\TelemedicineFollowUpReportDocument;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use App\Support\Telemedicine\TelemedicineMedicalTeam;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
+use App\Support\Telemedicine\TelemedicineMedicationInventoryOptions;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
 use App\Support\Telemedicine\TelemedicinePatientCareHistory;
 use App\Support\Telemedicine\TelemedicinePatientDisplayName;
@@ -1430,6 +1431,22 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             ->with('telemedicineDoctor')
                             ->find($record['telemedicine_case_id']);
                         $doctorModel = TelemedicineDoctor::query()->find($record['telemedicine_doctor_id']);
+
+                        // ...Segunda barrera: el médico de un proveedor no usa el inventario TDC (la validación del formulario ya lo impide).
+                        if (TelemedicineMedicationInventoryOptions::prescriberUsesProviderCoverage($doctorModel)) {
+                            $rowNumber = 1;
+                            foreach ($medicationsArr as $medicationRow) {
+                                if (is_array($medicationRow) && TelemedicineMedicationCoverage::rowHasInventory($medicationRow)) {
+                                    throw ValidationException::withMessages([
+                                        'data.medications' => TelemedicineMedicationCoverage::providerInventoryError(
+                                            $rowNumber,
+                                            TelemedicineMedicationInventoryOptions::providerCoverageLabel($doctorModel),
+                                        ),
+                                    ]);
+                                }
+                                $rowNumber++;
+                            }
+                        }
                         $patientModel = TelemedicinePatient::query()->find($record['telemedicine_patient_id']);
                         $consultationModel = TelemedicineConsultationPatient::query()->find($record['id']);
                         $inventoryDeductor = app(TelemedicineMedicationInventoryDeductor::class);

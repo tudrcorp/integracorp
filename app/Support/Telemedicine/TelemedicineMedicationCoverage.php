@@ -6,6 +6,7 @@ namespace App\Support\Telemedicine;
 
 use App\Models\OperationInventory;
 use App\Models\TelemedicinePatientMedications;
+use Illuminate\Database\Eloquent\Builder;
 
 final class TelemedicineMedicationCoverage
 {
@@ -24,6 +25,38 @@ final class TelemedicineMedicationCoverage
         }
 
         return (bool) ($record->is_covered ?? false);
+    }
+
+    /**
+     * Versión SQL de {@see isCovered()}: misma regla para filtrar en base de datos.
+     * Con inventario vinculado manda el inventario (y, si la fila de inventario ya
+     * no existe, el `is_covered` del medicamento); sin inventario manda `is_covered`,
+     * que es como el médico de un proveedor sin inventario indica que su proveedor lo cubre.
+     *
+     * @param  Builder<TelemedicinePatientMedications>  $medications
+     * @return Builder<TelemedicinePatientMedications>
+     */
+    public static function whereCovered(Builder $medications): Builder
+    {
+        return $medications->where(function (Builder $covered): void {
+            $covered
+                ->where(function (Builder $fromInventory): void {
+                    $fromInventory
+                        ->whereNotNull('operation_inventory_id')
+                        ->whereHas('operationInventory', fn (Builder $inventory): Builder => $inventory->where('is_covered', true));
+                })
+                ->orWhere(function (Builder $missingInventory): void {
+                    $missingInventory
+                        ->whereNotNull('operation_inventory_id')
+                        ->whereDoesntHave('operationInventory')
+                        ->where('is_covered', true);
+                })
+                ->orWhere(function (Builder $manual): void {
+                    $manual
+                        ->whereNull('operation_inventory_id')
+                        ->where('is_covered', true);
+                });
+        });
     }
 
     public static function hasLinkedInventory(TelemedicinePatientMedications $record): bool
@@ -161,6 +194,11 @@ final class TelemedicineMedicationCoverage
         }
 
         return null;
+    }
+
+    public static function providerInventoryError(int $rowNumber, string $coveredColumnLabel = 'Cubierto por el proveedor'): string
+    {
+        return "En la fila {$rowNumber} no puede usar el inventario TDC: como médico de un proveedor registre el medicamento en «{$coveredColumnLabel}» o en «No cubierto».";
     }
 
     /**

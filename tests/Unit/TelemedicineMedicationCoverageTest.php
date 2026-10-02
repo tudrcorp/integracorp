@@ -114,6 +114,7 @@ it('registra is_covered al crear medicamentos en telemedicina', function (): voi
 
     expect($form)
         ->toContain("TextInput::make('covered_medicines')")
-        ->toContain("TableColumn::make('Cubierto (Operaciones)')")
+        ->toContain("'Cubierto (Operaciones)'")
+        ->toContain('TableColumn::make($coveredColumnLabel)')
         ->toContain('exclusiveSourceError');
 });
