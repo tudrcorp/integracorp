@@ -25,6 +25,13 @@ use Illuminate\Support\Facades\Route;
 final class IntegracorpHubAccessibleModules
 {
     /**
+     * Paneles que no deben mostrarse como tarjeta en el hub (acceso solo por URL directa).
+     *
+     * @var list<string>
+     */
+    private const HIDDEN_FROM_HUB_PANEL_IDS = ['admin'];
+
+    /**
      * Prioridad de destino para la tarjeta unificada "Agentes".
      *
      * @var list<string>
@@ -39,6 +46,10 @@ final class IntegracorpHubAccessibleModules
         $modules = [];
 
         foreach (IntegracorpHubModuleRegistry::definitions() as $definition) {
+            if (in_array($definition['id'], self::HIDDEN_FROM_HUB_PANEL_IDS, true)) {
+                continue;
+            }
+
             if ($definition['id'] === 'agents') {
                 $commercial = self::resolveCommercialNetworkCard($user, $definition);
                 if ($commercial !== null) {

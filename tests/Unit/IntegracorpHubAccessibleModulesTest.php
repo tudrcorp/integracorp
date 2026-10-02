@@ -25,6 +25,21 @@ it('expone definiciones de módulos con nombre, objetivo e imagen', function ():
     }
 });
 
+it('nunca expone el módulo Administración general en el hub aunque el usuario sea admin', function (): void {
+    $user = User::factory()->create([
+        'email' => 'hub-admin-'.uniqid('', true).'@tudrencasa.com',
+        'is_admin' => true,
+        'departament' => ['NEGOCIOS', 'OPERACIONES'],
+        'status' => 'ACTIVO',
+    ]);
+
+    $ids = collect(IntegracorpHubAccessibleModules::forUser($user))->pluck('id')->all();
+
+    expect($ids)->not->toContain('admin')
+        ->and($ids)->toContain('business')
+        ->and($ids)->toContain('operations');
+});
+
 it('incluye negocios y operaciones para usuario interno con ambos departamentos', function (): void {
     $user = User::factory()->create([
         'email' => 'hub-multi-'.uniqid('', true).'@tudrencasa.com',
@@ -129,6 +144,15 @@ it('el catálogo del hub no expone tarjetas separadas de master ni general', fun
     expect($ids)->toContain('agents')
         ->and($ids)->not->toContain('master')
         ->and($ids)->not->toContain('general');
+});
+
+it('oculta administracion general del hub para cualquier usuario', function (): void {
+    $source = file_get_contents(base_path('app/Support/Integracorp/IntegracorpHubAccessibleModules.php'));
+
+    expect($source)
+        ->toContain('HIDDEN_FROM_HUB_PANEL_IDS')
+        ->toContain("'admin'")
+        ->toContain('in_array($definition[\'id\'], self::HIDDEN_FROM_HUB_PANEL_IDS, true)');
 });
 
 it('la recuperación de contraseña replica el shell corporativo del login', function (): void {
