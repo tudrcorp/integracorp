@@ -60,7 +60,7 @@ it('la asignación con nueva ubicación guarda ubicación y caso en una sola tra
     $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/TelemedicinePatients/Actions/AssignDoctorAction.php');
 
     expect($contents)
-        ->toContain('[$address, $case] = DB::transaction(function () use ($record, $data, $doctor): array {')
+        ->toContain('[$address, $case] = DB::transaction(function () use ($record, $data, $assignment): array {')
         ->toContain("filled(\$data['phone_2'] ?? null) ? \$data['phone_2'] : null")
         ->not->toContain('->first()->ambulanceParking');
 });

@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\TelemedicinePatients\RelationManager
 
 use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Models\TelemedicineCase;
+use App\Support\Telemedicine\TelemedicineMedicalTeam;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -24,7 +25,7 @@ class TelemedicineCasesRelationManager extends RelationManager
         return $table
             ->query(
                 TelemedicineCase::query()
-                    ->with(['priority', 'telemedicineDoctor', 'telemedicinePatient'])
+                    ->with(['priority', 'telemedicineDoctor', 'telemedicinePatient', 'medicalTeamSupplier:id,name,integracorp_alias'])
                     ->where('telemedicine_patient_id', $this->getOwnerRecord()->getKey())
                     ->where('status', '=', 'ALTA MEDICA')
                     ->orderBy('created_at', 'desc')
@@ -40,7 +41,7 @@ class TelemedicineCasesRelationManager extends RelationManager
                     ->searchable(),
                 TextColumn::make('telemedicinePatient.full_name')
                     ->label('Paciente')
-                    ->description(fn ($record): string => 'Asignado a Dr(a):'.$record->telemedicineDoctor->full_name)
+                    ->description(fn ($record): string => 'Asignado a: '.TelemedicineMedicalTeam::assigneeLabel($record))
                     ->sortable(),
                 TextColumn::make('patient_age')
                     ->label('Edad')

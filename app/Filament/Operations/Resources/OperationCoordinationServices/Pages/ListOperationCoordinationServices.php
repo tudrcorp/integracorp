@@ -47,11 +47,21 @@ class ListOperationCoordinationServices extends ListRecords
      */
     public function getTableRecords(): Collection|Paginator|CursorPaginator
     {
-        if ($this->cachedTableRecords === null) {
+        $isFreshRead = $this->cachedTableRecords === null;
+
+        if ($isFreshRead) {
             CoordinationServiceItemsManager::flushClinicalItemsCache();
         }
 
-        return parent::getTableRecords();
+        $records = parent::getTableRecords();
+
+        if ($isFreshRead) {
+            OperationCoordinationServicesTable::rememberCaseRegistrationRanges(
+                OperationCoordinationServicesTable::caseRegistrationRanges($this->getFilteredTableQuery(), $records),
+            );
+        }
+
+        return $records;
     }
 
     /**

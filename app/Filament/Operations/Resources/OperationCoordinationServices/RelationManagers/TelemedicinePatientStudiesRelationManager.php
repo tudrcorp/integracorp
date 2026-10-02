@@ -39,7 +39,7 @@ class TelemedicinePatientStudiesRelationManager extends RelationManager
     {
         return $table
             ->heading('Estudios de imagenología solicitados')
-            ->description(fn (RelationManager $livewire): string => 'Indicador por el Dr(a): '.$livewire->ownerRecord->telemedicineDoctor->full_name.'. No se pueden seleccionar registros con estatus EN GESTION.')
+            ->description(fn (RelationManager $livewire): string => 'Indicador por el Dr(a): '.($livewire->ownerRecord->telemedicineDoctor?->full_name ?? '—').'. No se pueden seleccionar registros con estatus EN GESTION.')
             ->checkIfRecordIsSelectableUsing(fn ($record): bool => ($record->status ?? null) !== 'EN GESTION')
             ->columns([
                 TextColumn::make('study')

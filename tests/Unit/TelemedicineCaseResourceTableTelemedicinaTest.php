@@ -35,7 +35,7 @@ it('TelemedicineCaseFilamentListQuery lista para TDG todos los casos de doctores
     $resourceMethod = substr($contents, $resourceMethodStart, $dashboardMethodStart - $resourceMethodStart);
 
     $tdgBranchPos = strpos($resourceMethod, 'userIsInTdgTelemedicinaContext($user)');
-    $ownDoctorFilterPos = strpos($resourceMethod, "where('telemedicine_doctor_id', \$user->doctor_id)");
+    $ownDoctorFilterPos = strpos($resourceMethod, 'constrainToDoctorTeamCases($query, (int) $user->doctor_id)');
 
     expect($resourceMethod)
         ->toContain('userIsInTdgTelemedicinaContext($user)')
@@ -44,7 +44,8 @@ it('TelemedicineCaseFilamentListQuery lista para TDG todos los casos de doctores
 
     expect($tdgBranchPos)->not->toBeFalse()
         ->and($ownDoctorFilterPos)->not->toBeFalse()
-        ->and($tdgBranchPos)->toBeLessThan($ownDoctorFilterPos);
+        ->and($tdgBranchPos)->toBeLessThan($ownDoctorFilterPos)
+        ->and($resourceMethod)->not->toContain("where('telemedicine_doctor_id', \$user->doctor_id)");
 
     expect($contents)
         ->toContain("->where('managed_by', 'TDG')")

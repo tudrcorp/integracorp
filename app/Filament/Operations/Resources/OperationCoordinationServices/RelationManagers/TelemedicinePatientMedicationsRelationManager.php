@@ -43,7 +43,7 @@ class TelemedicinePatientMedicationsRelationManager extends RelationManager
     {
         return $table
             ->heading('Medicamentos Solicitados')
-            ->description(fn (RelationManager $livewire): string => 'Indicador por el Dr(a): '.$livewire->ownerRecord->telemedicineDoctor->full_name.'. Solo se pueden seleccionar medicamentos con existencia > 0 en inventario y que no estén en estatus EN GESTION.')
+            ->description(fn (RelationManager $livewire): string => 'Indicador por el Dr(a): '.($livewire->ownerRecord->telemedicineDoctor?->full_name ?? '—').'. Solo se pueden seleccionar medicamentos con existencia > 0 en inventario y que no estén en estatus EN GESTION.')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('operationInventory'))
             ->checkIfRecordIsSelectableUsing(function (TelemedicinePatientMedications $record): bool {
                 if ($record->status === 'EN GESTION') {

@@ -41,6 +41,7 @@ use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
 use App\Support\Operations\ReassignAmbulanceCoordinationToTdgDoctor;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
+use App\Support\Telemedicine\TelemedicineMedicalTeam;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -67,12 +68,16 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Pagination\CursorPaginator;
+use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
@@ -1197,7 +1202,7 @@ class OperationCoordinationServicesTable
             ->heading('Cuadro de control')
             ->description('Coordinaciones médicas del sistema: agrupe por caso, revise ítems clínicos y gestione el servicio.')
             ->searchPlaceholder('Caso, paciente, cédula, referencia, servicio, proveedor o estatus')
-            ->defaultSort('date_solicitud', 'desc')
+            ->defaultSort('created_at', 'desc')
             /*
              * Sin `deferLoading()`: diferir costaba un segundo viaje al servidor (con
              * su arranque completo) solo para traer 10 filas. Los contadores ya van en
@@ -1607,20 +1612,18 @@ class OperationCoordinationServicesTable
                             $patientDocument !== '' ? 'C.I. '.$patientDocument : null,
                         ])->filter()->implode(' · ');
                     })
-                    ->getDescriptionFromRecordUsing(function (OperationCoordinationService $record): ?string {
-                        if (self::isTpaRetailService($record)) {
-                            return 'TPA/RETAIL';
-                        }
-
-                        $doctorName = trim((string) ($record->telemedicineDoctor?->full_name ?? ''));
-
-                        return $doctorName !== '' ? 'Médico: '.$doctorName : null;
-                    })
+                    ->getDescriptionFromRecordUsing(fn (OperationCoordinationService $record): ?Htmlable => self::caseGroupDescription($record))
                     ->orderQueryUsing(function (Builder $query, string $direction): Builder {
-                        return $query->orderBy(
-                            app(RelationshipOrderer::class)->buildSubquery($query, 'telemedicineCase', 'created_at'),
-                            'desc',
-                        );
+                        /*
+                         * El id del caso desempata dos casos abiertos en el mismo instante:
+                         * sin él sus servicios se intercalan y el grupo se parte en dos encabezados.
+                         */
+                        return $query
+                            ->orderBy(
+                                app(RelationshipOrderer::class)->buildSubquery($query, 'telemedicineCase', 'created_at'),
+                                'desc',
+                            )
+                            ->orderByDesc((new OperationCoordinationService)->getTable().'.telemedicine_case_id');
                     }),
             ])
             ->defaultGroup('telemedicineCase.code')
@@ -1676,6 +1679,128 @@ class OperationCoordinationServicesTable
     }
 
     /**
+     * Rango de `created_at` de los servicios de cada caso de la página, calculado
+     * con la misma consulta filtrada del cuadro. Ver {@see caseRegistrationRanges()}.
+     *
+     * @var array<int, array{from: string, to: string}>
+     */
+    private static array $caseRegistrationRanges = [];
+
+    /**
+     * Segunda línea del encabezado del caso: médico (o TPA/RETAIL), quién gestiona
+     * el caso (solo analistas TDG, como etiqueta de color) y el rango de registro de sus servicios.
+     * Todo texto dinámico se escapa: el resultado se imprime como HTML.
+     */
+    public static function caseGroupDescription(OperationCoordinationService $record): ?Htmlable
+    {
+        if (self::isTpaRetailService($record)) {
+            $lead = 'TPA/RETAIL';
+        } else {
+            $doctorName = trim((string) ($record->telemedicineDoctor?->full_name ?? ''));
+            $lead = $doctorName !== '' ? 'Médico: '.$doctorName : null;
+        }
+
+        $manager = OperationsSupplierScope::authenticatedUserIsTdgAnalyst()
+            ? TelemedicineMedicalTeam::caseManagerLabel($record->telemedicineCase)
+            : null;
+
+        $parts = array_values(array_filter([
+            filled($lead) ? e($lead) : null,
+            filled($manager) ? self::caseManagerBadgeHtml((string) $manager) : null,
+            filled($range = self::caseRegistrationRangeLabel($record->telemedicine_case_id)) ? e($range) : null,
+        ]));
+
+        return $parts === [] ? null : new HtmlString(implode(' · ', $parts));
+    }
+
+    /**
+     * Etiqueta «Gestiona» con el badge nativo de Filament (modo claro y oscuro sin
+     * recompilar el tema). TDG en azul con ícono de edificio; un proveedor en ámbar
+     * con ícono de tienda: el ícono distingue aunque no se perciba el color.
+     */
+    public static function caseManagerBadgeHtml(string $manager): string
+    {
+        $isTdg = mb_strtoupper(trim($manager)) === TelemedicineMedicalTeam::TDG;
+
+        return Blade::render(
+            '<x-filament::badge :color="$color" :icon="$icon" size="sm" class="fi-ta-group-manager-badge" style="display: inline-flex; vertical-align: middle;">Gestiona: {{ $manager }}</x-filament::badge>',
+            [
+                'color' => $isTdg ? 'info' : 'warning',
+                'icon' => $isTdg ? Heroicon::BuildingOffice2 : Heroicon::BuildingStorefront,
+                'manager' => $manager,
+            ],
+        );
+    }
+
+    /**
+     * Rango de fechas de registro (`created_at`) de los servicios de cada caso visible,
+     * respetando pestaña, filtros, búsqueda y alcance del proveedor: una sola consulta
+     * agregada por lectura de registros, nunca una por grupo.
+     *
+     * @param  iterable<OperationCoordinationService>|Paginator|CursorPaginator  $records
+     * @return array<int, array{from: string, to: string}>
+     */
+    public static function caseRegistrationRanges(?Builder $filteredQuery, mixed $records): array
+    {
+        $items = $records instanceof Paginator || $records instanceof CursorPaginator ? $records->items() : $records;
+
+        $caseIds = collect($items)
+            ->map(fn (mixed $record): int => (int) data_get($record, 'telemedicine_case_id'))
+            ->filter(fn (int $caseId): bool => $caseId > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($filteredQuery === null || $caseIds === []) {
+            return [];
+        }
+
+        $table = (new OperationCoordinationService)->getTable();
+
+        return $filteredQuery
+            ->setEagerLoads([])
+            ->reorder()
+            ->toBase()
+            ->select("{$table}.telemedicine_case_id")
+            ->selectRaw("min({$table}.created_at) as registered_from, max({$table}.created_at) as registered_to")
+            ->whereIn("{$table}.telemedicine_case_id", $caseIds)
+            ->whereNotNull("{$table}.created_at")
+            ->groupBy("{$table}.telemedicine_case_id")
+            ->get()
+            ->mapWithKeys(fn (object $row): array => [
+                (int) $row->telemedicine_case_id => [
+                    'from' => (string) $row->registered_from,
+                    'to' => (string) $row->registered_to,
+                ],
+            ])
+            ->all();
+    }
+
+    /**
+     * @param  array<int, array{from: string, to: string}>  $ranges
+     */
+    public static function rememberCaseRegistrationRanges(array $ranges): void
+    {
+        self::$caseRegistrationRanges = $ranges;
+    }
+
+    public static function caseRegistrationRangeLabel(mixed $caseId): ?string
+    {
+        $range = self::$caseRegistrationRanges[(int) $caseId] ?? null;
+
+        if ($range === null) {
+            return null;
+        }
+
+        $from = Carbon::parse($range['from']);
+        $to = Carbon::parse($range['to']);
+
+        return $from->isSameDay($to)
+            ? 'Registrado el '.$from->format('d/m/Y')
+            : 'Registrados del '.$from->format('d/m/Y').' al '.$to->format('d/m/Y');
+    }
+
+    /**
      * Relaciones que el cuadro de control precarga para cada página. Público para que
      * el diagnóstico de rendimiento mida exactamente la misma consulta.
      *
@@ -1687,6 +1812,9 @@ class OperationCoordinationServicesTable
             'telemedicinePriority',
             'telemedicineDoctor',
             'telemedicineCase',
+            'telemedicineCase.telemedicineDoctor:id,supplier_id',
+            'telemedicineCase.telemedicineDoctor.supplier:id,name,integracorp_alias',
+            'telemedicineCase.medicalTeamSupplier:id,name,integracorp_alias',
             'businessLine:id,definition',
             'businessUnit:id,definition',
             'telemedicinePatient:id,full_name,business_line_id,business_unit_id,specific_business_unit',

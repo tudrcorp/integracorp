@@ -9,6 +9,7 @@ use App\Models\TelemedicineCase;
 use App\Support\Telemedicine\TelemedicineAmdBitacoraCatalog;
 use App\Support\Telemedicine\TelemedicineCaseDocumentReadyNotification;
 use App\Support\Telemedicine\TelemedicineCaseDocumentsCatalog;
+use App\Support\Telemedicine\TelemedicineMedicalTeam;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -222,7 +223,9 @@ class TelemedicineCaseInfolist
                                                     ->label('Médico asignado')
                                                     ->icon(Heroicon::OutlinedUserCircle)
                                                     ->weight('medium')
-                                                    ->placeholder('—'),
+                                                    ->placeholder(fn (?TelemedicineCase $record): string => $record?->assigned_to_medical_team
+                                                        ? TelemedicineMedicalTeam::teamLabel($record).' · pendiente por tomar'
+                                                        : '—'),
                                                 TextEntry::make('telemedicineDoctor.code')
                                                     ->label('Código del médico')
                                                     ->icon(Heroicon::OutlinedIdentification)
