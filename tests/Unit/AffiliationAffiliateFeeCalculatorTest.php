@@ -83,5 +83,6 @@ it('calcula montos por frecuencia de pago', function (): void {
 
     expect($calculator->totalAmountForPaymentFrequency(1200.0, 'ANUAL'))->toBe(1200.0)
         ->and($calculator->totalAmountForPaymentFrequency(1200.0, 'SEMESTRAL'))->toBe(600.0)
-        ->and($calculator->totalAmountForPaymentFrequency(1200.0, 'TRIMESTRAL'))->toBe(300.0);
+        ->and($calculator->totalAmountForPaymentFrequency(1200.0, 'TRIMESTRAL'))->toBe(300.0)
+        ->and($calculator->totalAmountForPaymentFrequency(1200.0, 'MENSUAL'))->toBe(100.0);
 });

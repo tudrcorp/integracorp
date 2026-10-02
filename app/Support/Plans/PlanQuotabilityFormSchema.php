@@ -13,7 +13,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
 
 /**
- * Campos que solo ve el superadmin, y solo en planes Dress Tylor.
+ * Campos que solo ve el superadmin, y solo en planes Taylor Made (tipo DRESS-TAILOR).
  */
 final class PlanQuotabilityFormSchema
 {
@@ -23,7 +23,7 @@ final class PlanQuotabilityFormSchema
     public static function section(): array
     {
         return [
-            Section::make('Cotización Dress Tylor')
+            Section::make('Cotización Taylor Made')
                 ->description('Solo el superadmin decide si este plan aparece en cotización individual, corporativa o en ambas. Si está apagado, el plan no se ofrece en ningún cotizador.')
                 ->icon(Heroicon::OutlinedClipboardDocumentCheck)
                 ->visible(fn (Get $get): bool => PlanQuotability::currentUserCanConfigure()

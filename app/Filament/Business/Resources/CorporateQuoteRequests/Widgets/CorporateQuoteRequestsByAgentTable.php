@@ -117,7 +117,7 @@ class CorporateQuoteRequestsByAgentTable extends TableWidget
                 ? 'Sin solicitudes para esta agencia'
                 : 'Sin solicitudes por agente',
             emptyDescription: $this->filteredAgencyCode
-                ? 'No hay agentes de la agencia seleccionada con solicitudes Dress Taylor.'
+                ? 'No hay agentes de la agencia seleccionada con solicitudes Taylor Made.'
                 : 'Las solicitudes con agente asignado aparecerán aquí agrupadas por agente.',
             heading: $heading,
         )

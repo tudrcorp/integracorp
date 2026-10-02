@@ -2,6 +2,15 @@
 
 declare(strict_types=1);
 
+it('incluye frecuencia de pago mensual en afiliacion individual de negocios', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Schemas/AffiliationForm.php');
+
+    expect($source)
+        ->toContain("'MENSUAL' => 'MENSUAL'")
+        ->toContain("if (\$get('payment_frequency') == 'MENSUAL')")
+        ->toContain("\$quoteRecord['subtotal_monthly']");
+});
+
 it('usa pestañas con contenedor estilizado en el formulario de afiliación individual', function (): void {
     $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Schemas/AffiliationForm.php';
     $source = file_get_contents($path);

@@ -181,9 +181,9 @@ it('envía un correo por colaborador con su oficina asignada en el mes', functio
     expect($report['sent'])->toBe(2)
         ->and($report['skipped'])->toBe(1);
 
-    Mail::assertSent(TdgCalendarOfficeAttendanceMail::class, 2);
+    Mail::assertQueued(TdgCalendarOfficeAttendanceMail::class, 2);
 
-    Mail::assertSent(TdgCalendarOfficeAttendanceMail::class, function (TdgCalendarOfficeAttendanceMail $mail): bool {
+    Mail::assertQueued(TdgCalendarOfficeAttendanceMail::class, function (TdgCalendarOfficeAttendanceMail $mail): bool {
         return $mail->hasTo('ana@tudrencasa.com')
             && $mail->payload['colaborador_name'] === 'Ana Pérez'
             && $mail->payload['is_update'] === false
@@ -194,7 +194,7 @@ it('envía un correo por colaborador con su oficina asignada en el mes', functio
             ];
     });
 
-    Mail::assertSent(TdgCalendarOfficeAttendanceMail::class, function (TdgCalendarOfficeAttendanceMail $mail): bool {
+    Mail::assertQueued(TdgCalendarOfficeAttendanceMail::class, function (TdgCalendarOfficeAttendanceMail $mail): bool {
         return $mail->hasTo('luis@tudrencasa.com')
             && $mail->envelope()->subject === 'Tu asistencia a oficina · septiembre 2026';
     });

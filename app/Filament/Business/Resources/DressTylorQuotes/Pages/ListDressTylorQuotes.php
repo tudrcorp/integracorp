@@ -10,7 +10,7 @@ class ListDressTylorQuotes extends ListRecords
 {
     protected static string $resource = DressTylorQuoteResource::class;
 
-    protected static ?string $title = 'Cotizador Dress Tylor';
+    protected static ?string $title = 'Cotizador Taylor Made';
 
     protected function getHeaderActions(): array
     {

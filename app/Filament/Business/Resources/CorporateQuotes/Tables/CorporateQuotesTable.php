@@ -275,9 +275,9 @@ class CorporateQuotesTable
                         ->icon('heroicon-m-shield-check')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->modalHeading('DATA DRESS-TAYLOR')
+                        ->modalHeading('DATA TAYLOR MADE')
                         ->modalDescription(
-                            'Carga de data para la cotización corporativa de Dress Taylor'
+                            'Carga de data para la cotización corporativa de Taylor Made'
                         )
                         ->modalIcon('heroicon-m-shield-check')
                         ->modalWidth(Width::ExtraLarge)

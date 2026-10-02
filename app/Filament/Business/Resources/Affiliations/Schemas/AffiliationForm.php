@@ -161,6 +161,7 @@ class AffiliationForm
                                                 'ANUAL' => 'ANUAL',
                                                 'SEMESTRAL' => 'SEMESTRAL',
                                                 'TRIMESTRAL' => 'TRIMESTRAL',
+                                                'MENSUAL' => 'MENSUAL',
                                             ])
                                             ->searchable()
                                             ->prefixIcon('heroicon-s-globe-europe-africa')
@@ -181,6 +182,9 @@ class AffiliationForm
                                                 }
                                                 if ($get('payment_frequency') == 'SEMESTRAL') {
                                                     $set('total_amount', $quoteRecord['subtotal_biannual'] ?? 0);
+                                                }
+                                                if ($get('payment_frequency') == 'MENSUAL') {
+                                                    $set('total_amount', $quoteRecord['subtotal_monthly'] ?? 0);
                                                 }
 
                                             }),

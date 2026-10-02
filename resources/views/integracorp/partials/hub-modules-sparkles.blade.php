@@ -1,0 +1,20 @@
+<div class="ic-hub-bg__sparkles" aria-hidden="true">
+    <span class="ic-hub-bg__glow ic-hub-bg__glow--1"></span>
+    <span class="ic-hub-bg__glow ic-hub-bg__glow--2"></span>
+    <span class="ic-hub-bg__glow ic-hub-bg__glow--3"></span>
+    <span class="ic-hub-bg__glow ic-hub-bg__glow--4"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--1"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--2"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--3"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--4"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--5"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--6"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--7"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--8"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--9"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--10"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--11"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--12"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--13"></span>
+    <span class="ic-hub-bg__spark ic-hub-bg__spark--14"></span>
+</div>

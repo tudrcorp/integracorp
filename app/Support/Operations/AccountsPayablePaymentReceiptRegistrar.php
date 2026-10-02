@@ -6,6 +6,7 @@ namespace App\Support\Operations;
 
 use App\Enums\StatusCuentaPorPagar;
 use App\Models\OperationAccountsPayable;
+use App\Support\BankCatalog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -67,8 +68,8 @@ final class AccountsPayablePaymentReceiptRegistrar
 
         $formUsd = self::nullableAmount($data['payment_amount_usd'] ?? null);
         $formVes = self::nullableAmount($data['payment_amount_ves'] ?? null);
-        $nationalBank = self::nullableString($data['national_bank'] ?? null);
-        $internationalBank = self::nullableString($data['international_bank'] ?? null);
+        $nationalBank = BankCatalog::normalizeStoredBank($data['national_bank'] ?? null);
+        $internationalBank = BankCatalog::normalizeStoredBank($data['international_bank'] ?? null);
         $requestedStatus = StatusCuentaPorPagar::fromStored($data['payment_status'] ?? null)
             ?? StatusCuentaPorPagar::Pagada;
 

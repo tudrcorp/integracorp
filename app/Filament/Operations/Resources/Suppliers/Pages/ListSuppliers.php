@@ -112,7 +112,7 @@ class ListSuppliers extends ListRecords
             Notification::make()
                 ->danger()
                 ->title('Registro no encontrado')
-                ->body('No existe la zona de descarga con ID '.SupplierReportDownloadZoneService::DOWNLOAD_ZONE_ID.'.')
+                ->body(SupplierReportDownloadZoneService::notFoundUserMessage())
                 ->send();
         } catch (Throwable $e) {
             report($e);

@@ -21,6 +21,7 @@ class AffiliationsRankingQuery
                 'code_agency',
                 DB::raw('COUNT(*) as total_affiliations'),
             ])
+            ->tap(fn (Builder $query): Builder => self::constrainActive($query))
             ->whereNotNull('code_agency')
             ->where('code_agency', '!=', '')
             ->tap(fn (Builder $query): Builder => self::constrainActive($query))
@@ -51,6 +52,7 @@ class AffiliationsRankingQuery
                 'agent_id',
                 DB::raw('COUNT(*) as total_affiliations'),
             ])
+            ->tap(fn (Builder $query): Builder => self::constrainActive($query))
             ->whereNotNull('agent_id')
             ->where('agent_id', '!=', '')
             ->when(

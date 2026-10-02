@@ -428,6 +428,7 @@ class AffiliationCorporatesTable
                         'ANUAL' => 'ANUAL',
                         'TRIMESTRAL' => 'TRIMESTRAL',
                         'SEMESTRAL' => 'SEMESTRAL',
+                        'MENSUAL' => 'MENSUAL',
                     ])
                     ->placeholder('Todas'),
                 SelectFilter::make('status')
@@ -1105,6 +1106,89 @@ class AffiliationCorporatesTable
                             }
                         })
                         ->hidden(fn (AffiliationCorporate $record): bool => CorporatePaymentUploadAvailability::isFullyPaid($record)),
+
+                    /** EDITAR FRECUENCIA DE PAGO (igual que afiliaciones individuales) */
+                    Action::make('edit_frequency')
+                        ->label('Editar Frecuencia de Pago')
+                        ->icon('heroicon-m-pencil')
+                        ->color('info')
+                        ->requiresConfirmation()
+                        ->modalHeading('EDITAR FRECUENCIA DE PAGO')
+                        ->modalWidth(Width::ExtraLarge)
+                        ->modalIcon('heroicon-m-pencil')
+                        ->modalDescription('Este procedimiento permitirá editar la frecuencia de pago y posteriormente se actualizará el monto a pagar de la afiliación.')
+                        ->fillForm(fn (AffiliationCorporate $record): array => [
+                            'payment_frequency' => $record->payment_frequency,
+                        ])
+                        ->form([
+                            Fieldset::make('payment_frequency')
+                                ->label('Selecciona la frecuencia de pago')
+                                ->schema([
+                                    Select::make('payment_frequency')
+                                        ->label('Frecuencia de pago')
+                                        ->options([
+                                            'MENSUAL' => 'MENSUAL',
+                                            'TRIMESTRAL' => 'TRIMESTRAL',
+                                            'SEMESTRAL' => 'SEMESTRAL',
+                                            'ANUAL' => 'ANUAL',
+                                        ])
+                                        ->required(),
+                                ])
+                                ->columnSpanFull(),
+                        ])
+                        ->action(function (AffiliationCorporate $record, array $data): void {
+                            try {
+                                $record->payment_frequency = $data['payment_frequency'];
+
+                                if ($data['payment_frequency'] == 'ANUAL') {
+                                    $record->total_amount = $record->fee_anual;
+                                }
+
+                                if ($data['payment_frequency'] == 'SEMESTRAL') {
+                                    $record->total_amount = $record->fee_anual / 2;
+                                }
+
+                                if ($data['payment_frequency'] == 'TRIMESTRAL') {
+                                    $record->total_amount = $record->fee_anual / 4;
+                                }
+
+                                if ($data['payment_frequency'] == 'MENSUAL') {
+                                    $record->total_amount = $record->fee_anual / 12;
+                                }
+
+                                $record->save();
+
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_PAYMENT_FREQUENCY_UPDATED', 'business.affiliation-corporates.edit-frequency', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'payment_frequency' => $data['payment_frequency'] ?? null,
+                                    'total_amount' => $record->total_amount,
+                                ]);
+
+                                Notification::make()
+                                    ->title('Actualización exitosa')
+                                    ->body('La frecuencia de pago se ha actualizado con éxito.')
+                                    ->icon('heroicon-s-check-circle')
+                                    ->success()
+                                    ->send();
+                            } catch (\Throwable $th) {
+                                Log::error($th->getMessage());
+                                self::audit('AUDIT_BUSINESS_AFFILIATION_CORPORATE_PAYMENT_FREQUENCY_UPDATE_FAILED', 'business.affiliation-corporates.edit-frequency', [
+                                    'affiliation_corporate_id' => $record->id,
+                                    'affiliation_corporate_code' => $record->code,
+                                    'payment_frequency' => $data['payment_frequency'] ?? null,
+                                    'error' => $th->getMessage(),
+                                ]);
+                                Notification::make()
+                                    ->title('Error al actualizar frecuencia de pago')
+                                    ->body($th->getMessage())
+                                    ->icon('heroicon-s-x-circle')
+                                    ->iconColor('danger')
+                                    ->danger()
+                                    ->send();
+                            }
+                        })
+                        ->hidden(fn (): bool => ! in_array('SUPERADMIN', Auth::user()->departament)),
 
                     Action::make('change_status')
                         ->label('Actualizar estatus')

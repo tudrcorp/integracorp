@@ -5,8 +5,9 @@ namespace App\Providers\Filament;
 use App\Filament\Master\Pages\ViewMyHierarchy;
 use App\Filament\Master\Resources\Agencies\AgencyResource;
 use App\Filament\Shared\Auth\PanelAwareLogin;
-use App\Models\Agency;
+use App\Support\Filament\CommercialNetworkAccess;
 use Filament\Actions\Action;
+use Filament\Auth\Pages\EditProfile;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -24,7 +25,6 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
@@ -41,9 +41,7 @@ class MasterPanelProvider extends PanelProvider
             ->profile()
             ->spa()
             ->sidebarCollapsibleOnDesktop()
-            ->topNavigation(function () {
-                return Agency::where('code', Auth::user()->code_agency)->first()->conf_position_menu;
-            })
+            ->topNavigation(fn (): bool => CommercialNetworkAccess::prefersTopNavigation(Auth::user()))
             ->colors([
                 'primary' => '#038C4C',
             ])
@@ -111,7 +109,14 @@ class MasterPanelProvider extends PanelProvider
             ->userMenuItems([
                 'profile' => fn (Action $action) => $action->label('Perfil Master')
                     ->icon('heroicon-o-user-circle')
-                    ->url(AgencyResource::getUrl('edit', ['record' => DB::table('agencies')->select('id')->where('code', Auth::user()->code_agency)->first('id')->id], panel: 'master')),
+                    ->url(function (): string {
+                        $agencyId = CommercialNetworkAccess::agencyIdForUser(Auth::user());
+                        if ($agencyId !== null) {
+                            return AgencyResource::getUrl('edit', ['record' => $agencyId], panel: 'master');
+                        }
+
+                        return EditProfile::getUrl(panel: 'master');
+                    }),
                 Action::make('viewHierarchy')
                     ->label('Ver Jerarquía')
                     ->icon('heroicon-o-squares-2x2')

@@ -87,3 +87,37 @@ it('marca el campo de asignados como requerido en el schema compartido', functio
         ->toContain('->multiple(! $scrumProductOwnerInbox)')
         ->toContain('Seleccione uno o más colaboradores responsables de resolver el caso.');
 });
+
+it('todos los paneles helpdesk envían el ticket al Product Owner Scrum cuando aplica', function (string $panel): void {
+    $path = dirname(__DIR__, 2)."/app/Filament/{$panel}/Resources/Helpdesks/Schemas/HelpdeskForm.php";
+
+    expect(file_get_contents($path))
+        ->toContain('HelpdeskFormSchema::configure($schema, assigneesRequired: true, scrumProductOwnerInbox: true)');
+})->with(['Business', 'Administration', 'Marketing', 'Operations']);
+
+it('marca el campo de asignados como requerido en el schema compartido', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Support/HelpdeskFormSchema.php';
+
+    expect(file_get_contents($path))
+        ->toContain("Select::make('rrhhColaboradores')")
+        ->toContain('->required($assigneesRequired && ! $scrumProductOwnerInbox)')
+        ->toContain('->multiple(! $scrumProductOwnerInbox)')
+        ->toContain('Seleccione uno o más colaboradores responsables de resolver el caso.');
+});
+
+it('todos los paneles helpdesk envían el ticket al Product Owner Scrum cuando aplica', function (string $panel): void {
+    $path = dirname(__DIR__, 2)."/app/Filament/{$panel}/Resources/Helpdesks/Schemas/HelpdeskForm.php";
+
+    expect(file_get_contents($path))
+        ->toContain('HelpdeskFormSchema::configure($schema, assigneesRequired: true, scrumProductOwnerInbox: true)');
+})->with(['Business', 'Administration', 'Marketing', 'Operations']);
+
+it('marca el campo de asignados como requerido en el schema compartido', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Support/HelpdeskFormSchema.php';
+
+    expect(file_get_contents($path))
+        ->toContain("Select::make('rrhhColaboradores')")
+        ->toContain('->required($assigneesRequired && ! $scrumProductOwnerInbox)')
+        ->toContain('->multiple(! $scrumProductOwnerInbox)')
+        ->toContain('Seleccione uno o más colaboradores responsables de resolver el caso.');
+});

@@ -5,6 +5,7 @@ namespace App\Filament\Master\Resources\Agencies\Pages;
 use App\Filament\Master\Resources\Agencies\AgencyResource;
 use App\Filament\Shared\CommercialStructure\Concerns\SyncsReferidorAssignments;
 use App\Models\Agency;
+use App\Support\Filament\CommercialNetworkAccess;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
@@ -103,7 +104,7 @@ class EditAgency extends EditRecord
                                     'bar' => 'Barras',
                                     'line' => 'Lineas',
                                 ])
-                                ->default(fn () => Agency::where('code', Auth::user()->code_agency)->first()->type_chart),
+                                ->default(fn () => CommercialNetworkAccess::chartTypeForUser(Auth::user())),
 
                         ])->columns(1),
                 ])

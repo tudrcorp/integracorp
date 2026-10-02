@@ -23,7 +23,7 @@ class CorporateQuoteRequestResource extends Resource
 
     protected static ?string $model = CorporateQuoteRequest::class;
 
-    protected static ?string $navigationLabel = 'Dress Taylor';
+    protected static ?string $navigationLabel = 'Taylor Made';
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-link';
 

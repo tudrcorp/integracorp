@@ -6,7 +6,7 @@ use App\Filament\Agents\Pages\ViewMyHierarchy;
 use App\Filament\Agents\Resources\Agents\AgentResource;
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Filament\Shared\Auth\PanelAwareLogin;
-use App\Models\Agent;
+use App\Support\Filament\CommercialNetworkAccess;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -42,9 +42,7 @@ class AgentsPanelProvider extends PanelProvider
             ->profile()
             ->spa()
             ->sidebarCollapsibleOnDesktop()
-            ->topNavigation(function () {
-                return Agent::where('id', Auth::user()->agent_id)->first()->conf_position_menu;
-            })
+            ->topNavigation(fn (): bool => CommercialNetworkAccess::prefersTopNavigation(Auth::user()))
             ->colors([
                 'primary' => '#00DCCD',
             ])

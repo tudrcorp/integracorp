@@ -166,6 +166,8 @@ class User extends Authenticatable implements FilamentUser
      */
     public function canAccessPanel(Panel $panel): bool
     {
+        $departaments = $this->normalizedDepartments();
+
         if ($this->isSupplierOperationsAnalyst()) {
             return $panel->getId() === 'operations'
                 && $this->status === 'ACTIVO'
@@ -197,31 +199,29 @@ class User extends Authenticatable implements FilamentUser
         }
 
         if ($panel->getId() === 'telemedicina') {
-            return in_array('TELEMEDICINA', $this->departament) == 1 &&
+            return in_array('TELEMEDICINA', $departaments, true) &&
                     $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'marketing') {
-            return in_array('MARKETING', $this->departament) == 1 &&
+            return in_array('MARKETING', $departaments, true) &&
                     $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'business') {
             return str_ends_with($this->email, '@tudrencasa.com') &&
-                     in_array('NEGOCIOS', $this->departament) == 1 &&
+                     in_array('NEGOCIOS', $departaments, true) &&
                      $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'administration') {
             return str_ends_with($this->email, '@tudrencasa.com') &&
-                    in_array('ADMINISTRACION', $this->departament) == 1 &&
+                    in_array('ADMINISTRACION', $departaments, true) &&
                     $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'operations') {
             if ($this->supplier_id !== null) {
-                $departaments = is_array($this->departament) ? $this->departament : [];
-
                 return ($this->status === 'ACTIVO' || $this->status == 'ACTIVO')
                     && (in_array('OPERACIONES', $departaments, true)
                         || in_array('TELEMEDICINA', $departaments, true)
@@ -229,19 +229,17 @@ class User extends Authenticatable implements FilamentUser
             }
 
             return str_ends_with($this->email, '@tudrencasa.com') &&
-                in_array('OPERACIONES', $this->departament) == 1 &&
+                in_array('OPERACIONES', $departaments, true) &&
                 $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'projects') {
             return str_ends_with($this->email, '@tudrencasa.com') &&
-                in_array('PROYECTOS', $this->departament) == 1 &&
+                in_array('PROYECTOS', $departaments, true) &&
                 $this->status = 'ACTIVO';
         }
 
         if ($panel->getId() === 'metrics') {
-            $departaments = is_array($this->departament) ? $this->departament : [];
-
             return str_ends_with($this->email, '@tudrencasa.com')
                 && in_array('SUPERADMIN', $departaments, true)
                 && in_array('METRICAS', $departaments, true)

@@ -27,7 +27,7 @@ it('incluye historico mensual con hover tdec/tdev y sin detalle al hacer clic', 
         ->toContain("'tdevCounts'")
         ->toContain("lines.push(' TDEC: '")
         ->toContain("lines.push(' TDEV: '")
-        ->toContain('Histórico mensual de solicitudes Dress Taylor')
+        ->toContain('Histórico mensual de solicitudes Taylor Made')
         ->not->toContain('openMonthDetail')
         ->not->toContain('resetToMonthly')
         ->not->toContain('toggleDetailView')
@@ -104,7 +104,8 @@ it('filtra agentes al seleccionar una agencia y solicitudes al seleccionar un ag
         ->toContain('->to(CorporateQuoteRequestsByAgentTable::class)')
         ->toContain('corporate-quote-requests-agent-filter-start')
         ->toContain("Action::make('viewRequestsWithoutAgent')")
-        ->toContain("->label('Ver solicitudes sin agente')")
+        ->toContain("->label('Ver solicitudes por agencia')")
+        ->toContain('Heroicon::DocumentText')
         ->toContain('viewAgencyRequestsWithoutAgent')
         ->toContain('corporate-quote-requests-filter-by-agency-without-agent');
 

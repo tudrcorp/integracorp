@@ -56,7 +56,8 @@ it('define el widget de cotizaciones por agencia con columnas y filtros de perio
         ->toContain("Action::make('filterAgents')")
         ->toContain("->label('Detalles')")
         ->toContain("Action::make('viewQuotesWithoutAgent')")
-        ->toContain("->label('Ver cotizaciones sin agente')")
+        ->toContain("->label('Ver cotizaciones por agencia')")
+        ->toContain('Heroicon::DocumentText')
         ->toContain('syncPeriodToAgentTable')
         ->toContain('corporate-quotes-period-changed');
 });

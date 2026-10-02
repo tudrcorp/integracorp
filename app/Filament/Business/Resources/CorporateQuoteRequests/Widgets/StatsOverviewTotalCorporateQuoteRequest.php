@@ -18,7 +18,7 @@ class StatsOverviewTotalCorporateQuoteRequest extends StatsOverviewWidget
      */
     public array $statsFilters = [];
 
-    protected ?string $heading = 'Total de solicitudes Dress Taylor';
+    protected ?string $heading = 'Total de solicitudes Taylor Made';
 
     protected ?string $description = 'Resumen por año y mes seleccionado.';
 

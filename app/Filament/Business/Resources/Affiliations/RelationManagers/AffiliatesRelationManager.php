@@ -194,6 +194,7 @@ class AffiliatesRelationManager extends RelationManager
                                         'ANUAL' => 'ANUAL',
                                         'SEMESTRAL' => 'SEMESTRAL',
                                         'TRIMESTRAL' => 'TRIMESTRAL',
+                                        'MENSUAL' => 'MENSUAL',
                                     ])
                                     ->searchable()
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
@@ -210,6 +211,9 @@ class AffiliatesRelationManager extends RelationManager
                                         }
                                         if ($state == 'TRIMESTRAL') {
                                             $set('total_amount', $get('fee') / 4);
+                                        }
+                                        if ($state == 'MENSUAL') {
+                                            $set('total_amount', $get('fee') / 12);
                                         }
                                     }),
                                 TextInput::make('total_amount')

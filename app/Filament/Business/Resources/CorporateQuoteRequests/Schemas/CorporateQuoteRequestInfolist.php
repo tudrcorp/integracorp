@@ -38,7 +38,7 @@ class CorporateQuoteRequestInfolist
                             ->icon(Heroicon::OutlinedClipboardDocumentList)
                             ->schema([
                                 Section::make('Solicitud de cotización corporativa')
-                                    ->heading('Solicitud de cotización corporativa tipo Dress Taylor')
+                                    ->heading('Solicitud de cotización corporativa tipo Taylor Made')
                                     ->description('Detalle de la solicitud de cotización')
                                     ->icon(Heroicon::OutlinedPencilSquare)
                                     ->extraAttributes([

@@ -2,12 +2,12 @@
 
 namespace App\Filament\Agents\Widgets;
 
+use App\Models\AffiliationCorporate;
+use App\Support\Filament\CommercialNetworkAccess;
 use Carbon\Carbon;
-use App\Models\Agent;
+use Filament\Widgets\ChartWidget;
 use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
-use Filament\Widgets\ChartWidget;
-use App\Models\AffiliationCorporate;
 use Illuminate\Support\Facades\Auth;
 
 class AffiliationCorporativeChart extends ChartWidget
@@ -36,16 +36,16 @@ class AffiliationCorporativeChart extends ChartWidget
 
         if ($activeFilter === 'today') {
             $rangeStartDate = now()->startOfDay();
-            $rangeEndDate   = now()->endOfDay();
+            $rangeEndDate = now()->endOfDay();
         } elseif ($activeFilter === 'week') {
             $rangeStartDate = now()->startOfWeek();
-            $rangeEndDate   = now()->endOfWeek();
+            $rangeEndDate = now()->endOfWeek();
         } elseif ($activeFilter === 'month') {
             $rangeStartDate = now()->startOfMonth();
-            $rangeEndDate   = now()->endOfMonth();
+            $rangeEndDate = now()->endOfMonth();
         } elseif ($activeFilter === 'year') {
-            $rangeStartDate     = now()->startOfYear();
-            $rangeEndDate       = now()->endOfYear();
+            $rangeStartDate = now()->startOfYear();
+            $rangeEndDate = now()->endOfYear();
         }
 
         $data = Trend::query(AffiliationCorporate::where('agent_id', Auth::user()->agent_id))
@@ -60,7 +60,7 @@ class AffiliationCorporativeChart extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Afiliaciones Corporativas',
-                    'data' => $data->map(fn(TrendValue $value) => $value->aggregate),
+                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate),
                     // 'data' => [0, 10, 5, 2, 21, 32, 45, 74, 65, 45, 77, 89],
                     'backgroundColor' => [
                         '#B8E6FF', // Rosado muy claro
@@ -117,7 +117,7 @@ class AffiliationCorporativeChart extends ChartWidget
                     'fill' => true,
                 ],
             ],
-            'labels' => ($data->map(fn(TrendValue $value) => Carbon::parse($value->date)->isoFormat('DD-MMM'))->toArray()),
+            'labels' => ($data->map(fn (TrendValue $value) => Carbon::parse($value->date)->isoFormat('DD-MMM'))->toArray()),
         ];
     }
 
@@ -139,6 +139,6 @@ class AffiliationCorporativeChart extends ChartWidget
 
     protected function getType(): string
     {
-        return Agent::where('id', Auth::user()->agent_id)->first()->type_chart;
+        return CommercialNetworkAccess::chartTypeForUser(Auth::user());
     }
 }

@@ -237,6 +237,8 @@ it('construye queries de ranking optimizadas con subconsultas', function (): voi
     expect($queryClass)->toContain('joinSub')
         ->toContain('public static function agencies')
         ->toContain('public static function agents')
+        ->toContain('constrainActive')
+        ->toContain("->where('status', 'ACTIVA')")
         ->toContain("->where('code_agency', \$agencyCode)")
         ->toContain('groupBy(\'code_agency\')')
         ->toContain('groupBy(\'agent_id\')')
