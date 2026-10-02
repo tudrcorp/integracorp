@@ -204,7 +204,11 @@ class ListOperationCoordinationServices extends ListRecords
      */
     private function computeTabCounts(): array
     {
-        $byStatus = OperationsSupplierScope::coordinationServiceQuery()
+        /*
+         * Las pestañas de trabajo solo cuentan servicios con algo por gestionar;
+         * los finalizados (todos sus ítems cerrados) solo cuentan en FINALIZADO.
+         */
+        $byStatus = OperationCoordinationServicesTable::applyHideFullyFinalizedScope(OperationsSupplierScope::coordinationServiceQuery())
             ->toBase()
             ->selectRaw('UPPER(TRIM(status)) AS estatus, COUNT(*) AS total')
             ->groupBy('estatus')
@@ -217,9 +221,7 @@ class ListOperationCoordinationServices extends ListRecords
         ));
 
         return [
-            'todas' => OperationCoordinationServicesTable::applyHideFullyFinalizedScope(
-                OperationsSupplierScope::coordinationServiceQuery()
-            )->count(),
+            'todas' => (int) array_sum(array_map('intval', $byStatus)),
             CoordinationServiceCaseDeletion::DELETED_TAB => CoordinationServiceCaseDeletion::userCanDeleteCases()
                 ? CoordinationServiceCaseDeletion::applyDeletedCasesScope(
                     OperationsSupplierScope::coordinationServiceQuery()
@@ -228,7 +230,9 @@ class ListOperationCoordinationServices extends ListRecords
             'en_gestion' => $sum(['EN GESTION']),
             'pendiente' => $sum(['PENDIENTE']),
             'pendiente_resultados' => $sum(['PENDIENTE POR RESULTADOS']),
-            'finalizado' => $sum(['FINALIZADO']),
+            'finalizado' => OperationCoordinationServicesTable::applyFullyFinalizedScope(
+                OperationsSupplierScope::coordinationServiceQuery()
+            )->count(),
             'cancelada' => $sum(['CANCELADA', 'CANCELADO']),
             'novedad_admon' => $sum(['NOVEDAD ADMON', 'NOVEDAD ADMON ESTUDIO']),
         ];
@@ -248,49 +252,49 @@ class ListOperationCoordinationServices extends ListRecords
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query)),
+                ->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)),
             'en_gestion' => Tab::make('EN GESTION')
                 ->badge($counts['en_gestion'])
                 ->badgeColor(Color::hex('#ffc107'))
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'EN GESTION')),
+                ->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)->where('status', 'EN GESTION')),
             'pendiente' => Tab::make('PENDIENTE')
                 ->badge($counts['pendiente'])
                 ->badgeColor(Color::hex('#ffcc00'))
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'PENDIENTE')),
+                ->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)->where('status', 'PENDIENTE')),
             'pendiente_resultados' => Tab::make('PENDIENTE POR RESULTADOS')
                 ->badge($counts['pendiente_resultados'])
                 ->badgeColor(Color::hex('#ffcc00'))
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'PENDIENTE POR RESULTADOS')),
+                ->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)->where('status', 'PENDIENTE POR RESULTADOS')),
             'finalizado' => Tab::make('FINALIZADO')
                 ->badge($counts['finalizado'])
                 ->badgeColor(Color::hex('#28cd41'))
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'FINALIZADO')),
+                ->modifyQueryUsing(fn (Builder $query): Builder => OperationCoordinationServicesTable::applyFullyFinalizedScope($query)),
             'cancelada' => Tab::make('CANCELADA')
                 ->badge($counts['cancelada'])
                 ->badgeColor(Color::hex('#ff3b30'))
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereIn('status', ['CANCELADA', 'CANCELADO'])),
+                ->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)->whereIn('status', ['CANCELADA', 'CANCELADO'])),
             'novedad_admon' => Tab::make('NOVEDAD ADMON')
                 ->badge($counts['novedad_admon'])
                 ->badgeColor(Color::hex('#ff3b30'))
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereIn('status', ['NOVEDAD ADMON', 'NOVEDAD ADMON ESTUDIO'])),
+                ->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)->whereIn('status', ['NOVEDAD ADMON', 'NOVEDAD ADMON ESTUDIO'])),
         ];
 
         /**
@@ -308,6 +312,15 @@ class ListOperationCoordinationServices extends ListRecords
         }
 
         return $tabs;
+    }
+
+    /**
+     * Pestañas de trabajo: solo servicios con algo por gestionar. Los finalizados
+     * (todos sus ítems cerrados) se consultan únicamente en la pestaña FINALIZADO.
+     */
+    private static function openServices(Builder $query): Builder
+    {
+        return OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query);
     }
 
     public function getTabsContentComponent(): Component

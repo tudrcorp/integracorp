@@ -1204,10 +1204,12 @@ class OperationCoordinationServicesTable
             ->searchPlaceholder('Caso, paciente, cédula, referencia, servicio, proveedor o estatus')
             ->defaultSort('created_at', 'desc')
             /*
-             * Sin `deferLoading()`: diferir costaba un segundo viaje al servidor (con
-             * su arranque completo) solo para traer 10 filas. Los contadores ya van en
-             * caché (CoordinationServiceTabCounts), así que la página los pinta de una.
+             * Carga diferida: la página (pestañas y contadores en caché, ver
+             * CoordinationServiceTabCounts) se pinta de inmediato y las filas llegan
+             * en una segunda petición, ya sin los servicios finalizados, que solo
+             * se consultan en su pestaña.
              */
+            ->deferLoading()
             ->modifyQueryUsing(function (Builder $query): Builder {
                 /*
                  * Filament también llama aquí para la casilla de cada grupo y para
@@ -2392,6 +2394,33 @@ class OperationCoordinationServicesTable
                 ->orWhereHas('telemedicinePatientStudies', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses))
                 ->orWhereHas('telemedicinePatientSpecialties', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses));
         });
+    }
+
+    /**
+     * Servicios finalizados: tienen al menos un ítem clínico y ninguno está
+     * PENDIENTE ni EN GESTION (cancelados cuentan como cerrados). Es el
+     * complemento exacto de {@see applyHideFullyFinalizedScope()} —sin los
+     * reasignados a TDG—, así cada servicio vive en una sola de las dos vistas:
+     * las pestañas de trabajo o la pestaña FINALIZADO.
+     */
+    public static function applyFullyFinalizedScope(Builder $query): Builder
+    {
+        $openStatuses = ['PENDIENTE', 'EN GESTION'];
+
+        self::applyHideReassignedToTdgScope($query);
+
+        return $query
+            ->where(function (Builder $withItems): void {
+                $withItems
+                    ->whereHas('telemedicinePatientMedications')
+                    ->orWhereHas('telemedicinePatientLabs')
+                    ->orWhereHas('telemedicinePatientStudies')
+                    ->orWhereHas('telemedicinePatientSpecialties');
+            })
+            ->whereDoesntHave('telemedicinePatientMedications', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses))
+            ->whereDoesntHave('telemedicinePatientLabs', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses))
+            ->whereDoesntHave('telemedicinePatientStudies', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses))
+            ->whereDoesntHave('telemedicinePatientSpecialties', fn (Builder $items): Builder => self::whereItemStatusIsOpen($items, $openStatuses));
     }
 
     /**
