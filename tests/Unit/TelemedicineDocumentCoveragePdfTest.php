@@ -122,7 +122,7 @@ it('create, edit, regeneración y plantillas publican cobertura y sello', functi
         ->toContain("'doctor_name' => \$doctor['full_name'] ?? null");
 
     expect($regeneration)
-        ->toContain('labsSplitForCase')
+        ->toContain('labsSplitForConsultation')
         ->toContain('other_labs')
         ->toContain('other_studies')
         ->toContain('other_specialist')

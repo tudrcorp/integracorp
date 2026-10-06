@@ -33,6 +33,24 @@ final class CollectionReceivableReport
 
     public const AGING_DUE_SOON = 'vence_7';
 
+    public const AGING_DUE_30 = 'vence_30';
+
+    public const AGING_DUE_45 = 'vence_45';
+
+    public const AGING_DUE_60 = 'vence_60';
+
+    /**
+     * Plazos de «Total por cobrar»: lo que vence de hoy a N días. Son
+     * acumulados (el de 45 incluye el de 30) y cada uno es también un filtro.
+     *
+     * @var array<int, string> Días => clave del filtro «Vencimiento».
+     */
+    public const DUE_WINDOWS = [
+        30 => self::AGING_DUE_30,
+        45 => self::AGING_DUE_45,
+        60 => self::AGING_DUE_60,
+    ];
+
     public const AGING_NOT_DUE = 'por_vencer';
 
     public const AGING_OVERDUE_1_30 = 'vencido_1_30';
@@ -87,6 +105,9 @@ final class CollectionReceivableReport
     {
         return [
             self::AGING_DUE_SOON => 'Vence en los próximos 7 días',
+            self::AGING_DUE_30 => 'Vence en los próximos 30 días',
+            self::AGING_DUE_45 => 'Vence en los próximos 45 días',
+            self::AGING_DUE_60 => 'Vence en los próximos 60 días',
             self::AGING_NOT_DUE => 'Por vencer (todas)',
             self::AGING_OVERDUE_1_30 => 'Vencidas de 1 a 30 días',
             self::AGING_OVERDUE_31_60 => 'Vencidas de 31 a 60 días',
@@ -102,6 +123,9 @@ final class CollectionReceivableReport
 
         return match ($bucket) {
             self::AGING_DUE_SOON => $query->whereBetween($column, [$today->toDateString(), $today->addDays(7)->toDateString()]),
+            self::AGING_DUE_30 => $query->whereBetween($column, [$today->toDateString(), $today->addDays(30)->toDateString()]),
+            self::AGING_DUE_45 => $query->whereBetween($column, [$today->toDateString(), $today->addDays(45)->toDateString()]),
+            self::AGING_DUE_60 => $query->whereBetween($column, [$today->toDateString(), $today->addDays(60)->toDateString()]),
             self::AGING_NOT_DUE => $query->where($column, '>=', $today->toDateString()),
             self::AGING_OVERDUE_1_30 => $query->whereBetween($column, [$today->subDays(30)->toDateString(), $today->subDay()->toDateString()]),
             self::AGING_OVERDUE_31_60 => $query->whereBetween($column, [$today->subDays(60)->toDateString(), $today->subDays(31)->toDateString()]),
@@ -333,7 +357,7 @@ final class CollectionReceivableReport
      * la consulta (no solo la próxima), calculados en la base sin cargar filas. Recibe
      * la consulta de la tabla para respetar filtros y búsqueda.
      *
-     * @return array{rows_count: int, pending_count: int, pending_amount: float, overdue_count: int, overdue_amount: float, due_soon_count: int, due_soon_amount: float}
+     * @return array{rows_count: int, pending_count: int, pending_amount: float, overdue_count: int, overdue_amount: float, due_soon_count: int, due_soon_amount: float, due_windows: array<int, array{count: int, amount: float}>}
      */
     public static function summary(?Builder $query = null, ?CarbonImmutable $today = null): array
     {
@@ -352,16 +376,34 @@ final class CollectionReceivableReport
 
         $rowsCount = (clone $rows)->count();
 
-        $totals = Collection::query()
+        $totalsQuery = Collection::query()
             ->where('status', self::PENDING_STATUS)
             ->whereIn('affiliation_code', (clone $rows)->select($rows->getModel()->getTable().'.affiliation_code'))
             ->selectRaw('COUNT(*) as pending_count, COALESCE(SUM(total_amount), 0) as pending_amount')
             ->selectRaw('SUM(CASE WHEN filter_next_payment_date < ? THEN 1 ELSE 0 END) as overdue_count', [$todayString])
             ->selectRaw('COALESCE(SUM(CASE WHEN filter_next_payment_date < ? THEN total_amount ELSE 0 END), 0) as overdue_amount', [$todayString])
             ->selectRaw('SUM(CASE WHEN filter_next_payment_date BETWEEN ? AND ? THEN 1 ELSE 0 END) as due_soon_count', [$todayString, $soonString])
-            ->selectRaw('COALESCE(SUM(CASE WHEN filter_next_payment_date BETWEEN ? AND ? THEN total_amount ELSE 0 END), 0) as due_soon_amount', [$todayString, $soonString])
-            ->toBase()
-            ->first();
+            ->selectRaw('COALESCE(SUM(CASE WHEN filter_next_payment_date BETWEEN ? AND ? THEN total_amount ELSE 0 END), 0) as due_soon_amount', [$todayString, $soonString]);
+
+        // Los plazos van en la misma consulta: un solo recorrido para todo el resumen.
+        foreach (array_keys(self::DUE_WINDOWS) as $days) {
+            $untilString = $today->addDays($days)->toDateString();
+
+            $totalsQuery
+                ->selectRaw("SUM(CASE WHEN filter_next_payment_date BETWEEN ? AND ? THEN 1 ELSE 0 END) as due_{$days}_count", [$todayString, $untilString])
+                ->selectRaw("COALESCE(SUM(CASE WHEN filter_next_payment_date BETWEEN ? AND ? THEN total_amount ELSE 0 END), 0) as due_{$days}_amount", [$todayString, $untilString]);
+        }
+
+        $totals = $totalsQuery->toBase()->first();
+
+        $dueWindows = [];
+
+        foreach (array_keys(self::DUE_WINDOWS) as $days) {
+            $dueWindows[$days] = [
+                'count' => (int) ($totals->{"due_{$days}_count"} ?? 0),
+                'amount' => (float) ($totals->{"due_{$days}_amount"} ?? 0),
+            ];
+        }
 
         return [
             'rows_count' => $rowsCount,
@@ -371,6 +413,7 @@ final class CollectionReceivableReport
             'overdue_amount' => (float) ($totals->overdue_amount ?? 0),
             'due_soon_count' => (int) ($totals->due_soon_count ?? 0),
             'due_soon_amount' => (float) ($totals->due_soon_amount ?? 0),
+            'due_windows' => $dueWindows,
         ];
     }
 

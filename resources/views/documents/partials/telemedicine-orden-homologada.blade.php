@@ -57,16 +57,6 @@
             line-height: 1.28;
             color: #374151;
         }
-        .watermark {
-            position: fixed;
-            top: 50%;
-            left: 20%;
-            width: 60%;
-            opacity: 0.052;
-            z-index: 0;
-            transform: translateY(-50%);
-        }
-        .watermark img { width: 100%; height: auto; display: block; }
         .doc-root { position: relative; z-index: 1; }
         .header-bar {
             width: 100%;
@@ -205,9 +195,6 @@
 </head>
 <body>
 <div class="doc-root">
-@if($logoDataUri !== '')
-    <div class="watermark" aria-hidden="true"><img src="{{ $logoDataUri }}" alt=""></div>
-@endif
 <div class="doc-content">
     <table class="header-bar">
         <tr>

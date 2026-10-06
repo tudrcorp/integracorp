@@ -13,9 +13,22 @@ it('la marca de agua de los documentos no está rotada', function (string $templ
         ->toMatch('/\.watermark\s*\{[^}]*transform: translateY\(-50%\);/s')
         ->not->toMatch('/\.watermark\s*\{[^}]*rotate\(/s');
 })->with([
-    'informe médico y seguimiento' => 'partials/informe-medico-homologado',
+    'orden de servicio' => 'operation-service-order-pdf',
+]);
+
+/**
+ * Los documentos de telemedicina ya no llevan marca de agua; el logo
+ * del encabezado se conserva.
+ */
+it('los documentos de telemedicina no llevan marca de agua pero conservan el logo del encabezado', function (string $template): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/'.$template.'.blade.php');
+
+    expect($source)
+        ->not->toContain('watermark')
+        ->toContain('$logoDataUri');
+})->with([
+    'informe médico, seguimiento e informe corto' => 'partials/informe-medico-homologado',
     'récipe' => 'partials/telemedicine-recipe-homologado',
     'órdenes y referencia a especialista' => 'partials/telemedicine-orden-homologada',
     'bitácora del caso' => 'bitacora-caso',
-    'orden de servicio' => 'operation-service-order-pdf',
 ]);

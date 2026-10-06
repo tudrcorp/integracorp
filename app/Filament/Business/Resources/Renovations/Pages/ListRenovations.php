@@ -6,11 +6,14 @@ namespace App\Filament\Business\Resources\Renovations\Pages;
 
 use App\Filament\Business\Resources\Renovations\RenovationResource;
 use App\Filament\Business\Resources\Renovations\Tables\RenovationsTable;
+use App\Filament\Shared\Renovations\Concerns\ShowsUpcomingRenovationCounts;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 
 class ListRenovations extends ListRecords
 {
+    use ShowsUpcomingRenovationCounts;
+
     protected static string $resource = RenovationResource::class;
 
     protected function getHeaderActions(): array

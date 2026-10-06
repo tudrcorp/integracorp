@@ -12,7 +12,10 @@ use App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +33,7 @@ final class RegenerateTelemedicineCaseDocumentsAction
             ->icon(Heroicon::OutlinedDocumentDuplicate)
             ->color('info')
             ->modalHeading('Generar documentos de la consulta')
-            ->modalDescription('Seleccione uno o varios documentos para volver a generarlos a partir de la información registrada en el caso. Se generan de inmediato, sin depender de la cola de documentos.')
+            ->modalDescription('Elija la consulta y los documentos que desea volver a generar con la información registrada en ella. Se generan de inmediato, sin depender de la cola de documentos.')
             ->modalIcon(Heroicon::OutlinedDocumentDuplicate)
             ->modalIconColor('info')
             ->modalWidth(Width::Large)
@@ -57,33 +60,77 @@ final class RegenerateTelemedicineCaseDocumentsAction
                 }
 
                 return app(TelemedicineCaseDocumentRegenerationService::class)
-                    ->availableOptions($record) !== [];
+                    ->caseHasConsultations($record);
             })
             ->fillForm(function (TelemedicineCase $record): array {
-                $options = app(TelemedicineCaseDocumentRegenerationService::class)->availableOptions($record);
+                $service = app(TelemedicineCaseDocumentRegenerationService::class);
+                $consultationId = $service->defaultConsultationId($record);
+                $consultation = $service->consultationOf($record, $consultationId);
 
                 return [
-                    'documents' => array_keys($options),
+                    'consultation_id' => $consultationId,
+                    'documents' => $consultation !== null
+                        ? array_keys($service->availableOptions($consultation))
+                        : [],
                 ];
             })
             ->form(function (TelemedicineCase $record): array {
-                $options = app(TelemedicineCaseDocumentRegenerationService::class)->availableOptions($record);
+                $service = app(TelemedicineCaseDocumentRegenerationService::class);
+                $consultationOptions = $service->consultationOptions($record);
+                $withoutDoctor = $service->consultationIdsWithoutDoctor($record);
 
-                if ($options === []) {
+                if ($consultationOptions === [] || count($withoutDoctor) === count($consultationOptions)) {
                     return [
                         Placeholder::make('no_documents')
                             ->hiddenLabel()
                             ->content(new HtmlString(
-                                '<p class="text-sm text-gray-600 dark:text-gray-300">Este caso aún no tiene consultas ni datos suficientes para regenerar documentos.</p>'
+                                '<p class="text-sm text-gray-600 dark:text-gray-300">'
+                                .e($consultationOptions === []
+                                    ? 'Este caso aún no tiene consultas ni datos suficientes para regenerar documentos.'
+                                    : TelemedicineCaseDocumentRegenerationService::MISSING_DOCTOR_MESSAGE)
+                                .'</p>'
                             )),
                     ];
                 }
 
                 return [
+                    Select::make('consultation_id')
+                        ->label('Consulta')
+                        ->helperText('Cada consulta genera sus propios documentos, con la firma del médico que la atendió y solo lo que se indicó en ella.')
+                        ->options($consultationOptions)
+                        ->disableOptionWhen(fn (mixed $value): bool => in_array((int) $value, $withoutDoctor, true))
+                        ->required()
+                        ->native(false)
+                        ->live()
+                        ->afterStateUpdated(function (mixed $state, Set $set) use ($service, $record): void {
+                            $consultation = $service->consultationOf($record, $state);
+
+                            $set('documents', $consultation !== null
+                                ? array_keys($service->availableOptions($consultation))
+                                : []);
+                        })
+                        ->validationMessages([
+                            'required' => 'Seleccione la consulta cuyos documentos desea generar.',
+                        ]),
+                    Placeholder::make('consultations_without_doctor')
+                        ->hiddenLabel()
+                        ->visible($withoutDoctor !== [])
+                        ->content(new HtmlString(
+                            '<p class="text-sm text-warning-600 dark:text-warning-400">'
+                            .e(count($withoutDoctor) === 1
+                                ? 'Una consulta de este caso no tiene médico registrado y no se puede regenerar: saldría con la firma de otro médico. Reporte el caso a soporte para corregirla.'
+                                : count($withoutDoctor).' consultas de este caso no tienen médico registrado y no se pueden regenerar: saldrían con la firma de otro médico. Reporte el caso a soporte para corregirlas.')
+                            .'</p>'
+                        )),
                     CheckboxList::make('documents')
                         ->label('Documentos a generar')
                         ->helperText('Puede seleccionar uno o varios. Se generan en el momento, sin pasar por la cola: espere unos segundos sin cerrar la ventana.')
-                        ->options($options)
+                        ->options(function (Get $get) use ($service, $record): array {
+                            $consultation = $service->consultationOf($record, $get('consultation_id'));
+
+                            return $consultation !== null ? $service->availableOptions($consultation) : [];
+                        })
+                        ->visible(fn (Get $get): bool => filled($get('consultation_id')))
                         ->required()
                         ->columns(1)
                         ->bulkToggleable()
@@ -111,6 +158,7 @@ final class RegenerateTelemedicineCaseDocumentsAction
                 try {
                     $result = app(TelemedicineCaseDocumentRegenerationService::class)->regenerate(
                         $record,
+                        isset($data['consultation_id']) ? (int) $data['consultation_id'] : null,
                         array_values(array_filter((array) ($data['documents'] ?? []))),
                         $user,
                     );

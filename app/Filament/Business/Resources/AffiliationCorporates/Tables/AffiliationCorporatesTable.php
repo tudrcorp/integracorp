@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\Tables;
 
 use App\Exceptions\CorporatePaymentFrequencyChangeBlockedException;
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\CorporateCertificateGenerator;
 use App\Filament\Exports\AffiliationCorporateExporter;
 use App\Http\Controllers\AffiliateCorporateExportCsvController;
 use App\Http\Controllers\AffiliationCorporateController;
@@ -20,6 +21,7 @@ use App\Support\AffiliationCorporates\CorporatePaymentFrequencyChanger;
 use App\Support\AffiliationCorporates\CorporatePaymentUploadAvailability;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
+use App\Support\Filament\FilamentIosButton;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -447,6 +449,15 @@ class AffiliationCorporatesTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
+            ->headerActions([
+                Action::make('certificateGenerator')
+                    ->label('Generador de Certificado')
+                    ->icon(Heroicon::OutlinedDocumentCheck)
+                    ->color('success')
+                    ->extraAttributes(['class' => FilamentIosButton::extraClassForFilamentColor('success')])
+                    ->visible(fn (): bool => CorporateCertificateGenerator::canAccess())
+                    ->url(fn (): string => AffiliationCorporateResource::getUrl('certificate-generator')),
+            ])
             ->recordActions([
                 ActionGroup::make([
                     /**REGENERAR CERTIFICADO Y CARNETS */

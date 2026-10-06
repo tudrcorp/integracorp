@@ -8,6 +8,8 @@ use App\Models\Collection;
 use App\Support\Collections\CollectionAdjuster;
 use App\Support\Collections\CollectionAdjustmentAccess;
 use App\Support\Collections\CollectionDueDate;
+use App\Support\Exports\CollectionCsvExportService;
+use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -41,6 +43,7 @@ use Illuminate\Support\Facades\View;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CollectionsTable
 {
@@ -401,10 +404,33 @@ class CollectionsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    self::exportBulkAction(),
                     self::markAsPaidBulkAction(),
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * Descarga directa en CSV de las cuotas seleccionadas, sin modal ni cola
+     * ({@see CollectionCsvExportService}).
+     */
+    public static function exportBulkAction(): BulkAction
+    {
+        return BulkAction::make('exportCollections')
+            ->label('Exportar CSV')
+            ->icon(Heroicon::OutlinedArrowDownTray)
+            ->color('success')
+            ->deselectRecordsAfterCompletion()
+            ->action(function (EloquentCollection $records): StreamedResponse {
+                SecurityAudit::log('AUDIT_ADMIN_COLLECTIONS_EXPORT_REQUESTED', 'administration.collections.export', [
+                    'panel' => 'administration',
+                    'format' => 'csv',
+                    'records' => $records->count(),
+                ], Auth::user());
+
+                return app(CollectionCsvExportService::class)->streamCsv($records->modelKeys());
+            });
     }
 
     /**

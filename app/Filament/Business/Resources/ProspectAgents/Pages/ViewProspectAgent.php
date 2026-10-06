@@ -2,12 +2,14 @@
 
 namespace App\Filament\Business\Resources\ProspectAgents\Pages;
 
+use App\Filament\Business\Resources\ProspectAgents\ProspectAgentLabels;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentResource;
 use App\Jobs\NotifyProspectAgentTaskAssigneeJob;
 use App\Models\ProspectAgent;
 use App\Models\ProspectAgentObservation;
 use App\Models\ProspectAgentTask;
 use App\Models\RrhhColaborador;
+use App\Support\Filament\RecordPageHeader;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
@@ -268,42 +270,48 @@ class ViewProspectAgent extends ViewRecord
 
     public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
     {
-        $prospectAgent = $this->getRecord();
+        return 'Prospecto '.(trim((string) $this->getRecord()->name) ?: '');
+    }
 
-        // Definimos el nombre del afiliado de forma segura
-        $fullName = $prospectAgent->name ?? 'Sin Nombre';
+    /**
+     * Encabezado del sistema ({@see RecordPageHeader}): etapa del pipeline con su
+     * color, tipo y origen del prospecto, correo y fecha de captación.
+     */
+    public function getHeading(): string|\Illuminate\Contracts\Support\Htmlable
+    {
+        /** @var ProspectAgent $prospect */
+        $prospect = $this->getRecord();
 
-        return new \Illuminate\Support\HtmlString(
-            '<div style="display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; gap: 2px; padding: 12px 0;">'.
-                // Título Principal Resaltado
-                '<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">'.
-                'Informacion Principal'.
-                '</span>'.
+        $status = trim((string) $prospect->status);
 
-                // Subtítulo (Nombre del Paciente)
-                '<span class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">'.
-                'Prospecto: '.$fullName.
-                '</span>'.
-
-                // Estatus Estilo Badge iOS Resaltado
-                '<div style="display: flex; align-items: center; margin-top: 8px;">'.
-                '<span style="'.
-                'background-color: #28cd41; '. // Verde iOS vibrante
-                'color: #ffffff; '.
-                'padding: 6px 16px; '.
-                'border-radius: 50px; '.
-                'font-size: 0.8rem; '.
-                'font-weight: 700; '.
-                'display: inline-flex; '.
-                'align-items: center; '.
-                'gap: 6px; '.
-                'box-shadow: 0 4px 12px rgba(40, 205, 65, 0.35); '.
-                'border: 1px solid rgba(255, 255, 255, 0.2);'.
-                '">'.
-                '<span style="font-size: 10px;">●</span>'.$prospectAgent->status.
-                '</span>'.
-                '</div>'.
-                '</div>'
+        return RecordPageHeader::render(
+            eyebrow: 'Capacitación · Prospecto',
+            title: trim((string) $prospect->name) ?: 'Sin nombre',
+            status: $status !== ''
+                ? RecordPageHeader::tag(Str::upper(ProspectAgentLabels::statusLabel($status)), self::statusTone($status))
+                : null,
+            chips: [
+                filled($prospect->type) ? RecordPageHeader::tag(ProspectAgentLabels::typeLabel($prospect->type), RecordPageHeader::TONE_VIOLET) : null,
+                filled($prospect->reference_by) ? RecordPageHeader::tag('Referido por: '.ProspectAgentLabels::referenceLabel($prospect->reference_by), RecordPageHeader::TONE_NEUTRAL) : null,
+            ],
+            facts: [
+                'Correo' => $prospect->email,
+                'Captado el' => $prospect->created_at?->format('d/m/Y'),
+            ],
         );
+    }
+
+    /**
+     * Mismo color que la etapa en la tabla de prospectos ({@see ProspectAgentLabels::statusColor()}).
+     */
+    private static function statusTone(string $status): string
+    {
+        return match (ProspectAgentLabels::statusColor($status)) {
+            'success' => RecordPageHeader::TONE_SUCCESS,
+            'danger' => RecordPageHeader::TONE_DANGER,
+            'warning' => RecordPageHeader::TONE_WARNING,
+            'info', 'primary' => RecordPageHeader::TONE_INFO,
+            default => RecordPageHeader::TONE_NEUTRAL,
+        };
     }
 }

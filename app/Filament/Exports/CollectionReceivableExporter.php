@@ -19,6 +19,13 @@ use OpenSpout\Common\Entity\Style\Style;
  * Exporta el reporte de cuentas por cobrar de «Cobranza por mes» con las columnas y
  * el orden del «Reporte global de cuentas por cobrar» (REPORTE CXC.xlsx): una fila
  * por afiliación con su próxima cuota pendiente.
+ *
+ * Ya no se ofrece en la tabla: «Descargar CSV» usa
+ * {@see \App\Support\Exports\CollectionReceivableCsvExportService} (descarga
+ * directa, sin cola). Se conserva porque las exportaciones ya generadas guardan
+ * esta clase en `exports.exporter` y Filament la necesita para servir su descarga.
+ *
+ * @deprecated
  */
 class CollectionReceivableExporter extends Exporter
 {

@@ -4,6 +4,8 @@ namespace App\Filament\Business\Resources\BusinessAppointments\Pages;
 
 use App\Filament\Business\Resources\BusinessAppointments\BusinessAppointmentsResource;
 use App\Models\BusinessAppointmentObservation;
+use App\Models\BusinessAppointments;
+use App\Support\Filament\RecordPageHeader;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -89,57 +91,41 @@ class ViewBusinessAppointments extends ViewRecord
 
     public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
     {
-        $businessAppointment = $this->getRecord();
+        return 'Cita '.(trim((string) $this->getRecord()->legal_name) ?: '');
+    }
 
-        // Definimos el nombre del afiliado de forma segura
-        $fullName = $businessAppointment->legal_name ?? 'Sin Nombre';
+    /**
+     * Encabezado del sistema ({@see RecordPageHeader}): estado de la cita con sus
+     * colores de siempre (pendiente y reagendada en ámbar, atendida en verde,
+     * cancelada en rojo) y los datos de contacto.
+     */
+    public function getHeading(): string|\Illuminate\Contracts\Support\Htmlable
+    {
+        /** @var BusinessAppointments $appointment */
+        $appointment = $this->getRecord();
 
-        // Lógica de colores basada en el estatus
-        // Pendiente: Amarillo (#ffcc00)
-        // Atendida: Verde (#28cd41)
-        // Cancelada: Rojo (#ff3b30)
-        // Reagendada: Amarillo (#ffcc00)
-
-        $status = strtolower($businessAppointment->status ?? 'pendiente');
-
-        $statusConfig = match ($status) {
-            'atendida' => ['color' => '#28cd41', 'label' => 'Atendida'],
-            'cancelada' => ['color' => '#ff3b30', 'label' => 'Cancelada'],
-            'reagendada' => ['color' => '#ffcc00', 'label' => 'Reagendada'],
-            default => ['color' => '#ffcc00', 'label' => 'Pendiente'], // 'pendiente' u otros
+        [$label, $tone] = match (mb_strtolower(trim((string) ($appointment->status ?: 'pendiente')))) {
+            'atendida' => ['ATENDIDA', RecordPageHeader::TONE_SUCCESS],
+            'cancelada' => ['CANCELADA', RecordPageHeader::TONE_DANGER],
+            'reagendada' => ['REAGENDADA', RecordPageHeader::TONE_WARNING],
+            default => ['PENDIENTE', RecordPageHeader::TONE_WARNING],
         };
 
-        return new \Illuminate\Support\HtmlString(
-            '<div style="display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; gap: 2px; padding: 12px 0;">'.
-                // Título Principal
-                '<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-gray-100 mb-2">'.
-                'Información Principal'.
-                '</span>'.
+        $observations = $appointment->businessAppointmentObservations()->count();
 
-                // Nombre del Paciente/Cita
-                '<span class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-2">'.
-                'Cita: '.$fullName.
-                '</span>'.
-
-                // Estatus Dinámico Estilo iOS
-                '<div style="display: flex; align-items: center; margin-top: 8px;">'.
-                '<span style="'.
-                'background-color: '.$statusConfig['color'].'; '.
-                'color: '.($statusConfig['color'] === '#ffcc00' ? '#000000' : '#ffffff').'; '. // Texto negro si es amarillo para legibilidad
-                'padding: 6px 16px; '.
-                'border-radius: 50px; '.
-                'font-size: 0.8rem; '.
-                'font-weight: 700; '.
-                'display: inline-flex; '.
-                'align-items: center; '.
-                'gap: 6px; '.
-                'box-shadow: 0 4px 12px '.$statusConfig['color'].'59; '. // 35% opacidad en el shadow
-                'border: 1px solid rgba(255, 255, 255, 0.2);'.
-                '">'.
-                '<span style="font-size: 10px;">●</span>'.$statusConfig['label'].
-                '</span>'.
-                '</div>'.
-                '</div>'
+        return RecordPageHeader::render(
+            eyebrow: 'Agenda de Negocios · Cita',
+            title: trim((string) $appointment->legal_name) ?: 'Sin nombre',
+            status: RecordPageHeader::tag($label, $tone),
+            chips: [
+                $observations > 0 ? RecordPageHeader::tag($observations === 1 ? '1 observación' : $observations.' observaciones', RecordPageHeader::TONE_NEUTRAL) : null,
+            ],
+            facts: [
+                'Teléfono' => $appointment->phone,
+                'Correo' => $appointment->email,
+                'Registrada el' => $appointment->created_at?->format('d/m/Y'),
+                'Agendada por' => $appointment->created_by,
+            ],
         );
     }
 }

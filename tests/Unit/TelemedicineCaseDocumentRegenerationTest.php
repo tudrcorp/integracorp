@@ -12,154 +12,111 @@ use App\Models\TelemedicinePatientMedications;
 use App\Models\User;
 use App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationResult;
 use App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationService;
-use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Queue;
 
 uses(Tests\TestCase::class);
 
-it('expone opciones segun datos del caso y consulta inicial', function (): void {
-    $case = new TelemedicineCase(['code' => 'TM-1']);
-    $case->id = 10;
-
-    $service = new class extends TelemedicineCaseDocumentRegenerationService
-    {
-        public ?TelemedicineConsultationPatient $consultation = null;
-
-        public ?TelemedicineConsultationPatient $followUp = null;
-
-        /** @var list<array{medicine: string, indications: string, duration: string}> */
-        public array $medications = [];
-
-        /** @var list<string> */
-        public array $labs = [];
-
-        /** @var list<string> */
-        public array $studies = [];
-
-        /** @var list<string> */
-        public array $specialists = [];
-
-        public function resolveConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
-        {
-            return $this->consultation;
-        }
-
-        protected function latestFollowUpConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
-        {
-            return $this->followUp;
-        }
-
-        protected function medicationsForCase(TelemedicineCase $case): \Illuminate\Support\Collection
-        {
-            return collect($this->medications)->map(
-                fn (array $row): TelemedicinePatientMedications => new TelemedicinePatientMedications($row)
-            );
-        }
-
-        protected function labsForCase(TelemedicineCase $case): array
-        {
-            return $this->labs;
-        }
-
-        protected function studiesForCase(TelemedicineCase $case): array
-        {
-            return $this->studies;
-        }
-
-        protected function specialistsForCase(TelemedicineCase $case): array
-        {
-            return $this->specialists;
-        }
-    };
-
-    expect($service->availableOptions($case))->toBe([]);
-
-    $consultation = new TelemedicineConsultationPatient([
-        'status' => 'CONSULTA INICIAL',
-        'reason_consultation' => 'DOLOR',
-        'code_reference' => 'REF-1',
+/**
+ * Consulta en memoria con su médico ya cargado, como la deja consultationsOf().
+ *
+ * @param  array<string, mixed>  $attributes
+ */
+function telemedicineRegenerationConsultation(int $id, array $attributes, ?TelemedicineDoctor $doctor): TelemedicineConsultationPatient
+{
+    $consultation = new TelemedicineConsultationPatient(array_merge([
         'telemedicine_service_list_id' => 1,
+        'telemedicine_doctor_id' => $doctor?->id,
+    ], $attributes));
+    $consultation->id = $id;
+    $consultation->telemedicine_case_id = 20;
+    $consultation->setRelation('telemedicineDoctor', $doctor);
+
+    return $consultation;
+}
+
+function telemedicineRegenerationDoctor(int $id, string $name, string $signature): TelemedicineDoctor
+{
+    $doctor = new TelemedicineDoctor([
+        'full_name' => $name,
+        'code_mpps' => 'MPPS-'.$id,
+        'signature' => $signature,
     ]);
-    $consultation->id = 5;
-    $service->consultation = $consultation;
+    $doctor->id = $id;
 
-    $options = $service->availableOptions($case);
-
-    expect($options)
-        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO)
-        ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO)
-        ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS);
-
-    $consultation->telemedicine_service_list_id = TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID;
-    $service->medications = [['medicine' => 'SUERO', 'indications' => '1', 'duration' => '3']];
-    $service->labs = ['HEMOGRAMA'];
-    $service->studies = ['RX TORAX'];
-    $service->specialists = ['CARDIOLOGIA'];
-
-    $options = $service->availableOptions($case);
-
-    /** El informe médico también se ofrece en los servicios AMD. */
-    expect($options)
-        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO)
-        ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO)
-        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS)
-        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_LABORATORIOS)
-        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_IMAGENOLOGIA)
-        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_ESPECIALISTA)
-        ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_SEGUIMIENTO);
-
-    $followUp = new TelemedicineConsultationPatient([
-        'status' => 'EN SEGUIMIENTO',
-        'current_illness_history' => 'CURSO RECIENTE',
-        'patient_evolution' => 'MEJORIA',
-        'code_reference' => 'REF-2',
-    ]);
-    $followUp->id = 8;
-    $service->followUp = $followUp;
-
-    expect($service->availableOptions($case))
-        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_SEGUIMIENTO);
-});
+    return $doctor;
+}
 
 /**
- * Servicio real con solo las fronteras de I/O sustituidas: la consulta, el
- * médico, el paciente y la ejecución del job. Todo lo demás —selección,
- * armado de payloads y control de fallos— es el código de producción.
+ * El payload del job es protegido: se lee tal como lo recibirá la plantilla.
+ *
+ * @return array<string, mixed>
  */
-function telemedicineRegenerationServiceForTest(?callable $onRun = null): TelemedicineCaseDocumentRegenerationService
+function telemedicineRegenerationJobPayload(object $job): array
 {
-    return new class($onRun) extends TelemedicineCaseDocumentRegenerationService
+    return (fn (): array => $this->data)->call($job);
+}
+
+/**
+ * Servicio real con solo las fronteras de I/O sustituidas: las consultas del
+ * caso, el paciente, los ítems por consulta y la ejecución del job. Todo lo
+ * demás —selección, firmante, armado de payloads y control de fallos— es el
+ * código de producción.
+ *
+ * Caso del pool: el médico A abre el caso y receta; el médico B toma el
+ * seguimiento y receta otra cosa.
+ *
+ * @param  list<TelemedicineConsultationPatient>|null  $consultations
+ * @param  array<int, list<string>>|null  $medicationsByConsultation
+ */
+function telemedicineRegenerationServiceForTest(
+    ?callable $onRun = null,
+    ?array $consultations = null,
+    ?array $medicationsByConsultation = null,
+): TelemedicineCaseDocumentRegenerationService {
+    $doctorA = telemedicineRegenerationDoctor(5, 'CAROLINA PINILLO', 'firmas-medicos/a.png');
+    $doctorB = telemedicineRegenerationDoctor(16, 'ANGEL VALERIO', 'firmas-medicos/b.png');
+
+    $consultations ??= [
+        telemedicineRegenerationConsultation(22, [
+            'status' => 'CONSULTA INICIAL',
+            'reason_consultation' => 'FIEBRE',
+            'code_reference' => 'REF-22',
+            'observations' => 'Paciente ansioso, control en 24 horas.',
+        ], $doctorA),
+        telemedicineRegenerationConsultation(30, [
+            'status' => 'EN SEGUIMIENTO',
+            'current_illness_history' => 'PERSISTE FIEBRE',
+            'patient_evolution' => 'ESTABLE',
+            'diagnostic_impression' => 'SINDROME FEBRIL',
+            'code_reference' => 'REF-30',
+            'observations' => '',
+        ], $doctorB),
+    ];
+
+    $medicationsByConsultation ??= [
+        22 => ['PARACETAMOL'],
+        30 => ['IBUPROFENO'],
+    ];
+
+    return new class($onRun, $consultations, $medicationsByConsultation) extends TelemedicineCaseDocumentRegenerationService
     {
         /** @var list<object> */
         public array $executed = [];
 
-        public function __construct(private $onRun = null) {}
+        /**
+         * @param  list<TelemedicineConsultationPatient>  $consultations
+         * @param  array<int, list<string>>  $medicationsByConsultation
+         */
+        public function __construct(
+            private $onRun,
+            private array $consultations,
+            private array $medicationsByConsultation,
+        ) {}
 
-        public function resolveConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
+        public function consultationsOf(TelemedicineCase $case): \Illuminate\Support\Collection
         {
-            $consultation = new TelemedicineConsultationPatient([
-                'status' => 'CONSULTA INICIAL',
-                'reason_consultation' => 'FIEBRE',
-                'code_reference' => 'REF-22',
-                'telemedicine_service_list_id' => 1,
-            ]);
-            $consultation->id = 22;
-
-            return $consultation;
-        }
-
-        protected function latestFollowUpConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
-        {
-            return null;
-        }
-
-        protected function resolveDoctor(TelemedicineConsultationPatient $consultation, TelemedicineCase $case): ?TelemedicineDoctor
-        {
-            $doctor = new TelemedicineDoctor(['name' => 'CAROLINA PINILLO']);
-            $doctor->id = 5;
-
-            return $doctor;
+            return collect($this->consultations);
         }
 
         protected function resolvePatient(TelemedicineConsultationPatient $consultation, TelemedicineCase $case): ?TelemedicinePatient
@@ -170,15 +127,29 @@ function telemedicineRegenerationServiceForTest(?callable $onRun = null): Teleme
             return $patient;
         }
 
-        protected function medicationsForCase(TelemedicineCase $case): \Illuminate\Support\Collection
+        protected function medicationsForConsultation(TelemedicineConsultationPatient $consultation): \Illuminate\Support\Collection
         {
-            return collect([
-                new TelemedicinePatientMedications([
-                    'medicine' => 'PARACETAMOL',
+            return collect($this->medicationsByConsultation[(int) $consultation->id] ?? [])
+                ->map(static fn (string $medicine): TelemedicinePatientMedications => new TelemedicinePatientMedications([
+                    'medicine' => $medicine,
                     'indications' => '1 CADA 8H',
                     'duration' => '3 DIAS',
-                ]),
-            ]);
+                ]));
+        }
+
+        protected function labsSplitForConsultation(TelemedicineConsultationPatient $consultation): array
+        {
+            return [[], []];
+        }
+
+        protected function studiesSplitForConsultation(TelemedicineConsultationPatient $consultation): array
+        {
+            return [[], []];
+        }
+
+        protected function specialistsSplitForConsultation(TelemedicineConsultationPatient $consultation): array
+        {
+            return [[], []];
         }
 
         protected function runJob(object $job): void
@@ -191,6 +162,118 @@ function telemedicineRegenerationServiceForTest(?callable $onRun = null): Teleme
         }
     };
 }
+
+it('ofrece por consulta solo los documentos que esa consulta registró', function (): void {
+    $service = telemedicineRegenerationServiceForTest(medicationsByConsultation: [22 => ['PARACETAMOL']]);
+    $case = telemedicineRegenerationTestCase();
+
+    $initial = $service->consultationOf($case, 22);
+    $followUp = $service->consultationOf($case, 30);
+
+    expect($service->availableOptions($initial))
+        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO)
+        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS)
+        ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_SEGUIMIENTO)
+        ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_CORTO);
+
+    // El seguimiento no recetó: no hereda el récipe de la consulta inicial.
+    expect($service->availableOptions($followUp))
+        ->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_SEGUIMIENTO)
+        ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO)
+        ->not->toHaveKey(TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS);
+});
+
+it('cada consulta se firma con su propio médico y solo con lo que ese médico indicó', function (): void {
+    Bus::fake();
+    Queue::fake();
+
+    $service = telemedicineRegenerationServiceForTest();
+    $case = telemedicineRegenerationTestCase();
+    $user = telemedicineRegenerationTestUser();
+
+    $service->regenerate($case, 22, [TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS], $user);
+    $service->regenerate($case, 30, [
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS,
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_SEGUIMIENTO,
+    ], $user);
+
+    [$recipeA, $recipeB, $followUpReport] = array_map(telemedicineRegenerationJobPayload(...), $service->executed);
+
+    expect($recipeA['doctor_name'])->toBe('CAROLINA PINILLO')
+        ->and($recipeA['signature'])->toBe('firmas-medicos/a.png')
+        ->and($recipeA['code_reference'])->toBe('REF-22')
+        ->and(array_column($recipeA['medicationsArr'], 'medicines'))->toBe(['PARACETAMOL']);
+
+    // Lo que recetó B lleva la firma de B, con la referencia del seguimiento:
+    // no pisa el récipe de la consulta inicial.
+    expect($recipeB['doctor_name'])->toBe('ANGEL VALERIO')
+        ->and($recipeB['signature'])->toBe('firmas-medicos/b.png')
+        ->and($recipeB['code_reference'])->toBe('REF-30')
+        ->and(array_column($recipeB['medicationsArr'], 'medicines'))->toBe(['IBUPROFENO']);
+
+    expect($followUpReport['doctor_name'])->toBe('ANGEL VALERIO')
+        ->and($followUpReport['signature'])->toBe('firmas-medicos/b.png')
+        ->and($followUpReport['telemedicine_consultation_id'])->toBe(30);
+});
+
+it('una consulta sin médico no se regenera ni se firma con el médico del caso', function (): void {
+    $doctorA = telemedicineRegenerationDoctor(5, 'CAROLINA PINILLO', 'firmas-medicos/a.png');
+    $service = telemedicineRegenerationServiceForTest(consultations: [
+        telemedicineRegenerationConsultation(22, [
+            'status' => 'CONSULTA INICIAL',
+            'reason_consultation' => 'FIEBRE',
+            'code_reference' => 'REF-22',
+        ], $doctorA),
+        telemedicineRegenerationConsultation(30, [
+            'status' => 'EN SEGUIMIENTO',
+            'code_reference' => 'REF-30',
+        ], null),
+    ]);
+    $case = telemedicineRegenerationTestCase();
+    $case->telemedicine_doctor_id = 5;
+
+    expect($service->consultationIdsWithoutDoctor($case))->toBe([30])
+        ->and($service->defaultConsultationId($case))->toBe(22)
+        ->and($service->consultationLabel($service->consultationOf($case, 30)))->toContain('sin médico registrado');
+
+    expect(fn () => $service->regenerate($case, 30, [
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS,
+    ], telemedicineRegenerationTestUser()))
+        ->toThrow(InvalidArgumentException::class, TelemedicineCaseDocumentRegenerationService::MISSING_DOCTOR_MESSAGE);
+
+    expect($service->executed)->toBe([]);
+});
+
+it('rechaza una consulta que no pertenece al caso', function (): void {
+    $service = telemedicineRegenerationServiceForTest();
+
+    expect(fn () => $service->regenerate(telemedicineRegenerationTestCase(), 999, [
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS,
+    ], telemedicineRegenerationTestUser()))
+        ->toThrow(InvalidArgumentException::class, 'Seleccione una consulta de este caso');
+
+    expect(fn () => $service->regenerate(telemedicineRegenerationTestCase(), null, [
+        TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS,
+    ], telemedicineRegenerationTestUser()))
+        ->toThrow(InvalidArgumentException::class);
+});
+
+it('el informe regenerado lleva la observación de su consulta y nada si está vacía', function (): void {
+    Bus::fake();
+    Queue::fake();
+
+    $service = telemedicineRegenerationServiceForTest();
+    $case = telemedicineRegenerationTestCase();
+    $user = telemedicineRegenerationTestUser();
+
+    $service->regenerate($case, 22, [TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO], $user);
+    $service->regenerate($case, 30, [TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_SEGUIMIENTO], $user);
+
+    [$informe, $seguimiento] = array_map(telemedicineRegenerationJobPayload(...), $service->executed);
+
+    expect($informe['observations'])->toBe('Paciente ansioso, control en 24 horas.')
+        ->and($seguimiento['observations'])->toBe('');
+});
 
 function telemedicineRegenerationTestCase(): TelemedicineCase
 {
@@ -214,7 +297,7 @@ it('genera los documentos en el request sin tocar la cola', function (): void {
 
     $service = telemedicineRegenerationServiceForTest();
 
-    $result = $service->regenerate(telemedicineRegenerationTestCase(), [
+    $result = $service->regenerate(telemedicineRegenerationTestCase(), 22, [
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS,
     ], telemedicineRegenerationTestUser());
@@ -244,7 +327,7 @@ it('un documento que falla no impide generar los demás', function (): void {
         }
     });
 
-    $result = $service->regenerate(telemedicineRegenerationTestCase(), [
+    $result = $service->regenerate(telemedicineRegenerationTestCase(), 22, [
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_MEDICAMENTOS,
     ], telemedicineRegenerationTestUser());
@@ -265,7 +348,7 @@ it('informa cuando ningún documento pudo generarse', function (): void {
         throw new RuntimeException('Fallo de plantilla');
     });
 
-    $result = $service->regenerate(telemedicineRegenerationTestCase(), [
+    $result = $service->regenerate(telemedicineRegenerationTestCase(), 22, [
         TelemedicineCaseDocumentRegenerationService::DOCUMENT_INFORME_MEDICO,
     ], telemedicineRegenerationTestUser());
 
@@ -277,10 +360,10 @@ it('informa cuando ningún documento pudo generarse', function (): void {
 it('rechaza una selección vacía o inexistente', function (): void {
     $service = telemedicineRegenerationServiceForTest();
 
-    expect(fn () => $service->regenerate(telemedicineRegenerationTestCase(), [], telemedicineRegenerationTestUser()))
+    expect(fn () => $service->regenerate(telemedicineRegenerationTestCase(), 22, [], telemedicineRegenerationTestUser()))
         ->toThrow(InvalidArgumentException::class);
 
-    expect(fn () => $service->regenerate(telemedicineRegenerationTestCase(), ['documento-inventado'], telemedicineRegenerationTestUser()))
+    expect(fn () => $service->regenerate(telemedicineRegenerationTestCase(), 22, ['documento-inventado'], telemedicineRegenerationTestUser()))
         ->toThrow(InvalidArgumentException::class);
 });
 
@@ -293,6 +376,9 @@ it('la accion filament usa checkbox list y el servicio de regeneracion', functio
     expect($action)
         ->toContain('Generar documentos')
         ->toContain("CheckboxList::make('documents')")
+        ->toContain("Select::make('consultation_id')")
+        ->toContain('disableOptionWhen')
+        ->toContain('MISSING_DOCTOR_MESSAGE')
         ->toContain('TelemedicineCaseDocumentRegenerationService')
         ->toContain('bulkToggleable');
 
@@ -309,7 +395,7 @@ it('la accion filament usa checkbox list y el servicio de regeneracion', functio
         ->toContain('GeneratePdfEspecialista')
         ->toContain('dispatch_sync')
         ->not->toContain("->onQueue('telemedicina')")
-        ->toContain('labsSplitForCase')
+        ->toContain('labsSplitForConsultation')
         ->toContain('TelemedicineMedicationCoverage::isCovered');
 });
 
