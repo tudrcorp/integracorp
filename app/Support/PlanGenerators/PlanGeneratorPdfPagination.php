@@ -21,15 +21,20 @@ final class PlanGeneratorPdfPagination
 
     private const PROPOSAL_BLOCK_PT = 112.0;
 
-    private const SECTION_TITLE_PT = 22.0;
+    /** Título de sección: 8 px arriba, 4 px abajo y la línea de 7 pt (`.section-title` en la plantilla). */
+    private const SECTION_TITLE_PT = 18.0;
 
     private const FOOTER_BLOCK_PT = 20.0;
 
     private const CALC_PADDING_TOP_PT = 8.5;
 
-    private const CALC_PADDING_BOTTOM_PT = 45.35;
+    /** 8 mm: el `padding-bottom` de `.pdf-plan-calc-cell` en la plantilla. */
+    private const CALC_PADDING_BOTTOM_PT = 22.68;
 
     private const MATRIX_FONT_PT = 6.5;
+
+    /** Letra de la matriz de beneficios en el PDF (`table.pdf-benefits-table`). */
+    private const BENEFITS_FONT_PT = 5.5;
 
     private const LINE_HEIGHT_FACTOR = 1.28;
 
@@ -42,6 +47,20 @@ final class PlanGeneratorPdfPagination
      * @param  array<string, array<string, mixed>>  $rows
      * @param  array<string, array<string, mixed>>  $rateRows
      */
+    /** Secciones del bloque de cálculos, en el orden en que se imprimen. */
+    public const SECTION_RATES = 'rates';
+
+    public const SECTION_GROUP = 'group';
+
+    public const SECTION_CONDITIONS = 'conditions';
+
+    /**
+     * Si alguna sección del bloque de cálculos pasa a la hoja siguiente.
+     *
+     * @param  array<int|string, mixed>  $columns
+     * @param  array<int|string, mixed>  $rows
+     * @param  array<int|string, mixed>  $rateRows
+     */
     public static function calculationsStartOnNextPage(
         array $columns,
         array $rows,
@@ -49,52 +68,109 @@ final class PlanGeneratorPdfPagination
         bool $includeMonthlyTotal,
         string $populationUnitLabel = 'Población',
         string $conditions = '',
+        mixed $groupTotalHiddenRows = [],
     ): bool {
+        $sections = self::sections($conditions);
+
+        return self::sectionsOnFirstPage($columns, $rows, $rateRows, $includeMonthlyTotal, $populationUnitLabel, $conditions, $groupTotalHiddenRows) < count($sections);
+    }
+
+    /**
+     * Secciones que se imprimen, en orden.
+     *
+     * @return list<string>
+     */
+    public static function sections(string $conditions = ''): array
+    {
+        $sections = [self::SECTION_RATES, self::SECTION_GROUP];
+
+        if (PlanGeneratorConditions::normalize($conditions) !== '') {
+            $sections[] = self::SECTION_CONDITIONS;
+        }
+
+        return $sections;
+    }
+
+    /**
+     * Cuántas secciones del bloque de cálculos caben en la hoja de la matriz.
+     *
+     * Antes el bloque entero (tarifa, total y condiciones) saltaba de hoja si no
+     * cabía completo, y dejaba media primera hoja vacía. Ahora cada sección se
+     * decide por separado y en orden: las que caben se quedan con la matriz (la
+     * tarifa y el total, que es lo que el cliente busca primero) y solo las demás
+     * pasan a la hoja siguiente. Ninguna sección se parte.
+     *
+     * @param  array<int|string, mixed>  $columns
+     * @param  array<int|string, mixed>  $rows
+     * @param  array<int|string, mixed>  $rateRows
+     */
+    public static function sectionsOnFirstPage(
+        array $columns,
+        array $rows,
+        array $rateRows,
+        bool $includeMonthlyTotal,
+        string $populationUnitLabel = 'Población',
+        string $conditions = '',
+        mixed $groupTotalHiddenRows = [],
+    ): int {
         $columnCount = max(1, count($columns));
         $planWidthPt = self::mmToPt((float) PlanGeneratorMatrixColumnLayout::planColumnWidthMm($columnCount));
         $leadWidthPt = self::mmToPt((float) PlanGeneratorMatrixColumnLayout::leadWidthMm());
         $rateAgeWidthPt = self::mmToPt((float) PlanGeneratorMatrixColumnLayout::rateAgeWidthMm());
         $ratePopWidthPt = self::mmToPt((float) PlanGeneratorMatrixColumnLayout::ratePopWidthMm());
 
-        $benefitsHeight = self::benefitsTableHeight($columns, $rows, $leadWidthPt, $planWidthPt);
-        $calculationsHeight = self::calculationsBlockHeight(
-            $columns,
-            $rateRows,
-            $includeMonthlyTotal,
-            $populationUnitLabel,
-            $leadWidthPt,
-            $rateAgeWidthPt,
-            $ratePopWidthPt,
-            $planWidthPt,
-            $conditions,
-        );
+        $heights = [
+            self::SECTION_RATES => self::ratesSectionHeight($columns, $rateRows, $populationUnitLabel, $rateAgeWidthPt, $ratePopWidthPt, $planWidthPt),
+            self::SECTION_GROUP => self::groupSectionHeight($columns, $includeMonthlyTotal, $groupTotalHiddenRows, $leadWidthPt, $planWidthPt),
+            self::SECTION_CONDITIONS => self::conditionsBlockHeight($conditions),
+        ];
 
-        $used = self::TOP_PADDING_PT
-            + self::HEADER_BLOCK_PT
-            + self::PROPOSAL_BLOCK_PT
-            + self::SECTION_TITLE_PT
-            + $benefitsHeight
-            + $calculationsHeight
-            + self::BOTTOM_GUARD_PT;
+        $available = self::PAGE_HEIGHT_PT
+            - self::TOP_PADDING_PT
+            - self::HEADER_BLOCK_PT
+            - self::PROPOSAL_BLOCK_PT
+            - self::SECTION_TITLE_PT
+            - self::benefitsTableHeight($columns, $rows, $leadWidthPt, $planWidthPt)
+            - self::CALC_PADDING_TOP_PT
+            - self::CALC_PADDING_BOTTOM_PT
+            - self::FOOTER_BLOCK_PT
+            - self::BOTTOM_GUARD_PT;
 
-        return $used > self::PAGE_HEIGHT_PT;
+        $fits = 0;
+
+        foreach (self::sections($conditions) as $section) {
+            $available -= $heights[$section];
+
+            if ($available < 0) {
+                break;
+            }
+
+            $fits++;
+        }
+
+        return $fits;
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $columns
-     * @param  array<string, array<string, mixed>>  $rows
+     * Alto de la matriz de beneficios. Se mide con su propia letra (5,5 pt,
+     * `table.pdf-benefits-table`), no con la de las tablas de cálculo: con 6,5 pt los
+     * beneficios largos parecían de dos líneas y la hoja se daba por llena antes de
+     * tiempo (estimaba 512 pt donde el PDF real termina en 447).
+     *
+     * @param  array<int|string, mixed>  $columns
+     * @param  array<int|string, mixed>  $rows
      */
     private static function benefitsTableHeight(array $columns, array $rows, float $leadWidthPt, float $planWidthPt): float
     {
-        $height = self::mmToPt(8) + self::headerRowHeight(
-            'Beneficios del Plan',
-            $leadWidthPt,
-            $columns,
-            $planWidthPt,
+        $headerLines = max(
+            self::lineCount('BENEFICIOS DEL PLAN', self::textWidthPt($leadWidthPt), true, self::BENEFITS_FONT_PT),
+            self::tallestPlanHeaderLines($columns, $planWidthPt, self::BENEFITS_FONT_PT),
         );
 
+        $height = self::mmToPt(8) + self::benefitRowHeight($headerLines);
+
         if ($rows === []) {
-            return $height + self::bodyRowHeight(1);
+            return $height + self::benefitRowHeight(1);
         }
 
         foreach ($rows as $row) {
@@ -102,7 +178,7 @@ final class PlanGeneratorPdfPagination
                 continue;
             }
 
-            $lines = self::lineCount((string) ($row['benefit_label'] ?? '—'), self::textWidthPt($leadWidthPt), false);
+            $lines = self::lineCount((string) ($row['benefit_label'] ?? '—'), self::textWidthPt($leadWidthPt), false, self::BENEFITS_FONT_PT);
 
             foreach ($columns as $column) {
                 $columnKey = (string) ($column['column_key'] ?? '');
@@ -114,41 +190,43 @@ final class PlanGeneratorPdfPagination
                 $label = $display === 'amount'
                     ? 'US$ '.PlanGeneratorPreviewBuilder::formatCoverageAmount((float) $cell['coverage_amount'])
                     : '—';
-                $lines = max($lines, self::lineCount($label, self::textWidthPt($planWidthPt), false));
+                $lines = max($lines, self::lineCount($label, self::textWidthPt($planWidthPt), false, self::BENEFITS_FONT_PT));
             }
 
-            $height += self::bodyRowHeight($lines);
+            $height += self::benefitRowHeight($lines);
         }
 
         return $height;
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $columns
-     * @param  array<string, array<string, mixed>>  $rateRows
+     * Medido en el PDF real: 14,6 pt una fila de una línea (la marca ✓ de 6,5 pt
+     * manda en el alto) y ~8 pt cada línea extra; se redondea hacia arriba.
      */
-    private static function calculationsBlockHeight(
+    private static function benefitRowHeight(int $lines): float
+    {
+        return 15.0 + (max(1, $lines) - 1) * 8.0;
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $columns
+     * @param  array<int|string, mixed>  $rateRows
+     */
+    private static function ratesSectionHeight(
         array $columns,
         array $rateRows,
-        bool $includeMonthlyTotal,
         string $populationUnitLabel,
-        float $leadWidthPt,
         float $rateAgeWidthPt,
         float $ratePopWidthPt,
         float $planWidthPt,
-        string $conditions = '',
     ): float {
-        $ratesHeader = max(
+        $header = max(
             self::lineCount('TARIFA INDIVIDUAL ANUAL', self::textWidthPt($rateAgeWidthPt), true),
             self::lineCount(mb_strtoupper($populationUnitLabel), self::textWidthPt($ratePopWidthPt), true),
             self::tallestPlanHeaderLines($columns, $planWidthPt),
         );
 
-        $ratesBody = 0.0;
-
-        if ($rateRows === []) {
-            $ratesBody = self::bodyRowHeight(1);
-        }
+        $body = $rateRows === [] ? self::bodyRowHeight(1) : 0.0;
 
         foreach ($rateRows as $rateRow) {
             if (! is_array($rateRow)) {
@@ -166,28 +244,26 @@ final class PlanGeneratorPdfPagination
                 $lines = max($lines, self::lineCount($label, self::textWidthPt($planWidthPt), true));
             }
 
-            $ratesBody += self::bodyRowHeight($lines);
+            $body += self::bodyRowHeight($lines);
         }
 
-        $groupHeader = self::headerRowHeight('Total Grupal', $leadWidthPt, $columns, $planWidthPt);
-        $groupBody = 0.0;
+        return self::SECTION_TITLE_PT + self::bodyRowHeight($header) + $body;
+    }
 
-        foreach (PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal) as $groupRow) {
-            $groupBody += self::bodyRowHeight(
+    /**
+     * @param  array<int|string, mixed>  $columns
+     */
+    private static function groupSectionHeight(array $columns, bool $includeMonthlyTotal, mixed $groupTotalHiddenRows, float $leadWidthPt, float $planWidthPt): float
+    {
+        $body = 0.0;
+
+        foreach (PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal, $groupTotalHiddenRows) as $groupRow) {
+            $body += self::bodyRowHeight(
                 self::lineCount($groupRow['label'], self::textWidthPt($leadWidthPt), (bool) $groupRow['bold']),
             );
         }
 
-        return self::CALC_PADDING_TOP_PT
-            + self::SECTION_TITLE_PT
-            + self::bodyRowHeight($ratesHeader)
-            + $ratesBody
-            + self::SECTION_TITLE_PT
-            + $groupHeader
-            + $groupBody
-            + self::conditionsBlockHeight($conditions)
-            + self::FOOTER_BLOCK_PT
-            + self::CALC_PADDING_BOTTOM_PT;
+        return self::SECTION_TITLE_PT + self::headerRowHeight('Total Grupal', $leadWidthPt, $columns, $planWidthPt) + $body;
     }
 
     private static function conditionsBlockHeight(string $conditions): float
@@ -222,14 +298,14 @@ final class PlanGeneratorPdfPagination
     /**
      * @param  array<int, array<string, mixed>>  $columns
      */
-    private static function tallestPlanHeaderLines(array $columns, float $planWidthPt): int
+    private static function tallestPlanHeaderLines(array $columns, float $planWidthPt, float $fontPt = self::MATRIX_FONT_PT): int
     {
         $lines = 1;
 
         foreach ($columns as $column) {
             $lines = max(
                 $lines,
-                self::lineCount(mb_strtoupper((string) ($column['header_label'] ?? '—')), self::textWidthPt($planWidthPt), true),
+                self::lineCount(mb_strtoupper((string) ($column['header_label'] ?? '—')), self::textWidthPt($planWidthPt), true, $fontPt),
             );
         }
 
@@ -246,7 +322,7 @@ final class PlanGeneratorPdfPagination
         return max(8.0, $columnWidthPt - self::CELL_PADDING_X_PT);
     }
 
-    private static function lineCount(string $text, float $maxWidth, bool $bold): int
+    private static function lineCount(string $text, float $maxWidth, bool $bold, float $fontPt = self::MATRIX_FONT_PT): int
     {
         $text = trim((string) preg_replace('/\s+/u', ' ', $text));
 
@@ -257,10 +333,10 @@ final class PlanGeneratorPdfPagination
         $words = preg_split('/ /u', $text) ?: [];
         $lines = 1;
         $currentWidth = 0.0;
-        $spaceWidth = self::textWidth(' ', $bold);
+        $spaceWidth = self::textWidth(' ', $bold, $fontPt);
 
         foreach ($words as $word) {
-            $wordWidth = self::textWidth($word, $bold);
+            $wordWidth = self::textWidth($word, $bold, $fontPt);
 
             if ($wordWidth > $maxWidth) {
                 if ($currentWidth > 0) {
@@ -292,21 +368,23 @@ final class PlanGeneratorPdfPagination
         return max(1, $lines);
     }
 
-    private static function textWidth(string $text, bool $bold): float
+    private static function textWidth(string $text, bool $bold, float $fontPt = self::MATRIX_FONT_PT): float
     {
         $font = $bold ? self::boldFontPath() : self::regularFontPath();
 
         if (! is_file($font)) {
-            return mb_strlen($text) * self::MATRIX_FONT_PT * 0.56;
+            return mb_strlen($text) * $fontPt * 0.56;
         }
 
-        $box = imagettfbbox(self::MATRIX_FONT_PT, 0, $font, $text);
+        $box = imagettfbbox($fontPt, 0, $font, $text);
 
         if ($box === false) {
-            return mb_strlen($text) * self::MATRIX_FONT_PT * 0.56;
+            return mb_strlen($text) * $fontPt * 0.56;
         }
 
-        return abs($box[2] - $box[0]);
+        // imagettfbbox mide en píxeles a 96 ppp: sin pasar a puntos (× 72/96) cada
+        // texto parecía un 33 % más ancho e inventaba saltos de línea.
+        return abs($box[2] - $box[0]) * 72 / 96;
     }
 
     private static function regularFontPath(): string

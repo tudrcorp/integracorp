@@ -642,7 +642,8 @@ it('total grupal calcula anual semestral y trimestral por columna', function ():
         ->toContain('groupTotalRows')
         ->toContain('includeMonthlyTotal');
 
-    $pdfBody = file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/partials/plan-generator-plan-body.blade.php');
+    // El bloque de cálculos vive en partials, en el orden en que se imprime.
+    $pdfBody = implode("\n", array_map(static fn (string $file): string => (string) file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/partials/'.$file.'.blade.php'), ['plan-generator-plan-body', 'plan-generator-calc-rates', 'plan-generator-calc-group', 'plan-generator-calc-conditions']));
     expect($pdfBody)
         ->toContain('Total grupal')
         ->not->toMatch('/Total Grupal<\/th>\s*<th[^>]*>\s*<\/th>/');

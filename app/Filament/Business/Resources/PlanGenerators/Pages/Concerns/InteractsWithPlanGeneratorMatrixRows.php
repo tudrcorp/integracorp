@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\PlanGenerators\Pages\Concerns;
 
 use App\Models\Benefit;
+use App\Support\PlanGenerators\PlanGeneratorGroupTotalCalculator;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
@@ -178,6 +179,67 @@ trait InteractsWithPlanGeneratorMatrixRows
         unset($rateRows[$rowKey]);
 
         $this->setPlanGeneratorMatrixState($statePath, 'rate_rows', $rateRows);
+    }
+
+    /**
+     * Quita una fila del total grupal (la cotización solo se paga de ciertas
+     * maneras). La mensual se apaga con su interruptor; las demás se anotan en
+     * `group_total_hidden_rows`. Nunca se quita la última fila visible.
+     */
+    public function removeGroupTotalRow(string $rowKey, ?string $statePath = null): void
+    {
+        $statePath = $this->resolvePlanGeneratorMatrixStatePath($statePath);
+
+        if ($statePath === null) {
+            return;
+        }
+
+        $includeMonthly = (bool) data_get($this, $statePath.'.include_monthly_total');
+        $hidden = PlanGeneratorGroupTotalCalculator::normalizeHiddenRows(data_get($this, $statePath.'.group_total_hidden_rows'));
+        $visible = array_column(PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthly, $hidden), 'key');
+
+        if (! in_array($rowKey, $visible, true)) {
+            return;
+        }
+
+        if (count($visible) === 1) {
+            Notification::make()
+                ->title('Debe quedar al menos una forma de pago')
+                ->body('El total grupal no puede quedar vacío. Agregue otra fila antes de quitar esta.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        if ($rowKey === PlanGeneratorGroupTotalCalculator::ROW_MENSUAL) {
+            data_set($this, $statePath.'.include_monthly_total', false);
+
+            return;
+        }
+
+        $hidden[] = $rowKey;
+
+        data_set($this, $statePath.'.group_total_hidden_rows', PlanGeneratorGroupTotalCalculator::normalizeHiddenRows($hidden));
+    }
+
+    public function restoreGroupTotalRow(string $rowKey, ?string $statePath = null): void
+    {
+        $statePath = $this->resolvePlanGeneratorMatrixStatePath($statePath);
+
+        if ($statePath === null) {
+            return;
+        }
+
+        if ($rowKey === PlanGeneratorGroupTotalCalculator::ROW_MENSUAL) {
+            data_set($this, $statePath.'.include_monthly_total', true);
+
+            return;
+        }
+
+        $hidden = PlanGeneratorGroupTotalCalculator::normalizeHiddenRows(data_get($this, $statePath.'.group_total_hidden_rows'));
+
+        data_set($this, $statePath.'.group_total_hidden_rows', array_values(array_diff($hidden, [$rowKey])));
     }
 
     /**

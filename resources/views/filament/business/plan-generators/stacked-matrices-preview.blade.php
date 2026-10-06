@@ -153,6 +153,7 @@
         'columns' => $columns,
         'rateRows' => $rateRows,
         'includeMonthlyTotal' => (bool) ($includeMonthlyTotal ?? false),
+        'groupTotalHiddenRows' => $groupTotalHiddenRows ?? [],
     ])
 
     @include('filament.business.plan-generators.partials.conditions-list', [

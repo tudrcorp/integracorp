@@ -15,6 +15,10 @@ class AfilliationCorporatePlan extends Model
         'coverage_id',
         'age_range_id',
         'fee',
+        'fee_source',
+        'fee_negotiation_reason',
+        'fee_negotiated_by',
+        'fee_negotiated_at',
         'subtotal_anual',
         'subtotal_quarterly',
         'subtotal_biannual',
@@ -22,8 +26,26 @@ class AfilliationCorporatePlan extends Model
         'status',
         'created_by',
         'total_persons',
-        'payment_frequency'
+        'payment_frequency',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'fee_negotiated_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * Analista que escribió la tarifa negociada.
+     */
+    public function feeNegotiatedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'fee_negotiated_by');
+    }
 
     public function AffiliationCorporate()
     {
@@ -44,6 +66,4 @@ class AfilliationCorporatePlan extends Model
     {
         return $this->belongsTo(Coverage::class);
     }
-
-    
 }

@@ -570,6 +570,10 @@ class PlanGeneratorForm
                                                     ->default([])
                                                     ->dehydrated()
                                                     ->columnSpanFull(),
+                                                Hidden::make('group_total_hidden_rows')
+                                                    ->default([])
+                                                    ->dehydrated()
+                                                    ->columnSpanFull(),
                                                 Toggle::make('include_monthly_total')
                                                     ->label('Incluir cálculo mensual')
                                                     ->helperText('Activa esta opción para mostrar la fila «Total Mensual» en la tabla de total grupal (tarifa anual ÷ 12).')
@@ -598,6 +602,7 @@ class PlanGeneratorForm
                                                         'rateRows' => (array) ($get('rate_rows') ?? []),
                                                         'populationUnitLabel' => PlanGeneratorPopulationUnit::resolve($get('population_unit'))->label(),
                                                         'includeMonthlyTotal' => (bool) $get('include_monthly_total'),
+                                                        'groupTotalHiddenRows' => $get('group_total_hidden_rows') ?? [],
                                                         'benefitOptions' => Benefit::query()
                                                             ->whereNotNull('description')
                                                             ->where('description', '!=', '')

@@ -500,3 +500,51 @@ it('la tabla agrupa por familia y ofrece la acción de derivar', function (): vo
         // `statePath()` es uno de ellos.
         ->not->toContain('wire:model.live="{{ $statePath }}');
 });
+
+it('quita filas del total grupal en la modal y la derivada las guarda quitadas', function (): void {
+    Storage::fake('public');
+
+    $componente = Livewire::actingAs($this->analista)
+        ->test(ListPlanGenerators::class)
+        ->set('selectedTableRecords', [(string) $this->plantilla->getKey()])
+        ->mountAction(TestAction::make('deriveQuotation')->table()->bulk());
+
+    $estado = $componente->get('mountedActions.0.data');
+
+    $componente
+        ->set('mountedActions.0.data.include_monthly_total', false)
+        ->set('mountedActions.0.data.group_total_hidden_rows', [])
+        ->call('removeGroupTotalRow', 'semestral', 'mountedActions.0.data')
+        ->call('removeGroupTotalRow', 'trimestral', 'mountedActions.0.data')
+        // La última fila no se puede quitar: avisa y la deja.
+        ->call('removeGroupTotalRow', 'annual', 'mountedActions.0.data')
+        ->assertNotified('Debe quedar al menos una forma de pago')
+        ->assertSet('mountedActions.0.data.group_total_hidden_rows', ['semestral', 'trimestral'])
+        // Restaurar devuelve la fila.
+        ->call('restoreGroupTotalRow', 'trimestral', 'mountedActions.0.data')
+        ->assertSet('mountedActions.0.data.group_total_hidden_rows', ['semestral'])
+        // Una ruta de estado fuera de la lista blanca no escribe nada.
+        ->call('removeGroupTotalRow', 'annual', 'selectedTableRecords')
+        ->set('mountedActions.0.data.client_data', 'CLIENTE TOTAL GRUPAL PEST')
+        ->set('mountedActions.0.data.population_summary', (string) poblacionDeRangos($estado['rate_rows']));
+
+    escribirCondicionEnLaModal($componente, 'Pago anual o trimestral.');
+
+    $componente->callMountedAction()->assertHasNoErrors()->assertNotified('Cotización creada');
+
+    $derivada = PlanGenerator::query()->where('client_data', 'CLIENTE TOTAL GRUPAL PEST')->firstOrFail();
+
+    expect($derivada->group_total_hidden_rows)->toBe(['semestral'])
+        ->and($componente->get('selectedTableRecords'))->toBe([(string) $this->plantilla->getKey()]);
+});
+
+it('quitar la fila mensual apaga el interruptor del cálculo mensual', function (): void {
+    $componente = Livewire::actingAs($this->analista)
+        ->test(ListPlanGenerators::class)
+        ->set('selectedTableRecords', [(string) $this->plantilla->getKey()])
+        ->mountAction(TestAction::make('deriveQuotation')->table()->bulk())
+        ->set('mountedActions.0.data.include_monthly_total', true)
+        ->call('removeGroupTotalRow', 'mensual', 'mountedActions.0.data');
+
+    $componente->assertSet('mountedActions.0.data.include_monthly_total', false);
+});

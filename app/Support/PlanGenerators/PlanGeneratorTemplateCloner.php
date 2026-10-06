@@ -38,6 +38,7 @@ final class PlanGeneratorTemplateCloner
         'population_summary',
         'brand_color',
         'include_monthly_total',
+        'group_total_hidden_rows',
     ];
 
     private const QUOTATION_IMAGE_DIRECTORY = 'plan-generator-quotation';
@@ -109,6 +110,7 @@ final class PlanGeneratorTemplateCloner
             'population_summary' => (string) $template->population_summary,
             'brand_color' => (string) ($template->brand_color ?? PlanGeneratorBrandColor::DEFAULT),
             'include_monthly_total' => (bool) $template->include_monthly_total,
+            'group_total_hidden_rows' => PlanGeneratorGroupTotalCalculator::normalizeHiddenRows($template->group_total_hidden_rows),
             'conditions' => PlanGeneratorConditions::formState($template->conditions),
             'columns' => $matrix['columns'],
             'rows' => $matrix['rows'],
@@ -137,6 +139,7 @@ final class PlanGeneratorTemplateCloner
         }
 
         $attributes['include_monthly_total'] = (bool) ($formState['include_monthly_total'] ?? false);
+        $attributes['group_total_hidden_rows'] = PlanGeneratorGroupTotalCalculator::normalizeHiddenRows($formState['group_total_hidden_rows'] ?? []);
         $attributes['conditions'] = self::conditionsFromFormState($formState);
         $attributes['parent_id'] = $base->getKey();
         $attributes['plan_id'] = $template->plan_id;

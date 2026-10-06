@@ -24,7 +24,8 @@
     $planPercent = PlanGeneratorMatrixColumnLayout::planColumnPercent(max(1, $columnCount));
     $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn((array) $columns, (array) $rateRows);
     $includeMonthlyTotal = (bool) ($planGenerator->include_monthly_total ?? false);
-    $groupRows = PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal);
+    $groupTotalHiddenRows = PlanGeneratorGroupTotalCalculator::normalizeHiddenRows($planGenerator->group_total_hidden_rows ?? []);
+    $groupRows = PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal, $groupTotalHiddenRows);
     $calculationsOnNextPage = $columnCount > 0 && PlanGeneratorPdfPagination::calculationsStartOnNextPage(
         (array) $columns,
         (array) $rows,
@@ -32,7 +33,20 @@
         $includeMonthlyTotal,
         $populationUnitLabel,
         $conditions,
+        $groupTotalHiddenRows,
     );
+    $calculationSections = PlanGeneratorPdfPagination::sections($conditions);
+    $firstPageCount = $columnCount > 0 ? PlanGeneratorPdfPagination::sectionsOnFirstPage(
+        (array) $columns,
+        (array) $rows,
+        (array) $rateRows,
+        $includeMonthlyTotal,
+        $populationUnitLabel,
+        $conditions,
+        $groupTotalHiddenRows,
+    ) : 0;
+    $firstPageSections = array_slice($calculationSections, 0, $firstPageCount);
+    $nextPageSections = array_slice($calculationSections, $firstPageCount);
 @endphp
 
 <table class="pdf-plan-sheet" cellpadding="0" cellspacing="0">
@@ -144,104 +158,42 @@
         </tbody>
     </table>
 
-    <table class="pdf-plan-sheet pdf-plan-calc-keep {{ $calculationsOnNextPage ? 'pdf-plan-calc-next-page' : '' }}" cellpadding="0" cellspacing="0">
-    <tr>
-    <td class="pdf-plan-margin-cell pdf-plan-calc-cell">
-    <div class="matrix-section">
-    <p class="section-title">Tarifa individual anual</p>
-    <table class="matrix-table">
-        @include('filament.business.plan-generators.partials.matrix-column-colgroup', [
-            'columns' => $columns,
-            'type' => 'rates',
-            'usePdfWidths' => true,
-        ])
-        <thead>
-            <tr>
-                <th style="width: {{ $rateAgePercent }}%; text-align: left;">Tarifa individual Anual</th>
-                <th style="width: {{ $ratePopPercent }}%;">{{ $populationUnitLabel }}</th>
-                @foreach ($columns as $column)
-                    <th style="width: {{ $planPercent }}%;">{{ $column['header_label'] ?? '—' }}</th>
-                @endforeach
-            </tr>
-        </thead>
-        <tbody>
-            @forelse ($rateRows as $rateRow)
-                <tr>
-                    <td style="text-align: left;">{{ $rateRow['age_range_label'] ?? '—' }}</td>
-                    <td style="text-align: center;">
-                        {{ filled($rateRow['population'] ?? null) ? number_format((int) $rateRow['population'], 0, ',', '.') : '—' }}
-                    </td>
-                    @foreach ($columns as $column)
-                        @php
-                            $columnKey = (string) ($column['column_key'] ?? '');
-                            $rate = data_get($rateRow, "cells.{$columnKey}.rate_amount");
-                            $rateLabel = is_numeric($rate)
-                                ? PlanGeneratorPreviewBuilder::formatRateAmount((float) $rate)
-                                : '';
-                        @endphp
-                        <td style="text-align: center;">
-                            <span class="rate-value">{{ $rateLabel !== '' ? $rateLabel : '—' }}</span>
-                        </td>
-                    @endforeach
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="{{ $columnCount + 2 }}" style="text-align: center; color: #6b7280;">
-                        Sin tarifas individuales anuales registradas.
-                    </td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
-    </div>
-
-    <div class="matrix-section">
-    <p class="section-title">Total grupal</p>
-    <table class="matrix-table">
-        @include('filament.business.plan-generators.partials.matrix-column-colgroup', [
-            'columns' => $columns,
-            'type' => 'group-total',
-            'usePdfWidths' => true,
-        ])
-        <thead>
-            <tr>
-                <th style="width: {{ $leadPercent }}%; text-align: left;">Total Grupal</th>
-                @foreach ($columns as $column)
-                    <th style="width: {{ $planPercent }}%;">{{ $column['header_label'] ?? '—' }}</th>
-                @endforeach
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($groupRows as $groupRow)
-                <tr>
-                    <td style="text-align: left;">{{ $groupRow['label'] }}</td>
-                    @foreach ($columns as $column)
-                        @php
-                            $columnKey = (string) ($column['column_key'] ?? '');
-                            $amount = (float) ($groupTotals[$groupRow['key']][$columnKey] ?? 0);
-                            $label = PlanGeneratorGroupTotalCalculator::formatGroupTotal($amount > 0 ? $amount : null);
-                        @endphp
-                        <td style="text-align: center;" @if($groupRow['bold']) class="group-total-bold" @endif>
-                            {{ $label }}
-                        </td>
-                    @endforeach
-                </tr>
+    {{--
+        Bloque de cálculos repartido por sección (PlanGeneratorPdfPagination::sectionsOnFirstPage):
+        las secciones que caben se quedan con la matriz; solo las demás pasan a la hoja
+        siguiente. Antes saltaba el bloque entero y dejaba media hoja en blanco.
+    --}}
+    @if ($firstPageSections !== [])
+        <table class="pdf-plan-sheet pdf-plan-calc-keep" cellpadding="0" cellspacing="0">
+        <tr>
+        <td class="pdf-plan-margin-cell pdf-plan-calc-cell">
+            @foreach ($firstPageSections as $section)
+                @include('documents.partials.plan-generator-calc-'.$section)
             @endforeach
-        </tbody>
-    </table>
-    </div>
 
-    @if ($conditions !== '')
-        <div class="matrix-section">
-            <p class="section-title">Condiciones</p>
-            <div class="conditions-block">{{ $conditions }}</div>
-        </div>
+            @if ($nextPageSections === [])
+                <div class="footer">
+                    Integracorp · Tu Dr en Casa · Plan generado
+                </div>
+            @endif
+        </td>
+        </tr>
+        </table>
     @endif
 
-    <div class="footer">
-        Integracorp · Tu Dr en Casa · Plan generado
-    </div>
-    </td>
-    </tr>
-    </table>
+    @if ($calculationsOnNextPage)
+        <table class="pdf-plan-sheet pdf-plan-calc-keep pdf-plan-calc-next-page" cellpadding="0" cellspacing="0">
+        <tr>
+        <td class="pdf-plan-margin-cell pdf-plan-calc-cell">
+            @foreach ($nextPageSections as $section)
+                @include('documents.partials.plan-generator-calc-'.$section)
+            @endforeach
+
+            <div class="footer">
+                Integracorp · Tu Dr en Casa · Plan generado
+            </div>
+        </td>
+        </tr>
+        </table>
+    @endif
 @endif
