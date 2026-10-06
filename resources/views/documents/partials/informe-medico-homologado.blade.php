@@ -60,23 +60,6 @@
             width: 100%;
             max-width: 100%;
         }
-        .watermark {
-            position: fixed;
-            top: 50%;
-            left: 20%;
-            width: 60%;
-            max-width: 60%;
-            opacity: 0.052;
-            z-index: 0;
-            pointer-events: none;
-            transform: translateY(-50%);
-            transform-origin: center center;
-        }
-        .watermark img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
         .doc-root {
             position: relative;
             z-index: 1;
@@ -315,11 +298,6 @@
 <body>
 <div class="page-frame">
 <div class="doc-root">
-@if($logoDataUri !== '')
-    <div class="watermark" aria-hidden="true">
-        <img src="{{ $logoDataUri }}" alt="">
-    </div>
-@endif
 <div class="doc-content">
     <table class="header-bar" width="100%">
         <tr>
@@ -527,6 +505,14 @@
         </div>
     @endif
 
+    @php
+        /** Solo se imprime si el médico la escribió: vacía, ni título ni caja. */
+        $observations = trim((string) ($data['observations'] ?? ''));
+    @endphp
+    @if($observations !== '')
+        <div class="section-title section-title--block">Observaciones</div>
+        <table class="prose-box"><tr><td>{{ $observations }}</td></tr></table>
+    @endif
 
 </div>
 </div>

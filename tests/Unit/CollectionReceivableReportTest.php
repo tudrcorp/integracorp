@@ -132,6 +132,9 @@ it('los rangos de vencimiento filtran por la fecha de la cuota', function (strin
         ->and($query->getBindings())->toBe($expectedBindings);
 })->with([
     'próximos 7 días' => [CollectionReceivableReport::AGING_DUE_SOON, ['2026-10-01', '2026-10-08']],
+    'próximos 30 días' => [CollectionReceivableReport::AGING_DUE_30, ['2026-10-01', '2026-10-31']],
+    'próximos 45 días' => [CollectionReceivableReport::AGING_DUE_45, ['2026-10-01', '2026-11-15']],
+    'próximos 60 días' => [CollectionReceivableReport::AGING_DUE_60, ['2026-10-01', '2026-11-30']],
     'por vencer' => [CollectionReceivableReport::AGING_NOT_DUE, ['2026-10-01']],
     '1 a 30' => [CollectionReceivableReport::AGING_OVERDUE_1_30, ['2026-09-01', '2026-09-30']],
     '31 a 60' => [CollectionReceivableReport::AGING_OVERDUE_31_60, ['2026-08-02', '2026-08-31']],
@@ -180,7 +183,7 @@ it('Gestión de Cobranza conserva sus acciones y sus páginas', function (): voi
         ->and(is_file($root.'/Pages/CreateCollection.php'))->toBeTrue();
 });
 
-it('la tabla sigue las columnas del reporte CXC y no tiene acciones por fila ni masivas', function (): void {
+it('la tabla sigue las columnas del reporte CXC y su única acción por fila es la de observaciones', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/AnnualCollections/Tables/AnnualCollectionsTable.php');
 
     $labels = [
@@ -199,7 +202,8 @@ it('la tabla sigue las columnas del reporte CXC y no tiene acciones por fila ni 
     }
 
     expect($source)
-        ->toContain('->recordActions([])')
+        ->toContain("->recordActions([\n                CollectionObservationsAction::make(),\n            ])")
+        ->toContain("->withCount('receivableObservations')")
         ->toContain('->toolbarActions([])')
         ->toContain('CollectionReceivableReport::agingOptions()')
         ->toContain('public static function runRegeneratePdf(Collection $record): bool')
@@ -238,4 +242,43 @@ it('el exportador saca las columnas en el orden del Excel con los valores calcul
         ->and($row[9])->toBe('TDG-101')
         ->and($row[16])->toBe('VENCIDO')
         ->and($row[17])->toBe('3');
+});
+
+it('el CSV directo saca las mismas columnas y valores que el reporte CXC', function (): void {
+    $collection = receivableCollection([
+        'affiliate_phone' => '04140000000',
+        'persons' => '1',
+        'code_agency' => 'TDG-101',
+        'next_payment_date' => CarbonImmutable::today()->subDays(3)->format('d/m/Y'),
+    ]);
+    $collection->setRelation('plan', new Plan(['description' => 'PLAN ESPECIAL']));
+    $collection->setRelation('agent', null);
+    $collection->setRelation('agencyByCode', null);
+
+    $exporterLabels = collect(CollectionReceivableExporter::getColumns())
+        ->filter(fn ($column): bool => $column->isEnabledByDefault())
+        ->map(fn ($column): string => $column->getLabel())
+        ->values()
+        ->all();
+
+    $row = App\Support\Exports\CollectionReceivableCsvExportService::row($collection);
+
+    expect(App\Support\Exports\CollectionReceivableCsvExportService::headers())->toBe($exporterLabels)
+        ->and($row)->toHaveCount(count($exporterLabels))
+        ->and($row[3])->toBe('ROSA PÉREZ')
+        ->and($row[7])->toBe('PLAN ESPECIAL')
+        ->and($row[9])->toBe('TDG-101')
+        ->and($row[16])->toBe('VENCIDO')
+        ->and($row[17])->toBe('3');
+});
+
+it('Descargar CSV de Cobranza Por Mes es directo, sin modal ni cola', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/AnnualCollections/Tables/AnnualCollectionsTable.php');
+
+    expect($source)
+        ->toContain("Action::make('exportReceivables')")
+        ->toContain("->label('Descargar CSV')")
+        ->toContain('->streamCsv($livewire->getFilteredSortedTableQuery())')
+        ->not->toContain('ExportAction')
+        ->not->toContain('->exporter(');
 });

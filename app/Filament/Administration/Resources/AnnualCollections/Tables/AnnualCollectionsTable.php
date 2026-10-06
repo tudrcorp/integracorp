@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Administration\Resources\AnnualCollections\Tables;
 
-use App\Filament\Exports\CollectionReceivableExporter;
+use App\Filament\Administration\Resources\AnnualCollections\Actions\CollectionObservationsAction;
 use App\Http\Controllers\CollectionController;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
@@ -12,19 +12,21 @@ use App\Models\Agency;
 use App\Models\Collection;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use App\Support\Collections\CollectionReceivableReport;
+use App\Support\Exports\CollectionReceivableCsvExportService;
 use App\Support\SecurityAudit;
 use Carbon\CarbonImmutable;
-use Filament\Actions\ExportAction;
-use Filament\Actions\Exports\Enums\ExportFormat;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Reporte de cuentas por cobrar: una fila por afiliación con su próxima cuota
@@ -37,8 +39,10 @@ class AnnualCollectionsTable
     {
         return $table
             ->heading('Reporte global de cuentas por cobrar · Planes Tu Doctor en Casa')
-            ->description('Fecha actual: '.CarbonImmutable::today()->format('d/m/Y').'. Una fila por afiliación con su próxima cuota pendiente. Use el filtro «Vencimiento» para ver o descargar por días de atraso.')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(CollectionReceivableReport::eagerLoads()))
+            ->description('Fecha actual: '.CarbonImmutable::today()->format('d/m/Y').'. Una fila por afiliación con su próxima cuota pendiente. Use el filtro «Vencimiento» para ver o descargar en CSV por días de atraso.')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->with(CollectionReceivableReport::eagerLoads())
+                ->withCount('receivableObservations'))
             ->defaultSort('filter_next_payment_date', 'asc')
             ->striped()
             ->columns(self::columns())
@@ -47,7 +51,9 @@ class AnnualCollectionsTable
             ->headerActions([
                 self::exportAction(),
             ])
-            ->recordActions([])
+            ->recordActions([
+                CollectionObservationsAction::make(),
+            ])
             ->toolbarActions([])
             ->emptyStateIcon(Heroicon::OutlinedCheckBadge)
             ->emptyStateHeading('No hay cuotas pendientes')
@@ -227,21 +233,23 @@ class AnnualCollectionsTable
         ];
     }
 
-    private static function exportAction(): ExportAction
+    /**
+     * Descarga directa en CSV de las filas de la tabla, con filtros, búsqueda y
+     * orden aplicados ({@see CollectionReceivableCsvExportService}). Sin modal ni cola.
+     */
+    private static function exportAction(): Action
     {
-        return ExportAction::make('exportReceivables')
-            ->label('Descargar reporte')
+        return Action::make('exportReceivables')
+            ->label('Descargar CSV')
             ->icon(Heroicon::OutlinedArrowDownTray)
             ->color('success')
-            ->exporter(CollectionReceivableExporter::class)
-            ->formats([ExportFormat::Xlsx, ExportFormat::Csv])
-            ->fileName(fn (): string => 'reporte-cxc-'.CarbonImmutable::today()->format('Y-m-d'))
-            ->modalHeading('Descargar reporte de cuentas por cobrar')
-            ->modalDescription('Se descargan las filas que ve en la tabla, con los filtros y la búsqueda aplicados. Recibirá una notificación cuando el archivo esté listo.')
-            ->before(function (): void {
+            ->action(function (HasTable $livewire): StreamedResponse {
                 SecurityAudit::log('AUDIT_ADMIN_RECEIVABLES_EXPORT_REQUESTED', 'administration.annual-collections.export', [
                     'panel' => 'administration',
+                    'format' => 'csv',
                 ], Auth::user());
+
+                return app(CollectionReceivableCsvExportService::class)->streamCsv($livewire->getFilteredSortedTableQuery());
             });
     }
 

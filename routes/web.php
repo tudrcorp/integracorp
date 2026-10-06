@@ -660,6 +660,14 @@ Route::get('business/affiliation-corporates/documents/status/{affiliationCorpora
 Route::get('reporte-aliada/verificar/{key?}', \App\Http\Controllers\WhiteCompanySalesReportVerificationController::class)
     ->name('white-company-sales-report.verify');
 
+Route::get('certificado/verificar/{key?}', \App\Http\Controllers\AffiliationCertificateVerificationController::class)
+    ->middleware('throttle:60,1')
+    ->name('affiliation-certificate.verify');
+
+Route::get('business/certificados-afiliacion/{issue}/pdf', \App\Http\Controllers\AffiliationCertificatePdfController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-certificate.pdf');
+
 Route::post('administration/white-companies/{whiteCompany}/sales-report/preview', [
     \App\Http\Controllers\WhiteCompanySalesReportController::class,
     'preview',

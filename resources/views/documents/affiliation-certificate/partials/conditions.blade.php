@@ -1,0 +1,1 @@
+<div class="soft" style="font-size:11px; line-height:1.5; margin-top:10px;">Los servicios incluidos en este producto se encuentran regidos, amparados y aprobados por las <strong style="text-decoration:underline; color:#12293A;">Condiciones Especiales</strong>.</div>

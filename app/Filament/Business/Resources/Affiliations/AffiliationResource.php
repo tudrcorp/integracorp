@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Affiliations;
 
+use App\Filament\Business\Resources\Affiliations\Pages\CertificateGenerator;
 use App\Filament\Business\Resources\Affiliations\Pages\CreateAffiliation;
 use App\Filament\Business\Resources\Affiliations\Pages\EditAffiliation;
 use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
@@ -170,6 +171,7 @@ class AffiliationResource extends Resource
         return [
             'index' => ListAffiliations::route('/'),
             'create' => CreateAffiliation::route('/create'),
+            'certificate-generator' => CertificateGenerator::route('/generador-certificado'),
             'view' => ViewAffiliation::route('/{record}'),
             'edit' => EditAffiliation::route('/{record}/edit'),
         ];

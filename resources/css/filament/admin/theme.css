@@ -10787,3 +10787,18 @@
     box-shadow: inset 3px 0 0 0 theme(colors.white / 15%);
   }
 }
+
+/*
+ * Tarjetas de resumen (App\Support\Filament\SummaryCards) en el subtítulo de una
+ * página de listado. Filament limita el subtítulo a max-w-2xl y deja el bloque
+ * del título al ancho de su contenido; con tarjetas, ese bloque ocupa toda la fila.
+ */
+.fi-header > div:first-child:has(.tdg-summary-cards) {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+}
+
+.fi-header-subheading:has(.tdg-summary-cards) {
+  max-width: none;
+}

@@ -46,7 +46,6 @@ it('muestra un título personalizado en la vista de afiliación corporativa', fu
 
     expect($contents)
         ->toContain('public function getTitle(): string|\\Illuminate\\Contracts\\Support\\Htmlable')
-        ->toContain('Afiliación Corporativa Nro:')
-        ->toContain('Empresa: ')
-        ->toContain('badgeStyleForStatus');
+        ->toContain('public function getHeading(): string|\\Illuminate\\Contracts\\Support\\Htmlable')
+        ->toContain('RecordPageHeader::render(');
 });

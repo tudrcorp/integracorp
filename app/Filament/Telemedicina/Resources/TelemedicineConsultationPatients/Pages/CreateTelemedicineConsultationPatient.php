@@ -1763,6 +1763,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             'actual_phatology' => $this->data['actual_phatology'],
                             'background' => $this->data['background'],
                             'diagnostic_impression' => $this->data['diagnostic_impression'],
+                            'observations' => $this->data['observations'] ?? $record['observations'] ?? null,
                             'peso' => $this->data['peso'],
                             'estatura' => $this->data['estatura'],
                             'imc' => $this->data['imc'],

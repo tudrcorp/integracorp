@@ -44,16 +44,6 @@
             line-height: 1.25;
             color: #374151;
         }
-        .watermark {
-            position: fixed;
-            top: 50%;
-            left: 20%;
-            width: 60%;
-            opacity: 0.045;
-            z-index: 0;
-            transform: translateY(-50%);
-        }
-        .watermark img { width: 100%; height: auto; display: block; }
         .copies {
             width: 100%;
             table-layout: fixed;
@@ -205,9 +195,6 @@
     </style>
 </head>
 <body>
-@if($logoDataUri !== '')
-    <div class="watermark" aria-hidden="true"><img src="{{ $logoDataUri }}" alt=""></div>
-@endif
 <table class="copies">
     <tr>
         @foreach ($copies as $copyLabel)

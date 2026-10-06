@@ -4,24 +4,65 @@ namespace App\Filament\Business\Resources\WhiteCompanies\Pages;
 
 use App\Filament\Business\Resources\WhiteCompanies\Schemas\WhiteCompanyDocumentBrandForm;
 use App\Filament\Business\Resources\WhiteCompanies\WhiteCompanyResource;
+use App\Models\Affiliation;
+use App\Models\AffiliationCorporate;
 use App\Models\WhiteCompany;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
+use App\Support\Filament\RecordPageHeader;
 use App\Support\SecurityAudit;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class EditWhiteCompany extends EditRecord
 {
     protected static string $resource = WhiteCompanyResource::class;
 
-    protected static ?string $title = 'Editar Información de Empresas Aliadas';
-
     /**
      * @var array<string, mixed>
      */
     private array $documentBrandUploads = [];
+
+    public function getTitle(): string|Htmlable
+    {
+        return 'Editar '.(trim((string) $this->getRecord()->name) ?: 'empresa aliada');
+    }
+
+    /**
+     * Encabezado del sistema ({@see RecordPageHeader}) con el logo de la empresa
+     * aliada: el analista ve de entrada en qué marca está trabajando.
+     */
+    public function getHeading(): string|Htmlable
+    {
+        /** @var WhiteCompany $company */
+        $company = $this->getRecord();
+
+        $plans = $company->assignedPlans()->count();
+        $affiliations = Affiliation::query()->where('white_company_id', $company->id)->where('status', 'ACTIVA')->count()
+            + AffiliationCorporate::query()->where('white_company_id', $company->id)->where('status', 'ACTIVA')->count();
+
+        return RecordPageHeader::render(
+            eyebrow: 'Empresa aliada · Editar información',
+            title: trim((string) $company->name) ?: 'Sin nombre',
+            chips: [
+                RecordPageHeader::tag($plans === 1 ? '1 plan asignado' : $plans.' planes asignados', RecordPageHeader::TONE_VIOLET),
+                RecordPageHeader::tag($affiliations === 1 ? '1 afiliación activa' : number_format($affiliations, 0, ',', '.').' afiliaciones activas', RecordPageHeader::TONE_SUCCESS),
+                blank($company->logo) ? RecordPageHeader::tag('Sin logo: súbalo en la marca de documentos', RecordPageHeader::TONE_WARNING) : null,
+            ],
+            facts: [
+                'RIF' => $company->rif,
+                'Correo' => $company->email,
+                'Teléfono' => $company->phone,
+                'Crédito asignado' => RecordPageHeader::money($company->assigned_credit, hideZero: true),
+            ],
+            imageUrl: filled($company->logo) && Storage::disk('public')->exists((string) $company->logo)
+                ? Storage::disk('public')->url((string) $company->logo)
+                : null,
+        );
+    }
 
     /**
      * @param  array<string, mixed>  $data

@@ -121,6 +121,15 @@ class Collection extends Model
     }
 
     /**
+     * Bitácora de cobranza de la afiliación, compartida por todas sus cuotas: la
+     * fila de «Cobranza Por Mes» cambia de cuota al pagarse y las notas siguen.
+     */
+    public function receivableObservations(): HasMany
+    {
+        return $this->hasMany(CollectionObservation::class, 'affiliation_code', 'affiliation_code');
+    }
+
+    /**
      * Ajustes manuales hechos desde «Ajustar cuota», del más reciente al más antiguo.
      */
     public function adjustments(): HasMany

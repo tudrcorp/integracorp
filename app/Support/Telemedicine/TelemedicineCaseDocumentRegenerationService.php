@@ -53,39 +53,157 @@ class TelemedicineCaseDocumentRegenerationService
     public const DOCUMENT_ESPECIALISTA = 'especialista';
 
     /**
-     * @return array<string, string>
+     * La ventana arma selector, aviso y lista de documentos en el mismo render:
+     * las consultas del caso se leen una sola vez por instancia.
+     *
+     * @var array<int, Collection<int, TelemedicineConsultationPatient>>
      */
-    public function availableOptions(TelemedicineCase $case): array
-    {
-        $consultation = $this->resolveConsultation($case);
+    private array $consultationsByCase = [];
 
-        if ($consultation === null) {
-            return [];
+    /**
+     * Aviso cuando una consulta no tiene médico registrado. Firmarla con el médico
+     * del caso era justo el error que se quiere evitar: en el pool (TDG o equipo
+     * de un proveedor) quien atiende no es necesariamente el asignado.
+     */
+    public const MISSING_DOCTOR_MESSAGE = 'Esta consulta no tiene médico registrado, así que sus documentos no se regeneran: saldrían con la firma de otro médico. Reporte el caso a soporte para corregir la consulta.';
+
+    /**
+     * Consultas del caso, en orden cronológico.
+     *
+     * Los documentos se regeneran **por consulta**: cada una lleva la firma del
+     * médico que la atendió y solo lo que ese médico indicó en ella. Juntar los
+     * ítems de todo el caso bajo una sola firma estampaba el sello del médico de
+     * la consulta inicial en lo que recetaron los médicos de los seguimientos.
+     *
+     * @return Collection<int, TelemedicineConsultationPatient>
+     */
+    public function consultationsOf(TelemedicineCase $case): Collection
+    {
+        return $this->consultationsByCase[(int) $case->id] ??= TelemedicineConsultationPatient::query()
+            ->with('telemedicineDoctor')
+            ->where('telemedicine_case_id', $case->id)
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * Una consulta del caso por id. El id llega del formulario: se busca solo
+     * entre las del caso para que un valor manipulado no regenere documentos de
+     * otro paciente.
+     */
+    public function consultationOf(TelemedicineCase $case, mixed $consultationId): ?TelemedicineConsultationPatient
+    {
+        $id = (int) $consultationId;
+
+        if ($id < 1) {
+            return null;
         }
 
+        return $this->consultationsOf($case)
+            ->first(static fn (TelemedicineConsultationPatient $row): bool => (int) $row->id === $id);
+    }
+
+    /**
+     * Si el caso tiene al menos una consulta. Es lo único que se consulta para
+     * mostrar la acción: se evalúa por fila de tabla y no debe armar documentos.
+     */
+    public function caseHasConsultations(TelemedicineCase $case): bool
+    {
+        return TelemedicineConsultationPatient::query()
+            ->where('telemedicine_case_id', $case->id)
+            ->exists();
+    }
+
+    /**
+     * Opciones del selector de consulta: id => etiqueta con tipo, fecha y médico.
+     *
+     * @return array<int, string>
+     */
+    public function consultationOptions(TelemedicineCase $case): array
+    {
         $options = [];
 
-        if ($this->canGenerateInforme($consultation)) {
-            $options[self::DOCUMENT_INFORME_MEDICO] = 'Informe médico (consulta inicial)';
+        foreach ($this->consultationsOf($case) as $consultation) {
+            $options[(int) $consultation->id] = $this->consultationLabel($consultation);
         }
 
-        if ($this->latestFollowUpConsultation($case) !== null) {
+        return $options;
+    }
+
+    public function consultationLabel(TelemedicineConsultationPatient $consultation): string
+    {
+        $type = $this->isInitialConsultation($consultation)
+            ? 'Consulta inicial'
+            : 'Seguimiento';
+
+        $date = $consultation->created_at?->format('d/m/Y h:i A') ?? 'sin fecha';
+        $doctor = $this->signingDoctorFor($consultation);
+        $doctorLabel = $doctor !== null
+            ? trim((string) $doctor->full_name)
+            : 'sin médico registrado';
+
+        return "{$type} · {$date} · {$doctorLabel}";
+    }
+
+    /**
+     * Consulta preseleccionada: la más reciente que sí puede regenerarse.
+     */
+    public function defaultConsultationId(TelemedicineCase $case): ?int
+    {
+        foreach ($this->consultationsOf($case)->reverse() as $consultation) {
+            if ($this->signingDoctorFor($consultation) !== null && $this->availableOptions($consultation) !== []) {
+                return (int) $consultation->id;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Ids de las consultas del caso que no tienen médico y por eso no se regeneran.
+     *
+     * @return list<int>
+     */
+    public function consultationIdsWithoutDoctor(TelemedicineCase $case): array
+    {
+        return $this->consultationsOf($case)
+            ->filter(fn (TelemedicineConsultationPatient $consultation): bool => $this->signingDoctorFor($consultation) === null)
+            ->map(static fn (TelemedicineConsultationPatient $consultation): int => (int) $consultation->id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Documentos que puede emitir una consulta concreta, con lo que se registró
+     * en ella y nada más.
+     *
+     * @return array<string, string>
+     */
+    public function availableOptions(TelemedicineConsultationPatient $consultation): array
+    {
+        $options = [];
+
+        if ($this->isInitialConsultation($consultation)) {
+            if ($this->canGenerateInforme($consultation)) {
+                $options[self::DOCUMENT_INFORME_MEDICO] = 'Informe médico (consulta inicial)';
+            }
+        } elseif (TelemedicineFollowUpReportDocument::appliesTo((string) $consultation->status)) {
             $options[self::DOCUMENT_INFORME_SEGUIMIENTO] = 'Informe de seguimiento';
         }
 
-        if ($this->medicationsForCase($case)->isNotEmpty()) {
+        if ($this->medicationsForConsultation($consultation)->isNotEmpty()) {
             $options[self::DOCUMENT_MEDICAMENTOS] = 'Recipe de medicamentos';
         }
 
-        if ($this->labsForCase($case) !== []) {
+        if ($this->labsForConsultation($consultation) !== []) {
             $options[self::DOCUMENT_LABORATORIOS] = 'Orden de laboratorios';
         }
 
-        if ($this->studiesForCase($case) !== []) {
+        if ($this->studiesForConsultation($consultation) !== []) {
             $options[self::DOCUMENT_IMAGENOLOGIA] = 'Orden de estudios / imagenología';
         }
 
-        if ($this->specialistsForCase($case) !== []) {
+        if ($this->specialistsForConsultation($consultation) !== []) {
             $options[self::DOCUMENT_ESPECIALISTA] = 'Referencia a especialistas';
         }
 
@@ -93,12 +211,8 @@ class TelemedicineCaseDocumentRegenerationService
     }
 
     /**
-     * @param  list<string>  $documentKeys
-     * @return list<string>
-     */
-    /**
-     * Regenera los documentos seleccionados **dentro del request**, sin pasar por
-     * la cola.
+     * Regenera los documentos seleccionados de **una** consulta, dentro del
+     * request y sin pasar por la cola.
      *
      * Esta acción es el plan B del médico justo cuando la cola de documentos ha
      * fallado: encolar aquí reproduciría el fallo que se quiere sortear. Se
@@ -107,35 +221,44 @@ class TelemedicineCaseDocumentRegenerationService
      *
      * @param  list<string>  $documentKeys
      */
-    public function regenerate(TelemedicineCase $case, array $documentKeys, User $user): TelemedicineCaseDocumentRegenerationResult
-    {
+    public function regenerate(
+        TelemedicineCase $case,
+        ?int $consultationId,
+        array $documentKeys,
+        User $user,
+    ): TelemedicineCaseDocumentRegenerationResult {
         $documentKeys = array_values(array_unique(array_filter($documentKeys, static fn (mixed $key): bool => is_string($key) && $key !== '')));
 
         if ($documentKeys === []) {
             throw new InvalidArgumentException('Debe seleccionar al menos un documento.');
         }
 
-        $available = $this->availableOptions($case);
+        $consultation = $this->consultationOf($case, $consultationId);
+
+        if ($consultation === null) {
+            throw new InvalidArgumentException('Seleccione una consulta de este caso para regenerar sus documentos.');
+        }
+
+        $doctor = $this->signingDoctorFor($consultation);
+
+        if ($doctor === null) {
+            throw new InvalidArgumentException(self::MISSING_DOCTOR_MESSAGE);
+        }
+
+        $available = $this->availableOptions($consultation);
         $selected = array_values(array_filter(
             $documentKeys,
             static fn (string $key): bool => array_key_exists($key, $available),
         ));
 
         if ($selected === []) {
-            throw new InvalidArgumentException('Ninguno de los documentos seleccionados está disponible para este caso.');
+            throw new InvalidArgumentException('Ninguno de los documentos seleccionados está disponible para esta consulta.');
         }
 
-        $consultation = $this->resolveConsultation($case);
-
-        if ($consultation === null) {
-            throw new InvalidArgumentException('El caso no tiene consultas para regenerar documentos.');
-        }
-
-        $doctor = $this->resolveDoctor($consultation, $case);
         $patient = $this->resolvePatient($consultation, $case);
 
-        if ($doctor === null || $patient === null) {
-            throw new InvalidArgumentException('No se encontró el médico o el paciente del caso.');
+        if ($patient === null) {
+            throw new InvalidArgumentException('No se encontró el paciente de la consulta.');
         }
 
         $jobs = [];
@@ -147,7 +270,7 @@ class TelemedicineCaseDocumentRegenerationService
                     $user,
                     self::DOCUMENT_INFORME_MEDICO,
                 ),
-                self::DOCUMENT_INFORME_SEGUIMIENTO => $this->makeFollowUpReportJob($case, $doctor, $patient, $user),
+                self::DOCUMENT_INFORME_SEGUIMIENTO => $this->makeFollowUpReportJob($consultation, $doctor, $patient, $user),
                 self::DOCUMENT_MEDICAMENTOS => new GeneratePdfMedicamentos(
                     $this->buildMedicamentosPayload($consultation, $doctor, $patient, $case),
                     $user,
@@ -225,9 +348,27 @@ class TelemedicineCaseDocumentRegenerationService
         dispatch_sync($job);
     }
 
-    protected function resolveDoctor(TelemedicineConsultationPatient $consultation, TelemedicineCase $case): ?TelemedicineDoctor
+    /**
+     * Médico que firma: el de la consulta, sin respaldo. Ni el médico asignado al
+     * caso ni el usuario que regenera hicieron ese acto clínico.
+     */
+    protected function signingDoctorFor(TelemedicineConsultationPatient $consultation): ?TelemedicineDoctor
     {
-        return TelemedicineDoctor::query()->find($consultation->telemedicine_doctor_id ?? $case->telemedicine_doctor_id);
+        $doctorId = (int) ($consultation->telemedicine_doctor_id ?? 0);
+
+        if ($doctorId < 1) {
+            return null;
+        }
+
+        $doctor = $consultation->relationLoaded('telemedicineDoctor')
+            ? $consultation->getRelation('telemedicineDoctor')
+            : null;
+
+        if ($doctor instanceof TelemedicineDoctor && (int) $doctor->id === $doctorId) {
+            return $doctor;
+        }
+
+        return TelemedicineDoctor::query()->find($doctorId);
     }
 
     protected function resolvePatient(TelemedicineConsultationPatient $consultation, TelemedicineCase $case): ?TelemedicinePatient
@@ -235,51 +376,21 @@ class TelemedicineCaseDocumentRegenerationService
         return TelemedicinePatient::query()->find($consultation->telemedicine_patient_id ?? $case->telemedicine_patient_id);
     }
 
-    public function resolveConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
+    protected function isInitialConsultation(TelemedicineConsultationPatient $consultation): bool
     {
-        $initial = TelemedicineConsultationPatient::query()
-            ->where('telemedicine_case_id', $case->id)
-            ->where('status', 'CONSULTA INICIAL')
-            ->orderBy('id')
-            ->first();
-
-        if ($initial !== null) {
-            return $initial;
-        }
-
-        return TelemedicineConsultationPatient::query()
-            ->where('telemedicine_case_id', $case->id)
-            ->orderBy('id')
-            ->first();
-    }
-
-    protected function latestFollowUpConsultation(TelemedicineCase $case): ?TelemedicineConsultationPatient
-    {
-        return TelemedicineConsultationPatient::query()
-            ->where('telemedicine_case_id', $case->id)
-            ->where('status', '!=', TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS)
-            ->orderByDesc('id')
-            ->first();
+        return trim((string) $consultation->status) === TelemedicineInitialDiagnosisUpdater::INITIAL_STATUS;
     }
 
     protected function makeFollowUpReportJob(
-        TelemedicineCase $case,
+        TelemedicineConsultationPatient $consultation,
         TelemedicineDoctor $doctor,
         TelemedicinePatient $patient,
         User $user,
     ): ?GeneratePdfInformeSeguimiento {
-        $followUp = $this->latestFollowUpConsultation($case);
-
-        if ($followUp === null) {
-            return null;
-        }
-
-        $followUpDoctor = $this->resolveDoctor($followUp, $case) ?? $doctor;
-        $followUpPatient = $this->resolvePatient($followUp, $case) ?? $patient;
         $payload = TelemedicineFollowUpReportDocument::payloadFromConsultation(
-            $followUp,
-            $followUpDoctor,
-            $followUpPatient,
+            $consultation,
+            $doctor,
+            $patient,
         );
 
         if ($payload === null) {
@@ -300,11 +411,11 @@ class TelemedicineCaseDocumentRegenerationService
     /**
      * @return Collection<int, TelemedicinePatientMedications>
      */
-    protected function medicationsForCase(TelemedicineCase $case): Collection
+    protected function medicationsForConsultation(TelemedicineConsultationPatient $consultation): Collection
     {
         return TelemedicinePatientMedications::query()
             ->with('operationInventory')
-            ->where('telemedicine_case_id', $case->id)
+            ->where('telemedicine_consultation_patient_id', $consultation->id)
             ->orderBy('id')
             ->get();
     }
@@ -312,111 +423,48 @@ class TelemedicineCaseDocumentRegenerationService
     /**
      * @return list<string>
      */
-    protected function labsForCase(TelemedicineCase $case): array
+    protected function labsForConsultation(TelemedicineConsultationPatient $consultation): array
     {
-        $fromRelation = TelemedicinePatientLab::query()
-            ->where('telemedicine_case_id', $case->id)
-            ->orderBy('id')
-            ->pluck('laboratory')
-            ->filter(static fn (mixed $value): bool => filled($value))
-            ->map(static fn (mixed $value): string => (string) $value)
-            ->values()
-            ->all();
+        [$covered, $other] = $this->labsSplitForConsultation($consultation);
 
-        if ($fromRelation !== []) {
-            return $fromRelation;
-        }
-
-        $consultation = $this->resolveConsultation($case);
-
-        if ($consultation === null) {
-            return [];
-        }
-
-        return array_values(array_filter(array_merge(
-            is_array($consultation->labs) ? $consultation->labs : [],
-            is_array($consultation->other_labs) ? $consultation->other_labs : [],
-        ), static fn (mixed $value): bool => filled($value)));
+        return array_values(array_merge($covered, $other));
     }
 
     /**
      * @return list<string>
      */
-    protected function studiesForCase(TelemedicineCase $case): array
+    protected function studiesForConsultation(TelemedicineConsultationPatient $consultation): array
     {
-        $fromRelation = TelemedicinePatientStudy::query()
-            ->where('telemedicine_case_id', $case->id)
-            ->orderBy('id')
-            ->pluck('study')
-            ->filter(static fn (mixed $value): bool => filled($value))
-            ->map(static fn (mixed $value): string => (string) $value)
-            ->values()
-            ->all();
+        [$covered, $other] = $this->studiesSplitForConsultation($consultation);
 
-        if ($fromRelation !== []) {
-            return $fromRelation;
-        }
-
-        $consultation = $this->resolveConsultation($case);
-
-        if ($consultation === null) {
-            return [];
-        }
-
-        return array_values(array_filter(array_merge(
-            is_array($consultation->studies) ? $consultation->studies : [],
-            is_array($consultation->other_studies) ? $consultation->other_studies : [],
-        ), static fn (mixed $value): bool => filled($value)));
+        return array_values(array_merge($covered, $other));
     }
 
     /**
      * @return list<string>
      */
-    protected function specialistsForCase(TelemedicineCase $case): array
+    protected function specialistsForConsultation(TelemedicineConsultationPatient $consultation): array
     {
-        $fromRelation = TelemedicinePatientSpecialty::query()
-            ->where('telemedicine_case_id', $case->id)
-            ->orderBy('id')
-            ->pluck('specialty')
-            ->filter(static fn (mixed $value): bool => filled($value))
-            ->map(static fn (mixed $value): string => (string) $value)
-            ->values()
-            ->all();
+        [$covered, $other] = $this->specialistsSplitForConsultation($consultation);
 
-        if ($fromRelation !== []) {
-            return $fromRelation;
-        }
-
-        $consultation = $this->resolveConsultation($case);
-
-        if ($consultation === null) {
-            return [];
-        }
-
-        return array_values(array_filter(array_merge(
-            is_array($consultation->consult_specialist) ? $consultation->consult_specialist : [],
-            is_array($consultation->other_specialist) ? $consultation->other_specialist : [],
-        ), static fn (mixed $value): bool => filled($value)));
+        return array_values(array_merge($covered, $other));
     }
 
     /**
+     * Las filas de la relación mandan; los campos JSON de la consulta quedan
+     * como respaldo para consultas anteriores a esas tablas.
+     *
      * @return array{0: list<string>, 1: list<string>}
      */
-    protected function labsSplitForCase(TelemedicineCase $case): array
+    protected function labsSplitForConsultation(TelemedicineConsultationPatient $consultation): array
     {
         $fromRelation = TelemedicinePatientLab::query()
-            ->where('telemedicine_case_id', $case->id)
+            ->where('telemedicine_consultation_patient_id', $consultation->id)
             ->orderBy('id')
             ->get(['laboratory', 'type']);
 
         if ($fromRelation->isNotEmpty()) {
             return $this->partitionByCoverageType($fromRelation, 'laboratory');
-        }
-
-        $consultation = $this->resolveConsultation($case);
-
-        if ($consultation === null) {
-            return [[], []];
         }
 
         return [
@@ -428,21 +476,15 @@ class TelemedicineCaseDocumentRegenerationService
     /**
      * @return array{0: list<string>, 1: list<string>}
      */
-    protected function studiesSplitForCase(TelemedicineCase $case): array
+    protected function studiesSplitForConsultation(TelemedicineConsultationPatient $consultation): array
     {
         $fromRelation = TelemedicinePatientStudy::query()
-            ->where('telemedicine_case_id', $case->id)
+            ->where('telemedicine_consultation_patient_id', $consultation->id)
             ->orderBy('id')
             ->get(['study', 'type']);
 
         if ($fromRelation->isNotEmpty()) {
             return $this->partitionByCoverageType($fromRelation, 'study');
-        }
-
-        $consultation = $this->resolveConsultation($case);
-
-        if ($consultation === null) {
-            return [[], []];
         }
 
         return [
@@ -454,21 +496,15 @@ class TelemedicineCaseDocumentRegenerationService
     /**
      * @return array{0: list<string>, 1: list<string>}
      */
-    protected function specialistsSplitForCase(TelemedicineCase $case): array
+    protected function specialistsSplitForConsultation(TelemedicineConsultationPatient $consultation): array
     {
         $fromRelation = TelemedicinePatientSpecialty::query()
-            ->where('telemedicine_case_id', $case->id)
+            ->where('telemedicine_consultation_patient_id', $consultation->id)
             ->orderBy('id')
             ->get(['specialty', 'type']);
 
         if ($fromRelation->isNotEmpty()) {
             return $this->partitionByCoverageType($fromRelation, 'specialty');
-        }
-
-        $consultation = $this->resolveConsultation($case);
-
-        if ($consultation === null) {
-            return [[], []];
         }
 
         return [
@@ -549,7 +585,7 @@ class TelemedicineCaseDocumentRegenerationService
         TelemedicineCase $case,
         bool $includeVitals,
     ): array {
-        $medicationsArr = $this->medicationsForCase($case)
+        $medicationsArr = $this->medicationsForConsultation($consultation)
             ->map(static fn (TelemedicinePatientMedications $medication): array => [
                 'medicines' => (string) ($medication->medicine ?? ''),
                 'indications' => (string) ($medication->indications ?? ''),
@@ -558,9 +594,9 @@ class TelemedicineCaseDocumentRegenerationService
             ->values()
             ->all();
 
-        $labsArr = $this->labsForCase($case);
-        $studiesArr = $this->studiesForCase($case);
-        $consultSpecialistArr = $this->specialistsForCase($case);
+        $labsArr = $this->labsForConsultation($consultation);
+        $studiesArr = $this->studiesForConsultation($consultation);
+        $consultSpecialistArr = $this->specialistsForConsultation($consultation);
         $payload = [
             'fecha' => now()->format('d/m/Y'),
             'code_reference' => $consultation->code_reference,
@@ -571,6 +607,7 @@ class TelemedicineCaseDocumentRegenerationService
             'actual_phatology' => $consultation->actual_phatology,
             'background' => $consultation->background,
             'diagnostic_impression' => $consultation->diagnostic_impression,
+            'observations' => $consultation->observations,
             'peso' => $consultation->peso,
             'estatura' => $consultation->estatura,
             'imc' => $consultation->imc,
@@ -611,7 +648,7 @@ class TelemedicineCaseDocumentRegenerationService
         TelemedicinePatient $patient,
         TelemedicineCase $case,
     ): array {
-        $medicationsArr = $this->medicationsForCase($case)
+        $medicationsArr = $this->medicationsForConsultation($consultation)
             ->map(static fn (TelemedicinePatientMedications $medication): array => [
                 'medicines' => (string) ($medication->medicine ?? ''),
                 'indications' => (string) ($medication->indications ?? ''),
@@ -648,7 +685,7 @@ class TelemedicineCaseDocumentRegenerationService
         TelemedicinePatient $patient,
         TelemedicineCase $case,
     ): array {
-        [$labs, $otherLabs] = $this->labsSplitForCase($case);
+        [$labs, $otherLabs] = $this->labsSplitForConsultation($consultation);
 
         return [
             'fecha' => now()->format('d/m/Y'),
@@ -678,7 +715,7 @@ class TelemedicineCaseDocumentRegenerationService
         TelemedicinePatient $patient,
         TelemedicineCase $case,
     ): array {
-        [$studies, $otherStudies] = $this->studiesSplitForCase($case);
+        [$studies, $otherStudies] = $this->studiesSplitForConsultation($consultation);
 
         return [
             'fecha' => now()->format('d/m/Y'),
@@ -709,7 +746,7 @@ class TelemedicineCaseDocumentRegenerationService
         TelemedicinePatient $patient,
         TelemedicineCase $case,
     ): array {
-        [$specialists, $otherSpecialists] = $this->specialistsSplitForCase($case);
+        [$specialists, $otherSpecialists] = $this->specialistsSplitForConsultation($consultation);
 
         return [
             'fecha' => now()->format('d/m/Y'),

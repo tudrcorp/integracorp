@@ -41,6 +41,7 @@ final class TelemedicineInformeLargoDataBuilder
             'actual_phatology' => (string) ($clinicalData['actual_phatology'] ?? $context['actual_phatology'] ?? ''),
             'background' => (string) ($clinicalData['background'] ?? $context['background'] ?? ''),
             'diagnostic_impression' => (string) ($clinicalData['diagnostic_impression'] ?? $context['diagnostic_impression'] ?? ''),
+            'observations' => (string) ($context['observations'] ?? ''),
             'peso' => $clinicalData['peso'] ?? $context['peso'] ?? null,
             'estatura' => $clinicalData['estatura'] ?? $context['estatura'] ?? null,
             'imc' => $clinicalData['imc'] ?? $context['imc'] ?? null,
