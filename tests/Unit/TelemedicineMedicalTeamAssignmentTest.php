@@ -194,18 +194,22 @@ it('el caso de equipo pasa al médico que actualiza y cambia con cada actualizac
         ->and($case->fresh()->assigned_to_medical_team)->toBeTrue();
 });
 
-it('no cambia el médico de un caso asignado a un médico particular ni acepta un médico inválido', function (): void {
+it('el caso de un médico particular pasa al médico que lo atiende y no acepta un médico inválido', function (): void {
     [$assigned, $other] = TelemedicineDoctor::query()->where('managed_by', 'TDG')->orderBy('id')->limit(2)->pluck('id')->map(fn ($id): int => (int) $id)->all();
 
     $individual = new TelemedicineCase(['telemedicine_doctor_id' => $assigned, 'assigned_to_medical_team' => false]);
     TelemedicineMedicalTeam::applyUpdatingDoctor($individual, $other);
 
-    $team = new TelemedicineCase(['telemedicine_doctor_id' => null, 'assigned_to_medical_team' => true]);
-    TelemedicineMedicalTeam::applyUpdatingDoctor($team, 0);
-    TelemedicineMedicalTeam::applyUpdatingDoctor($team, null);
+    $invalid = new TelemedicineCase(['telemedicine_doctor_id' => $assigned, 'assigned_to_medical_team' => false]);
+    TelemedicineMedicalTeam::applyUpdatingDoctor($invalid, 0);
+    TelemedicineMedicalTeam::applyUpdatingDoctor($invalid, null);
     TelemedicineMedicalTeam::applyUpdatingDoctor(null, $other);
 
-    expect($individual->telemedicine_doctor_id)->toBe($assigned)
+    $team = new TelemedicineCase(['telemedicine_doctor_id' => null, 'assigned_to_medical_team' => true]);
+    TelemedicineMedicalTeam::applyUpdatingDoctor($team, 0);
+
+    expect($individual->telemedicine_doctor_id)->toBe($other)
+        ->and($invalid->telemedicine_doctor_id)->toBe($assigned)
         ->and($team->telemedicine_doctor_id)->toBeNull();
 });
 

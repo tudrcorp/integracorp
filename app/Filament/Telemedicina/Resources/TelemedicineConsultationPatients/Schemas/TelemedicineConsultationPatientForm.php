@@ -22,6 +22,7 @@ use App\Support\Telemedicine\ConsultationFormContext;
 use App\Support\Telemedicine\ProvidesConsultationFormContext;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
+use App\Support\Telemedicine\TelemedicineConsultationReference;
 use App\Support\Telemedicine\TelemedicineConsultationSigningDoctor;
 use App\Support\Telemedicine\TelemedicineConsultationWizardSteps;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
@@ -406,7 +407,7 @@ class TelemedicineConsultationPatientForm
                                             }),
                                             TextInput::make('code_reference')
                                                 ->label('Referencia')
-                                                ->default('REF-'.rand(11111, 99999))
+                                                ->default(fn (): string => TelemedicineConsultationReference::generate())
                                                 ->required()
                                                 ->disabled()
                                                 ->dehydrated(),
@@ -630,7 +631,7 @@ class TelemedicineConsultationPatientForm
                                                                 'telemedicine_patient_id' => $case?->telemedicine_patient_id,
                                                                 'assigned_by' => Auth::user()->id,
                                                                 'status' => 'CONSULTA INICIAL',
-                                                                'code_reference' => 'REF-'.rand(11111, 99999),
+                                                                'code_reference' => TelemedicineConsultationReference::generate(),
                                                                 'full_name' => $case?->patient_name,
                                                                 'telemedicine_case_code' => $case?->code,
                                                                 'nro_identificacion' => $patient?->nro_identificacion,

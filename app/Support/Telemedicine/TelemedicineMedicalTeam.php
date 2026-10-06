@@ -131,14 +131,15 @@ final class TelemedicineMedicalTeam
     }
 
     /**
-     * En un caso de equipo, el médico asignado pasa a ser quien registra cada
-     * consulta o seguimiento. Los casos asignados a un médico particular no se tocan.
+     * El médico asignado pasa a ser quien registra cada consulta o seguimiento,
+     * tanto en casos de equipo como en los asignados a un médico particular:
+     * el caso siempre muestra al último médico que lo atendió.
      * Solo cambia el atributo: el llamador lo persiste en el mismo `save()` del caso,
      * para que observers y estadísticas vean el nuevo responsable.
      */
     public static function applyUpdatingDoctor(?TelemedicineCase $case, ?int $doctorId): void
     {
-        if ($case === null || ! $case->assigned_to_medical_team || $doctorId === null || $doctorId < 1) {
+        if ($case === null || $doctorId === null || $doctorId < 1) {
             return;
         }
 
