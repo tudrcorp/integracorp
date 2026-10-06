@@ -109,7 +109,7 @@ function beneficiosLargosCapemiac(): array
  * @param  array<string, array<string, mixed>>  $rows
  * @param  array<string, array<string, mixed>>  $rateRows
  */
-function htmlDePlanPdf(array $columns, array $rows, array $rateRows, string $conditions = ''): string
+function htmlDePlanPdf(array $columns, array $rows, array $rateRows, string $conditions = '', array $hiddenGroupRows = []): string
 {
     $plan = new PlanGenerator([
         'name' => 'PLAN ESPECIAL CAPEMIAC',
@@ -119,6 +119,7 @@ function htmlDePlanPdf(array $columns, array $rows, array $rateRows, string $con
         'population_summary' => '800',
         'population_unit' => 'poblacion',
         'include_monthly_total' => false,
+        'group_total_hidden_rows' => $hiddenGroupRows,
         'brand_color' => '#1d4ed8',
     ]);
     $plan->id = 23;
@@ -170,7 +171,8 @@ it('manda los cálculos a la hoja siguiente cuando los beneficios no dejan sitio
         'PLAN ESPECIAL 40K',
         'PLAN ESPECIAL 50K',
     ]);
-    $rows = filasDeBeneficiosPdf(beneficiosLargosCapemiac(), $columns);
+    // Una matriz el doble de larga: con 11 beneficios el bloque ya cabe en la misma hoja.
+    $rows = filasDeBeneficiosPdf([...beneficiosLargosCapemiac(), ...beneficiosLargosCapemiac(), ...beneficiosLargosCapemiac()], $columns);
     $rateRows = filasDeTarifaPdf($columns, [
         ['label' => '0 a 30 años', 'population' => 800, 'rate' => 265],
         ['label' => '31 a 65 años', 'population' => null, 'rate' => 290],
@@ -268,7 +270,7 @@ it('no parte el título del total grupal de su tabla en el pdf', function (): vo
         'PLAN ESPECIAL 40K',
         'PLAN ESPECIAL 50K',
     ]);
-    $rows = filasDeBeneficiosPdf(beneficiosLargosCapemiac(), $columns);
+    $rows = filasDeBeneficiosPdf([...beneficiosLargosCapemiac(), ...beneficiosLargosCapemiac(), ...beneficiosLargosCapemiac()], $columns);
     $rateRows = filasDeTarifaPdf($columns, [
         ['label' => '0 a 30 años', 'population' => 800, 'rate' => 265],
         ['label' => '31 a 65 años', 'population' => null, 'rate' => 290],
@@ -300,3 +302,90 @@ function paginasDelPdf(string $path): int
 
     return preg_match_all('/\/Type\s*\/Page[^s]/', $raw) ?: 0;
 }
+
+it('reparte el bloque por sección: tarifa y total se quedan con la matriz y solo las condiciones saltan', function (): void {
+    $columns = columnasDePlanPdf(['PLAN IDEAL 1K', 'PLAN IDEAL 2K', 'PLAN IDEAL 3K', 'PLAN IDEAL 5K', 'PLAN IDEAL 10K']);
+    $rows = filasDeBeneficiosPdf(beneficiosLargosCapemiac(), $columns);
+    $rateRows = filasDeTarifaPdf($columns, [
+        ['label' => '0 a 45 años', 'population' => 5, 'rate' => 170],
+        ['label' => '46 a 75 años', 'population' => 8, 'rate' => 219],
+        ['label' => '76 a 85 años', 'population' => 1, 'rate' => 252],
+    ]);
+    $conditions = str_repeat("* Condición comercial de la cotización con su detalle completo.\n", 25);
+
+    expect(PlanGeneratorPdfPagination::sections($conditions))->toBe(['rates', 'group', 'conditions'])
+        ->and(PlanGeneratorPdfPagination::sections(''))->toBe(['rates', 'group'])
+        ->and(PlanGeneratorPdfPagination::sectionsOnFirstPage($columns, $rows, $rateRows, false, 'Población', $conditions))->toBe(2)
+        ->and(PlanGeneratorPdfPagination::calculationsStartOnNextPage($columns, $rows, $rateRows, false, 'Población', $conditions))->toBeTrue();
+
+    $html = htmlDePlanPdf($columns, $rows, $rateRows, $conditions);
+    $nextPage = strpos($html, 'pdf-plan-calc-keep pdf-plan-calc-next-page');
+
+    // Tarifa y total antes del salto; las condiciones, después.
+    expect($nextPage)->not->toBeFalse()
+        ->and(strpos($html, 'Tarifa individual anual'))->toBeLessThan($nextPage)
+        ->and(strpos($html, 'Total grupal'))->toBeLessThan($nextPage)
+        ->and(strpos($html, 'Condiciones'))->toBeGreaterThan($nextPage);
+});
+
+it('con pocas condiciones todo el plan cabe en una hoja', function (): void {
+    $columns = columnasDePlanPdf(['PLAN IDEAL 1K', 'PLAN IDEAL 2K', 'PLAN IDEAL 3K', 'PLAN IDEAL 5K', 'PLAN IDEAL 10K']);
+    $rows = filasDeBeneficiosPdf(beneficiosLargosCapemiac(), $columns);
+    $rateRows = filasDeTarifaPdf($columns, [
+        ['label' => '0 a 45 años', 'population' => 5, 'rate' => 170],
+        ['label' => '46 a 75 años', 'population' => 8, 'rate' => 219],
+        ['label' => '76 a 85 años', 'population' => 1, 'rate' => 252],
+    ]);
+    $conditions = "* BENEFICIO DE ORIENTACIÓN MÉDICA TELEFÓNICA CON COBERTURA INMEDIATA.\n* SE EXCLUYEN PATOLOGIAS PREEXISTENTES.\n* ZONA DE COBERTURA VENEZUELA - 24 HORAS";
+
+    expect(PlanGeneratorPdfPagination::sectionsOnFirstPage($columns, $rows, $rateRows, false, 'Población', $conditions))->toBe(3)
+        ->and(htmlDePlanPdf($columns, $rows, $rateRows, $conditions))->not->toContain('pdf-plan-calc-keep pdf-plan-calc-next-page');
+});
+
+it('mide los textos en puntos y no inventa saltos de línea', function (): void {
+    $width = (new ReflectionMethod(PlanGeneratorPdfPagination::class, 'textWidth'))->invoke(null, 'MMMMMMMMMM', false, 100.0);
+
+    // 10 «M» de DejaVu Sans a 100 pt miden ~863 pt; a 96 ppp (sin convertir) darían ~1.150.
+    expect($width)->toBeLessThan(900.0)->toBeGreaterThan(800.0);
+});
+
+it('no deja una hoja en blanco cuando las páginas de cotización no tienen imagen', function (): void {
+    $preview = (string) file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/plan-generator-preview.blade.php');
+
+    expect($preview)->toContain("static fn (array \$page): bool => \$page['is_plan_page'] || \$page['image_data_uri'] !== ''");
+
+    $columns = columnasDePlanPdf(['PLAN IDEAL 1K', 'PLAN IDEAL 2K']);
+    $html = view('documents.plan-generator-preview', [
+        'planGenerator' => new PlanGenerator(['name' => 'Plan de prueba', 'conditions' => '']),
+        'columns' => $columns,
+        'rows' => filasDeBeneficiosPdf(['TELEMEDICINA'], $columns, false),
+        'rateRows' => filasDeTarifaPdf($columns, [['label' => '0 a 30 años', 'population' => 1, 'rate' => 100]]),
+        'logoDataUri' => '',
+        'generatedAt' => Carbon::now(),
+        'brandColor' => '#1d4ed8',
+        'brandColorBorder' => '#1e40af',
+        'useQuotationBody' => true,
+        'quotationPages' => [
+            ['page_number' => 1, 'is_plan_page' => true, 'image_data_uri' => ''],
+            ['page_number' => 2, 'is_plan_page' => false, 'image_data_uri' => ''],
+        ],
+    ])->render();
+
+    $binary = Pdf::loadHTML($html)->setPaper('a4')->output();
+
+    expect(preg_match_all('/\/Type\s*\/Page[^s]/', $binary))->toBe(1);
+});
+
+it('el pdf no imprime las filas del total grupal que se quitaron', function (): void {
+    $columns = columnasDePlanPdf(['PLAN IDEAL 1K', 'PLAN IDEAL 2K']);
+    $rows = filasDeBeneficiosPdf(['TELEMEDICINA'], $columns, false);
+    $rateRows = filasDeTarifaPdf($columns, [['label' => '0 a 30 años', 'population' => 2, 'rate' => 100]]);
+
+    $completo = htmlDePlanPdf($columns, $rows, $rateRows);
+    $soloAnual = htmlDePlanPdf($columns, $rows, $rateRows, '', ['semestral', 'trimestral']);
+
+    expect($completo)->toContain('Tarifa Semestral')->toContain('Tarifa Trimestral')
+        ->and($soloAnual)->toContain('Tarifa anual')
+        ->not->toContain('Tarifa Semestral')
+        ->not->toContain('Tarifa Trimestral');
+});

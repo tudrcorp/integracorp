@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\PlanGenerators\Pages\Concerns;
 
+use App\Support\PlanGenerators\PlanGeneratorGroupTotalCalculator;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorQuotationState;
 use Illuminate\Support\Str;
@@ -47,6 +48,9 @@ trait InteractsWithPlanGeneratorMatrix
         $data['rate_rows'] = PlanGeneratorMatrixState::ensureRateRowsHaveCells(
             (array) ($data['rate_rows'] ?? []),
             $columns,
+        );
+        $data['group_total_hidden_rows'] = PlanGeneratorGroupTotalCalculator::normalizeHiddenRows(
+            $data['group_total_hidden_rows'] ?? [],
         );
 
         $pageCount = filled($data['quotation_page_count'] ?? null)

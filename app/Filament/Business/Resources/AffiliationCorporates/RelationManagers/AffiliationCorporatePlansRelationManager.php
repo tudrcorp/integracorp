@@ -5,9 +5,9 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers
 use App\Models\AffiliateCorporate;
 use App\Models\AfilliationCorporatePlan;
 use App\Models\AgeRange;
-use App\Models\Fee;
 use App\Models\Plan;
 use App\Services\AssociateAffiliatesWithCorporatePlanService;
+use App\Support\AffiliationCorporates\CorporatePlanRowCreator;
 use App\Support\Filament\FilamentIosButton;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -19,7 +19,9 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Fieldset;
@@ -32,6 +34,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -43,6 +46,11 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
     protected static ?string $title = 'Plan(es) Afiliado(s)';
 
     protected static string|BackedEnum|null $icon = 'fontisto-share';
+
+    /**
+     * @var array<string, array{options: array<int, string>, descriptions: array<int, string>}>
+     */
+    protected array $associateModalAffiliateOptionsCache = [];
 
     public function form(Schema $schema): Schema
     {
@@ -94,19 +102,62 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->preload(),
 
+                                ToggleButtons::make('fee_source')
+                                    ->label('Origen de la tarifa')
+                                    ->options([
+                                        CorporatePlanRowCreator::SOURCE_STANDARD => 'Tarifa estándar',
+                                        CorporatePlanRowCreator::SOURCE_NEGOTIATED => 'Monto negociado',
+                                    ])
+                                    ->icons([
+                                        CorporatePlanRowCreator::SOURCE_STANDARD => Heroicon::OutlinedListBullet,
+                                        CorporatePlanRowCreator::SOURCE_NEGOTIATED => Heroicon::OutlinedPencilSquare,
+                                    ])
+                                    ->colors([
+                                        CorporatePlanRowCreator::SOURCE_STANDARD => 'gray',
+                                        CorporatePlanRowCreator::SOURCE_NEGOTIATED => 'warning',
+                                    ])
+                                    ->default(CorporatePlanRowCreator::SOURCE_STANDARD)
+                                    ->inline()
+                                    ->live()
+                                    ->required()
+                                    ->helperText('Use «Monto negociado» solo cuando la tarifa acordada con la empresa es distinta a la del sistema.')
+                                    ->columnSpanFull(),
+
                                 Select::make('fee')
                                     ->label('Tarifa Anual')
-                                    ->options(function (Get $get) {
-                                        return Fee::where('age_range_id', $get('age_range_id'))->where('coverage_id', $get('coverage_id'))->get()->pluck('price', 'price');
-                                    })
+                                    ->options(fn (Get $get): array => CorporatePlanRowCreator::standardFeeOptions($get('age_range_id'), $get('coverage_id')))
+                                    ->visible(fn (Get $get): bool => $get('fee_source') !== CorporatePlanRowCreator::SOURCE_NEGOTIATED)
                                     ->live()
                                     ->searchable()
-                                    ->required()
+                                    ->required(fn (Get $get): bool => $get('fee_source') !== CorporatePlanRowCreator::SOURCE_NEGOTIATED)
                                     ->validationMessages([
                                         'required' => 'Campo Obligatorio',
                                     ])
                                     ->prefixIcon('heroicon-s-globe-europe-africa')
                                     ->preload(),
+
+                                TextInput::make('negotiated_fee')
+                                    ->label('Tarifa anual negociada')
+                                    ->prefix('US$')
+                                    ->numeric()
+                                    ->minValue(0.01)
+                                    ->maxValue(CorporatePlanRowCreator::MAX_FEE)
+                                    ->step(0.01)
+                                    ->placeholder('Ej: 245.50')
+                                    ->helperText(function (Get $get): string {
+                                        $standard = CorporatePlanRowCreator::standardFeeOptions($get('age_range_id'), $get('coverage_id'));
+
+                                        return $standard === []
+                                            ? 'Monto anual por persona acordado con la empresa.'
+                                            : 'Monto anual por persona. Estándar del sistema: US$ '.implode(' / ', $standard).'.';
+                                    })
+                                    ->visible(fn (Get $get): bool => $get('fee_source') === CorporatePlanRowCreator::SOURCE_NEGOTIATED)
+                                    ->required(fn (Get $get): bool => $get('fee_source') === CorporatePlanRowCreator::SOURCE_NEGOTIATED)
+                                    ->validationMessages([
+                                        'required' => 'Escriba el monto negociado.',
+                                        'min' => 'El monto debe ser mayor que 0.',
+                                    ]),
+
                                 TextInput::make('payment_frequency')
                                     ->label('Frecuencia de pago')
                                     ->live()
@@ -116,6 +167,20 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                                     ->default(function () {
                                         return $this->getOwnerRecord()->payment_frequency;
                                     }),
+                                Textarea::make('fee_negotiation_reason')
+                                    ->label('Motivo de la negociación')
+                                    ->placeholder('Ej: Tarifa acordada con RRHH de la empresa en la reunión del 02/10/2026, aprobada por la gerencia comercial.')
+                                    ->helperText('Queda registrado junto con su usuario y la fecha.')
+                                    ->rows(3)
+                                    ->minLength(CorporatePlanRowCreator::REASON_MIN_LENGTH)
+                                    ->maxLength(CorporatePlanRowCreator::REASON_MAX_LENGTH)
+                                    ->visible(fn (Get $get): bool => $get('fee_source') === CorporatePlanRowCreator::SOURCE_NEGOTIATED)
+                                    ->required(fn (Get $get): bool => $get('fee_source') === CorporatePlanRowCreator::SOURCE_NEGOTIATED)
+                                    ->validationMessages([
+                                        'required' => 'El motivo es obligatorio para una tarifa negociada.',
+                                        'min' => 'Explique el motivo con al menos '.CorporatePlanRowCreator::REASON_MIN_LENGTH.' caracteres.',
+                                    ])
+                                    ->columnSpanFull(),
                             ])->columnSpanFull()->columns(2),
 
                     ])->columnSpanFull()->columns(3),
@@ -126,6 +191,7 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
     {
         return $table
             ->description('Lista de plan(es) afiliado(s)')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['plan', 'coverage', 'ageRange', 'feeNegotiatedBy:id,name']))
             ->columns([
                 TextColumn::make('plan.description')
                     ->label('Plan')
@@ -141,8 +207,18 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                     ->searchable(),
                 TextColumn::make('fee')
                     ->suffix(' US$')
-                    ->numeric()
-                    ->label('Tarifa'),
+                    ->numeric(decimalPlaces: 2)
+                    ->label('Tarifa')
+                    ->description(fn (AfilliationCorporatePlan $record): ?string => $record->fee_source === CorporatePlanRowCreator::SOURCE_NEGOTIATED ? 'Negociada' : null)
+                    ->color(fn (AfilliationCorporatePlan $record): ?string => $record->fee_source === CorporatePlanRowCreator::SOURCE_NEGOTIATED ? 'warning' : null)
+                    ->tooltip(fn (AfilliationCorporatePlan $record): ?string => $record->fee_source === CorporatePlanRowCreator::SOURCE_NEGOTIATED
+                        ? sprintf(
+                            'Motivo: %s · Por %s el %s',
+                            (string) $record->fee_negotiation_reason,
+                            $record->feeNegotiatedBy?->name ?? 'N/D',
+                            $record->fee_negotiated_at?->format('d/m/Y H:i') ?? 'N/D',
+                        )
+                        : null),
                 TextColumn::make('payment_frequency')
                     ->label('Frecuencia de Pago')
                     ->searchable(),
@@ -308,44 +384,23 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                     ->color('success')
                     ->createAnother(false)
                     ->icon(Heroicon::Plus)
-                    ->before(function (array $data, CreateAction $action) {
-
-                        $plans = $this->getOwnerRecord()->affiliationCorporatePlans
-                            ->where('plan_id', $data['plan_id'])
-                            ->where('coverage_id', $data['coverage_id'])
-                            ->where('age_range_id', $data['age_range_id'])
-                            ->pluck('plan_id')
-                            ->toArray();
-
-                        if (count($plans) > 0) {
+                    ->using(function (array $data, CreateAction $action): AfilliationCorporatePlan {
+                        try {
+                            return CorporatePlanRowCreator::create($this->getOwnerRecord(), $data, Auth::user());
+                        } catch (ValidationException $exception) {
                             Notification::make()
-                                ->title('Error')
+                                ->title('No se pudo asociar el plan')
+                                ->body(collect($exception->errors())->flatten()->implode(' '))
                                 ->danger()
                                 ->icon(Heroicon::ExclamationCircle)
-                                ->body('El plan, la cobertura y el rango de edad seleccionado ya se encuentra en la lista de planes afiliados. Por favor, seleccione un plan que pertenece a la afiliación corporativa')
                                 ->send();
 
                             $action->halt();
                         }
-
                     })
-                    ->using(function (array $data) {
-                        $this->getOwnerRecord()->affiliationCorporatePlans()->create([
-                            'affiliation_corporate_id' => $this->getOwnerRecord()->id,
-                            'code_affiliation' => $this->getOwnerRecord()->code,
-                            'plan_id' => $data['plan_id'],
-                            'coverage_id' => $data['coverage_id'],
-                            'age_range_id' => $data['age_range_id'],
-                            'fee' => $data['fee'],
-                            'payment_frequency' => $data['payment_frequency'],
-                            'total_persons' => 0,
-                            'subtotal_anual' => $data['fee'],
-                            'subtotal_biannual' => $data['fee'] / 2,
-                            'subtotal_quarterly' => $data['fee'] / 4,
-                            'status' => 'ACTIVA',
-                            'created_by' => Auth::id(),
-                        ]);
-                    }),
+                    ->successNotificationTitle(fn (AfilliationCorporatePlan $record): string => $record->fee_source === CorporatePlanRowCreator::SOURCE_NEGOTIATED
+                        ? 'Plan asociado con tarifa negociada'
+                        : 'Plan asociado'),
             ])
             ->bulkActions([
                 DeleteBulkAction::make()
@@ -370,7 +425,7 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                     ->icon(Heroicon::ArrowPath)
                     ->color('success')
                     ->modalHeading('Asociar afiliados al plan')
-                    ->modalDescription('Seleccione exactamente una fila de plan en la tabla. Plan, cobertura y tarifa son los de esa fila (solo lectura). Elija los afiliados cuya edad calza con el rango de esa fila. Los subtotales estiman según la cantidad seleccionada y la frecuencia de pago.')
+                    ->modalDescription('Seleccione exactamente una fila de plan en la tabla. Plan, cobertura y tarifa son los de esa fila (solo lectura). Elija los afiliados cuya edad calza con el rango de esa fila y cuya cobertura es la misma o no está asignada. Los subtotales estiman según la cantidad seleccionada y la frecuencia de pago.')
                     ->modalIcon(Heroicon::ArrowPath)
                     ->modalIconColor('success')
                     ->modalWidth(Width::SevenExtraLarge)
@@ -411,48 +466,39 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                     })
                     ->schema([
                         Section::make('Afiliados de la corporación')
-                            ->description('Solo se listan afiliados cuya edad está dentro del rango de edad de la fila de plan seleccionada. Marque los que desea asociar a este plan.')
+                            ->description('Solo se listan afiliados cuya edad está dentro del rango de la fila y que tienen su misma cobertura o todavía no tienen cobertura asignada (al asociarlos se les asigna la de esta fila). Los que tienen otra cobertura no aparecen.')
                             ->icon(Heroicon::UserGroup)
                             ->schema([
                                 CheckboxList::make('affiliate_ids')
                                     ->label('')
                                     ->options(function (Get $get): array {
-                                        $row = $this->resolveAssociateModalPlanRow($get('associate_plan_row_id'));
-                                        if ($row === null) {
-                                            return [];
-                                        }
-
-                                        $eligibleIds = AssociateAffiliatesWithCorporatePlanService::idsForAffiliatesMatchingPlanRowAgeRange(
-                                            $this->getOwnerRecord(),
-                                            $row,
-                                        );
-
-                                        if ($eligibleIds === []) {
-                                            return [];
-                                        }
-
-                                        return AffiliateCorporate::query()
-                                            ->where('affiliation_corporate_id', $this->getOwnerRecord()->id)
-                                            ->whereIn('id', $eligibleIds)
-                                            ->orderBy('first_name')
-                                            ->orderBy('last_name')
-                                            ->get()
-                                            ->mapWithKeys(function (AffiliateCorporate $a): array {
-                                                $name = trim(($a->first_name ?? '').' '.($a->last_name ?? ''));
-                                                $label = $name !== '' ? $name : 'Afiliado #'.$a->id;
-
-                                                return [
-                                                    $a->id => $label.' · Edad '.($a->age ?? '—').' · CI '.($a->nro_identificacion ?? '—'),
-                                                ];
-                                            })
-                                            ->all();
+                                        return $this->associateModalAffiliateOptions($get('associate_plan_row_id'))['options'];
                                     })
+                                    ->descriptions(fn (Get $get): array => $this->associateModalAffiliateOptions($get('associate_plan_row_id'))['descriptions'])
+                                    ->in(fn (Get $get): array => array_keys($this->associateModalAffiliateOptions($get('associate_plan_row_id'))['options']))
+                                    ->validationMessages([
+                                        'required' => 'Marque al menos un afiliado.',
+                                        'in' => 'Uno de los afiliados marcados no cumple la edad o la cobertura de esta fila.',
+                                    ])
                                     ->columns(1)
                                     ->gridDirection('row')
                                     ->bulkToggleable()
                                     ->searchable()
                                     ->required()
                                     ->live(onBlur: false)
+                                    ->columnSpanFull(),
+                                Placeholder::make('no_eligible_affiliates')
+                                    ->hiddenLabel()
+                                    ->visible(fn (Get $get): bool => $this->resolveAssociateModalPlanRow($get('associate_plan_row_id')) !== null
+                                        && $this->associateModalAffiliateOptions($get('associate_plan_row_id'))['options'] === [])
+                                    ->content(function (Get $get): string {
+                                        $row = $this->resolveAssociateModalPlanRow($get('associate_plan_row_id'));
+                                        $coverage = $row?->coverage !== null
+                                            ? 'cobertura US$ '.number_format((float) $row->coverage->price, 2, '.', ',')
+                                            : 'sin cobertura';
+
+                                        return 'No hay afiliados de '.($row?->ageRange?->range ?? '—').' años con '.$coverage.' ni sin cobertura asignada. Revise la edad y la cobertura de la población.';
+                                    })
                                     ->columnSpanFull(),
                                 Placeholder::make('payment_frequency_hint')
                                     ->label('Frecuencia de pago (afiliación)')
@@ -632,6 +678,54 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                             ->send();
                     }),
             ]);
+    }
+
+    /**
+     * Afiliados elegibles para la fila (edad y cobertura), con la nota de los que
+     * aún no tienen cobertura. Se memoriza por request: Filament evalúa opciones,
+     * descripciones y la regla `in` por separado en cada render.
+     *
+     * @return array{options: array<int, string>, descriptions: array<int, string>}
+     */
+    private function associateModalAffiliateOptions(mixed $rowId): array
+    {
+        $cacheKey = (string) $rowId;
+
+        if (isset($this->associateModalAffiliateOptionsCache[$cacheKey])) {
+            return $this->associateModalAffiliateOptionsCache[$cacheKey];
+        }
+
+        $result = ['options' => [], 'descriptions' => []];
+        $row = $this->resolveAssociateModalPlanRow($rowId);
+
+        if ($row !== null) {
+            $eligibleIds = AssociateAffiliatesWithCorporatePlanService::idsForAffiliatesMatchingPlanRowAgeRange($this->getOwnerRecord(), $row);
+
+            $affiliates = $eligibleIds === []
+                ? collect()
+                : AffiliateCorporate::query()
+                    ->where('affiliation_corporate_id', $this->getOwnerRecord()->id)
+                    ->whereIn('id', $eligibleIds)
+                    ->get(['id', 'first_name', 'last_name', 'age', 'nro_identificacion', 'coverage_id'])
+                    ->keyBy('id');
+
+            foreach ($eligibleIds as $id) {
+                $affiliate = $affiliates->get($id);
+
+                if (! $affiliate instanceof AffiliateCorporate) {
+                    continue;
+                }
+
+                $name = trim(($affiliate->first_name ?? '').' '.($affiliate->last_name ?? ''));
+                $result['options'][$id] = ($name !== '' ? $name : 'Afiliado #'.$id).' · Edad '.($affiliate->age ?? '—').' · CI '.($affiliate->nro_identificacion ?? '—');
+
+                if (! AssociateAffiliatesWithCorporatePlanService::hasNoCoverage($row->coverage_id) && AssociateAffiliatesWithCorporatePlanService::hasNoCoverage($affiliate->coverage_id)) {
+                    $result['descriptions'][$id] = 'Sin cobertura asignada: se le asignará la de esta fila.';
+                }
+            }
+        }
+
+        return $this->associateModalAffiliateOptionsCache[$cacheKey] = $result;
     }
 
     private function resolveAssociateModalPlanRow(mixed $rowId): ?AfilliationCorporatePlan

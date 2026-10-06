@@ -11,6 +11,7 @@ use App\Models\PlanGenerator;
 use App\Support\PlanGenerators\PlanGeneratorAgentLookup;
 use App\Support\PlanGenerators\PlanGeneratorBrandColor;
 use App\Support\PlanGenerators\PlanGeneratorConditions;
+use App\Support\PlanGenerators\PlanGeneratorGroupTotalCalculator;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorPopulationValidator;
 use App\Support\PlanGenerators\PlanGeneratorTemplateCloner;
@@ -164,6 +165,10 @@ final class DeriveQuotationBulkAction
             ),
             'conditions' => PlanGeneratorConditions::normalize(
                 $rawState['conditions'] ?? $data['conditions'] ?? null,
+            ),
+            'include_monthly_total' => (bool) ($rawState['include_monthly_total'] ?? $data['include_monthly_total'] ?? false),
+            'group_total_hidden_rows' => PlanGeneratorGroupTotalCalculator::normalizeHiddenRows(
+                $rawState['group_total_hidden_rows'] ?? $data['group_total_hidden_rows'] ?? [],
             ),
         ];
     }
@@ -367,6 +372,7 @@ final class DeriveQuotationBulkAction
                             Hidden::make('columns')->default([])->dehydrated(),
                             Hidden::make('rows')->default([])->dehydrated(),
                             Hidden::make('rate_rows')->default([])->dehydrated(),
+                            Hidden::make('group_total_hidden_rows')->default([])->dehydrated(),
                             Toggle::make('include_monthly_total')
                                 ->label('Incluir cálculo mensual')
                                 ->helperText('Muestra la fila «Total Mensual» en la tabla de total grupal (tarifa anual ÷ 12).')
@@ -392,6 +398,7 @@ final class DeriveQuotationBulkAction
                                     'rateRows' => (array) ($get('rate_rows') ?? []),
                                     'populationUnitLabel' => PlanGeneratorPopulationUnit::resolve($get('population_unit'))->label(),
                                     'includeMonthlyTotal' => (bool) $get('include_monthly_total'),
+                                    'groupTotalHiddenRows' => $get('group_total_hidden_rows') ?? [],
                                     'benefitOptions' => Benefit::query()
                                         ->whereNotNull('description')
                                         ->where('description', '!=', '')

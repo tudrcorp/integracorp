@@ -114,6 +114,8 @@ class RegisterCompanyForm
                                     ->label('Frecuencia de pago')
                                     ->native(false)
                                     ->options(fn (): array => PlanGeneratorCompanyRates::paymentFrequencyOptions(PlanGeneratorPreAffiliationSession::get()))
+                                    ->in(fn (): array => array_keys(PlanGeneratorCompanyRates::paymentFrequencyOptions(PlanGeneratorPreAffiliationSession::get())))
+                                    ->validationMessages(['in' => 'Esa forma de pago no está en el total grupal de la cotización.'])
                                     ->searchable()
                                     ->required()
                                     ->live()

@@ -9,6 +9,7 @@ use App\Models\AffiliationCorporate;
 use App\Models\AfilliationCorporatePlan;
 use App\Models\AgeRange;
 use App\Models\Fee;
+use App\Support\AffiliationCorporates\CorporatePlanRowCreator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -53,7 +54,9 @@ final class AssociateAffiliatesWithCorporatePlanService
             ]);
         }
 
-        if (! self::feeMatchesAgeRangeAndCoverage($ageRangeId, $coverageId, $fee)) {
+        // Una fila con tarifa negociada no tiene su monto en `fees`: vale el de la fila.
+        if (! CorporatePlanRowCreator::isNegotiatedFeeOfRow($planRow, $fee)
+            && ! self::feeMatchesAgeRangeAndCoverage($ageRangeId, $coverageId, $fee)) {
             throw ValidationException::withMessages([
                 'fee' => ['La tarifa no coincide con el rango de edad'.($coverageId !== null ? ' y la cobertura' : '').' del plan.'],
             ]);
@@ -78,6 +81,7 @@ final class AssociateAffiliatesWithCorporatePlanService
         }
 
         self::assertAffiliatesWithinPlanAgeRange($affiliates, $ageRange);
+        self::assertAffiliatesCoverageCompatible($affiliates, $coverageId);
 
         $frequency = (string) $owner->payment_frequency;
 
@@ -111,7 +115,10 @@ final class AssociateAffiliatesWithCorporatePlanService
     }
 
     /**
-     * IDs de afiliados de la corporación cuya edad cae dentro del rango de edad de la fila de plan (excluye sin edad).
+     * IDs de afiliados que se pueden asociar a la fila de plan: edad dentro del
+     * rango de la fila (excluye sin edad) y cobertura compatible (ver
+     * `coverageIsCompatible()`). Primero los que ya tienen la cobertura de la
+     * fila y después los que aún no tienen cobertura asignada.
      *
      * @return list<int>
      */
@@ -125,19 +132,70 @@ final class AssociateAffiliatesWithCorporatePlanService
             return [];
         }
 
-        $ageInit = (int) $ageRange->age_init;
-        $ageEnd = (int) $ageRange->age_end;
+        $rowCoverageId = self::normalizeOptionalCoverageId($planRow->coverage_id);
 
         return AffiliateCorporate::query()
             ->where('affiliation_corporate_id', $owner->id)
             ->whereNotNull('age')
-            ->whereBetween('age', [$ageInit, $ageEnd])
-            ->orderBy('first_name')
-            ->orderBy('last_name')
+            ->whereBetween('age', [(int) $ageRange->age_init, (int) $ageRange->age_end])
+            ->where(function ($query) use ($rowCoverageId): void {
+                $query->whereNull('coverage_id')->orWhere('coverage_id', 0);
+
+                if ($rowCoverageId !== null) {
+                    $query->orWhere('coverage_id', $rowCoverageId);
+                }
+            })
+            ->get(['id', 'first_name', 'last_name', 'coverage_id'])
+            ->sortBy(fn (AffiliateCorporate $affiliate): string => (self::hasNoCoverage($affiliate->coverage_id) ? '1' : '0')
+                .mb_strtolower(trim(($affiliate->first_name ?? '').' '.($affiliate->last_name ?? ''))))
             ->pluck('id')
             ->map(static fn (mixed $id): int => (int) $id)
             ->values()
             ->all();
+    }
+
+    /**
+     * Un afiliado puede tomar la cobertura de la fila si ya tiene esa misma o si
+     * todavía no tiene ninguna (se le asigna al asociar). Con otra cobertura no:
+     * mezclar coberturas descuadra tarifas y cupos. En una fila sin cobertura
+     * (tarifa plana) solo entran afiliados sin cobertura.
+     */
+    public static function coverageIsCompatible(mixed $affiliateCoverageId, mixed $rowCoverageId): bool
+    {
+        if (self::hasNoCoverage($affiliateCoverageId)) {
+            return true;
+        }
+
+        $rowCoverageId = self::normalizeOptionalCoverageId($rowCoverageId);
+
+        return $rowCoverageId !== null && (int) $affiliateCoverageId === $rowCoverageId;
+    }
+
+    public static function hasNoCoverage(mixed $coverageId): bool
+    {
+        return self::normalizeOptionalCoverageId($coverageId) === null;
+    }
+
+    /**
+     * @param  Collection<int, AffiliateCorporate>  $affiliates
+     */
+    private static function assertAffiliatesCoverageCompatible(Collection $affiliates, ?int $coverageId): void
+    {
+        $incompatible = $affiliates
+            ->reject(fn (AffiliateCorporate $affiliate): bool => self::coverageIsCompatible($affiliate->coverage_id, $coverageId))
+            ->map(function (AffiliateCorporate $affiliate): string {
+                $label = trim(($affiliate->first_name ?? '').' '.($affiliate->last_name ?? ''));
+
+                return $label !== '' ? $label : 'Afiliado #'.$affiliate->getKey();
+            })
+            ->values()
+            ->all();
+
+        if ($incompatible !== []) {
+            throw ValidationException::withMessages([
+                'coverage' => ['Tienen otra cobertura asignada y no pueden pasar a la de esta fila: '.implode(', ', $incompatible).'.'],
+            ]);
+        }
     }
 
     /**

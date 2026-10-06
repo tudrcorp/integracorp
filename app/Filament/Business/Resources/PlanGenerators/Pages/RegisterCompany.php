@@ -72,14 +72,16 @@ class RegisterCompany extends Page
         $payload = PlanGeneratorPreAffiliationSession::get();
         $columnKey = PlanGeneratorCompanyRates::defaultColumnKey($payload);
         $dataRecord = PlanGeneratorCompanyRates::dataRecordForColumn($payload, $columnKey);
-        $amounts = PlanGeneratorCompanyRates::amountsFor('ANUAL', $dataRecord ?? []);
+        // La primera forma de pago que dejó la cotización: si quitaron la anual, no se propone.
+        $frequency = (string) (array_key_first(PlanGeneratorCompanyRates::paymentFrequencyOptions($payload)) ?? 'ANUAL');
+        $amounts = PlanGeneratorCompanyRates::amountsFor($frequency, $dataRecord ?? []);
 
         $this->form->fill([
             'name' => $plan->client_data,
             'responsibles' => [],
             'plan_generator_column_key' => $columnKey,
             'plan_generator_column_label' => (string) ($dataRecord['header_label'] ?? ''),
-            'payment_frequency' => 'ANUAL',
+            'payment_frequency' => $frequency,
             'fee_anual' => $amounts['fee_anual'],
             'total_amount' => $amounts['total_amount'],
         ]);

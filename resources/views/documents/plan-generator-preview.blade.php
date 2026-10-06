@@ -14,6 +14,12 @@
     $brandColorBorder = $brandColorBorder ?? '#1e40af';
     $columnCount = count($columns);
     $useQuotationBody = (bool) ($useQuotationBody ?? false);
+    // Solo las páginas que se dibujan: una página de cotización sin imagen no se
+    // imprime, y si se contara, el salto previo dejaba una hoja en blanco al final.
+    $quotationPages = array_values(array_filter(
+        $quotationPages,
+        static fn (array $page): bool => $page['is_plan_page'] || $page['image_data_uri'] !== '',
+    ));
     $quotationPageTotal = count($quotationPages);
 @endphp
 <!DOCTYPE html>
@@ -107,9 +113,12 @@
             page-break-inside: avoid;
         }
 
+        /* Aire justo entre secciones y al pie: con 16 mm y 12 px las condiciones
+           saltaban de hoja dejando un tercio de la primera vacío
+           (PlanGeneratorPdfPagination usa estas mismas medidas). */
         .pdf-plan-calc-cell {
             padding-top: 3mm;
-            padding-bottom: 16mm;
+            padding-bottom: 8mm;
         }
 
         .pdf-plan-calc-next-page {
@@ -134,12 +143,16 @@
         }
 
         .pdf-plan-margin-cell .section-title {
-            margin: 12px 0 4px 0;
+            margin: 8px 0 4px 0;
             font-size: 7pt;
         }
 
+        .pdf-plan-margin-cell .matrix-section + .matrix-section .section-title {
+            margin-top: 8px;
+        }
+
         .pdf-plan-margin-cell .matrix-table {
-            margin-bottom: 12px;
+            margin-bottom: 6px;
         }
 
         .pdf-plan-margin-cell .matrix-table th,

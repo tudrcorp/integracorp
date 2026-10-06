@@ -226,6 +226,7 @@ class PlanGeneratorInfolist
                                                         'rateRows' => PlanGeneratorPreviewBuilder::rateRows($record),
                                                         'populationUnitLabel' => PlanGeneratorPopulationUnit::resolve($record->population_unit)->label(),
                                                         'includeMonthlyTotal' => (bool) $record->include_monthly_total,
+                                                        'groupTotalHiddenRows' => $record->group_total_hidden_rows ?? [],
                                                         'conditions' => PlanGeneratorConditions::normalize($record->conditions),
                                                     ])
                                                     ->columnSpanFull(),

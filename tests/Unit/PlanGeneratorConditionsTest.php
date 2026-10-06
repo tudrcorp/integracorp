@@ -37,7 +37,8 @@ it('la derivada pide las condiciones en un cuadro de texto debajo del total grup
     $accion = (string) file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Tables/Actions/DeriveQuotationBulkAction.php');
     $formulario = (string) file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/PlanGenerators/Schemas/PlanGeneratorForm.php');
     $vista = (string) file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/plan-generators/stacked-matrices-preview.blade.php');
-    $pdf = (string) file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/partials/plan-generator-plan-body.blade.php');
+    // El bloque de cálculos vive en partials, en el orden en que se imprime.
+    $pdf = implode("\n", array_map(static fn (string $file): string => (string) file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/partials/'.$file.'.blade.php'), ['plan-generator-plan-body', 'plan-generator-calc-rates', 'plan-generator-calc-group', 'plan-generator-calc-conditions']));
     $migracion = (string) file_get_contents(dirname(__DIR__, 2).'/database/migrations/2026_09_23_140000_change_plan_generator_conditions_to_long_text.php');
 
     expect($campo)

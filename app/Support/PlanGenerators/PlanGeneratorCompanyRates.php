@@ -15,17 +15,11 @@ final class PlanGeneratorCompanyRates
      */
     public static function paymentFrequencyOptions(?array $payload): array
     {
-        $options = [
-            'ANUAL' => 'ANUAL',
-            'SEMESTRAL' => 'SEMESTRAL',
-            'TRIMESTRAL' => 'TRIMESTRAL',
-        ];
-
-        if ((bool) ($payload['plan']['include_monthly_total'] ?? false)) {
-            $options['MENSUAL'] = 'MENSUAL';
-        }
-
-        return $options;
+        // Solo las formas de pago que quedaron en el total grupal de la cotización.
+        return PlanGeneratorGroupTotalCalculator::paymentFrequencies(
+            (bool) ($payload['plan']['include_monthly_total'] ?? false),
+            $payload['plan']['group_total_hidden_rows'] ?? [],
+        );
     }
 
     /**

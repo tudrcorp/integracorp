@@ -326,6 +326,7 @@ final class PlanGeneratorPreAffiliationSession
                 'population_summary' => $plan->population_summary,
                 'population_unit' => $plan->population_unit,
                 'include_monthly_total' => (bool) $plan->include_monthly_total,
+                'group_total_hidden_rows' => PlanGeneratorGroupTotalCalculator::normalizeHiddenRows($plan->group_total_hidden_rows),
             ],
             'columns' => $columns,
             'rate_rows' => array_values($rateRows),

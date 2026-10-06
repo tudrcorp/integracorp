@@ -31,6 +31,7 @@
     $rateRows = (array) ($rateRows ?? []);
     $populationUnitLabel = (string) ($populationUnitLabel ?? 'Población');
     $includeMonthlyTotal = (bool) ($includeMonthlyTotal ?? false);
+    $groupTotalHiddenRows = \App\Support\PlanGenerators\PlanGeneratorGroupTotalCalculator::normalizeHiddenRows($groupTotalHiddenRows ?? []);
     $columnCount = count($columns);
     $allBenefitsIncluded = $columnCount > 0 && $rows !== [] && collect($rows)->every(function (mixed $row) use ($columns): bool {
         if (! is_array($row)) {
@@ -57,7 +58,7 @@
         ->values();
 @endphp
 
-<div class="pg-stacked-matrices space-y-4" wire:key="pg-stacked-editor-{{ $editorScope }}-{{ $columnsFingerprint }}-{{ \Illuminate\Support\Str::slug($populationUnitLabel) }}-{{ (int) $includeMonthlyTotal }}">
+<div class="pg-stacked-matrices space-y-4" wire:key="pg-stacked-editor-{{ $editorScope }}-{{ $columnsFingerprint }}-{{ \Illuminate\Support\Str::slug($populationUnitLabel) }}-{{ (int) $includeMonthlyTotal }}-{{ implode('.', $groupTotalHiddenRows) }}">
     @include('filament.business.plan-generators.partials.matrix-alignment-styles', ['columns' => $columns])
 
     <div class="flex flex-wrap items-center gap-2">
@@ -291,5 +292,8 @@
         'columns' => $columns,
         'rateRows' => $rateRows,
         'includeMonthlyTotal' => (bool) ($includeMonthlyTotal ?? false),
+        'groupTotalHiddenRows' => $groupTotalHiddenRows,
+        'editable' => true,
+        'matrixStatePath' => $matrixStatePath,
     ])
 </div>
