@@ -54,6 +54,7 @@ use App\Support\Telemedicine\TelemedicineCaseAttachmentRegistrar;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationService;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
+use App\Support\Telemedicine\TelemedicineConsultationReference;
 use App\Support\Telemedicine\TelemedicineConsultationSigningDoctor;
 use App\Support\Telemedicine\TelemedicineFollowUpReportDocument;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
@@ -950,6 +951,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
         }
 
         $data['telemedicine_doctor_id'] = $signingDoctorId;
+        $data['code_reference'] = TelemedicineConsultationReference::ensureUnique($data['code_reference'] ?? null);
 
         $casePatientId = (int) ($this->case?->telemedicine_patient_id ?? 0);
         $formPatientId = (int) ($data['telemedicine_patient_id'] ?? 0);
