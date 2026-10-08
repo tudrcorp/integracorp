@@ -8,6 +8,7 @@ use App\Models\State;
 use App\Models\Supplier;
 use App\Models\SupplierClasificacion;
 use App\Models\User;
+use App\Support\Filament\Operations\OutsourcingMedicalDepartmentFields;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -116,6 +117,7 @@ class SuppliersTable
                     })
                     ->searchable()
                     ->sortable(),
+                OutsourcingMedicalDepartmentFields::tableColumn(),
                 TextColumn::make('SupplierClasificacion.description')
                     ->label('Clasificación')
                     ->icon('heroicon-o-tag')
@@ -357,6 +359,7 @@ class SuppliersTable
                         return $indicators;
                     }),
 
+                OutsourcingMedicalDepartmentFields::tableFilter(),
                 SelectFilter::make('tipo_servicio')
                     ->label('Zona de cobertura')
                     ->options([

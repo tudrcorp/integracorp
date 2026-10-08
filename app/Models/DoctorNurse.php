@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Operations\OutsourcingMedicalDepartment;
 use Illuminate\Database\Eloquent\Model;
 
 class DoctorNurse extends Model
@@ -81,6 +82,8 @@ class DoctorNurse extends Model
         'equip_desc_adv_catheters_aspiration',
         'equip_adv_emergency_bag',
         'equip_desc_adv_emergency_bag',
+        'is_outsourcing_medical_department',
+        'outsourcing_monthly_fee_per_affiliate_usd',
     ];
 
     protected $casts = [
@@ -101,7 +104,16 @@ class DoctorNurse extends Model
         'equip_adv_basic_medicines' => 'boolean',
         'equip_adv_catheters_aspiration' => 'boolean',
         'equip_adv_emergency_bag' => 'boolean',
+        'is_outsourcing_medical_department' => 'boolean',
+        'outsourcing_monthly_fee_per_affiliate_usd' => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(static function (self $provider): void {
+            OutsourcingMedicalDepartment::normalize($provider);
+        });
+    }
 
     public function supplierClasificacion()
     {

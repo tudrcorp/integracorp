@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\DoctorNurses\Schemas;
 
 use App\Models\DoctorNurse;
+use App\Support\Filament\Operations\OutsourcingMedicalDepartmentFields;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingInfolist;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -301,6 +302,7 @@ class DoctorNurseInfolist
                                                     ->label('Tiempo de crédito')
                                                     ->icon(Heroicon::OutlinedCreditCard)
                                                     ->placeholder('—'),
+                                                ...OutsourcingMedicalDepartmentFields::infolistEntries(),
                                             ]),
                                     ])
                                     ->columnSpanFull(),

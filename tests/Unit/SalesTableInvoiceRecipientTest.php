@@ -17,7 +17,9 @@ it('la accion generar factura incluye opciones de titular, tomador y personaliza
         ->toContain("'titular' => 'A nombre del Titular'")
         ->toContain("'tomador' => 'A nombre del Tomador'")
         ->toContain("'custom' => 'Factura personalizada'")
-        ->toContain('resolveInvoiceBillingParty')
+        ->toContain('resolveInvoiceBillingParty');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Services/SaleInvoicePdfService.php'))
         ->toContain('InvoiceDocumentNumber::digitsOnly');
 
     $individualInvoice = file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/factura.blade.php');

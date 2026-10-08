@@ -9,6 +9,7 @@ use App\Filament\Operations\Resources\Suppliers\Tables\SuppliersTable;
 use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\OperationServiceOrder;
 use App\Models\Supplier;
+use App\Support\Filament\Operations\OutsourcingMedicalDepartmentFields;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingInfolist;
 use App\Support\Filament\Operations\SupplierIntegracorpManagementTab;
 use App\Support\Operations\SupplierInfrastructureCatalog;
@@ -317,6 +318,7 @@ class SupplierInfolist
                                                     ->label('Promedio de costo del proveedor')
                                                     ->icon(Heroicon::OutlinedChartBar)
                                                     ->placeholder('—'),
+                                                ...OutsourcingMedicalDepartmentFields::infolistEntries(),
                                             ]),
                                     ])
                                     ->columnSpanFull(),

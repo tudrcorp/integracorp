@@ -7,6 +7,7 @@ namespace App\Filament\Operations\Resources\DoctorNurses\Tables;
 use App\Http\Controllers\DoctorNurseExportCsvController;
 use App\Models\DoctorNurse;
 use App\Models\User;
+use App\Support\Filament\Operations\OutsourcingMedicalDepartmentFields;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -146,6 +147,7 @@ class DoctorNursesTable
                     ->sortable()
                     ->placeholder('—')
                     ->toggleable(),
+                OutsourcingMedicalDepartmentFields::tableColumn(),
                 TextColumn::make('horario')
                     ->label('Horario')
                     ->icon('heroicon-o-clock')
@@ -277,6 +279,7 @@ class DoctorNursesTable
                         ->orderBy('tipo_clinica')
                         ->pluck('tipo_clinica', 'tipo_clinica')
                         ->all()),
+                OutsourcingMedicalDepartmentFields::tableFilter(),
                 Filter::make('ubicacion')
                     ->label('Ubicación (texto)')
                     ->form([

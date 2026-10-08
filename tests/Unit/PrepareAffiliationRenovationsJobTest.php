@@ -18,7 +18,7 @@ it('define ventana de renovación de 30 días y actor del sistema', function ():
         ->toContain('PRE-APROBADA')
         ->toContain('Renovation::query()->updateOrCreate')
         ->toContain('is_negotiation_candidate')
-        ->toContain('calculateAffiliateAmountsForRenewal')
+        ->toContain('$feeProjection->forAffiliate(')
         ->toContain('resolveAffiliateAgeForRenewal')
         ->toContain('birth_date')
         ->toContain('\'age\' => $titularAge')
@@ -27,6 +27,9 @@ it('define ventana de renovación de 30 días y actor del sistema', function ():
         ->not->toContain('applyAmountsToAffiliate')
         ->not->toContain('$affiliation->save')
         ->not->toContain('recalculateAffiliationTotalsFromRenewalAffiliates');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/Renovations/RenewalFeeProjection.php'))
+        ->toContain('calculateAffiliateAmountsForRenewal');
 });
 
 it('programa la tarea diaria a las 6:00', function (): void {
