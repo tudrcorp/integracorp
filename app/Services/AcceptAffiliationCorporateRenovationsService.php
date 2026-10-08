@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Jobs\NotifySuperAdminsOfEarlyRenovationJob;
 use App\Jobs\PrepareAffiliationCorporateRenovations;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
@@ -11,9 +12,14 @@ use App\Models\AffiliationCorporateRenovationHistory;
 use App\Models\RenovationCorporate;
 use App\Support\AffiliationAffiliateFeeCalculator;
 use App\Support\AffiliationCorporates\CorporateAffiliateUpgradeManager;
+use App\Support\Renovations\EarlyRenovationAcceptance;
+use App\Support\Renovations\EarlyRenovationAuthorization;
+use App\Support\Renovations\EarlyRenovationNotificationPayload;
+use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -25,26 +31,38 @@ final class AcceptAffiliationCorporateRenovationsService
     ) {}
 
     /**
+     * Una renovación fuera del período de renovación solo se acepta si llega
+     * `$earlyAuthorization` (permiso + motivo, ver `EarlyRenovationAcceptance`).
+     * Esas aceptaciones quedan marcadas como anticipadas en el histórico, en la
+     * auditoría de seguridad, y se avisan a los SUPERADMIN.
+     *
      * @param  Collection<int, RenovationCorporate>|EloquentCollection<int, RenovationCorporate>  $renovations
      */
     public function accept(
         Collection|EloquentCollection $renovations,
         string $acceptedBy,
         ?ManualRenovationAcceptanceOptions $manualOptions = null,
+        ?EarlyRenovationAuthorization $earlyAuthorization = null,
     ): AcceptAffiliationCorporateRenovationsResult {
         $accepted = 0;
         $skipped = 0;
         $messages = [];
+        $earlyAccepted = [];
 
         $renovations->loadMissing(['affiliationCorporate.corporateAffiliates']);
 
         foreach ($renovations as $renovation) {
-            if ($renovation->status !== PrepareAffiliationCorporateRenovations::STATUS_RENOVATION_PERIOD) {
+            $isEarly = EarlyRenovationAcceptance::isEarly($renovation);
+
+            if ($isEarly && ($earlyAuthorization === null || $renovation->date_renewal === null)) {
                 $skipped++;
-                $messages[] = "Renovación {$renovation->code_affiliation}: solo se aceptan registros en período de renovación.";
+                $messages[] = EarlyRenovationAcceptance::blockedMessage($renovation);
 
                 continue;
             }
+
+            $early = $isEarly ? $earlyAuthorization : null;
+            $daysBeforeRenewal = EarlyRenovationAcceptance::daysUntilRenewal($renovation);
 
             $affiliation = $renovation->affiliationCorporate;
 
@@ -63,11 +81,33 @@ final class AcceptAffiliationCorporateRenovationsService
             }
 
             try {
-                DB::transaction(function () use ($renovation, $affiliation, $acceptedBy, $manualOptions): void {
-                    $this->acceptSingle($renovation, $affiliation, $acceptedBy, $manualOptions);
-                });
+                $history = DB::transaction(fn (): AffiliationCorporateRenovationHistory => $this->acceptSingle(
+                    $renovation,
+                    $affiliation,
+                    $acceptedBy,
+                    $manualOptions,
+                    $early,
+                    $daysBeforeRenewal,
+                ));
 
                 $accepted++;
+
+                if ($early !== null) {
+                    $earlyAccepted[] = EarlyRenovationNotificationPayload::corporateItem($history, $affiliation, $daysBeforeRenewal);
+
+                    SecurityAudit::log('AUDIT_RENOVATION_EARLY_ACCEPTED', 'renovations.corporate.early-acceptance', [
+                        'renovation_corporate_id' => $renovation->id,
+                        'affiliation_corporate_id' => $affiliation->id,
+                        'affiliation_code' => $renovation->code_affiliation,
+                        'history_id' => $history->id,
+                        'date_renewal' => $renovation->date_renewal?->toDateString(),
+                        'days_before_renewal' => $daysBeforeRenewal,
+                        'renewal_period_days' => EarlyRenovationAcceptance::RENEWAL_PERIOD_DAYS,
+                        'status_at_accept' => $renovation->status,
+                        'reason' => $early->reason,
+                        'manual_config' => $manualOptions !== null,
+                    ]);
+                }
             } catch (\Throwable $exception) {
                 $skipped++;
                 $messages[] = "Renovación {$renovation->code_affiliation}: {$exception->getMessage()}";
@@ -80,7 +120,13 @@ final class AcceptAffiliationCorporateRenovationsService
             }
         }
 
-        return new AcceptAffiliationCorporateRenovationsResult($accepted, $skipped, $messages);
+        if ($earlyAccepted !== [] && $earlyAuthorization !== null) {
+            NotifySuperAdminsOfEarlyRenovationJob::dispatch(
+                EarlyRenovationNotificationPayload::build('corporate', $earlyAccepted, $earlyAuthorization),
+            )->afterCommit();
+        }
+
+        return new AcceptAffiliationCorporateRenovationsResult($accepted, $skipped, $messages, count($earlyAccepted));
     }
 
     private function acceptSingle(
@@ -88,8 +134,16 @@ final class AcceptAffiliationCorporateRenovationsService
         AffiliationCorporate $affiliation,
         string $acceptedBy,
         ?ManualRenovationAcceptanceOptions $manualOptions,
-    ): void {
-        $acceptanceDate = Carbon::today()->startOfDay();
+        ?EarlyRenovationAuthorization $early = null,
+        ?int $daysBeforeRenewal = null,
+    ): AffiliationCorporateRenovationHistory {
+        /**
+         * En una renovación anticipada la tarifa se calcula con la edad que tendrá
+         * la población en la fecha de renovación, no hoy.
+         */
+        $acceptanceDate = $early !== null
+            ? $renovation->date_renewal->copy()->startOfDay()
+            : Carbon::today()->startOfDay();
         $previousEffectiveDate = (string) $affiliation->effective_date;
 
         $affiliates = $affiliation->corporateAffiliates()
@@ -112,8 +166,8 @@ final class AcceptAffiliationCorporateRenovationsService
 
         $firstAffiliate = $affiliates->first();
 
-        AffiliationCorporateRenovationHistory::query()->create(
-            $this->historyAttributesFromAppliedState(
+        $history = AffiliationCorporateRenovationHistory::query()->create([
+            ...$this->historyAttributesFromAppliedState(
                 $renovation,
                 $affiliation->refresh(),
                 $firstAffiliate,
@@ -122,7 +176,11 @@ final class AcceptAffiliationCorporateRenovationsService
                 $newEffectiveDate,
                 $manualOptions,
             ),
-        );
+            'accepted_by_user_id' => $early?->userId ?? Auth::id(),
+            'is_early_acceptance' => $early !== null,
+            'days_before_renewal_at_accept' => $daysBeforeRenewal,
+            'early_acceptance_reason' => $early?->reason,
+        ]);
 
         $effectiveDate = $this->calculator->parseEffectiveDate($newEffectiveDate)
             ?? $renovation->date_renewal->copy()->startOfDay();
@@ -134,6 +192,8 @@ final class AcceptAffiliationCorporateRenovationsService
         );
 
         $renovation->delete();
+
+        return $history;
     }
 
     /**

@@ -6,13 +6,13 @@ it('define servicio de aceptación corporativa con transacción historial y elim
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AcceptAffiliationCorporateRenovationsService.php');
 
     expect($source)
-        ->toContain('class AcceptAffiliationCorporateRenovationsService')
+        ->toMatch('/final\s+class\s+AcceptAffiliationCorporateRenovationsService\b/')
         ->toContain('DB::transaction')
         ->toContain('AffiliationCorporateRenovationHistory::query()->create')
         ->toContain('$renovation->delete()')
         ->toContain('calculateAmountsForPlanCoverageAndAge')
         ->toContain('effective_date')
-        ->toContain('STATUS_RENOVATION_PERIOD')
+        ->toContain('EarlyRenovationAcceptance::isEarly($renovation)')
         ->toContain('historyAttributesFromAppliedState')
         ->toContain('applyManualCommercialConfig')
         ->toContain('createPendingCollectionsForCorporateRenewal')

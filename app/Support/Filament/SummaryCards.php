@@ -26,14 +26,26 @@ final class SummaryCards
      * llevar `action`, una llamada Livewire del componente de la página (por
      * ejemplo aplicar un filtro): entonces es un botón, y `active` lo resalta.
      *
-     * @param  list<array{label: string, value: string, detail?: string|null, color: string, breakdown?: list<array{label: string, value: string, detail?: string|null, action?: string|null, active?: bool, title?: string|null}>}>  $cards
+     * La tarjeta entera también acepta `action` / `active` / `title` (sin
+     * `breakdown`): se vuelve un botón que, por ejemplo, filtra la tabla.
+     *
+     * @param  list<array{label: string, value: string, detail?: string|null, color: string, action?: string|null, active?: bool, title?: string|null, breakdown?: list<array{label: string, value: string, detail?: string|null, action?: string|null, active?: bool, title?: string|null}>}>  $cards
      */
     public static function render(array $cards): HtmlString
     {
         $html = '';
 
         foreach ($cards as $card) {
-            $html .= self::card($card['label'], $card['value'], $card['detail'] ?? null, $card['color'], $card['breakdown'] ?? []);
+            $html .= self::card(
+                $card['label'],
+                $card['value'],
+                $card['detail'] ?? null,
+                $card['color'],
+                $card['breakdown'] ?? [],
+                trim((string) ($card['action'] ?? '')),
+                (bool) ($card['active'] ?? false),
+                $card['title'] ?? null,
+            );
         }
 
         // Misma altura en la fila y contenido centrado: una tarjeta con desglose ya
@@ -110,20 +122,41 @@ final class SummaryCards
     /**
      * @param  list<array{label: string, value: string, detail?: string|null, action?: string|null, active?: bool, title?: string|null}>  $breakdown
      */
-    private static function card(string $label, string $value, ?string $detail, string $color, array $breakdown = []): string
-    {
+    private static function card(
+        string $label,
+        string $value,
+        ?string $detail,
+        string $color,
+        array $breakdown = [],
+        string $action = '',
+        bool $active = false,
+        ?string $title = null,
+    ): string {
         [$red, $green, $blue] = sscanf($color, '#%02x%02x%02x');
         $tint = static fn (float $alpha): string => 'rgba('.$red.','.$green.','.$blue.','.$alpha.')';
 
         $grow = $breakdown !== [] ? '2 1 320px' : '1 1 170px';
+        $isButton = $action !== '' && $breakdown === [];
 
-        return '<div style="flex:'.$grow.';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;text-align:center;'
-            .'padding:10px 14px;border-radius:14px;border:1px solid '.$tint(.3).';background:'.$tint(.08).';">'
-            .'<div style="font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:'.e($color).';">'.e($label).'</div>'
+        $style = 'flex:'.$grow.';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;text-align:center;'
+            .'padding:10px 14px;border-radius:14px;'
+            .'border:'.($active ? '2px' : '1px').' solid '.$tint($active ? .85 : .3).';background:'.$tint($active ? .2 : .08).';'
+            .($active ? 'box-shadow:0 0 0 3px '.$tint(.15).';' : '');
+
+        $content = '<div style="font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:'.e($color).';">'.e($label).'</div>'
             .'<div class="text-gray-900 dark:text-white" style="font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25;">'.e($value).'</div>'
             .($detail !== null && $detail !== '' ? '<div class="text-gray-600 dark:text-gray-300" style="font-size:.7rem;">'.e($detail).'</div>' : '')
-            .self::breakdown($breakdown, $tint)
-            .'</div>';
+            .self::breakdown($breakdown, $tint);
+
+        if ($isButton) {
+            return '<button type="button" wire:click="'.e($action).'" wire:loading.attr="disabled"'
+                .' aria-pressed="'.($active ? 'true' : 'false').'"'
+                .(filled($title) ? ' title="'.e($title).'"' : '')
+                .' class="tdg-summary-card-button" style="'.$style.'cursor:pointer;font:inherit;transition:background-color .15s,border-color .15s,box-shadow .15s;">'
+                .$content.'</button>';
+        }
+
+        return '<div style="'.$style.'">'.$content.'</div>';
     }
 
     /**

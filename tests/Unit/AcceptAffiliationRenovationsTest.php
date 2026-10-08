@@ -6,7 +6,7 @@ it('define servicio de aceptación con transacción historial y eliminación de 
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/AcceptAffiliationRenovationsService.php');
 
     expect($source)
-        ->toContain('class AcceptAffiliationRenovationsService')
+        ->toMatch('/final\s+class\s+AcceptAffiliationRenovationsService\b/')
         ->toContain('DB::transaction')
         ->toContain('AffiliationRenovationHistory::query()->create')
         ->toContain('$renovation->delete()')
@@ -14,7 +14,7 @@ it('define servicio de aceptación con transacción historial y eliminación de 
         ->toContain('calculateAffiliateAmountsForRenewal')
         ->toContain('recalculateAffiliationTotalsFromAffiliates')
         ->toContain('effective_date')
-        ->toContain('STATUS_RENOVATION_PERIOD')
+        ->toContain('EarlyRenovationAcceptance::isEarly($renovation)')
         ->toContain('historyAttributesFromAppliedState')
         ->toContain('applyManualCommercialConfig')
         ->toContain('createPendingCollectionsForRenewal')
