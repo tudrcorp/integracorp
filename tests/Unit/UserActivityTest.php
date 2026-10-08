@@ -570,3 +570,58 @@ it('la barra del día muestra la escala de horas alineada en la tabla y en el de
     $componente->call('selectUser', 501)
         ->assertSeeHtml('<span class="uam-hours big" aria-hidden="true">');
 });
+
+it('marca los minutos en Redis con la firma tipada de phpredis (setBit exige bool)', function (): void {
+    /** Mismas firmas que phpredis 6: con strict_types, un entero en `$value` lanza TypeError como en producción. */
+    $pipe = new class
+    {
+        /** @var list<array{0: string, 1: int, 2: bool}> */
+        public array $bits = [];
+
+        /** @var list<string> */
+        public array $members = [];
+
+        public function setbit(string $key, int $idx, bool $value): self
+        {
+            $this->bits[] = [$key, $idx, $value];
+
+            return $this;
+        }
+
+        public function expire(string $key, int $timeout, ?string $mode = null): self
+        {
+            return $this;
+        }
+
+        public function sadd(string $key, mixed $value, mixed ...$otherValues): self
+        {
+            $this->members[] = (string) $value;
+
+            return $this;
+        }
+    };
+
+    $connection = new class($pipe) extends Illuminate\Redis\Connections\Connection
+    {
+        public function __construct(public object $pipe) {}
+
+        public function pipeline(callable $callback): array
+        {
+            $callback($this->pipe);
+
+            return [];
+        }
+
+        public function createSubscription($channels, Closure $callback, $method = 'subscribe'): void {}
+    };
+
+    Illuminate\Support\Facades\Redis::shouldReceive('connection')->with('default')->andReturn($connection);
+
+    $repository = new RedisLivePresenceRepository('default', 300, 50, 86400, 500);
+    $repository->markActivityMinutes(501, '20261008', [600, 601, 1500, -1], 'a', 3600);
+
+    expect($pipe->bits)->toBe([
+        ['ua:20261008:501:a', 600, true],
+        ['ua:20261008:501:a', 601, true],
+    ])->and($pipe->members)->toBe(['501']);
+});
