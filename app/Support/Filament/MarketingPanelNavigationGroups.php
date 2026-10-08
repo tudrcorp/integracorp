@@ -25,6 +25,7 @@ final class MarketingPanelNavigationGroups
     public static function definitions(): array
     {
         return [
+            SharedNavigationGroups::user(),
             NavigationGroup::make()
                 ->label('AFILIACIONES')
                 ->icon('heroicon-o-user-group')

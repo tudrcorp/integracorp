@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 use App\Support\Filament\MarketingPanelNavigationGroups;
 
-it('grupos de navegacion de marketing inician colapsados', function (): void {
+it('grupos de navegacion de marketing inician colapsados, salvo DEL USUARIO que va primero y abierto', function (): void {
     $collapsedCount = collect(MarketingPanelNavigationGroups::definitions())
         ->filter(fn ($group) => $group->isCollapsed())
         ->count();
 
-    expect($collapsedCount)->toBe(count(MarketingPanelNavigationGroups::labels()))
+    expect($collapsedCount)->toBe(count(MarketingPanelNavigationGroups::labels()) - 1)
+        ->and(MarketingPanelNavigationGroups::labels()[0])->toBe(App\Support\Filament\SharedNavigationGroups::USER)
+        ->and(MarketingPanelNavigationGroups::definitions()[0]->isCollapsed())->toBeFalse()
         ->and(MarketingPanelNavigationGroups::labels())->toContain('AFILIACIONES', 'MARKETING', 'ZONA DE DESCARGA');
 });
 

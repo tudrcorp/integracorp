@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 use App\Support\Filament\BusinessPanelNavigationGroups;
 
-it('grupos de navegacion de negocios inician colapsados', function (): void {
+it('grupos de navegacion de negocios inician colapsados, salvo DEL USUARIO que va primero y abierto', function (): void {
     $collapsedCount = collect(BusinessPanelNavigationGroups::definitions())
         ->filter(fn ($group) => $group->isCollapsed())
         ->count();
 
-    expect($collapsedCount)->toBe(count(BusinessPanelNavigationGroups::labels()))
+    expect($collapsedCount)->toBe(count(BusinessPanelNavigationGroups::labels()) - 1)
+        ->and(BusinessPanelNavigationGroups::labels()[0])->toBe(App\Support\Filament\SharedNavigationGroups::USER)
+        ->and(BusinessPanelNavigationGroups::definitions()[0]->isCollapsed())->toBeFalse()
         ->and(BusinessPanelNavigationGroups::labels())->toContain('ESTRUCTURA COMERCIAL', 'COTIZACIONES', 'CONFIGURACIÓN');
 });
 

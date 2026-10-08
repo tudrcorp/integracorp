@@ -6,6 +6,7 @@ namespace App\Filament\Business\Pages;
 
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\User;
+use App\Support\Filament\SharedNavigationGroups;
 use App\Support\UserActivity\UserActivityClock;
 use App\Support\UserActivity\UserActivityLiveBoard;
 use App\Support\UserActivity\UserActivityProfile;
@@ -21,6 +22,7 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\HtmlString;
 use Livewire\Attributes\Url;
 use Throwable;
+use UnitEnum;
 
 /**
  * Actividad de usuarios: cuánto y cómo usa cada persona el sistema.
@@ -42,6 +44,8 @@ class UserActivityMonitor extends Page
     protected static ?string $title = 'Actividad de usuarios';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPresentationChartLine;
+
+    protected static string|UnitEnum|null $navigationGroup = SharedNavigationGroups::MONITORING;
 
     protected static ?int $navigationSort = 98;
 
