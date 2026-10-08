@@ -310,7 +310,7 @@
 
                         </p>
                     </td>
-                    <td style="font-weight: bold; text-align: right;">{{ number_format($data_factura['total_amount'], 2, ',', '.') }}Bs.</td>
+                    <td style="font-weight: bold; text-align: right;">{{ \App\Support\Sales\InvoiceVesLineAmounts::format($data_factura['total_amount']) }}</td>
 
 
                 </tr>
@@ -334,7 +334,7 @@
 
     <div style="position: absolute; top: 617px; left: 503px; padding: 10px; width: 100%;">
         <p class="sin-margen" style="font-size: 14px; text-transform: uppercase;">
-            <span style="font-weight: bold; ">Monto Total: {{ number_format($data_factura['total_amount'], 2, ',', '.') }}Bs.</span>
+            <span style="font-weight: bold; ">Monto Total: <span style="text-transform: none;">{{ \App\Support\Sales\InvoiceVesLineAmounts::format($data_factura['total_amount']) }}</span></span>
         </p>
     </div>
 

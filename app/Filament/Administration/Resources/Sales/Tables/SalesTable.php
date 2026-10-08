@@ -34,6 +34,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -353,7 +354,7 @@ class SalesTable
                     self::printInvoiceAction(),
                     self::regenerateInvoiceAction(),
                 ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
-            ])
+            ], position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([
                 BulkActionGroup::make([
                     self::deleteBulkSalesAction(),

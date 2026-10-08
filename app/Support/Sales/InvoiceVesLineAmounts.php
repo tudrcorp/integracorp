@@ -52,6 +52,6 @@ final class InvoiceVesLineAmounts
             return '—';
         }
 
-        return number_format((float) $amount, 2, ',', '.').' Bs.';
+        return 'Bs. '.number_format((float) $amount, 2, ',', '.');
     }
 }
