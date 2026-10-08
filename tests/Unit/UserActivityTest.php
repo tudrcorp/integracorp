@@ -548,3 +548,25 @@ it('el script del navegador mide la interacción sin leer lo que se escribe', fu
         ->not->toContain('event.key')
         ->not->toContain('.value');
 });
+
+it('la barra del día muestra la escala de horas alineada en la tabla y en el detalle', function (): void {
+    Filament::setCurrentPanel('business');
+    activityStore();
+    actingAsActivityUser(['SUPERADMIN']);
+
+    UserActivityTracker::recordPing(501, 'tabA', true, 0, 'heartbeat', ['page' => 'Cotizaciones', 'panel' => 'Negocios'], activityNow());
+
+    $componente = Livewire::test(UserActivityMonitor::class)
+        ->assertOk()
+        ->assertSeeHtml('<span class="uam-hours" aria-hidden="true">')
+        ->assertSeeHtml('<span class="first" style="left: 0%;">12a</span>')
+        ->assertSeeHtml('<span class="" style="left: 25%;">6a</span>')
+        ->assertSeeHtml('<span class="" style="left: 50%;">12p</span>')
+        ->assertSeeHtml('<span class="" style="left: 75%;">6p</span>')
+        ->assertSeeHtml('<span class="last" style="left: 100%;">12a</span>');
+
+    expect(substr_count($componente->html(), 'class="uam-hours"'))->toBe(1);
+
+    $componente->call('selectUser', 501)
+        ->assertSeeHtml('<span class="uam-hours big" aria-hidden="true">');
+});

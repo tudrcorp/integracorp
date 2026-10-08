@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\Operations\OperationServiceOrderValidity;
+use App\Support\Operations\OutsourcingMedicalDepartment;
 use Illuminate\Database\Eloquent\Model;
 
 class Supplier extends Model
@@ -158,6 +159,8 @@ class Supplier extends Model
         'gestion_integracorp',
         'unidades_negocio_especificas',
         'integracorp_alias',
+        'is_outsourcing_medical_department',
+        'outsourcing_monthly_fee_per_affiliate_usd',
     ];
 
     protected $casts = [
@@ -215,7 +218,16 @@ class Supplier extends Model
         'quimioterapia' => 'boolean',
         'gestion_integracorp' => 'boolean',
         'unidades_negocio_especificas' => 'array',
+        'is_outsourcing_medical_department' => 'boolean',
+        'outsourcing_monthly_fee_per_affiliate_usd' => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(static function (self $provider): void {
+            OutsourcingMedicalDepartment::normalize($provider);
+        });
+    }
 
     public function city()
     {

@@ -9,6 +9,7 @@ use App\Models\Affiliation;
 use App\Models\Renovation;
 use App\Support\AffiliationAffiliateFeeCalculator;
 use App\Support\Concerns\ReportsScheduledExecution;
+use App\Support\Renovations\RenewalFeeProjection;
 use App\Support\ScheduledTaskRunReport;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -47,9 +48,11 @@ class PrepareAffiliationRenovations implements ShouldQueue
 
     public function handle(AffiliationAffiliateFeeCalculator $calculator): void
     {
+        $feeProjection = new RenewalFeeProjection($calculator);
+
         $this->runWithScheduledReport(
             'Renovaciones individuales',
-            function () use ($calculator): void {
+            function () use ($calculator, $feeProjection): void {
                 $today = ($this->runDate ?? Carbon::today())->copy()->startOfDay();
                 $processed = 0;
                 $upserted = 0;
@@ -69,7 +72,7 @@ class PrepareAffiliationRenovations implements ShouldQueue
                 Affiliation::query()
                     ->where('status', self::AFFILIATION_STATUS_ACTIVE)
                     ->with(['affiliates' => fn ($query) => $query->whereIn('status', self::AFFILIATE_STATUSES_FOR_RENEWAL)])
-                    ->chunkById(100, function ($affiliations) use ($calculator, $today, &$processed, &$upserted, &$inRenewalPeriod, &$affiliatesPriced, &$skippedNoEffectiveDate, &$missingCoverageWarnings, &$missingFeeWarnings): void {
+                    ->chunkById(100, function ($affiliations) use ($calculator, $feeProjection, $today, &$processed, &$upserted, &$inRenewalPeriod, &$affiliatesPriced, &$skippedNoEffectiveDate, &$missingCoverageWarnings, &$missingFeeWarnings): void {
                         foreach ($affiliations as $affiliation) {
                             $processed++;
 
@@ -104,8 +107,8 @@ class PrepareAffiliationRenovations implements ShouldQueue
                                 $inRenewalPeriod++;
                             }
 
-                            $canRecalculateFees = $isInRenewalPeriod
-                                && ($calculator->isInitialPlanWithoutCoverage($affiliation) || filled($affiliation->coverage_id));
+                            $canRecalculateFees = $feeProjection->canRecalculateFees($affiliation);
+                            $feeReferenceDate = RenewalFeeProjection::referenceDate($isInRenewalPeriod, $today, $renewalDate);
 
                             if ($isInRenewalPeriod && ! $canRecalculateFees) {
                                 $missingCoverageWarnings++;
@@ -140,47 +143,31 @@ class PrepareAffiliationRenovations implements ShouldQueue
                                 ? $calculator->parseBirthDate($titularAffiliate->birth_date)?->toDateString()
                                 : null;
                             $titularAge = $titularAffiliate !== null
-                                ? $calculator->resolveAffiliateAgeForRenewal($titularAffiliate, $today)
+                                ? $calculator->resolveAffiliateAgeForRenewal($titularAffiliate, $feeReferenceDate)
                                 : null;
 
                             foreach ($affiliation->affiliates as $affiliate) {
-                                if ($canRecalculateFees) {
-                                    $amounts = $calculator->calculateAffiliateAmountsForRenewal(
-                                        $affiliationForFees,
-                                        $affiliate,
-                                        $today,
-                                    );
+                                $projected = $feeProjection->forAffiliate($affiliationForFees, $affiliate, $feeReferenceDate);
+                                $subtotalAnual += $projected['annual_fee'];
 
-                                    if ($amounts !== null) {
-                                        $affiliatesPriced++;
-                                        $subtotalAnual += $amounts['annual_fee'];
+                                if ($projected['priced']) {
+                                    $affiliatesPriced++;
+                                } elseif ($canRecalculateFees && $isInRenewalPeriod) {
+                                    $missingFeeWarnings++;
+                                    ScheduledTaskRunReport::recordFailure('Tarifa no encontrada para afiliado');
+                                    Log::warning('PrepareAffiliationRenovations: tarifa no encontrada para afiliado (solo renovations)', [
+                                        'affiliation_id' => $affiliation->id,
+                                        'affiliate_id' => $affiliate->id,
+                                        'age' => $calculator->resolveAffiliateAgeForRenewal($affiliate, $feeReferenceDate),
+                                    ]);
+                                }
 
-                                        if ($affiliate->relationship === 'TITULAR') {
-                                            $titularAnnualFee = $amounts['annual_fee'];
-                                            $titularAgeRangeId = $amounts['age_range_id'];
-                                            $titularAge = $calculator->resolveAffiliateAgeForRenewal($affiliate, $today);
-                                            $titularBirthDate = $calculator->parseBirthDate($affiliate->birth_date)?->toDateString()
-                                                ?? $titularBirthDate;
-                                        }
-                                    } else {
-                                        $missingFeeWarnings++;
-                                        ScheduledTaskRunReport::recordFailure('Tarifa no encontrada para afiliado');
-                                        Log::warning('PrepareAffiliationRenovations: tarifa no encontrada para afiliado (solo renovations)', [
-                                            'affiliation_id' => $affiliation->id,
-                                            'affiliate_id' => $affiliate->id,
-                                            'age' => $calculator->resolveAffiliateAgeForRenewal($affiliate, $today),
-                                        ]);
-                                    }
-                                } else {
-                                    $subtotalAnual += (float) $affiliate->fee;
-
-                                    if ($affiliate->relationship === 'TITULAR') {
-                                        $titularAnnualFee = (float) $affiliate->fee;
-                                        $titularAgeRangeId = $affiliate->age_range_id;
-                                        $titularAge = $calculator->resolveAffiliateAgeForRenewal($affiliate, $today) ?? $titularAge;
-                                        $titularBirthDate = $calculator->parseBirthDate($affiliate->birth_date)?->toDateString()
-                                            ?? $titularBirthDate;
-                                    }
+                                if ($affiliate->relationship === 'TITULAR') {
+                                    $titularAnnualFee = $projected['annual_fee'];
+                                    $titularAgeRangeId = $projected['age_range_id'];
+                                    $titularAge = $calculator->resolveAffiliateAgeForRenewal($affiliate, $feeReferenceDate) ?? $titularAge;
+                                    $titularBirthDate = $calculator->parseBirthDate($affiliate->birth_date)?->toDateString()
+                                        ?? $titularBirthDate;
                                 }
 
                                 $affiliateCount++;

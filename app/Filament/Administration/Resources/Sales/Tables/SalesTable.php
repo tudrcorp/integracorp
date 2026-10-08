@@ -9,16 +9,15 @@ use App\Http\Controllers\SaleController;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\Sale;
+use App\Services\SaleInvoicePdfService;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use App\Support\AffiliationWhiteCompany;
-use App\Support\Filament\Administration\InvoiceDocumentNumber;
 use App\Support\Filament\Administration\SaleReciboPagoEmailRecipients;
 use App\Support\Filament\Administration\SaleReciboPagoTestDeliveryForm;
 use App\Support\Filament\Administration\SaleReciboPagoWhatsAppRecipients;
 use App\Support\Sales\SaleDeletion;
 use App\Support\SecurityAudit;
 use App\Support\WhiteCompanies\WhiteCompanySaleAmountLegend;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -26,6 +25,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -44,6 +44,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
 use InvalidArgumentException;
+use RuntimeException;
 use Throwable;
 
 class SalesTable
@@ -350,6 +351,7 @@ class SalesTable
                     self::downloadPdfAction(),
                     self::regeneratePdfAction(),
                     self::printInvoiceAction(),
+                    self::regenerateInvoiceAction(),
                 ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
             ])
             ->toolbarActions([
@@ -955,65 +957,15 @@ class SalesTable
                         return response()->download(public_path('storage/facturas/FACT-'.$record->invoice_generated.'.pdf'));
                     }
 
-                    $sale = Sale::query()->with(['plan', 'coverage'])->find($record->id);
-                    $afiliacion = Affiliation::query()->where('code', $sale?->affiliation_code)->with('paid_memberships')->first();
-
-                    if (isset($data['tasa_bcv'])) {
-                        $calculo = $data['tasa_bcv'] * ($sale?->pay_amount_usd ?? 0);
-                    } else {
-                        $calculo = $sale?->pay_amount_ves ?? 0;
-                    }
-
-                    if ($record->type === 'AFILIACION CORPORATIVA') {
-                        $afiliacion = AffiliationCorporate::query()
-                            ->where('code', $sale->affiliation_code)
-                            ->with(['paid_membership_corporates', 'affiliationCorporatePlans'])
-                            ->first();
-                    }
-
-                    $billingParty = self::resolveInvoiceBillingParty(
-                        (string) ($data['invoice_in_name_of'] ?? 'titular'),
-                        $sale ?? $record,
-                        $afiliacion,
-                        $data,
-                    );
-
-                    $data_factura = [
-                        'invoice_number' => $data['invoice_number'],
-                        'emission_date' => $data['date'],
-                        'payment_method' => $sale?->payment_method,
-                        'reference' => $record->reference_payment,
-                        ...$billingParty,
-                        'total_amount' => $calculo,
-                        'plan' => $record->type === 'AFILIACION CORPORATIVA'
-                            ? ($afiliacion?->affiliationCorporatePlans?->toArray() ?? [])
-                            : $sale?->plan?->description,
-                        'coverage' => $sale?->coverage->price ?? null,
-                        'frequency' => $sale?->payment_frequency,
-                    ];
-
-                    ini_set('memory_limit', '2048M');
-
-                    $name_pdf = 'FACT-'.$data['invoice_number'].'.pdf';
-
-                    if ($record->type === 'AFILIACION CORPORATIVA') {
-                        $pdf = Pdf::loadView('documents.factura-corporativa', compact('data_factura'));
-                    } else {
-                        $pdf = Pdf::loadView('documents.factura', compact('data_factura'));
-                    }
-
-                    $pdf->save(public_path('storage/facturas/'.$name_pdf));
-
-                    $record->invoice_generated = $data['invoice_number'];
-                    $record->save();
+                    $path = app(SaleInvoicePdfService::class)->generate($record, $data);
 
                     self::auditSaleAction('AUDIT_ADMIN_SALES_INVOICE_GENERATED', 'administration.sales.generate-invoice', $record, [
                         'generated_invoice_number' => $data['invoice_number'],
-                        'file_name' => $name_pdf,
+                        'file_name' => basename($path),
                         'invoice_in_name_of' => $data['invoice_in_name_of'] ?? null,
                     ]);
 
-                    return response()->download(public_path('storage/facturas/'.$name_pdf));
+                    return response()->download($path);
                 } catch (Throwable $th) {
                     self::auditSaleAction('AUDIT_ADMIN_SALES_INVOICE_GENERATION_FAILED', 'administration.sales.generate-invoice', $record, [
                         'error_message' => $th->getMessage(),
@@ -1028,6 +980,148 @@ class SalesTable
                         ->body($th->getMessage())
                         ->icon('heroicon-s-x-circle')
                         ->iconColor('danger')
+                        ->danger()
+                        ->send();
+
+                    return null;
+                }
+            });
+    }
+
+    public static function regenerateInvoiceAction(): Action
+    {
+        return Action::make('regenerate_invoice')
+            ->label('Regenerar Factura')
+            ->icon('heroicon-o-arrow-path')
+            ->color('warning')
+            ->visible(fn (Sale $record): bool => filled($record->invoice_generated))
+            ->modalHeading(fn (Sale $record): string => 'Regenerar factura N° '.$record->invoice_generated)
+            ->modalDescription('Se vuelve a generar el PDF con los montos en bolívares. El número y la fecha de emisión no cambian, y el PDF anterior se conserva como respaldo en el servidor.')
+            ->modalIcon('heroicon-o-arrow-path')
+            ->modalWidth(Width::TwoExtraLarge)
+            ->modalSubmitActionLabel('Regenerar y descargar')
+            ->fillForm(function (Sale $record): array {
+                $previous = app(SaleInvoicePdfService::class)->previousInvoiceInput($record);
+                $party = $previous['billing_party'] ?? [];
+
+                return [
+                    'date' => $previous['date'],
+                    'date_known' => $previous['date'] !== null,
+                    'date_source' => $previous['source'],
+                    'tasa_bcv' => $previous['tasa_bcv'],
+                    'invoice_in_name_of' => $previous['invoice_in_name_of'] ?? 'titular',
+                    'custom_full_name' => $party['full_name_ti'] ?? null,
+                    'custom_ci_rif' => $party['ci_rif_ti'] ?? null,
+                    'custom_address' => $party['address_ti'] ?? null,
+                    'custom_phone' => $party['phone_ti'] ?? null,
+                    'custom_email' => $party['email_ti'] ?? null,
+                ];
+            })
+            ->form(fn (Sale $record): array => [
+                Section::make('Factura emitida')
+                    ->schema([
+                        Hidden::make('date_known'),
+                        Hidden::make('date_source'),
+                        DatePicker::make('date')
+                            ->label('Fecha de emisión original')
+                            ->format('d/m/Y')
+                            ->displayFormat('d/m/Y')
+                            ->native(false)
+                            ->disabled(fn (Get $get): bool => (bool) $get('date_known'))
+                            ->dehydrated(fn (Get $get): bool => ! $get('date_known'))
+                            ->required(fn (Get $get): bool => ! $get('date_known'))
+                            ->helperText(fn (Get $get): string => match ($get('date_source')) {
+                                'snapshot' => 'Fecha con la que se emitió la factura. No se puede cambiar.',
+                                'audit' => 'Fecha tomada del registro de auditoría de la emisión. No se puede cambiar.',
+                                default => 'No hay registro de la fecha de emisión: indíquela tal como aparece en la factura original.',
+                            }),
+                        TextInput::make('tasa_bcv')
+                            ->label('Tasa BCV usada al facturar')
+                            ->numeric()
+                            ->minValue(0.0001)
+                            ->required()
+                            ->suffix('Bs/US$')
+                            ->helperText('La venta tiene un monto cobrado en dólares: el total en bolívares es esta tasa por ese monto.')
+                            ->visible((float) ($record->pay_amount_usd ?? 0) > 0),
+                    ])
+                    ->columns(2),
+                Section::make('Facturar a nombre de')
+                    ->schema([
+                        Radio::make('invoice_in_name_of')
+                            ->label('A nombre de quién se emitió la factura')
+                            ->options([
+                                'titular' => 'A nombre del Titular',
+                                'tomador' => 'A nombre del Tomador',
+                                'custom' => 'Factura personalizada',
+                            ])
+                            ->live()
+                            ->required()
+                            ->columnSpanFull(),
+                        TextInput::make('custom_full_name')
+                            ->label('Nombre / Razón social')
+                            ->required(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->visible(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom'),
+                        TextInput::make('custom_ci_rif')
+                            ->label('CI / RIF')
+                            ->required(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->visible(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom'),
+                        TextInput::make('custom_address')
+                            ->label('Dirección')
+                            ->required(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->visible(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->columnSpanFull(),
+                        TextInput::make('custom_phone')
+                            ->label('Teléfono')
+                            ->required(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->visible(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom'),
+                        TextInput::make('custom_email')
+                            ->label('Correo')
+                            ->email()
+                            ->required(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom')
+                            ->visible(fn (Get $get): bool => $get('invoice_in_name_of') === 'custom'),
+                    ])
+                    ->columns(2),
+            ])
+            ->action(function (Sale $record, array $data) {
+                self::auditSaleAction('AUDIT_ADMIN_SALES_INVOICE_REGENERATE_ATTEMPTED', 'administration.sales.regenerate-invoice', $record, [
+                    'regenerated_invoice_number' => $record->invoice_generated,
+                    'invoice_in_name_of' => $data['invoice_in_name_of'] ?? null,
+                ]);
+
+                try {
+                    $result = app(SaleInvoicePdfService::class)->regenerate($record, $data);
+
+                    self::auditSaleAction('AUDIT_ADMIN_SALES_INVOICE_REGENERATED', 'administration.sales.regenerate-invoice', $record, [
+                        'regenerated_invoice_number' => $record->invoice_generated,
+                        'invoice_date' => $record->invoice_snapshot['date'] ?? null,
+                        'total_ves' => $record->invoice_snapshot['total_ves'] ?? null,
+                        'file_name' => basename($result['path']),
+                        'replaced_file_name' => $result['replaced_path'] !== null ? basename($result['replaced_path']) : null,
+                    ]);
+
+                    Notification::make()
+                        ->title('Factura regenerada')
+                        ->body('La factura N° '.$record->invoice_generated.' se regeneró con los montos en bolívares. Se está descargando.')
+                        ->success()
+                        ->send();
+
+                    return response()->download($result['path']);
+                } catch (Throwable $th) {
+                    self::auditSaleAction('AUDIT_ADMIN_SALES_INVOICE_REGENERATE_FAILED', 'administration.sales.regenerate-invoice', $record, [
+                        'error_message' => $th->getMessage(),
+                        'error_class' => $th::class,
+                        'error_file' => $th->getFile(),
+                        'error_line' => $th->getLine(),
+                    ]);
+
+                    Log::error('SalesTable: no se pudo regenerar la factura', [
+                        'sale_id' => $record->id,
+                        'message' => $th->getMessage(),
+                    ]);
+
+                    Notification::make()
+                        ->title('No se pudo regenerar la factura')
+                        ->body($th instanceof RuntimeException ? $th->getMessage() : 'Ocurrió un error al generar el PDF. La factura anterior se mantuvo sin cambios.')
                         ->danger()
                         ->send();
 
@@ -1051,47 +1145,7 @@ class SalesTable
         Affiliation|AffiliationCorporate|null $affiliation,
         array $data = [],
     ): array {
-        $party = match (true) {
-            $inNameOf === 'custom' => [
-                'full_name_ti' => $data['custom_full_name'] ?? null,
-                'ci_rif_ti' => $data['custom_ci_rif'] ?? null,
-                'address_ti' => $data['custom_address'] ?? null,
-                'phone_ti' => $data['custom_phone'] ?? null,
-                'email_ti' => $data['custom_email'] ?? null,
-            ],
-            $affiliation instanceof AffiliationCorporate && $inNameOf === 'tomador' => [
-                'full_name_ti' => $affiliation->full_name_contact,
-                'ci_rif_ti' => $affiliation->nro_identificacion_contact,
-                'address_ti' => $affiliation->address,
-                'phone_ti' => $affiliation->phone_contact,
-                'email_ti' => $affiliation->email_contact,
-            ],
-            $affiliation instanceof AffiliationCorporate => [
-                'full_name_ti' => $affiliation->name_corporate,
-                'ci_rif_ti' => $affiliation->rif,
-                'address_ti' => $affiliation->address,
-                'phone_ti' => $affiliation->phone,
-                'email_ti' => $affiliation->email,
-            ],
-            $inNameOf === 'tomador' => [
-                'full_name_ti' => $affiliation?->full_name_payer,
-                'ci_rif_ti' => $affiliation?->nro_identificacion_payer,
-                'address_ti' => $affiliation?->adress_ti,
-                'phone_ti' => $affiliation?->phone_payer,
-                'email_ti' => $affiliation?->email_payer,
-            ],
-            default => [
-                'full_name_ti' => $sale->affiliate_full_name ?? $affiliation?->full_name_ti,
-                'ci_rif_ti' => $sale->affiliate_ci_rif ?? $affiliation?->nro_identificacion_ti,
-                'address_ti' => $affiliation?->adress_ti,
-                'phone_ti' => $affiliation?->phone_ti,
-                'email_ti' => $affiliation?->email_ti,
-            ],
-        };
-
-        $party['ci_rif_ti'] = InvoiceDocumentNumber::digitsOnly($party['ci_rif_ti'] ?? null);
-
-        return $party;
+        return SaleInvoicePdfService::resolveBillingParty($inNameOf, $sale, $affiliation, $data);
     }
 
     private static function deleteBulkSalesAction(): DeleteBulkAction

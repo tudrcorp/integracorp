@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Support\AffiliationCorporates\CorporatePaymentFrequency;
+use Carbon\CarbonInterface;
 
 /**
  * Monto por período de una fila de `afilliation_corporate_plans` en los PDF
@@ -55,9 +56,20 @@ final class CorporateDocumentPlanAmounts
      */
     public static function periodEndFromToday(array $row, ?string $fallbackFrequency = null): string
     {
+        return self::periodEndFrom(now(), $row, $fallbackFrequency);
+    }
+
+    /**
+     * Fecha «hasta» del período contada desde `$from`: una factura regenerada
+     * conserva la vigencia con la que se emitió.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public static function periodEndFrom(CarbonInterface $from, array $row, ?string $fallbackFrequency = null): string
+    {
         $months = CorporatePaymentFrequency::monthsPerInstallment(self::frequencyFor($row, $fallbackFrequency));
 
-        return now()->addMonthsNoOverflow($months)->format('d/m/Y');
+        return $from->copy()->addMonthsNoOverflow($months)->format('d/m/Y');
     }
 
     /**

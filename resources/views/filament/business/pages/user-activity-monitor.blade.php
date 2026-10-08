@@ -97,7 +97,11 @@
         .uam-where { font-size: 12px; color: var(--uam-muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .uam-dayline { width: 100%; min-width: 220px; height: 12px; border-radius: 6px; background: var(--uam-track); display: block; overflow: hidden; }
         .uam-dayline.big { height: 26px; border-radius: 8px; }
-        .uam-ticks { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--uam-muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+        .uam-hours { position: relative; display: block; min-width: 220px; height: 13px; margin-top: 6px; font-size: 10px; font-weight: 600; line-height: 13px; letter-spacing: 0; text-transform: none; color: var(--uam-muted); font-variant-numeric: tabular-nums; }
+        .uam-hours.big { height: 14px; margin-top: 4px; font-size: 10.5px; }
+        .uam-hours span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+        .uam-hours span.first { transform: none; }
+        .uam-hours span.last { transform: translateX(-100%); }
         .uam-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--uam-muted); }
         .uam-legend span { display: inline-flex; align-items: center; gap: 6px; }
         .uam-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
@@ -143,12 +147,29 @@
             if ($showNow) {
                 $rects .= '<rect x="'.$nowMinute.'" y="0" width="3" height="10" fill="#0ea5e9"><title>Ahora</title></rect>';
             }
-            /** Guías de las 6, 12 y 18 h. */
-            foreach ([360, 720, 1080] as $guide) {
-                $rects .= '<rect x="'.$guide.'" y="0" width="1.5" height="10" fill="rgba(100,116,139,.35)"></rect>';
+            /** Guías cada 3 h, más marcadas a las 6, 12 y 18 h: coinciden con la escala de horas. */
+            foreach ([180, 360, 540, 720, 900, 1080, 1260] as $guide) {
+                $rects .= '<rect x="'.$guide.'" y="0" width="1.5" height="10" fill="'.($guide % 360 === 0 ? 'rgba(100,116,139,.35)' : 'rgba(100,116,139,.18)').'"></rect>';
             }
 
             return '<svg class="uam-dayline'.($big ? ' big' : '').'" viewBox="0 0 1440 10" preserveAspectRatio="none" role="img" aria-label="Actividad del día">'.$rects.'</svg>';
+        };
+
+        /** Escala de horas alineada con la barra del día: cada etiqueta cae en su hora exacta. */
+        $hourScale = function (bool $big = false): string {
+            $labels = '';
+            foreach ([0, 3, 6, 9, 12, 15, 18, 21, 24] as $hour) {
+                $label = match (true) {
+                    $hour === 0 || $hour === 24 => '12a',
+                    $hour < 12 => $hour.'a',
+                    $hour === 12 => '12p',
+                    default => ($hour - 12).'p',
+                };
+                $class = $hour === 0 ? 'first' : ($hour === 24 ? 'last' : '');
+                $labels .= '<span class="'.$class.'" style="left: '.round($hour / 24 * 100, 4).'%;">'.$label.'</span>';
+            }
+
+            return '<span class="uam-hours'.($big ? ' big' : '').'" aria-hidden="true">'.$labels.'</span>';
         };
     @endphp
 
@@ -244,7 +265,7 @@
                                     <th>Dónde está</th>
                                     <th class="num">Activo hoy</th>
                                     <th class="num">Uso real</th>
-                                    <th style="min-width: 260px;">Su día (0 h – 24 h)</th>
+                                    <th style="min-width: 260px;">Su día (0 h – 24 h){!! $hourScale() !!}</th>
                                     <th>Conexión</th>
                                 </tr>
                             </thead>
@@ -443,7 +464,7 @@
                         <div class="uam-sub">Sin actividad registrada este día.</div>
                     @else
                         {!! $dayline($day['segments'], true, $day['is_today']) !!}
-                        <div class="uam-ticks">@foreach ([0, 3, 6, 9, 12, 15, 18, 21, 24] as $hour)<span>{{ $hour === 0 || $hour === 24 ? '12a' : ($hour < 12 ? $hour.'a' : ($hour === 12 ? '12p' : ($hour - 12).'p')) }}</span>@endforeach</div>
+                        {!! $hourScale(true) !!}
                         <div class="uam-legend" style="margin-top: 8px;">
                             @foreach ([State::Active, State::Idle, State::Background] as $state)
                                 <span><i style="background: {{ $state->color() }};"></i>{{ $state->label() }}</span>

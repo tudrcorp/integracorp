@@ -11,6 +11,7 @@ use App\Models\SupplierEstatusSistema;
 use App\Models\SupplierStatusConvenio;
 use App\Models\SupplierTipoClinica;
 use App\Models\SupplierTipoServicio;
+use App\Support\Filament\Operations\OutsourcingMedicalDepartmentFields;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingForm;
 use App\Support\Filament\Operations\SupplierIntegracorpManagementForm;
 use App\Support\Operations\SupplierInfrastructureCatalog;
@@ -337,6 +338,7 @@ class SupplierForm
                                                     ->afterStateUpdatedJs(<<<'JS'
                                                         $set('otros_servicios', $state.toUpperCase());
                                                     JS),
+                                                ...OutsourcingMedicalDepartmentFields::formFields(),
                                             ]),
                                     ])
                                     ->collapsible(),
