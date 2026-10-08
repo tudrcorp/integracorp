@@ -34,6 +34,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const EDIT_CORPORATE_AFFILIATE_PERSONAL_DATA = 'editar-afiliados-corporativos';
 
+    public const ACCEPT_EARLY_RENOVATION = 'aceptar-renovacion-anticipada';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -119,6 +121,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Editar datos personales de afiliados corporativos',
                 'group' => 'AFILIADOS',
                 'modules' => ['OPERACIONES'],
+            ],
+            self::ACCEPT_EARLY_RENOVATION => [
+                'name' => 'Renovar antes del período de renovación (individual y corporativa)',
+                'group' => 'AFILIACIONES',
+                'modules' => [self::OWNER_MODULE, 'ADMINISTRACION'],
             ],
         ];
     }

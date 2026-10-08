@@ -36,6 +36,35 @@ class RenovationCorporateHistoryInfolist
                         Tab::make('Aceptación')
                             ->icon('heroicon-o-check-circle')
                             ->schema([
+                                Section::make('Renovación anticipada')
+                                    ->description('Se aceptó antes del período de renovación (se abre a 30 días de la fecha de renovación), con autorización y motivo.')
+                                    ->icon('heroicon-o-forward')
+                                    ->iconColor('warning')
+                                    ->visible(fn (?AffiliationCorporateRenovationHistory $record): bool => (bool) $record?->is_early_acceptance)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Grid::make(['default' => 1, 'md' => 3])
+                                            ->schema([
+                                                TextEntry::make('days_before_renewal_at_accept')
+                                                    ->label('Días que faltaban')
+                                                    ->badge()
+                                                    ->color('warning')
+                                                    ->formatStateUsing(fn (?int $state): string => $state === null ? '—' : ($state === 1 ? '1 día' : $state.' días'))
+                                                    ->placeholder('—'),
+                                                TextEntry::make('accepted_by')
+                                                    ->label('Autorizada por')
+                                                    ->icon('heroicon-m-user')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('accepted_at')
+                                                    ->label('Fecha')
+                                                    ->dateTime('d/m/Y H:i')
+                                                    ->icon('heroicon-m-calendar'),
+                                                TextEntry::make('early_acceptance_reason')
+                                                    ->label('Motivo')
+                                                    ->placeholder('—')
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ]),
                                 Section::make('Renovación aceptada')
                                     ->description('Snapshot aplicado al expediente al confirmar la renovación.')
                                     ->icon('heroicon-o-check-badge')

@@ -9,8 +9,11 @@ use App\Models\Plan;
 use App\Models\Renovation;
 use App\Models\RenovationCorporate;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\Renovations\EarlyRenovationAcceptance;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -61,6 +64,8 @@ final class AcceptRenovationActionForm
                 ])
                 ->columnSpanFull()
                 ->compact(),
+
+            ...self::earlyRenovationSchema($records),
 
             Section::make('Modo de aceptación')
                 ->description('Por defecto se aplica la propuesta generada por el sistema. Active la configuración manual solo si el cliente acordó otras condiciones.')
@@ -180,8 +185,115 @@ final class AcceptRenovationActionForm
     }
 
     /**
+     * Aviso y confirmación cuando la selección trae renovaciones fuera del período
+     * de renovación. Sin renovaciones anticipadas no agrega nada.
+     *
+     * - Con permiso: aviso + casilla de confirmación + motivo obligatorio. Si toda
+     *   la selección es anticipada, la confirmación es obligatoria; si es mixta, es
+     *   opcional y sin ella las anticipadas se omiten.
+     * - Sin permiso: aviso de que esas renovaciones se omitirán.
+     *
      * @param  Collection<int, Renovation|RenovationCorporate>  $records
+     * @return list<Section>
      */
+    public static function earlyRenovationSchema(Collection $records): array
+    {
+        $early = $records
+            ->filter(fn (Model $record): bool => ($record instanceof Renovation || $record instanceof RenovationCorporate)
+                && EarlyRenovationAcceptance::isEarly($record))
+            ->values();
+
+        if ($early->isEmpty()) {
+            return [];
+        }
+
+        $canAcceptEarly = EarlyRenovationAcceptance::currentUserCan();
+        $allEarly = $early->count() === $records->count();
+
+        $fields = [
+            Placeholder::make('early_renovation_warning')
+                ->hiddenLabel()
+                ->content(fn (): HtmlString => self::earlyWarningHtml($early, $records->count(), $canAcceptEarly))
+                ->columnSpanFull(),
+        ];
+
+        if ($canAcceptEarly) {
+            $fields[] = Checkbox::make('early_confirmed')
+                ->label($allEarly
+                    ? 'Confirmo que estoy renovando antes del período de renovación'
+                    : 'Incluir también las renovaciones anticipadas (si no la marca, se omiten)')
+                ->helperText('Queda registrado en el histórico con su usuario y se avisa a los SUPERADMIN por WhatsApp y correo.')
+                ->live()
+                ->accepted($allEarly)
+                ->validationMessages(['accepted' => 'Debe confirmar que está renovando antes del período de renovación.'])
+                ->columnSpanFull();
+
+            $fields[] = Textarea::make('early_reason')
+                ->label('Motivo de la renovación anticipada')
+                ->placeholder('Ej.: el cliente solicitó renovar antes de viajar y ya realizó el pago del nuevo período.')
+                ->helperText('Mínimo '.EarlyRenovationAcceptance::MIN_REASON_LENGTH.' caracteres. Lo verán los SUPERADMIN en el aviso.')
+                ->rows(3)
+                ->minLength(EarlyRenovationAcceptance::MIN_REASON_LENGTH)
+                ->maxLength(EarlyRenovationAcceptance::MAX_REASON_LENGTH)
+                ->required(fn (Get $get): bool => (bool) $get('early_confirmed'))
+                ->visible(fn (Get $get): bool => (bool) $get('early_confirmed'))
+                ->columnSpanFull();
+        }
+
+        return [
+            Section::make('Renovación anticipada')
+                ->description('Fuera del período configurado: el período de renovación se abre a '.EarlyRenovationAcceptance::RENEWAL_PERIOD_DAYS.' días de la fecha de renovación.')
+                ->icon(Heroicon::OutlinedExclamationTriangle)
+                ->iconColor('warning')
+                ->schema($fields)
+                ->columnSpanFull()
+                ->compact(),
+        ];
+    }
+
+    /**
+     * @param  Collection<int, Renovation|RenovationCorporate>  $early
+     */
+    private static function earlyWarningHtml(Collection $early, int $selectedCount, bool $canAcceptEarly): HtmlString
+    {
+        $period = EarlyRenovationAcceptance::RENEWAL_PERIOD_DAYS;
+        $tone = $canAcceptEarly ? '217,119,6' : '220,38,38';
+        $titleColor = $canAcceptEarly ? '#b45309' : '#b91c1c';
+
+        if ($early->count() === 1 && $selectedCount === 1) {
+            /** @var Renovation|RenovationCorporate $record */
+            $record = $early->first();
+            $days = EarlyRenovationAcceptance::daysUntilRenewal($record);
+            $daysText = $days === null ? 'sin fecha de renovación' : ($days === 1 ? 'Falta 1 día' : "Faltan {$days} días");
+            $date = $record->date_renewal?->format('d/m/Y') ?? '—';
+            $title = 'Está renovando antes del período configurado';
+            $body = e($daysText).' para la fecha de renovación (<strong>'.e($date).'</strong>). El período de renovación se abre a '.$period.' días.';
+        } else {
+            $title = $early->count().' de '.$selectedCount.' renovaciones están fuera del período configurado';
+            $items = $early->take(8)->map(function (Model $record): string {
+                /** @var Renovation|RenovationCorporate $record */
+                $days = EarlyRenovationAcceptance::daysUntilRenewal($record);
+
+                return '<li><strong>'.e((string) $record->code_affiliation).'</strong> · '.e($record->date_renewal?->format('d/m/Y') ?? '—')
+                    .' · faltan '.e($days === null ? '—' : (string) $days).' días</li>';
+            })->implode('');
+            $more = $early->count() > 8 ? '<li>… y '.($early->count() - 8).' más</li>' : '';
+            $body = '<ul style="margin:6px 0 0;padding-left:18px;">'.$items.$more.'</ul>';
+        }
+
+        $footer = $canAcceptEarly
+            ? 'La nueva vigencia parte de la fecha de renovación original (renovar antes no adelanta el aniversario) y la tarifa se calcula con la edad a esa fecha.'
+            : 'No tiene el permiso «Renovar antes del período de renovación»: estas renovaciones se omitirán. Solicítelo a un SUPERADMIN si necesita aceptarlas.';
+
+        return new HtmlString(
+            '<div role="alert" style="border-radius:14px;padding:12px 14px;border:1px solid rgba('.$tone.',.4);background:rgba('.$tone.',.1);">'
+            .'<p style="margin:0;font-weight:700;color:'.$titleColor.';">'.e($title).'</p>'
+            .'<div class="text-gray-700 dark:text-gray-200" style="margin-top:4px;font-size:.875rem;">'.$body.'</div>'
+            .'<p class="text-gray-600 dark:text-gray-300" style="margin:8px 0 0;font-size:.78rem;">'.e($footer).'</p>'
+            .'</div>'
+        );
+    }
+
     /**
      * Un paquete de beneficios no tiene coberturas, así que el selector de
      * cobertura no aplica. Antes esto se decidía comparando contra el plan 1.
