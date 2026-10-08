@@ -375,3 +375,214 @@ it('en Negocios la ficha corporativa no muestra el botón: allí no hay página 
         ->assertOk()
         ->assertDontSee('Ver pagos realizados');
 });
+
+/*
+ * ---------------------------------------------------------------------------
+ * Generar Factura desde un pago (solo Administración, solo aprobados)
+ * ---------------------------------------------------------------------------
+ */
+
+afterEach(function (): void {
+    foreach (glob(public_path('storage/facturas/FACT-PEST-PAGO-*')) ?: [] as $file) {
+        @unlink($file);
+    }
+});
+
+/**
+ * @param  array<string, mixed>  $attributes
+ */
+function pestPaymentSale(string $affiliationCode, string $receipt, array $attributes = []): App\Models\Sale
+{
+    return App\Models\Sale::query()->forceCreate([
+        'date_activation' => '08/10/2026',
+        'owner_code' => 'TDG-100',
+        'code_agency' => 'TDG-100',
+        'invoice_number' => $receipt,
+        'persons' => '1',
+        'type' => 'AFILIACION INDIVIDUAL',
+        'affiliation_code' => $affiliationCode,
+        'affiliate_full_name' => 'TITULAR QA',
+        'affiliate_ci_rif' => '12345678',
+        'payment_method' => 'TRANSFERENCIA VES',
+        'payment_frequency' => 'TRIMESTRAL',
+        'reference_payment' => '52958',
+        'pay_amount_usd' => 0,
+        'pay_amount_ves' => 722023.66,
+        'total_amount' => 842.27,
+        ...$attributes,
+    ]);
+}
+
+function adminIndividualPaymentsPage(): \Livewire\Features\SupportTesting\Testable
+{
+    return Livewire::test(AdministrationAffiliationPayments::class, ['record' => 436]);
+}
+
+it('Generar Factura solo existe en Administración y solo para pagos aprobados', function (): void {
+    actingAsPaymentsAnalyst();
+
+    $aprobado = pestPayment(436, ['invoice_number' => 'PEST-REC-'.uniqid()]);
+    $pendiente = pestPayment(436, ['status' => 'PENDIENTE']);
+
+    Filament::setCurrentPanel('administration');
+    adminIndividualPaymentsPage()
+        ->assertTableActionVisible('generateInvoice', $aprobado)
+        ->assertTableActionHidden('generateInvoice', $pendiente);
+
+    Filament::setCurrentPanel('business');
+    Livewire::test(BusinessAffiliationPayments::class, ['record' => 436])
+        ->assertTableActionHidden('generateInvoice', $aprobado);
+});
+
+it('se bloquea con el motivo cuando el pago no tiene venta, o tiene más de una', function (): void {
+    actingAsPaymentsAnalyst();
+    Filament::setCurrentPanel('administration');
+
+    $sinRecibo = pestPayment(436, ['invoice_number' => null]);
+    $sinVenta = pestPayment(436, ['invoice_number' => 'PEST-SIN-VENTA-'.uniqid()]);
+    $recibo = 'PEST-DOBLE-'.uniqid();
+    $ambiguo = pestPayment(436, ['invoice_number' => $recibo]);
+    pestPaymentSale('TDEC-IND-000436', $recibo);
+    pestPaymentSale('TDEC-IND-000436', $recibo);
+
+    adminIndividualPaymentsPage()
+        ->assertTableActionDisabled('generateInvoice', $sinRecibo)
+        ->assertTableActionDisabled('generateInvoice', $sinVenta)
+        ->assertTableActionDisabled('generateInvoice', $ambiguo);
+
+    $resolver = new App\Support\Sales\PaymentSaleResolver('TDEC-IND-000436');
+
+    expect($resolver->resolve($sinRecibo)['status'])->toBe(App\Support\Sales\PaymentSaleResolver::NO_RECEIPT)
+        ->and($resolver->resolve($sinVenta)['status'])->toBe(App\Support\Sales\PaymentSaleResolver::NOT_FOUND)
+        ->and($resolver->resolve($ambiguo)['status'])->toBe(App\Support\Sales\PaymentSaleResolver::AMBIGUOUS);
+});
+
+it('no confunde la venta de otra afiliación con el mismo recibo', function (): void {
+    $recibo = 'PEST-COMPARTIDO-'.uniqid();
+    pestPaymentSale('TDEC-IND-000183', $recibo);
+    $propia = pestPaymentSale('TDEC-IND-000436', $recibo);
+    $pago = pestPayment(436, ['invoice_number' => $recibo]);
+
+    $resultado = (new App\Support\Sales\PaymentSaleResolver('TDEC-IND-000436'))->resolve($pago);
+
+    expect($resultado['status'])->toBe(App\Support\Sales\PaymentSaleResolver::OK)
+        ->and($resultado['sale']->is($propia))->toBeTrue();
+});
+
+it('factura en bolívares la cuota del pago por la tasa del analista y la registra en la venta', function (): void {
+    actingAsPaymentsAnalyst();
+    Filament::setCurrentPanel('administration');
+
+    $recibo = 'PEST-REC-'.uniqid();
+    $venta = pestPaymentSale('TDEC-IND-000436', $recibo);
+    $pago = pestPayment(436, ['invoice_number' => $recibo, 'total_amount' => 842.27, 'pay_amount_usd' => 0]);
+    $numero = 'PEST-PAGO-'.uniqid();
+
+    adminIndividualPaymentsPage()
+        ->mountTableAction('generateInvoice', $pago)
+        ->assertMountedActionModalSee('US$ 842,27')
+        ->set('mountedActions.0.data.invoice_number', $numero)
+        ->set('mountedActions.0.data.date', '2026-10-15 00:00:00')
+        ->set('mountedActions.0.data.tasa_bcv', '857.24')
+        ->assertMountedActionModalSee('Bs. 722.027,53')
+        ->callMountedTableAction()
+        ->assertHasNoTableActionErrors()
+        ->assertFileDownloaded('FACT-'.$numero.'.pdf');
+
+    $venta->refresh();
+
+    expect($venta->invoice_generated)->toBe($numero)
+        ->and($venta->invoice_snapshot['date'])->toBe('15/10/2026')
+        ->and($venta->invoice_snapshot['tasa_bcv'])->toBe(857.24)
+        ->and($venta->invoice_snapshot['base_usd'])->toBe(842.27)
+        ->and($venta->invoice_snapshot['total_ves'])->toBe(722027.53)
+        ->and($venta->invoice_snapshot['source_payment'])->toEqual(['table' => 'paid_memberships', 'id' => $pago->id])
+        ->and(is_file(App\Services\SaleInvoicePdfService::pdfPath($numero)))->toBeTrue();
+});
+
+it('exige la tasa BCV y rechaza un número de factura ya emitido', function (): void {
+    actingAsPaymentsAnalyst();
+    Filament::setCurrentPanel('administration');
+
+    $usado = 'PEST-PAGO-'.uniqid();
+    pestPaymentSale('TDEC-IND-000183', 'PEST-OTRO-'.uniqid(), ['invoice_generated' => $usado]);
+    $recibo = 'PEST-REC-'.uniqid();
+    $venta = pestPaymentSale('TDEC-IND-000436', $recibo);
+    $pago = pestPayment(436, ['invoice_number' => $recibo]);
+
+    adminIndividualPaymentsPage()
+        ->mountTableAction('generateInvoice', $pago)
+        ->set('mountedActions.0.data.invoice_number', $usado)
+        ->set('mountedActions.0.data.date', '2026-10-15 00:00:00')
+        ->set('mountedActions.0.data.tasa_bcv', null)
+        ->callMountedTableAction()
+        ->assertHasTableActionErrors(['invoice_number', 'tasa_bcv']);
+
+    expect($venta->refresh()->invoice_generated)->toBeNull();
+});
+
+it('si la venta ya tiene factura la regenera con la tasa nueva, mismo número y fecha', function (): void {
+    actingAsPaymentsAnalyst();
+    Filament::setCurrentPanel('administration');
+
+    $recibo = 'PEST-REC-'.uniqid();
+    $numero = 'PEST-PAGO-'.uniqid();
+    $venta = pestPaymentSale('TDEC-IND-000436', $recibo, [
+        'invoice_generated' => $numero,
+        'invoice_snapshot' => ['date' => '01/10/2026', 'invoice_in_name_of' => 'titular', 'tasa_bcv' => 800, 'issued_at' => '2026-10-01T09:00:00-04:00'],
+    ]);
+    $pago = pestPayment(436, ['invoice_number' => $recibo, 'total_amount' => 100]);
+
+    adminIndividualPaymentsPage()
+        ->mountTableAction('generateInvoice', $pago)
+        ->assertMountedActionModalSee('Regenerar factura N° '.$numero)
+        ->assertSet('mountedActions.0.data.tasa_bcv', 800)
+        ->set('mountedActions.0.data.tasa_bcv', '900')
+        ->callMountedTableAction()
+        ->assertHasNoTableActionErrors()
+        ->assertFileDownloaded('FACT-'.$numero.'.pdf');
+
+    $venta->refresh();
+
+    expect($venta->invoice_generated)->toBe($numero)
+        ->and($venta->invoice_snapshot['date'])->toBe('01/10/2026')
+        ->and($venta->invoice_snapshot['total_ves'])->toEqual(90000)
+        ->and($venta->invoice_snapshot)->toHaveKey('regenerated_at');
+});
+
+it('factura un pago corporativo con la plantilla corporativa aunque el tipo venga con tilde', function (): void {
+    actingAsPaymentsAnalyst();
+    Filament::setCurrentPanel('administration');
+
+    $recibo = 'PEST-REC-COR-'.uniqid();
+    $venta = pestPaymentSale('TDEC-COR-00058', $recibo, ['type' => 'AFILIACIÓN CORPORATIVA']);
+    $pago = pestCorporatePayment(58, ['invoice_number' => $recibo, 'total_amount' => 1181.5]);
+    $numero = 'PEST-PAGO-'.uniqid();
+
+    Livewire::test(App\Filament\Administration\Resources\AffiliationCorporates\Pages\AffiliationCorporatePayments::class, ['record' => 58])
+        ->assertTableActionVisible('generateInvoice', $pago)
+        ->mountTableAction('generateInvoice', $pago)
+        ->set('mountedActions.0.data.invoice_number', $numero)
+        ->set('mountedActions.0.data.date', '2026-10-08 00:00:00')
+        ->set('mountedActions.0.data.tasa_bcv', '874.2298')
+        ->callMountedTableAction()
+        ->assertHasNoTableActionErrors();
+
+    $venta->refresh();
+
+    expect(App\Services\SaleInvoicePdfService::isCorporate($venta))->toBeTrue()
+        ->and($venta->invoice_snapshot['total_ves'])->toBe(round(1181.5 * 874.2298, 2))
+        ->and($venta->invoice_snapshot['period_from'])->not->toBeNull()
+        ->and($venta->invoice_snapshot['source_payment']['table'])->toBe('paid_membership_corporates');
+});
+
+it('el servicio calcula cuota × tasa y no factura una cuota en cero', function (): void {
+    $venta = new App\Models\Sale(['type' => 'AFILIACION INDIVIDUAL', 'pay_amount_usd' => 0, 'pay_amount_ves' => 5]);
+
+    expect(App\Services\SaleInvoicePdfService::totalVes($venta, 857.24, 842.27))->toBe(722027.53)
+        ->and(App\Services\SaleInvoicePdfService::totalVes($venta, null))->toBe(5.0)
+        ->and(fn () => app(App\Services\SaleInvoicePdfService::class)->build($venta, ['invoice_number' => '1', 'date' => '08/10/2026', 'invoice_base_usd' => 0, 'tasa_bcv' => 800], now()))
+        ->toThrow(RuntimeException::class, 'no tiene una cuota')
+        ->and(fn () => app(App\Services\SaleInvoicePdfService::class)->build($venta, ['invoice_number' => '1', 'date' => '08/10/2026', 'invoice_base_usd' => 100], now()))
+        ->toThrow(RuntimeException::class, 'Indique la tasa BCV');
+});

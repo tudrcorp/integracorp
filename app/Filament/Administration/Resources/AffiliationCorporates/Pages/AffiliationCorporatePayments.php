@@ -10,4 +10,10 @@ use App\Filament\Shared\Affiliations\ManageAffiliationCorporatePayments;
 class AffiliationCorporatePayments extends ManageAffiliationCorporatePayments
 {
     protected static string $resource = AffiliationCorporateResource::class;
+
+    /** En Administración los pagos aprobados se pueden facturar. */
+    public static function allowsInvoicing(): bool
+    {
+        return true;
+    }
 }
