@@ -2,6 +2,7 @@
 
 namespace App\Filament\Administration\Resources\Affiliations;
 
+use App\Filament\Administration\Resources\Affiliations\Pages\AffiliationPayments;
 use App\Filament\Administration\Resources\Affiliations\Pages\CreateAffiliation;
 use App\Filament\Administration\Resources\Affiliations\Pages\EditAffiliation;
 use App\Filament\Administration\Resources\Affiliations\Pages\ListAffiliations;
@@ -85,6 +86,7 @@ class AffiliationResource extends Resource
             'index' => ListAffiliations::route('/'),
             'create' => CreateAffiliation::route('/create'),
             'view' => ViewAffiliation::route('/{record}'),
+            'payments' => AffiliationPayments::route('/{record}/pagos'),
             'edit' => EditAffiliation::route('/{record}/edit'),
         ];
     }

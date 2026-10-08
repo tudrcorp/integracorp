@@ -625,3 +625,26 @@ it('marca los minutos en Redis con la firma tipada de phpredis (setBit exige boo
         ['ua:20261008:501:a', 601, true],
     ])->and($pipe->members)->toBe(['501']);
 });
+
+it('el encabezado explica el propósito y trae la leyenda de los cuatro estados', function (): void {
+    Filament::setCurrentPanel('business');
+    activityStore();
+    actingAsActivityUser(['SUPERADMIN']);
+
+    $componente = Livewire::test(UserActivityMonitor::class)
+        ->assertOk()
+        ->assertSee('Negocios · Uso del sistema')
+        ->assertSee('Actividad de usuarios')
+        ->assertSee('quién está trabajando ahora')
+        ->assertSee('Tecleó, movió el mouse, tocó o desplazó en los últimos 5 min')
+        ->assertSee('Sistema abierto sin tocarlo por más de 5 min')
+        ->assertSee('Minimizado o en otra pestaña')
+        ->assertSee('Sin el sistema abierto')
+        ->assertSee('llamadas o trabajo fuera de IntegraCorp no se ven aquí');
+
+    foreach (UserActivityState::cases() as $state) {
+        $componente->assertSeeHtml('background:'.$state->color().';');
+    }
+
+    expect($componente->instance()->getSubheading())->toBeNull();
+});

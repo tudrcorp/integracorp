@@ -539,8 +539,12 @@ class AffiliationCorporateInfolist
                             ->icon(Heroicon::OutlinedBanknotes)
                             ->schema([
                                 Section::make('Pagos')
+                                    ->key('corporatePayments')
                                     ->description('Frecuencia, montos y vigencia del voucher ILS.')
                                     ->icon(Heroicon::OutlinedBanknotes)
+                                    ->headerActions([
+                                        \App\Filament\Business\Resources\Affiliations\Schemas\AffiliationInfolist::viewPaymentsAction(),
+                                    ])
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
                                     ])
