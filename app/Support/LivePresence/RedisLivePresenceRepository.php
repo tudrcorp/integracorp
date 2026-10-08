@@ -273,6 +273,10 @@ final class RedisLivePresenceRepository implements LivePresenceRepository
     /**
      * Un bitmap por usuario, día y estado: 1440 bits (180 bytes). SETBIT es
      * atómico, así que dos pestañas latiendo a la vez no se pisan.
+     *
+     * El valor va como `true`, no `1`: phpredis declara `bool $value` y con
+     * `strict_types` un entero lanza TypeError, que `LivePresenceStore::safely`
+     * se traga y deja sin registrar todo el latido.
      */
     public function markActivityMinutes(int $userId, string $day, array $minutesOfDay, string $state, int $ttl): void
     {
@@ -287,7 +291,7 @@ final class RedisLivePresenceRepository implements LivePresenceRepository
 
         $this->redis()->pipeline(function ($pipe) use ($key, $usersKey, $minutesOfDay, $userId, $ttl): void {
             foreach ($minutesOfDay as $minute) {
-                $pipe->setbit($key, $minute, 1);
+                $pipe->setbit($key, $minute, true);
             }
 
             $pipe->expire($key, $ttl);
