@@ -220,6 +220,7 @@ final class DepartmentNavigationPermissionRegistry
         NuevosNegociosCluster::class => ['nuevos-negocios'],
         AgendaCorporativa::class => ['agenda-corporativa'],
         CalendariosTdg::class => ['calendarios-tdg'],
+        \App\Filament\Business\Pages\UserActivityMonitor::class => ['actividad-usuarios'],
         GuiaChatFeedbackResource::class => ['guia-chat'],
         ConfigCostoBenefitResource::class => ['porcentajes-costos'],
         PlanResource::class => ['planes'],

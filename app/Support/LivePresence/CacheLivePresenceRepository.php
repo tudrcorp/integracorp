@@ -24,6 +24,13 @@ final class CacheLivePresenceRepository implements LivePresenceRepository
 
     private const PERF = 'lp:perf';
 
+    private const ACTIVITY_PREFIX = 'ua:';
+
+    private const ACTIVITY_EVENTS = 'ua:ev';
+
+    /** @var array<string, int> */
+    private const ACTIVITY_PRIORITY = ['a' => 3, 'i' => 2, 'b' => 1];
+
     public function __construct(
         private readonly Repository $cache,
         private readonly int $sessionTtl,
@@ -236,6 +243,92 @@ final class CacheLivePresenceRepository implements LivePresenceRepository
     public function forget(string $key): void
     {
         $this->cache->forget($key);
+    }
+
+    public function markActivityMinutes(int $userId, string $day, array $minutesOfDay, string $state, int $ttl): void
+    {
+        $minutesOfDay = array_values(array_filter($minutesOfDay, static fn (int $minute): bool => $minute >= 0 && $minute < 1440));
+
+        if ($minutesOfDay === [] || ! isset(self::ACTIVITY_PRIORITY[$state])) {
+            return;
+        }
+
+        $key = self::ACTIVITY_PREFIX.$day.':'.$userId;
+
+        $this->withLock($key, function () use ($key, $minutesOfDay, $state, $ttl): void {
+            $minutes = $this->cache->get($key);
+            $minutes = is_array($minutes) ? $minutes : [];
+
+            foreach ($minutesOfDay as $minute) {
+                $current = $minutes[$minute] ?? null;
+
+                if ($current === null || self::ACTIVITY_PRIORITY[$state] > (self::ACTIVITY_PRIORITY[$current] ?? 0)) {
+                    $minutes[$minute] = $state;
+                }
+            }
+
+            $this->cache->put($key, $minutes, $ttl);
+        });
+
+        $usersKey = self::ACTIVITY_PREFIX.$day.':users';
+
+        $this->withLock($usersKey, function () use ($usersKey, $userId, $ttl): void {
+            $users = $this->cache->get($usersKey);
+            $users = is_array($users) ? $users : [];
+            $users[$userId] = true;
+            $this->cache->put($usersKey, $users, $ttl);
+        });
+    }
+
+    public function activityMinutes(int $userId, string $day): array
+    {
+        $minutes = $this->cache->get(self::ACTIVITY_PREFIX.$day.':'.$userId);
+        $minutes = is_array($minutes) ? $minutes : [];
+        ksort($minutes);
+
+        return array_map('strval', $minutes);
+    }
+
+    public function activityUsers(string $day): array
+    {
+        $users = $this->cache->get(self::ACTIVITY_PREFIX.$day.':users');
+
+        return array_values(array_map('intval', array_keys(is_array($users) ? $users : [])));
+    }
+
+    public function appendActivityEvents(array $events, int $ttl): void
+    {
+        if ($events === []) {
+            return;
+        }
+
+        $this->withLock(self::ACTIVITY_EVENTS, function () use ($events, $ttl): void {
+            $items = $this->cache->get(self::ACTIVITY_EVENTS);
+            $items = is_array($items) ? $items : [];
+            /** En desarrollo la cola se acota para no crecer sin el job corriendo. */
+            $this->cache->put(self::ACTIVITY_EVENTS, array_slice([...$items, ...$events], -5000), $ttl);
+        });
+    }
+
+    public function takeActivityEvents(int $limit): array
+    {
+        $taken = [];
+
+        $this->withLock(self::ACTIVITY_EVENTS, function () use ($limit, &$taken): void {
+            $items = $this->cache->get(self::ACTIVITY_EVENTS);
+            $items = is_array($items) ? array_values($items) : [];
+            $taken = array_slice($items, 0, max(1, $limit));
+            $this->cache->put(self::ACTIVITY_EVENTS, array_slice($items, count($taken)), 172800);
+        });
+
+        return array_values(array_filter($taken, 'is_array'));
+    }
+
+    public function peekActivityEvents(int $limit): array
+    {
+        $items = $this->cache->get(self::ACTIVITY_EVENTS);
+
+        return array_values(array_filter(array_slice(is_array($items) ? $items : [], 0, max(1, $limit)), 'is_array'));
     }
 
     /**

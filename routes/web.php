@@ -260,6 +260,14 @@ Route::get('business/company-associates/{path?}', function (?string $path = null
     return redirect($query ? "{$target}?{$query}" : $target, 301);
 })->where('path', '.*');
 
+/**
+ * Actividad de usuarios → descarga del reporte por rango (CSV para Excel). Mismo
+ * permiso que la pantalla (`actividad-usuarios`), verificado en el controlador.
+ */
+Route::get('business/export-user-activity-csv', App\Http\Controllers\UserActivityExportCsvController::class)
+    ->middleware(['auth', 'throttle:20,1'])
+    ->name('business.user-activity.export');
+
 Route::get('business/export-prospect-agents-csv', App\Http\Controllers\ProspectAgentExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('business.prospect-agents.export-csv');

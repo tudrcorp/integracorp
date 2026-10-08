@@ -43,6 +43,26 @@ return [
     'timeline_size' => 50,
     'timeline_ttl' => 86400,
 
+    /*
+     * Actividad de usuarios (Negocios → Actividad de usuarios): cuánto usa cada
+     * usuario el sistema. «Activo» = interactuó (teclado, mouse, toque o scroll)
+     * en los últimos `idle_after_seconds`; después pasa a «Inactivo» aunque tenga
+     * la pestaña a la vista. Nunca se registra qué escribe ni qué ve.
+     */
+    'activity' => [
+        'enabled' => (bool) env('USER_ACTIVITY_ENABLED', true),
+        'idle_after_seconds' => (int) env('USER_ACTIVITY_IDLE_AFTER_SECONDS', 300),
+        /** Recorrido detallado (eventos y barra minuto a minuto). */
+        'detail_retention_days' => (int) env('USER_ACTIVITY_DETAIL_RETENTION_DAYS', 90),
+        /** Resumen diario por usuario. */
+        'summary_retention_months' => (int) env('USER_ACTIVITY_SUMMARY_RETENTION_MONTHS', 12),
+        /** Vida de los minutos y de la cola en Redis/caché antes de volcarse. */
+        'buffer_ttl' => 259200,
+        'flush_batch' => 1000,
+        /** Hueco máximo entre latidos de una pestaña que se rellena con su estado. */
+        'max_gap_minutes' => 3,
+    ],
+
     /** Muestras de tiempo de respuesta para el rendimiento del sistema. */
     'performance_samples' => 500,
 
