@@ -39,6 +39,8 @@ use App\Models\ObservationCommercialStructure;
 use App\Models\PlanGenerator;
 use App\Observers\ObservationCommercialStructureObserver;
 use App\Observers\PlanGeneratorObserver;
+use App\Support\CrmInbox\CrmInboxNotices;
+use App\Support\CrmInbox\CrmPushSubscriptions;
 use App\Support\LivePresence\LivePresenceRecorder;
 use App\Support\LivePresence\QueueActivityRecorder;
 use App\Support\LivePresence\SecurityAuthListener;
@@ -47,6 +49,7 @@ use App\Support\UserSessionAuditTracker;
 use Filament\Actions\Imports\Events\ImportChunkProcessed;
 use Filament\Actions\Imports\Events\ImportCompleted;
 use Filament\Actions\Imports\Events\ImportStarted;
+use Filament\Facades\Filament;
 use Filament\Support\Colors\Color;
 use Filament\Support\Facades\FilamentColor;
 use Filament\Support\Facades\FilamentTimezone;
@@ -116,6 +119,11 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(Login::class, [UserSessionAuditTracker::class, 'onLogin']);
         Event::listen(Logout::class, [UserSessionAuditTracker::class, 'onLogout']);
+        Event::listen(Logout::class, [CrmPushSubscriptions::class, 'onLogout']);
+
+        Filament::serving(function (): void {
+            CrmInboxNotices::flashUnread();
+        });
 
         Event::listen(ImportStarted::class, [LogFilamentImportActivity::class, 'handleStarted']);
         Event::listen(ImportStarted::class, [StampPlanGeneratorPopulationImport::class, 'handle']);

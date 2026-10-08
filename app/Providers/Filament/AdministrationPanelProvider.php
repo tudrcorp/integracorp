@@ -73,6 +73,7 @@ class AdministrationPanelProvider extends PanelProvider
             ])
             ->navigationGroups(AdministrationPanelNavigationGroups::definitions())
             ->databaseNotifications()
+            ->databaseNotificationsPolling('10s')
             ->databaseTransactions()
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)

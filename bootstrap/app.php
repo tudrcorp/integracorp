@@ -11,6 +11,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function (): void {
             require base_path('routes/storefront.php');
+            require base_path('routes/crm-inbox.php');
         },
     )
     ->withMiddleware(function (Middleware $middleware) {

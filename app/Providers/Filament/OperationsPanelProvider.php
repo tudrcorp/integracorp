@@ -52,6 +52,7 @@ class OperationsPanelProvider extends PanelProvider
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
             ->databaseNotifications()
+            ->databaseNotificationsPolling('10s')
             ->databaseTransactions()
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
