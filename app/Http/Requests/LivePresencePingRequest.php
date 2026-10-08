@@ -24,7 +24,9 @@ class LivePresencePingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'reason' => ['nullable', 'string', 'in:load,heartbeat,navigate,visibility'],
+            'reason' => ['nullable', 'string', 'in:load,heartbeat,navigate,visibility,activity,idle'],
+            'tab' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9_-]+$/'],
+            'idle' => ['nullable', 'integer', 'min:0', 'max:86400000'],
             'path' => ['nullable', 'string', 'max:300'],
             'title' => ['nullable', 'string', 'max:150'],
             'rtt' => ['nullable', 'integer', 'min:0', 'max:120000'],

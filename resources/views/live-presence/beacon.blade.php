@@ -3,6 +3,10 @@
     navegación SPA de Filament con data-navigate-once), late cada 15 s visible
     y cada 60 s oculta, y mide la latencia real de ida y vuelta al servidor.
     Si la sesión vence (401/419) deja de latir.
+
+    Actividad de usuarios: cada latido dice cuánto hace de la última interacción
+    (teclado, mouse, toque o scroll) y de qué pestaña viene. Solo la hora de la
+    interacción: nunca qué tecla, qué texto ni dónde.
 --}}
 @if (config('live-presence.enabled', true) && auth()->check())
 <script data-navigate-once>
@@ -17,7 +21,26 @@
         token: @js(csrf_token()),
         every: {{ (int) config('live-presence.heartbeat_seconds', 15) }} * 1000,
         hiddenEvery: {{ (int) config('live-presence.hidden_heartbeat_seconds', 60) }} * 1000,
+        idleAfter: {{ max(60, (int) config('live-presence.activity.idle_after_seconds', 300)) }} * 1000,
     };
+
+    const tabId = (() => {
+        try {
+            let id = sessionStorage.getItem('__lpTab');
+            if (!id) {
+                id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 36);
+                sessionStorage.setItem('__lpTab', id);
+            }
+            return id;
+        } catch (error) {
+            return 'nostorage';
+        }
+    })();
+
+    let lastInteraction = Date.now();
+    let idleTimer = null;
+    let lastArm = 0;
+    let pendingReason = null;
 
     let lastRtt = null;
     let timer = null;
@@ -41,7 +64,11 @@
     };
 
     const ping = async (reason) => {
-        if (stopped || inflight) return;
+        if (stopped) return;
+        if (inflight) {
+            if (reason === 'activity' || reason === 'idle' || reason === 'visibility') pendingReason = reason;
+            return;
+        }
         inflight = true;
         const started = performance.now();
 
@@ -58,6 +85,8 @@
                 },
                 body: JSON.stringify({
                     reason,
+                    tab: tabId,
+                    idle: Math.max(0, Date.now() - lastInteraction),
                     path: window.location.pathname,
                     title: (document.title || '').slice(0, 150),
                     rtt: lastRtt,
@@ -85,8 +114,50 @@
         } finally {
             inflight = false;
             schedule();
+            if (pendingReason) {
+                const next = pendingReason;
+                pendingReason = null;
+                ping(next);
+            }
         }
     };
+
+    /** Avisa justo cuando se cumplen los minutos sin interacción, sin esperar al latido. */
+    const armIdleTimer = () => {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+            if (document.visibilityState === 'visible') ping('idle');
+        }, cfg.idleAfter + 1000);
+    };
+
+    const interacted = () => {
+        const now = Date.now();
+        const wasIdle = now - lastInteraction >= cfg.idleAfter;
+        lastInteraction = now;
+
+        if (wasIdle) {
+            ping('activity');
+        }
+
+        if (wasIdle || now - lastArm > 5000) {
+            lastArm = now;
+            armIdleTimer();
+        }
+    };
+
+    let lastMove = 0;
+    const moved = () => {
+        const now = Date.now();
+        if (now - lastMove < 1000) return;
+        lastMove = now;
+        interacted();
+    };
+
+    ['keydown', 'pointerdown', 'wheel', 'touchstart', 'scroll'].forEach((type) => {
+        window.addEventListener(type, interacted, { capture: true, passive: true });
+    });
+    window.addEventListener('mousemove', moved, { capture: true, passive: true });
+    armIdleTimer();
 
     /**
      * Texto del botón pulsado: viaja en la siguiente petición de Livewire para
@@ -123,7 +194,13 @@
         document.addEventListener('livewire:init', attachClickHeader, { once: true });
     }
 
-    document.addEventListener('visibilitychange', () => ping('visibility'));
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            lastInteraction = Date.now();
+            armIdleTimer();
+        }
+        ping('visibility');
+    });
     document.addEventListener('livewire:navigated', () => ping('navigate'));
 
     window.__livePresence = { ping };
