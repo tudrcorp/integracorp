@@ -167,7 +167,13 @@ it('Cobranza por mes sale de las cuotas reales: una fila por afiliación con su 
         ->toContain('select next_installment.id from collections as next_installment')
         ->toContain('order by next_installment.filter_next_payment_date asc, next_installment.id asc limit 1')
         ->not->toContain('annual_collections')
-        ->and($query->getBindings())->toBe(['POR PAGAR', 'POR PAGAR'])
+        ->and($query->getBindings())->toBe([
+            ...CollectionReceivableReport::EXCLUDED_AFFILIATION_STATUSES,
+            ...CollectionReceivableReport::EXCLUDED_AFFILIATION_STATUSES,
+            ...CollectionReceivableReport::EXCLUDED_AFFILIATION_STATUSES,
+            'POR PAGAR',
+            'POR PAGAR',
+        ])
         ->and(array_keys(AnnualCollectionResource::getPages()))->toBe(['index'])
         ->and(AnnualCollectionResource::canCreate())->toBeFalse()
         ->and(AnnualCollectionResource::canDeleteAny())->toBeFalse()

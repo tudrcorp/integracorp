@@ -192,7 +192,6 @@ class AnnualCollectionsTable
                 ->options([
                     'ACTIVA' => 'Activa',
                     'PRE-APROBADA' => 'Pre-aprobada',
-                    'EXCLUIDO' => 'Excluido',
                 ])
                 ->query(fn (Builder $query, array $data): Builder => CollectionReceivableReport::applyAffiliateStatus($query, $data['values'] ?? [])),
             SelectFilter::make('code_agency')

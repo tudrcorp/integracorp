@@ -31,6 +31,15 @@ final class CollectionReceivableReport
 
     public const STATUS_OVERDUE = CollectionDueDate::STATUS_OVERDUE;
 
+    /**
+     * Afiliaciones que ya no se cobran: no entran en la tabla, el CSV ni el
+     * resumen de cuentas por cobrar. Sus cuotas siguen en la base; si la
+     * afiliación se reactiva, vuelve a aparecer.
+     *
+     * @var list<string>
+     */
+    public const EXCLUDED_AFFILIATION_STATUSES = ['EXCLUIDO', 'EXCLUIDA', 'INACTIVO', 'INACTIVA', 'ANULADO', 'ANULADA'];
+
     public const AGING_DUE_SOON = 'vence_7';
 
     public const AGING_DUE_30 = 'vence_30';
@@ -80,14 +89,15 @@ final class CollectionReceivableReport
     }
 
     /**
-     * Una fila por afiliación: su cuota pendiente de vencimiento más cercano.
+     * Una fila por afiliación cobrable: su cuota pendiente de vencimiento más
+     * cercano. Deja fuera las afiliaciones excluidas, inactivas o anuladas.
      */
     public static function scopeNextPendingPerAffiliation(Builder $query): Builder
     {
         $table = $query->getModel()->getTable();
         $pending = self::PENDING_STATUS;
 
-        return $query
+        return self::excludeNonCollectableAffiliations($query)
             ->where("{$table}.status", $pending)
             ->whereRaw(
                 "{$table}.id = (select next_installment.id from collections as next_installment"
@@ -96,6 +106,29 @@ final class CollectionReceivableReport
                 .' order by next_installment.filter_next_payment_date asc, next_installment.id asc limit 1)',
                 [$pending],
             );
+    }
+
+    /**
+     * Quita las cuotas de afiliaciones excluidas, inactivas o anuladas según el
+     * estatus **actual** de la afiliación (individual o corporativa): el que se
+     * copió en la cuota se queda viejo cuando la afiliación cambia después. Solo
+     * si la afiliación ya no existe se usa el estatus copiado.
+     */
+    public static function excludeNonCollectableAffiliations(Builder $query): Builder
+    {
+        $table = $query->getModel()->getTable();
+        $placeholders = implode(', ', array_fill(0, count(self::EXCLUDED_AFFILIATION_STATUSES), '?'));
+        $excluded = fn (Builder $affiliation): Builder => $affiliation->whereRaw("UPPER(TRIM(status)) in ({$placeholders})", self::EXCLUDED_AFFILIATION_STATUSES);
+
+        return $query
+            ->whereDoesntHave('affiliationByCode', $excluded)
+            ->whereDoesntHave('affiliationCorporateByCode', $excluded)
+            ->where(function (Builder $query) use ($table, $placeholders): void {
+                $query->whereHas('affiliationByCode')
+                    ->orWhereHas('affiliationCorporateByCode')
+                    ->orWhereNull("{$table}.affiliate_status")
+                    ->orWhereRaw("UPPER(TRIM({$table}.affiliate_status)) not in ({$placeholders})", self::EXCLUDED_AFFILIATION_STATUSES);
+            });
     }
 
     /**
