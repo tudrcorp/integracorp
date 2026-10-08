@@ -180,7 +180,11 @@ it('renderiza el listado en el panel de operaciones', function (): void {
         'departament' => ['SUPERADMIN', 'OPERACIONES'],
     ]);
 
-    OperationAccountsPayable::factory()->create(['supplier_name' => 'PROVEEDOR DE PRUEBA QA']);
+    /** Fecha de registro de hoy: la tabla ordena por ella y así queda en la primera página. */
+    OperationAccountsPayable::factory()->create([
+        'supplier_name' => 'PROVEEDOR DE PRUEBA QA',
+        'invoice_registration_date' => now(),
+    ]);
 
     $this->actingAs($usuario);
     Filament::setCurrentPanel('operations');
@@ -267,4 +271,99 @@ it('exige referencia, fecha y monto cuando la factura se marca como PAGADA', fun
         ->set('data.payment_status', 'PAGADA')
         ->call('save')
         ->assertHasFormErrors(['payment_reference', 'payment_date']);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * Unidad de negocio específica (del paciente de la orden de servicio)
+ * ---------------------------------------------------------------------------
+ */
+
+it('muestra y busca la unidad de negocio específica del paciente de la orden', function (): void {
+    $usuario = User::factory()->create([
+        'email' => 'qa.cxp.un.especifica@tudrencasa.com',
+        'status' => 'ACTIVO',
+        'departament' => ['SUPERADMIN', 'OPERACIONES'],
+    ]);
+
+    $orden = App\Models\OperationServiceOrder::query()
+        ->whereHas('operationCoordinationService.telemedicinePatient', fn ($patient) => $patient->whereNotNull('specific_business_unit')->where('specific_business_unit', '!=', ''))
+        ->with('operationCoordinationService.telemedicinePatient')
+        ->first();
+
+    if ($orden === null) {
+        $this->markTestSkipped('No hay órdenes con paciente que tenga unidad de negocio específica en esta base.');
+    }
+
+    $unidad = (string) $orden->operationCoordinationService->telemedicinePatient->specific_business_unit;
+
+    $conOrden = OperationAccountsPayable::factory()->create([
+        'operation_service_order_id' => $orden->getKey(),
+        'supplier_name' => 'PROVEEDOR UN ESPECIFICA QA',
+    ]);
+    $sinOrden = OperationAccountsPayable::factory()->create([
+        'operation_service_order_id' => null,
+        'supplier_name' => 'PROVEEDOR SIN ORDEN QA',
+    ]);
+
+    $this->actingAs($usuario);
+    Filament::setCurrentPanel('operations');
+
+    $componente = Livewire::test(ListOperationAccountsPayables::class)
+        ->assertSuccessful()
+        ->assertTableColumnExists('specific_business_unit')
+        ->assertTableColumnStateSet('specific_business_unit', $unidad, $conOrden)
+        ->assertTableColumnStateSet('specific_business_unit', '—', $sinOrden)
+        ->searchTable($unidad);
+
+    /** La búsqueda puede traer otras cuentas reales de la misma unidad: se mira la consulta, no la página. */
+    $filtrada = fn () => $componente->instance()->getFilteredTableQuery();
+
+    expect($filtrada()->whereKey($conOrden->getKey())->exists())->toBeTrue()
+        ->and($filtrada()->whereKey($sinOrden->getKey())->exists())->toBeFalse();
+});
+
+it('filtra por unidad de negocio específica, incluida la opción «Sin unidad específica»', function (): void {
+    $usuario = User::factory()->create([
+        'email' => 'qa.cxp.filtro.un@tudrencasa.com',
+        'status' => 'ACTIVO',
+        'departament' => ['SUPERADMIN', 'OPERACIONES'],
+    ]);
+
+    $orden = App\Models\OperationServiceOrder::query()
+        ->whereHas('operationCoordinationService.telemedicinePatient', fn ($patient) => $patient->whereNotNull('specific_business_unit')->where('specific_business_unit', '!=', ''))
+        ->with('operationCoordinationService.telemedicinePatient')
+        ->first();
+
+    if ($orden === null) {
+        $this->markTestSkipped('No hay órdenes con paciente que tenga unidad de negocio específica en esta base.');
+    }
+
+    $unidad = (string) $orden->operationCoordinationService->telemedicinePatient->specific_business_unit;
+    $conUnidad = OperationAccountsPayable::factory()->create(['operation_service_order_id' => $orden->getKey()]);
+    $sinUnidad = OperationAccountsPayable::factory()->create(['operation_service_order_id' => null]);
+    $sin = App\Filament\Operations\Resources\OperationAccountsPayables\Tables\OperationAccountsPayablesTable::WITHOUT_SPECIFIC_BUSINESS_UNIT;
+
+    expect(App\Filament\Operations\Resources\OperationAccountsPayables\Tables\OperationAccountsPayablesTable::specificBusinessUnitOptions())
+        ->toHaveKey($unidad)
+        ->toHaveKey($sin, 'Sin unidad específica');
+
+    $this->actingAs($usuario);
+    Filament::setCurrentPanel('operations');
+
+    $ids = [$conUnidad->getKey(), $sinUnidad->getKey()];
+    $visibles = fn (array $valores): array => Livewire::test(ListOperationAccountsPayables::class)
+        ->filterTable('specific_business_unit', $valores)
+        ->instance()
+        ->getFilteredTableQuery()
+        ->whereKey($ids)
+        ->pluck('id')
+        ->map(fn (mixed $id): int => (int) $id)
+        ->sort()
+        ->values()
+        ->all();
+
+    expect($visibles([$unidad]))->toBe([$conUnidad->getKey()])
+        ->and($visibles([$sin]))->toBe([$sinUnidad->getKey()])
+        ->and($visibles([$unidad, $sin]))->toBe(collect($ids)->sort()->values()->all());
 });

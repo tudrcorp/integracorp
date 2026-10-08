@@ -2,8 +2,11 @@
 
 namespace App\Filament\Operations\Resources\AccountsPayables\Tables;
 
+use App\Models\OperationCoordinationService;
 use App\Models\OperationQuoteGenerator;
+use App\Models\TelemedicinePatient;
 use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Filament\Operations\SpecificBusinessUnitTableTools;
 use App\Support\Operations\AccountsPayablePresenter;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\FontWeight;
@@ -13,6 +16,12 @@ use Illuminate\Database\Eloquent\Builder;
 
 class AccountsPayablesTable
 {
+    /**
+     * Paciente de la coordinación: el mismo del que salen la unidad específica
+     * en Órdenes de servicio y en Cuentas por pagar.
+     */
+    private const PATIENT_RELATION = 'operationCoordinationService.telemedicinePatient';
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -28,8 +37,9 @@ class AccountsPayablesTable
                         'supplier:id,name,razon_social',
                         'operationServiceOrder:id,order_number,supplier_id,supplier_external',
                         'operationServiceOrder.supplier:id,name,razon_social',
-                        'operationCoordinationService:id,patient,telemedicine_case_id',
+                        'operationCoordinationService:id,patient,telemedicine_case_id,telemedicine_patient_id',
                         'operationCoordinationService.telemedicineCase:id,code',
+                        'operationCoordinationService.telemedicinePatient:id,specific_business_unit',
                     ])
                     ->whereHas(
                         'operationCoordinationService',
@@ -50,6 +60,10 @@ class AccountsPayablesTable
                     ->badge()
                     ->color('gray')
                     ->weight(FontWeight::Medium),
+                SpecificBusinessUnitTableTools::column(
+                    fn (OperationQuoteGenerator $record): string => self::specificBusinessUnit($record),
+                    self::PATIENT_RELATION,
+                ),
                 TextColumn::make('telemedicineCase.code')
                     ->label('Número de caso')
                     ->state(fn (OperationQuoteGenerator $record): string => AccountsPayablePresenter::caseCode($record))
@@ -144,10 +158,45 @@ class AccountsPayablesTable
                 default => [],
             })
             ->filters([
-                //
+                SpecificBusinessUnitTableTools::filter(fn (): array => self::specificBusinessUnitOptions(), self::PATIENT_RELATION),
             ])
             ->recordActions([
                 ViewAction::make(),
             ]);
+    }
+
+    public static function specificBusinessUnit(OperationQuoteGenerator $record): string
+    {
+        $unit = trim((string) ($record->operationCoordinationService?->telemedicinePatient?->specific_business_unit ?? ''));
+
+        return $unit !== '' ? $unit : '—';
+    }
+
+    /**
+     * Unidades específicas de las cotizaciones que esta tabla puede mostrar: con
+     * el mismo alcance por proveedor que la tabla, para no ofrecer a un usuario
+     * de proveedor unidades de cotizaciones que no le corresponden.
+     *
+     * @return array<string, string>
+     */
+    public static function specificBusinessUnitOptions(): array
+    {
+        $coordinationPatients = OperationsSupplierScope::applyCoordinationListScope(
+            OperationCoordinationService::query()->whereIn(
+                'id',
+                OperationQuoteGenerator::query()
+                    ->whereNotNull('operation_coordination_service_id')
+                    ->select('operation_coordination_service_id'),
+            ),
+        )->select('telemedicine_patient_id');
+
+        return SpecificBusinessUnitTableTools::options(
+            TelemedicinePatient::query()
+                ->whereIn('id', $coordinationPatients)
+                ->whereNotNull('specific_business_unit')
+                ->where('specific_business_unit', '!=', '')
+                ->distinct()
+                ->pluck('specific_business_unit'),
+        );
     }
 }
