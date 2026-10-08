@@ -111,6 +111,11 @@ class ViewSale extends ViewRecord
                 ->extraAttributes([
                     'class' => self::INFO_BUTTON_CLASS,
                 ]),
+            SalesTable::regenerateInvoiceAction()
+                ->color(self::WARNING_BUTTON_CLASS)
+                ->extraAttributes([
+                    'class' => self::WARNING_BUTTON_CLASS,
+                ]),
             SalesTable::sendReciboPagoDeliveryAction()
                 ->color(self::PRIMARY_BUTTON_CLASS)
                 ->extraAttributes([

@@ -81,7 +81,8 @@ it('no inventa montos cuando no hay base para convertir', function (array $usd, 
 ]);
 
 it('formatea en bolívares con el estilo venezolano', function (): void {
-    expect(InvoiceVesLineAmounts::format(1032902.52))->toBe('1.032.902,52 Bs.')
+    expect(InvoiceVesLineAmounts::format(1032902.52))->toBe('Bs. 1.032.902,52')
+        ->and(InvoiceVesLineAmounts::format(34789.9))->toBe('Bs. 34.789,90')
         ->and(InvoiceVesLineAmounts::format(null))->toBe('—');
 });
 
@@ -263,4 +264,39 @@ it('la acción solo aparece en ventas facturadas y precarga la fecha original', 
         ->assertSet('mountedActions.0.data.date', fn (mixed $fecha): bool => str_starts_with((string) $fecha, '2026-03-15'))
         ->assertSet('mountedActions.0.data.date_known', true)
         ->assertSet('mountedActions.0.data.invoice_in_name_of', 'tomador');
+});
+
+it('la ficha de la venta ofrece regenerar la factura solo si ya fue emitida', function (): void {
+    $usuario = App\Models\User::factory()->create([
+        'email' => 'qa.regenerar.ficha@tudrencasa.com',
+        'status' => 'ACTIVO',
+        'departament' => ['SUPERADMIN', 'ADMINISTRACION'],
+    ]);
+    test()->actingAs($usuario);
+    Filament\Facades\Filament::setCurrentPanel('administration');
+
+    $facturada = pestInvoiceSale(['invoice_snapshot' => ['date' => '15/03/2026', 'invoice_in_name_of' => 'titular']]);
+    $sinFactura = pestInvoiceSale(['invoice_generated' => null]);
+
+    Livewire\Livewire::test(App\Filament\Administration\Resources\Sales\Pages\ViewSale::class, ['record' => $facturada->getKey()])
+        ->assertActionVisible('regenerate_invoice')
+        ->mountAction('regenerate_invoice')
+        ->assertSet('mountedActions.0.data.date_known', true);
+
+    Livewire\Livewire::test(App\Filament\Administration\Resources\Sales\Pages\ViewSale::class, ['record' => $sinFactura->getKey()])
+        ->assertActionHidden('regenerate_invoice');
+});
+
+it('el menú de acciones de la tabla de ventas va a la izquierda', function (): void {
+    $source = (string) file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Sales/Tables/SalesTable.php');
+
+    expect($source)->toContain('], position: RecordActionsPosition::BeforeColumns)');
+});
+
+it('la factura individual usa el mismo formato Bs. y el total no se pasa a mayúsculas', function (): void {
+    $source = (string) file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/factura.blade.php');
+
+    expect(substr_count($source, "InvoiceVesLineAmounts::format(\$data_factura['total_amount'])"))->toBe(2)
+        ->and($source)->toContain('Monto Total: <span style="text-transform: none;">')
+        ->not->toContain("2, ',', '.') }}Bs.");
 });
