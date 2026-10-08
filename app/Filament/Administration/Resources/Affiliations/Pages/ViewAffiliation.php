@@ -49,6 +49,11 @@ class ViewAffiliation extends ViewRecord
                 ])
                 ->url(AffiliationResource::getUrl()),
             FilamentIosActionsMenu::make([
+                Action::make('goToPayments')
+                    ->label('Ver pagos realizados')
+                    ->icon(Heroicon::OutlinedBanknotes)
+                    ->color('primary')
+                    ->url(fn (): string => AffiliationResource::getUrl('payments', ['record' => $this->getRecord()])),
                 Action::make('attachDocuments')
                     ->label('Adjuntar documentos')
                     ->icon(Heroicon::OutlinedPaperClip)

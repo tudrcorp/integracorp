@@ -17,6 +17,8 @@ use Carbon\CarbonImmutable;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\HtmlString;
 use Livewire\Attributes\Url;
 use Throwable;
 
@@ -87,11 +89,51 @@ class UserActivityMonitor extends Page
         $this->tab = in_array($this->tab, ['live', 'report'], true) ? $this->tab : 'live';
     }
 
+    /**
+     * Encabezado con propósito y leyenda de estados. Estilos en línea y solo las
+     * utilidades de color de texto que ya compila el tema (claro/oscuro).
+     */
+    public function getHeading(): string|Htmlable
+    {
+        $idleMinutes = intdiv(UserActivityTracker::idleAfterSeconds(), 60);
+        $legend = [
+            [UserActivityState::Active, 'Tecleó, movió el mouse, tocó o desplazó en los últimos '.$idleMinutes.' min'],
+            [UserActivityState::Idle, 'Sistema abierto sin tocarlo por más de '.$idleMinutes.' min'],
+            [UserActivityState::Background, 'Minimizado o en otra pestaña'],
+            [UserActivityState::Offline, 'Sin el sistema abierto'],
+        ];
+
+        $chips = '';
+
+        foreach ($legend as [$state, $help]) {
+            $chips .= '<span title="'.e($state->description()).'" style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;border:1px solid rgba(148,163,184,.35);background:rgba(148,163,184,.08);">'
+                .'<span style="width:9px;height:9px;border-radius:999px;flex-shrink:0;background:'.$state->color().';box-shadow:0 0 0 3px '.$state->color().'26;"></span>'
+                .'<span class="text-gray-900 dark:text-white" style="font-size:.8rem;font-weight:700;">'.e($state->label()).'</span>'
+                .'<span class="text-gray-600 dark:text-gray-300" style="font-size:.78rem;font-weight:500;">'.e($help).'</span>'
+                .'</span>';
+        }
+
+        $icon = svg('heroicon-o-presentation-chart-line', '', ['style' => 'width:26px;height:26px;color:#fff;'])->toHtml();
+
+        return new HtmlString(
+            '<div style="display:flex;align-items:flex-start;gap:16px;padding:6px 0;">'
+            .'<div style="width:52px;height:52px;flex-shrink:0;border-radius:16px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0ea5e9,#2563eb);box-shadow:0 10px 24px -8px rgba(37,99,235,.55);">'.$icon.'</div>'
+            .'<div style="display:flex;flex-direction:column;gap:8px;min-width:0;flex:1;">'
+            .'<span class="text-gray-600 dark:text-gray-300" style="font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Negocios · Uso del sistema</span>'
+            .'<span class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white" style="line-height:1.15;">Actividad de usuarios</span>'
+            .'<span class="text-gray-600 dark:text-gray-300" style="font-size:.95rem;font-weight:500;max-width:760px;">Cuánto usa cada persona IntegraCorp: quién está trabajando ahora y cómo repartió su día.</span>'
+            .'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">'.$chips.'</div>'
+            .'<span class="text-gray-600 dark:text-gray-300" style="display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:500;opacity:.85;">'
+            .svg('heroicon-o-information-circle', '', ['style' => 'width:16px;height:16px;flex-shrink:0;', 'aria-hidden' => 'true'])->toHtml()
+            .'Mide el uso del sistema, no toda la jornada: llamadas o trabajo fuera de IntegraCorp no se ven aquí.</span>'
+            .'</div>'
+            .'</div>'
+        );
+    }
+
     public function getSubheading(): ?string
     {
-        return 'Activo = tecleó, movió el mouse, tocó o desplazó la pantalla en los últimos '
-            .intdiv(UserActivityTracker::idleAfterSeconds(), 60)
-            .' min. Mide el uso del sistema, no toda la jornada: llamadas o trabajo fuera de IntegraCorp no se ven aquí.';
+        return null;
     }
 
     public function setTab(string $tab): void
