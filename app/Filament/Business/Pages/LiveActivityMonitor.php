@@ -7,6 +7,7 @@ namespace App\Filament\Business\Pages;
 use App\Models\SecurityIpBlock;
 use App\Models\SecurityUserBlock;
 use App\Models\User;
+use App\Support\Filament\SharedNavigationGroups;
 use App\Support\LivePresence\AccessDiagnosis;
 use App\Support\LivePresence\ActivityContext;
 use App\Support\LivePresence\ErrorTracker;
@@ -38,6 +39,7 @@ use Illuminate\Support\HtmlString;
 use InvalidArgumentException;
 use Livewire\Attributes\Url;
 use Throwable;
+use UnitEnum;
 
 /**
  * Monitor en vivo de la actividad de los usuarios: solo para el desarrollador.
@@ -52,6 +54,8 @@ class LiveActivityMonitor extends Page
     protected static ?string $title = 'Monitor en vivo';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSignal;
+
+    protected static string|UnitEnum|null $navigationGroup = SharedNavigationGroups::MONITORING;
 
     protected static ?int $navigationSort = 99;
 

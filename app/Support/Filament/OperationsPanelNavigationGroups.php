@@ -25,6 +25,7 @@ final class OperationsPanelNavigationGroups
     public static function definitions(): array
     {
         return [
+            SharedNavigationGroups::user(),
             NavigationGroup::make()
                 ->label('AFILIADOS')
                 ->icon('heroicon-o-identification')

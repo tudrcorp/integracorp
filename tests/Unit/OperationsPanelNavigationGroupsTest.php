@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 use App\Support\Filament\OperationsPanelNavigationGroups;
 
-it('grupos de navegacion de operaciones inician colapsados', function (): void {
+it('grupos de navegacion de operaciones inician colapsados, salvo DEL USUARIO que va primero y abierto', function (): void {
     $collapsedCount = collect(OperationsPanelNavigationGroups::definitions())
         ->filter(fn ($group) => $group->isCollapsed())
         ->count();
 
-    expect($collapsedCount)->toBe(count(OperationsPanelNavigationGroups::labels()))
+    expect($collapsedCount)->toBe(count(OperationsPanelNavigationGroups::labels()) - 1)
+        ->and(OperationsPanelNavigationGroups::labels()[0])->toBe(App\Support\Filament\SharedNavigationGroups::USER)
+        ->and(OperationsPanelNavigationGroups::definitions()[0]->isCollapsed())->toBeFalse()
         ->and(OperationsPanelNavigationGroups::labels())->toContain('AFILIADOS', 'TELEMEDICINA', 'ZONA DE DESCARGA');
 });
 

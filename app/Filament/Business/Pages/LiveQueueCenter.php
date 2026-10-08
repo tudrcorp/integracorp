@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Business\Pages;
 
 use App\Models\FailedJob;
+use App\Support\Filament\SharedNavigationGroups;
 use App\Support\LivePresence\ErrorTracker;
 use App\Support\LivePresence\ExceptionFingerprint;
 use App\Support\LivePresence\FailedJobActions;
@@ -40,6 +41,7 @@ use Illuminate\Support\HtmlString;
 use InvalidArgumentException;
 use Livewire\Attributes\Url;
 use Throwable;
+use UnitEnum;
 
 /**
  * Colas y errores: donde se decide qué hacer con lo que falló.
@@ -67,6 +69,8 @@ class LiveQueueCenter extends Page implements HasTable
     protected static ?string $title = 'Colas y errores';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;
+
+    protected static string|UnitEnum|null $navigationGroup = SharedNavigationGroups::MONITORING;
 
     protected static ?int $navigationSort = 100;
 

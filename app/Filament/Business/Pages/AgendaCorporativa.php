@@ -15,6 +15,7 @@ use App\Models\CorporateAgendaSocialPublication;
 use App\Models\RrhhColaborador;
 use App\Services\CorporateAgendaInvitationWhatsAppService;
 use App\Support\CorporateAgendaPendingInvitationCounter;
+use App\Support\Filament\SharedNavigationGroups;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Navigation\NavigationItem;
@@ -39,7 +40,8 @@ class AgendaCorporativa extends Page
     use AuthorizesDepartmentNavigation;
     use WithFileUploads;
 
-    // protected static string|UnitEnum|null $navigationGroup = 'SOLICITUDES';
+    /** Lo heredan las agendas de Administración, Marketing y Operaciones. */
+    protected static string|UnitEnum|null $navigationGroup = SharedNavigationGroups::USER;
 
     protected static ?string $navigationLabel = 'Agenda Corporativa';
 

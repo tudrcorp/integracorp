@@ -115,3 +115,16 @@ it('el filtro de estatus ya no ofrece Excluido', function (): void {
         ->and(CollectionReceivableReport::EXCLUDED_AFFILIATION_STATUSES)
         ->toBe(['EXCLUIDO', 'EXCLUIDA', 'INACTIVO', 'INACTIVA', 'ANULADO', 'ANULADA']);
 });
+
+it('collections tiene los índices del reporte de cuentas por cobrar', function (): void {
+    expect(Illuminate\Support\Facades\Schema::hasIndex('collections', ['affiliation_code', 'status', 'filter_next_payment_date']))->toBeTrue()
+        ->and(Illuminate\Support\Facades\Schema::hasIndex('collections', ['status', 'filter_next_payment_date']))->toBeTrue()
+        ->and(Illuminate\Support\Facades\Schema::hasIndex('collections', ['sale_id']))->toBeTrue();
+
+    $plan = collect(DB::select(
+        'EXPLAIN SELECT n.id FROM collections n WHERE n.affiliation_code = ? AND n.status = ? ORDER BY n.filter_next_payment_date ASC, n.id ASC LIMIT 1',
+        ['TDEC-IND-000436', CollectionReceivableReport::PENDING_STATUS],
+    ))->first();
+
+    expect($plan->key)->toBe('collections_affiliation_status_due_index');
+});

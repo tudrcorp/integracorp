@@ -7,9 +7,11 @@ namespace App\Filament\Business\Pages;
 use App\Filament\Business\Pages\Concerns\InteractsWithCorporateCalendarShell;
 use App\Filament\Business\Pages\Concerns\InteractsWithTdgHybridCalendar;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
+use App\Support\Filament\SharedNavigationGroups;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use UnitEnum;
 
 class CalendariosTdg extends Page
 {
@@ -24,6 +26,9 @@ class CalendariosTdg extends Page
     protected static ?string $navigationLabel = 'Calendarios TDG';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendar;
+
+    /** Lo heredan las subclases de otros paneles. */
+    protected static string|UnitEnum|null $navigationGroup = SharedNavigationGroups::USER;
 
     protected static ?int $navigationSort = 3;
 
