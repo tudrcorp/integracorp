@@ -15,6 +15,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -89,6 +90,8 @@ final class SaleInvoicePdfService
         $built = $this->build($sale, [
             ...$input,
             'tasa_bcv' => $input['tasa_bcv'] ?? $previous['tasa_bcv'],
+            'invoice_base_usd' => $input['invoice_base_usd'] ?? $previous['base_usd'],
+            'source_payment' => $input['source_payment'] ?? $previous['source_payment'],
             'invoice_number' => $invoiceNumber,
             'date' => $date,
         ], $issuedAt);
@@ -129,7 +132,7 @@ final class SaleInvoicePdfService
      * facturas anteriores a él, la auditoría del intento de emisión (que guarda
      * fecha y «a nombre de», pero no la tasa ni los datos personalizados).
      *
-     * @return array{date: string|null, invoice_in_name_of: string|null, tasa_bcv: float|null, issued_at: string|null, billing_party: array<string, mixed>|null, source: string}
+     * @return array{date: string|null, invoice_in_name_of: string|null, tasa_bcv: float|null, base_usd: float|null, source_payment: array<string, mixed>|null, issued_at: string|null, billing_party: array<string, mixed>|null, source: string}
      */
     public function previousInvoiceInput(Sale $sale): array
     {
@@ -140,6 +143,8 @@ final class SaleInvoicePdfService
                 'date' => $this->normalizeDate($snapshot['date'] ?? null),
                 'invoice_in_name_of' => $snapshot['invoice_in_name_of'] ?? null,
                 'tasa_bcv' => is_numeric($snapshot['tasa_bcv'] ?? null) ? (float) $snapshot['tasa_bcv'] : null,
+                'base_usd' => is_numeric($snapshot['base_usd'] ?? null) ? (float) $snapshot['base_usd'] : null,
+                'source_payment' => is_array($snapshot['source_payment'] ?? null) ? $snapshot['source_payment'] : null,
                 'issued_at' => $snapshot['issued_at'] ?? null,
                 'billing_party' => is_array($snapshot['billing_party'] ?? null) ? $snapshot['billing_party'] : null,
                 'source' => 'snapshot',
@@ -152,6 +157,8 @@ final class SaleInvoicePdfService
             'date' => $this->normalizeDate($details['date'] ?? null),
             'invoice_in_name_of' => $details['invoice_in_name_of'] ?? null,
             'tasa_bcv' => null,
+            'base_usd' => null,
+            'source_payment' => null,
             'issued_at' => null,
             'billing_party' => null,
             'source' => $details !== [] ? 'audit' : 'none',
@@ -163,16 +170,27 @@ final class SaleInvoicePdfService
         return public_path('storage/facturas/FACT-'.$invoiceNumber.'.pdf');
     }
 
+    /**
+     * El tipo existe con y sin tilde («AFILIACIÓN CORPORATIVA»): se compara sin acentos.
+     */
     public static function isCorporate(Sale $sale): bool
     {
-        return $sale->type === self::TYPE_CORPORATE;
+        return Str::upper(Str::ascii(trim((string) $sale->type))) === self::TYPE_CORPORATE;
     }
 
     /**
-     * Total de la factura en bolívares, como lo calculaba la acción original.
+     * Total de la factura en bolívares.
+     *
+     * - Desde un pago (`$baseUsd`, la cuota del pago): cuota × tasa del analista.
+     * - Desde Ventas, como lo calculaba la acción original: tasa × lo cobrado en
+     *   US$, o lo cobrado en Bs. si la venta se pagó en bolívares.
      */
-    public static function totalVes(Sale $sale, mixed $tasaBcv): float
+    public static function totalVes(Sale $sale, mixed $tasaBcv, mixed $baseUsd = null): float
     {
+        if (is_numeric($baseUsd) && is_numeric($tasaBcv)) {
+            return round((float) $baseUsd * (float) $tasaBcv, 2);
+        }
+
         if ((float) ($sale->pay_amount_usd ?? 0) > 0 && is_numeric($tasaBcv)) {
             return round((float) $tasaBcv * (float) $sale->pay_amount_usd, 2);
         }
@@ -198,10 +216,21 @@ final class SaleInvoicePdfService
         $inNameOf = (string) ($input['invoice_in_name_of'] ?? 'titular');
         $tasaBcv = is_numeric($input['tasa_bcv'] ?? null) && (float) $input['tasa_bcv'] > 0 ? (float) $input['tasa_bcv'] : null;
 
+        $baseUsd = is_numeric($input['invoice_base_usd'] ?? null) ? round((float) $input['invoice_base_usd'], 2) : null;
+
+        if ($baseUsd !== null && $baseUsd <= 0) {
+            throw new RuntimeException('El pago no tiene una cuota en dólares para facturar.');
+        }
+
+        if ($baseUsd !== null && $tasaBcv === null) {
+            throw new RuntimeException('Indique la tasa BCV para calcular el monto en bolívares.');
+        }
+
         if ((float) ($sale->pay_amount_usd ?? 0) > 0 && $tasaBcv === null) {
             throw new RuntimeException('Indique la tasa BCV: la venta tiene un monto cobrado en dólares.');
         }
-        $totalVes = self::totalVes($sale, $tasaBcv);
+
+        $totalVes = self::totalVes($sale, $tasaBcv, $baseUsd);
         $billingParty = self::resolveBillingParty($inNameOf, $sale, $affiliation, $input);
 
         $data = [
@@ -231,6 +260,8 @@ final class SaleInvoicePdfService
                 'invoice_in_name_of' => $inNameOf,
                 'billing_party' => $billingParty,
                 'tasa_bcv' => $tasaBcv,
+                'base_usd' => $baseUsd,
+                'source_payment' => is_array($input['source_payment'] ?? null) ? $input['source_payment'] : null,
                 'total_ves' => $totalVes,
                 'period_from' => $data['period_from'] ?? null,
                 'period_to' => $data['period_to'] ?? null,
