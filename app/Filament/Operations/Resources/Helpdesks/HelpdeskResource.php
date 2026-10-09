@@ -13,6 +13,7 @@ use App\Filament\Operations\Resources\Helpdesks\Schemas\HelpdeskForm;
 use App\Filament\Operations\Resources\Helpdesks\Schemas\HelpdeskInfolist;
 use App\Filament\Operations\Resources\Helpdesks\Tables\HelpdesksTable;
 use App\Models\HelpDesk;
+use App\Support\Filament\SharedNavigationGroups;
 use App\Support\HelpdeskTicketVisibility;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -34,7 +35,7 @@ class HelpdeskResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-ticket';
 
-    protected static string|UnitEnum|null $navigationGroup = null;
+    protected static string|UnitEnum|null $navigationGroup = SharedNavigationGroups::USER;
 
     protected static ?int $navigationSort = 1;
 

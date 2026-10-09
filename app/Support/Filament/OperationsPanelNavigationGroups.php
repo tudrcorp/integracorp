@@ -8,6 +8,9 @@ use Filament\Navigation\NavigationGroup;
 
 final class OperationsPanelNavigationGroups
 {
+    /** Aliados corporativos, proveedores naturales y proveedores jurídicos. */
+    public const PROVIDERS = 'PROVEEDORES';
+
     /**
      * @return list<string>
      */
@@ -25,9 +28,14 @@ final class OperationsPanelNavigationGroups
     public static function definitions(): array
     {
         return [
+            SharedNavigationGroups::user(),
             NavigationGroup::make()
                 ->label('AFILIADOS')
                 ->icon('heroicon-o-identification')
+                ->collapsed(),
+            NavigationGroup::make()
+                ->label(self::PROVIDERS)
+                ->icon('heroicon-o-building-storefront')
                 ->collapsed(),
             NavigationGroup::make()
                 ->label('INVENTARIO DIAGNOMOVIL')

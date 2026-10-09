@@ -48,6 +48,7 @@ class Sale extends Model
         'reference_payment',
         'date_payment_voucher',
         'invoice_generated',
+        'invoice_snapshot',
         'is_payment_link',
     ];
 
@@ -58,6 +59,7 @@ class Sale extends Model
     {
         return [
             'white_company_neta' => 'decimal:2',
+            'invoice_snapshot' => 'array',
         ];
     }
 

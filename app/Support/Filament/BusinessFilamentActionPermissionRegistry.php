@@ -28,11 +28,15 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const DELETE_TELEMEDICINE_CASE = 'eliminar-caso-servicios-medicos';
 
+    public const REGISTER_DIRECT_MEDICAL_SERVICE = 'registrar-servicio-medico-directo';
+
     public const MANAGE_SUPPLIER_INTEGRACORP_PROCESSES = 'gestionar-procesos-integracorp-proveedores';
 
     public const EDIT_INDIVIDUAL_AFFILIATE_PERSONAL_DATA = 'editar-afiliados-individuales';
 
     public const EDIT_CORPORATE_AFFILIATE_PERSONAL_DATA = 'editar-afiliados-corporativos';
+
+    public const ACCEPT_EARLY_RENOVATION = 'aceptar-renovacion-anticipada';
 
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
@@ -105,6 +109,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'group' => 'COORDINACIÓN DE SERVICIOS',
                 'modules' => ['OPERACIONES'],
             ],
+            self::REGISTER_DIRECT_MEDICAL_SERVICE => [
+                'name' => 'Registrar servicio médico directo',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
             self::MANAGE_SUPPLIER_INTEGRACORP_PROCESSES => [
                 'name' => 'Gestión de Procesos en Integracorp',
                 'group' => 'PROVEEDORES JURÍDICOS',
@@ -119,6 +128,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Editar datos personales de afiliados corporativos',
                 'group' => 'AFILIADOS',
                 'modules' => ['OPERACIONES'],
+            ],
+            self::ACCEPT_EARLY_RENOVATION => [
+                'name' => 'Renovar antes del período de renovación (individual y corporativa)',
+                'group' => 'AFILIACIONES',
+                'modules' => [self::OWNER_MODULE, 'ADMINISTRACION'],
             ],
         ];
     }

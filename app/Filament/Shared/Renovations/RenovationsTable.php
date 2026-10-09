@@ -11,6 +11,8 @@ use App\Services\ManualRenovationAcceptanceOptions;
 use App\Support\AffiliationAffiliateFeeCalculator;
 use App\Support\Filament\Renovations\AcceptRenovationActionForm;
 use App\Support\FilamentDateDisplay;
+use App\Support\Renovations\EarlyRenovationAcceptance;
+use App\Support\Renovations\UpcomingRenovationCounts;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
@@ -458,6 +460,22 @@ class RenovationsTable
                             default => null,
                         };
                     }),
+                Filter::make(UpcomingRenovationCounts::FILTER)
+                    ->label('Renueva en')
+                    ->form([
+                        Select::make('tramo')
+                            ->label('Renueva en')
+                            ->options(UpcomingRenovationCounts::options())
+                            ->placeholder('Cualquier fecha')
+                            ->helperText('Por fecha de renovación. También se aplica al tocar las tarjetas de arriba.')
+                            ->native(false),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => in_array($data['tramo'] ?? null, UpcomingRenovationCounts::BUCKETS, true)
+                        ? UpcomingRenovationCounts::applyBucket($query, $data['tramo'])
+                        : $query)
+                    ->indicateUsing(fn (array $data): ?string => in_array($data['tramo'] ?? null, UpcomingRenovationCounts::BUCKETS, true)
+                        ? 'Renueva en: '.mb_strtolower(UpcomingRenovationCounts::label($data['tramo']))
+                        : null),
             ])
             ->recordActions([
                 ActionGroup::make([
@@ -518,13 +536,13 @@ class RenovationsTable
     {
         return self::configureAcceptModal(
             Action::make('acceptRenovation')
-                ->label('Aceptar renovación')
-                ->icon(Heroicon::OutlinedCheckCircle)
-                ->color('success')
-                ->modalHeading('Aceptar renovación')
+                ->label(fn (Renovation $record): string => EarlyRenovationAcceptance::isEarly($record) ? 'Renovar anticipadamente' : 'Aceptar renovación')
+                ->icon(fn (Renovation $record): Heroicon => EarlyRenovationAcceptance::isEarly($record) ? Heroicon::OutlinedForward : Heroicon::OutlinedCheckCircle)
+                ->color(fn (Renovation $record): string => EarlyRenovationAcceptance::isEarly($record) ? 'warning' : 'success')
+                ->modalHeading(fn (Renovation $record): string => EarlyRenovationAcceptance::isEarly($record) ? 'Renovar antes del período de renovación' : 'Aceptar renovación')
                 ->modalDescription('Confirme la propuesta del sistema o ajuste manualmente las condiciones comerciales acordadas con el cliente.')
-                ->modalSubmitActionLabel('Confirmar aceptación')
-                ->visible(fn (Renovation $record): bool => $record->status === 'PERIODO DE RENOVACION')
+                ->modalSubmitActionLabel(fn (Renovation $record): string => EarlyRenovationAcceptance::isEarly($record) ? 'Confirmar renovación anticipada' : 'Confirmar aceptación')
+                ->visible(fn (Renovation $record): bool => ! EarlyRenovationAcceptance::isEarly($record) || EarlyRenovationAcceptance::currentUserCan())
                 ->fillForm(fn (Renovation $record): array => [
                     'plan_id' => $record->plan_id,
                     'age_range_id' => $record->age_range_id,
@@ -603,13 +621,29 @@ class RenovationsTable
             return;
         }
 
-        $result = app(AcceptAffiliationRenovationsService::class)->accept($records, $acceptedBy, $manualOptions);
+        try {
+            $earlyAuthorization = EarlyRenovationAcceptance::authorizationFromFormData($data);
+        } catch (\InvalidArgumentException $exception) {
+            Notification::make()
+                ->danger()
+                ->title('Renovación anticipada no autorizada')
+                ->body($exception->getMessage())
+                ->send();
+
+            return;
+        }
+
+        $result = app(AcceptAffiliationRenovationsService::class)->accept($records, $acceptedBy, $manualOptions, $earlyAuthorization);
 
         if ($result->accepted > 0) {
+            $earlyNote = $result->earlyAccepted > 0
+                ? ' '.($result->earlyAccepted === 1 ? '1 fue anticipada' : "{$result->earlyAccepted} fueron anticipadas").': quedó registrado con su motivo y se avisó a los SUPERADMIN.'
+                : '';
+
             Notification::make()
                 ->success()
                 ->title($result->accepted === 1 ? 'Renovación aceptada' : 'Renovaciones aceptadas')
-                ->body("Se aplicaron {$result->accepted} renovación(es) al expediente, se registraron en el historial y se generaron las cobranzas POR PAGAR del nuevo período.")
+                ->body("Se aplicaron {$result->accepted} renovación(es) al expediente, se registraron en el historial y se generaron las cobranzas POR PAGAR del nuevo período.{$earlyNote}")
                 ->send();
         }
 

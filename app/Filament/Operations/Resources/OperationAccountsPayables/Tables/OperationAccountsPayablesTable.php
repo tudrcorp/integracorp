@@ -10,8 +10,10 @@ use App\Http\Controllers\OperationAccountsPayableExportCsvController;
 use App\Models\BusinessUnit;
 use App\Models\OperationAccountsPayable;
 use App\Support\Filament\CsvExportDownloadTrigger;
+use App\Support\Filament\Operations\SpecificBusinessUnitTableTools;
 use App\Support\Operations\AccountsPayableInvoicePreview;
 use App\Support\Operations\AccountsPayablePaymentReceiptPreview;
+use App\Support\Operations\OperationServiceOrderListDisplay;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -27,9 +29,16 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class OperationAccountsPayablesTable
 {
+    /** Opción del filtro para las facturas sin unidad de negocio específica. */
+    public const WITHOUT_SPECIFIC_BUSINESS_UNIT = SpecificBusinessUnitTableTools::WITHOUT;
+
+    /** Paciente de la coordinación de la orden: de ahí sale la unidad específica. */
+    private const PATIENT_RELATION = 'operationServiceOrder.operationCoordinationService.telemedicinePatient';
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -38,7 +47,12 @@ class OperationAccountsPayablesTable
             ->defaultSort('invoice_registration_date', 'desc')
             ->persistFiltersInSession()
             ->striped()
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['businessUnit:id,definition,code', 'operationServiceOrder:id,order_number']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'businessUnit:id,definition,code',
+                'operationServiceOrder:id,order_number,operation_coordination_service_id',
+                'operationServiceOrder.operationCoordinationService:id,telemedicine_patient_id',
+                'operationServiceOrder.operationCoordinationService.telemedicinePatient:id,specific_business_unit',
+            ]))
             ->columns([
                 TextColumn::make('invoice_date')
                     ->label('Fecha factura')
@@ -67,6 +81,12 @@ class OperationAccountsPayablesTable
                     ->badge()
                     ->color('gray')
                     ->toggleable(),
+                SpecificBusinessUnitTableTools::column(
+                    fn (OperationAccountsPayable $record): string => $record->operationServiceOrder !== null
+                        ? OperationServiceOrderListDisplay::specificBusinessUnit($record->operationServiceOrder)
+                        : '—',
+                    self::PATIENT_RELATION,
+                ),
                 TextColumn::make('operationServiceOrder.order_number')
                     ->label('Orden de servicio')
                     ->placeholder('Carga manual')
@@ -169,6 +189,7 @@ class OperationAccountsPayablesTable
                         ->pluck('definition', 'id')
                         ->all())
                     ->searchable(),
+                SpecificBusinessUnitTableTools::filter(fn (): array => self::specificBusinessUnitOptions(), self::PATIENT_RELATION),
                 Filter::make('invoice_period')
                     ->label('Período de facturación')
                     ->form([
@@ -254,5 +275,25 @@ class OperationAccountsPayablesTable
         $symbol = $currency === 'VES' ? 'Bs. ' : 'US$ ';
 
         return $symbol.number_format((float) $amount, 2, ',', '.');
+    }
+
+    /**
+     * Unidades específicas que de verdad tienen cuentas por pagar, más la opción
+     * «Sin unidad específica». Una sola consulta con DISTINCT.
+     *
+     * @return array<string, string>
+     */
+    public static function specificBusinessUnitOptions(): array
+    {
+        return SpecificBusinessUnitTableTools::options(
+            DB::table('operation_accounts_payables as payables')
+                ->join('operation_service_orders as orders', 'orders.id', '=', 'payables.operation_service_order_id')
+                ->join('operation_coordination_services as coordinations', 'coordinations.id', '=', 'orders.operation_coordination_service_id')
+                ->join('telemedicine_patients as patients', 'patients.id', '=', 'coordinations.telemedicine_patient_id')
+                ->whereNotNull('patients.specific_business_unit')
+                ->where('patients.specific_business_unit', '!=', '')
+                ->distinct()
+                ->pluck('patients.specific_business_unit'),
+        );
     }
 }

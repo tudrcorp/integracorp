@@ -249,3 +249,24 @@ Schedule::command('queue:prune-failed', ['--hours' => max(1, (int) config('live-
     ->name('live-presence-prune-failed')
     ->withoutOverlapping(30)
     ->when(static fn (): bool => (int) config('live-presence.queues.prune_failed_days', 30) > 0);
+
+/**
+ * Actividad de usuarios: cada minuto pasa a MySQL el recorrido y el resumen del
+ * día acumulados en Redis/caché. En el scheduler (no en la cola) para seguir
+ * registrando aunque los workers estén caídos.
+ */
+Schedule::command('user-activity:flush')
+    ->everyMinute()
+    ->name('user-activity-flush')
+    ->withoutOverlapping(5)
+    ->runInBackground()
+    ->when(static fn (): bool => (bool) config('live-presence.enabled', true) && (bool) config('live-presence.activity.enabled', true));
+
+/**
+ * Retención de Actividad de usuarios: 90 días de recorrido, 12 meses de resumen.
+ */
+Schedule::command('user-activity:purge')
+    ->dailyAt('3:40')
+    ->name('user-activity-purge')
+    ->withoutOverlapping(60)
+    ->runInBackground();

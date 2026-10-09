@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\LivePresence;
 
+use App\Support\UserActivity\UserActivityTracker;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -115,6 +116,20 @@ final class LivePresenceRecorder
                 ]);
             }
         });
+
+        if ($event !== null) {
+            $stepPath = $event['type'] === 'download' ? (self::refererPath($request) ?? $pagePath) : $pagePath;
+
+            UserActivityTracker::recordStep((int) $user->getAuthIdentifier(), [
+                'type' => $event['type'],
+                'label' => (string) $event['label'],
+                'panel' => ActivityContext::panelLabel(ActivityContext::panelFor($pagePath)),
+                'page' => $event['type'] === 'page' ? null : ActivityContext::pageLabel($stepPath),
+                'path' => $stepPath,
+                'ms' => (int) round($durationMs),
+                'status' => $response?->getStatusCode(),
+            ]);
+        }
     }
 
     /**
@@ -171,6 +186,15 @@ final class LivePresenceRecorder
                 ]);
             }
         });
+
+        UserActivityTracker::recordPing(
+            (int) $user->getAuthIdentifier(),
+            isset($client['tab']) ? (string) $client['tab'] : null,
+            (bool) ($client['visible'] ?? true),
+            isset($client['idle']) ? (int) $client['idle'] : null,
+            $reason,
+            ['panel' => $fields['panel_label'], 'page' => $fields['page_label'], 'path' => $pagePath],
+        );
     }
 
     /**

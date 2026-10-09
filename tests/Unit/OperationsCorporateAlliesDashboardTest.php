@@ -11,7 +11,7 @@ it('define dashboard de aliados corporativos con estructura de resource', functi
     expect($resourceContents)->toContain('namespace App\Filament\Operations\Resources\CorporateAllies;')
         ->toContain("protected static ?string \$navigationLabel = 'Aliados corporativos';")
         ->toContain('protected static ?int $navigationSort = 5;')
-        ->toContain('protected static string|UnitEnum|null $navigationGroup = null;')
+        ->toContain('protected static string|UnitEnum|null $navigationGroup = OperationsPanelNavigationGroups::PROVIDERS;')
         ->toContain('CorporateAlly::class')
         ->toContain("'index' => ListCorporateAllies::route('/')")
         ->toContain("'create' => CreateCorporateAlly::route('/create')");

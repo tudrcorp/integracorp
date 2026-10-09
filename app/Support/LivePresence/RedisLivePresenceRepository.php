@@ -26,6 +26,10 @@ final class RedisLivePresenceRepository implements LivePresenceRepository
 
     private const PERF = 'lp:perf';
 
+    private const ACTIVITY_PREFIX = 'ua:';
+
+    private const ACTIVITY_EVENTS = 'ua:ev';
+
     public function __construct(
         private readonly string $connectionName,
         private readonly int $sessionTtl,
@@ -264,6 +268,132 @@ final class RedisLivePresenceRepository implements LivePresenceRepository
     public function forget(string $key): void
     {
         $this->redis()->del($key);
+    }
+
+    /**
+     * Un bitmap por usuario, día y estado: 1440 bits (180 bytes). SETBIT es
+     * atómico, así que dos pestañas latiendo a la vez no se pisan.
+     *
+     * El valor va como `true`, no `1`: phpredis declara `bool $value` y con
+     * `strict_types` un entero lanza TypeError, que `LivePresenceStore::safely`
+     * se traga y deja sin registrar todo el latido.
+     */
+    public function markActivityMinutes(int $userId, string $day, array $minutesOfDay, string $state, int $ttl): void
+    {
+        $minutesOfDay = array_values(array_filter($minutesOfDay, static fn (int $minute): bool => $minute >= 0 && $minute < 1440));
+
+        if ($minutesOfDay === [] || ! in_array($state, ['a', 'i', 'b'], true)) {
+            return;
+        }
+
+        $key = self::ACTIVITY_PREFIX.$day.':'.$userId.':'.$state;
+        $usersKey = self::ACTIVITY_PREFIX.$day.':users';
+
+        $this->redis()->pipeline(function ($pipe) use ($key, $usersKey, $minutesOfDay, $userId, $ttl): void {
+            foreach ($minutesOfDay as $minute) {
+                $pipe->setbit($key, $minute, true);
+            }
+
+            $pipe->expire($key, $ttl);
+            $pipe->sadd($usersKey, (string) $userId);
+            $pipe->expire($usersKey, $ttl);
+        });
+    }
+
+    public function activityMinutes(int $userId, string $day): array
+    {
+        $prefix = self::ACTIVITY_PREFIX.$day.':'.$userId.':';
+        $raw = $this->redis()->mget([$prefix.'a', $prefix.'i', $prefix.'b']);
+        $raw = is_array($raw) ? array_values($raw) : [];
+
+        $minutes = [];
+
+        /** Del menos al más importante: el último que marca un minuto gana. */
+        foreach (['b' => 2, 'i' => 1, 'a' => 0] as $state => $position) {
+            foreach (self::bitsSet($raw[$position] ?? null) as $minute) {
+                $minutes[$minute] = $state;
+            }
+        }
+
+        ksort($minutes);
+
+        return $minutes;
+    }
+
+    public function activityUsers(string $day): array
+    {
+        $members = $this->redis()->smembers(self::ACTIVITY_PREFIX.$day.':users');
+
+        return array_values(array_filter(array_map('intval', is_array($members) ? $members : []), static fn (int $id): bool => $id > 0));
+    }
+
+    public function appendActivityEvents(array $events, int $ttl): void
+    {
+        if ($events === []) {
+            return;
+        }
+
+        $this->redis()->pipeline(function ($pipe) use ($events, $ttl): void {
+            foreach ($events as $event) {
+                $pipe->rpush(self::ACTIVITY_EVENTS, (string) json_encode($event, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+
+            $pipe->expire(self::ACTIVITY_EVENTS, $ttl);
+        });
+    }
+
+    public function takeActivityEvents(int $limit): array
+    {
+        $limit = max(1, $limit);
+        $items = $this->peekActivityEvents($limit);
+
+        if ($items !== []) {
+            /** Los productores solo agregan al final: recortar el inicio no pierde nada nuevo. */
+            $this->redis()->ltrim(self::ACTIVITY_EVENTS, count($items), -1);
+        }
+
+        return $items;
+    }
+
+    public function peekActivityEvents(int $limit): array
+    {
+        $items = $this->redis()->lrange(self::ACTIVITY_EVENTS, 0, max(0, $limit - 1));
+
+        return array_values(array_filter(array_map(
+            static fn (mixed $item): mixed => is_string($item) ? json_decode($item, true) : null,
+            is_array($items) ? $items : [],
+        ), 'is_array'));
+    }
+
+    /**
+     * Posiciones encendidas de un bitmap de Redis (el bit 0 es el más alto del primer byte).
+     *
+     * @return list<int>
+     */
+    private static function bitsSet(mixed $bitmap): array
+    {
+        if (! is_string($bitmap) || $bitmap === '') {
+            return [];
+        }
+
+        $positions = [];
+        $length = min(strlen($bitmap), 180);
+
+        for ($byte = 0; $byte < $length; $byte++) {
+            $value = ord($bitmap[$byte]);
+
+            if ($value === 0) {
+                continue;
+            }
+
+            for ($bit = 0; $bit < 8; $bit++) {
+                if (($value >> (7 - $bit)) & 1) {
+                    $positions[] = $byte * 8 + $bit;
+                }
+            }
+        }
+
+        return $positions;
     }
 
     private function redis(): Connection

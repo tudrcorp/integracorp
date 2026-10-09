@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 use App\Support\Filament\AdministrationPanelNavigationGroups;
 
-it('grupos de navegacion de administracion inician colapsados', function (): void {
+it('grupos de navegacion de administracion inician colapsados, salvo DEL USUARIO que va primero y abierto', function (): void {
     $collapsedCount = collect(AdministrationPanelNavigationGroups::definitions())
         ->filter(fn ($group) => $group->isCollapsed())
         ->count();
 
-    expect($collapsedCount)->toBe(count(AdministrationPanelNavigationGroups::labels()))
+    expect($collapsedCount)->toBe(count(AdministrationPanelNavigationGroups::labels()) - 1)
+        ->and(AdministrationPanelNavigationGroups::labels()[0])->toBe(App\Support\Filament\SharedNavigationGroups::USER)
+        ->and(AdministrationPanelNavigationGroups::definitions()[0]->isCollapsed())->toBeFalse()
         ->and(AdministrationPanelNavigationGroups::labels())->toContain('ESTRUCTURA COMERCIAL', 'ADMINISTRACIÓN', 'NOMINA');
 });
 

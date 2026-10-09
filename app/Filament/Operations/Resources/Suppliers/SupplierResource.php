@@ -18,12 +18,14 @@ use App\Filament\Operations\Resources\Suppliers\Tables\SuppliersTable;
 use App\Models\Permission;
 use App\Models\Supplier;
 use App\Models\UserPermission;
+use App\Support\Filament\OperationsPanelNavigationGroups;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 class SupplierResource extends Resource
 {
@@ -31,6 +33,8 @@ class SupplierResource extends Resource
     use ConfiguresOperationsSupplierGlobalSearch;
 
     protected static ?string $model = Supplier::class;
+
+    protected static string|UnitEnum|null $navigationGroup = OperationsPanelNavigationGroups::PROVIDERS;
 
     protected static ?string $navigationLabel = 'Proveedores Jurídicos';
 

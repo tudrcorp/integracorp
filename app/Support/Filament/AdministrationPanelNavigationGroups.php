@@ -25,6 +25,7 @@ final class AdministrationPanelNavigationGroups
     public static function definitions(): array
     {
         return [
+            SharedNavigationGroups::user(),
             NavigationGroup::make()
                 ->label('ESTRUCTURA COMERCIAL')
                 ->icon('heroicon-o-building-office-2')

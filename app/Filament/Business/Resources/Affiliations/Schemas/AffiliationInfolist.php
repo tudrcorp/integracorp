@@ -23,6 +23,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 class AffiliationInfolist
@@ -79,6 +80,23 @@ class AffiliationInfolist
         }
 
         return number_format($value, $unitIndex === 0 ? 0 : 2, ',', '.').' '.$units[$unitIndex];
+    }
+
+    /**
+     * Lleva a «Pagos realizados» del mismo panel. Lo usan las fichas individual
+     * y corporativa (infolists compartidas entre paneles): la URL sale del
+     * recurso de la página y el botón se oculta donde no hay página de pagos.
+     */
+    public static function viewPaymentsAction(): Action
+    {
+        return Action::make('viewPayments')
+            ->label('Ver pagos realizados')
+            ->icon(Heroicon::OutlinedBanknotes)
+            ->color('primary')
+            ->button()
+            ->visible(fn (mixed $livewire): bool => $livewire instanceof ViewRecord
+                && array_key_exists('payments', $livewire::getResource()::getPages()))
+            ->url(fn (mixed $livewire, Model $record): string => $livewire::getResource()::getUrl('payments', ['record' => $record]));
     }
 
     public static function configure(Schema $schema): Schema
@@ -283,7 +301,11 @@ class AffiliationInfolist
                             ->icon(Heroicon::OutlinedRectangleStack)
                             ->schema([
                                 Section::make('Plan y frecuencia de pago')
+                                    ->key('planAndPayments')
                                     ->icon(Heroicon::OutlinedRectangleStack)
+                                    ->headerActions([
+                                        self::viewPaymentsAction(),
+                                    ])
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
                                     ])

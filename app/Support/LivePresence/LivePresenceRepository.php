@@ -97,4 +97,47 @@ interface LivePresenceRepository
     public function getValue(string $key): ?array;
 
     public function forget(string $key): void;
+
+    /**
+     * Actividad por minuto (Actividad de usuarios): marca minutos del día
+     * (0–1439) con un estado `a` activo, `i` inactivo o `b` en otra pestaña.
+     * Marcar es idempotente; al leer, `a` gana a `i` y `i` a `b`.
+     *
+     * @param  list<int>  $minutesOfDay
+     */
+    public function markActivityMinutes(int $userId, string $day, array $minutesOfDay, string $state, int $ttl): void;
+
+    /**
+     * @return array<int, string> Minuto del día => estado resuelto.
+     */
+    public function activityMinutes(int $userId, string $day): array;
+
+    /**
+     * Usuarios con algún minuto marcado ese día.
+     *
+     * @return list<int>
+     */
+    public function activityUsers(string $day): array;
+
+    /**
+     * Cola de eventos del recorrido pendientes de guardar en la base.
+     *
+     * @param  list<array<string, mixed>>  $events
+     */
+    public function appendActivityEvents(array $events, int $ttl): void;
+
+    /**
+     * Saca de la cola los `$limit` eventos más antiguos. Un solo consumidor
+     * (el job de volcado), así que leer y recortar no necesita ser atómico.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function takeActivityEvents(int $limit): array;
+
+    /**
+     * Lee sin sacar (eventos aún no volcados, para el detalle en vivo).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function peekActivityEvents(int $limit): array;
 }

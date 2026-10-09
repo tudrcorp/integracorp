@@ -299,11 +299,15 @@
                         $data_factura['plan'][$i]['coverage_id'] ?? null,
                     );
 
-                    $total_amount = \App\Support\CorporateDocumentPlanAmounts::periodAmount($data_factura['plan'][$i], $data_factura['frequency'] ?? null);
-                    $fechaHasta = \App\Support\CorporateDocumentPlanAmounts::periodEndFromToday($data_factura['plan'][$i], $data_factura['frequency'] ?? null);
+                    // Monto de la línea en Bs: lo calcula SaleInvoicePdfService con la tasa implícita del total.
+                    $line_amount_ves = $data_factura['lines_ves'][$i]
+                        ?? \App\Support\Sales\InvoiceVesLineAmounts::distribute(
+                            array_map(fn (array $row): float => \App\Support\CorporateDocumentPlanAmounts::periodAmount($row, $data_factura['frequency'] ?? null), $data_factura['plan']),
+                            $data_factura['total_amount'] ?? null,
+                        )['lines'][$i];
 
-                    //rango de edad
-                    $age_range = (string) \App\Models\AgeRange::query()->whereKey($data_factura['plan'][$i]['age_range_id'] ?? null)->value('range');
+                    //rango de edad (algunos rangos ya traen «años» en el nombre)
+                    $age_range = trim((string) preg_replace('/\s*a(ñ|Ñ)os\s*$/iu', '', (string) \App\Models\AgeRange::query()->whereKey($data_factura['plan'][$i]['age_range_id'] ?? null)->value('range')));
 
                     @endphp
                     <tr>
@@ -316,19 +320,19 @@
                                 {{-- PERÍODO DE VIGENCIA DESDE EL {{ $data['desde'] }} HASTA EL {{ $data['hasta'] }} --}}
                             </p>
                         </td>
-                        <td style="font-weight: normal; text-align: right;">{{ number_format($total_amount, 2) }}US$
+                        <td style="font-weight: normal; text-align: right;">{{ \App\Support\Sales\InvoiceVesLineAmounts::format($line_amount_ves) }}
                         </td>
                     </tr>
                     @endfor
 
                     <tr>
                         <td colspan="2" style="font-weight: normal; text-align: right;">Monto Total:
-                            {{ number_format($data_factura['total_amount'], 2) }}US$
+                            {{ \App\Support\Sales\InvoiceVesLineAmounts::format($data_factura['total_amount']) }}
                         </td>
                     </tr>
                     <tr>
                         <td colspan="2" style="font-weight: bold; text-align: right; padding-top: 5px;">
-                            Período de Vigencia: desde: {{ now()->format('d/m/Y') }} hasta: {{ $fechaHasta }}
+                            Período de Vigencia: desde: {{ $data_factura['period_from'] ?? now()->format('d/m/Y') }} hasta: {{ $data_factura['period_to'] ?? \App\Support\CorporateDocumentPlanAmounts::periodEndFromToday(collect($data_factura['plan'])->last() ?? [], $data_factura['frequency'] ?? null) }}
                         </td>
                     </tr>
                     <tr>

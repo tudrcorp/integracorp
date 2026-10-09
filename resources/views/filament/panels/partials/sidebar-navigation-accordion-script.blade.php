@@ -3,6 +3,8 @@
     'navigationGroupLabels' => [],
     'accordionStorageKey' => 'navigationAccordionV1',
     'patchFlag' => '__navigationAccordionPatched',
+    /** @var list<string> Grupos fuera del acordeón: abiertos al entrar y no se cierran al abrir otro. */
+    'alwaysOpenGroupLabels' => [\App\Support\Filament\SharedNavigationGroups::USER],
 ])
 
 <script>
@@ -10,18 +12,26 @@
         const navigationGroupLabels = @js($navigationGroupLabels);
         const accordionStorageKey = @js($accordionStorageKey);
         const patchFlag = @js($patchFlag);
+        const alwaysOpenGroupLabels = @js($alwaysOpenGroupLabels);
+        const isAccordionGroup = (label) => ! alwaysOpenGroupLabels.includes(label);
 
         const normalizeCollapsedGroups = (sidebar) => {
+            const accordionGroupLabels = navigationGroupLabels.filter(isAccordionGroup);
+
             if (! Array.isArray(sidebar.collapsedGroups)) {
-                sidebar.collapsedGroups = [...navigationGroupLabels];
+                sidebar.collapsedGroups = [...accordionGroupLabels];
 
                 return;
             }
 
             if (! localStorage.getItem(accordionStorageKey)) {
-                sidebar.collapsedGroups = [...navigationGroupLabels];
+                sidebar.collapsedGroups = [...accordionGroupLabels];
                 localStorage.setItem(accordionStorageKey, '1');
+
+                return;
             }
+
+            sidebar.collapsedGroups = sidebar.collapsedGroups.filter(isAccordionGroup);
         };
 
         const patchSidebarAccordion = () => {
@@ -43,7 +53,7 @@
                     .filter(Boolean);
 
                 if (this.collapsedGroups.includes(group)) {
-                    this.collapsedGroups = allGroupLabels.filter((label) => label !== group);
+                    this.collapsedGroups = allGroupLabels.filter((label) => label !== group && isAccordionGroup(label));
 
                     return;
                 }

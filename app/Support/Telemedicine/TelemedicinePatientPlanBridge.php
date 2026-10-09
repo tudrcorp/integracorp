@@ -271,6 +271,107 @@ final class TelemedicinePatientPlanBridge
         ];
     }
 
+    /**
+     * Carga por lote el afiliado (individual o corporativo) de varios pacientes:
+     * dos consultas para toda una página en vez de una o dos por fila. Usa la
+     * misma regla que {@see linkedAffiliate()} y {@see linkedAffiliateCorporate()}
+     * (afiliación + cédula equivalente, prefiriendo el ACTIVO) y deja el
+     * resultado en la relación que esos métodos ya consultan.
+     *
+     * @param  iterable<TelemedicinePatient>  $patients
+     */
+    public static function preloadLinkedAffiliates(iterable $patients): void
+    {
+        $pendingIndividual = [];
+        $pendingCorporate = [];
+
+        foreach ($patients as $patient) {
+            if (! $patient instanceof TelemedicinePatient || ! $patient->exists) {
+                continue;
+            }
+
+            if (! $patient->relationLoaded(self::RELATION_INDIVIDUAL_AFFILIATE)) {
+                if ((int) ($patient->afilliation_id ?? 0) > 0) {
+                    $pendingIndividual[] = $patient;
+                } else {
+                    $patient->setRelation(self::RELATION_INDIVIDUAL_AFFILIATE, null);
+                }
+            }
+
+            if (! $patient->relationLoaded(self::RELATION_CORPORATE_AFFILIATE)) {
+                if ((int) ($patient->afilliation_corporate_id ?? 0) > 0) {
+                    $pendingCorporate[] = $patient;
+                } else {
+                    $patient->setRelation(self::RELATION_CORPORATE_AFFILIATE, null);
+                }
+            }
+        }
+
+        if ($pendingIndividual !== []) {
+            $candidates = self::batchCandidates(Affiliate::query(), 'affiliation_id', $pendingIndividual, 'afilliation_id');
+
+            foreach ($pendingIndividual as $patient) {
+                $patient->setRelation(self::RELATION_INDIVIDUAL_AFFILIATE, self::preferActiveIndividual(
+                    self::matchingCandidates($candidates, (int) $patient->afilliation_id, 'affiliation_id', $patient->nro_identificacion),
+                ));
+            }
+        }
+
+        if ($pendingCorporate !== []) {
+            $candidates = self::batchCandidates(AffiliateCorporate::query()->whereNotNull('plan_id'), 'affiliation_corporate_id', $pendingCorporate, 'afilliation_corporate_id');
+
+            foreach ($pendingCorporate as $patient) {
+                $patient->setRelation(self::RELATION_CORPORATE_AFFILIATE, self::preferActiveCorporate(
+                    self::matchingCandidates($candidates, (int) $patient->afilliation_corporate_id, 'affiliation_corporate_id', $patient->nro_identificacion),
+                ));
+            }
+        }
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<\Illuminate\Database\Eloquent\Model>  $query
+     * @param  list<TelemedicinePatient>  $patients
+     * @return Collection<int, \Illuminate\Database\Eloquent\Model>
+     */
+    private static function batchCandidates($query, string $affiliationColumn, array $patients, string $patientColumn): Collection
+    {
+        $affiliationIds = array_values(array_unique(array_map(static fn (TelemedicinePatient $patient): int => (int) $patient->{$patientColumn}, $patients)));
+        $lookups = array_values(array_unique(array_merge(...array_map(
+            static fn (TelemedicinePatient $patient): array => self::documentLookupValues($patient->nro_identificacion),
+            $patients,
+        ))));
+
+        if ($lookups === []) {
+            return collect();
+        }
+
+        $normalizedSql = "REPLACE(REPLACE(REPLACE(REPLACE(UPPER(nro_identificacion), ' ', ''), '.', ''), '-', ''), '_', '')";
+        $placeholders = implode(',', array_fill(0, count($lookups), '?'));
+
+        return collect($query
+            ->whereIn($affiliationColumn, $affiliationIds)
+            ->where(function ($builder) use ($lookups, $normalizedSql, $placeholders): void {
+                $builder->whereIn('nro_identificacion', $lookups)
+                    ->orWhereRaw($normalizedSql.' in ('.$placeholders.')', $lookups);
+            })
+            ->get()
+            ->all());
+    }
+
+    /**
+     * @param  Collection<int, \Illuminate\Database\Eloquent\Model>  $candidates
+     * @return Collection<int, \Illuminate\Database\Eloquent\Model>
+     */
+    private static function matchingCandidates(Collection $candidates, int $affiliationId, string $affiliationColumn, mixed $document): Collection
+    {
+        $digits = self::documentDigits($document);
+
+        return $candidates
+            ->filter(static fn ($row): bool => (int) $row->{$affiliationColumn} === $affiliationId
+                && self::documentsLikelyMatch($row->nro_identificacion, $document, $digits))
+            ->values();
+    }
+
     public static function linkedAffiliateCorporate(TelemedicinePatient $patient): ?AffiliateCorporate
     {
         if ($patient->relationLoaded(self::RELATION_CORPORATE_AFFILIATE)) {

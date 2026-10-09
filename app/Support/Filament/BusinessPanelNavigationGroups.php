@@ -25,6 +25,7 @@ final class BusinessPanelNavigationGroups
     public static function definitions(): array
     {
         return [
+            SharedNavigationGroups::user(),
             NavigationGroup::make()
                 ->label('ESTRUCTURA COMERCIAL')
                 ->icon('heroicon-o-building-office-2')
@@ -49,6 +50,7 @@ final class BusinessPanelNavigationGroups
                 ->label('ZONA DE DESCARGA')
                 ->icon('heroicon-o-cloud-arrow-down')
                 ->collapsed(),
+            SharedNavigationGroups::monitoring(),
         ];
     }
 }

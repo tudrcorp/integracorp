@@ -7,6 +7,7 @@ namespace App\Filament\Operations\Resources\IndicadoresDeDesempeno;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\IndicadoresDeDesempeno\Pages\ListIndicadoresDeDesempeno;
 use App\Models\HelpDesk;
+use App\Support\Filament\SharedNavigationGroups;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -29,7 +30,7 @@ class IndicadoresDeDesempenoResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
-    protected static string|UnitEnum|null $navigationGroup = null;
+    protected static string|UnitEnum|null $navigationGroup = SharedNavigationGroups::USER;
 
     protected static ?int $navigationSort = 4;
 

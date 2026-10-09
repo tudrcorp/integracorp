@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\DoctorNurses\Schemas;
 
 use App\Models\SupplierClasificacion;
+use App\Support\Filament\Operations\OutsourcingMedicalDepartmentFields;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingForm;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -391,6 +392,7 @@ class DoctorNurseForm
                 ->maxLength(255)
                 ->placeholder('30 días, 45 días...')
                 ->prefixIcon('heroicon-o-credit-card'),
+            ...OutsourcingMedicalDepartmentFields::formFields(),
         ];
     }
 }

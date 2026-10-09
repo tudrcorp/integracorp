@@ -13,5 +13,6 @@ final class AcceptAffiliationCorporateRenovationsResult
         public readonly int $accepted,
         public readonly int $skipped,
         public readonly array $messages,
+        public readonly int $earlyAccepted = 0,
     ) {}
 }

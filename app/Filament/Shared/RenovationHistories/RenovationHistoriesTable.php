@@ -30,6 +30,9 @@ class RenovationHistoriesTable
             'negociacion' => Tab::make('Negociación Plan Especial')
                 ->icon(Heroicon::OutlinedChatBubbleLeftRight)
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('is_negotiation_candidate', true)),
+            'anticipadas' => Tab::make('Anticipadas')
+                ->icon(Heroicon::OutlinedForward)
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('is_early_acceptance', true)),
             'recientes' => Tab::make('Últimos 30 días')
                 ->icon(Heroicon::OutlinedClock)
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('accepted_at', '>=', now()->subDays(30))),
@@ -98,6 +101,19 @@ class RenovationHistoriesTable
                     ->icon(Heroicon::OutlinedCheckCircle)
                     ->sortable()
                     ->description(fn (AffiliationRenovationHistory $record): string => $record->accepted_by ?? '—'),
+                TextColumn::make('is_early_acceptance')
+                    ->label('Tipo')
+                    ->badge()
+                    ->state(fn (AffiliationRenovationHistory $record): string => $record->is_early_acceptance ? 'Anticipada' : 'En período')
+                    ->color(fn (AffiliationRenovationHistory $record): string => $record->is_early_acceptance ? 'warning' : 'gray')
+                    ->icon(fn (AffiliationRenovationHistory $record): ?Heroicon => $record->is_early_acceptance ? Heroicon::OutlinedForward : null)
+                    ->description(fn (AffiliationRenovationHistory $record): ?string => $record->is_early_acceptance && $record->days_before_renewal_at_accept !== null
+                        ? 'Faltaban '.$record->days_before_renewal_at_accept.' días'
+                        : null)
+                    ->tooltip(fn (AffiliationRenovationHistory $record): ?string => $record->is_early_acceptance
+                        ? 'Motivo: '.($record->early_acceptance_reason ?? '—')
+                        : null)
+                    ->toggleable(),
                 TextColumn::make('vigencia_resumen')
                     ->label('Vigencia')
                     ->state(fn (AffiliationRenovationHistory $record): string => ($record->previous_effective_date ?? '—')
@@ -158,6 +174,11 @@ class RenovationHistoriesTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                TernaryFilter::make('is_early_acceptance')
+                    ->label('Renovación anticipada')
+                    ->placeholder('Todas')
+                    ->trueLabel('Solo anticipadas')
+                    ->falseLabel('Solo en período'),
                 TernaryFilter::make('is_negotiation_candidate')
                     ->label('Negociación Plan Especial')
                     ->placeholder('Todas')
