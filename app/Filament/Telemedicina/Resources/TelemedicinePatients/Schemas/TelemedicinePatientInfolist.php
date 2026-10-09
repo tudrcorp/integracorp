@@ -7,7 +7,8 @@ namespace App\Filament\Telemedicina\Resources\TelemedicinePatients\Schemas;
 use App\Models\TelemedicinePatient;
 use App\Support\ClinicalEntitlements\OperationsAffiliatePlanBenefitsCard;
 use App\Support\FilamentDateDisplay;
-use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
+use App\Support\Telemedicine\AtenmediAccess;
+use App\Support\Telemedicine\TelemedicinePatientAffiliationValidity;
 use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
@@ -44,7 +45,7 @@ class TelemedicinePatientInfolist
 
     private static function shouldHidePlanBenefitsTab(TelemedicinePatient $record): bool
     {
-        if (TelemedicineCaseFilamentListQuery::userIsInAtenmediTelemedicinaContext(Auth::user())) {
+        if (AtenmediAccess::userIsAtenmedi(Auth::user())) {
             return true;
         }
 
@@ -78,6 +79,12 @@ class TelemedicinePatientInfolist
                                                 'class' => self::IOS_PATIENT_HERO_INNER,
                                             ])
                                             ->schema([
+                                                TextEntry::make('affiliation_validity')
+                                                    ->label('Afiliación vigente')
+                                                    ->state(fn (TelemedicinePatient $record): string => TelemedicinePatientAffiliationValidity::label($record))
+                                                    ->badge()
+                                                    ->color(fn (string $state): string => TelemedicinePatientAffiliationValidity::color($state))
+                                                    ->visible(fn (): bool => AtenmediAccess::userIsAtenmedi(Auth::user())),
                                                 TextEntry::make('full_name')
                                                     ->label('Nombre completo')
                                                     ->icon(Heroicon::OutlinedUser)
@@ -179,7 +186,8 @@ class TelemedicinePatientInfolist
                             ]),
                         Tab::make('Afiliación')
                             ->icon(Heroicon::OutlinedIdentification)
-                            ->hidden(fn (TelemedicinePatient $record): bool => ! in_array(mb_strtoupper((string) $record->type_affiliation), ['INDIVIDUAL', 'CORPORATIVO'], true))
+                            ->hidden(fn (TelemedicinePatient $record): bool => AtenmediAccess::userIsAtenmedi(Auth::user())
+                                || ! in_array(mb_strtoupper((string) $record->type_affiliation), ['INDIVIDUAL', 'CORPORATIVO'], true))
                             ->schema([
                                 Section::make('Afiliación')
                                     ->description('Plan, cobertura y datos de afiliación cuando aplica.')

@@ -75,3 +75,10 @@ it('el acordeón del menú deja DEL USUARIO fuera: no lo pliega al entrar ni al 
         ->toContain('navigationGroupLabels.filter(isAccordionGroup)')
         ->toContain('label !== group && isAccordionGroup(label)');
 });
+
+it('Indicadores de desempeño de Operaciones va en DEL USUARIO, después de Calendarios TDG', function (): void {
+    expect(App\Filament\Operations\Resources\IndicadoresDeDesempeno\IndicadoresDeDesempenoResource::getNavigationGroup())
+        ->toBe(SharedNavigationGroups::USER)
+        ->and(App\Filament\Operations\Resources\IndicadoresDeDesempeno\IndicadoresDeDesempenoResource::getNavigationSort())
+        ->toBeGreaterThan(App\Filament\Operations\Pages\CalendariosTdg::getNavigationSort());
+});

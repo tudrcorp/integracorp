@@ -12,7 +12,7 @@ it('genera paletas con tono 50 para badgeColor de tabs', function () {
     }
 });
 
-it('usa tabs de estado con scroll horizontal en mobile y sin etiqueta de convenio', function () {
+it('usa tabs de estado con scroll horizontal en mobile y sin etiquetas de convenio ni de estado', function () {
     $page = file_get_contents(
         dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ListOperationCoordinationServices.php'
     );
@@ -25,8 +25,8 @@ it('usa tabs de estado con scroll horizontal en mobile y sin etiqueta de conveni
         ->not->toContain('fi-supplier-convenio-tabs-ios');
 
     expect($theme)
-        ->toContain('.fi-status-filter-tabs-ios.fi-sc-tabs::before')
-        ->toContain("content: 'Estado'")
+        ->not->toContain('.fi-status-filter-tabs-ios.fi-sc-tabs::before')
+        ->not->toContain("content: 'Estado'")
         ->toContain('@media (max-width: 767px)')
         ->toContain('flex-wrap: nowrap')
         ->toContain('overflow-x: auto');

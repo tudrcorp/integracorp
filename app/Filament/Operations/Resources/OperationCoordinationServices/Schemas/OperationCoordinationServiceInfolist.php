@@ -258,7 +258,7 @@ class OperationCoordinationServiceInfolist
                                                     ])
                                                     ->columnSpanFull(),
                                             ]),
-                                        Fieldset::make('Servicio TPA/RETAIL')
+                                        Fieldset::make(fn (OperationCoordinationService $record): string => $record->isDirectRegistration() ? 'Servicio (registro directo)' : 'Servicio TPA/RETAIL')
                                             ->visible(fn (OperationCoordinationService $record): bool => RegisterTpaRetailServicesAction::isTpaRetailStandaloneCoordination($record)
                                                 && self::hasSpecialties($record))
                                             ->schema([

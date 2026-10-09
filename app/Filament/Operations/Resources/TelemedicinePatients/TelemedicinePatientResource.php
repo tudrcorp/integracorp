@@ -6,6 +6,7 @@ use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\CreateTelemedicinePatient;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\EditTelemedicinePatient;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\ListTelemedicinePatients;
+use App\Filament\Operations\Resources\TelemedicinePatients\Pages\RegisterRetailServices;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\ViewTelemedicinePatient;
 use App\Filament\Operations\Resources\TelemedicinePatients\RelationManagers\TelemedicineCasesRelationManager;
 use App\Filament\Operations\Resources\TelemedicinePatients\Schemas\TelemedicinePatientForm;
@@ -71,6 +72,7 @@ class TelemedicinePatientResource extends Resource
             'create' => CreateTelemedicinePatient::route('/create'),
             'view' => ViewTelemedicinePatient::route('/{record}'),
             'edit' => EditTelemedicinePatient::route('/{record}/edit'),
+            'retail' => RegisterRetailServices::route('/{record}/retail'),
         ];
     }
 

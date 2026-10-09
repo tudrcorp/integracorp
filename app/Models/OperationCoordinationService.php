@@ -69,6 +69,11 @@ class OperationCoordinationService extends Model
         'updated_by',
         'managed_by',
         'supplier_id',
+        'direct_service_registration_id',
+        'assigned_provider_type',
+        'assigned_supplier_id',
+        'assigned_doctor_nurse_id',
+        'assigned_corporate_ally_id',
         'assigned_to_supplier_by_tdg',
         'assigned_to_supplier_by_tdg_at',
         'assigned_to_supplier_by_tdg_by',
@@ -111,6 +116,33 @@ class OperationCoordinationService extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    /**
+     * Proveedor jurídico asignado desde el registro RETAIL (no confundir con
+     * {@see self::supplier()}, el proveedor de gestión dueño de la coordinación).
+     *
+     * @return BelongsTo<Supplier, $this>
+     */
+    public function assignedSupplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class, 'assigned_supplier_id');
+    }
+
+    /**
+     * @return BelongsTo<DoctorNurse, $this>
+     */
+    public function assignedDoctorNurse(): BelongsTo
+    {
+        return $this->belongsTo(DoctorNurse::class, 'assigned_doctor_nurse_id');
+    }
+
+    /**
+     * @return BelongsTo<CorporateAlly, $this>
+     */
+    public function assignedCorporateAlly(): BelongsTo
+    {
+        return $this->belongsTo(CorporateAlly::class, 'assigned_corporate_ally_id');
     }
 
     /**
@@ -196,5 +228,18 @@ class OperationCoordinationService extends Model
     public function clinicDocuments()
     {
         return $this->hasMany(OperationCoordinationClinicDocument::class);
+    }
+
+    /**
+     * Registro directo que creó esta coordinación (sin consulta médica), si aplica.
+     */
+    public function directServiceRegistration(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(OperationDirectServiceRegistration::class, 'direct_service_registration_id');
+    }
+
+    public function isDirectRegistration(): bool
+    {
+        return filled($this->direct_service_registration_id);
     }
 }

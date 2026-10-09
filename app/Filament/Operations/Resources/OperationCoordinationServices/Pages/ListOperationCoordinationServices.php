@@ -8,17 +8,20 @@ use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\CoordinationServiceCaseDeletion;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\CoordinationServiceTabCounts;
-use Filament\Actions\CreateAction;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Colors\Color;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Enums\PaginationMode;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Contracts\Pagination\Paginator;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Js;
 
 class ListOperationCoordinationServices extends ListRecords
@@ -118,10 +121,39 @@ class ListOperationCoordinationServices extends ListRecords
         ];
     }
 
+    /**
+     * Mismo encabezado que los demás listados de Operaciones. Los números salen
+     * de los conteos de las pestañas, que ya están en caché: no suma consultas.
+     */
+    public function getHeading(): string|Htmlable
+    {
+        $counts = $this->tabCounts();
+
+        return new HtmlString(view('filament.operations.partials.list-header', [
+            'icon' => 'heroicon-o-clipboard-document-list',
+            'eyebrow' => 'Operaciones · Coordinación de servicios',
+            'title' => 'Cuadro de control de servicios médicos',
+            'total' => $counts['todas'],
+            'totalHint' => 'Servicios con algo por gestionar',
+            'description' => 'Laboratorios, estudios, especialistas, medicamentos y servicios agrupados por caso. Filtre por estado con las pestañas y despliegue un caso para gestionarlo.',
+            'stats' => [
+                ['label' => 'Pendientes', 'value' => $counts['pendiente'], 'icon' => 'heroicon-m-clock', 'tone' => 'warning', 'hint' => 'Servicios que nadie ha empezado a gestionar'],
+                ['label' => 'En gestión', 'value' => $counts['en_gestion'], 'icon' => 'heroicon-m-arrow-path', 'tone' => 'info', 'hint' => 'Servicios con orden o cotización en curso'],
+                ['label' => 'Por resultados', 'value' => $counts['pendiente_resultados'], 'icon' => 'heroicon-m-document-magnifying-glass', 'tone' => 'primary', 'hint' => 'Servicios a la espera de resultados'],
+                ['label' => 'Novedad admon', 'value' => $counts['novedad_admon'], 'icon' => 'heroicon-m-exclamation-triangle', 'tone' => 'danger', 'hint' => 'Servicios con novedad administrativa por resolver'],
+            ],
+        ])->render());
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            // CreateAction::make(),
+            Action::make('registerDirectService')
+                ->label('Registrar servicio directo')
+                ->icon(Heroicon::OutlinedPlusCircle)
+                ->color('success')
+                ->url(fn (): string => RegisterDirectService::getUrl())
+                ->visible(fn (): bool => RegisterDirectService::canAccess()),
         ];
     }
 

@@ -24,3 +24,26 @@ it('panel de operaciones registra acordeon en sidebar', function (): void {
         ->and($provider)->toContain('PanelsRenderHook::SIDEBAR_NAV_END')
         ->and($script)->toContain('operationsNavigationAccordionV1');
 });
+
+it('grupo PROVEEDORES va justo después de AFILIADOS, plegado, con aliados, naturales y jurídicos en ese orden', function (): void {
+    $labels = OperationsPanelNavigationGroups::labels();
+    $groups = OperationsPanelNavigationGroups::definitions();
+    $index = array_search(OperationsPanelNavigationGroups::PROVIDERS, $labels, true);
+
+    expect(OperationsPanelNavigationGroups::PROVIDERS)->toBe('PROVEEDORES')
+        ->and($index)->not->toBeFalse()
+        ->and($labels[$index - 1])->toBe('AFILIADOS')
+        ->and($groups[$index]->isCollapsed())->toBeTrue();
+
+    $resources = [
+        App\Filament\Operations\Resources\CorporateAllies\CorporateAllyResource::class,
+        App\Filament\Operations\Resources\DoctorNurses\DoctorNurseResource::class,
+        App\Filament\Operations\Resources\Suppliers\SupplierResource::class,
+    ];
+
+    foreach ($resources as $resource) {
+        expect($resource::getNavigationGroup())->toBe(OperationsPanelNavigationGroups::PROVIDERS);
+    }
+
+    expect(array_map(fn (string $resource): ?int => $resource::getNavigationSort(), $resources))->toBe([5, 6, 7]);
+});

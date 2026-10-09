@@ -6,13 +6,16 @@ use App\Filament\Operations\Resources\OperationServiceOrders\Actions\ServiceOrde
 use App\Http\Controllers\ApiBcvController;
 use App\Http\Controllers\OperationServiceOrderExportCsvController;
 use App\Models\BusinessUnit;
+use App\Models\OperationCoordinationService;
 use App\Models\OperationServiceOrder;
 use App\Models\OperationServiceOrderItem;
 use App\Models\OperationServiceOrderQuote;
 use App\Models\Supplier;
+use App\Models\TelemedicinePatient;
 use App\Services\OperationServiceOrderMedicationQuotePdfService;
 use App\Support\Filament\CsvExportDownloadTrigger;
 use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Filament\Operations\SpecificBusinessUnitTableTools;
 use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Operations\ServiceOrderAccountsPayableRegistrar;
@@ -51,6 +54,12 @@ use ZipArchive;
 
 class OperationServiceOrdersTable
 {
+    /**
+     * Paciente de la coordinación: de ahí sale la unidad de negocio específica,
+     * igual que en Cuentas por pagar y Cotizaciones por pagar.
+     */
+    private const PATIENT_RELATION = 'operationCoordinationService.telemedicinePatient';
+
     private const IOS_SECTION_CLASS = 'fi-helpdesk-ios-section';
 
     private const IOS_SUCCESS_BTN = 'aviso-btn-ios-success shrink-0 inline-flex min-w-[7.5rem] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
@@ -503,7 +512,11 @@ class OperationServiceOrdersTable
                     ->limit(36)
                     ->tooltip(fn (OperationServiceOrder $record): ?string => ($label = OperationServiceOrderListDisplay::specificBusinessUnit($record)) !== '—'
                         ? $label
-                        : null),
+                        : null)
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->whereHas(
+                        self::PATIENT_RELATION,
+                        fn (Builder $patient): Builder => $patient->where('specific_business_unit', 'like', '%'.$search.'%'),
+                    )),
                 TextColumn::make('quote_amount')
                     ->label('Monto cotizado')
                     ->state(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::quoteAmountLabel($record))
@@ -650,6 +663,7 @@ class OperationServiceOrdersTable
                         ->all())
                     ->searchable()
                     ->multiple(),
+                SpecificBusinessUnitTableTools::filter(fn (): array => self::specificBusinessUnitOptions(), self::PATIENT_RELATION),
             ])
             ->recordActions([
                 ActionGroup::make([
@@ -1509,5 +1523,31 @@ class OperationServiceOrdersTable
             : '';
 
         return new HtmlString($downloadAllButton.'<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">'.implode('', $cards).'</div>');
+    }
+
+    /**
+     * Unidades específicas de las órdenes que esta tabla puede mostrar, con el
+     * mismo alcance que la tabla (proveedor, ATENMEDI).
+     *
+     * @return array<string, string>
+     */
+    public static function specificBusinessUnitOptions(): array
+    {
+        $coordinations = OperationsSupplierScope::applyServiceOrderListScope(
+            OperationServiceOrder::query()->whereNotNull('operation_coordination_service_id'),
+        )->select('operation_coordination_service_id');
+
+        $patients = OperationCoordinationService::query()
+            ->whereIn('id', $coordinations)
+            ->select('telemedicine_patient_id');
+
+        return SpecificBusinessUnitTableTools::options(
+            TelemedicinePatient::query()
+                ->whereIn('id', $patients)
+                ->whereNotNull('specific_business_unit')
+                ->where('specific_business_unit', '!=', '')
+                ->distinct()
+                ->pluck('specific_business_unit'),
+        );
     }
 }

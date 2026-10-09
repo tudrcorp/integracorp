@@ -147,11 +147,11 @@
             background: #f9fafb;
             border: 1px dashed #d1d5db;
         }
+        /* Un pie por mitad, alineado con su firma: al cortar la hoja, original y copia quedan completas. */
         .footer-fixed {
             position: fixed;
             bottom: 8mm;
-            left: 12mm;
-            right: 12mm;
+            width: 128mm;
             text-align: center;
             padding-top: 4px;
             border-top: 1px solid #e5e7eb;
@@ -160,6 +160,8 @@
             background: #ffffff;
             z-index: 10;
         }
+        .footer-fixed-original { left: 14mm; }
+        .footer-fixed-copy { right: 14mm; left: auto; }
         .footer-brand { font-weight: bold; color: {{ $brandCyan }}; }
         .panel { padding-bottom: 52mm; }
         .doctor-signature {
@@ -303,11 +305,13 @@
         <p class="doctor-signature-meta">MPPS: {{ $val($data['code_mpps'] ?? null) }}</p>
     </div>
 @endforeach
-<div class="footer-fixed">
-    <strong>TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1</strong><br>
-    Dirección Comercial: Av. Francisco de Miranda, Centro Lido, Torre A, Piso 12, Oficina 124. El Rosal, Caracas.<br>
-    Teléfono MediChat atención 24 horas: (0424) 213 21 12- Celular Coordinación de servicios: (0414) 901 03 52<br>
-    Correo: 24H@tudrencasa.com IG: @tudrencasa WEB: https://tudrencasa.com/
-</div>
+@foreach ($copies as $copyLabel)
+    <div class="footer-fixed footer-fixed-{{ $copyLabel === 'Original' ? 'original' : 'copy' }}">
+        <strong>TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1</strong><br>
+        Dirección Comercial: Av. Francisco de Miranda, Centro Lido, Torre A, Piso 12, Oficina 124. El Rosal, Caracas.<br>
+        Teléfono MediChat atención 24 horas: (0424) 213 21 12- Celular Coordinación de servicios: (0414) 901 03 52<br>
+        Correo: 24H@tudrencasa.com IG: @tudrencasa WEB: https://tudrencasa.com/
+    </div>
+@endforeach
 </body>
 </html>
