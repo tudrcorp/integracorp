@@ -11,6 +11,7 @@ use App\Filament\Operations\Resources\CorporateAllies\Schemas\CorporateAllyForm;
 use App\Filament\Operations\Resources\CorporateAllies\Schemas\CorporateAllyInfolist;
 use App\Filament\Operations\Resources\CorporateAllies\Tables\CorporateAlliesTable;
 use App\Models\CorporateAlly;
+use App\Support\Filament\OperationsPanelNavigationGroups;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -34,7 +35,7 @@ class CorporateAllyResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-building-office-2';
 
-    protected static string|UnitEnum|null $navigationGroup = null;
+    protected static string|UnitEnum|null $navigationGroup = OperationsPanelNavigationGroups::PROVIDERS;
 
     protected static ?int $navigationSort = 5;
 

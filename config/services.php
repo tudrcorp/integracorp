@@ -124,4 +124,16 @@ return [
         'enabled' => (bool) env('TUDR_QUOTE_ENABLED', false),
     ],
 
+    /*
+     * Proveedores operados por ATENMEDI (CORPORACION VMC). Vacío = se reconocen
+     * por el nombre del proveedor, que contiene «(ATENMEDI)». Para fijarlos:
+     * ATENMEDI_SUPPLIER_IDS=15,428
+     */
+    'atenmedi' => [
+        'supplier_ids' => array_values(array_filter(array_map(
+            static fn (string $id): int => (int) trim($id),
+            explode(',', (string) env('ATENMEDI_SUPPLIER_IDS', '')),
+        ))),
+    ],
+
 ];

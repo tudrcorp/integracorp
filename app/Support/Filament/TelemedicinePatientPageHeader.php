@@ -40,7 +40,11 @@ final class TelemedicinePatientPageHeader
         $age = filled($patient->age) ? ((int) $patient->age).' años' : null;
 
         return self::render(
-            heading: $context === 'edit' ? 'Editar paciente' : 'Ficha del paciente',
+            heading: match ($context) {
+                'edit' => 'Editar paciente',
+                'retail' => 'Registrar servicios RETAIL',
+                default => 'Ficha del paciente',
+            },
             name: $name,
             status: $status,
             chips: $chips,

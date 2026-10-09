@@ -1574,6 +1574,49 @@ final class CoordinationServiceItemsManager
     public static function formDefaults(OperationCoordinationService $record): array
     {
         return [
+            ...self::baseFormDefaults($record),
+            ...self::assignedProviderDefaults($record),
+        ];
+    }
+
+    /**
+     * Proveedor asignado al registrar el servicio RETAIL: llega propuesto en la
+     * gestión (el analista puede cambiarlo). Los aliados corporativos no tienen
+     * orden de servicio ni cotización, así que no se precargan.
+     *
+     * @return array<string, mixed>
+     */
+    public static function assignedProviderDefaults(OperationCoordinationService $record): array
+    {
+        $supplierId = filled($record->assigned_supplier_id) ? (int) $record->assigned_supplier_id : null;
+        $doctorNurseId = $supplierId === null && filled($record->assigned_doctor_nurse_id) ? (int) $record->assigned_doctor_nurse_id : null;
+
+        if ($supplierId === null && $doctorNurseId === null) {
+            return [];
+        }
+
+        $contacts = OperationServiceOrderProviderContacts::fromCatalogIds($doctorNurseId, $supplierId);
+
+        return [
+            'doctor_nurse_id' => $doctorNurseId,
+            'supplier_id' => $supplierId,
+            'supplier_notify_email' => $contacts['email'],
+            'supplier_notify_phone' => $contacts['phone'],
+            'supplier_notify_address' => $contacts['address'],
+            ...($supplierId !== null ? [
+                'manage_quote_supplier_id' => $supplierId,
+                'manage_quote_supplier_address' => $contacts['address'],
+                'manage_quote_supplier_phone' => $contacts['phone'],
+            ] : []),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function baseFormDefaults(OperationCoordinationService $record): array
+    {
+        return [
             'managed_service_item_keys' => [],
             'order_number' => self::nextServiceOrderNumber(),
             'telemedicine_priority_id' => $record->telemedicine_priority_id,

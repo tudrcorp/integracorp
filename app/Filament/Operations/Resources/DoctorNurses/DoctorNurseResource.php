@@ -15,12 +15,14 @@ use App\Filament\Operations\Resources\DoctorNurses\Tables\DoctorNursesTable;
 use App\Models\DoctorNurse;
 use App\Models\Permission;
 use App\Models\UserPermission;
+use App\Support\Filament\OperationsPanelNavigationGroups;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 class DoctorNurseResource extends Resource
 {
@@ -28,6 +30,8 @@ class DoctorNurseResource extends Resource
     use ConfiguresOperationsSupplierGlobalSearch;
 
     protected static ?string $model = DoctorNurse::class;
+
+    protected static string|UnitEnum|null $navigationGroup = OperationsPanelNavigationGroups::PROVIDERS;
 
     protected static ?string $navigationLabel = 'Proveedores Naturales';
 

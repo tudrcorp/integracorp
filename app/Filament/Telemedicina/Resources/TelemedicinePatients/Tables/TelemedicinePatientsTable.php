@@ -10,8 +10,10 @@ use App\Models\TelemedicineCase;
 use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
 use App\Support\FilamentDateDisplay;
+use App\Support\Telemedicine\AtenmediAccess;
 use App\Support\Telemedicine\ConsultationCreateRoute;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
+use App\Support\Telemedicine\TelemedicinePatientAffiliationValidity;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -199,7 +201,7 @@ class TelemedicinePatientsTable
                     ->placeholder('—')
                     ->searchable()
                     ->toggleable()
-                    ->visible(fn (): bool => ! TelemedicineCaseFilamentListQuery::userIsInAtenmediTelemedicinaContext(Auth::user()))
+                    ->visible(fn (): bool => ! AtenmediAccess::userIsAtenmedi(Auth::user()))
                     ->extraCellAttributes(['class' => 'py-3 min-w-[10rem]']),
                 TextColumn::make('active_case_status')
                     ->label('Estado del caso')
@@ -264,6 +266,17 @@ class TelemedicinePatientsTable
                             ->placeholder('—')
                             ->toggleable(isToggledHiddenByDefault: true),
                     ]),
+                TextColumn::make('affiliation_validity')
+                    ->label('Afiliación vigente')
+                    ->state(function (TelemedicinePatient $record, mixed $livewire): string {
+                        /** Una carga por página: la regla sale de la afiliación real, no de la copia del paciente. */
+                        TelemedicinePatientAffiliationValidity::preload($livewire->getTableRecords());
+
+                        return TelemedicinePatientAffiliationValidity::label($record);
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => TelemedicinePatientAffiliationValidity::color($state))
+                    ->visible(fn (): bool => AtenmediAccess::userIsAtenmedi(Auth::user())),
                 ColumnGroup::make('Afiliación')
                     ->columns([
                         TextColumn::make('plan.description')
@@ -272,7 +285,7 @@ class TelemedicinePatientsTable
                             ->color('info')
                             ->searchable()
                             ->placeholder('—')
-                            ->visible(fn (): bool => ! TelemedicineCaseFilamentListQuery::userIsInAtenmediTelemedicinaContext(Auth::user()))
+                            ->visible(fn (): bool => ! AtenmediAccess::userIsAtenmedi(Auth::user()))
                             ->toggleable(isToggledHiddenByDefault: true),
                         TextColumn::make('coverage.price')
                             ->label('Cobertura')
@@ -288,7 +301,7 @@ class TelemedicinePatientsTable
                                     : (string) $state;
                             })
                             ->placeholder('—')
-                            ->visible(fn (): bool => ! TelemedicineCaseFilamentListQuery::userIsInAtenmediTelemedicinaContext(Auth::user()))
+                            ->visible(fn (): bool => ! AtenmediAccess::userIsAtenmedi(Auth::user()))
                             ->toggleable(isToggledHiddenByDefault: true),
                         TextColumn::make('code_affiliation')
                             ->label('Número de afiliación')
@@ -296,7 +309,7 @@ class TelemedicinePatientsTable
                             ->color('primary')
                             ->searchable()
                             ->placeholder('—')
-                            ->visible(fn (): bool => ! TelemedicineCaseFilamentListQuery::userIsInAtenmediTelemedicinaContext(Auth::user()))
+                            ->visible(fn (): bool => ! AtenmediAccess::userIsAtenmedi(Auth::user()))
                             ->toggleable(isToggledHiddenByDefault: true),
                         TextColumn::make('type_affiliation')
                             ->label('Tipo')
@@ -304,7 +317,7 @@ class TelemedicinePatientsTable
                             ->color('gray')
                             ->searchable()
                             ->placeholder('—')
-                            ->visible(fn (): bool => ! TelemedicineCaseFilamentListQuery::userIsInAtenmediTelemedicinaContext(Auth::user()))
+                            ->visible(fn (): bool => ! AtenmediAccess::userIsAtenmedi(Auth::user()))
                             ->toggleable(isToggledHiddenByDefault: true),
                         TextColumn::make('status_affiliation')
                             ->label('Estatus')
@@ -312,7 +325,7 @@ class TelemedicinePatientsTable
                             ->color(fn (?string $state): string => self::affiliationStatusColor($state))
                             ->searchable()
                             ->placeholder('—')
-                            ->visible(fn (): bool => ! TelemedicineCaseFilamentListQuery::userIsInAtenmediTelemedicinaContext(Auth::user()))
+                            ->visible(fn (): bool => ! AtenmediAccess::userIsAtenmedi(Auth::user()))
                             ->toggleable(isToggledHiddenByDefault: true),
                     ]),
                 TextColumn::make('created_at')

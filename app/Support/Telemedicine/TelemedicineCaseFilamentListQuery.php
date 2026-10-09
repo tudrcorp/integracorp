@@ -25,6 +25,15 @@ final class TelemedicineCaseFilamentListQuery
     public const TRASLADO_EN_AMBULANCIA_DRIFT_SERVICE_LIST_ID = 3;
 
     /**
+     * Casos que nacen en Operaciones sin médico ni equipo (retail sin telemedicina
+     * ni AMD, registro directo): heredan `managed_by` = TDG del paciente, pero no
+     * son trabajo de ningún médico y no deben entrar al pool TDG.
+     *
+     * @var list<string>
+     */
+    public const OPERATIONS_ONLY_CASE_STATUSES = ['RETAIL', 'REGISTRO DIRECTO'];
+
+    /**
      * Aplica filtros al listado del recurso «Casos de telemedicina» (misma línea visual que el widget del escritorio).
      *
      * - Médico TDG ({@see TelemedicineDoctor::$managed_by} = TDG): todos los casos de médicos TDG con estado distinto de ALTA MEDICA.
@@ -152,22 +161,31 @@ final class TelemedicineCaseFilamentListQuery
 
     /**
      * Casos del pool TDG: gestión TDG, asignados a un médico con {@see TelemedicineDoctor::$managed_by} = TDG
-     * o asignados al Equipo Médico TDG ({@see TelemedicineMedicalTeam}).
+     * o asignados al Equipo Médico TDG ({@see TelemedicineMedicalTeam}), salvo los
+     * casos solo de Operaciones ({@see self::OPERATIONS_ONLY_CASE_STATUSES}) sin médico ni equipo.
      */
     public static function constrainToTdgDoctorsCases(Builder $query): Builder
     {
-        return $query->where(function (Builder $tdgCases): void {
-            $tdgCases
-                ->where('managed_by', 'TDG')
-                ->orWhereHas('telemedicineDoctor', function (Builder $doctor): void {
-                    $doctor->where('managed_by', 'TDG');
-                })
-                ->orWhere(function (Builder $assignedToTeam): void {
-                    $assignedToTeam
-                        ->where('assigned_to_medical_team', true)
-                        ->whereNull('medical_team_supplier_id');
-                });
-        });
+        return $query
+            ->where(function (Builder $tdgCases): void {
+                $tdgCases
+                    ->where('managed_by', 'TDG')
+                    ->orWhereHas('telemedicineDoctor', function (Builder $doctor): void {
+                        $doctor->where('managed_by', 'TDG');
+                    })
+                    ->orWhere(function (Builder $assignedToTeam): void {
+                        $assignedToTeam
+                            ->where('assigned_to_medical_team', true)
+                            ->whereNull('medical_team_supplier_id');
+                    });
+            })
+            ->where(function (Builder $forDoctors): void {
+                $forDoctors
+                    ->whereNull($forDoctors->qualifyColumn('status'))
+                    ->orWhereNotIn($forDoctors->qualifyColumn('status'), self::OPERATIONS_ONLY_CASE_STATUSES)
+                    ->orWhereNotNull($forDoctors->qualifyColumn('telemedicine_doctor_id'))
+                    ->orWhere($forDoctors->qualifyColumn('assigned_to_medical_team'), true);
+            });
     }
 
     /**

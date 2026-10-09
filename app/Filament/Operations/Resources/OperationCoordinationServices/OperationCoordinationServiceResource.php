@@ -8,6 +8,7 @@ use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\EditOp
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ListOperationCoordinationServices;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceItems;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceQuotes;
+use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\RegisterDirectService;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ViewOperationCoordinationService;
 use App\Filament\Operations\Resources\OperationCoordinationServices\RelationManagers\TelemedicinePatientLabsRelationManager;
 use App\Filament\Operations\Resources\OperationCoordinationServices\RelationManagers\TelemedicinePatientMedicationsRelationManager;
@@ -81,6 +82,7 @@ class OperationCoordinationServiceResource extends Resource
         return [
             'index' => ListOperationCoordinationServices::route('/'),
             'create' => CreateOperationCoordinationService::route('/create'),
+            'direct-registration' => RegisterDirectService::route('/registro-directo'),
             'view' => ViewOperationCoordinationService::route('/{record}'),
             'manage-quotes' => ManageCoordinationServiceQuotes::route('/{record}/manage-quotes'),
             'manage-items' => ManageCoordinationServiceItems::route('/{record}/manage-items'),
