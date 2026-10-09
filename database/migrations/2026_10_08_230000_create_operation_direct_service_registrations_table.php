@@ -14,19 +14,29 @@ use Illuminate\Support\Facades\Schema;
  * los consumos de cupo clínico). Cada coordinación creada apunta a su registro
  * con `direct_service_registration_id`, que es también su marca de origen.
  *
- * Aditiva e idempotente: se aplica con `migrate --path`.
+ * Aditiva e idempotente: se aplica con `migrate --path`, y si un intento previo
+ * falló a mitad (tabla creada sin índices) se puede volver a correr.
  */
 return new class extends Migration
 {
+    /**
+     * @var array<string, string> columna => índice
+     */
+    private const REGISTRATION_INDEXES = [
+        'telemedicine_patient_id' => 'odsr_patient_idx',
+        'telemedicine_case_id' => 'odsr_case_idx',
+        'registered_by_user_id' => 'odsr_registered_by_idx',
+    ];
+
     public function up(): void
     {
         if (! Schema::hasTable('operation_direct_service_registrations')) {
             Schema::create('operation_direct_service_registrations', function (Blueprint $table): void {
                 $table->id();
-                $table->unsignedBigInteger('telemedicine_patient_id')->index();
-                $table->unsignedBigInteger('telemedicine_case_id')->index();
+                $table->unsignedBigInteger('telemedicine_patient_id');
+                $table->unsignedBigInteger('telemedicine_case_id');
                 $table->boolean('case_created')->default(false);
-                $table->unsignedBigInteger('registered_by_user_id')->nullable()->index();
+                $table->unsignedBigInteger('registered_by_user_id')->nullable();
                 $table->string('registered_by_name')->nullable();
                 $table->string('service_line')->nullable();
                 $table->text('diagnosis');
@@ -39,6 +49,19 @@ return new class extends Migration
                 $table->json('clinical_usage_ids')->nullable();
                 $table->timestamps();
             });
+        }
+
+        /*
+         * Índices con nombre explícito y aparte del CREATE: los automáticos pasan de
+         * 64 caracteres (límite de MySQL). Si un intento anterior dejó la tabla creada
+         * sin índices, aquí se completan.
+         */
+        foreach (self::REGISTRATION_INDEXES as $column => $index) {
+            if (! Schema::hasIndex('operation_direct_service_registrations', $index)) {
+                Schema::table('operation_direct_service_registrations', function (Blueprint $table) use ($column, $index): void {
+                    $table->index($column, $index);
+                });
+            }
         }
 
         if (! Schema::hasColumn('operation_coordination_services', 'direct_service_registration_id')) {
