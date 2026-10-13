@@ -63,6 +63,7 @@ use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationInventoryOptions;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
 use App\Support\Telemedicine\TelemedicinePatientCareHistory;
+use App\Support\Telemedicine\TelemedicinePatientDeliveryEmail;
 use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use App\Support\Telemedicine\TelemedicinePatientHistorySummary;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
@@ -1864,7 +1865,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                         $consultationId = (int) $record['id'];
                         $userId = (int) Auth::id();
                         $patientPhone = (string) ($patient['phone'] ?? $this->data['phone_ppal'] ?? '');
-                        $patientEmail = (string) ($patient['email'] ?? $patient['email_contact'] ?? '');
+                        $patientEmail = (string) TelemedicinePatientDeliveryEmail::for($patient);
                         $patientName = (string) ($patient['full_name'] ?? $record['full_name']);
 
                         Bus::batch($pdfJobs)

@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Un certificado emitido por el «Generador de Certificado», con la clave que
@@ -70,6 +71,14 @@ class AffiliationCertificateIssue extends Model
             'pdf_pages' => 'integer',
             'pdf_progress_at' => 'datetime',
         ];
+    }
+
+    /**
+     * @return HasMany<AffiliationCertificateDelivery, $this>
+     */
+    public function deliveries(): HasMany
+    {
+        return $this->hasMany(AffiliationCertificateDelivery::class);
     }
 
     public function issuedBy(): BelongsTo

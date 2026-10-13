@@ -8,7 +8,7 @@ use App\Filament\Operations\Resources\CompanyAssociates\NuevosNegociosAssociateR
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Models\CompanyAssociate;
 use App\Services\AssociateCompanyAssociateWithTelemedicinePatientService;
-use App\Support\Companies\CompanyAssociatePageHeader;
+use App\Support\Operations\OperationsAffiliateHeader;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -144,11 +144,16 @@ class ViewCompanyAssociate extends ViewRecord
         ];
     }
 
-    public function getTitle(): string|Htmlable
+    public function getTitle(): string
+    {
+        return 'Asociado: '.($this->getRecord()->full_name ?: 'Sin nombre');
+    }
+
+    public function getHeading(): Htmlable
     {
         /** @var CompanyAssociate $associate */
         $associate = $this->getRecord();
 
-        return CompanyAssociatePageHeader::make($associate, 'Nuevos Negocios');
+        return OperationsAffiliateHeader::forCompanyAssociate($associate);
     }
 }
