@@ -22,6 +22,7 @@ use App\Support\Affiliations\AffiliationIndividualQuoteField;
 use App\Support\Affiliations\AffiliationServiceProvidersField;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
+use App\Support\Plans\PlanInfantEligibility;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
@@ -686,6 +687,7 @@ class AffiliationForm
                                                                 'required' => 'Campo Requerido',
                                                             ]),
                                                         DatePicker::make('birth_date')
+                                                            ->rule(PlanInfantEligibility::filamentBirthDateRule())
                                                             ->label('Fecha de Nacimiento')
                                                             ->displayFormat('d-m-Y')
                                                             ->format('d-m-Y')

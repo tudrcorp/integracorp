@@ -91,7 +91,7 @@
     @endif
 
     @php
-        $valEdad = $display($patient?->age ?? null ? (string) $patient->age : null, (string) $record->patient_age);
+        $valEdad = \App\Support\PatientAge::label($patient?->birth_date, $patient?->age ?? $record->patient_age);
         $valSexo = $display($patient?->sex, $record->patient_sex);
         $valTel1 = $display($patient?->phone, $record->patient_phone);
         $valTel2 = $display($patient?->phone_contact, $record->patient_phone_2);

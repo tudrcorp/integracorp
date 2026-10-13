@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\AffiliateCorporates\Schemas;
 
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
+use App\Support\Filament\PatientAgeDisplay;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -20,7 +21,8 @@ class AffiliateCorporateForm
                 TextInput::make('last_name'),
                 TextInput::make('nro_identificacion'),
                 TextInput::make('birth_date'),
-                TextInput::make('age'),
+                TextInput::make('age')
+                    ->hint(PatientAgeDisplay::inputHint('birth_date')),
                 TextInput::make('sex'),
                 Select::make('relationship')
                     ->label('Parentesco')

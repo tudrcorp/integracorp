@@ -8,6 +8,7 @@ use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\AffiliateCorporate;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\ClinicalEntitlements\OperationsAffiliatePlanBenefitsCard;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\AffiliateStatusPresentation;
 use App\Support\Operations\OperationsMapSearchAddress;
 use Carbon\Carbon;
@@ -100,7 +101,7 @@ class AffiliateCorporateInfolist
                             ->icon(Heroicon::OutlinedUserCircle)
                             ->schema([
                                 Section::make('Datos del afiliado')
-                                    ->description(fn (AffiliateCorporate $record): string => self::affiliateFullName($record).' · '.$record->age.' años · '.(string) ($record->sex ?? '—'))
+                                    ->description(fn (AffiliateCorporate $record): string => self::affiliateFullName($record).' · '.\App\Support\PatientAge::label($record->birth_date, $record->age).' · '.(string) ($record->sex ?? '—'))
                                     ->icon(Heroicon::OutlinedUserCircle)
                                     ->extraAttributes([
                                         'class' => self::SECTION_CARD,
@@ -145,8 +146,8 @@ class AffiliateCorporateInfolist
                                                             })
                                                             ->placeholder('—'),
                                                         TextEntry::make('age')
+                                                            ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                                                             ->label('Edad')
-                                                            ->suffix(' años')
                                                             ->alignCenter(),
                                                         TextEntry::make('sex')
                                                             ->label('Sexo')

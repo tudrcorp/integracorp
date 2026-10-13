@@ -12,7 +12,9 @@ use App\Models\BusinessUnit;
 use App\Models\Plan;
 use App\Support\AffiliateVaucherIlsRemainingDays;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\FilamentDateDisplay;
+use App\Support\Plans\PlanInfantEligibility;
 use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 use BackedEnum;
 use Carbon\Carbon;
@@ -86,6 +88,7 @@ class AffiliatesRelationManager extends RelationManager
                             ->required()
                             ->numeric(),
                         DatePicker::make('birth_date')
+                            ->rule(PlanInfantEligibility::filamentBirthDateRule())
                             ->label('Fecha de Nacimiento')
                             ->required()
                             ->live()
@@ -94,6 +97,7 @@ class AffiliatesRelationManager extends RelationManager
                                 $set('age', intval(Carbon::createFromFormat('d/m/Y', $state)->diffInYears(now())));
                             }),
                         TextInput::make('age')
+                            ->hint(PatientAgeDisplay::inputHint('birth_date'))
                             ->label('Edad')
                             ->required()
                             ->live()
@@ -328,6 +332,7 @@ class AffiliatesRelationManager extends RelationManager
                     ->copyable()
                     ->copyMessage('C.I. copiada'),
                 TextColumn::make('age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                     ->label('Edad')
                     ->alignCenter()
                     ->sortable(),

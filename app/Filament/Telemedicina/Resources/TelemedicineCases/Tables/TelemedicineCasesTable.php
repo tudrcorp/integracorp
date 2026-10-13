@@ -6,6 +6,7 @@ use App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\RegenerateTele
 use App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\ReverseTelemedicineCaseAction;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicinePatient;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
 use App\Support\Telemedicine\TelemedicineMedicalTeam;
@@ -70,9 +71,9 @@ class TelemedicineCasesTable
                     ->wrap()
                     ->extraCellAttributes(['class' => 'py-3 max-w-[14rem] sm:max-w-xs']),
                 TextColumn::make('patient_age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('telemedicinePatient.birth_date'))
                     ->label('Edad')
                     ->description(fn (TelemedicineCase $record): string => (string) ($record->patient_sex ?? '—'))
-                    ->suffix(' años')
                     ->searchable()
                     ->extraCellAttributes(['class' => 'py-3']),
                 TextColumn::make('patient_phone')

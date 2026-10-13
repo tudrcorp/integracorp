@@ -43,7 +43,7 @@ final class TelemedicineCaseReversalService
             'patient_name' => (string) ($case->patient_name ?? $case->telemedicinePatient?->full_name ?? '—'),
             'patient_phone' => $case->patient_phone,
             'patient_address' => $case->patient_address,
-            'patient_age' => $case->patient_age !== null ? (string) $case->patient_age : null,
+            'patient_age' => \App\Support\PatientAge::labelOrNull($case->telemedicinePatient?->birth_date, $case->patient_age),
             'patient_sex' => $case->patient_sex,
             'reason' => $case->reason,
             'status' => $case->status,

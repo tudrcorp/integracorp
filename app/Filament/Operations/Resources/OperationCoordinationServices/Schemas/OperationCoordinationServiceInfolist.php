@@ -8,6 +8,7 @@ use App\Models\TelemedicinePatientLab;
 use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\CoordinationServiceAssociatedItemPricePreview;
 use App\Support\Operations\CoordinationServiceCoveredItemsFinalizer;
 use App\Support\Operations\CoordinationServiceDocumentsAggregator;
@@ -115,8 +116,8 @@ class OperationCoordinationServiceInfolist
 
                                                     ->placeholder('-'),
                                                 TextEntry::make('age_patient')
+                                                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date_patient'))
                                                     ->label('Edad')
-                                                    ->suffix(' años')
                                                     ->placeholder('-'),
                                                 TextEntry::make('relationship_patient')
                                                     ->label('Parentesco')

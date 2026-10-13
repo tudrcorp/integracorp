@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\TelemedicineCases\Schemas;
 
 use App\Models\TelemedicinePatient;
+use App\Support\Filament\PatientAgeDisplay;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Set;
@@ -44,6 +45,7 @@ class TelemedicineCaseForm
                     ->dehydrated()
                     ->helperText('Se sincroniza automáticamente con el paciente vinculado.'),
                 TextInput::make('patient_age')
+                    ->hint(PatientAgeDisplay::inputHint('birth_date'))
                     ->disabled()
                     ->dehydrated(),
                 TextInput::make('patient_sex')

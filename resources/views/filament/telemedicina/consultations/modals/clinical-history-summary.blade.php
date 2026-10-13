@@ -7,7 +7,7 @@
     <div class="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-slate-50 px-4 py-3 text-sm dark:bg-white/5">
         <span class="font-semibold text-slate-900 dark:text-white">{{ $patient['name'] }}</span>
         @if (filled($patient['age']))
-            <span class="text-slate-600 dark:text-slate-300">{{ $patient['age'] }} años</span>
+            <span class="text-slate-600 dark:text-slate-300">{{ is_numeric($patient['age']) ? \App\Support\PatientAge::label(null, $patient['age']) : $patient['age'] }}</span>
         @endif
         @if (filled($patient['sex']))
             <span class="text-slate-600 dark:text-slate-300">{{ $patient['sex'] }}</span>

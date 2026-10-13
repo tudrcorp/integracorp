@@ -20,8 +20,9 @@ it('usa tabs de estado con scroll horizontal en mobile y sin etiquetas de conven
 
     expect(method_exists(ListOperationCoordinationServices::class, 'getTabsContentComponent'))->toBeTrue();
 
+    // El listado ya no tiene pestañas: estatus y eliminados van en los filtros.
     expect($page)
-        ->toContain('fi-status-filter-tabs-ios fi-supplier-status-tabs-ios')
+        ->not->toContain('public function getTabs(')
         ->not->toContain('fi-supplier-convenio-tabs-ios');
 
     expect($theme)

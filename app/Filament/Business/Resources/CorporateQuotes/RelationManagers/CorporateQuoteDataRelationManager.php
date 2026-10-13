@@ -2,44 +2,21 @@
 
 namespace App\Filament\Business\Resources\CorporateQuotes\RelationManagers;
 
-use Carbon\Carbon;
-use App\Models\Fee;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
-use Filament\Schemas\Schema;
-use App\Models\IndividualQuote;
-use Filament\Actions\BulkAction;
-use Filament\Actions\EditAction;
-use Filament\Support\Enums\Width;
-use App\Models\CorporateQuoteData;
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
 use App\Filament\Actions\ImportAction;
-use App\Filament\Imports\Jobs\ImportCsv;
-use Illuminate\Support\Facades\Log;
-use App\Models\DetailCorporateQuote;
-use Filament\Actions\AssociateAction;
-use Filament\Actions\BulkActionGroup;
-use Illuminate\Validation\Rules\File;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Forms\Components\Textarea;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use App\Http\Controllers\UtilsController;
-use App\Models\CorporateQuoteRequestData;
-use Filament\Schemas\Components\Fieldset;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Actions\DissociateBulkAction;
-use Illuminate\Database\Eloquent\Collection;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
-use App\Filament\Imports\AffiliateCorporateImporter;
 use App\Filament\Imports\CorporateQuoteDataImporter;
+use App\Filament\Imports\Jobs\ImportCsv;
+use App\Http\Controllers\UtilsController;
+use App\Models\CorporateQuoteData;
+use App\Support\Filament\PatientAgeDisplay;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
-use App\Http\Controllers\DetailCorporateQuotesController;
-use App\Filament\Imports\CorporateQuoteRequestDataImporter;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rules\File;
 
 class CorporateQuoteDataRelationManager extends RelationManager
 {
@@ -65,8 +42,8 @@ class CorporateQuoteDataRelationManager extends RelationManager
                     ->label('Fecha de nacimiento')
                     ->searchable(),
                 TextColumn::make('age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                     ->label('Edad')
-                    ->suffix(' años')
                     ->searchable(),
                 TextColumn::make('email')
                     ->label('Correo electrónico')
@@ -107,7 +84,7 @@ class CorporateQuoteDataRelationManager extends RelationManager
 
                         try {
 
-                            //Poblacion de la solicitud
+                            // Poblacion de la solicitud
                             $data = CorporateQuoteData::where('corporate_quote_id', $livewire->ownerRecord->id)->get()->toArray();
 
                             /**Calculo las edades */
@@ -127,6 +104,7 @@ class CorporateQuoteDataRelationManager extends RelationManager
                                     ->title('No exite cotización asociada a la solicitud')
                                     ->danger()
                                     ->send();
+
                                 return;
                             }
                             $createCorporateQuote = UtilsController::createCorporateQuote($livewire);
@@ -143,7 +121,7 @@ class CorporateQuoteDataRelationManager extends RelationManager
                                     ->send();
                             }
                         } catch (\Throwable $th) {
-                            Log::error('Error al calcular edades: ' . $th->getMessage());
+                            Log::error('Error al calcular edades: '.$th->getMessage());
                             Notification::make()
                                 ->danger()
                                 ->title('Excepción: ')
@@ -181,9 +159,11 @@ class CorporateQuoteDataRelationManager extends RelationManager
                                 ->icon('heroicon-s-exclamation-triangle')
                                 ->warning()
                                 ->send();
+
                             return;
                         }
-                        $path = public_path('storage/' . $doc);
+                        $path = public_path('storage/'.$doc);
+
                         return response()->download($path);
                     }),
             ])

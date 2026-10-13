@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Telemedicina\Resources\TelemedicineHistoryPatients\Schemas;
 
 use App\Models\TelemedicineHistoryPatient;
+use App\Support\Filament\PatientAgeDisplay;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
@@ -95,8 +96,8 @@ class TelemedicineHistoryPatientInfolist
                                 ->badge()
                                 ->placeholder('—'),
                             TextEntry::make('telemedicinePatient.age')
+                                ->formatStateUsing(PatientAgeDisplay::formatter('telemedicinePatient.birth_date'))
                                 ->label('Edad')
-                                ->suffix(' años')
                                 ->placeholder('—'),
                             TextEntry::make('telemedicinePatient.phone')
                                 ->label('Teléfono principal')
@@ -493,9 +494,7 @@ class TelemedicineHistoryPatientInfolist
 
         $patient = $record->telemedicinePatient;
         $name = $patient?->full_name ?? '—';
-        $age = $patient?->age !== null && $patient->age !== ''
-            ? (string) $patient->age.' años'
-            : '—';
+        $age = \App\Support\PatientAge::label($patient?->birth_date, $patient?->age);
         $sex = $patient?->sex ?? '—';
 
         return "Paciente: {$name} · Edad: {$age} · Sexo: {$sex}";

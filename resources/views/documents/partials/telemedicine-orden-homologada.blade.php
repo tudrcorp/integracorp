@@ -40,6 +40,7 @@
     $stampSize = \App\Support\Telemedicine\TelemedicineDoctorStamp::displaySize($stampDataUri);
     $doctorName = trim((string) ($data['doctor_name'] ?? ''));
     $stageLabel = \App\Support\Telemedicine\TelemedicineConsultationStageLabel::forDocumentData($data);
+    $caseCode = \App\Support\Telemedicine\TelemedicineDocumentCaseCode::fromData(is_array($data ?? null) ? $data : []);
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -207,6 +208,7 @@
             </td>
             <td class="col-title">
                 <p class="doc-title">{{ $title }}</p>
+                <p class="doc-sub">{{ \App\Support\Telemedicine\TelemedicineDocumentCaseCode::LABEL }}: <strong>{{ $val($caseCode) }}</strong></p>
                 <p class="doc-sub">Clave del servicio: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
                 <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
                 <span class="badge">Telemedicina</span>
@@ -233,7 +235,7 @@
             </td>
             <td style="width:20%">
                 <div class="label">Edad</div>
-                <div class="value-muted">{{ $val($data['age_patiente'] ?? ($data['age_patient'] ?? null)) }} años</div>
+                <div class="value-muted">{{ \App\Support\PatientAge::forTelemedicinePatientId($data['telemedicine_patient_id'] ?? null, $data['age_patiente'] ?? ($data['age_patient'] ?? null)) }}</div>
             </td>
         </tr>
     </table>

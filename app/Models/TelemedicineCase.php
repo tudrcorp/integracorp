@@ -55,6 +55,7 @@ class TelemedicineCase extends Model
     {
         return [
             'logically_deleted_at' => 'datetime',
+            'agent_notice_sent_at' => 'datetime',
             'assigned_to_medical_team' => 'boolean',
             'medical_team_supplier_id' => 'integer',
         ];

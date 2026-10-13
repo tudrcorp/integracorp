@@ -128,7 +128,7 @@ class TelemedicinePatientsTable
                     ->label('Edad / sexo')
                     ->icon(Heroicon::OutlinedCalendar)
                     ->state(function (TelemedicinePatient $record): string {
-                        $age = filled($record->age) ? $record->age.' años' : '—';
+                        $age = \App\Support\PatientAge::label($record->birth_date, $record->age);
                         $sex = filled($record->sex) ? mb_strtoupper((string) $record->sex) : '—';
 
                         return $age.' · '.$sex;

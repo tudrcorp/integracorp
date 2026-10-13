@@ -10,5 +10,6 @@
     <p>Adjunto encontrará el documento PDF de la <strong>orden de servicio N° {{ e($orderNumber) }}</strong>, generado por el departamento de operaciones de <strong>Tu Doctor en Casa</strong>.</p>
     <p>Si tiene alguna consulta, puede responder a este correo.</p>
     <p style="color: #6b7280; font-size: 12px;">Este mensaje es informativo. Por favor no comparta el adjunto con terceros no autorizados.</p>
+    @include('mails.partials.tdg-corporate-footer')
 </body>
 </html>

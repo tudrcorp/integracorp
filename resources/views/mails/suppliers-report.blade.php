@@ -9,5 +9,6 @@
     <p>Hola,</p>
     <p>Adjunto encontrará el PDF con el listado de proveedores (estado, ciudad, nombre y clasificación), ordenado alfabéticamente por estado y luego por ciudad.</p>
     <p>Saludos,<br><strong>{{ config('app.name') }}</strong></p>
+    @include('mails.partials.tdg-corporate-footer')
 </body>
 </html>

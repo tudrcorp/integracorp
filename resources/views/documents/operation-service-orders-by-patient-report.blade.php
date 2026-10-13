@@ -154,7 +154,7 @@
                 <thead>
                     <tr>
                         <th class="col-order">Nº orden</th>
-                        <th class="col-case">Caso</th>
+                        <th class="col-case">Nro. de Caso</th>
                         <th class="col-service">Tipo servicio</th>
                         <th class="col-status">Estado</th>
                         <th class="col-payment">Pago</th>

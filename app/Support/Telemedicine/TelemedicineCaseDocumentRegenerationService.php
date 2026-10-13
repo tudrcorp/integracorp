@@ -14,10 +14,7 @@ use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineDoctor;
 use App\Models\TelemedicinePatient;
-use App\Models\TelemedicinePatientLab;
 use App\Models\TelemedicinePatientMedications;
-use App\Models\TelemedicinePatientSpecialty;
-use App\Models\TelemedicinePatientStudy;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -391,6 +388,7 @@ class TelemedicineCaseDocumentRegenerationService
             $consultation,
             $doctor,
             $patient,
+            clinicalOrders: $this->clinicalOrdersForInforme($consultation),
         );
 
         if ($payload === null) {
@@ -413,11 +411,7 @@ class TelemedicineCaseDocumentRegenerationService
      */
     protected function medicationsForConsultation(TelemedicineConsultationPatient $consultation): Collection
     {
-        return TelemedicinePatientMedications::query()
-            ->with('operationInventory')
-            ->where('telemedicine_consultation_patient_id', $consultation->id)
-            ->orderBy('id')
-            ->get();
+        return TelemedicineInformeClinicalOrders::medicationsOf($consultation);
     }
 
     /**
@@ -451,26 +445,11 @@ class TelemedicineCaseDocumentRegenerationService
     }
 
     /**
-     * Las filas de la relación mandan; los campos JSON de la consulta quedan
-     * como respaldo para consultas anteriores a esas tablas.
-     *
      * @return array{0: list<string>, 1: list<string>}
      */
     protected function labsSplitForConsultation(TelemedicineConsultationPatient $consultation): array
     {
-        $fromRelation = TelemedicinePatientLab::query()
-            ->where('telemedicine_consultation_patient_id', $consultation->id)
-            ->orderBy('id')
-            ->get(['laboratory', 'type']);
-
-        if ($fromRelation->isNotEmpty()) {
-            return $this->partitionByCoverageType($fromRelation, 'laboratory');
-        }
-
-        return [
-            $this->stringList($consultation->labs),
-            $this->stringList($consultation->other_labs),
-        ];
+        return TelemedicineInformeClinicalOrders::labsSplitOf($consultation);
     }
 
     /**
@@ -478,19 +457,7 @@ class TelemedicineCaseDocumentRegenerationService
      */
     protected function studiesSplitForConsultation(TelemedicineConsultationPatient $consultation): array
     {
-        $fromRelation = TelemedicinePatientStudy::query()
-            ->where('telemedicine_consultation_patient_id', $consultation->id)
-            ->orderBy('id')
-            ->get(['study', 'type']);
-
-        if ($fromRelation->isNotEmpty()) {
-            return $this->partitionByCoverageType($fromRelation, 'study');
-        }
-
-        return [
-            $this->stringList($consultation->studies),
-            $this->stringList($consultation->other_studies),
-        ];
+        return TelemedicineInformeClinicalOrders::studiesSplitOf($consultation);
     }
 
     /**
@@ -498,70 +465,26 @@ class TelemedicineCaseDocumentRegenerationService
      */
     protected function specialistsSplitForConsultation(TelemedicineConsultationPatient $consultation): array
     {
-        $fromRelation = TelemedicinePatientSpecialty::query()
-            ->where('telemedicine_consultation_patient_id', $consultation->id)
-            ->orderBy('id')
-            ->get(['specialty', 'type']);
+        return TelemedicineInformeClinicalOrders::specialistsSplitOf($consultation);
+    }
 
-        if ($fromRelation->isNotEmpty()) {
-            return $this->partitionByCoverageType($fromRelation, 'specialty');
-        }
-
+    /**
+     * Indicaciones de la consulta para el informe médico y el de seguimiento,
+     * leídas por los mismos métodos que los documentos sueltos.
+     *
+     * @return array<string, list<mixed>>
+     */
+    protected function clinicalOrdersForInforme(TelemedicineConsultationPatient $consultation): array
+    {
         return [
-            $this->stringList($consultation->consult_specialist),
-            $this->stringList($consultation->other_specialist),
+            'medicationsArr' => TelemedicineInformeClinicalOrders::medicationRows($this->medicationsForConsultation($consultation)),
+            'labsArr' => $this->labsForConsultation($consultation),
+            'otherLabsArr' => [],
+            'studiesArr' => $this->studiesForConsultation($consultation),
+            'otherStudiesArr' => [],
+            'consultSpecialistArr' => $this->specialistsForConsultation($consultation),
+            'otherSpecialistArr' => [],
         ];
-    }
-
-    /**
-     * @param  Collection<int, object>  $rows
-     * @return array{0: list<string>, 1: list<string>}
-     */
-    protected function partitionByCoverageType(Collection $rows, string $nameAttribute): array
-    {
-        $covered = [];
-        $other = [];
-
-        foreach ($rows as $row) {
-            $name = trim((string) ($row->{$nameAttribute} ?? ''));
-            if ($name === '') {
-                continue;
-            }
-
-            $type = isset($row->type) ? (string) $row->type : null;
-
-            if (TelemedicineCoverageCatalog::itemIsCoveredFromCatalogType($type !== '' ? $type : null)) {
-                $covered[] = $name;
-            } else {
-                $other[] = $name;
-            }
-        }
-
-        return [$covered, $other];
-    }
-
-    /**
-     * @return list<string>
-     */
-    protected function stringList(mixed $value): array
-    {
-        if (! is_array($value)) {
-            return [];
-        }
-
-        $labels = [];
-
-        foreach ($value as $item) {
-            $label = is_array($item)
-                ? trim((string) ($item['name'] ?? $item['specialty'] ?? $item['study'] ?? $item['laboratory'] ?? ''))
-                : trim((string) $item);
-
-            if ($label !== '') {
-                $labels[] = $label;
-            }
-        }
-
-        return $labels;
     }
 
     private function documentPatientName(
@@ -585,18 +508,6 @@ class TelemedicineCaseDocumentRegenerationService
         TelemedicineCase $case,
         bool $includeVitals,
     ): array {
-        $medicationsArr = $this->medicationsForConsultation($consultation)
-            ->map(static fn (TelemedicinePatientMedications $medication): array => [
-                'medicines' => (string) ($medication->medicine ?? ''),
-                'indications' => (string) ($medication->indications ?? ''),
-                'duration' => (string) ($medication->duration ?? ''),
-            ])
-            ->values()
-            ->all();
-
-        $labsArr = $this->labsForConsultation($consultation);
-        $studiesArr = $this->studiesForConsultation($consultation);
-        $consultSpecialistArr = $this->specialistsForConsultation($consultation);
         $payload = [
             'fecha' => now()->format('d/m/Y'),
             'code_reference' => $consultation->code_reference,
@@ -612,13 +523,7 @@ class TelemedicineCaseDocumentRegenerationService
             'estatura' => $consultation->estatura,
             'imc' => $consultation->imc,
             'phone' => $case->patient_phone ?? $patient->phone,
-            'medicationsArr' => $medicationsArr,
-            'labsArr' => $labsArr,
-            'otherLabsArr' => [],
-            'studiesArr' => $studiesArr,
-            'otherStudiesArr' => [],
-            'consultSpecialistArr' => $consultSpecialistArr,
-            'otherSpecialistArr' => [],
+            ...$this->clinicalOrdersForInforme($consultation),
             'doctor_name' => $doctor->full_name,
             'code_cm' => $doctor->code_cm,
             'code_mpps' => $doctor->code_mpps,

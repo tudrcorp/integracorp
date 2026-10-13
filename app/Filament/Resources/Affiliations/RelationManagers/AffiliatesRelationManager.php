@@ -2,27 +2,26 @@
 
 namespace App\Filament\Resources\Affiliations\RelationManagers;
 
+use App\Support\Plans\PlanInfantEligibility;
 use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
 use Filament\Actions\CreateAction;
-use Filament\Forms\Components\Select;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
-use Filament\Tables\Columns\TextInputColumn;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use App\Filament\Resources\Affiliations\AffiliationResource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Table;
 
 class AffiliatesRelationManager extends RelationManager
 {
     protected static string $relationship = 'affiliates';
 
     protected static ?string $title = 'FAMILIARES AFILIADOS';
-    
-    protected static string|BackedEnum|null $icon = 'heroicon-s-user-group';
 
+    protected static string|BackedEnum|null $icon = 'heroicon-s-user-group';
 
     public function form(Schema $schema): Schema
     {
@@ -44,17 +43,18 @@ class AffiliatesRelationManager extends RelationManager
                                 'FEMENINO' => 'FEMENINO',
                             ]),
                         DatePicker::make('birth_date')
+                            ->rule(PlanInfantEligibility::filamentBirthDateRule())
                             ->label('Fecha de Nacimiento')
                             ->format('d-m-Y'),
                         Select::make('relationship')
                             ->label('Parentesco')
                             ->options([
-                                'MADRE'     => 'MADRE',
-                                'PADRE'     => 'PADRE',
-                                'ESPOSA'    => 'ESPOSA',
-                                'ESPOSO'    => 'ESPOSO',
-                                'HIJO'      => 'HIJO',
-                                'HIJA'      => 'HIJA',
+                                'MADRE' => 'MADRE',
+                                'PADRE' => 'PADRE',
+                                'ESPOSA' => 'ESPOSA',
+                                'ESPOSO' => 'ESPOSO',
+                                'HIJO' => 'HIJO',
+                                'HIJA' => 'HIJA',
                             ]),
 
                     ])->columnSpanFull()->columns(3),
@@ -64,7 +64,7 @@ class AffiliatesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-        ->heading('CARGA FAMILIAR')
+            ->heading('CARGA FAMILIAR')
             ->description('Lista de familiares afiliados')
             ->recordTitleAttribute('affiliation_id')
             ->columns([
@@ -90,9 +90,9 @@ class AffiliatesRelationManager extends RelationManager
                     ->label('Cobertura'),
                 TextColumn::make('status')
                     ->color('success')
-                    ->badge()   
+                    ->badge()
                     ->label('Estatus'),
-                
+
             ])
             ->filters([
                 //
@@ -101,7 +101,7 @@ class AffiliatesRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Agregar Familiar')
                     ->icon('heroicon-s-user-plus')
-                    //Actualizo el total de familiarles en la afiliacion
+                    // Actualizo el total de familiarles en la afiliacion
                     ->after(function () {
                         $record = $this->getOwnerRecord();
                         $record->family_members = $record->family_members + 1;

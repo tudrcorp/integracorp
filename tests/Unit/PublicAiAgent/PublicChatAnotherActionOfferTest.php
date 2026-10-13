@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Schema;
 uses(Tests\TestCase::class);
 
 beforeEach(function (): void {
+    // Recrea tablas: sin sqlite en memoria borraría las de la base real.
+    ensureSqliteInMemoryDatabaseOrSkip();
+
     Schema::dropIfExists('chat_messages');
     Schema::dropIfExists('chat_sessions');
 

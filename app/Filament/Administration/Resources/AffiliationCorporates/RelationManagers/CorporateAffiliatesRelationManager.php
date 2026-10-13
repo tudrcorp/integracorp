@@ -7,6 +7,8 @@ use App\Models\AffiliateCorporate;
 use App\Models\AgeRange;
 use App\Models\Plan;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
+use App\Support\Filament\PatientAgeDisplay;
+use App\Support\Plans\PlanInfantEligibility;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -74,6 +76,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                             ->required()
                             ->email(),
                         DatePicker::make('birth_date')
+                            ->rule(PlanInfantEligibility::filamentBirthDateRule())
                             ->label('Fecha de Nacimiento')
                             ->required()
                             ->live()
@@ -82,6 +85,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 $set('age', intval(Carbon::createFromFormat('d/m/Y', $state)->diffInYears(now())));
                             }),
                         TextInput::make('age')
+                            ->hint(PatientAgeDisplay::inputHint('birth_date'))
                             ->label('Edad')
                             ->required()
                             ->live()
@@ -203,6 +207,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                 TextColumn::make('email')
                     ->label('Email'),
                 TextColumn::make('age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                     ->label('Edad')
                     ->searchable(),
                 TextColumn::make('sex')

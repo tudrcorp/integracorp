@@ -396,14 +396,15 @@ final class CoordinationServiceCaseDeletion
     }
 
     /**
-     * La restauración solo aparece en la pestaña ELIMINADOS, y la eliminación
-     * en las demás: así ninguna de las dos se ofrece sobre filas donde no aplica.
+     * La restauración solo aparece con el filtro «Ver solo casos eliminados»
+     * activo, y la eliminación sin él: así ninguna de las dos se ofrece sobre
+     * filas donde no aplica. El filtro (antes una pestaña) conserva la clave
+     * {@see DELETED_TAB}.
      */
     public static function viewingDeletedTab(mixed $livewire): bool
     {
-        $activeTab = data_get($livewire, 'activeTab');
-
-        return is_string($activeTab) && $activeTab === self::DELETED_TAB;
+        return data_get($livewire, 'tableFilters.'.self::DELETED_TAB.'.isActive') === true
+            && self::userCanDeleteCases();
     }
 
     private static function styleButton(Action $action, string $color): Action

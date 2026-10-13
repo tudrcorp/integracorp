@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicinePatient;
 use App\Support\Charts\SvgLineChartRenderer;
+use App\Support\Operations\OperationServiceOrderCaseReference;
 use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as PdfDocument;
@@ -74,6 +75,7 @@ final class PatientDetailedSiniestralidadReportService
         $services = OperationCoordinationService::query()
             ->where('telemedicine_patient_id', $patient->id)
             ->where('status', self::STATUS_FINALIZED)
+            ->with(['telemedicineCase' => fn ($case) => $case->withoutGlobalScopes()->select(['id', 'code'])])
             ->orderByDesc('created_at')
             ->get();
 
@@ -82,6 +84,7 @@ final class PatientDetailedSiniestralidadReportService
         $serviceRows = $services
             ->map(fn (OperationCoordinationService $service): array => [
                 'id' => (int) $service->id,
+                'case_code' => OperationServiceOrderCaseReference::caseCodeForCoordination($service) ?? '—',
                 'reference_number' => filled($service->reference_number) ? (string) $service->reference_number : '—',
                 'date_solicitud' => filled($service->date_solicitud) ? (string) $service->date_solicitud : '—',
                 'date_service' => filled($service->date_service) ? (string) $service->date_service : '—',

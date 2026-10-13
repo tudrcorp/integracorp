@@ -60,8 +60,18 @@
             <tr><td style="padding:16px 28px 0 28px;">
                 <table style="width:664px;"><tr>
                     <td style="width:400px;">
-                        <span style="font-size:10px; font-weight:bold; letter-spacing:1.6px; text-transform:uppercase; color:{{ $th['sub'] }};">Plan</span>
-                        <span style="margin-left:8px; padding:3px 10px; border-radius:9px; background:#E6F6EE; color:#00703C; font-size:10px; font-weight:bold; letter-spacing:0.8px; text-transform:uppercase;"><span style="font-family:'DejaVu Sans', sans-serif;">&#9679;</span> Activo</span>
+                        {{-- Pastilla «Activo» como celda de tabla: un span en línea con el punto en otra fuente dejaba el punto fuera del fondo en DomPDF. --}}
+                        <table><tr>
+                            <td style="font-size:10px; font-weight:bold; letter-spacing:1.6px; text-transform:uppercase; color:{{ $th['sub'] }}; vertical-align:middle;">Plan</td>
+                            <td style="width:8px;"></td>
+                            <td style="background:#E6F6EE; border-radius:9px; padding:3px 10px 3px 8px; vertical-align:middle;">
+                                <table><tr>
+                                    <td style="width:6px; vertical-align:middle;"><div style="width:6px; height:6px; border-radius:3px; background:#00A651;"></div></td>
+                                    <td style="width:5px;"></td>
+                                    <td style="font-size:10px; font-weight:bold; letter-spacing:0.8px; text-transform:uppercase; color:#00703C; vertical-align:middle; white-space:nowrap;">Activo</td>
+                                </tr></table>
+                            </td>
+                        </tr></table>
                         <div style="font-size:38px; line-height:1; font-weight:bold; color:{{ $th['title'] }}; margin-top:8px;">{{ $data['planNombre'] }}</div>
                         <div style="font-size:12px; color:{{ $th['sub'] }}; margin-top:6px;">{{ $data['heroSub'] }}</div>
                     </td>
@@ -141,8 +151,8 @@
         </tr></table>
         <table style="width:720px; margin-top:8px; border-bottom:1px solid #E4ECEF;">
             <tr>
-                <td class="k" style="width:530px; padding:0 12px 6px 12px; border-bottom:2px solid #26B4E8;">Beneficio</td>
-                <td class="k" style="width:154px; padding:0 12px 6px 0; border-bottom:2px solid #26B4E8;">Cobertura</td>
+                <td class="k" style="width:530px; padding:0 12px 6px 12px; border-bottom:2px solid #26B4E8;">Descripción</td>
+                <td class="k" style="width:154px; padding:0 12px 6px 0; border-bottom:2px solid #26B4E8;">Detalle</td>
             </tr>
             @foreach ($pg['rows'] as $it)
                 @if (isset($it['section']))

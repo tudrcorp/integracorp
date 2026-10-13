@@ -7,6 +7,7 @@ namespace App\Filament\Operations\Resources\Affiliates\Tables;
 use App\Filament\Operations\Resources\Affiliates\AffiliateResource;
 use App\Http\Controllers\AffiliateExportCsvController;
 use App\Models\Affiliate;
+use App\Support\Filament\PatientAgeDisplay;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -139,6 +140,7 @@ class AffiliatesTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                     ->label('Edad')
                     ->alignCenter()
                     ->searchable()

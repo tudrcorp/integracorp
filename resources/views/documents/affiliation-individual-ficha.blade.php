@@ -261,7 +261,7 @@
                 <td class="label">Sexo</td>
                 <td class="value">{{ $a->sex_ti ?? '—' }}</td>
                 <td class="label">Edad / Nacimiento</td>
-                <td class="value">{{ $a->age ?? '—' }} @if(filled($a->birth_date_ti)) · {{ $a->birth_date_ti }} @endif</td>
+                <td class="value">{{ \App\Support\PatientAge::label($a->birth_date_ti, $a->age) }} @if(filled($a->birth_date_ti)) · {{ $a->birth_date_ti }} @endif</td>
             </tr>
             <tr>
                 <td class="label">Teléfono</td>
@@ -348,7 +348,7 @@
                             <td>{{ $row->full_name ?? '—' }}</td>
                             <td>{{ $row->nro_identificacion ?? '—' }}</td>
                             <td>{{ $row->birth_date ?? '—' }}</td>
-                            <td>{{ $row->age ?? '—' }}</td>
+                            <td>{{ \App\Support\PatientAge::label($row->birth_date, $row->age) }}</td>
                             <td>{{ $row->sex ?? '—' }}</td>
                             <td>{{ $row->relationship ?? '—' }}</td>
                             <td>{{ $row->address ?? '—' }}</td>

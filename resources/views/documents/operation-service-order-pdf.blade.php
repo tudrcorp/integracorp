@@ -286,7 +286,7 @@
             <td class="col-title title-cell">
                 <p class="doc-title">Orden de servicio</p>
                 <p class="doc-sub">N° <strong>{{ $order->order_number }}</strong></p>
-                <p class="doc-sub">Caso: <strong>{{ $caseCode ?? '—' }}</strong></p>
+                <p class="doc-sub">{{ \App\Support\Operations\OperationServiceOrderCaseReference::CASE_LABEL }}: <strong>{{ $caseCode ?? '—' }}</strong></p>
                 <p class="doc-sub">Referencia: <strong>{{ $referenceNumber ?? '—' }}</strong></p>
                 <p class="doc-sub">Fecha: <strong>{{ $order->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</strong></p>
             </td>

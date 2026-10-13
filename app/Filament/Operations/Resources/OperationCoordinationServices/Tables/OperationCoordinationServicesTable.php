@@ -26,6 +26,7 @@ use App\Services\OperationServiceOrderPdfService;
 use App\Services\OperationServiceOrderQuotePdfService;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\AccountsReceivableManager;
 use App\Support\Operations\AssignCoordinationServiceToSupplier;
 use App\Support\Operations\CoordinationServiceBulkReversal;
@@ -1513,6 +1514,7 @@ class OperationCoordinationServicesTable
                     ->label('Relación del Paciente')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('age_patient')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date_patient'))
                     ->label('Edad del Paciente')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('contractor')
@@ -1722,9 +1724,16 @@ class OperationCoordinationServicesTable
                     ]);
                 }
             })
-            ->filters([
-                //
-            ])
+            ->filters(OperationCoordinationServicesTableFilters::make())
+            ->filtersFormColumns(2)
+            ->filtersFormWidth(Width::ThreeExtraLarge)
+            ->persistFiltersInSession()
+            ->filtersTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('Filtros')
+                    ->icon(Heroicon::OutlinedFunnel),
+            )
             ->recordActions([
                 ActionGroup::make([
                     $editNegotiationAndPricingAction,

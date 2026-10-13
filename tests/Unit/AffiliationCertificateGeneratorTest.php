@@ -26,7 +26,12 @@ uses(Tests\TestCase::class);
  * Las pruebas que emiten certificados escriben en `affiliation_certificate_issues`
  * y en la bitácora: todo va en una transacción que siempre se revierte.
  */
-beforeEach(fn () => DB::beginTransaction());
+beforeEach(function (): void {
+    DB::beginTransaction();
+    // Los PDF se guardan al dibujarse: con el disco simulado no quedan archivos
+    // de emisiones que la transacción revierte.
+    Illuminate\Support\Facades\Storage::fake('local');
+});
 afterEach(fn () => DB::rollBack());
 
 function certificateSuperAdmin(): User
@@ -278,7 +283,10 @@ describe('corporativas', function (): void {
             ->and(AffiliationCertificateGeneratorService::estimatedPages(40, 0))->toBe(2);
     });
 
-    it('un colectivo grande se emite en cola con solo afiliados vigentes', function (): void {
+    it('un colectivo grande se emite en cola por tramos cortos, con solo afiliados vigentes', function (): void {
+        Illuminate\Support\Facades\Storage::fake('local');
+        Illuminate\Support\Facades\Bus::fake();
+
         $affiliation = App\Models\AffiliationCorporate::query()->where('code', 'TDEC-COR-00054')->first();
 
         if ($affiliation === null) {
@@ -287,28 +295,54 @@ describe('corporativas', function (): void {
 
         $ids = App\Support\Affiliations\Certificates\CorporateCertificateDocument::printableAffiliates($affiliation)->pluck('id')->all();
         $issue = app(AffiliationCertificateGeneratorService::class)->issueCorporate($affiliation, [...$ids, 999999999], certificateSuperAdmin());
+        $expectedChunks = (int) ceil($issue->pdf_pages / AffiliationCertificateGeneratorService::CHUNK_PAGES);
 
-        // El job se despacha con afterCommit: dentro de la transacción revertida del test no llega a la cola.
         expect($issue->pdf_status)->toBe(AffiliationCertificateIssue::PDF_PROCESSING)
             ->and($issue->isQueued())->toBeTrue()
-            ->and($issue->carnets_count)->toBe(count($ids));
+            ->and($issue->carnets_count)->toBe(count($ids))
+            ->and($issue->pdf_chunks_total)->toBe($expectedChunks)
+            ->and($issue->pdf_chunks_done)->toBe(0)
+            ->and($issue->progressPercent())->toBe(0)
+            ->and(Illuminate\Support\Facades\Storage::disk('local')->exists(AffiliationCertificateGeneratorService::chunkDirectory($issue).'/datos.ser'))->toBeTrue();
+
+        Illuminate\Support\Facades\Bus::assertBatched(fn (Illuminate\Bus\PendingBatch $batch): bool => $batch->jobs->count() === $expectedChunks
+            && $batch->jobs->every(fn (mixed $job): bool => $job instanceof App\Jobs\RenderAffiliationCertificateChunkJob)
+            && $batch->queue() === AffiliationCertificateGeneratorService::queue());
     });
 
-    it('el job dibuja el PDF, lo guarda en privado, lo marca listo y avisa al analista', function (): void {
+    it('los tramos se dibujan, se unen en el PDF final, se marca listo y se avisa al analista', function (): void {
         Illuminate\Support\Facades\Storage::fake('local');
         Illuminate\Support\Facades\Notification::fake();
+        Illuminate\Support\Facades\Bus::fake();
 
         $affiliation = App\Models\AffiliationCorporate::query()->whereIn('status', ['ACTIVA'])->where('code', '!=', 'TDEC-COR-00054')->whereHas('corporateAffiliates', fn ($q) => $q->whereIn('status', ['ACTIVO', 'PRE-APROBADA']))->firstOrFail();
-        $issue = app(AffiliationCertificateGeneratorService::class)->issueCorporate($affiliation, [], certificateSuperAdmin());
+        $generator = app(AffiliationCertificateGeneratorService::class);
+        $issue = $generator->issueCorporate($affiliation, [], certificateSuperAdmin());
         $issue->forceFill(['pdf_status' => AffiliationCertificateIssue::PDF_PROCESSING])->save();
 
-        (new App\Jobs\GenerateAffiliationCertificatePdfJob($issue->id))->handle(app(AffiliationCertificateGeneratorService::class));
-
+        // El job antiguo de un solo paso, si quedó en la cola, ahora delega en los tramos.
+        (new App\Jobs\GenerateAffiliationCertificatePdfJob($issue->id))->handle($generator);
         $issue->refresh();
 
+        expect($issue->pdf_chunks_total)->toBeGreaterThanOrEqual(1);
+
+        for ($index = 0; $index < $issue->pdf_chunks_total; $index++) {
+            (new App\Jobs\RenderAffiliationCertificateChunkJob($issue->id, $index))->handle($generator);
+            // Idempotente: repetir un tramo no lo vuelve a contar.
+            (new App\Jobs\RenderAffiliationCertificateChunkJob($issue->id, $index))->handle($generator);
+        }
+
+        expect($issue->fresh()->pdf_chunks_done)->toBe($issue->pdf_chunks_total);
+
+        (new App\Jobs\MergeAffiliationCertificateChunksJob($issue->id))->handle($generator);
+        $issue->refresh();
+        $disk = Illuminate\Support\Facades\Storage::disk('local');
+
         expect($issue->pdf_status)->toBe(AffiliationCertificateIssue::PDF_READY)
-            ->and(Illuminate\Support\Facades\Storage::disk('local')->exists($issue->pdf_path))->toBeTrue()
-            ->and(str_starts_with((string) Illuminate\Support\Facades\Storage::disk('local')->get($issue->pdf_path), '%PDF'))->toBeTrue();
+            ->and($issue->progressPercent())->toBe(100)
+            ->and($disk->exists($issue->pdf_path))->toBeTrue()
+            ->and(str_starts_with((string) $disk->get($issue->pdf_path), '%PDF'))->toBeTrue()
+            ->and($disk->exists(AffiliationCertificateGeneratorService::chunkDirectory($issue)))->toBeFalse();
 
         Illuminate\Support\Facades\Notification::assertSentTo(
             certificateSuperAdmin(),
@@ -316,10 +350,81 @@ describe('corporativas', function (): void {
             fn ($notification): bool => ($notification->data['title'] ?? null) === 'Certificado listo',
         );
 
+        // Unir de nuevo no vuelve a avisar.
+        Illuminate\Support\Facades\Notification::fake();
+        (new App\Jobs\MergeAffiliationCertificateChunksJob($issue->id))->handle($generator);
+        Illuminate\Support\Facades\Notification::assertNothingSent();
+
         $this->actingAs(certificateSuperAdmin())
             ->get(route('business.affiliation-certificate.pdf', ['issue' => $issue->id]))
             ->assertSuccessful()
             ->assertHeader('Content-Type', 'application/pdf');
+    });
+
+    it('un fallo definitivo marca el certificado y reintentar solo encola los tramos que faltan', function (): void {
+        Illuminate\Support\Facades\Storage::fake('local');
+        Illuminate\Support\Facades\Notification::fake();
+        Illuminate\Support\Facades\Bus::fake();
+
+        $affiliation = App\Models\AffiliationCorporate::query()->where('code', 'TDEC-COR-00054')->first();
+
+        if ($affiliation === null) {
+            $this->markTestSkipped('No existe TDEC-COR-00054 en esta base.');
+        }
+
+        $generator = app(AffiliationCertificateGeneratorService::class);
+        $ids = App\Support\Affiliations\Certificates\CorporateCertificateDocument::printableAffiliates($affiliation)->pluck('id')->all();
+        $issue = $generator->issueCorporate($affiliation, $ids, certificateSuperAdmin());
+
+        // Dos tramos ya listos (archivos simulados) y una falla.
+        Illuminate\Support\Facades\Storage::disk('local')->put(AffiliationCertificateGeneratorService::chunkFile($issue, 0), '%PDF-1.4');
+        Illuminate\Support\Facades\Storage::disk('local')->put(AffiliationCertificateGeneratorService::chunkFile($issue, 1), '%PDF-1.4');
+        AffiliationCertificateGeneratorService::markFailed($issue->id, new RuntimeException('worker reiniciado'));
+
+        expect($issue->fresh()->pdf_status)->toBe(AffiliationCertificateIssue::PDF_FAILED)
+            ->and($issue->fresh()->pdf_error)->toBe('worker reiniciado');
+
+        Illuminate\Support\Facades\Bus::fake();
+        $generator->queueRender($issue->fresh());
+
+        expect($issue->fresh()->pdf_status)->toBe(AffiliationCertificateIssue::PDF_PROCESSING)
+            ->and($issue->fresh()->pdf_chunks_done)->toBe(2);
+
+        Illuminate\Support\Facades\Bus::assertBatched(fn (Illuminate\Bus\PendingBatch $batch): bool => $batch->jobs->count() === $issue->fresh()->pdf_chunks_total - 2
+            && $batch->jobs->every(fn (App\Jobs\RenderAffiliationCertificateChunkJob $job): bool => $job->chunkIndex >= 2));
+    });
+
+    it('un certificado en cola sin avance por más de diez minutos se marca como detenido', function (): void {
+        $issue = new AffiliationCertificateIssue(['pdf_status' => AffiliationCertificateIssue::PDF_PROCESSING, 'pdf_chunks_total' => 13, 'pdf_chunks_done' => 6]);
+        $issue->pdf_progress_at = now()->subMinutes(11);
+
+        expect($issue->isStalled())->toBeTrue()
+            ->and($issue->progressPercent())->toBe(43);
+
+        $issue->pdf_progress_at = now()->subMinutes(2);
+        expect($issue->isStalled())->toBeFalse();
+
+        $issue->pdf_status = AffiliationCertificateIssue::PDF_READY;
+        expect($issue->isStalled())->toBeFalse()->and($issue->progressPercent())->toBe(100);
+    });
+
+    it('un certificado pequeño se dibuja una vez y la descarga reutiliza el mismo archivo', function (): void {
+        Illuminate\Support\Facades\Storage::fake('local');
+
+        $affiliation = App\Models\AffiliationCorporate::query()->whereIn('status', ['ACTIVA'])->where('code', '!=', 'TDEC-COR-00054')->whereHas('corporateAffiliates', fn ($q) => $q->whereIn('status', ['ACTIVO', 'PRE-APROBADA']))->firstOrFail();
+        $generator = app(AffiliationCertificateGeneratorService::class);
+        $issue = $generator->issueCorporate($affiliation, [], certificateSuperAdmin());
+
+        expect($issue->isQueued())->toBeFalse();
+
+        $first = $generator->pdfFile($issue);
+        $issue->refresh();
+        $modified = filemtime($first);
+        $second = $generator->pdfFile($issue);
+
+        expect($second)->toBe($first)
+            ->and(filemtime($second))->toBe($modified)
+            ->and($issue->pdf_path)->not->toBeNull();
     });
 
     it('un PDF en preparación responde 409 sin romper la vista previa', function (): void {
@@ -378,6 +483,152 @@ describe('corporativas', function (): void {
 
         expect($issue?->affiliation_type)->toBe(AffiliationCertificateIssue::TYPE_CORPORATE)
             ->and($issue?->carnets_count)->toBe(App\Filament\Business\Resources\AffiliationCorporates\Pages\CorporateCertificateGenerator::printableCount($affiliation->id));
+    });
+
+    it('la página no lanza un segundo certificado si ya hay uno de esa afiliación generándose', function (): void {
+        Illuminate\Support\Facades\Bus::fake();
+        Filament::setCurrentPanel('business');
+        $this->actingAs(certificateSuperAdmin());
+
+        $affiliation = App\Models\AffiliationCorporate::query()->where('status', 'ACTIVA')->where('code', '!=', 'TDEC-COR-00054')->whereHas('corporateAffiliates', fn ($q) => $q->whereIn('status', ['ACTIVO', 'PRE-APROBADA']))->firstOrFail();
+        $inFlight = app(AffiliationCertificateGeneratorService::class)->issueCorporate($affiliation, [], certificateSuperAdmin());
+        $inFlight->forceFill(['pdf_status' => AffiliationCertificateIssue::PDF_PROCESSING, 'pdf_chunks_total' => 4, 'pdf_chunks_done' => 1, 'pdf_progress_at' => now()])->save();
+        $before = AffiliationCertificateIssue::query()->count();
+
+        Livewire::test(App\Filament\Business\Resources\AffiliationCorporates\Pages\CorporateCertificateGenerator::class)
+            ->set('data.affiliation_id', $affiliation->id)
+            ->call('generate')
+            ->assertSet('issueId', $inFlight->id)
+            ->assertNotified('Ya se está generando un certificado de esta afiliación')
+            ->assertSee('Parte 2 de 4')
+            ->assertSee('23 %');
+
+        expect(AffiliationCertificateIssue::query()->count())->toBe($before);
+    });
+
+    it('reintentar desde la página retoma un certificado fallido', function (): void {
+        Illuminate\Support\Facades\Bus::fake();
+        Filament::setCurrentPanel('business');
+        $this->actingAs(certificateSuperAdmin());
+
+        $affiliation = App\Models\AffiliationCorporate::query()->where('status', 'ACTIVA')->where('code', '!=', 'TDEC-COR-00054')->whereHas('corporateAffiliates', fn ($q) => $q->whereIn('status', ['ACTIVO', 'PRE-APROBADA']))->firstOrFail();
+        $issue = app(AffiliationCertificateGeneratorService::class)->issueCorporate($affiliation, [], certificateSuperAdmin());
+        $issue->forceFill(['pdf_status' => AffiliationCertificateIssue::PDF_FAILED, 'pdf_error' => 'worker reiniciado'])->save();
+
+        Livewire::test(App\Filament\Business\Resources\AffiliationCorporates\Pages\CorporateCertificateGenerator::class)
+            ->set('issueId', $issue->id)
+            ->assertSee('No se pudo generar el certificado')
+            ->assertSee('Reintentar')
+            ->call('retry')
+            ->assertNotified('Reanudando el certificado');
+
+        expect($issue->fresh()->pdf_status)->toBe(AffiliationCertificateIssue::PDF_PROCESSING);
+        Illuminate\Support\Facades\Bus::assertBatched(fn (Illuminate\Bus\PendingBatch $batch): bool => $batch->jobs->isNotEmpty());
+    });
+
+    it('un certificado grande listo muestra la vista previa liviana y ofrece el PDF completo', function (): void {
+        Filament::setCurrentPanel('business');
+        $this->actingAs(certificateSuperAdmin());
+
+        $affiliation = App\Models\AffiliationCorporate::query()->where('status', 'ACTIVA')->where('code', '!=', 'TDEC-COR-00054')->whereHas('corporateAffiliates', fn ($q) => $q->whereIn('status', ['ACTIVO', 'PRE-APROBADA']))->firstOrFail();
+        $issue = app(AffiliationCertificateGeneratorService::class)->issueCorporate($affiliation, [], certificateSuperAdmin());
+        Illuminate\Support\Facades\Storage::disk('local')->put('certificados-generador/grande.pdf', '%PDF-1.4');
+        $issue->forceFill(['pdf_status' => AffiliationCertificateIssue::PDF_READY, 'pdf_path' => 'certificados-generador/grande.pdf', 'pdf_pages' => 730, 'carnets_count' => 2646])->save();
+
+        Livewire::test(App\Filament\Business\Resources\AffiliationCorporates\Pages\CorporateCertificateGenerator::class)
+            ->set('issueId', $issue->id)
+            ->assertSee('Certificado listo')
+            ->assertSee('730 páginas')
+            ->assertSee('Descargar PDF')
+            ->assertSee('La vista previa muestra la portada y la primera hoja de carnets')
+            ->assertSeeHtml('vista=previa');
+    });
+
+    it('el comando de soporte genera desde la consola un certificado que la cola no procesó', function (): void {
+        Illuminate\Support\Facades\Bus::fake();
+        Illuminate\Support\Facades\Notification::fake();
+
+        $affiliation = App\Models\AffiliationCorporate::query()->where('status', 'ACTIVA')->where('code', '!=', 'TDEC-COR-00054')->whereHas('corporateAffiliates', fn ($q) => $q->whereIn('status', ['ACTIVO', 'PRE-APROBADA']))->firstOrFail();
+        $issue = app(AffiliationCertificateGeneratorService::class)->issueCorporate($affiliation, [], certificateSuperAdmin());
+        $issue->forceFill(['pdf_status' => AffiliationCertificateIssue::PDF_PROCESSING])->save();
+
+        $this->artisan('certificates:render', ['issue' => $issue->verification_key])->assertSuccessful();
+
+        expect($issue->fresh()->pdf_status)->toBe(AffiliationCertificateIssue::PDF_READY);
+        Illuminate\Support\Facades\Bus::assertNothingBatched();
+
+        $this->artisan('certificates:render', ['issue' => 'CER-NO-EXISTE'])->assertFailed();
+    });
+
+    it('la vista previa liviana toma la portada y la primera hoja de carnets, con su número real', function (): void {
+        $pages = [
+            ['num' => 1, 'kind' => 'cert'],
+            ['num' => 2, 'kind' => 'rel'],
+            ['num' => 3, 'kind' => 'rel'],
+            ['num' => 4, 'kind' => 'carnet'],
+            ['num' => 5, 'kind' => 'carnet'],
+        ];
+
+        expect(array_column(AffiliationCertificateGeneratorService::previewData(['pages' => $pages, 'totalPaginas' => 5])['pages'], 'num'))->toBe([1, 4])
+            // Sin carnets: la portada y la primera hoja de la relación.
+            ->and(array_column(AffiliationCertificateGeneratorService::previewData(['pages' => array_slice($pages, 0, 3)])['pages'], 'num'))->toBe([1, 2])
+            ->and(array_column(AffiliationCertificateGeneratorService::previewData(['pages' => [$pages[0]]])['pages'], 'num'))->toBe([1])
+            // El total no cambia: las páginas siguen diciendo «de 5».
+            ->and(AffiliationCertificateGeneratorService::previewData(['pages' => $pages, 'totalPaginas' => 5])['totalPaginas'])->toBe(5);
+    });
+
+    it('un certificado grande trae su vista previa de dos páginas desde la emisión, antes de terminar', function (): void {
+        Illuminate\Support\Facades\Bus::fake();
+
+        $affiliation = App\Models\AffiliationCorporate::query()->where('code', 'TDEC-COR-00054')->first();
+
+        if ($affiliation === null) {
+            $this->markTestSkipped('No existe TDEC-COR-00054 en esta base.');
+        }
+
+        $generator = app(AffiliationCertificateGeneratorService::class);
+        $issue = $generator->issueCorporate($affiliation, App\Support\Affiliations\Certificates\CorporateCertificateDocument::printableAffiliates($affiliation)->pluck('id')->all(), certificateSuperAdmin());
+
+        expect($issue->pdf_status)->toBe(AffiliationCertificateIssue::PDF_PROCESSING)
+            ->and(Illuminate\Support\Facades\Storage::disk('local')->exists(AffiliationCertificateGeneratorService::previewFileName($issue)))->toBeTrue()
+            ->and((new setasign\Fpdi\Fpdi)->setSourceFile($generator->previewFile($issue)))->toBe(2);
+
+        $this->actingAs(certificateSuperAdmin())
+            ->get(route('business.affiliation-certificate.pdf', ['issue' => $issue->id, 'vista' => 'previa']))
+            ->assertSuccessful()
+            ->assertHeader('Content-Type', 'application/pdf');
+
+        // El completo sigue en preparación.
+        $this->actingAs(certificateSuperAdmin())
+            ->get(route('business.affiliation-certificate.pdf', ['issue' => $issue->id]))
+            ->assertStatus(409);
+    });
+
+    it('un certificado corto se previsualiza completo, con el mismo archivo que se descarga', function (): void {
+        $affiliation = App\Models\AffiliationCorporate::query()->whereIn('status', ['ACTIVA'])->where('code', '!=', 'TDEC-COR-00054')->whereHas('corporateAffiliates', fn ($q) => $q->whereIn('status', ['ACTIVO', 'PRE-APROBADA']))->firstOrFail();
+        $generator = app(AffiliationCertificateGeneratorService::class);
+        $issue = $generator->issueCorporate($affiliation, [], certificateSuperAdmin());
+
+        if (count($generator->documentData($issue)['pages']) > AffiliationCertificateGeneratorService::FULL_PREVIEW_MAX_PAGES) {
+            $this->markTestSkipped('La primera afiliación activa no es corta.');
+        }
+
+        expect($generator->previewFile($issue))->toBe($generator->pdfFile($issue->fresh()));
+    });
+
+    it('mientras se genera, la página muestra la vista previa liviana debajo del avance', function (): void {
+        Filament::setCurrentPanel('business');
+        $this->actingAs(certificateSuperAdmin());
+
+        $affiliation = App\Models\AffiliationCorporate::query()->where('status', 'ACTIVA')->where('code', '!=', 'TDEC-COR-00054')->whereHas('corporateAffiliates', fn ($q) => $q->whereIn('status', ['ACTIVO', 'PRE-APROBADA']))->firstOrFail();
+        $issue = app(AffiliationCertificateGeneratorService::class)->issueCorporate($affiliation, [], certificateSuperAdmin());
+        $issue->forceFill(['pdf_status' => AffiliationCertificateIssue::PDF_PROCESSING, 'pdf_chunks_total' => 4, 'pdf_chunks_done' => 0, 'pdf_progress_at' => now()])->save();
+
+        Livewire::test(App\Filament\Business\Resources\AffiliationCorporates\Pages\CorporateCertificateGenerator::class)
+            ->set('issueId', $issue->id)
+            ->assertSee('Generando el certificado')
+            ->assertSee('Portada y primera hoja de carnets')
+            ->assertSeeHtml('vista=previa');
     });
 
     it('el botón está en el encabezado de la tabla corporativa', function (): void {

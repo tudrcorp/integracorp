@@ -345,7 +345,7 @@ final class TelemedicineSchemaDocumentation
             'columns' => [
                 self::col('id', 'bigint unsigned', false, null, 'Identificador primario.'),
                 self::col('telemedicine_case_id', 'int', false, null, 'FK lógica al caso.'),
-                self::col('telemedicine_case_code', 'varchar(10)', false, null, 'Código del caso (redundante para consultas).'),
+                self::col('telemedicine_case_code', 'varchar(255)', false, null, 'Código del caso (redundante para consultas).'),
                 self::col('telemedicine_patient_id', 'int', false, null, 'FK lógica al paciente.'),
                 self::col('telemedicine_doctor_id', 'int', false, null, 'FK lógica al médico.'),
                 self::col('telemedicine_priority_id', 'int', true, null, 'Prioridad de la consulta.'),

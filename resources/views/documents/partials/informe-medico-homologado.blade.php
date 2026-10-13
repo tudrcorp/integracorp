@@ -17,11 +17,15 @@
         : \App\Support\PdfOpaqueImage::fromPath(public_path('image/logoNewPdf.png'));
     $val = static fn (mixed $value): string => filled($value) ? (string) $value : '—';
 
-    $medications = is_array($data['medicationsArr'] ?? null) ? $data['medicationsArr'] : [];
-    $labs = is_array($data['labsArr'] ?? null) ? array_values(array_filter($data['labsArr'], static fn (mixed $item): bool => filled($item))) : [];
-    $studies = is_array($data['studiesArr'] ?? null) ? array_values(array_filter($data['studiesArr'], static fn (mixed $item): bool => filled($item))) : [];
+    /** Cubierto y no cubierto juntos: el informe dice todo lo que indicó el médico. */
+    $clinicalOrders = \App\Support\Telemedicine\TelemedicineInformeClinicalOrders::forReport($data);
+    $medications = $clinicalOrders['medications'];
+    $labs = $clinicalOrders['labs'];
+    $studies = $clinicalOrders['studies'];
+    $specialists = $clinicalOrders['specialists'];
 
     $title = $isFollowUp ? 'Informe Médico - Seguimiento' : 'Informe Médico';
+    $caseCode = \App\Support\Telemedicine\TelemedicineDocumentCaseCode::fromData($data);
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -310,6 +314,7 @@
             </td>
             <td class="col-title title-cell">
                 <p class="doc-title">{{ $title }}</p>
+                <p class="doc-sub">{{ \App\Support\Telemedicine\TelemedicineDocumentCaseCode::LABEL }}: <strong>{{ $val($caseCode) }}</strong></p>
                 <p class="doc-sub">Clave del servicio: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
                 <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
                 <span class="badge">{{ $isFollowUp ? 'Seguimiento' : 'Consulta inicial' }}</span>
@@ -336,7 +341,7 @@
             <tr>
                 <td>
                     <div class="label">Edad</div>
-                    <div class="value-muted">{{ $val($data['age_patient'] ?? null) }}</div>
+                    <div class="value-muted">{{ \App\Support\PatientAge::forTelemedicinePatientId($data['telemedicine_patient_id'] ?? null, $data['age_patient'] ?? null) }}</div>
                 </td>
                 <td>
                     <div class="label">Tipo de servicio</div>
@@ -431,79 +436,100 @@
 
         <div class="section-title section-title--block">Impresión diagnóstica</div>
         <table class="prose-box"><tr><td>{{ $val($data['diagnostic_impression'] ?? null) }}</td></tr></table>
-
-        <div class="keep-together">
-            <div class="section-title section-title--block">Plan terapéutico</div>
-            @if($medications === [])
-                <p class="items-empty">Sin medicamentos indicados.</p>
-            @else
-                <table class="items">
-                    <thead>
-                        <tr>
-                            <th style="width:42%">Medicamento</th>
-                            <th style="width:58%">Indicaciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($medications as $item)
-                            <tr>
-                                <td>{{ $val(is_array($item) ? ($item['medicines'] ?? null) : $item) }}</td>
-                                <td>{{ $val(is_array($item) ? ($item['indications'] ?? null) : null) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            @endif
-        </div>
-
-        <div class="keep-together">
-            <div class="section-title section-title--block">Paraclínicos</div>
-            <table class="grid">
-                <tr>
-                    <td>
-                        @if($labs === [])
-                            <p class="items-empty">Sin laboratorios indicados.</p>
-                        @else
-                            <table class="items">
-                                <thead>
-                                    <tr>
-                                        <th>Laboratorios</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($labs as $lab)
-                                        <tr>
-                                            <td>{{ $val($lab) }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        @endif
-                    </td>
-                    <td>
-                        @if($studies === [])
-                            <p class="items-empty">Sin exámenes indicados.</p>
-                        @else
-                            <table class="items">
-                                <thead>
-                                    <tr>
-                                        <th>Exámenes</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($studies as $study)
-                                        <tr>
-                                            <td>{{ $val($study) }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        @endif
-                    </td>
-                </tr>
-            </table>
-        </div>
     @endif
+
+    <div class="keep-together">
+        <div class="section-title section-title--block">Plan terapéutico</div>
+        @if($medications === [])
+            <p class="items-empty">Sin medicamentos indicados.</p>
+        @else
+            <table class="items">
+                <thead>
+                    <tr>
+                        <th style="width:42%">Medicamento</th>
+                        <th style="width:58%">Indicaciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($medications as $item)
+                        <tr>
+                            <td>{{ $val($item['medicines']) }}</td>
+                            <td>{{ $val($item['indications']) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+
+    <div class="keep-together">
+        <div class="section-title section-title--block">Paraclínicos</div>
+        {{-- Anchos fijos por celda para que un nombre largo no expulse la última columna. --}}
+        <table class="grid grid--3">
+            <tr>
+                <td style="width:33.33%">
+                    @if($labs === [])
+                        <p class="items-empty">Sin laboratorios indicados.</p>
+                    @else
+                        <table class="items">
+                            <thead>
+                                <tr>
+                                    <th>Laboratorios</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($labs as $lab)
+                                    <tr>
+                                        <td>{{ $lab }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+                </td>
+                <td style="width:33.33%">
+                    @if($studies === [])
+                        <p class="items-empty">Sin estudios indicados.</p>
+                    @else
+                        <table class="items">
+                            <thead>
+                                <tr>
+                                    <th>Estudios</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($studies as $study)
+                                    <tr>
+                                        <td>{{ $study }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+                </td>
+                <td style="width:33.34%">
+                    @if($specialists === [])
+                        <p class="items-empty">Sin consulta con especialistas.</p>
+                    @else
+                        <table class="items">
+                            <thead>
+                                <tr>
+                                    <th>Especialistas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($specialists as $specialist)
+                                    <tr>
+                                        <td>{{ $specialist }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+                </td>
+            </tr>
+        </table>
+    </div>
 
     @php
         /** Solo se imprime si el médico la escribió: vacía, ni título ni caja. */
