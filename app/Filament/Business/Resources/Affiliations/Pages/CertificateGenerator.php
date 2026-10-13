@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\Affiliations\Pages;
 
 use App\Filament\Business\Resources\Affiliations\AffiliationResource;
+use App\Filament\Business\Resources\Affiliations\Concerns\SendsAffiliationCertificateByEmail;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Models\AffiliationCertificateIssue;
@@ -44,6 +45,8 @@ use Throwable;
  */
 class CertificateGenerator extends Page
 {
+    use SendsAffiliationCertificateByEmail;
+
     /** Estatus de afiliación que pueden certificarse. */
     public const CERTIFIABLE_STATUSES = ['ACTIVA', 'PRE-APROBADA'];
 

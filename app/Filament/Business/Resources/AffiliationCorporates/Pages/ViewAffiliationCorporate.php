@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\Pages;
 
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Business\Resources\AffiliationCorporates\Concerns\OptimizesAffiliationCorporateInfolistPerformance;
+use App\Models\AffiliationCorporate;
 use App\Support\Filament\FilamentIosActionsMenu;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\RecordPageHeader;
@@ -39,6 +40,17 @@ class ViewAffiliationCorporate extends ViewRecord
                 ->url(AffiliationCorporateResource::getUrl())
                 ->extraAttributes([
                     'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                ]),
+            Action::make('generateCertificate')
+                ->label('Generar certificado')
+                ->icon(Heroicon::OutlinedDocumentCheck)
+                ->color('success')
+                ->tooltip('Abre el Generador de Certificado con esta afiliación y todos los afiliados vigentes ya seleccionados.')
+                ->url(fn (AffiliationCorporate $record): string => AffiliationCorporateResource::getUrl('certificate-generator', ['afiliacion' => $record->getKey()]))
+                ->visible(fn (AffiliationCorporate $record): bool => CorporateCertificateGenerator::canAccess()
+                    && in_array(strtoupper(trim((string) $record->status)), CorporateCertificateGenerator::CERTIFIABLE_STATUSES, true))
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('success'),
                 ]),
             FilamentIosActionsMenu::make([
                 Action::make('attachDocuments')

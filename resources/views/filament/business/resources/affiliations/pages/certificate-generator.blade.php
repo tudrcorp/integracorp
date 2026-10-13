@@ -45,9 +45,7 @@
             <x-filament::section icon="heroicon-o-eye" wire:key="certificate-light-preview-{{ $this->issueId }}">
                 <x-slot name="heading">Vista previa</x-slot>
                 <x-slot name="description">Portada y primera hoja de carnets, mientras se prepara el documento completo de {{ number_format((int) $pages, 0, ',', '.') }} páginas.</x-slot>
-                <div class="overflow-hidden rounded-xl border border-gray-200 bg-gray-100 dark:border-white/10 dark:bg-white/5">
-                    <iframe src="{{ $lightUrl }}#view=FitH" title="Vista previa del certificado" class="block w-full" style="height: 88vh; min-height: 760px;" loading="lazy"></iframe>
-                </div>
+                @include('filament.business.resources.affiliations.pages.partials.certificate-pdf-frame', ['src' => $lightUrl])
             </x-filament::section>
         @endif
     @elseif ($issue?->isStalled())
@@ -90,15 +88,16 @@
                     <x-filament::button tag="a" :href="$this->downloadUrl()" icon="heroicon-o-arrow-down-tray" color="success">
                         Descargar PDF
                     </x-filament::button>
+                    @if (method_exists($this, 'sendByEmailAction'))
+                        {{ $this->sendByEmailAction }}
+                    @endif
                     <x-filament::button tag="a" :href="$url" target="_blank" rel="noopener" icon="heroicon-o-arrow-top-right-on-square" color="gray">
                         Abrir en otra pestaña
                     </x-filament::button>
                 </div>
             </x-slot>
 
-            <div class="overflow-hidden rounded-xl border border-gray-200 bg-gray-100 dark:border-white/10 dark:bg-white/5">
-                <iframe src="{{ ($lightUrl ?? $url) }}#view=FitH" title="Vista previa del certificado" class="block w-full" style="height: 88vh; min-height: 760px;" loading="lazy"></iframe>
-            </div>
+            @include('filament.business.resources.affiliations.pages.partials.certificate-pdf-frame', ['src' => $lightUrl ?? $url, 'openUrl' => $url])
         </x-filament::section>
     @endif
 

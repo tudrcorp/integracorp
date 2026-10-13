@@ -206,6 +206,134 @@ final class AffiliationCertificateGeneratorService
     }
 
     /**
+     * Datos de un documento que trae solo los carnets elegidos, sin certificado
+     * ni relación de afiliados (envío por correo de carnets sueltos). Solo
+     * admite afiliados que ya llevan carnet en esta emisión.
+     *
+     * @param  list<int|string>  $carnetAffiliateIds
+     * @return array<string, mixed>
+     */
+    public function carnetsOnlyData(AffiliationCertificateIssue $issue, array $carnetAffiliateIds): array
+    {
+        $allowed = array_flip(array_map('intval', $issue->carnet_affiliate_ids ?? []));
+        $ids = array_values(array_filter(
+            array_values(array_unique(array_map('intval', $carnetAffiliateIds))),
+            static fn (int $id): bool => isset($allowed[$id]),
+        ));
+
+        if ($ids === []) {
+            throw new InvalidArgumentException('Elija al menos un carnet de esta emisión.');
+        }
+
+        if ($issue->isIndividual()) {
+            $affiliation = Affiliation::query()->with(IndividualCertificateDocument::eagerLoads())->findOrFail($issue->affiliation_id);
+            $data = IndividualCertificateDocument::build($affiliation, $issue, $ids);
+        } else {
+            $data = CorporateCertificateDocument::build(AffiliationCorporate::query()->findOrFail($issue->affiliation_id), $issue, $ids);
+        }
+
+        $pages = array_values(array_filter($data['pages'], static fn (array $page): bool => $page['kind'] === 'carnet'));
+
+        if ($pages === []) {
+            throw new InvalidArgumentException('Los afiliados elegidos ya no están vigentes en la afiliación.');
+        }
+
+        foreach ($pages as $index => $page) {
+            $pages[$index]['num'] = $index + 1;
+        }
+
+        $data['pages'] = $pages;
+        $data['totalPaginas'] = count($pages);
+
+        return $data;
+    }
+
+    /**
+     * Datos del certificado sin carnets: portada, beneficios y relación de
+     * afiliados (envío por correo de «solo el certificado»).
+     *
+     * @return array<string, mixed>
+     */
+    public function certificateOnlyData(AffiliationCertificateIssue $issue): array
+    {
+        if ($issue->isIndividual()) {
+            $affiliation = Affiliation::query()->with(IndividualCertificateDocument::eagerLoads())->findOrFail($issue->affiliation_id);
+
+            return IndividualCertificateDocument::build($affiliation, $issue, []);
+        }
+
+        return CorporateCertificateDocument::build(AffiliationCorporate::query()->findOrFail($issue->affiliation_id), $issue, []);
+    }
+
+    /**
+     * Dibuja y guarda (disco `local`) el PDF de solo carnets. Idempotente: si
+     * el archivo ya existe, lo devuelve sin dibujarlo de nuevo.
+     *
+     * @param  list<int|string>  $carnetAffiliateIds
+     * @return string Ruta absoluta
+     */
+    public function carnetsOnlyFile(AffiliationCertificateIssue $issue, array $carnetAffiliateIds, string $relative): string
+    {
+        return $this->storeDocument($relative, fn (): array => $this->carnetsOnlyData($issue, $carnetAffiliateIds));
+    }
+
+    /**
+     * Dibuja y guarda el PDF de solo el certificado. Idempotente como el de carnets.
+     *
+     * @return string Ruta absoluta
+     */
+    public function certificateOnlyFile(AffiliationCertificateIssue $issue, string $relative): string
+    {
+        return $this->storeDocument($relative, fn (): array => $this->certificateOnlyData($issue));
+    }
+
+    /**
+     * Guarda un documento parcial si aún no existe. Los largos (la relación de
+     * un corporativo grande) se dibujan por tramos y se unen con FPDI, como el
+     * documento completo, para no agotar la memoria de DomPDF.
+     *
+     * @param  callable(): array<string, mixed>  $data
+     */
+    private function storeDocument(string $relative, callable $data): string
+    {
+        $disk = Storage::disk('local');
+
+        if ($disk->exists($relative)) {
+            return $disk->path($relative);
+        }
+
+        $document = $data();
+
+        if (count($document['pages']) <= self::CHUNK_PAGES) {
+            $this->putOrFail($relative, $this->renderDocument($document));
+
+            return $disk->path($relative);
+        }
+
+        $merged = new Fpdi;
+
+        foreach (array_chunk($document['pages'], self::CHUNK_PAGES) as $pages) {
+            $chunk = $document;
+            $chunk['pages'] = $pages;
+            $file = tempnam(sys_get_temp_dir(), 'cer');
+
+            try {
+                file_put_contents($file, $this->renderDocument($chunk));
+                $this->appendPdf($merged, $file);
+            } finally {
+                @unlink($file);
+            }
+
+            unset($chunk);
+            gc_collect_cycles();
+        }
+
+        $this->putOrFail($relative, (string) $merged->Output('S'));
+
+        return $disk->path($relative);
+    }
+
+    /**
      * Ruta absoluta del PDF listo para servir.
      *
      * Uno en cola sirve su archivo cuando está listo; mientras se dibuja, lanza

@@ -7,12 +7,13 @@ use App\Filament\Operations\Resources\AffiliateCorporates\AffiliateCorporateReso
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Models\AffiliateCorporate;
 use App\Services\AssociateAffiliateCorporateWithTelemedicinePatientService;
-use App\Support\Filament\AffiliateStatusHeaderBadge;
+use App\Support\Operations\OperationsAffiliateHeader;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -163,27 +164,19 @@ class ViewAffiliateCorporate extends ViewRecord
         ];
     }
 
-    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
+    public function getTitle(): string
     {
         /** @var AffiliateCorporate $affiliate */
         $affiliate = $this->getRecord();
 
-        $fullName = $affiliate->first_name ?? 'Sin Nombre';
+        return 'Afiliado corporativo: '.(trim($affiliate->first_name.' '.$affiliate->last_name) ?: 'Sin nombre');
+    }
 
-        return new \Illuminate\Support\HtmlString(
-            '<div style="display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; gap: 2px; padding: 12px 0;">'.
-                '<span class="text-sm font-bold uppercase tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">'.
-                'Ficha del Afiliado Corporativo'.
-                '</span>'.
+    public function getHeading(): Htmlable
+    {
+        /** @var AffiliateCorporate $affiliate */
+        $affiliate = $this->getRecord();
 
-                '<span class="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-2 dark:text-white">'.
-                e($fullName).
-                '</span>'.
-
-                '<div style="display: flex; align-items: center; margin-top: 8px;">'.
-                AffiliateStatusHeaderBadge::html($affiliate->status).
-                '</div>'.
-                '</div>'
-        );
+        return OperationsAffiliateHeader::forAffiliateCorporate($affiliate);
     }
 }
