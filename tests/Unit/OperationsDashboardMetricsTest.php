@@ -121,7 +121,8 @@ it('resume servicios repetidos y omite campos vacíos en el hover del caso', fun
     ]);
 
     expect($lines)
-        ->toContain('Paciente: PACIENTE DEMO')
+        // Un bebé (edad 0) ya no se omite: se muestra como menor de 1 año.
+        ->toContain('Paciente: PACIENTE DEMO · Menor de 1 año')
         ->toContain('Dx inicial: Gripe')
         ->toContain('Dx final: Faringitis')
         ->toContain('Tipos: LABORATORIOS · MEDICAMENTOS')

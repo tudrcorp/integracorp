@@ -44,7 +44,7 @@ function usuarioSuperAdminDePrueba(): ?User
         ->first(fn (User $user): bool => in_array('SUPERADMIN', $user->departament, true));
 }
 
-it('muestra la pestaña ELIMINADOS al superadmin y no al resto', function (): void {
+it('muestra el filtro de casos eliminados al superadmin y no al resto', function (): void {
     $superAdmin = usuarioSuperAdminDePrueba();
 
     if ($superAdmin === null) {
@@ -53,12 +53,8 @@ it('muestra la pestaña ELIMINADOS al superadmin y no al resto', function (): vo
 
     $this->actingAs($superAdmin);
 
-    $tabs = Livewire::test(ListOperationCoordinationServices::class)
-        ->instance()
-        ->getTabs();
-
-    expect($tabs)->toHaveKey(CoordinationServiceCaseDeletion::DELETED_TAB)
-        ->and($tabs[CoordinationServiceCaseDeletion::DELETED_TAB]->getLabel())->toBe('ELIMINADOS');
+    Livewire::test(ListOperationCoordinationServices::class)
+        ->assertTableFilterVisible(CoordinationServiceCaseDeletion::DELETED_TAB);
 
     $analista = usuariosInternosDePrueba()
         ->first(fn (User $user): bool => in_array('OPERACIONES', $user->departament, true)
@@ -70,8 +66,36 @@ it('muestra la pestaña ELIMINADOS al superadmin y no al resto', function (): vo
 
     $this->actingAs($analista);
 
-    expect(Livewire::test(ListOperationCoordinationServices::class)->instance()->getTabs())
-        ->not->toHaveKey(CoordinationServiceCaseDeletion::DELETED_TAB);
+    // El analista con permiso de eliminar sí debe verlo; el resto no.
+    $page = Livewire::test(ListOperationCoordinationServices::class)->instance();
+
+    if ($page === null) {
+        return; // Sin acceso al recurso: tampoco ve el filtro.
+    }
+
+    // Un filtro oculto ni siquiera se devuelve: getFilter() da null.
+    expect((bool) $page->getTable()->getFilter(CoordinationServiceCaseDeletion::DELETED_TAB)?->isVisible())
+        ->toBe(CoordinationServiceCaseDeletion::userCanDeleteCases());
+});
+
+it('con el filtro de eliminados activo ofrece restaurar y no eliminar', function (): void {
+    $superAdmin = usuarioSuperAdminDePrueba();
+
+    if ($superAdmin === null) {
+        $this->markTestSkipped('No hay un usuario SUPERADMIN activo en esta base.');
+    }
+
+    $this->actingAs($superAdmin);
+
+    $component = Livewire::test(ListOperationCoordinationServices::class)
+        ->filterTable(CoordinationServiceCaseDeletion::DELETED_TAB)
+        ->assertSuccessful();
+
+    expect(CoordinationServiceCaseDeletion::viewingDeletedTab($component->instance()))->toBeTrue();
+
+    $component->resetTableFilters();
+
+    expect(CoordinationServiceCaseDeletion::viewingDeletedTab($component->instance()))->toBeFalse();
 });
 
 it('renderiza el cuadro de control con las acciones de eliminación', function (): void {

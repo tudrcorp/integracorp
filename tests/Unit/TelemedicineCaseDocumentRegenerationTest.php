@@ -213,7 +213,8 @@ it('cada consulta se firma con su propio médico y solo con lo que ese médico i
 
     expect($followUpReport['doctor_name'])->toBe('ANGEL VALERIO')
         ->and($followUpReport['signature'])->toBe('firmas-medicos/b.png')
-        ->and($followUpReport['telemedicine_consultation_id'])->toBe(30);
+        ->and($followUpReport['telemedicine_consultation_id'])->toBe(30)
+        ->and(array_column($followUpReport['medicationsArr'], 'medicines'))->toBe(['IBUPROFENO']);
 });
 
 it('una consulta sin médico no se regenera ni se firma con el médico del caso', function (): void {

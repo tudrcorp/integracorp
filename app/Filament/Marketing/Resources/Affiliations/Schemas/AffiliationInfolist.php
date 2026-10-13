@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\Affiliations\Schemas;
 
+use App\Support\Filament\PatientAgeDisplay;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
@@ -98,7 +99,7 @@ class AffiliationInfolist
                 IconEntry::make('feedback_dos')
                     ->boolean(),
                 TextEntry::make('age')
-                    ->numeric(),
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date_ti')),
             ]);
     }
 }

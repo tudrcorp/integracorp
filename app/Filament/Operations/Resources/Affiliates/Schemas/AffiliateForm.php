@@ -2,8 +2,9 @@
 
 namespace App\Filament\Operations\Resources\Affiliates\Schemas;
 
-use Filament\Forms\Components\TextInput;
+use App\Support\Filament\PatientAgeDisplay;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
 class AffiliateForm
@@ -23,7 +24,8 @@ class AffiliateForm
                     ->required(),
                 TextInput::make('stature'),
                 TextInput::make('birth_date'),
-                TextInput::make('age'),
+                TextInput::make('age')
+                    ->hint(PatientAgeDisplay::inputHint('birth_date')),
                 TextInput::make('weight'),
                 TextInput::make('relationship')
                     ->required(),

@@ -10,6 +10,7 @@ use App\Models\Region;
 use App\Models\State;
 use App\Models\TelemedicinePatient;
 use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Telemedicine\TelemedicinePatientBirthDate;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -98,6 +99,7 @@ class TelemedicinePatientForm
                                                         'required' => 'Campo Requerido',
                                                     ]),
                                                 TextInput::make('age')
+                                                    ->hint(PatientAgeDisplay::inputHint('birth_date'))
                                                     ->prefixIcon('heroicon-m-identification')
                                                     ->label('Edad')
                                                     ->live()

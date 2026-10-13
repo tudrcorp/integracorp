@@ -210,6 +210,28 @@ class CorporateCertificateGenerator extends Page
             return;
         }
 
+        // Un certificado de esta afiliación ya dibujándose: se muestra su avance en vez
+        // de lanzar otro trabajo igual de pesado (doble clic, dos analistas a la vez).
+        $inFlight = AffiliationCertificateIssue::query()
+            ->where('affiliation_type', AffiliationCertificateIssue::TYPE_CORPORATE)
+            ->where('affiliation_id', $affiliation->id)
+            ->where('pdf_status', AffiliationCertificateIssue::PDF_PROCESSING)
+            ->where('created_at', '>=', now()->subHours(6))
+            ->latest('id')
+            ->first();
+
+        if ($inFlight !== null && ! $inFlight->isStalled()) {
+            $this->issueId = $inFlight->id;
+
+            Notification::make()
+                ->title('Ya se está generando un certificado de esta afiliación')
+                ->body('Le mostramos su avance. Lo pidió '.($inFlight->issued_by_name ?: 'otro analista').'; recibirá el aviso quien lo solicitó.')
+                ->info()
+                ->send();
+
+            return;
+        }
+
         $carnetIds = match ($data['carnet_mode'] ?? self::MODE_ALL) {
             self::MODE_ALL => CorporateCertificateDocument::printableAffiliates($affiliation)->pluck('id')->all(),
             self::MODE_PICK => array_values((array) ($data['carnets'] ?? [])),
@@ -243,6 +265,56 @@ class CorporateCertificateGenerator extends Page
                 : 'Revise la vista previa y descárguelo.')
             ->success()
             ->send();
+    }
+
+    /**
+     * Retoma un certificado fallido o detenido. Solo se dibujan los tramos que
+     * faltan: los ya listos se conservan.
+     */
+    public function retry(): void
+    {
+        $issue = $this->currentIssue();
+        $user = Auth::user();
+
+        if ($issue === null || ! $user instanceof User || ! AffiliationCertificateAccess::canUseFor($user, $issue->affiliation_type)) {
+            return;
+        }
+
+        if ($issue->pdf_status !== AffiliationCertificateIssue::PDF_FAILED && ! $issue->isStalled()) {
+            return;
+        }
+
+        try {
+            app(AffiliationCertificateGeneratorService::class)->queueRender($issue);
+        } catch (Throwable $exception) {
+            Log::error('CorporateCertificateGenerator: error al reintentar', ['affiliation_certificate_issue_id' => $issue->id, 'message' => $exception->getMessage()]);
+
+            Notification::make()->title('No se pudo reintentar')->body('Intente de nuevo en unos minutos; si persiste, reporte a soporte indicando '.$issue->affiliation_code.'.')->danger()->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title('Reanudando el certificado')
+            ->body('Se retoman solo las partes que faltaban. Le avisaremos cuando esté listo.')
+            ->success()
+            ->send();
+    }
+
+    /**
+     * Vista previa liviana: portada y primera hoja de carnets (o el documento
+     * completo si es corto). En los corporativos grandes está disponible aun
+     * mientras el PDF completo se dibuja.
+     */
+    public function lightPreviewUrl(): ?string
+    {
+        $issue = $this->currentIssue();
+
+        if ($issue === null || $issue->pdf_status === AffiliationCertificateIssue::PDF_FAILED) {
+            return null;
+        }
+
+        return route('business.affiliation-certificate.pdf', ['issue' => $issue->id, 'vista' => 'previa']);
     }
 
     public function previewUrl(): ?string

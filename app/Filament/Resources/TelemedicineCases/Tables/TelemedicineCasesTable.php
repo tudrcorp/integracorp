@@ -2,20 +2,19 @@
 
 namespace App\Filament\Resources\TelemedicineCases\Tables;
 
-use Filament\Tables\Table;
-use Filament\Actions\Action;
 use App\Models\TelemedicineCase;
-use Filament\Actions\BulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use App\Models\TelemedicineDoctor;
-use Illuminate\Support\Collection;
+use App\Support\Filament\PatientAgeDisplay;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Forms\Components\Select;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Support\Collection;
 
 class TelemedicineCasesTable
 {
@@ -33,9 +32,10 @@ class TelemedicineCasesTable
                     ->searchable(),
                 TextColumn::make('telemedicinePatient.full_name')
                     ->label('Paciente')
-                    ->description(fn($record): string => 'Asignado a Dr(a):' . $record->telemedicineDoctor->full_name)
+                    ->description(fn ($record): string => 'Asignado a Dr(a):'.$record->telemedicineDoctor->full_name)
                     ->sortable(),
                 TextColumn::make('patient_age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter(null))
                     ->label('Edad')
                     ->searchable(),
                 TextColumn::make('patient_sex')
@@ -64,16 +64,16 @@ class TelemedicineCasesTable
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'ASIGNADO'          => 'primary',
-                            'EN SEGUIMIENTO'    => 'warning',
-                            'ALTA MEDICA'       => 'success',
+                            'ASIGNADO' => 'primary',
+                            'EN SEGUIMIENTO' => 'warning',
+                            'ALTA MEDICA' => 'success',
                         };
                     })
                     ->icon(function (string $state): string {
                         return match ($state) {
-                            'ASIGNADO'          => 'healthicons-f-i-note-action',
-                            'EN SEGUIMIENTO'    => 'healthicons-f-i-note-action',
-                            'ALTA MEDICA'       => 'healthicons-f-i-documents-accepted',
+                            'ASIGNADO' => 'healthicons-f-i-note-action',
+                            'EN SEGUIMIENTO' => 'healthicons-f-i-note-action',
+                            'ALTA MEDICA' => 'healthicons-f-i-documents-accepted',
                         };
                     })
                     ->searchable(),
@@ -99,13 +99,13 @@ class TelemedicineCasesTable
                     ->label('Fecha de Registro')
                     ->dateTime()
                     // ->description(fn (TelemedicineConsultationPatient $record): string => $record->created_at->diffForHumans())
-                    ->description(fn(TelemedicineCase $record): string => $record->updated_at->diffForHumans())
+                    ->description(fn (TelemedicineCase $record): string => $record->updated_at->diffForHumans())
                     ->sortable(),
                 TextColumn::make('updated_at')
                     ->label('Ultima Actualización')
                     ->dateTime()
                     // ->description(fn (TelemedicineConsultationPatient $record): string => $record->created_at->diffForHumans())
-                    ->description(fn(TelemedicineCase $record): string => $record->updated_at->diffForHumans())
+                    ->description(fn (TelemedicineCase $record): string => $record->updated_at->diffForHumans())
                     ->sortable(),
             ])
             ->filters([
@@ -124,7 +124,7 @@ class TelemedicineCasesTable
                                     ->label('Seleccione el Doctor')
                                     ->required()
                                     ->options(TelemedicineDoctor::all()->pluck('full_name', 'id')),
-                                
+
                             ])->columnSpanFull()->columns(1),
                         ])
                         ->action(function (Collection $records, array $data) {
@@ -132,15 +132,15 @@ class TelemedicineCasesTable
                             try {
                                 $records->each(function (TelemedicineCase $record) use ($data) {
                                     $record->update([
-                                        'telemedicine_doctor_id' => $data['doctor_id']
+                                        'telemedicine_doctor_id' => $data['doctor_id'],
                                     ]);
                                 });
 
                                 Notification::make()
                                     ->title('Caso reasignado exitosamente')
-                                    ->success() 
+                                    ->success()
                                     ->send();
-                                    
+
                             } catch (\Throwable $th) {
                                 throw $th;
                                 Notification::make()
@@ -148,7 +148,7 @@ class TelemedicineCasesTable
                                     ->danger()
                                     ->send();
                             }
-                           
+
                         }),
                     DeleteBulkAction::make(),
                 ]),

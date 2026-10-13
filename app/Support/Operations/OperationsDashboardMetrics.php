@@ -300,9 +300,9 @@ final class OperationsDashboardMetrics
             $patientBits[] = $patientName;
         }
 
-        $age = (int) ($case->patient_age ?? 0);
-        if ($age > 0) {
-            $patientBits[] = $age.' años';
+        $age = \App\Support\PatientAge::labelOrNull(null, $case->patient_age ?? null);
+        if ($age !== null) {
+            $patientBits[] = $age;
         }
 
         $relationship = self::plainText($case->patient_relationship ?? null);

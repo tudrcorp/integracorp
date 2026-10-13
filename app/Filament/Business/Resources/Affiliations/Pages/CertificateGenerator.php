@@ -220,6 +220,22 @@ class CertificateGenerator extends Page
             ->send();
     }
 
+    /**
+     * Vista previa liviana: portada y primera hoja de carnets (o el documento
+     * completo si es corto). En los corporativos grandes está disponible aun
+     * mientras el PDF completo se dibuja.
+     */
+    public function lightPreviewUrl(): ?string
+    {
+        $issue = $this->currentIssue();
+
+        if ($issue === null || $issue->pdf_status === AffiliationCertificateIssue::PDF_FAILED) {
+            return null;
+        }
+
+        return route('business.affiliation-certificate.pdf', ['issue' => $issue->id, 'vista' => 'previa']);
+    }
+
     public function previewUrl(): ?string
     {
         return $this->issueId !== null ? route('business.affiliation-certificate.pdf', ['issue' => $this->issueId]) : null;

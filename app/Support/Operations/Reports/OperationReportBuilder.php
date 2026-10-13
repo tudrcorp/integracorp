@@ -102,7 +102,7 @@ final class OperationReportBuilder
      * @var list<array{0: string, 1: string, 2: bool}>
      */
     private const DETAIL_COLUMNS = [
-        ['case_code', 'Código del caso', false],
+        ['case_code', 'Nro. de Caso', false],
         ['started_on', 'Fecha de inicio', false],
         ['service_on', 'Fecha de servicio', false],
         ['source_type', 'Tipo de ítem', false],

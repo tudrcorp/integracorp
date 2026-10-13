@@ -327,7 +327,7 @@
                             <td>{{ $row->email ?? '—' }}</td>
                             <td>{{ $row->phone ?? '—' }}</td>
                             <td>{{ $row->birth_date ?? '—' }}</td>
-                            <td>{{ $row->age ?? '—' }}</td>
+                            <td>{{ \App\Support\PatientAge::label($row->birth_date, $row->age) }}</td>
                             <td>{{ $row->sex ?? '—' }}</td>
                             <td>{{ data_get($row, 'plan.description', '—') }}</td>
                             <td>{{ $row->fee ?? '—' }}</td>

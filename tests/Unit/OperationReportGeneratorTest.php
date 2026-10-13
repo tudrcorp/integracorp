@@ -243,7 +243,7 @@ it('el detalle trae una fila por servicio con sus encabezados', function (): voi
     $filas = iterator_to_array($reporte->rows, false);
 
     expect(count($filas))->toBe(OperationReportBuilder::count(OperationReportType::ServiceDetail, $filtros))
-        ->and($reporte->headings)->toContain('Código del caso', 'Cobertura', 'Facturado (USD)')
+        ->and($reporte->headings)->toContain('Nro. de Caso', 'Cobertura', 'Facturado (USD)')
         ->and(count($filas[0]))->toBe(count($reporte->headings))
         ->and($filas[0][1])->toMatch('/^\d{2}\/\d{2}\/\d{4}$/');
 });

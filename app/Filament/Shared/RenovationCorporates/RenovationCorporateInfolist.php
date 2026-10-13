@@ -6,6 +6,7 @@ namespace App\Filament\Shared\RenovationCorporates;
 
 use App\Models\RenovationCorporate;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\FilamentDateDisplay;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -136,8 +137,8 @@ class RenovationCorporateInfolist
                                                     ->date('d/m/Y')
                                                     ->placeholder('—'),
                                                 TextEntry::make('age')
+                                                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                                                     ->label('Edad a renovación')
-                                                    ->suffix(' años')
                                                     ->placeholder('—'),
                                                 TextEntry::make('ageRange.range')
                                                     ->label('Rango de edad titular')

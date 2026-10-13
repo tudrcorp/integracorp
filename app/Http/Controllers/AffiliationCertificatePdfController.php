@@ -11,14 +11,19 @@ use App\Support\Affiliations\Certificates\AffiliationCertificateAccess;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * PDF de un certificado emitido por el generador: en línea para la vista previa
- * del panel, o como descarga con `?descargar=1`.
+ * PDF de un certificado emitido por el generador: completo en línea, como
+ * descarga con `?descargar=1`, o la vista previa liviana (portada y primera hoja
+ * de carnets) con `?vista=previa`, disponible aun mientras el completo se dibuja.
+ *
+ * Se entrega el archivo guardado en streaming: un corporativo grande pesa decenas
+ * de MB y cargarlo entero en memoria por cada vista previa no escala.
  */
 class AffiliationCertificatePdfController extends Controller
 {
-    public function __invoke(Request $request, AffiliationCertificateIssue $issue, AffiliationCertificateGeneratorService $generator): Response
+    public function __invoke(Request $request, AffiliationCertificateIssue $issue, AffiliationCertificateGeneratorService $generator): Response|BinaryFileResponse
     {
         $user = $request->user();
 
@@ -26,8 +31,10 @@ class AffiliationCertificatePdfController extends Controller
 
         $disposition = $request->boolean('descargar') ? 'attachment' : 'inline';
 
+        $preview = $request->query('vista') === 'previa';
+
         try {
-            $content = $generator->renderPdf($issue);
+            $path = $preview ? $generator->previewFile($issue) : $generator->pdfFile($issue);
         } catch (InvalidArgumentException) {
             // Documento grande dibujándose en cola: se avisa sin romper el iframe.
             return response(
@@ -39,9 +46,9 @@ class AffiliationCertificatePdfController extends Controller
             );
         }
 
-        return response($content, 200, [
+        return response()->file($path, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => $disposition.'; filename="'.AffiliationCertificateGeneratorService::fileName($issue).'"',
+            'Content-Disposition' => $disposition.'; filename="'.($preview ? 'Vista-previa-' : '').AffiliationCertificateGeneratorService::fileName($issue).'"',
             'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',
         ]);

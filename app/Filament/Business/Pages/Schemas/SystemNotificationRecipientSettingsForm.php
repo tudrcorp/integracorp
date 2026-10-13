@@ -65,6 +65,7 @@ final class SystemNotificationRecipientSettingsForm
             ->description('Destinatarios por email para esta notificación o su copia de control interno.')
             ->icon(Heroicon::OutlinedEnvelope)
             ->extraAttributes(['class' => self::PANEL_CLASS.' can-settings-panel--email'])
+            ->visible(fn (mixed $livewire): bool => self::activeKeyUsesEmails($livewire))
             ->schema([
                 Grid::make(1)
                     ->extraAttributes(['class' => self::INNER_CLASS])
@@ -95,6 +96,18 @@ final class SystemNotificationRecipientSettingsForm
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    /**
+     * Las notificaciones solo por WhatsApp no muestran la sección de correos.
+     */
+    private static function activeKeyUsesEmails(mixed $livewire): bool
+    {
+        if (! is_object($livewire) || ! method_exists($livewire, 'getActiveNotificationKeyEnum')) {
+            return true;
+        }
+
+        return $livewire->getActiveNotificationKeyEnum()->usesEmailRecipients();
     }
 
     private static function phoneSection(): Section

@@ -36,7 +36,7 @@ final class WhiteCompanyNegotiatedRateMissingException extends RuntimeException
         $affiliation = filled($affiliationCode) ? $affiliationCode : 'N/A';
         $plan = $planId !== null ? (string) $planId : 'N/A';
         $coverage = $coverageId !== null ? (string) $coverageId : 'sin cobertura';
-        $ageLabel = $age !== null ? (string) $age.' años' : 'edad desconocida';
+        $ageLabel = \App\Support\PatientAge::labelOrNull(null, $age) ?? 'edad desconocida';
 
         return new self(
             "La empresa aliada {$companyName} no tiene neta pactada para {$personName}. "

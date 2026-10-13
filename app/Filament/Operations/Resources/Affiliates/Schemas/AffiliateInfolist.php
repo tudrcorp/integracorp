@@ -7,6 +7,7 @@ namespace App\Filament\Operations\Resources\Affiliates\Schemas;
 use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\Affiliate;
 use App\Support\ClinicalEntitlements\OperationsAffiliatePlanBenefitsCard;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\OperationsMapSearchAddress;
 use Carbon\Carbon;
 use Filament\Infolists\Components\IconEntry;
@@ -165,8 +166,8 @@ class AffiliateInfolist
                                                     })
                                                     ->placeholder('—'),
                                                 TextEntry::make('age')
-                                                    ->label('Edad')
-                                                    ->suffix(' años'),
+                                                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
+                                                    ->label('Edad'),
                                                 TextEntry::make('sex')
                                                     ->label('Sexo')
                                                     ->badge()

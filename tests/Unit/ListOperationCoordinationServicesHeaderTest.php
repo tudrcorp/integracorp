@@ -45,5 +45,5 @@ it('pinta título, descripción y resumen por estado en la página', function ()
         ->assertOk()
         ->assertSee('Operaciones · Coordinación de servicios')
         ->assertSee('Cuadro de control de servicios médicos')
-        ->assertSee('Filtre por estado con las pestañas');
+        ->assertSee('use «Filtros» para ver otros estatus', false);
 });

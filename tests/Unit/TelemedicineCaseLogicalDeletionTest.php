@@ -64,14 +64,15 @@ it('exige permiso y motivo para eliminar o restaurar un caso', function (): void
         ->toContain('self::userCanDeleteCases() && self::viewingDeletedTab($livewire)');
 });
 
-it('publica la pestaña de eliminados solo a quien puede eliminar casos', function (): void {
-    $page = telemedicineCaseDeletionSource(
-        'app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ListOperationCoordinationServices.php'
+it('publica el filtro de eliminados solo a quien puede eliminar casos', function (): void {
+    $filters = telemedicineCaseDeletionSource(
+        'app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTableFilters.php'
     );
 
-    expect($page)
-        ->toContain('if (CoordinationServiceCaseDeletion::userCanDeleteCases())')
-        ->toContain("Tab::make('ELIMINADOS')")
+    expect($filters)
+        ->toContain('Filter::make(CoordinationServiceCaseDeletion::DELETED_TAB)')
+        ->toContain("->label('Ver solo casos eliminados')")
+        ->toContain('->visible(fn (): bool => CoordinationServiceCaseDeletion::userCanDeleteCases())')
         ->toContain('CoordinationServiceCaseDeletion::applyDeletedCasesScope($query)');
 });
 

@@ -157,7 +157,7 @@ final class TelemedicineCaseBitacora
             'patient' => [
                 'Nombre' => self::patientName($case),
                 'Cédula' => self::patientDocument($case),
-                'Edad' => self::text($case->patient_age ?? $patient?->age),
+                'Edad' => \App\Support\PatientAge::label($patient?->birth_date, $case->patient_age ?? $patient?->age),
                 'Sexo' => self::text($case->patient_sex ?? $patient?->sex),
                 'Teléfono' => self::text($case->patient_phone ?: $patient?->phone),
                 'Teléfono 2' => self::text($case->patient_phone_2 ?: $patient?->phone_contact),

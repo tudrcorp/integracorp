@@ -16,6 +16,7 @@
         $quote->supplier instanceof \App\Models\Supplier ? $quote->supplier : null,
     )['phone'];
     $providerPhone = filled($providerPhone) ? $providerPhone : '—';
+    $caseCode = \App\Support\Operations\OperationServiceOrderCaseReference::caseCodeForCoordination($coordination);
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -148,6 +149,7 @@
                 <td class="title">
                     <h1>Cotización de servicios</h1>
                     <p>Número: <strong>#{{ $quote->id }}</strong></p>
+                    <p>{{ \App\Support\Operations\OperationServiceOrderCaseReference::CASE_LABEL }}: <strong>{{ $caseCode ?? '—' }}</strong></p>
                     <p>Fecha: <strong>{{ optional($quote->created_at)->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? now()->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</strong></p>
                 </td>
             </tr>

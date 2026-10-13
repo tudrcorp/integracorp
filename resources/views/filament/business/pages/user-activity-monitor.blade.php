@@ -62,6 +62,9 @@
         button.uam-kpi { cursor: pointer; font: inherit; color: inherit; }
         button.uam-kpi:hover { border-color: var(--uam-accent); }
         .uam-kpi.on { box-shadow: 0 0 0 2px var(--uam-accent); }
+        .uam-help-btn { position: relative; width: 18px; height: 18px; padding: 0; border-radius: 999px; border: 1px solid var(--uam-border); background: var(--uam-soft); color: var(--uam-muted); font-size: 11px; font-weight: 800; line-height: 1; display: inline-flex; align-items: center; justify-content: center; cursor: help; vertical-align: middle; margin-left: 4px; }
+        .uam-help-btn::before { content: ''; position: absolute; inset: -13px; }
+        .uam-help-btn:hover, .uam-help-btn:focus-visible { color: var(--uam-text); border-color: var(--uam-muted); outline: none; }
         .uam-kpi-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; display: flex; align-items: center; gap: 6px; color: var(--uam-muted); }
         .uam-kpi-value { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 4px; line-height: 1.1; }
         .uam-kpi-hint { font-size: 12px; color: var(--uam-muted); margin-top: 2px; }
@@ -231,7 +234,7 @@
                         <div class="uam-kpi-hint">{{ $live['kpis']['offline'] }} ya no están conectados</div>
                     </button>
                     <div class="uam-kpi">
-                        <div class="uam-kpi-label">⚡ Uso real hoy</div>
+                        <div class="uam-kpi-label">⚡ Uso real hoy @include('filament.business.pages.partials.user-activity-usage-help')</div>
                         <div class="uam-kpi-value"><span class="uam-usage {{ $usageClass($live['kpis']['usage']) }}" style="font-size: 26px;">{{ $live['kpis']['usage'] }}%</span></div>
                         <div class="uam-kpi-hint">{{ $fmt($live['kpis']['active_minutes']) }} activos de {{ $fmt($live['kpis']['online_minutes']) }} conectados</div>
                     </div>
@@ -264,7 +267,7 @@
                                     <th>Estado</th>
                                     <th>Dónde está</th>
                                     <th class="num">Activo hoy</th>
-                                    <th class="num">Uso real</th>
+                                    <th class="num">Uso real @include('filament.business.pages.partials.user-activity-usage-help')</th>
                                     <th style="min-width: 260px;">Su día (0 h – 24 h){!! $hourScale() !!}</th>
                                     <th>Conexión</th>
                                 </tr>
@@ -337,7 +340,7 @@
                     <div class="uam-kpi"><div class="uam-kpi-label" style="color: var(--uam-active);">Tiempo activo</div><div class="uam-kpi-value">{{ $fmt($report['totals']['active']) }}</div><div class="uam-kpi-hint">Usando el sistema</div></div>
                     <div class="uam-kpi"><div class="uam-kpi-label" style="color: #d97706;">Abierto sin usar</div><div class="uam-kpi-value">{{ $fmt($report['totals']['idle']) }}</div><div class="uam-kpi-hint">Inactivo con el sistema a la vista</div></div>
                     <div class="uam-kpi"><div class="uam-kpi-label">En otra pestaña</div><div class="uam-kpi-value">{{ $fmt($report['totals']['background']) }}</div><div class="uam-kpi-hint">Sistema minimizado u oculto</div></div>
-                    <div class="uam-kpi"><div class="uam-kpi-label">⚡ Uso real</div><div class="uam-kpi-value"><span class="uam-usage {{ $usageClass($report['totals']['usage']) }}" style="font-size: 26px;">{{ $report['totals']['usage'] }}%</span></div><div class="uam-kpi-hint">{{ number_format($report['totals']['actions'], 0, ',', '.') }} acciones · {{ number_format($report['totals']['pages'], 0, ',', '.') }} pantallas</div></div>
+                    <div class="uam-kpi"><div class="uam-kpi-label">⚡ Uso real @include('filament.business.pages.partials.user-activity-usage-help')</div><div class="uam-kpi-value"><span class="uam-usage {{ $usageClass($report['totals']['usage']) }}" style="font-size: 26px;">{{ $report['totals']['usage'] }}%</span></div><div class="uam-kpi-hint">{{ number_format($report['totals']['actions'], 0, ',', '.') }} acciones · {{ number_format($report['totals']['pages'], 0, ',', '.') }} pantallas</div></div>
                 </div>
 
                 <div class="uam-filters">
@@ -357,10 +360,10 @@
                         </div>
                     @else
                         @php
-                            $th = function (string $column, string $label, bool $num = true) use ($sort, $direction): string {
+                            $th = function (string $column, string $label, bool $num = true, string $afterHtml = '') use ($sort, $direction): string {
                                 $arrow = $sort === $column ? ($direction === 'asc' ? ' ▲' : ' ▼') : '';
 
-                                return '<th class="sortable'.($num ? ' num' : '').'" wire:click="sortBy(\''.$column.'\')">'.e($label).$arrow.'</th>';
+                                return '<th class="sortable'.($num ? ' num' : '').'" wire:click="sortBy(\''.$column.'\')">'.e($label).$arrow.$afterHtml.'</th>';
                             };
                         @endphp
                         <table class="uam-table">
@@ -372,7 +375,7 @@
                                     {!! $th('active', 'Activo') !!}
                                     {!! $th('idle', 'Abierto sin usar') !!}
                                     {!! $th('background', 'Otra pestaña') !!}
-                                    {!! $th('usage', 'Uso real') !!}
+                                    {!! $th('usage', 'Uso real', true, ' '.view('filament.business.pages.partials.user-activity-usage-help')->render()) !!}
                                     {!! $th('avg_active', 'Activo por día') !!}
                                     {!! $th('actions', 'Acciones') !!}
                                     {!! $th('avg_first', 'Llega') !!}

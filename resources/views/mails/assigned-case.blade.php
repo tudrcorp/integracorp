@@ -51,6 +51,7 @@
         </tr>
     </table>
 
+    @include('mails.partials.tdg-corporate-footer')
 </body>
 
 </html>

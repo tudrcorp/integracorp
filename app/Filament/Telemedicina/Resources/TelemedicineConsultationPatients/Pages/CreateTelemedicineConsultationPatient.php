@@ -340,7 +340,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
         return new HtmlString(view('filament.telemedicina.consultations.patient-header', [
             'patientName' => $patient->full_name,
             'document' => self::formatPatientDocument($patient->nro_identificacion),
-            'age' => filled($patient->age) ? (int) $patient->age : null,
+            'age' => \App\Support\PatientAge::labelOrNull($patient->birth_date, $patient->age),
             'sex' => filled($patient->sex) ? (string) $patient->sex : null,
             'caseCode' => $this->case?->code,
             'caseStatus' => $this->case?->status,
@@ -550,7 +550,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             'summary' => TelemedicinePatientHistorySummary::summarize($patient?->telemedicinePatientHistory()->first()),
                             'patient' => [
                                 'name' => (string) ($patient?->full_name ?? 'Paciente'),
-                                'age' => filled($patient?->age) ? (string) $patient->age : null,
+                                'age' => \App\Support\PatientAge::labelOrNull($patient?->birth_date, $patient?->age),
                                 'sex' => filled($patient?->sex) ? (string) $patient->sex : null,
                             ],
                         ]);
@@ -1804,6 +1804,15 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                                 $this->data,
                                 $doctor,
                                 $patientDisplayName,
+                                [
+                                    'medicationsArr' => $medicationsArr ?? [],
+                                    'labsArr' => $labsArr ?? [],
+                                    'otherLabsArr' => $otherLabsArr ?? [],
+                                    'studiesArr' => $studiesArr ?? [],
+                                    'otherStudiesArr' => $otherStudiesArr ?? [],
+                                    'consultSpecialistArr' => $consultSpecialistArr ?? [],
+                                    'otherSpecialistArr' => $otherSpecialistArr ?? [],
+                                ],
                             ),
                             Auth::user(),
                         );

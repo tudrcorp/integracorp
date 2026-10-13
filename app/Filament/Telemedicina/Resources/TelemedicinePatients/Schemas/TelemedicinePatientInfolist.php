@@ -6,6 +6,7 @@ namespace App\Filament\Telemedicina\Resources\TelemedicinePatients\Schemas;
 
 use App\Models\TelemedicinePatient;
 use App\Support\ClinicalEntitlements\OperationsAffiliatePlanBenefitsCard;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\FilamentDateDisplay;
 use App\Support\Telemedicine\AtenmediAccess;
 use App\Support\Telemedicine\TelemedicinePatientAffiliationValidity;
@@ -107,9 +108,9 @@ class TelemedicinePatientInfolist
                                                     ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
                                                     ->placeholder('—'),
                                                 TextEntry::make('age')
+                                                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                                                     ->label('Edad')
                                                     ->icon(Heroicon::OutlinedClock)
-                                                    ->suffix(' años')
                                                     ->placeholder('—'),
                                                 TextEntry::make('sex')
                                                     ->label('Sexo')

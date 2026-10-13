@@ -8,6 +8,7 @@ use App\Filament\Operations\Resources\AffiliateCorporates\AffiliateCorporateReso
 use App\Http\Controllers\AffiliateCorporateExportCsvController;
 use App\Models\AffiliateCorporate;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
+use App\Support\Filament\PatientAgeDisplay;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -74,6 +75,7 @@ class AffiliateCorporatesTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                     ->label('Edad')
                     ->alignCenter()
                     ->searchable()

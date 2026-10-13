@@ -2,8 +2,9 @@
 
 namespace App\Filament\Marketing\Resources\Affiliations\Schemas;
 
-use Filament\Forms\Components\TextInput;
+use App\Support\Filament\PatientAgeDisplay;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
@@ -95,6 +96,7 @@ class AffiliationForm
                 Toggle::make('feedback'),
                 Toggle::make('feedback_dos'),
                 TextInput::make('age')
+                    ->hint(PatientAgeDisplay::inputHint('birth_date_ti'))
                     ->numeric(),
             ]);
     }

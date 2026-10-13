@@ -37,16 +37,17 @@ it('OperationCoordinationServicesTable define la acción modal de doctor TDG par
         ->and($contents)->toContain('applyHideReassignedToTdgScope');
 });
 
-it('OperationCoordinationServicesTable oculta coordinaciones reasignadas a TDG del tab Todas', function (): void {
+it('OperationCoordinationServicesTable oculta coordinaciones reasignadas a TDG de lo que está por gestionar', function (): void {
     $table = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTable.php');
-    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ListOperationCoordinationServices.php');
+    $filters = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTableFilters.php');
 
     expect($table)
         ->toContain('public static function applyHideReassignedToTdgScope(Builder $query): Builder')
         ->toContain('self::applyHideReassignedToTdgScope($query)')
         ->toContain('ReassignAmbulanceCoordinationToTdgDoctor::STATUS_REASSIGNED_TO_TDG');
 
-    expect($page)
+    // El filtro de estatus (que reemplazó a la pestaña «Todas») aplica el scope.
+    expect($filters)
         ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query)');
 });
 
@@ -390,13 +391,16 @@ it('OperationCoordinationServicesTable oculta coordinaciones sin ítems por gest
 
     expect($page)
         ->toContain('use App\\Filament\\Operations\\Resources\\OperationCoordinationServices\\Tables\\OperationCoordinationServicesTable;')
-        ->toContain("'todas' => Tab::make('Todas')")
-        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query)')
-        // El conteo de «Todas» sigue usando el mismo scope, ahora dentro de
-        // tabCounts(), que resuelve las siete pestañas en dos consultas.
+        // El conteo de servicios por gestionar sigue usando el mismo scope,
+        // dentro de tabCounts(); el estatus ahora se elige en los filtros.
         ->toContain('protected function tabCounts(): array')
-        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope(')
-        ->toContain("->badge(\$counts['todas'])");
+        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope(');
+
+    $filters = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTableFilters.php');
+
+    expect($filters)
+        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query)')
+        ->toContain('OperationCoordinationServicesTable::applyFullyFinalizedScope($finalized)');
 });
 
 it('OperationCoordinationServicesTable muestra código de caso TM con badge y enlace a vista', function (): void {

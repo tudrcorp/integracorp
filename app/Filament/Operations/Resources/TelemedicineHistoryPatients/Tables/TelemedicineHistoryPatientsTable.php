@@ -125,9 +125,7 @@ class TelemedicineHistoryPatientsTable
                         filled($record->telemedicinePatient?->sex)
                             ? mb_strtoupper((string) $record->telemedicinePatient->sex)
                             : null,
-                        filled($record->telemedicinePatient?->age)
-                            ? $record->telemedicinePatient->age.' años'
-                            : null,
+                        \App\Support\PatientAge::labelOrNull($record->telemedicinePatient?->birth_date, $record->telemedicinePatient?->age),
                     ])->filter()->implode(' · ') ?: 'Sin datos adicionales')
                     ->searchable()
                     ->sortable()

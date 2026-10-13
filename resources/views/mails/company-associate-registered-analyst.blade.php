@@ -77,7 +77,7 @@
                                 </tr>
                                 <tr>
                                     <td style="padding: 8px 12px; border: 1px solid #e5e7eb; color: #6b7280;">Edad</td>
-                                    <td style="padding: 8px 12px; border: 1px solid #e5e7eb; color: #111827;">{{ $associate->age }} años</td>
+                                    <td style="padding: 8px 12px; border: 1px solid #e5e7eb; color: #111827;">{{ \App\Support\PatientAge::label($associate->birth_date, $associate->age) }}</td>
                                 </tr>
                                 <tr>
                                     <td style="padding: 8px 12px; border: 1px solid #e5e7eb; color: #6b7280;">Sexo</td>

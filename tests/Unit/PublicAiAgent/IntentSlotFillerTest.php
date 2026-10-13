@@ -47,6 +47,9 @@ it('reconoce mensajes de confirmación', function (): void {
 });
 
 it('parsea registro de agente con formato separado por comas', function (): void {
+    // Recrea tablas: sin sqlite en memoria borraría las de la base real.
+    ensureSqliteInMemoryDatabaseOrSkip();
+
     Schema::dropIfExists('cities');
     Schema::dropIfExists('states');
     Schema::dropIfExists('countries');
@@ -266,6 +269,9 @@ it('muestra nota de TuDrGroup en resumen cuando la agencia es TDG', function ():
 });
 
 it('parsea registro de agencia master con tres campos detectando email y rif', function (): void {
+    // Recrea tablas: sin sqlite en memoria borraría las de la base real.
+    ensureSqliteInMemoryDatabaseOrSkip();
+
     Schema::dropIfExists('cities');
     Schema::dropIfExists('states');
     Schema::dropIfExists('countries');

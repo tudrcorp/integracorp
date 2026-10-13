@@ -375,12 +375,15 @@ class PaidMembershipController extends Controller
 
                 if ($record->affiliation->payment_frequency == 'MENSUAL') {
 
-                    // Pregunto cual es el ultimo numero de factura
-                    $lastInvoiceNumberCollection = Collection::latest()->first();
-
                     $mensual = 11;
                     $array_dates = [];
                     for ($i = 0; $i < $mensual; $i++) {
+                        /** Cada cuota mensual parte de la anterior de esta afiliación, igual que el flujo trimestral. */
+                        $prox_date = Collection::select('id', 'include_date', 'next_payment_date')->where('affiliation_code', $record->affiliation->code)->orderBy('id', 'desc')->first();
+                        $prox_date = $prox_date === null ? $record->affiliation->activated_at : $prox_date->next_payment_date;
+
+                        $lastInvoiceNumberCollection = (string) (Collection::query()->latest('id')->value('collection_invoice_number') ?? '');
+
                         $collections = new Collection;
                         $collections->sale_id = $sales->id;
                         $collections->include_date = $record->affiliation->activated_at;
@@ -389,7 +392,7 @@ class PaidMembershipController extends Controller
                         $collections->plan_id = $record->affiliation->plan_id;
                         $collections->coverage_id = $record->affiliation->coverage_id ?? null;
                         $collections->agent_id = $record->affiliation->agent_id;
-                        $collections->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumber->invoice_number);
+                        $collections->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoiceNumberCollection);
                         $collections->quote_number = AffiliationQuoteNumber::forIndividual($record->affiliation);
                         $collections->affiliation_code = $record->affiliation->code;
                         $collections->affiliate_full_name = $record->affiliation->full_name_ti;
@@ -412,19 +415,19 @@ class PaidMembershipController extends Controller
                         $collections->payment_frequency = $record->affiliation->payment_frequency;
                         $collections->reference = isset($reference_payment) ? $reference_payment : null;
                         $collections->created_by = Auth::user()->name;
-                        $collections->next_payment_date = $record->prox_payment_date;
+                        $collections->next_payment_date = self::parseDateForStorage((string) $prox_date)->addMonthNoOverflow()->format('d/m/Y');
 
                         // ... -> Agregado para filtrar por fecha de vencimiento (proxima fecha de pago)
-                        $collections->filter_next_payment_date = Carbon::createFromFormat('d/m/Y', $collections->next_payment_date)->format('Y-m-d');
+                        $collections->filter_next_payment_date = self::parseDateForStorage((string) $collections->next_payment_date)->format('Y-m-d');
 
-                        $collections->expiration_date = date($collections->next_payment_date, strtotime('+30 days')); // Carbon::createFromFormat('d/m/Y', $prox_date)->addMonth(3)->format('d/m/Y');
+                        $collections->expiration_date = self::parseDateForStorage((string) $collections->next_payment_date)->addDays(30)->format('d/m/Y');
                         $collections->created_by = Auth::user()->name;
                         $collections->save();
 
                         /**Ejecutamos el Job para crea el aviso de cobro */
                         $array_data = [
                             'invoice_number' => $collections->collection_invoice_number,
-                            'emission_date' => $record->prox_payment_date,
+                            'emission_date' => $collections->next_payment_date,
                             'full_name_ti' => $sales->affiliate_full_name,
                             'ci_rif_ti' => $sales->affiliate_ci_rif,
                             'address_ti' => $record->affiliation->adress_ti,
@@ -440,8 +443,7 @@ class PaidMembershipController extends Controller
                         /** Ejecutamos el job */
                         dispatch(new CreateAvisoDeCobro($array_data, Auth::user()));
 
-                        // Agregamos la fecha de pago a la array
-                        $array_dates[] = Carbon::createFromFormat('d/m/Y', $collections->next_payment_date)->format('d/m/Y');
+                        $array_dates[] = $collections->next_payment_date;
                     }
 
                     AnnualCollectionController::createAnnualCollectionMensual($collections, $array_dates);
@@ -1155,5 +1157,19 @@ class PaidMembershipController extends Controller
                     ->send();
             }
         }
+    }
+
+    private static function parseDateForStorage(string $value): Carbon
+    {
+        $normalized = trim($value);
+
+        foreach (['d/m/Y', 'd-m-Y', 'Y-m-d'] as $format) {
+            try {
+                return Carbon::createFromFormat($format, $normalized);
+            } catch (\Throwable $exception) {
+            }
+        }
+
+        throw new \InvalidArgumentException("Formato de fecha no soportado: {$value}");
     }
 }

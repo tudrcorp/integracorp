@@ -10,6 +10,7 @@ use App\Models\AfilliationCorporatePlan;
 use App\Models\AgeRange;
 use App\Models\Fee;
 use App\Support\AffiliationCorporates\CorporatePlanRowCreator;
+use App\Support\PatientAge;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -213,6 +214,7 @@ final class AssociateAffiliatesWithCorporatePlanService
 
         $missingAge = [];
         $outOfRange = [];
+        $hasInfants = false;
 
         foreach ($affiliates as $affiliate) {
             $label = trim(($affiliate->first_name ?? '').' '.($affiliate->last_name ?? ''));
@@ -228,7 +230,8 @@ final class AssociateAffiliatesWithCorporatePlanService
 
             $age = (int) $affiliate->age;
             if ($age < $ageInit || $age > $ageEnd) {
-                $outOfRange[] = $label.' (edad '.$age.')';
+                $outOfRange[] = $label.' (edad: '.PatientAge::label($affiliate->birth_date, $affiliate->age).')';
+                $hasInfants = $hasInfants || $age === 0;
             }
         }
 
@@ -238,6 +241,9 @@ final class AssociateAffiliatesWithCorporatePlanService
         }
         if ($outOfRange !== []) {
             $parts[] = 'Fuera del rango de edad del plan ('.$rangeLabel.'): '.implode(', ', $outOfRange).'.';
+        }
+        if ($hasInfants && $ageInit > 0) {
+            $parts[] = 'Este rango no admite menores de 1 año: elija un rango desde 0 años o solicite a Negocios que lo cree.';
         }
 
         if ($parts !== []) {

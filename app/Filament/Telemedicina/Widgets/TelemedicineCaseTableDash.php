@@ -11,6 +11,7 @@ use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineHistoryPatient;
 use App\Models\TelemedicinePatient;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Telemedicine\ConsultationCreateRoute;
 use App\Support\Telemedicine\TelemedicineCaseDerivedService;
@@ -431,7 +432,7 @@ class TelemedicineCaseTableDash extends TableWidget
                 $query = TelemedicineCaseDerivedService::withDerivedServiceColumns(TelemedicineCaseFollowUpSchedule::withFollowUpColumns(
                     TelemedicineCaseFilamentListQuery::applyDashboardWidgetCaseConstraints(TelemedicineCase::query())
                 ))
-                    ->with(['telemedicinePatient:id,business_line_id,specific_business_unit', 'telemedicinePatient.businessLine:id,definition']);
+                    ->with(['telemedicinePatient:id,business_line_id,specific_business_unit,birth_date', 'telemedicinePatient.businessLine:id,definition']);
 
                 return match ($this->dashboardFilter) {
                     CaseStats::FILTER_ASSIGNED => $query->where('status', 'ASIGNADO'),
@@ -533,9 +534,9 @@ class TelemedicineCaseTableDash extends TableWidget
                     ->label('Línea de negocio')
                     ->view('filament.telemedicina.tables.business-line-cell'),
                 TextColumn::make('patient_age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('telemedicinePatient.birth_date'))
                     ->label('Edad')
                     ->description(fn ($record): string => $record->patient_sex)
-                    ->suffix(' años')
                     ->searchable()
                     ->extraCellAttributes(['class' => 'py-3']),
                 TextColumn::make('patient_phone')

@@ -15,7 +15,7 @@
 
     $details = array_values(array_filter([
         filled($document) ? ['label' => 'Cédula', 'value' => $document] : null,
-        filled($age) ? ['label' => 'Edad', 'value' => $age.' '.((int) $age === 1 ? 'año' : 'años')] : null,
+        filled($age) ? ['label' => 'Edad', 'value' => is_numeric($age) ? \App\Support\PatientAge::label(null, $age) : (string) $age] : null,
         filled($sex) ? ['label' => 'Sexo', 'value' => $sex] : null,
         filled($managedBy) ? ['label' => 'Gestiona', 'value' => $managedBy] : null,
     ]));

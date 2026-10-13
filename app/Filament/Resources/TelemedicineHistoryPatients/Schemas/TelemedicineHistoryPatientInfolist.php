@@ -2,13 +2,13 @@
 
 namespace App\Filament\Resources\TelemedicineHistoryPatients\Schemas;
 
-use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Fieldset;
 use App\Models\TelemedicineHistoryPatient;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 
 class TelemedicineHistoryPatientInfolist
 {
@@ -19,7 +19,7 @@ class TelemedicineHistoryPatientInfolist
 
                 Section::make()
                     ->heading('HISTORIA CLINICA')
-                    ->description(fn(TelemedicineHistoryPatient $record) => 'PACIENTE: ' . $record->telemedicinePatient->full_name . ' | ' . 'EDAD: ' . $record->telemedicinePatient->age . ' años | ' . 'SEXO: ' . $record->telemedicinePatient->sex)
+                    ->description(fn (TelemedicineHistoryPatient $record) => 'PACIENTE: '.$record->telemedicinePatient->full_name.' | '.'EDAD: '.\App\Support\PatientAge::label($record->telemedicinePatient->birth_date, $record->telemedicinePatient->age).' | '.'SEXO: '.$record->telemedicinePatient->sex)
                     ->columnSpanFull()
                     ->icon(Heroicon::Bars3BottomLeft)
                     ->schema([
@@ -73,7 +73,7 @@ class TelemedicineHistoryPatientInfolist
                                 Fieldset::make('Observaciones Adicionales de Antecedentes Personales y Familiares')
                                     ->schema([
                                         TextEntry::make('observations_personal')
-                                            ->label('Detalles:')
+                                            ->label('Detalles:'),
                                     ])
                                     ->columnSpanFull()->columns(1),
                             ])->columnSpanFull()->columns(5),
@@ -130,7 +130,7 @@ class TelemedicineHistoryPatientInfolist
                                 Fieldset::make('Observaciones Adicionales de Antecedentes Personales y Patológicos')
                                     ->schema([
                                         TextEntry::make('observations_pathological')
-                                            ->label('Detalles:')
+                                            ->label('Detalles:'),
                                     ])
                                     ->columnSpanFull()->columns(1),
                             ])->columnSpanFull()->columns(5),
@@ -155,7 +155,7 @@ class TelemedicineHistoryPatientInfolist
                                 Fieldset::make('Observaciones Adicionales de Antecedentes No Patológicos')
                                     ->schema([
                                         TextEntry::make('observations_not_pathological')
-                                            ->label('Detalles:')
+                                            ->label('Detalles:'),
                                     ])
                                     ->columnSpanFull()->columns(1),
                             ])->columnSpanFull()->columns(4),
@@ -187,7 +187,7 @@ class TelemedicineHistoryPatientInfolist
                                 Fieldset::make('Observaciones Adicionales de Antecedentes Ginecológicos')
                                     ->schema([
                                         TextEntry::make('observations_ginecologica')
-                                            ->label('Detalles:')
+                                            ->label('Detalles:'),
                                     ])->columnSpanFull()->columns(1),
                             ])->columnSpanFull()->columns(4),
 
@@ -210,7 +210,7 @@ class TelemedicineHistoryPatientInfolist
                                 Fieldset::make('Antecedentes Quirúrgicos')
                                     ->schema([
                                         TextEntry::make('history_surgical')
-                                            ->label('Detalles:')
+                                            ->label('Detalles:'),
                                     ])->columnSpanFull()->columns(1),
                             ])->columnSpanFull()->columns(4),
 
@@ -222,16 +222,16 @@ class TelemedicineHistoryPatientInfolist
                                 Fieldset::make('Medicamentos o suplementos:')
                                     ->schema([
                                         TextEntry::make('medications_supplements')
-                                            ->label('Detalles:')
+                                            ->label('Detalles:'),
 
                                     ])->columnSpanFull()->columns(1),
                                 Fieldset::make('Observaciones Adicionales de Medicamentos y Suplementos')
                                     ->schema([
                                         TextEntry::make('observations_medication')
-                                            ->label('Detalles:')
+                                            ->label('Detalles:'),
 
                                     ])->columnSpanFull()->columns(1),
-                            ])->columnSpanFull()->columns(4)
+                            ])->columnSpanFull()->columns(4),
 
                     ])->columnSpanFull(),
 
