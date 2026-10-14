@@ -830,6 +830,15 @@ it('las respuestas rápidas llevan el nombre del cliente y omiten la propuesta s
         ]);
 });
 
+it('la cabecera de la cola no se desborda del panel angosto', function (): void {
+    $blade = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/crm/pages/atencion-whatsapp.blade.php');
+
+    expect($blade)->toContain('.crm-queue-head { padding: 14px 14px 12px; display: grid; grid-template-columns: minmax(0, 1fr);')
+        ->and($blade)->toContain('.crm-next { display: flex; flex-wrap: wrap;')
+        ->and($blade)->toContain('.crm-next .crm-btn { flex: 1 1 100%; min-width: 0;')
+        ->and($blade)->toContain('.crm-q-title { display: flex; flex-wrap: wrap;');
+});
+
 function crmInboxEnvelope(string $handoffId, ?string $area, string $acceptedAt, string $name, string $lastLine): void
 {
     CrmHandoffEnvelope::factory()->create([

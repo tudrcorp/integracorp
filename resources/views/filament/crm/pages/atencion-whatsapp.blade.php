@@ -204,8 +204,8 @@
         }
 
         /* Cola */
-        .crm-queue-head { padding: 14px 14px 12px; display: grid; gap: 12px; border-bottom: 1px solid var(--crm-line); flex: 0 0 auto; }
-        .crm-queue-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+        .crm-queue-head { padding: 14px 14px 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; border-bottom: 1px solid var(--crm-line); flex: 0 0 auto; }
+        .crm-queue-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; min-width: 0; }
 
         .crm-alerts { display: grid; justify-items: end; gap: 6px; }
         @keyframes crm-pulse {
@@ -559,7 +559,7 @@
         .crm-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
 
         /* Propuesta D: cola */
-        .crm-q-title { display: flex; align-items: center; gap: 8px; }
+        .crm-q-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
         .crm-q-title h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
         .crm-live { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--crm-live); }
         .crm-live i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: crm-pulse 2.4s infinite; }
@@ -751,8 +751,8 @@
         .crm-presence-btn.is-available i { background: var(--crm-live); }
         .crm-presence-btn.is-busy i { background: var(--crm-warn); }
         .crm-presence-btn.is-away i { background: var(--crm-fail); }
-        .crm-next { display: flex; align-items: center; gap: 8px; }
-        .crm-next .crm-btn { flex: 1 1 auto; justify-content: center; }
+        .crm-next { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+        .crm-next .crm-btn { flex: 1 1 100%; min-width: 0; justify-content: center; }
         .crm-load { font-size: 11px; color: var(--crm-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
         .crm-load.is-full { color: var(--crm-fail); font-weight: 650; }
         .crm-health { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: var(--crm-fail-bg); color: var(--crm-fail); font-size: 12px; line-height: 1.45; }
