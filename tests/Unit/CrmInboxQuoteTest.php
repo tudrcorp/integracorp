@@ -132,7 +132,7 @@ it('muestra el motivo cuando no hay tarifa', function (): void {
         ->set('quoteHolder', 'María Peña')
         ->set('quoteAges', '80')
         ->set('quotePlan', 'especial')
-        ->set('quoteCoverage', '5000')
+        ->set('quoteCoverages', ['5000'])
         ->call('previewQuote')
         ->assertSet('quoteDraft', null);
 
@@ -159,7 +159,7 @@ it('explica cuando el cotizador rechaza la clave', function (): void {
         ->set('quoteHolder', 'María Peña')
         ->set('quoteAges', '23, 56, 67')
         ->set('quotePlan', 'ideal')
-        ->set('quoteCoverage', '10000')
+        ->set('quoteCoverages', ['10000'])
         ->call('previewQuote')
         ->assertSet('quoteDraft', null);
 
@@ -234,6 +234,7 @@ it('guarda el PDF oficial y lo envía por el mismo WhatsApp', function (): void 
         'people' => 2,
         'ages' => '25, 40',
         'coverage' => null,
+        'coverages' => [],
     ]);
 
     expect($documentCalls)->toBe(1)
@@ -326,37 +327,186 @@ it('conserva el PDF si WhatsApp falla y el reintento lo envía', function (): vo
         ->and(Storage::disk('local')->exists(CrmInboxQuote::path($draftId)))->toBeFalse();
 });
 
-it('toma el total de la cobertura elegida en Ideal', function (): void {
-    $envelope = quoteInboxEnvelope();
-    $envelope->forceFill([
-        'taken_at' => now(),
-        'taken_by' => 9,
-    ])->save();
+it('con una sola cobertura de Ideal el PDF trae solo esa columna', function (): void {
+    takenQuoteEnvelope();
+    fakeIdealQuote();
 
-    Http::fake([
-        'http://quote.test/*' => Http::response([
-            'ok' => true,
-            'control' => '0009101',
-            'planes' => [[
-                'plan' => 'ideal',
-                'total_anual' => 999,
-                'coberturas_usd' => [1000, 2000, 3000, 5000, 10000],
-                'grupal_anual' => [189, 205, 231, 259, 284],
-            ]],
-            'pdf_base64' => base64_encode("%PDF-1.4\n%ideal\n"),
-        ], 200),
-    ]);
-
-    $result = app(CrmInboxQuote::class)->preview($envelope, 'María Peña', '30', 'ideal', '3000', 'Ana Rojas');
+    $result = app(CrmInboxQuote::class)->preview(CrmHandoffEnvelope::query()->firstOrFail(), 'María Peña', '30', 'ideal', ['3000'], 'Ana Rojas');
 
     expect($result['ok'])->toBeTrue()
         ->and($result['draft']['total'])->toBe('231')
-        ->and($result['draft']['caption'])->toBe('Propuesta 0009101 · USD 231 al año');
+        ->and($result['draft']['coverages'])->toBe([3000])
+        ->and($result['draft']['caption'])->toBe('Propuesta 0009101 · USD 231 al año')
+        ->and(Storage::disk('local')->get(CrmInboxQuote::path($result['draft']['id'])))->toBe("%PDF-1.4\n%recortado\n");
 
     Http::assertSent(fn ($request): bool => str_contains($request->url(), '/api/cotizar')
         && ($request['cobertura'] ?? null) === 3000
+        && ($request['formato'] ?? null) === 'json_sin_pdf'
         && ($request['planes'] ?? null) === ['ideal']);
+
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/render')
+        && $request['control'] === '0009101'
+        && $request['agente'] === 'Ana Rojas'
+        && $request['planes'][0]['plan'] === 'ideal'
+        && $request['planes'][0]['coberturas'] === ['3K']
+        && $request['planes'][0]['filas'] === [['rango' => '0 a 45 años', 'poblacion' => 1, 'tarifas' => [231]]]
+        && $request['planes'][0]['grupal_anual'] === [231]
+        && $request['planes'][0]['grupal_trimestral'] === [57.75]);
 });
+
+it('con varias coberturas el PDF trae solo esas, en el orden del plan, y el texto da el rango', function (): void {
+    takenQuoteEnvelope();
+    fakeIdealQuote();
+
+    $result = app(CrmInboxQuote::class)->preview(CrmHandoffEnvelope::query()->firstOrFail(), 'María Peña', '30', 'ideal', ['10000', '1000', '3000', '3000'], 'Ana Rojas');
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['draft']['coverages'])->toBe([1000, 3000, 10000])
+        ->and($result['draft']['total'])->toBe('189 – 284')
+        ->and($result['draft']['caption'])->toBe('Propuesta 0009101 · 3 coberturas · desde USD 189 hasta USD 284 al año');
+
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/render')
+        && $request['planes'][0]['coberturas'] === ['1K', '3K', '10K']
+        && $request['planes'][0]['filas'][0]['tarifas'] === [189, 231, 284]
+        && $request['planes'][0]['grupal_anual'] === [189, 231, 284]
+        && $request['planes'][0]['grupal_semestral'] === [94.5, 115.5, 142]);
+});
+
+it('con todas las coberturas usa el PDF del cotizador en una sola llamada', function (): void {
+    takenQuoteEnvelope();
+    fakeIdealQuote();
+
+    $result = app(CrmInboxQuote::class)->preview(CrmHandoffEnvelope::query()->firstOrFail(), 'María Peña', '30', 'ideal', ['1000', '2000', '3000', '5000', '10000'], 'Ana Rojas');
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['draft']['caption'])->toBe('Propuesta 0009101 · 5 coberturas · desde USD 189 hasta USD 284 al año')
+        ->and(Storage::disk('local')->get(CrmInboxQuote::path($result['draft']['id'])))->toBe("%PDF-1.4\n%completo\n");
+
+    Http::assertSent(fn ($request): bool => str_contains($request->url(), '/api/cotizar') && ($request['formato'] ?? null) === 'json');
+    Http::assertNotSent(fn ($request): bool => str_ends_with($request->url(), '/render'));
+});
+
+it('no cotiza sin cobertura elegida ni con un monto que el plan no ofrece', function (array $coverages): void {
+    takenQuoteEnvelope();
+    fakeIdealQuote();
+
+    $result = app(CrmInboxQuote::class)->preview(CrmHandoffEnvelope::query()->firstOrFail(), 'María Peña', '30', 'ideal', $coverages, 'Ana Rojas');
+
+    expect($result)->toBe(['ok' => false, 'reason' => 'invalid', 'detail' => 'Elige al menos una cobertura.']);
+
+    Http::assertNothingSent();
+})->with([
+    'ninguna' => [[]],
+    'monto ajeno' => [['3000', '7000']],
+    'monto de otro plan' => [['50000']],
+    'texto' => [['3000; DROP']],
+]);
+
+it('no envía un PDF con columnas de más si el cotizador no trae la cobertura pedida', function (): void {
+    takenQuoteEnvelope();
+
+    Http::fake([
+        'http://quote.test/api/cotizar' => Http::response([
+            'ok' => true,
+            'control' => '0009102',
+            'planes' => [[
+                'plan' => 'ideal',
+                'coberturas_usd' => [1000, 2000],
+                'coberturas' => ['1K', '2K'],
+                'filas' => [['rango' => '0 a 45 años', 'poblacion' => 1, 'tarifas' => [189, 205]]],
+                'grupal_anual' => [189, 205],
+                'grupal_semestral' => [94.5, 102.5],
+                'grupal_trimestral' => [47.25, 51.25],
+            ]],
+        ], 200),
+        'http://quote.test/render' => Http::response("%PDF-1.4\n", 200),
+    ]);
+
+    $result = app(CrmInboxQuote::class)->preview(CrmHandoffEnvelope::query()->firstOrFail(), 'María Peña', '30', 'ideal', ['10000'], 'Ana Rojas');
+
+    expect($result['ok'])->toBeFalse()
+        ->and($result['reason'])->toBe('unavailable');
+
+    Http::assertNotSent(fn ($request): bool => str_ends_with($request->url(), '/render'));
+});
+
+it('el formulario marca varias coberturas, las limpia al cambiar de plan y la tarjeta las lista', function (): void {
+    quoteInboxEnvelope();
+    quoteInboxAnalyst();
+    fakeIdealQuote(['http://n8n.test/*' => Http::response(['ok' => true, 'message_id' => 'wamid.2'], 200)]);
+
+    $page = Livewire::test(AtencionWhatsapp::class)
+        ->call('select', '900002')
+        ->call('take')
+        ->call('openQuote')
+        ->set('quoteAges', '30')
+        ->set('quotePlan', 'ideal')
+        ->assertSee('Coberturas')
+        ->assertSee('USD 10.000')
+        ->assertDontSee('Elige el monto')
+        ->set('quoteCoverages', ['2000', '10000'])
+        ->set('quotePlan', 'especial')
+        ->assertSet('quoteCoverages', ['10000'])
+        ->set('quotePlan', 'ideal')
+        ->set('quoteCoverages', ['1000', '3000'])
+        ->call('previewQuote')
+        ->assertSet('quoteDraft.coverages', [1000, 3000])
+        ->assertSet('quoteDraft.total', '189 – 231');
+
+    $draftId = $page->get('quoteDraft')['id'];
+
+    $page->call('sendQuote')
+        ->assertNotified('Propuesta enviada')
+        ->assertSee('· USD 1.000 · 3.000')
+        ->assertSee('USD 189 – 231');
+
+    expect(CrmHandoffMessage::query()->where('message_id', $draftId)->first()->meta)->toMatchArray([
+        'coverage' => null,
+        'coverages' => [1000, 3000],
+        'total' => '189 – 231',
+    ]);
+});
+
+function takenQuoteEnvelope(): void
+{
+    quoteInboxEnvelope()->forceFill([
+        'taken_at' => now(),
+        'taken_by' => 9,
+    ])->save();
+}
+
+/**
+ * @param  array<string, mixed>  $extra
+ */
+function fakeIdealQuote(array $extra = []): void
+{
+    Http::fake([
+        'http://quote.test/api/cotizar' => function ($request) {
+            $full = ($request['formato'] ?? null) === 'json';
+
+            return Http::response([
+                'ok' => true,
+                'control' => '0009101',
+                'titular' => 'María Peña',
+                'agente' => 'Ana Rojas',
+                'fecha' => '14/10/2026',
+                'planes' => [[
+                    'plan' => 'ideal',
+                    'nombre' => 'Plan Ideal',
+                    'coberturas_usd' => [1000, 2000, 3000, 5000, 10000],
+                    'coberturas' => ['1K', '2K', '3K', '5K', '10K'],
+                    'filas' => [['rango' => '0 a 45 años', 'poblacion' => 1, 'tarifas' => [189, 205, 231, 259, 284], 'personas' => ['Afiliado 1']]],
+                    'grupal_anual' => [189, 205, 231, 259, 284],
+                    'grupal_semestral' => [94.5, 102.5, 115.5, 129.5, 142],
+                    'grupal_trimestral' => [47.25, 51.25, 57.75, 64.75, 71],
+                ]],
+                'pdf_base64' => $full ? base64_encode("%PDF-1.4\n%completo\n") : null,
+            ], 200);
+        },
+        'http://quote.test/render' => Http::response("%PDF-1.4\n%recortado\n", 200),
+        ...$extra,
+    ]);
+}
 
 function quoteInboxEnvelope(): CrmHandoffEnvelope
 {

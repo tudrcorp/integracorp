@@ -72,12 +72,17 @@ class AtencionWhatsapp extends Page
 
     public string $quotePlan = 'inicial';
 
-    public string $quoteCoverage = '';
+    /**
+     * Montos que pidió el cliente; el PDF solo muestra estos.
+     *
+     * @var list<string>
+     */
+    public array $quoteCoverages = [];
 
     /**
      * Lo arma el servidor al calcular. Bloqueado: el navegador no puede cambiar el archivo ni el texto que se envía.
      *
-     * @var array{id: string, control: string, total: string, plan: string, people: int, caption: string, ages?: string, coverage?: string}|null
+     * @var array{id: string, control: string, total: string, plan: string, people: int, caption: string, coverages: list<int>, ages?: string}|null
      */
     #[Locked]
     public ?array $quoteDraft = null;
@@ -261,9 +266,9 @@ class AtencionWhatsapp extends Page
         $this->quoteHolder = mb_substr((string) $prefill['holder'], 0, 80);
         $this->quoteAges = (string) $prefill['ages'];
         $this->quotePlan = isset(CrmInboxQuote::PLANS[$prefill['plan']]) ? (string) $prefill['plan'] : 'inicial';
-        $this->quoteCoverage = in_array((int) $prefill['coverage'], CrmInboxQuote::COVERAGES[$this->quotePlan] ?? [], true)
-            ? (string) $prefill['coverage']
-            : '';
+        $this->quoteCoverages = in_array((int) $prefill['coverage'], CrmInboxQuote::COVERAGES[$this->quotePlan] ?? [], true)
+            ? [(string) (int) $prefill['coverage']]
+            : [];
     }
 
     /**
@@ -534,7 +539,7 @@ class AtencionWhatsapp extends Page
             return;
         }
 
-        if ($this->quoteAges === '' && $this->quoteCoverage === '' && $this->quoteDraft === null) {
+        if ($this->quoteAges === '' && $this->quoteCoverages === [] && $this->quoteDraft === null) {
             $prefill = $this->copilot($case)['quote'] ?? null;
 
             if (is_array($prefill)) {
@@ -553,9 +558,10 @@ class AtencionWhatsapp extends Page
     {
         $allowed = CrmInboxQuote::COVERAGES[$this->quotePlan] ?? [];
 
-        if ($this->quoteCoverage !== '' && ! in_array((int) $this->quoteCoverage, $allowed, true)) {
-            $this->quoteCoverage = '';
-        }
+        $this->quoteCoverages = array_values(array_filter(
+            $this->quoteCoverages,
+            static fn (mixed $amount): bool => in_array((int) $amount, $allowed, true),
+        ));
 
         $this->forgetDraftFile();
         $this->quoteDraft = null;
@@ -576,7 +582,7 @@ class AtencionWhatsapp extends Page
             $this->quoteHolder,
             $this->quoteAges,
             $this->quotePlan,
-            $this->quoteCoverage,
+            array_values(array_map(strval(...), $this->quoteCoverages)),
             $this->analystName(),
         );
 
@@ -595,7 +601,6 @@ class AtencionWhatsapp extends Page
         $this->quoteDraft = [
             ...$result['draft'],
             'ages' => mb_substr(trim($this->quoteAges), 0, 60),
-            'coverage' => $this->quoteCoverage,
         ];
     }
 
@@ -615,7 +620,7 @@ class AtencionWhatsapp extends Page
             'plan' => $draft['plan'],
             'people' => $draft['people'],
             'ages' => $draft['ages'] ?? '',
-            'coverage' => $draft['coverage'] ?? null,
+            'coverages' => $draft['coverages'],
         ]);
 
         if ($staged['ok'] !== true) {
@@ -648,7 +653,7 @@ class AtencionWhatsapp extends Page
         $this->quoteHolder = '';
         $this->quoteAges = '';
         $this->quotePlan = 'inicial';
-        $this->quoteCoverage = '';
+        $this->quoteCoverages = [];
         $this->quoteDraft = null;
     }
 

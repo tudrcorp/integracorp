@@ -41,9 +41,14 @@ final class CrmInboxQuote
     public function __construct(private readonly QuoteApiClient $quotes) {}
 
     /**
-     * @return array{ok: true, draft: array{id: string, control: string, total: string, plan: string, people: int, caption: string}}|array{ok: false, reason: string, detail: string}
+     * Calcula la propuesta con las coberturas que pidió el cliente. Si son todas las del plan, el
+     * microservicio la dibuja de una vez; si es una parte, primero se calcula sin PDF y luego se pide
+     * el documento solo con esas columnas, para no mostrarle al cliente montos que no pidió.
+     *
+     * @param  list<int|string>  $coverages
+     * @return array{ok: true, draft: array{id: string, control: string, total: string, plan: string, people: int, caption: string, coverages: list<int>}}|array{ok: false, reason: string, detail: string}
      */
-    public function preview(CrmHandoffEnvelope $envelope, string $holder, string $ages, string $plan, string $coverage, string $agent): array
+    public function preview(CrmHandoffEnvelope $envelope, string $holder, string $ages, string $plan, array $coverages, string $agent): array
     {
         if ($envelope->taken_at === null || $envelope->released_at !== null || $envelope->closed_at !== null) {
             return $this->fail('not_taken', 'Toma el caso antes de cotizar.');
@@ -56,7 +61,7 @@ final class CrmInboxQuote
         $holder = $this->holder($holder);
         $parsedAges = $this->ages($ages);
         $plan = strtolower(trim($plan));
-        $amount = $this->coverage($plan, $coverage);
+        $amounts = $this->coverages($plan, $coverages);
 
         if ($holder === null) {
             return $this->fail('invalid', 'Escribe el nombre del titular.');
@@ -70,9 +75,11 @@ final class CrmInboxQuote
             return $this->fail('invalid', 'Elige Inicial, Ideal o Especial.');
         }
 
-        if ($amount === false) {
-            return $this->fail('invalid', 'Elige el monto de cobertura.');
+        if ($amounts === false) {
+            return $this->fail('invalid', 'Elige al menos una cobertura.');
         }
+
+        $partial = $amounts !== [] && $amounts !== self::COVERAGES[$plan];
 
         $payload = [
             'titular' => $holder,
@@ -81,12 +88,36 @@ final class CrmInboxQuote
             'agente' => $agent !== '' ? $agent : 'SolIA',
         ];
 
-        if (is_int($amount)) {
-            $payload['cobertura'] = $amount;
+        if ($amounts !== []) {
+            $payload['cobertura'] = $amounts[0];
+        }
+
+        if ($partial) {
+            $payload['formato'] = 'json_sin_pdf';
         }
 
         try {
             $data = $this->quotes->cotizar($payload);
+            $control = trim((string) ($data['control'] ?? ''));
+            $row = $this->planRow(is_array($data['planes'] ?? null) ? $data['planes'] : [], $plan);
+
+            if ($partial) {
+                $row = $row !== null ? $this->onlyCoverages([...$row, 'plan' => $plan], $amounts) : null;
+
+                if ($row === null || $control === '') {
+                    return $this->fail('unavailable', 'El cotizador no devolvió las coberturas elegidas. Intenta de nuevo.');
+                }
+
+                $pdf = $this->quotes->render([
+                    'control' => $control,
+                    'titular' => (string) ($data['titular'] ?? $holder),
+                    'agente' => (string) ($data['agente'] ?? $payload['agente']),
+                    'fecha' => (string) ($data['fecha'] ?? now()->format('d/m/Y')),
+                    'planes' => [$row],
+                ]);
+            } else {
+                $pdf = base64_decode((string) ($data['pdf_base64'] ?? ''), true);
+            }
         } catch (TarifaNoDisponibleException $exception) {
             $detail = $exception->motivos();
 
@@ -99,9 +130,7 @@ final class CrmInboxQuote
             return $this->fail('unavailable', $this->unavailableDetail($exception));
         }
 
-        $pdf = base64_decode((string) ($data['pdf_base64'] ?? ''), true);
-        $control = trim((string) ($data['control'] ?? ''));
-        $total = $this->total(is_array($data['planes'] ?? null) ? $data['planes'] : [], $plan, $amount);
+        $total = $row !== null ? $this->total($row, $amounts) : null;
 
         if (! is_string($pdf) || ! str_starts_with($pdf, '%PDF') || strlen($pdf) > 8_000_000 || $control === '' || $total === null) {
             return $this->fail('unavailable', 'El cotizador no devolvió la propuesta.');
@@ -111,17 +140,21 @@ final class CrmInboxQuote
         Storage::disk('local')->put(self::path($id), $pdf);
 
         $currency = trim((string) config('crm-inbox.quote_currency', 'USD'));
-        $caption = 'Propuesta '.$control.' · '.($currency !== '' ? $currency.' ' : '').$total.' al año';
+        $prefix = $currency !== '' ? $currency.' ' : '';
+        $caption = count($amounts) > 1
+            ? 'Propuesta '.$control.' · '.count($amounts).' coberturas · desde '.$prefix.$total['from'].' hasta '.$prefix.$total['to'].' al año'
+            : 'Propuesta '.$control.' · '.$prefix.$total['from'].' al año';
 
         return [
             'ok' => true,
             'draft' => [
                 'id' => $id,
                 'control' => $control,
-                'total' => $total,
+                'total' => count($amounts) > 1 ? $total['from'].' – '.$total['to'] : $total['from'],
                 'plan' => self::PLANS[$plan],
                 'people' => count($parsedAges),
                 'caption' => $caption,
+                'coverages' => $amounts,
             ],
         ];
     }
@@ -156,42 +189,129 @@ final class CrmInboxQuote
 
     /**
      * @param  list<mixed>  $plans
+     * @return array<string, mixed>|null
      */
-    private function total(array $plans, string $plan, int|false|null $amount): ?string
+    private function planRow(array $plans, string $plan): ?array
     {
-        $row = null;
-
         foreach ($plans as $candidate) {
             if (is_array($candidate) && strtolower((string) ($candidate['plan'] ?? '')) === $plan) {
-                $row = $candidate;
-                break;
+                return $candidate;
             }
         }
 
-        if ($row === null && isset($plans[0]) && is_array($plans[0])) {
-            $row = $plans[0];
-        }
+        return isset($plans[0]) && is_array($plans[0]) ? $plans[0] : null;
+    }
 
-        if ($row === null) {
-            return null;
-        }
+    /**
+     * Deja en la fila del plan solo las columnas de las coberturas elegidas, en el formato de `/render`.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  list<int>  $amounts
+     * @return array<string, mixed>|null
+     */
+    private function onlyCoverages(array $row, array $amounts): ?array
+    {
+        $offered = array_map(intval(...), is_array($row['coberturas_usd'] ?? null) ? $row['coberturas_usd'] : []);
+        $labels = is_array($row['coberturas'] ?? null) ? $row['coberturas'] : [];
+        $indexes = [];
 
-        $value = $row['total_anual'] ?? null;
+        foreach ($amounts as $amount) {
+            $index = array_search($amount, $offered, true);
 
-        if (is_int($amount)) {
-            $coverages = is_array($row['coberturas_usd'] ?? null) ? $row['coberturas_usd'] : [];
-            $totals = is_array($row['grupal_anual'] ?? null) ? $row['grupal_anual'] : [];
-            $index = array_search($amount, array_map(intval(...), $coverages), true);
-
-            if ($index !== false && isset($totals[$index]) && is_numeric($totals[$index])) {
-                $value = $totals[$index];
+            if ($index === false || ! isset($labels[$index])) {
+                return null;
             }
+
+            $indexes[] = $index;
         }
 
-        if (! is_numeric($value)) {
+        $pick = static function (mixed $values) use ($indexes): ?array {
+            if (! is_array($values)) {
+                return null;
+            }
+
+            $picked = [];
+
+            foreach ($indexes as $index) {
+                if (! array_key_exists($index, $values) || ! is_numeric($values[$index])) {
+                    return null;
+                }
+
+                $picked[] = $values[$index];
+            }
+
+            return $picked;
+        };
+
+        $rows = [];
+
+        foreach (is_array($row['filas'] ?? null) ? $row['filas'] : [] as $fila) {
+            $tarifas = is_array($fila) ? $pick($fila['tarifas'] ?? null) : null;
+
+            if ($tarifas === null) {
+                return null;
+            }
+
+            $rows[] = [
+                'rango' => (string) ($fila['rango'] ?? ''),
+                'poblacion' => (int) ($fila['poblacion'] ?? 1),
+                'tarifas' => $tarifas,
+            ];
+        }
+
+        $annual = $pick($row['grupal_anual'] ?? null);
+        $semiannual = $pick($row['grupal_semestral'] ?? null);
+        $quarterly = $pick($row['grupal_trimestral'] ?? null);
+
+        if ($rows === [] || $annual === null || $semiannual === null || $quarterly === null) {
             return null;
         }
 
+        return [
+            'plan' => (string) $row['plan'],
+            'coberturas_usd' => $amounts,
+            'coberturas' => array_map(static fn (int $index): string => (string) $labels[$index], $indexes),
+            'filas' => $rows,
+            'grupal_anual' => $annual,
+            'grupal_semestral' => $semiannual,
+            'grupal_trimestral' => $quarterly,
+        ];
+    }
+
+    /**
+     * Total anual de la cobertura más baja y de la más alta elegidas (iguales si es una sola).
+     *
+     * @param  array<string, mixed>  $row
+     * @param  list<int>  $amounts
+     * @return array{from: string, to: string}|null
+     */
+    private function total(array $row, array $amounts): ?array
+    {
+        if ($amounts === []) {
+            $value = $row['total_anual'] ?? null;
+
+            return is_numeric($value) ? ['from' => $this->money($value), 'to' => $this->money($value)] : null;
+        }
+
+        $coverages = array_map(intval(...), is_array($row['coberturas_usd'] ?? null) ? $row['coberturas_usd'] : []);
+        $totals = is_array($row['grupal_anual'] ?? null) ? $row['grupal_anual'] : [];
+        $values = [];
+
+        foreach ($amounts as $amount) {
+            $index = array_search($amount, $coverages, true);
+
+            if ($index === false || ! isset($totals[$index]) || ! is_numeric($totals[$index])) {
+                return null;
+            }
+
+            $values[] = (float) $totals[$index];
+        }
+
+        return ['from' => $this->money(min($values)), 'to' => $this->money(max($values))];
+    }
+
+    private function money(mixed $value): string
+    {
         return number_format((float) $value, 0, ',', '.');
     }
 
@@ -230,21 +350,34 @@ final class CrmInboxQuote
         return $ages;
     }
 
-    private function coverage(string $plan, string $coverage): int|false|null
+    /**
+     * Valida las coberturas contra las del plan y las devuelve sin repetir, en el orden del plan.
+     * Lista vacía: el plan no tiene montos. `false`: falta elegir o llegó un monto ajeno al plan.
+     *
+     * @param  list<int|string>  $coverages
+     * @return list<int>|false
+     */
+    private function coverages(string $plan, array $coverages): array|false
     {
         if (! isset(self::COVERAGES[$plan])) {
-            return null;
+            return [];
         }
 
-        $coverage = trim($coverage);
+        $chosen = [];
 
-        if ($coverage === '' || ! ctype_digit($coverage)) {
-            return false;
+        foreach ($coverages as $coverage) {
+            $coverage = trim((string) $coverage);
+
+            if ($coverage === '' || ! ctype_digit($coverage) || ! in_array((int) $coverage, self::COVERAGES[$plan], true)) {
+                return false;
+            }
+
+            $chosen[(int) $coverage] = true;
         }
 
-        $amount = (int) $coverage;
+        $ordered = array_values(array_filter(self::COVERAGES[$plan], static fn (int $amount): bool => isset($chosen[$amount])));
 
-        return in_array($amount, self::COVERAGES[$plan], true) ? $amount : false;
+        return $ordered === [] ? false : $ordered;
     }
 
     private function unavailableDetail(QuoteServiceUnavailableException $exception): string

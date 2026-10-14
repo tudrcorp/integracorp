@@ -651,7 +651,19 @@
         .crm-quote-top .crm-hint { flex: 1 1 auto; }
         .crm-icon-btn.is-sm { width: 26px; height: 26px; }
         .crm-icon-btn.is-sm svg { width: 13px; height: 13px; }
-        .crm-quote-grid { grid-template-columns: minmax(8rem, 1.5fr) minmax(5rem, .9fr) minmax(6rem, .9fr) minmax(7rem, 1fr) auto; align-items: end; }
+        .crm-quote-grid { grid-template-columns: minmax(8rem, 1.5fr) minmax(5rem, .9fr) minmax(6rem, .9fr) auto; align-items: end; }
+        .crm-cov { grid-column: 1 / -1; margin: 0; padding: 0; border: 0; min-width: 0; }
+        .crm-cov legend { padding: 0; margin-bottom: 4px; font-size: 11px; color: var(--crm-faint); }
+        .crm-cov-list { display: flex; flex-wrap: wrap; gap: 6px; }
+        .crm-quote-form .crm-cov-chip { position: relative; flex-direction: row; display: inline-flex; cursor: pointer; }
+        .crm-quote-form .crm-cov-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+        .crm-cov-chip span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--crm-line-strong); background: var(--crm-panel); color: var(--crm-text); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; transition: background .12s, border-color .12s, color .12s; }
+        .crm-cov-chip:hover span { border-color: var(--crm-accent); }
+        .crm-cov-chip input:checked + span { background: var(--crm-action); border-color: var(--crm-action); color: var(--crm-action-text); }
+        .crm-cov-chip input:checked + span::before { content: '✓'; font-size: 11px; }
+        .crm-cov-chip input:focus-visible + span { outline: 2px solid var(--crm-accent); outline-offset: 2px; }
+        .crm-cov-all { border: 1px dashed var(--crm-line-strong); background: none; color: var(--crm-accent); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+        .crm-cov-all:hover { background: var(--crm-soft); }
         .crm-compose { position: relative; flex-direction: column; align-items: stretch; gap: 2px; padding: 4px 6px 6px; }
         .crm-compose textarea { padding: 8px 6px 4px; }
         .crm-compose-bar { display: flex; align-items: center; gap: 2px; }
@@ -1473,7 +1485,10 @@
                                         <dl class="crm-qcard-body">
                                             @if (($quoteMeta['plan'] ?? '') !== '')
                                                 <dt>Plan</dt>
-                                                <dd>{{ $quoteMeta['plan'] }}@if ($quoteMeta['coverage'] ?? null) · {{ $currency }} {{ number_format((int) $quoteMeta['coverage'], 0, ',', '.') }}@endif</dd>
+                                                @php
+                                                    $cardCoverages = array_values(array_filter((array) ($quoteMeta['coverages'] ?? [$quoteMeta['coverage'] ?? null]), 'is_numeric'));
+                                                @endphp
+                                                <dd>{{ $quoteMeta['plan'] }}@if ($cardCoverages !== []) · {{ $currency }} {{ implode(' · ', array_map(fn ($amount) => number_format((int) $amount, 0, ',', '.'), $cardCoverages)) }}@endif</dd>
                                             @endif
                                             @if (($quoteMeta['people'] ?? 0) > 0)
                                                 <dt>Personas</dt>
@@ -1743,20 +1758,27 @@
                                                 @endforeach
                                             </select>
                                         </label>
-                                        @if (isset(\App\Support\CrmInbox\CrmInboxQuote::COVERAGES[$quotePlan]))
-                                            <label>Cobertura
-                                                <select wire:model="quoteCoverage">
-                                                    <option value="">Elige el monto</option>
-                                                    @foreach (\App\Support\CrmInbox\CrmInboxQuote::COVERAGES[$quotePlan] as $amount)
-                                                        <option value="{{ $amount }}">USD {{ number_format($amount, 0, ',', '.') }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </label>
-                                        @endif
                                         <button type="button" class="crm-btn is-primary" wire:click="previewQuote" wire:loading.attr="disabled" wire:target="previewQuote,sendQuote">
                                             <span wire:loading.remove wire:target="previewQuote">Calcular</span>
                                             <span wire:loading wire:target="previewQuote">Calculando…</span>
                                         </button>
+                                        @if (isset(\App\Support\CrmInbox\CrmInboxQuote::COVERAGES[$quotePlan]))
+                                            @php
+                                                $planCoverages = array_map('strval', \App\Support\CrmInbox\CrmInboxQuote::COVERAGES[$quotePlan]);
+                                            @endphp
+                                            <fieldset class="crm-cov" wire:key="quote-coverages-{{ $quotePlan }}" x-data="{ all: @js($planCoverages) }">
+                                                <legend>Coberturas <span x-text="$wire.quoteCoverages.length === 0 ? '· elige una o varias' : '· ' + $wire.quoteCoverages.length + ' de ' + all.length"></span></legend>
+                                                <div class="crm-cov-list">
+                                                    @foreach ($planCoverages as $amount)
+                                                        <label class="crm-cov-chip" wire:key="quote-coverage-{{ $quotePlan }}-{{ $amount }}">
+                                                            <input type="checkbox" wire:model="quoteCoverages" value="{{ $amount }}">
+                                                            <span>{{ $currency }} {{ number_format((int) $amount, 0, ',', '.') }}</span>
+                                                        </label>
+                                                    @endforeach
+                                                    <button type="button" class="crm-cov-all" x-on:click="$wire.quoteCoverages = $wire.quoteCoverages.length === all.length ? [] : [...all]" x-text="$wire.quoteCoverages.length === all.length ? 'Ninguna' : 'Todas'">Todas</button>
+                                                </div>
+                                            </fieldset>
+                                        @endif
                                     </div>
                                     @if ($quoteDraft)
                                         <div class="crm-quote-result">

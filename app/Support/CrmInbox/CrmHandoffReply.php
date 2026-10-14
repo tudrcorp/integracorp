@@ -507,7 +507,7 @@ final class CrmHandoffReply
      * Solo lo que la tarjeta del hilo necesita, con tipos y largos acotados.
      *
      * @param  array<string, mixed>  $meta
-     * @return array{control: string, total: string, plan: string, people: int, ages: string, coverage: ?int}|null
+     * @return array{control: string, total: string, plan: string, people: int, ages: string, coverage: ?int, coverages: list<int>}|null
      */
     private static function quoteMeta(array $meta): ?array
     {
@@ -515,7 +515,13 @@ final class CrmHandoffReply
             return null;
         }
 
-        $coverage = $meta['coverage'] ?? null;
+        $coverages = array_values(array_unique(array_map(
+            intval(...),
+            array_filter(
+                is_array($meta['coverages'] ?? null) ? array_slice($meta['coverages'], 0, 10) : [$meta['coverage'] ?? null],
+                static fn (mixed $amount): bool => is_numeric($amount) && (int) $amount > 0,
+            ),
+        )));
 
         return [
             'control' => mb_substr(trim((string) ($meta['control'] ?? '')), 0, 20),
@@ -523,7 +529,8 @@ final class CrmHandoffReply
             'plan' => mb_substr(trim((string) ($meta['plan'] ?? '')), 0, 20),
             'people' => max(0, min(99, (int) ($meta['people'] ?? 0))),
             'ages' => mb_substr(trim((string) ($meta['ages'] ?? '')), 0, 60),
-            'coverage' => is_numeric($coverage) && (int) $coverage > 0 ? (int) $coverage : null,
+            'coverage' => count($coverages) === 1 ? $coverages[0] : null,
+            'coverages' => $coverages,
         ];
     }
 }

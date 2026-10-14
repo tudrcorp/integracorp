@@ -282,7 +282,7 @@ it('la página muestra carriles y copiloto, y la sugerencia llena el cotizador s
         ->assertSet('quoteHolder', 'Gustavo Camacho')
         ->assertSet('quoteAges', '34, 31')
         ->assertSet('quotePlan', 'ideal')
-        ->assertSet('quoteCoverage', '10000');
+        ->assertSet('quoteCoverages', ['10000']);
 
     $feedback = CrmHandoffEnvelope::query()->where('handoff_id', '700006')->firstOrFail()->copilot_feedback;
 
@@ -364,7 +364,7 @@ it('el botón Cotizar abre el formulario lleno con lo que ya se sabe y no pisa l
         ->assertSet('quoteOpen', true)
         ->assertSet('quoteAges', '34, 31')
         ->assertSet('quotePlan', 'ideal')
-        ->assertSet('quoteCoverage', '10000')
+        ->assertSet('quoteCoverages', ['10000'])
         ->set('quoteAges', '40')
         ->set('quoteOpen', false)
         ->call('openQuote')
