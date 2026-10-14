@@ -111,6 +111,32 @@ it('calcula la ventana por aniversario de vigencia', function (): void {
     CarbonImmutable::setTestNow();
 });
 
+it('calcula la ventana por trimestre de vigencia', function (string $effect, string $now, string $start, string $end): void {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse($now));
+
+    $window = ClinicalEntitlementWindow::forEffectDate(CarbonImmutable::parse($effect), ClinicalQuotaScope::PerQuarter);
+
+    expect($window['starts_at']->toDateString())->toBe($start)
+        ->and($window['ends_at']->toDateString())->toBe($end);
+
+    CarbonImmutable::setTestNow();
+})->with([
+    'primer trimestre' => ['2026-03-15', '2026-04-20', '2026-03-15', '2026-06-15'],
+    'a mitad del segundo año' => ['2025-03-15', '2026-08-01', '2026-06-15', '2026-09-15'],
+    'el día exacto del corte abre el trimestre nuevo' => ['2026-03-15', '2026-06-15', '2026-06-15', '2026-09-15'],
+    'un día antes del corte sigue en el anterior' => ['2026-03-15', '2026-06-14 23:59:59', '2026-03-15', '2026-06-15'],
+    'el mismo día de efecto' => ['2026-03-15', '2026-03-15', '2026-03-15', '2026-06-15'],
+    'efecto futuro arranca en la fecha de efecto' => ['2026-12-01', '2026-10-14', '2026-12-01', '2027-03-01'],
+    'efecto día 31 no se corre de mes' => ['2026-01-31', '2026-08-05', '2026-07-31', '2026-10-31'],
+    'efecto día 31 en el trimestre corto' => ['2026-01-31', '2026-05-10', '2026-04-30', '2026-07-31'],
+]);
+
+it('ofrece el trimestre de vigencia como forma de contar el cupo', function (): void {
+    expect(ClinicalQuotaScope::options())->toHaveKey('PER_QUARTER', 'Por trimestre de vigencia')
+        ->and(ClinicalQuotaScope::PerQuarter->requiresQuota())->toBeTrue()
+        ->and(ClinicalQuotaScope::fromStored('PER_QUARTER'))->toBe(ClinicalQuotaScope::PerQuarter);
+});
+
 it('parsea la vigencia en d/m/Y de afiliaciones corporativas', function (): void {
     expect(ClinicalEntitlementWindow::parseToStartOfDay('20/07/2026')?->toDateString())->toBe('2026-07-20')
         ->and(ClinicalEntitlementWindow::parseToStartOfDay('2026-07-20')?->toDateString())->toBe('2026-07-20')

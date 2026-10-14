@@ -290,7 +290,7 @@ final class OperationCoordinationServicesTableFilters
         ));
     }
 
-    private static function userCanFilterBySupplier(): bool
+    public static function userCanFilterBySupplier(): bool
     {
         $departments = Auth::user()?->departament;
 

@@ -187,7 +187,21 @@ class OperationCoordinationServicesTable
         return mb_strtoupper(trim((string) $record->managed_by)) === 'TDG';
     }
 
-    private static function managedByBadgeColor(?string $state): string
+    public static function statusBadgeColor(mixed $state): string
+    {
+        return match ($state) {
+            'PENDIENTE' => 'warning',
+            'PENDIENTE POR RESULTADOS' => 'info',
+            'EN GESTION' => 'primary',
+            'CANCELADO' => 'gray',
+            'FINALIZADO' => 'success',
+            'NOVEDAD ADMON ESTUDIO' => 'danger',
+            ReassignAmbulanceCoordinationToTdgDoctor::STATUS_REASSIGNED_TO_TDG => 'danger',
+            default => 'gray',
+        };
+    }
+
+    public static function managedByBadgeColor(?string $state): string
     {
         return match (mb_strtoupper(trim((string) $state))) {
             'ATENMEDI' => 'success',
@@ -1459,18 +1473,7 @@ class OperationCoordinationServicesTable
                 TextColumn::make('status')
                     ->label('Estatus del Servicio')
                     ->badge()
-                    ->color(function (mixed $state): string {
-                        return match ($state) {
-                            'PENDIENTE' => 'warning',
-                            'PENDIENTE POR RESULTADOS' => 'info',
-                            'EN GESTION' => 'primary',
-                            'CANCELADO' => 'gray',
-                            'FINALIZADO' => 'success',
-                            'NOVEDAD ADMON ESTUDIO' => 'danger',
-                            ReassignAmbulanceCoordinationToTdgDoctor::STATUS_REASSIGNED_TO_TDG => 'danger',
-                            default => 'gray',
-                        };
-                    })
+                    ->color(fn (mixed $state): string => self::statusBadgeColor($state))
                     ->searchable(),
                 TextColumn::make('courtesy_badge')
                     ->label('Cortesía')
