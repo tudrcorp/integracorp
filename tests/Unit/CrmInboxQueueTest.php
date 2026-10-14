@@ -839,6 +839,22 @@ it('la cabecera de la cola no se desborda del panel angosto', function (): void 
         ->and($blade)->toContain('.crm-q-title { display: flex; flex-wrap: wrap;');
 });
 
+it('el estado Alpine de la bandeja no cambia en cada repintado y el modal de cierre usa uno solo', function (): void {
+    $blade = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/crm/pages/atencion-whatsapp.blade.php');
+
+    preg_match('/class="crm-inbox".*?x-data="(\{.*?\n        \})"/s', $blade, $root);
+
+    expect($root)->toHaveKey(1)
+        ->and($root[1])->not->toContain('{{')
+        ->and($root[1])->not->toContain('@js(')
+        ->and($root[1])->toContain('const server = this.$el.dataset;')
+        ->and($blade)->toContain('data-server-now="{{ $serverNow }}"')
+        ->and($blade)->toContain('data-sla-warn="{{ $slaWarnSeconds }}"')
+        ->and($blade)->toContain('data-sla-late="{{ $slaLateSeconds }}"')
+        ->and($blade)->toContain('<div class="crm-outcome" x-show="confirm.outcome">')
+        ->and($blade)->not->toContain('<template x-if="confirm.outcome">');
+});
+
 function crmInboxEnvelope(string $handoffId, ?string $area, string $acceptedAt, string $name, string $lastLine): void
 {
     CrmHandoffEnvelope::factory()->create([

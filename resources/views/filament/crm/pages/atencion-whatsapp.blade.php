@@ -814,15 +814,20 @@
     <div
         class="crm-inbox"
         data-case="{{ $case['handoff_id'] ?? '' }}"
+        {{-- Los valores del servidor viajan en data-*: si cambiaran dentro de x-data, cada repintado crearía un estado Alpine nuevo y lo ya montado (el modal) quedaría con el viejo. --}}
+        data-server-now="{{ $serverNow }}"
+        data-sla-warn="{{ $slaWarnSeconds }}"
+        data-sla-late="{{ $slaLateSeconds }}"
+        data-viewer="{{ $viewer ?? '' }}"
         x-data="{
             q: '',
             filter: 'all',
             sideOpen: true,
             now: Date.now(),
-            skew: {{ $serverNow }} * 1000 - Date.now(),
-            warn: {{ $slaWarnSeconds }},
-            late: {{ $slaLateSeconds }},
-            me: @js($viewer),
+            skew: 0,
+            warn: 0,
+            late: 0,
+            me: null,
             taking: false,
             confirm: { open: false, title: '', body: '', label: '', danger: true, run: null, outcome: false, picked: '', note: '' },
             timer: null,
@@ -830,6 +835,11 @@
             alerted: {},
             seen: {},
             init() {
+                const server = this.$el.dataset;
+                this.skew = Number(server.serverNow) * 1000 - Date.now();
+                this.warn = Number(server.slaWarn);
+                this.late = Number(server.slaLate);
+                this.me = server.viewer === '' ? null : Number(server.viewer);
                 try {
                     this.filter = localStorage.getItem('crm-inbox-filter') || 'all';
                     this.sideOpen = localStorage.getItem('crm-inbox-side') !== 'closed';
@@ -2350,17 +2360,15 @@
                 </div>
                 <h3 id="crm-confirm-title" x-text="confirm.title"></h3>
                 <p id="crm-confirm-body" x-text="confirm.body"></p>
-                <template x-if="confirm.outcome">
-                    <div class="crm-outcome">
-                        <b>¿Cómo terminó?</b>
-                        <div class="crm-outcome-list" role="radiogroup" aria-label="Cómo terminó el caso">
-                            @foreach ($outcomes as $value => $label)
-                                <button type="button" role="radio" x-bind:aria-pressed="confirm.picked === @js($value)" x-bind:aria-checked="confirm.picked === @js($value)" x-on:click="confirm.picked = @js($value)">{{ $label }}</button>
-                            @endforeach
-                        </div>
-                        <input type="text" maxlength="255" x-model="confirm.note" x-bind:placeholder="confirm.picked === 'otro' ? 'Cuenta en una línea qué pasó (obligatorio)' : 'Nota (opcional)'" aria-label="Nota del cierre" x-on:keydown.enter.prevent="accept()">
+                <div class="crm-outcome" x-show="confirm.outcome">
+                    <b>¿Cómo terminó?</b>
+                    <div class="crm-outcome-list" role="radiogroup" aria-label="Cómo terminó el caso">
+                        @foreach ($outcomes as $value => $label)
+                            <button type="button" role="radio" x-bind:aria-pressed="confirm.picked === @js($value)" x-bind:aria-checked="confirm.picked === @js($value)" x-on:click="confirm.picked = @js($value)">{{ $label }}</button>
+                        @endforeach
                     </div>
-                </template>
+                    <input type="text" maxlength="255" x-model="confirm.note" x-bind:placeholder="confirm.picked === 'otro' ? 'Cuenta en una línea qué pasó (obligatorio)' : 'Nota (opcional)'" aria-label="Nota del cierre" x-on:keydown.enter.prevent="accept()">
+                </div>
                 <div class="crm-dialog-actions">
                     <button type="button" class="crm-btn" x-on:click="confirm.open = false">Cancelar</button>
                     <button type="button" class="crm-btn" x-bind:class="confirm.danger ? 'is-danger' : 'is-primary'" x-bind:disabled="!canAccept()" x-on:click="accept()" x-text="confirm.label"></button>
