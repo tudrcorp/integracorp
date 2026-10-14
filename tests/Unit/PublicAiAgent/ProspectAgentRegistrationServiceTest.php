@@ -13,6 +13,9 @@ use Illuminate\Validation\ValidationException;
 uses(Tests\TestCase::class);
 
 beforeEach(function (): void {
+    // Recrea tablas: sin sqlite en memoria borraría las de la base real.
+    ensureSqliteInMemoryDatabaseOrSkip();
+
     Schema::dropIfExists('prospect_agent_observations');
     Schema::dropIfExists('prospect_agents');
     Schema::dropIfExists('cities');

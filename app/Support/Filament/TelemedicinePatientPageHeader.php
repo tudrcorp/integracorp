@@ -37,12 +37,13 @@ final class TelemedicinePatientPageHeader
             ];
         }
 
-        $age = filled($patient->age) ? ((int) $patient->age).' años' : null;
+        $age = \App\Support\PatientAge::labelOrNull($patient->birth_date, $patient->age);
 
         return self::render(
             heading: match ($context) {
                 'edit' => 'Editar paciente',
                 'retail' => 'Registrar servicios RETAIL',
+                'services' => 'Servicios del paciente',
                 default => 'Ficha del paciente',
             },
             name: $name,

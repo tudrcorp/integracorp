@@ -119,7 +119,7 @@ it('el header de la ficha muestra estatus y razon de anulacion', function (): vo
         ->toContain('CompanyAssociatePageHeader::make');
 
     expect($operationsView)
-        ->toContain('CompanyAssociatePageHeader::make');
+        ->toContain('OperationsAffiliateHeader::forCompanyAssociate($associate)');
 
     expect($infolist)
         ->toContain('annulmentSection')

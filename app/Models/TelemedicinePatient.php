@@ -138,6 +138,18 @@ class TelemedicinePatient extends Model
         return $this->hasMany(TelemedicineCase::class);
     }
 
+    /**
+     * Coordinaciones de servicio del paciente: las de casos de telemedicina,
+     * RETAIL y registro directo. Las de casos eliminados las oculta el scope
+     * global de {@see OperationCoordinationService}.
+     *
+     * @return HasMany<OperationCoordinationService, $this>
+     */
+    public function operationCoordinationServices(): HasMany
+    {
+        return $this->hasMany(OperationCoordinationService::class);
+    }
+
     public function telemedicinePatientHistory()
     {
         return $this->hasOne(TelemedicineHistoryPatient::class);

@@ -6,6 +6,7 @@ namespace App\Filament\Business\Resources\CompanyAssociates\Schemas;
 
 use App\Enums\CompanyAssociateStatus;
 use App\Models\CompanyAssociate;
+use App\Support\Filament\PatientAgeDisplay;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Grid;
@@ -104,7 +105,7 @@ class CompanyAssociateInfolist
                             ->formatStateUsing(fn ($state): string => CompanyAssociateStatus::labelFromMixed($state))
                             ->color(fn ($state): string => CompanyAssociateStatus::filamentColorFromMixed($state)),
                         TextEntry::make('birth_date')->label('Fecha de nacimiento')->date('d/m/Y'),
-                        TextEntry::make('age')->label('Edad')->suffix(' años')->badge()->color('info'),
+                        TextEntry::make('age')->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))->label('Edad')->badge()->color('info'),
                         TextEntry::make('sex')->label('Sexo')->badge()->color('gray'),
                         TextEntry::make('email')->label('Correo')->icon(Heroicon::OutlinedEnvelope)->copyable()->placeholder('—'),
                         TextEntry::make('phone')->label('Teléfono')->icon(Heroicon::OutlinedPhone)->copyable()->placeholder('—'),

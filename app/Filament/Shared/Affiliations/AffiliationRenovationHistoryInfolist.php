@@ -92,7 +92,7 @@ final class AffiliationRenovationHistoryInfolist
                                             ->icon(Heroicon::OutlinedUser)
                                             ->weight('medium')
                                             ->helperText(fn ($record): ?string => $record->age !== null
-                                                ? $record->age.' años a la renovación'
+                                                ? \App\Support\PatientAge::label(null, $record->age).' a la renovación'
                                                 : null),
                                         TextEntry::make('subtotal_anual')
                                             ->label('Tarifa anual')

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Schemas;
 
+use App\Support\Filament\PatientAgeDisplay;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
@@ -23,7 +24,8 @@ class OperationCoordinationServiceForm
                 TextInput::make('birth_date_patient'),
                 TextInput::make('relationship_patient')
                     ->required(),
-                TextInput::make('age_patient'),
+                TextInput::make('age_patient')
+                    ->hint(PatientAgeDisplay::inputHint('birth_date_patient')),
                 TextInput::make('contractor')
                     ->required(),
                 TextInput::make('state_id'),

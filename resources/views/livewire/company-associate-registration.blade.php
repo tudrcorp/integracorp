@@ -201,8 +201,7 @@
                             </label>
                             <div
                                 class="flex min-h-[50px] items-center rounded-2xl border border-[color:var(--field-border)] bg-white/30 px-4 py-3 dark:bg-white/5">
-                                <span class="text-lg font-semibold text-[color:var(--text-primary)]">{{ $age ?? '—' }}</span>
-                                <span class="ml-2 text-xs uppercase tracking-wide text-[color:var(--text-muted)]">años</span>
+                                <span class="text-lg font-semibold text-[color:var(--text-primary)]">{{ \App\Support\PatientAge::label($birthDate, $age) }}</span>
                             </div>
                         </div>
 

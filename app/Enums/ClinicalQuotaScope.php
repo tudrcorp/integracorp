@@ -15,6 +15,7 @@ enum ClinicalQuotaScope: string
     use ResolvesFromMixedState;
 
     case PerAffiliationYear = 'PER_AFFILIATION_YEAR';
+    case PerQuarter = 'PER_QUARTER';
     case PerContract = 'PER_CONTRACT';
     case DistinctCases = 'DISTINCT_CASES';
     case Unlimited = 'UNLIMITED';
@@ -23,6 +24,7 @@ enum ClinicalQuotaScope: string
     {
         return match ($this) {
             self::PerAffiliationYear => 'Por año de vigencia',
+            self::PerQuarter => 'Por trimestre de vigencia',
             self::PerContract => 'Por contrato',
             self::DistinctCases => 'En casos diferentes',
             self::Unlimited => 'Ilimitado',
@@ -33,6 +35,7 @@ enum ClinicalQuotaScope: string
     {
         return match ($this) {
             self::PerAffiliationYear => 'Se reinicia cada año de vigencia de la afiliación (desde la fecha de efecto).',
+            self::PerQuarter => 'Se reinicia cada 3 meses de vigencia de la afiliación (desde la fecha de efecto).',
             self::PerContract => 'Cuenta todos los usos mientras el contrato esté vigente, sin recorte anual.',
             self::DistinctCases => 'Cuenta casos distintos del afiliado, no cada consulta del mismo caso.',
             self::Unlimited => 'No hay tope de usos. El médico puede asignarlo siempre que el plan lo incluya.',
@@ -43,6 +46,7 @@ enum ClinicalQuotaScope: string
     {
         return match ($this) {
             self::PerAffiliationYear => 'Ejemplo: 4 telemedicinas en el año de vigencia.',
+            self::PerQuarter => 'Ejemplo: 1 consulta por trimestre. Si la vigencia empieza el 15/03, los trimestres son 15/03–15/06, 15/06–15/09, etc.',
             self::PerContract => 'Ejemplo: 3 usos en total durante el contrato.',
             self::DistinctCases => 'Ejemplo: 2 estudios de imagen en casos diferentes.',
             self::Unlimited => 'Sin conteo. Sigue haciendo falta mapear el servicio.',
@@ -58,6 +62,7 @@ enum ClinicalQuotaScope: string
     {
         return match ($this) {
             self::PerAffiliationYear => 'info',
+            self::PerQuarter => 'primary',
             self::PerContract => 'warning',
             self::DistinctCases => 'success',
             self::Unlimited => 'gray',

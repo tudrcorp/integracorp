@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Shared\CommercialTelemedicine\Schemas;
 
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
@@ -88,8 +89,8 @@ final class CommercialTelemedicineCaseInfolist
                                     ->color('success')
                                     ->placeholder('—'),
                                 TextEntry::make('patient_age')
+                                    ->formatStateUsing(PatientAgeDisplay::formatter('telemedicinePatient.birth_date'))
                                     ->label('Edad')
-                                    ->suffix(' años')
                                     ->placeholder('—'),
                                 TextEntry::make('patient_sex')
                                     ->label('Sexo')

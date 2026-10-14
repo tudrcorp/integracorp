@@ -22,6 +22,7 @@ use App\Support\Telemedicine\TelemedicineAmdBitacoraCatalog;
 use App\Support\Telemedicine\TelemedicineAmdPhysicalExamTemplate;
 use App\Support\Telemedicine\TelemedicineCaseDocumentsCatalog;
 use App\Support\Telemedicine\TelemedicineCaseFilamentListQuery;
+use App\Support\Telemedicine\TelemedicinePatientDeliveryEmail;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -157,11 +158,11 @@ final class TelemedicineCaseBitacora
             'patient' => [
                 'Nombre' => self::patientName($case),
                 'Cédula' => self::patientDocument($case),
-                'Edad' => self::text($case->patient_age ?? $patient?->age),
+                'Edad' => \App\Support\PatientAge::label($patient?->birth_date, $case->patient_age ?? $patient?->age),
                 'Sexo' => self::text($case->patient_sex ?? $patient?->sex),
                 'Teléfono' => self::text($case->patient_phone ?: $patient?->phone),
                 'Teléfono 2' => self::text($case->patient_phone_2 ?: $patient?->phone_contact),
-                'Correo' => self::text($patient?->email ?: $patient?->email_contact),
+                'Correo' => self::text(TelemedicinePatientDeliveryEmail::for($patient)),
                 'Dirección' => self::text($case->patient_address ?: $patient?->address),
                 'Ubicación' => self::location($case),
                 'Plan' => self::text($patient?->plan?->description),
@@ -169,7 +170,7 @@ final class TelemedicineCaseBitacora
             ],
             'contacts' => [
                 'phone' => trim((string) ($case->patient_phone ?: $patient?->phone ?: $patient?->phone_contact ?: '')),
-                'email' => trim((string) ($patient?->email ?: $patient?->email_contact ?: '')),
+                'email' => (string) TelemedicinePatientDeliveryEmail::for($patient),
                 'patient_name' => self::patientName($case),
             ],
             'clinical_summary' => self::clinicalSummary($case->consultations, (int) $case->id),

@@ -38,7 +38,7 @@ final class CompanyAssociateIlsCoverageNotificationMessage
             '*Asociado*',
             '• Nombre: '.self::value($associate->full_name),
             '• Cédula: '.self::value($associate->identity_card),
-            '• Edad: '.($associate->age !== null ? $associate->age.' años' : '—'),
+            '• Edad: '.\App\Support\PatientAge::label($associate->birth_date, $associate->age),
             '• Sexo: '.self::value($associate->sex),
             '• Fecha nacimiento: '.($associate->birth_date?->format('d/m/Y') ?? '—'),
             '• Correo: '.self::value($associate->email),

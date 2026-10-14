@@ -32,7 +32,7 @@ class ViewTelemedicineHistoryPatient extends Component implements HasSchemas
                 Section::make()
                     ->collapsible()
                     ->heading('HISTORIA CLINICA')
-                    ->description(fn (TelemedicineHistoryPatient $record) => 'PACIENTE: '.$record->telemedicinePatient->full_name.' | '.'EDAD: '.$record->telemedicinePatient->age.' años | '.'SEXO: '.$record->telemedicinePatient->sex)
+                    ->description(fn (TelemedicineHistoryPatient $record) => 'PACIENTE: '.$record->telemedicinePatient->full_name.' | '.'EDAD: '.\App\Support\PatientAge::label($record->telemedicinePatient->birth_date, $record->telemedicinePatient->age).' | '.'SEXO: '.$record->telemedicinePatient->sex)
                     ->columnSpanFull()
                     ->icon(Heroicon::Bars3BottomLeft)
                     ->schema([

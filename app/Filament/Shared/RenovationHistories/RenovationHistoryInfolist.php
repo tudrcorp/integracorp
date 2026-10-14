@@ -6,6 +6,7 @@ namespace App\Filament\Shared\RenovationHistories;
 
 use App\Models\AffiliationRenovationHistory;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\Filament\PatientAgeDisplay;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
@@ -176,8 +177,8 @@ class RenovationHistoryInfolist
                                                     ->date('d/m/Y')
                                                     ->placeholder('—'),
                                                 TextEntry::make('age')
+                                                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                                                     ->label('Edad a renovación')
-                                                    ->suffix(' años')
                                                     ->placeholder('—'),
                                                 TextEntry::make('ageRange.range')
                                                     ->label('Rango de edad titular')

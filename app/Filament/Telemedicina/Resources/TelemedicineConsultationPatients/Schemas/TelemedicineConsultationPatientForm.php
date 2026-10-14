@@ -17,6 +17,7 @@ use App\Models\TelemedicineServiceList;
 use App\Support\ClinicalEntitlements\ClinicalQuotaFormGuard;
 use App\Support\ClinicalEntitlements\TelemedicineConsultationClinicalUi;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Telemedicine\ConsultationFormContext;
 use App\Support\Telemedicine\ProvidesConsultationFormContext;
@@ -437,6 +438,7 @@ class TelemedicineConsultationPatientForm
                                                 ->disabled()
                                                 ->dehydrated(),
                                             TextInput::make('age')
+                                                ->hint(PatientAgeDisplay::inputHint('birth_date'))
                                                 ->label('Edad')
                                                 ->prefix(' Años')
                                                 ->default($patient?->age)

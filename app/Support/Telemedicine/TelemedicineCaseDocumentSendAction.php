@@ -50,6 +50,9 @@ final class TelemedicineCaseDocumentSendAction
                     ->label('Correo electrónico')
                     ->email()
                     ->placeholder('paciente@ejemplo.com')
+                    ->helperText(fn (): ?string => trim((string) ($arguments['default_email'] ?? '')) === ''
+                        ? 'El paciente no tiene correo propio registrado. Escríbalo aquí para enviarle el documento por correo.'
+                        : null)
                     ->maxLength(255),
             ])
             ->action(function (array $arguments, array $data): void {

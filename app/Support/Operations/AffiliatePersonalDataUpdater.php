@@ -370,7 +370,7 @@ final class AffiliatePersonalDataUpdater
             return null;
         }
 
-        return 'La edad ('.$age.' años) quedó fuera del rango tarifario asignado ('
+        return 'La edad ('.\App\Support\PatientAge::label(null, $age).') quedó fuera del rango tarifario asignado ('
             .($range->range ?: $range->age_init.'–'.$range->age_end)
             .'). La tarifa no se recalculó: revisar con Negocios.';
     }

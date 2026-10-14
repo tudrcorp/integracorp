@@ -3,6 +3,7 @@
     $coord = $order->operationCoordinationService;
     $brandCyan = '#00ADEF';
     $patientName = \App\Support\Telemedicine\TelemedicinePatientDisplayName::forCoordination($coord);
+    $caseCode = \App\Support\Operations\OperationServiceOrderCaseReference::caseCodeForCoordination($coord);
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -70,6 +71,7 @@
                 <td class="title">
                     <h1>Cotización asociada</h1>
                     <p>Orden de servicio: <strong>{{ $order->order_number }}</strong></p>
+                    <p>{{ \App\Support\Operations\OperationServiceOrderCaseReference::CASE_LABEL }}: <strong>{{ $caseCode ?? '—' }}</strong></p>
                     <p>Fecha: <strong>{{ now()->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</strong></p>
                 </td>
             </tr>

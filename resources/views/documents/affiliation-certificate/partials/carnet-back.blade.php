@@ -10,7 +10,7 @@
     <tr><td style="height:120px; padding:6px 16px 0 16px;">
         <table style="width:292px;"><tr>
             <td style="width:206px; text-align:left;">
-                @foreach ([['MediChat', '+58 424-213 21 12', 'M'], ['Coordinación', '+58 414-901 03 52', 'C']] as [$label, $phone, $initial])
+                @foreach ([['MediChat', '+58 414-200 92 29', 'M'], ['Coordinación', '+58 424-213 21 12', 'C']] as [$label, $phone, $initial])
                     <table style="margin-bottom:6px;"><tr>
                         <td style="width:20px; vertical-align:middle;"><table><tr><td style="width:20px; height:20px; background:#26B4E8; border-radius:10px; text-align:center; vertical-align:middle; font-family:'DejaVu Sans', sans-serif; font-size:9px; font-weight:bold; color:#0B3D52;">{{ $initial }}</td></tr></table></td><td style="width:8px;"></td>
                         <td style="vertical-align:middle;">

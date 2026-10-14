@@ -79,7 +79,7 @@ final class TelemedicineConsultationReview
         return self::section('Paciente', TelemedicineConsultationWizardSteps::PATIENT, [
             'Paciente' => $state['full_name'] ?? null,
             'Cédula' => $state['nro_identificacion'] ?? null,
-            'Edad' => filled($state['age'] ?? null) ? $state['age'].' años' : null,
+            'Edad' => \App\Support\PatientAge::labelOrNull($state['birth_date'] ?? null, $state['age'] ?? null),
             'Caso' => $state['telemedicine_case_code'] ?? null,
             'Referencia' => $state['code_reference'] ?? null,
             'Teléfono' => $state['phone_ppal'] ?? null,

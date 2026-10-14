@@ -2,12 +2,13 @@
 
 namespace App\Filament\Resources\TelemedicineCases\Schemas;
 
-use Filament\Schemas\Schema;
 use App\Models\TelemedicineCase;
-use Filament\Support\Icons\Heroicon;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Fieldset;
+use App\Support\Filament\PatientAgeDisplay;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 
 class TelemedicineCaseInfolist
 {
@@ -29,20 +30,19 @@ class TelemedicineCaseInfolist
                                 TextEntry::make('patient_name')
                                     ->label('NOMBRE COMPLETO:')
                                     ->badge()
-                                    ->default(fn(TelemedicineCase $record) => strtoupper($record->patient_name))
+                                    ->default(fn (TelemedicineCase $record) => strtoupper($record->patient_name))
                                     ->color('success'),
                                 TextEntry::make('patient_age')
+                                    ->formatStateUsing(PatientAgeDisplay::formatter('telemedicinePatient.birth_date'))
                                     ->label('EDAD:')
-                                    ->suffix(' AÑOS')
                                     ->badge()
-                                    ->default(fn(TelemedicineCase $record) => strtoupper($record->patient_age))
+                                    ->default(fn (TelemedicineCase $record) => strtoupper($record->patient_age))
                                     ->color('success'),
                                 TextEntry::make('patient_sex')
                                     ->label('SEXO:')
                                     ->badge()
-                                    ->default(fn(TelemedicineCase $record) => strtoupper($record->patient_sex))
+                                    ->default(fn (TelemedicineCase $record) => strtoupper($record->patient_sex))
                                     ->color('success'),
-
 
                                 TextEntry::make('created_at')
                                     ->label('FECHA DE REGISTRO:')
@@ -63,7 +63,7 @@ class TelemedicineCaseInfolist
                                     }),
                                 TextEntry::make('updated_at')
                                     ->label('Ultima Actualización')
-                                    ->default(fn(TelemedicineCase $record): string => $record->updated_at->diffForHumans()),
+                                    ->default(fn (TelemedicineCase $record): string => $record->updated_at->diffForHumans()),
 
                             ])->columnSpanFull()->columns(5),
 

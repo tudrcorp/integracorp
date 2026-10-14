@@ -9,6 +9,7 @@ use App\Models\Renovation;
 use App\Services\AcceptAffiliationRenovationsService;
 use App\Services\ManualRenovationAcceptanceOptions;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Filament\Renovations\AcceptRenovationActionForm;
 use App\Support\FilamentDateDisplay;
 use App\Support\Renovations\EarlyRenovationAcceptance;
@@ -236,11 +237,10 @@ class RenovationsTable
                         ->description(fn (Renovation $record): string => 'Titular: US$ '.number_format((float) $record->fee, 2))
                         ->sortable(),
                     TextColumn::make('age')
+                        ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                         ->label('Edad a renovar')
                         ->icon(Heroicon::OutlinedUserCircle)
-                        ->numeric()
                         ->alignCenter()
-                        ->suffix(' años')
                         ->description(fn (Renovation $record): ?string => $record->birth_date
                             ? 'Nac. '.$record->birth_date->format('d/m/Y')
                             : null)

@@ -2,15 +2,13 @@
 
 namespace App\Filament\Resources\TelemedicineConsultationPatients\Schemas;
 
-use Filament\Schemas\Schema;
 use App\Models\TelemedicineCase;
-use Filament\Support\Icons\Heroicon;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Fieldset;
-use Filament\Infolists\Components\TextEntry;
 use App\Models\TelemedicineConsultationPatient;
-use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 
 class TelemedicineConsultationPatientInfolist
 {
@@ -19,7 +17,7 @@ class TelemedicineConsultationPatientInfolist
         return $schema
             ->components([
                 Section::make()
-                    ->description(fn(TelemedicineConsultationPatient $record) => 'PACIENTE: ' . $record->full_name . ' | ' . 'EDAD: ' . $record->telemedicinePatient->age . ' años | ' . 'SEXO: ' . $record->telemedicinePatient->sex)
+                    ->description(fn (TelemedicineConsultationPatient $record) => 'PACIENTE: '.$record->full_name.' | '.'EDAD: '.\App\Support\PatientAge::label($record->telemedicinePatient->birth_date, $record->telemedicinePatient->age).' | '.'SEXO: '.$record->telemedicinePatient->sex)
                     ->columnSpanFull()
                     ->icon(Heroicon::Bars3BottomLeft)
                     ->schema([
@@ -32,7 +30,7 @@ class TelemedicineConsultationPatientInfolist
                                 TextEntry::make('full_name')
                                     ->label('NOMBRE COMPLETO:')
                                     ->badge()
-                                    ->default(fn(TelemedicineConsultationPatient $record) => strtoupper($record->full_name))
+                                    ->default(fn (TelemedicineConsultationPatient $record) => strtoupper($record->full_name))
                                     ->color('success'),
                                 TextEntry::make('nro_identificacion')
                                     ->label('NÚMERO DE IDENTIFICACION:')
@@ -69,27 +67,27 @@ class TelemedicineConsultationPatientInfolist
                                     ->badge()
                                     ->color(function (string $state): string {
                                         return match ($state) {
-                                            'ALTA'          => 'success',
-                                            'MEDIA'         => 'warning',
-                                            'BAJA'          => 'primary',
-                                            'EMERGENCIA'    => 'danger',
+                                            'ALTA' => 'success',
+                                            'MEDIA' => 'warning',
+                                            'BAJA' => 'primary',
+                                            'EMERGENCIA' => 'danger',
                                         };
                                     })
                                     ->icon(function (string $state): string {
                                         return match ($state) {
-                                            'ALTA'             => 'healthicons-f-health',
-                                            'MEDIA'            => 'healthicons-f-health',
-                                            'BAJA'             => 'healthicons-f-health',
-                                            'EMERGENCIA'       => 'heroicon-c-shield-exclamation',
+                                            'ALTA' => 'healthicons-f-health',
+                                            'MEDIA' => 'healthicons-f-health',
+                                            'BAJA' => 'healthicons-f-health',
+                                            'EMERGENCIA' => 'heroicon-c-shield-exclamation',
                                         };
                                     }),
                                 TextEntry::make('updated_at')
                                     ->label('Ultima Actualización')
-                                    ->default(fn(TelemedicineCase $record): string => $record->updated_at->diffForHumans()),
+                                    ->default(fn (TelemedicineCase $record): string => $record->updated_at->diffForHumans()),
 
                             ])->columnSpanFull()->columns(5),
                         Fieldset::make('INFORMACIÓN MEDICA')
-                            ->hidden(fn(TelemedicineConsultationPatient $record) => $record->status == 'EN SEGUIMIENTO' || $record->status == 'ALTA MAEDICA')
+                            ->hidden(fn (TelemedicineConsultationPatient $record) => $record->status == 'EN SEGUIMIENTO' || $record->status == 'ALTA MAEDICA')
                             ->schema([
                                 TextEntry::make('reason_consultation')
                                     ->label('RAZÓN DE CONSULTA:'),
@@ -101,7 +99,7 @@ class TelemedicineConsultationPatientInfolist
                                     ->label('IMPRESIÓN DIAGNOSTICA:'),
                             ])->columnSpanFull()->columns(2),
                         Fieldset::make('CUESTIONARIO DE SEGUIMIENTO')
-                            ->hidden(fn(TelemedicineConsultationPatient $record) => $record->status == 'CONSULTA INICIAL')
+                            ->hidden(fn (TelemedicineConsultationPatient $record) => $record->status == 'CONSULTA INICIAL')
                             ->schema([
                                 TextEntry::make('cuestion_1')
                                     ->label('1.- ¿COMO SE SIENTE EL DIA DE HOY?')

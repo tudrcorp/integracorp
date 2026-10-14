@@ -8,6 +8,7 @@ use App\Filament\Telemedicina\Resources\TelemedicineCases\Actions\ReverseTelemed
 use App\Filament\Telemedicina\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicinePatient;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use BackedEnum;
@@ -70,8 +71,8 @@ class TelemedicineCasesRelationManager extends RelationManager
                     ->searchable()
                     ->extraCellAttributes(['class' => 'py-3 max-w-[14rem]']),
                 TextColumn::make('patient_age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter(null))
                     ->label('Edad')
-                    ->suffix(' años')
                     ->description(fn (TelemedicineCase $record): string => (string) ($record->patient_sex ?? '—'))
                     ->searchable()
                     ->extraCellAttributes(['class' => 'py-3']),

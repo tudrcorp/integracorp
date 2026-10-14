@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\TelemedicinePatients\RelationManager
 
 use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Models\TelemedicineCase;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Telemedicine\TelemedicineMedicalTeam;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use BackedEnum;
@@ -44,6 +45,7 @@ class TelemedicineCasesRelationManager extends RelationManager
                     ->description(fn ($record): string => 'Asignado a: '.TelemedicineMedicalTeam::assigneeLabel($record))
                     ->sortable(),
                 TextColumn::make('patient_age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter(null))
                     ->label('Edad')
                     ->searchable(),
                 TextColumn::make('patient_sex')

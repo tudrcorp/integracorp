@@ -676,6 +676,10 @@ Route::get('business/certificados-afiliacion/{issue}/pdf', \App\Http\Controllers
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-certificate.pdf');
 
+Route::get('certificado/envio/{delivery}/descargar', \App\Http\Controllers\AffiliationCertificateDeliveryDownloadController::class)
+    ->middleware(['signed', 'throttle:30,1'])
+    ->name('affiliation-certificate.delivery.download');
+
 Route::post('administration/white-companies/{whiteCompany}/sales-report/preview', [
     \App\Http\Controllers\WhiteCompanySalesReportController::class,
     'preview',

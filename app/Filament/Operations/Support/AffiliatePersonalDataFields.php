@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Support;
 
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\AffiliatePersonalDataUpdater;
+use App\Support\Plans\PlanInfantEligibility;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
 use Closure;
 use Filament\Forms\Components\DatePicker;
@@ -57,6 +59,7 @@ final class AffiliatePersonalDataFields
     public static function birthDate(): DatePicker
     {
         return DatePicker::make('birth_date')
+            ->rule(PlanInfantEligibility::filamentBirthDateRule())
             ->label('Fecha de nacimiento')
             ->native(false)
             ->displayFormat(AffiliatePersonalDataUpdater::BIRTH_DATE_FORMAT)
@@ -76,6 +79,7 @@ final class AffiliatePersonalDataFields
     public static function age(): TextInput
     {
         return TextInput::make('age')
+            ->hint(PatientAgeDisplay::inputHint('birth_date'))
             ->label('Edad')
             ->suffix('años')
             ->helperText('Se calcula sola a partir de la fecha de nacimiento.')

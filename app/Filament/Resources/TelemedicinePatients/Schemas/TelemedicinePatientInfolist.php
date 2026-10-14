@@ -2,12 +2,13 @@
 
 namespace App\Filament\Resources\TelemedicinePatients\Schemas;
 
-use Filament\Schemas\Schema;
 use App\Models\TelemedicinePatient;
-use Filament\Support\Icons\Heroicon;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Fieldset;
+use App\Support\Filament\PatientAgeDisplay;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 
 class TelemedicinePatientInfolist
 {
@@ -16,7 +17,7 @@ class TelemedicinePatientInfolist
         return $schema
             ->components([
                 Section::make()
-                    ->description(fn(TelemedicinePatient $record) => 'PACIENTE: ' . $record->full_name . ' | ' . 'EDAD: ' . $record->age . ' años | ' . 'SEXO: ' . $record->sex)
+                    ->description(fn (TelemedicinePatient $record) => 'PACIENTE: '.$record->full_name.' | '.'EDAD: '.\App\Support\PatientAge::label($record->birth_date, $record->age).' | '.'SEXO: '.$record->sex)
                     ->columnSpanFull()
                     ->icon(Heroicon::Bars3BottomLeft)
                     ->schema([
@@ -25,7 +26,7 @@ class TelemedicinePatientInfolist
                                 TextEntry::make('full_name')
                                     ->label('Nombre Completo:')
                                     ->badge()
-                                    ->default(fn(TelemedicinePatient $record) => strtoupper($record->full_name))
+                                    ->default(fn (TelemedicinePatient $record) => strtoupper($record->full_name))
                                     ->color('success'),
                                 TextEntry::make('nro_identificacion')
                                     ->label('Número de Identificación:')
@@ -35,8 +36,8 @@ class TelemedicinePatientInfolist
                                 TextEntry::make('birth_date')
                                     ->label('Fecha de Nacimiento:'),
                                 TextEntry::make('age')
-                                    ->label('Edad:')
-                                    ->suffix(' años'),
+                                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
+                                    ->label('Edad:'),
                                 TextEntry::make('sex')
                                     ->label('Sexo:'),
                                 TextEntry::make('phone')
@@ -59,14 +60,14 @@ class TelemedicinePatientInfolist
                                     ->badge()
                                     ->dateTime(),
 
-
                             ])->columnSpanFull()->columns(5),
 
                         Fieldset::make('INFORMACIÓN DE LA AFILIACIÓN')
-                            ->hidden(function(TelemedicinePatient $record) {
-                                if($record->type_affiliation == 'INDIVIDUAL' || $record->type_affiliation == 'CORPORATIVO') {
+                            ->hidden(function (TelemedicinePatient $record) {
+                                if ($record->type_affiliation == 'INDIVIDUAL' || $record->type_affiliation == 'CORPORATIVO') {
                                     return false;
                                 }
+
                                 return true;
                             })
                             ->schema([

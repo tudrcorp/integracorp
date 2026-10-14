@@ -2,43 +2,30 @@
 
 namespace App\Filament\Resources\CorporateQuoteRequests\RelationManagers;
 
+use App\Filament\Actions\ImportAction;
+use App\Filament\Imports\CorporateQuoteRequestDataImporter;
+use App\Filament\Imports\Jobs\ImportCsv;
+use App\Http\Controllers\UtilsController;
+use App\Models\AgeRange;
+use App\Models\CorporateQuoteRequest;
+use App\Models\CorporateQuoteRequestData;
+use App\Models\DetailCorporateQuote;
+use App\Models\Fee;
+use App\Support\Filament\PatientAgeDisplay;
 use BackedEnum;
 use Carbon\Carbon;
-use App\Models\Fee;
-use App\Models\Agent;
-use App\Models\State;
-use App\Models\Agency;
-use App\Models\Region;
-use App\Models\AgeRange;
-use Filament\Tables\Table;
 use Filament\Actions\Action;
-use App\Models\CorporateQuote;
 use Filament\Actions\BulkAction;
-use Filament\Actions\CreateAction;
-use App\Filament\Actions\ImportAction;
-use App\Filament\Imports\Jobs\ImportCsv;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Notifications\Notification;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\DetailCorporateQuote;
-use Illuminate\Support\Facades\Auth;
-use App\Models\CorporateQuoteRequest;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
 use Illuminate\Validation\Rules\File;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
-use App\Http\Controllers\UtilsController;
-use App\Models\CorporateQuoteRequestData;
-use Illuminate\Database\Eloquent\Builder;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
-use Filament\Resources\RelationManagers\RelationManager;
-use App\Filament\Imports\CorporateQuoteRequestDataImporter;
-use App\Filament\Resources\CorporateQuoteRequests\CorporateQuoteRequestResource;
 
 class DetailsDataRelationManager extends RelationManager
 {
@@ -66,8 +53,8 @@ class DetailsDataRelationManager extends RelationManager
                     ->label('Fecha de nacimiento')
                     ->searchable(),
                 TextColumn::make('age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                     ->label('Edad')
-                    ->suffix(' años')
                     ->searchable(),
                 TextColumn::make('email')
                     ->label('Email')
@@ -89,7 +76,7 @@ class DetailsDataRelationManager extends RelationManager
                     ->suffix(' años')
                     ->searchable(),
 
-        ])
+            ])
             ->filters([
                 //
             ])
@@ -104,12 +91,13 @@ class DetailsDataRelationManager extends RelationManager
                     ->action(function (RelationManager $livewire, array $data) {
                         // dd($livewire->ownerRecord->id, $livewire->ownerRecord);
                         $exit_request = DetailCorporateQuote::where('corporate_quote_request_id', $livewire->ownerRecord->id)->count();
-                        if($exit_request <= 0){
+                        if ($exit_request <= 0) {
                             Notification::make()
                                 ->title('No exite cotización asociada a la solicitud')
                                 ->danger()
                                 ->send();
-                                return;
+
+                            return;
                         }
                         $createCorporateQuote = UtilsController::createCorporateQuote($livewire, $data);
 
@@ -139,13 +127,12 @@ class DetailsDataRelationManager extends RelationManager
 
                         try {
                             dd($livewire->ownerRecord->id);
-                            //Poblacion de la solicitud
+                            // Poblacion de la solicitud
                             $data = CorporateQuoteRequestData::where('corporate_quote_request_id', $livewire->ownerRecord->id)->get()->toArray();
-
 
                             /**Calculo las edades */
                             for ($i = 0; $i < count($data); $i++) {
-                                $data[$i]['age'] = Carbon::createFromFormat('d/m/Y', $data[$i]['birth_date'])->age; //Carbon::parse($data[$i]['birth_date'])->age;
+                                $data[$i]['age'] = Carbon::createFromFormat('d/m/Y', $data[$i]['birth_date'])->age; // Carbon::parse($data[$i]['birth_date'])->age;
                                 CorporateQuoteRequestData::where('id', $data[$i]['id'])->update(['age' => $data[$i]['age']]);
                             }
 
@@ -163,7 +150,6 @@ class DetailsDataRelationManager extends RelationManager
                             //     ->send();
                         }
                     }),
-
 
                 /**Importar data de poblacion */
                 ImportAction::make()
@@ -198,13 +184,13 @@ class DetailsDataRelationManager extends RelationManager
                         $details = CorporateQuoteRequest::find($livewire->ownerRecord->id);
                         $details_plan = $details->details->toArray();
 
-                        //Poblacion
+                        // Poblacion
                         $poblacion = CorporateQuoteRequestData::where('corporate_quote_request_id', $livewire->ownerRecord->id)->get()->toArray();
 
                         $array = [];
 
                         for ($i = 0; $i < count($details_plan); $i++) {
-                            //Rabgo de edades segun el plan
+                            // Rabgo de edades segun el plan
                             $rangos = DB::table('age_ranges')->select('id', 'range', 'plan_id', 'age_init', 'age_end')->where('plan_id', $details_plan[$i]['plan_id'])->orderBy('range')->get();
                             foreach ($poblacion as $persona) {
                                 $edad = (int) $persona['age'];
@@ -226,7 +212,7 @@ class DetailsDataRelationManager extends RelationManager
                         $resultado = collect($array)
                             ->groupBy('plan_id')
                             ->flatMap(function ($grupoPorPlan, $planId) {
-                                return $grupoPorPlan->groupBy('age_range_id')->map(fn($subgrupo, $rangoId) => [
+                                return $grupoPorPlan->groupBy('age_range_id')->map(fn ($subgrupo, $rangoId) => [
                                     'plan_id' => $planId,
                                     'age_range_id' => $rangoId,
                                     'total_persons' => $subgrupo->count(),
@@ -242,7 +228,7 @@ class DetailsDataRelationManager extends RelationManager
                          * ----------------------------------------------------------------------------------------------------
                          */
                         for ($i = 1; $i <= count($res_array); $i++) {
-                            //Guardamos el detalle de la cotizacion en la tabla de detalle de cotizacion como segundo paso
+                            // Guardamos el detalle de la cotizacion en la tabla de detalle de cotizacion como segundo paso
                             $plan_ageRange = AgeRange::where('plan_id', $res_array[$i])
                                 ->where('id', $array_details[$i]['age_range_id'])
                                 ->with('fees')
@@ -253,19 +239,19 @@ class DetailsDataRelationManager extends RelationManager
 
                                 $fee = Fee::where('id', $plan_ageRange[0]['fees'][$j]['id'])->first();
 
-                                $detail_individual_quote = new DetailCorporateQuote();
-                                $detail_individual_quote->corporate_quote_id   = $array_form['id'];
-                                $detail_individual_quote->plan_id               = $array_details[$i]['plan_id'];
-                                $detail_individual_quote->age_range_id          = $array_details[$i]['age_range_id'];
-                                $detail_individual_quote->coverage_id           = $fee->coverage_id;
-                                $detail_individual_quote->fee                   = $fee->price;
-                                $detail_individual_quote->total_persons         = $array_details[$i]['total_persons'];
-                                $detail_individual_quote->subtotal_anual        = $array_details[$i]['total_persons'] * $fee->price;
-                                $detail_individual_quote->subtotal_quarterly    = ($array_details[$i]['total_persons'] * $fee->price) / 4;
-                                $detail_individual_quote->subtotal_biannual     = ($array_details[$i]['total_persons'] * $fee->price) / 2;
-                                $detail_individual_quote->subtotal_monthly      = ($array_details[$i]['total_persons'] * $fee->price) / 12;
-                                $detail_individual_quote->status                = 'PRE-APROBADA';
-                                $detail_individual_quote->created_by            = Auth::user()->name;
+                                $detail_individual_quote = new DetailCorporateQuote;
+                                $detail_individual_quote->corporate_quote_id = $array_form['id'];
+                                $detail_individual_quote->plan_id = $array_details[$i]['plan_id'];
+                                $detail_individual_quote->age_range_id = $array_details[$i]['age_range_id'];
+                                $detail_individual_quote->coverage_id = $fee->coverage_id;
+                                $detail_individual_quote->fee = $fee->price;
+                                $detail_individual_quote->total_persons = $array_details[$i]['total_persons'];
+                                $detail_individual_quote->subtotal_anual = $array_details[$i]['total_persons'] * $fee->price;
+                                $detail_individual_quote->subtotal_quarterly = ($array_details[$i]['total_persons'] * $fee->price) / 4;
+                                $detail_individual_quote->subtotal_biannual = ($array_details[$i]['total_persons'] * $fee->price) / 2;
+                                $detail_individual_quote->subtotal_monthly = ($array_details[$i]['total_persons'] * $fee->price) / 12;
+                                $detail_individual_quote->status = 'PRE-APROBADA';
+                                $detail_individual_quote->created_by = Auth::user()->name;
                                 $detail_individual_quote->save();
                             }
                         }

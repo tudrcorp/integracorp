@@ -115,7 +115,7 @@
                                             {{ $associate->full_name }}
                                         </td>
                                         <td class="px-3 py-3 text-slate-600 dark:text-slate-300">{{ $associate->identity_card }}</td>
-                                        <td class="px-3 py-3 text-slate-600 dark:text-slate-300">{{ $associate->age }} años</td>
+                                        <td class="px-3 py-3 text-slate-600 dark:text-slate-300">{{ \App\Support\PatientAge::label($associate->birth_date, $associate->age) }}</td>
                                         <td class="px-3 py-3">
                                             @php
                                                 $sexBadgeClass = match (strtoupper((string) $associate->sex)) {

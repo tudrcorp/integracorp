@@ -2,24 +2,21 @@
 
 namespace App\Filament\Resources\CorporateQuotes\RelationManagers;
 
-use Carbon\Carbon;
-use Filament\Tables\Table;
-use Filament\Actions\Action;
-use Filament\Support\Enums\Width;
-use App\Models\CorporateQuoteData;
-use Filament\Actions\CreateAction;
 use App\Filament\Actions\ImportAction;
-use App\Filament\Imports\Jobs\ImportCsv;
-use Illuminate\Support\Facades\Log;
-use App\Models\AffiliationCorporate;
-use Illuminate\Validation\Rules\File;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Notifications\Notification;
-use App\Http\Controllers\UtilsController;
-use App\Filament\Imports\AffiliateCorporateImporter;
 use App\Filament\Imports\CorporateQuoteDataImporter;
+use App\Filament\Imports\Jobs\ImportCsv;
+use App\Http\Controllers\UtilsController;
+use App\Models\CorporateQuoteData;
+use App\Support\Filament\PatientAgeDisplay;
+use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
-use App\Filament\Resources\CorporateQuotes\CorporateQuoteResource;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rules\File;
 
 class CorporateQuoteDataRelationManager extends RelationManager
 {
@@ -45,8 +42,8 @@ class CorporateQuoteDataRelationManager extends RelationManager
                     ->label('Fecha de nacimiento')
                     ->searchable(),
                 TextColumn::make('age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                     ->label('Edad')
-                    ->suffix(' años')
                     ->searchable(),
                 TextColumn::make('email')
                     ->label('Correo electrónico')
@@ -73,103 +70,106 @@ class CorporateQuoteDataRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                    /**Calculo de edades */
-                    Action::make('calculate_ages')
-                        ->label('Calcular edades')
-                        ->color('azul')
-                        ->icon('heroicon-s-check-circle')
-                        ->requiresConfirmation()
-                        ->modalIcon('fluentui-document-arrow-right-20')
-                        ->modalHeading('Calcular Edades')
-                        ->modalDescription('Permite recalcular el rango etario, para verificar posibles errores en la data recibida por parte del agente.')
-                        ->modalWidth(Width::ExtraLarge)
-                        ->action(function (RelationManager $livewire) {
+                /**Calculo de edades */
+                Action::make('calculate_ages')
+                    ->label('Calcular edades')
+                    ->color('azul')
+                    ->icon('heroicon-s-check-circle')
+                    ->requiresConfirmation()
+                    ->modalIcon('fluentui-document-arrow-right-20')
+                    ->modalHeading('Calcular Edades')
+                    ->modalDescription('Permite recalcular el rango etario, para verificar posibles errores en la data recibida por parte del agente.')
+                    ->modalWidth(Width::ExtraLarge)
+                    ->action(function (RelationManager $livewire) {
 
-                            try {
+                        try {
 
-                                //Poblacion de la solicitud
-                                $data = CorporateQuoteData::where('corporate_quote_id', $livewire->ownerRecord->id)->get()->toArray();
+                            // Poblacion de la solicitud
+                            $data = CorporateQuoteData::where('corporate_quote_id', $livewire->ownerRecord->id)->get()->toArray();
 
-                                /**Calculo las edades */
-                                for ($i = 0; $i < count($data); $i++) {
-                                    $data[$i]['age'] = Carbon::createFromFormat('d/m/Y', $data[$i]['birth_date'])->age;
-                                    CorporateQuoteData::where('id', $data[$i]['id'])->update(['age' => $data[$i]['age']]);
-                                }
-
-                                Notification::make()
-                                    ->success()
-                                    ->title('Edades calculadas con éxito')
-                                    ->send();
-
-                                $exit_request = CorporateQuoteData::where('corporate_quote_id', $livewire->ownerRecord->id)->count();
-                                if ($exit_request <= 0) {
-                                    Notification::make()
-                                        ->title('No exite cotización asociada a la solicitud')
-                                        ->danger()
-                                        ->send();
-                                    return;
-                                }
-                                $createCorporateQuote = UtilsController::createCorporateQuote($livewire);
-
-                                if ($createCorporateQuote) {
-                                    Notification::make()
-                                        ->title('La Cotización fue actualizada con éxito, según la data recibida y el rango etario calculado.')
-                                        ->success()
-                                        ->send();
-                                } else {
-                                    Notification::make()
-                                        ->title('Error al actualizar la cotización, por favor intente nuevamente.')
-                                        ->danger()
-                                        ->send();
-                                }
-
-                            } catch (\Throwable $th) {
-                                Log::error('Error al calcular edades: ' . $th->getMessage());
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Excepción: ')
-                                    ->body('Error al calcular edades, por favor verificar el archivo de Logs')
-                                    ->send();
+                            /**Calculo las edades */
+                            for ($i = 0; $i < count($data); $i++) {
+                                $data[$i]['age'] = Carbon::createFromFormat('d/m/Y', $data[$i]['birth_date'])->age;
+                                CorporateQuoteData::where('id', $data[$i]['id'])->update(['age' => $data[$i]['age']]);
                             }
-                        }),
-                    ImportAction::make()
-                        ->label('Importar Población')
-                        ->importer(CorporateQuoteDataImporter::class)
-                        ->icon('fluentui-database-arrow-up-20')
-                        ->color('success')
-                        ->modalHeading('Importar Población')
-                        ->csvDelimiter(';')
-                        ->job(ImportCsv::class)
-                        ->chunkSize(100)
-                        ->options(function (RelationManager $livewire) {
-                            return [
-                                'corporate_quote_id' => $livewire->ownerRecord->id,
-                            ];
-                        })
-                        ->fileRules([
-                            File::types(['csv', 'txt'])->max(5120),
-                        ]),
-                    Action::make('download_file')
-                        ->label('Descargar archivo')
-                        ->icon('fluentui-attach-arrow-right-24-o')
-                        ->color('info')
-                        ->tooltip('Archivo adjuntado por el agente')
-                        ->action(function (RelationManager $livewire) {
-                            $doc = $livewire->ownerRecord->data_doc;
-                            if($doc == null){
+
+                            Notification::make()
+                                ->success()
+                                ->title('Edades calculadas con éxito')
+                                ->send();
+
+                            $exit_request = CorporateQuoteData::where('corporate_quote_id', $livewire->ownerRecord->id)->count();
+                            if ($exit_request <= 0) {
                                 Notification::make()
-                                    ->title('El agente no ha cargado el archivo adjunto. Por favor intente nuevamente o comuníquese con el agente.')
-                                    ->icon('heroicon-s-exclamation-triangle')
-                                    ->warning()
+                                    ->title('No exite cotización asociada a la solicitud')
+                                    ->danger()
                                     ->send();
+
                                 return;
                             }
-                            $path = public_path('storage/' . $doc);
-                            return response()->download($path);
-                        }),
-                        // ->hidden(function (RelationManager $livewire) {
-                        //     return $livewire->ownerRecord->isAffiliated($livewire->ownerRecord->id);
-                        // }),
+                            $createCorporateQuote = UtilsController::createCorporateQuote($livewire);
+
+                            if ($createCorporateQuote) {
+                                Notification::make()
+                                    ->title('La Cotización fue actualizada con éxito, según la data recibida y el rango etario calculado.')
+                                    ->success()
+                                    ->send();
+                            } else {
+                                Notification::make()
+                                    ->title('Error al actualizar la cotización, por favor intente nuevamente.')
+                                    ->danger()
+                                    ->send();
+                            }
+
+                        } catch (\Throwable $th) {
+                            Log::error('Error al calcular edades: '.$th->getMessage());
+                            Notification::make()
+                                ->danger()
+                                ->title('Excepción: ')
+                                ->body('Error al calcular edades, por favor verificar el archivo de Logs')
+                                ->send();
+                        }
+                    }),
+                ImportAction::make()
+                    ->label('Importar Población')
+                    ->importer(CorporateQuoteDataImporter::class)
+                    ->icon('fluentui-database-arrow-up-20')
+                    ->color('success')
+                    ->modalHeading('Importar Población')
+                    ->csvDelimiter(';')
+                    ->job(ImportCsv::class)
+                    ->chunkSize(100)
+                    ->options(function (RelationManager $livewire) {
+                        return [
+                            'corporate_quote_id' => $livewire->ownerRecord->id,
+                        ];
+                    })
+                    ->fileRules([
+                        File::types(['csv', 'txt'])->max(5120),
+                    ]),
+                Action::make('download_file')
+                    ->label('Descargar archivo')
+                    ->icon('fluentui-attach-arrow-right-24-o')
+                    ->color('info')
+                    ->tooltip('Archivo adjuntado por el agente')
+                    ->action(function (RelationManager $livewire) {
+                        $doc = $livewire->ownerRecord->data_doc;
+                        if ($doc == null) {
+                            Notification::make()
+                                ->title('El agente no ha cargado el archivo adjunto. Por favor intente nuevamente o comuníquese con el agente.')
+                                ->icon('heroicon-s-exclamation-triangle')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+                        $path = public_path('storage/'.$doc);
+
+                        return response()->download($path);
+                    }),
+                // ->hidden(function (RelationManager $livewire) {
+                //     return $livewire->ownerRecord->isAffiliated($livewire->ownerRecord->id);
+                // }),
             ])
             ->striped()
             ->defaultSort('id', 'asc')

@@ -6,6 +6,7 @@ namespace App\Filament\Operations\Resources\CompanyAssociates\Tables;
 
 use App\Models\CompanyAssociate;
 use App\Support\Companies\CompanyAssociatesGroupPalette;
+use App\Support\Filament\PatientAgeDisplay;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\ViewAction;
 use Filament\Support\Icons\Heroicon;
@@ -55,8 +56,8 @@ class CompanyAssociatesTable
                         ->searchable()
                         ->copyable(),
                     TextColumn::make('age')
+                        ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                         ->label('Edad')
-                        ->suffix(' años')
                         ->alignCenter()
                         ->sortable(),
                     TextColumn::make('sex')

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Shared\CommercialTelemedicine\Schemas;
 
 use App\Models\TelemedicinePatient;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\FilamentDateDisplay;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
@@ -53,9 +54,9 @@ final class CommercialTelemedicinePatientInfolist
                                     ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
                                     ->placeholder('—'),
                                 TextEntry::make('age')
+                                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                                     ->label('Edad')
                                     ->icon(Heroicon::OutlinedClock)
-                                    ->suffix(' años')
                                     ->placeholder('—'),
                                 TextEntry::make('sex')
                                     ->label('Sexo')

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\TelemedicineConsultationPatients\Schemas;
 
 use App\Models\TelemedicineConsultationPatient;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Telemedicine\TelemedicineCaseFollowUpSchedule;
 use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
 use Filament\Infolists\Components\TextEntry;
@@ -130,10 +131,9 @@ class TelemedicineConsultationPatientInfolist
                                                     ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper($state) : null)
                                                     ->placeholder('—'),
                                                 TextEntry::make('telemedicinePatient.age')
+                                                    ->formatStateUsing(PatientAgeDisplay::formatter('telemedicinePatient.birth_date'))
                                                     ->label('Edad')
                                                     ->icon(Heroicon::OutlinedCalendar)
-                                                    ->suffix(' años')
-                                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper((string) $state) : null)
                                                     ->placeholder('—'),
                                             ]),
                                     ])
@@ -373,7 +373,7 @@ class TelemedicineConsultationPatientInfolist
         ];
 
         if ($age !== null && $age !== '') {
-            $parts[] = 'Edad (ficha): '.$age.' años';
+            $parts[] = 'Edad (ficha): '.\App\Support\PatientAge::label($patient?->birth_date, $age);
         }
 
         if (filled($sex)) {

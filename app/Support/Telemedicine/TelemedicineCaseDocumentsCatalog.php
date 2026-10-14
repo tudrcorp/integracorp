@@ -48,7 +48,7 @@ final class TelemedicineCaseDocumentsCatalog
                 ? (string) $case->code
                 : 'Caso #'.$case->id,
             'defaultPhone' => (string) ($case->patient_phone ?: $case->telemedicinePatient?->phone ?: ''),
-            'defaultEmail' => (string) ($case->telemedicinePatient?->email ?: $case->telemedicinePatient?->email_contact ?: ''),
+            'defaultEmail' => (string) TelemedicinePatientDeliveryEmail::for($case->telemedicinePatient),
             'patientName' => (string) ($case->patient_name ?: $case->telemedicinePatient?->full_name ?: 'Paciente'),
         ];
     }

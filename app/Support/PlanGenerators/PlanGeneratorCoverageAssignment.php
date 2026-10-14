@@ -265,7 +265,7 @@ final class PlanGeneratorCoverageAssignment
                 if ($age !== null) {
                     $misassigned[] = [
                         'name' => $name,
-                        'reason' => 'tiene '.$age.' años y '.$coverage['label'].' cubre '.self::rangesLine($coverage),
+                        'reason' => 'tiene '.\App\Support\PatientAge::label(null, $age).' y '.$coverage['label'].' cubre '.self::rangesLine($coverage),
                     ];
                 }
 
@@ -328,7 +328,7 @@ final class PlanGeneratorCoverageAssignment
 
         if ($unplaceable !== []) {
             $examples = array_map(
-                static fn (array $person): string => $person['name'].' ('.$person['age'].' años)',
+                static fn (array $person): string => $person['name'].' ('.\App\Support\PatientAge::label(null, $person['age']).')',
                 array_slice($unplaceable, 0, 3),
             );
 
@@ -462,7 +462,7 @@ final class PlanGeneratorCoverageAssignment
                 if (self::rangeForAge($coverage, $age) === null) {
                     $rejected[] = [
                         'name' => $name,
-                        'reason' => 'tiene '.$age.' años y '.$coverage['label'].' solo cubre '.self::rangesLine($coverage),
+                        'reason' => 'tiene '.\App\Support\PatientAge::label(null, $age).' y '.$coverage['label'].' solo cubre '.self::rangesLine($coverage),
                     ];
 
                     continue;

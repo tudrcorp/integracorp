@@ -26,6 +26,7 @@ use App\Services\OperationServiceOrderPdfService;
 use App\Services\OperationServiceOrderQuotePdfService;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\AccountsReceivableManager;
 use App\Support\Operations\AssignCoordinationServiceToSupplier;
 use App\Support\Operations\CoordinationServiceBulkReversal;
@@ -186,7 +187,21 @@ class OperationCoordinationServicesTable
         return mb_strtoupper(trim((string) $record->managed_by)) === 'TDG';
     }
 
-    private static function managedByBadgeColor(?string $state): string
+    public static function statusBadgeColor(mixed $state): string
+    {
+        return match ($state) {
+            'PENDIENTE' => 'warning',
+            'PENDIENTE POR RESULTADOS' => 'info',
+            'EN GESTION' => 'primary',
+            'CANCELADO' => 'gray',
+            'FINALIZADO' => 'success',
+            'NOVEDAD ADMON ESTUDIO' => 'danger',
+            ReassignAmbulanceCoordinationToTdgDoctor::STATUS_REASSIGNED_TO_TDG => 'danger',
+            default => 'gray',
+        };
+    }
+
+    public static function managedByBadgeColor(?string $state): string
     {
         return match (mb_strtoupper(trim((string) $state))) {
             'ATENMEDI' => 'success',
@@ -1458,18 +1473,7 @@ class OperationCoordinationServicesTable
                 TextColumn::make('status')
                     ->label('Estatus del Servicio')
                     ->badge()
-                    ->color(function (mixed $state): string {
-                        return match ($state) {
-                            'PENDIENTE' => 'warning',
-                            'PENDIENTE POR RESULTADOS' => 'info',
-                            'EN GESTION' => 'primary',
-                            'CANCELADO' => 'gray',
-                            'FINALIZADO' => 'success',
-                            'NOVEDAD ADMON ESTUDIO' => 'danger',
-                            ReassignAmbulanceCoordinationToTdgDoctor::STATUS_REASSIGNED_TO_TDG => 'danger',
-                            default => 'gray',
-                        };
-                    })
+                    ->color(fn (mixed $state): string => self::statusBadgeColor($state))
                     ->searchable(),
                 TextColumn::make('courtesy_badge')
                     ->label('Cortesía')
@@ -1513,6 +1517,7 @@ class OperationCoordinationServicesTable
                     ->label('Relación del Paciente')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('age_patient')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date_patient'))
                     ->label('Edad del Paciente')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('contractor')
@@ -1722,9 +1727,16 @@ class OperationCoordinationServicesTable
                     ]);
                 }
             })
-            ->filters([
-                //
-            ])
+            ->filters(OperationCoordinationServicesTableFilters::make())
+            ->filtersFormColumns(2)
+            ->filtersFormWidth(Width::ThreeExtraLarge)
+            ->persistFiltersInSession()
+            ->filtersTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('Filtros')
+                    ->icon(Heroicon::OutlinedFunnel),
+            )
             ->recordActions([
                 ActionGroup::make([
                     $editNegotiationAndPricingAction,

@@ -6,6 +6,7 @@ namespace App\Filament\Operations\Resources\TelemedicineCases\Schemas;
 
 use App\Models\ObservationCase;
 use App\Models\TelemedicineCase;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\CaseMessagingAuditLog;
 use App\Support\Telemedicine\TelemedicineAmdBitacoraCatalog;
 use App\Support\Telemedicine\TelemedicineCaseDocumentsCatalog;
@@ -135,10 +136,9 @@ class TelemedicineCaseInfolist
                                                     ->placeholder('—'),
 
                                                 TextEntry::make('patient_age')
+                                                    ->formatStateUsing(PatientAgeDisplay::formatter('telemedicinePatient.birth_date'))
                                                     ->label('Edad')
                                                     ->icon(Heroicon::OutlinedCalendar)
-                                                    ->suffix(' años')
-                                                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? mb_strtoupper((string) $state) : null)
                                                     ->placeholder('—'),
                                                 TextEntry::make('patient_sex')
                                                     ->label('Sexo')

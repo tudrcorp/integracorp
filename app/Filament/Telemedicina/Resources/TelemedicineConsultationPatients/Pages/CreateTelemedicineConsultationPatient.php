@@ -63,6 +63,7 @@ use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use App\Support\Telemedicine\TelemedicineMedicationInventoryOptions;
 use App\Support\Telemedicine\TelemedicineMedicationsPdfRows;
 use App\Support\Telemedicine\TelemedicinePatientCareHistory;
+use App\Support\Telemedicine\TelemedicinePatientDeliveryEmail;
 use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use App\Support\Telemedicine\TelemedicinePatientHistorySummary;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
@@ -340,7 +341,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
         return new HtmlString(view('filament.telemedicina.consultations.patient-header', [
             'patientName' => $patient->full_name,
             'document' => self::formatPatientDocument($patient->nro_identificacion),
-            'age' => filled($patient->age) ? (int) $patient->age : null,
+            'age' => \App\Support\PatientAge::labelOrNull($patient->birth_date, $patient->age),
             'sex' => filled($patient->sex) ? (string) $patient->sex : null,
             'caseCode' => $this->case?->code,
             'caseStatus' => $this->case?->status,
@@ -550,7 +551,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             'summary' => TelemedicinePatientHistorySummary::summarize($patient?->telemedicinePatientHistory()->first()),
                             'patient' => [
                                 'name' => (string) ($patient?->full_name ?? 'Paciente'),
-                                'age' => filled($patient?->age) ? (string) $patient->age : null,
+                                'age' => \App\Support\PatientAge::labelOrNull($patient?->birth_date, $patient?->age),
                                 'sex' => filled($patient?->sex) ? (string) $patient->sex : null,
                             ],
                         ]);
@@ -1804,6 +1805,15 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                                 $this->data,
                                 $doctor,
                                 $patientDisplayName,
+                                [
+                                    'medicationsArr' => $medicationsArr ?? [],
+                                    'labsArr' => $labsArr ?? [],
+                                    'otherLabsArr' => $otherLabsArr ?? [],
+                                    'studiesArr' => $studiesArr ?? [],
+                                    'otherStudiesArr' => $otherStudiesArr ?? [],
+                                    'consultSpecialistArr' => $consultSpecialistArr ?? [],
+                                    'otherSpecialistArr' => $otherSpecialistArr ?? [],
+                                ],
                             ),
                             Auth::user(),
                         );
@@ -1855,7 +1865,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                         $consultationId = (int) $record['id'];
                         $userId = (int) Auth::id();
                         $patientPhone = (string) ($patient['phone'] ?? $this->data['phone_ppal'] ?? '');
-                        $patientEmail = (string) ($patient['email'] ?? $patient['email_contact'] ?? '');
+                        $patientEmail = (string) TelemedicinePatientDeliveryEmail::for($patient);
                         $patientName = (string) ($patient['full_name'] ?? $record['full_name']);
 
                         Bus::batch($pdfJobs)

@@ -98,11 +98,13 @@ it('los servicios sin ítems siguen en las pestañas de trabajo y los reasignado
         ->and(finalizedServiceIds())->not->toContain((int) $withoutItems);
 });
 
-it('todas las pestañas de trabajo excluyen los finalizados y FINALIZADO usa el alcance por ítems', function (): void {
-    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Pages/ListOperationCoordinationServices.php');
+it('los estatus de trabajo excluyen los finalizados y FINALIZADO usa el alcance por ítems', function (): void {
+    // El estatus pasó de pestañas al filtro de la tabla: la regla vive ahí.
+    $filters = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/OperationCoordinationServices/Tables/OperationCoordinationServicesTableFilters.php');
 
-    expect(substr_count($page, '->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)'))->toBe(6)
-        ->and($page)->toContain('->modifyQueryUsing(fn (Builder $query): Builder => OperationCoordinationServicesTable::applyFullyFinalizedScope($query)),')
-        ->not->toContain("\$query->where('status', 'FINALIZADO')")
-        ->toContain("'finalizado' => OperationCoordinationServicesTable::applyFullyFinalizedScope(");
+    expect($filters)
+        ->toContain('return OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query);')
+        ->toContain('OperationCoordinationServicesTable::applyHideFullyFinalizedScope($open)')
+        ->toContain('OperationCoordinationServicesTable::applyFullyFinalizedScope($finalized)')
+        ->not->toContain("\$query->where('status', 'FINALIZADO')");
 });

@@ -2,21 +2,15 @@
 
 namespace App\Filament\Resources\AffiliationCorporates\RelationManagers;
 
+use App\Support\Filament\PatientAgeDisplay;
 use BackedEnum;
-use Filament\Tables\Table;
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use App\Filament\Actions\ImportAction;
-use Filament\Support\Icons\Heroicon;
 use Filament\Actions\BulkActionGroup;
-use Illuminate\Validation\Rules\File;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
-use App\Filament\Imports\AffiliateCorporateImporter;
-use Filament\Resources\RelationManagers\RelationManager;
-use App\Filament\Imports\CorporateQuoteRequestDataImporter;
-use App\Filament\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use Filament\Tables\Table;
 
 class CorporateAffiliatesRelationManager extends RelationManager
 {
@@ -47,6 +41,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                 TextColumn::make('email')
                     ->label('Email'),
                 TextColumn::make('age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                     ->label('Edad')
                     ->searchable(),
                 TextColumn::make('sex')
@@ -93,13 +88,13 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->badge()
                     ->color(function (string $state): string {
                         return match ($state) {
-                            'PRE-AFILIADO'  => 'warning',
-                            'ACTIVO'        => 'success',
-                            'INACTIVO'      => 'danger',
-                            default         => 'azul',
+                            'PRE-AFILIADO' => 'warning',
+                            'ACTIVO' => 'success',
+                            'INACTIVO' => 'danger',
+                            default => 'azul',
                         };
-                    })
-            
+                    }),
+
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -108,7 +103,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->requiresConfirmation()
                         ->color('danger')
                         ->icon(Heroicon::Trash),
-                        
+
                 ]),
             ])->striped()->poll('5s');
     }

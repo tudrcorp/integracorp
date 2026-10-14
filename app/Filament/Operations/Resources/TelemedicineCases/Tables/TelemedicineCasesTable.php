@@ -8,6 +8,7 @@ use App\Models\TelemedicineCase;
 use App\Models\TelemedicineDoctor;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\CaseFollowUpChatManager;
 use App\Support\Telemedicine\TelemedicineCaseCreatedAtChangeAction;
 use App\Support\Telemedicine\TelemedicineCaseIdentity;
@@ -93,6 +94,7 @@ class TelemedicineCasesTable
                         : ($record->assigned_to_medical_team ? 'Asignado al '.TelemedicineMedicalTeam::teamLabel($record) : 'Sin médico asignado'))
                     ->sortable(),
                 TextColumn::make('patient_age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter(null))
                     ->label('Edad')
                     ->searchable(),
                 TextColumn::make('patient_sex')

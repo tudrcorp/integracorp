@@ -72,7 +72,11 @@ class SendTelemedicineConsultationDocuments implements ShouldQueue
 
             Notification::make()
                 ->title('¡TAREA COMPLETADA!')
-                ->body('Los documentos de la consulta fueron enviados al paciente por WhatsApp y correo electrónico.')
+                ->body(
+                    filled($this->patientEmail)
+                        ? 'Los documentos de la consulta fueron enviados al paciente por WhatsApp y correo electrónico.'
+                        : 'Los documentos de la consulta fueron enviados al paciente por WhatsApp. El paciente no tiene correo propio registrado: regístrelo en su ficha o envíe los documentos desde el caso indicando el correo.'
+                )
                 ->success()
                 ->actions([
                     Action::make('view_consultation')

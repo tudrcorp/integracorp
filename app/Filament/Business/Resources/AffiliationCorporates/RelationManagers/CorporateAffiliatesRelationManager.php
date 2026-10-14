@@ -21,7 +21,9 @@ use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\AffiliationCorporates\CorporateAffiliateUpgradeManager;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\FilamentDateDisplay;
+use App\Support\Plans\PlanInfantEligibility;
 use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 use BackedEnum;
 use Carbon\Carbon;
@@ -107,6 +109,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->native(false)
                                     ->columnSpan(['default' => 12, 'lg' => 4]),
                                 DatePicker::make('birth_date')
+                                    ->rule(PlanInfantEligibility::filamentBirthDateRule())
                                     ->label('Fecha de nacimiento')
                                     ->required()
                                     ->live()
@@ -125,6 +128,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     })
                                     ->columnSpan(['default' => 12, 'lg' => 4]),
                                 TextInput::make('age')
+                                    ->hint(PatientAgeDisplay::inputHint('birth_date'))
                                     ->label('Edad')
                                     ->required()
                                     ->live()
@@ -359,6 +363,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->copyable()
                     ->copyMessage('C.I. copiada'),
                 TextColumn::make('age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                     ->label('Edad')
                     ->alignCenter()
                     ->sortable(),

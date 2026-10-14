@@ -51,7 +51,46 @@ final class ClinicalEntitlementWindow
             ];
         }
 
+        if ($scope === ClinicalQuotaScope::PerQuarter) {
+            return self::currentQuarterWindow($effect);
+        }
+
         return self::currentAnniversaryWindow($effect);
+    }
+
+    /**
+     * Trimestre de vigencia en curso: bloques de 3 meses contados desde la
+     * fecha de efecto. Cada límite se calcula desde la fecha de efecto (no
+     * encadenando el anterior) para que un efecto el día 31 no se corra de
+     * mes en mes: 31/01 → 30/04 → 31/07 → 31/10.
+     *
+     * @return array{starts_at: CarbonImmutable, ends_at: CarbonImmutable}
+     */
+    public static function currentQuarterWindow(CarbonImmutable $effect): array
+    {
+        $now = CarbonImmutable::now();
+
+        if ($effect->greaterThan($now)) {
+            return [
+                'starts_at' => $effect,
+                'ends_at' => $effect->addMonthsNoOverflow(3),
+            ];
+        }
+
+        $quarter = intdiv((int) $effect->diffInMonths($now, true), 3);
+
+        while ($effect->addMonthsNoOverflow(($quarter + 1) * 3)->lessThanOrEqualTo($now)) {
+            $quarter++;
+        }
+
+        while ($quarter > 0 && $effect->addMonthsNoOverflow($quarter * 3)->greaterThan($now)) {
+            $quarter--;
+        }
+
+        return [
+            'starts_at' => $effect->addMonthsNoOverflow($quarter * 3),
+            'ends_at' => $effect->addMonthsNoOverflow(($quarter + 1) * 3),
+        ];
     }
 
     public static function effectDateFromValues(mixed ...$values): CarbonImmutable

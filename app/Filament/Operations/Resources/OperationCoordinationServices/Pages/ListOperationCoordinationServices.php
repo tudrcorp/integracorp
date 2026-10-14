@@ -5,15 +5,10 @@ namespace App\Filament\Operations\Resources\OperationCoordinationServices\Pages;
 use App\Filament\Operations\Resources\OperationCoordinationServices\OperationCoordinationServiceResource;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable;
 use App\Support\Filament\Operations\OperationsSupplierScope;
-use App\Support\Operations\CoordinationServiceCaseDeletion;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\CoordinationServiceTabCounts;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Schemas\Components\Component;
-use Filament\Schemas\Components\Tabs;
-use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Enums\PaginationMode;
 use Illuminate\Contracts\Pagination\CursorPaginator;
@@ -68,9 +63,11 @@ class ListOperationCoordinationServices extends ListRecords
     }
 
     /**
-     * En «Todas» sin búsqueda, el total del paginador es exactamente el conteo de
-     * la pestaña: se reutiliza en vez de repetir la consulta de ocho subconsultas.
-     * Con búsqueda, otra pestaña o «ver todo», Filament cuenta como siempre.
+     * Sin filtros ni búsqueda (el analista vació el estatus), el total del
+     * paginador es exactamente el conteo de servicios por gestionar: se reutiliza
+     * en vez de repetir la consulta de ocho subconsultas. Con cualquier filtro,
+     * búsqueda (incluido «Ver solo casos eliminados») o «ver todo», Filament
+     * cuenta como siempre.
      */
     protected function paginateTableQuery(Builder $query): Paginator|CursorPaginator
     {
@@ -99,7 +96,7 @@ class ListOperationCoordinationServices extends ListRecords
             return false;
         }
 
-        if (($this->activeTab ?? $this->getDefaultActiveTab()) !== 'todas') {
+        if ($this->hasActiveTableFilters()) {
             return false;
         }
 
@@ -108,6 +105,29 @@ class ListOperationCoordinationServices extends ListRecords
         }
 
         return array_filter($this->getTableColumnSearches(), fn (mixed $search): bool => filled($search)) === [];
+    }
+
+    /**
+     * Algún filtro aplicado con valor. Recorre el estado aplicado (no el del
+     * formulario diferido): es el que decide qué filas trae la consulta.
+     */
+    private function hasActiveTableFilters(): bool
+    {
+        $hasValue = function (mixed $value) use (&$hasValue): bool {
+            if (is_array($value)) {
+                foreach ($value as $item) {
+                    if ($hasValue($item)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            return filled($value) && $value !== false;
+        };
+
+        return $hasValue($this->tableFilters ?? []);
     }
 
     /**
@@ -135,7 +155,7 @@ class ListOperationCoordinationServices extends ListRecords
             'title' => 'Cuadro de control de servicios médicos',
             'total' => $counts['todas'],
             'totalHint' => 'Servicios con algo por gestionar',
-            'description' => 'Laboratorios, estudios, especialistas, medicamentos y servicios agrupados por caso. Filtre por estado con las pestañas y despliegue un caso para gestionarlo.',
+            'description' => 'Laboratorios, estudios, especialistas, medicamentos y servicios agrupados por caso. Se muestran los servicios EN GESTION y PENDIENTE: use «Filtros» para ver otros estatus o acotar por fecha, servicio, proveedor o tipo de afiliado.',
             'stats' => [
                 ['label' => 'Pendientes', 'value' => $counts['pendiente'], 'icon' => 'heroicon-m-clock', 'tone' => 'warning', 'hint' => 'Servicios que nadie ha empezado a gestionar'],
                 ['label' => 'En gestión', 'value' => $counts['en_gestion'], 'icon' => 'heroicon-m-arrow-path', 'tone' => 'info', 'hint' => 'Servicios con orden o cotización en curso'],
@@ -212,13 +232,10 @@ class ListOperationCoordinationServices extends ListRecords
     }
 
     /**
-     * Conteos de las pestañas resueltos en dos consultas en lugar de siete.
-     *
-     * Cada `Tab::badge()` recibe el resultado ya calculado, así que las siete
-     * cuentas se ejecutaban en cada render aunque sólo una pestaña estuviese
-     * activa. Los seis conteos por estatus salen ahora de un único GROUP BY, y
-     * el de «Todas» —el caro, con ocho subconsultas— se memoiza por petición y se
-     * guarda en caché entre peticiones ({@see CoordinationServiceTabCounts}).
+     * Conteos del encabezado por estatus, en un único GROUP BY. El total de
+     * servicios por gestionar —el caro, con ocho subconsultas— se memoiza por
+     * petición y se guarda en caché entre peticiones
+     * ({@see CoordinationServiceTabCounts}); también lo reutiliza el paginador.
      *
      * @return array<string, int>
      */
@@ -237,8 +254,8 @@ class ListOperationCoordinationServices extends ListRecords
     private function computeTabCounts(): array
     {
         /*
-         * Las pestañas de trabajo solo cuentan servicios con algo por gestionar;
-         * los finalizados (todos sus ítems cerrados) solo cuentan en FINALIZADO.
+         * Solo cuentan servicios con algo por gestionar: los finalizados (todos
+         * sus ítems cerrados) quedan fuera del encabezado.
          */
         $byStatus = OperationCoordinationServicesTable::applyHideFullyFinalizedScope(OperationsSupplierScope::coordinationServiceQuery())
             ->toBase()
@@ -254,118 +271,11 @@ class ListOperationCoordinationServices extends ListRecords
 
         return [
             'todas' => (int) array_sum(array_map('intval', $byStatus)),
-            CoordinationServiceCaseDeletion::DELETED_TAB => CoordinationServiceCaseDeletion::userCanDeleteCases()
-                ? CoordinationServiceCaseDeletion::applyDeletedCasesScope(
-                    OperationsSupplierScope::coordinationServiceQuery()
-                )->count()
-                : 0,
             'en_gestion' => $sum(['EN GESTION']),
             'pendiente' => $sum(['PENDIENTE']),
             'pendiente_resultados' => $sum(['PENDIENTE POR RESULTADOS']),
-            'finalizado' => OperationCoordinationServicesTable::applyFullyFinalizedScope(
-                OperationsSupplierScope::coordinationServiceQuery()
-            )->count(),
             'cancelada' => $sum(['CANCELADA', 'CANCELADO']),
             'novedad_admon' => $sum(['NOVEDAD ADMON', 'NOVEDAD ADMON ESTUDIO']),
         ];
-    }
-
-    /**
-     * @return array<string, Tab>
-     */
-    public function getTabs(): array
-    {
-        $counts = $this->tabCounts();
-
-        $tabs = [
-            'todas' => Tab::make('Todas')
-                ->badge($counts['todas'])
-                ->badgeColor('gray')
-                ->extraAttributes([
-                    'class' => 'fi-supplier-status-tab-pill',
-                ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)),
-            'en_gestion' => Tab::make('EN GESTION')
-                ->badge($counts['en_gestion'])
-                ->badgeColor(Color::hex('#ffc107'))
-                ->extraAttributes([
-                    'class' => 'fi-supplier-status-tab-pill',
-                ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)->where('status', 'EN GESTION')),
-            'pendiente' => Tab::make('PENDIENTE')
-                ->badge($counts['pendiente'])
-                ->badgeColor(Color::hex('#ffcc00'))
-                ->extraAttributes([
-                    'class' => 'fi-supplier-status-tab-pill',
-                ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)->where('status', 'PENDIENTE')),
-            'pendiente_resultados' => Tab::make('PENDIENTE POR RESULTADOS')
-                ->badge($counts['pendiente_resultados'])
-                ->badgeColor(Color::hex('#ffcc00'))
-                ->extraAttributes([
-                    'class' => 'fi-supplier-status-tab-pill',
-                ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)->where('status', 'PENDIENTE POR RESULTADOS')),
-            'finalizado' => Tab::make('FINALIZADO')
-                ->badge($counts['finalizado'])
-                ->badgeColor(Color::hex('#28cd41'))
-                ->extraAttributes([
-                    'class' => 'fi-supplier-status-tab-pill',
-                ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => OperationCoordinationServicesTable::applyFullyFinalizedScope($query)),
-            'cancelada' => Tab::make('CANCELADA')
-                ->badge($counts['cancelada'])
-                ->badgeColor(Color::hex('#ff3b30'))
-                ->extraAttributes([
-                    'class' => 'fi-supplier-status-tab-pill',
-                ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)->whereIn('status', ['CANCELADA', 'CANCELADO'])),
-            'novedad_admon' => Tab::make('NOVEDAD ADMON')
-                ->badge($counts['novedad_admon'])
-                ->badgeColor(Color::hex('#ff3b30'))
-                ->extraAttributes([
-                    'class' => 'fi-supplier-status-tab-pill',
-                ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => self::openServices($query)->whereIn('status', ['NOVEDAD ADMON', 'NOVEDAD ADMON ESTUDIO'])),
-        ];
-
-        /**
-         * Los casos eliminados solo existen para quien puede eliminarlos: el
-         * resto del panel no debe siquiera saber que la pestaña está ahí.
-         */
-        if (CoordinationServiceCaseDeletion::userCanDeleteCases()) {
-            $tabs[CoordinationServiceCaseDeletion::DELETED_TAB] = Tab::make('ELIMINADOS')
-                ->badge($counts[CoordinationServiceCaseDeletion::DELETED_TAB])
-                ->badgeColor('gray')
-                ->extraAttributes([
-                    'class' => 'fi-supplier-status-tab-pill',
-                ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => CoordinationServiceCaseDeletion::applyDeletedCasesScope($query));
-        }
-
-        return $tabs;
-    }
-
-    /**
-     * Pestañas de trabajo: solo servicios con algo por gestionar. Los finalizados
-     * (todos sus ítems cerrados) se consultan únicamente en la pestaña FINALIZADO.
-     */
-    private static function openServices(Builder $query): Builder
-    {
-        return OperationCoordinationServicesTable::applyHideFullyFinalizedScope($query);
-    }
-
-    public function getTabsContentComponent(): Component
-    {
-        $tabs = $this->getCachedTabs();
-
-        return Tabs::make('Filtrar por estado')
-            ->livewireProperty('activeTab')
-            ->contained(false)
-            ->extraAttributes([
-                'class' => 'fi-status-filter-tabs-ios fi-supplier-status-tabs-ios',
-            ])
-            ->tabs($tabs)
-            ->hidden(empty($tabs));
     }
 }

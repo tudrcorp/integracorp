@@ -4,13 +4,46 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Jobs\NotifyAgentOfNewTelemedicineCaseJob;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicinePatient;
 use App\Support\Telemedicine\TelemedicineCaseIdentity;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Throwable;
 
 class TelemedicineCaseObserver
 {
+    /**
+     * Caso nuevo: aviso por WhatsApp al agente de la afiliación. Se encola
+     * recién cuando la transacción confirma (si se revierte, no hay caso que
+     * avisar) y un fallo al encolar nunca interrumpe el registro del caso.
+     * Los seguimientos no crean caso, así que no lo repiten.
+     */
+    public function created(TelemedicineCase $case): void
+    {
+        $caseId = (int) $case->getKey();
+
+        if ($caseId <= 0) {
+            return;
+        }
+
+        DB::afterCommit(static fn () => self::dispatchAgentNoticeSafely($caseId));
+    }
+
+    public static function dispatchAgentNoticeSafely(int $caseId): void
+    {
+        try {
+            NotifyAgentOfNewTelemedicineCaseJob::dispatch($caseId);
+        } catch (Throwable $exception) {
+            Log::error('No se pudo encolar el aviso de caso nuevo al agente de la afiliación.', [
+                'telemedicine_case_id' => $caseId,
+                'exception' => $exception,
+            ]);
+        }
+    }
+
     public function saving(TelemedicineCase $case): void
     {
         if (! filled($case->telemedicine_patient_id)) {

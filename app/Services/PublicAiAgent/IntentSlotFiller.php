@@ -1381,6 +1381,47 @@ TEXT,
     }
 
     /**
+     * Edades escritas en texto libre. Un menor de un año («6 meses», «3
+     * semanas», «bebé», «recién nacido») cuenta como edad 0, que es el primer
+     * rango de tarifa; «1 año y 3 meses» cuenta como 1 año, no como un bebé
+     * aparte.
+     *
+     * @return list<array{age: int, quantity: int}>
+     */
+    public static function membersFromFreeText(string $message): array
+    {
+        $members = [];
+        $text = $message;
+        $yearsAndMonths = '/\b(\d{1,2})\s*(?:años|anos|año|anios|ano)\s*y\s*\d{1,2}\s*(?:meses|mes)\b/iu';
+
+        if (preg_match_all($yearsAndMonths, $text, $matches) > 0) {
+            foreach ($matches[1] as $age) {
+                $members[] = ['age' => (int) $age, 'quantity' => 1];
+            }
+
+            $text = (string) preg_replace($yearsAndMonths, ' ', $text);
+        }
+
+        if (preg_match_all('/\b(\d{1,2})\s*(?:años|anos|año|anios|ano)\b/iu', $text, $matches) > 0) {
+            foreach ($matches[1] as $age) {
+                $members[] = ['age' => (int) $age, 'quantity' => 1];
+            }
+        }
+
+        $infants = preg_match_all('/\b\d{1,2}\s*(?:meses|mes|semanas|semana|días|dias|día|dia)\b/iu', $text);
+
+        if ($infants === 0 && preg_match('/\b(?:beb[eé]s?|reci[eé]n\s+nacid[oa]s?|neonat[oa]s?|lactantes?)\b/iu', $text) === 1) {
+            $infants = 1;
+        }
+
+        for ($i = 0; $i < (int) $infants; $i++) {
+            $members[] = ['age' => 0, 'quantity' => 1];
+        }
+
+        return $members;
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
@@ -1403,9 +1444,10 @@ TEXT,
 
         $members = [];
         foreach ((array) ($merged['members'] ?? []) as $member) {
-            if (is_array($member)) {
+            // Sin edad no es un bebé: 0 es una edad válida y no puede salir de un dato ausente.
+            if (is_array($member) && is_numeric($member['age'] ?? null)) {
                 $members[] = [
-                    'age' => (int) ($member['age'] ?? 0),
+                    'age' => (int) $member['age'],
                     'quantity' => (int) ($member['quantity'] ?? 1),
                 ];
             }
@@ -1415,14 +1457,12 @@ TEXT,
             foreach ($matches as $match) {
                 $members[] = ['age' => (int) $match[1], 'quantity' => (int) $match[2]];
             }
-        } elseif (preg_match_all('/\b(\d{1,2})\s*(?:años|anos|año|anios)\b/iu', $message, $matches) > 0) {
-            foreach ($matches[1] as $age) {
-                $members[] = ['age' => (int) $age, 'quantity' => 1];
-            }
+        } else {
+            array_push($members, ...self::membersFromFreeText($message));
         }
 
         $members = collect($members)
-            ->filter(fn (array $member): bool => $member['age'] > 0 && $member['age'] <= 120 && $member['quantity'] > 0)
+            ->filter(fn (array $member): bool => $member['age'] >= 0 && $member['age'] <= 120 && $member['quantity'] > 0)
             ->groupBy('age')
             ->map(fn ($group, $age): array => ['age' => (int) $age, 'quantity' => (int) collect($group)->sum('quantity')])
             ->values()
@@ -2028,10 +2068,10 @@ TEXT;
             if ($ageRangeLabel !== '') {
                 $ageLabel = $ageRangeLabel;
                 if (isset($entry['age']) && $entry['age'] !== null) {
-                    $ageLabel .= ' (edad indicada: '.(int) $entry['age'].' años)';
+                    $ageLabel .= ' (edad indicada: '.\App\Support\PatientAge::label(null, (int) $entry['age']).')';
                 }
             } elseif (isset($entry['age']) && $entry['age'] !== null) {
-                $ageLabel = (string) $entry['age'].' años';
+                $ageLabel = \App\Support\PatientAge::label(null, (int) $entry['age']);
             } else {
                 $ageLabel = 'todas las coberturas';
             }

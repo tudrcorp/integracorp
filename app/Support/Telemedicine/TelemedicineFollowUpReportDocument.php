@@ -13,7 +13,8 @@ use App\Models\User;
 
 /**
  * Informe PDF de un seguimiento: diagnóstico principal de la consulta inicial,
- * historia de la enfermedad actual y evolución del paciente.
+ * historia de la enfermedad actual, evolución del paciente y lo que el médico
+ * indicó en el acto (plan terapéutico y paraclínicos).
  */
 final class TelemedicineFollowUpReportDocument
 {
@@ -49,6 +50,7 @@ final class TelemedicineFollowUpReportDocument
      * @param  array<string, mixed>  $record
      * @param  array<string, mixed>  $formData
      * @param  array<string, mixed>  $doctor
+     * @param  array<string, mixed>  $clinicalOrders  Claves de {@see TelemedicineInformeClinicalOrders::PAYLOAD_KEYS}
      * @return array<string, mixed>
      */
     public static function payloadFromCreateData(
@@ -56,6 +58,7 @@ final class TelemedicineFollowUpReportDocument
         array $formData,
         array $doctor,
         string $patientDisplayName,
+        array $clinicalOrders = [],
     ): array {
         $diagnosis = trim((string) ($formData['diagnostic_impression']
             ?? $formData[TelemedicineInitialDiagnosisUpdater::FORM_FIELD]
@@ -82,10 +85,14 @@ final class TelemedicineFollowUpReportDocument
             'telemedicine_case_id' => $record['telemedicine_case_id'] ?? null,
             'telemedicine_consultation_id' => $record['id'] ?? null,
             'telemedicine_patient_id' => $record['telemedicine_patient_id'] ?? null,
+            ...$clinicalOrders,
         ]);
     }
 
     /**
+     * Sin `$clinicalOrders` se leen de lo guardado para la consulta.
+     *
+     * @param  array<string, mixed>|null  $clinicalOrders  Claves de {@see TelemedicineInformeClinicalOrders::PAYLOAD_KEYS}
      * @return array<string, mixed>|null
      */
     public static function payloadFromConsultation(
@@ -93,6 +100,7 @@ final class TelemedicineFollowUpReportDocument
         TelemedicineDoctor $doctor,
         TelemedicinePatient $patient,
         ?string $patientDisplayName = null,
+        ?array $clinicalOrders = null,
     ): ?array {
         $diagnosis = trim((string) ($consultation->diagnostic_impression ?? ''));
 
@@ -125,6 +133,7 @@ final class TelemedicineFollowUpReportDocument
             'telemedicine_case_id' => $consultation->telemedicine_case_id,
             'telemedicine_consultation_id' => $consultation->id,
             'telemedicine_patient_id' => $consultation->telemedicine_patient_id ?? $patient->id,
+            ...($clinicalOrders ?? TelemedicineInformeClinicalOrders::payloadFromConsultation($consultation)),
         ]);
     }
 
@@ -171,6 +180,7 @@ final class TelemedicineFollowUpReportDocument
             'telemedicine_case_id' => $input['telemedicine_case_id'] ?? null,
             'telemedicine_consultation_id' => $input['telemedicine_consultation_id'] ?? null,
             'telemedicine_patient_id' => $input['telemedicine_patient_id'] ?? null,
+            ...TelemedicineInformeClinicalOrders::onlyPayloadKeys($input),
         ];
     }
 

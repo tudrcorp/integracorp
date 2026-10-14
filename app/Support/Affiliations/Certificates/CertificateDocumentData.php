@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Support\Affiliations\Certificates;
 
 use App\Models\AffiliationCertificateIssue;
-use App\Support\QrCode\GdPngQrCodeGenerator;
 use Illuminate\Support\Str;
 
 /**
@@ -62,13 +61,15 @@ final class CertificateDocumentData
             'planLabel' => $in['planLabel'],
             'planNombre' => self::shortPlanName($in['planLabel']),
             'th' => $theme,
+            // Rutas de archivo, no data URI: ver CertificateAssets.
             'images' => [
-                'logo' => self::imageDataUri('logo-tu-doctor-en-casa.png'),
-                'logoTheme' => self::imageDataUri($theme['logo']),
-                'seal' => self::imageDataUri('sello-tu-doctor-en-casa.png'),
-                'qr' => 'data:image/png;base64,'.base64_encode(GdPngQrCodeGenerator::generate($verificationUrl, 264, 'M', 0)),
-                'heroWave' => self::waveDataUri($theme['wave'], 720, 60, 'M0 44 C 180 10, 380 64, 720 18 L720 60 L0 60 Z'),
-                'carnetWave' => self::waveDataUri($theme['wave'], 324, 40, 'M0 30 C 90 6, 190 42, 324 12 L324 40 L0 40 Z'),
+                'logo' => CertificateAssets::staticImage('logo-tu-doctor-en-casa.png'),
+                'logoTheme' => CertificateAssets::staticImage($theme['logo']),
+                'seal' => CertificateAssets::staticImage('sello-tu-doctor-en-casa.png'),
+                'signature' => CertificateAssets::staticImage('firma-autorizada.png'),
+                'qr' => CertificateAssets::qr($verificationUrl),
+                'heroWave' => CertificateAssets::wave($theme['wave'], 720, 60, 'M0 44 C 180 10, 380 64, 720 18 L720 60 L0 60 Z'),
+                'carnetWave' => CertificateAssets::wave($theme['wave'], 324, 40, 'M0 30 C 90 6, 190 42, 324 12 L324 40 L0 40 Z'),
             ],
             'heroLabel' => $benefits['hero']['label'],
             'heroValor' => $benefits['hero']['value'],
@@ -221,21 +222,5 @@ final class CertificateDocumentData
         $last = $relation[count($relation) - 1]['num'];
 
         return $first === $last ? 'la página '.$first : 'las páginas '.$first.' a '.$last;
-    }
-
-    private static function imageDataUri(string $file): string
-    {
-        $path = public_path('image/certificado-afiliacion/'.$file);
-        $mime = str_ends_with($file, '.jpg') ? 'image/jpeg' : 'image/png';
-
-        return is_file($path) ? 'data:'.$mime.';base64,'.base64_encode((string) file_get_contents($path)) : '';
-    }
-
-    private static function waveDataUri(string $color, int $width, int $height, string $path): string
-    {
-        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '.$width.' '.$height.'" preserveAspectRatio="none" width="'.$width.'" height="'.$height.'">'
-            .'<path d="'.$path.'" fill="'.$color.'"/></svg>';
-
-        return 'data:image/svg+xml;base64,'.base64_encode($svg);
     }
 }

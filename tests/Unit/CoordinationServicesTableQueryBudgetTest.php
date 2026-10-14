@@ -299,8 +299,8 @@ it('la búsqueda por paciente sigue encontrando la coordinación', function (): 
     }
 
     Livewire::test(ListOperationCoordinationServices::class)
-        ->set('activeTab', 'pendiente')
         ->call('loadTable')
+        ->filterTable('status', ['PENDIENTE'])
         ->searchTable((string) $coordinacion->patient)
         ->assertSuccessful()
         ->assertSee((string) $coordinacion->patient);

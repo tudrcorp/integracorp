@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\Affiliations\Pages;
 
 use App\Filament\Business\Resources\Affiliations\AffiliationResource;
+use App\Filament\Business\Resources\Affiliations\Concerns\SendsAffiliationCertificateByEmail;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Models\AffiliationCertificateIssue;
@@ -44,6 +45,8 @@ use Throwable;
  */
 class CertificateGenerator extends Page
 {
+    use SendsAffiliationCertificateByEmail;
+
     /** Estatus de afiliación que pueden certificarse. */
     public const CERTIFIABLE_STATUSES = ['ACTIVA', 'PRE-APROBADA'];
 
@@ -218,6 +221,22 @@ class CertificateGenerator extends Page
                 : 'Certificado listo. Revise la vista previa y descárguelo.')
             ->success()
             ->send();
+    }
+
+    /**
+     * Vista previa liviana: portada y primera hoja de carnets (o el documento
+     * completo si es corto). En los corporativos grandes está disponible aun
+     * mientras el PDF completo se dibuja.
+     */
+    public function lightPreviewUrl(): ?string
+    {
+        $issue = $this->currentIssue();
+
+        if ($issue === null || $issue->pdf_status === AffiliationCertificateIssue::PDF_FAILED) {
+            return null;
+        }
+
+        return route('business.affiliation-certificate.pdf', ['issue' => $issue->id, 'vista' => 'previa']);
     }
 
     public function previewUrl(): ?string

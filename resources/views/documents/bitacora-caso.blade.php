@@ -208,7 +208,7 @@
         </td>
         <td class="col-title">
             <p class="doc-title">Bitácora de caso</p>
-            <p class="doc-sub">Clave del servicio: <strong>{{ $code }}</strong></p>
+            <p class="doc-sub">{{ \App\Support\Telemedicine\TelemedicineDocumentCaseCode::LABEL }}: <strong>{{ $code }}</strong></p>
             <p class="doc-sub">Paciente: <strong>{{ $patientName }}</strong></p>
             <p class="doc-sub">Fecha: <strong>{{ $generatedAt }}</strong></p>
             <span class="badge">{{ $status }}</span>

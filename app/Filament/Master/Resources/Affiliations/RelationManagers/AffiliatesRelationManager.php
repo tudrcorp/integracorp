@@ -2,20 +2,21 @@
 
 namespace App\Filament\Master\Resources\Affiliations\RelationManagers;
 
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
+use App\Support\Filament\PatientAgeDisplay;
+use App\Support\Plans\PlanInfantEligibility;
+use BackedEnum;
 use Filament\Actions\CreateAction;
-use Filament\Forms\Components\Select;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
-use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Section;
-use Filament\Tables\Columns\ImageColumn;
-use Filament\Forms\Components\DatePicker;
 use Filament\Resources\RelationManagers\RelationManager;
-use App\Filament\Master\Resources\Affiliations\AffiliationResource;
-use BackedEnum;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
 class AffiliatesRelationManager extends RelationManager
 {
@@ -49,16 +50,17 @@ class AffiliatesRelationManager extends RelationManager
                                         'FEMENINO' => 'FEMENINO',
                                     ]),
                                 DatePicker::make('birth_date')
+                                    ->rule(PlanInfantEligibility::filamentBirthDateRule())
                                     ->format('d-m-Y'),
                                 Select::make('relationship')
                                     ->label('Parentesco')
                                     ->options([
-                                        'MADRE'     => 'MADRE',
-                                        'PADRE'     => 'PADRE',
-                                        'ESPOSA'    => 'ESPOSA',
-                                        'ESPOSO'    => 'ESPOSO',
-                                        'HIJO'      => 'HIJO',
-                                        'HIJA'      => 'HIJA',
+                                        'MADRE' => 'MADRE',
+                                        'PADRE' => 'PADRE',
+                                        'ESPOSA' => 'ESPOSA',
+                                        'ESPOSO' => 'ESPOSO',
+                                        'HIJO' => 'HIJO',
+                                        'HIJA' => 'HIJA',
                                     ]),
                             ])
                             // ->defaultItems(6)
@@ -68,7 +70,6 @@ class AffiliatesRelationManager extends RelationManager
                     ])->columnSpanFull(),
             ]);
     }
-
 
     public function table(Table $table): Table
     {
@@ -84,8 +85,8 @@ class AffiliatesRelationManager extends RelationManager
                 TextColumn::make('birth_date')
                     ->label('Fecha de Nacimiento'),
                 TextColumn::make('age')
-                    ->label('Edad')
-                    ->suffix(' años'),
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
+                    ->label('Edad'),
                 TextColumn::make('sex')
                     ->label('Genero'),
                 TextColumn::make('relationship')
@@ -122,7 +123,7 @@ class AffiliatesRelationManager extends RelationManager
                                 ->danger()
                                 ->send();
                         }
-                    })
+                    }),
 
             ])
             ->striped()

@@ -12,6 +12,7 @@ use App\Models\DetailIndividualQuote;
 use App\Models\IndividualQuote;
 use App\Models\Region;
 use App\Models\State;
+use App\Support\Plans\PlanInfantEligibility;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -541,6 +542,7 @@ class AffiliationForm
                                                             'required' => 'Campo Requerido',
                                                         ]),
                                                     DatePicker::make('birth_date')
+                                                        ->rule(PlanInfantEligibility::filamentBirthDateRule())
                                                         ->label('Fecha de Nacimiento')
                                                         ->displayFormat('d-m-Y')
                                                         ->format('d-m-Y')

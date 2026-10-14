@@ -163,19 +163,21 @@
         <table class="grid">
             <thead>
                 <tr>
-                    <th style="width: 8%;">ID</th>
-                    <th style="width: 14%;">Referencia</th>
-                    <th style="width: 14%;">Creado</th>
-                    <th style="width: 18%;">Servicio</th>
-                    <th style="width: 18%;">Específico</th>
-                    <th style="width: 12%;">Factura</th>
-                    <th style="width: 16%;" class="num">Costo (USD)</th>
+                    <th style="width: 7%;">ID</th>
+                    <th style="width: 13%;">Nro. de Caso</th>
+                    <th style="width: 12%;">Referencia</th>
+                    <th style="width: 13%;">Creado</th>
+                    <th style="width: 16%;">Servicio</th>
+                    <th style="width: 15%;">Específico</th>
+                    <th style="width: 11%;">Factura</th>
+                    <th style="width: 13%;" class="num">Costo (USD)</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($report['services'] as $service)
                     <tr>
                         <td>{{ $service['id'] }}</td>
+                        <td>{{ $service['case_code'] ?? '—' }}</td>
                         <td>{{ $service['reference_number'] }}</td>
                         <td>{{ $service['created_at'] }}</td>
                         <td>{{ $service['servicie'] }}</td>
@@ -185,7 +187,7 @@
                     </tr>
                 @endforeach
                 <tr class="totals-row">
-                    <td colspan="6" class="num">TOTAL</td>
+                    <td colspan="7" class="num">TOTAL</td>
                     <td class="num money">{{ number_format($summary['total_bill_price'], 2, ',', '.') }}</td>
                 </tr>
             </tbody>

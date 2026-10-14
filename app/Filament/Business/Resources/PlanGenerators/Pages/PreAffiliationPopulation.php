@@ -11,6 +11,7 @@ use App\Filament\Imports\PlanGeneratorPopulationImporter;
 use App\Models\PlanGenerator;
 use App\Models\PlanGeneratorPopulation;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Filament\PatientAgeDisplay;
 use App\Support\PlanGenerators\PlanGeneratorCoverageAssignment;
 use App\Support\PlanGenerators\PlanGeneratorPopulationStatus;
 use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
@@ -262,6 +263,7 @@ class PreAffiliationPopulation extends Page implements HasTable
                     ->placeholder('—')
                     ->toggleable(),
                 TextColumn::make('age')
+                    ->formatStateUsing(PatientAgeDisplay::formatter('birth_date'))
                     ->label('Edad')
                     ->alignCenter()
                     ->sortable(),
@@ -331,7 +333,7 @@ class PreAffiliationPopulation extends Page implements HasTable
                         ? 'Su edad no cabe en ninguna de las coberturas elegidas.'
                         : null)
                     ->modalHeading(fn (PlanGeneratorPopulation $record): string => 'Cobertura de '.trim($record->last_name.' '.$record->first_name))
-                    ->modalDescription(fn (PlanGeneratorPopulation $record): string => 'Edad en el padrón: '.((string) $record->age).' años. Solo se ofrecen las coberturas cuyo rango de edad la admite.')
+                    ->modalDescription(fn (PlanGeneratorPopulation $record): string => 'Edad en el padrón: '.\App\Support\PatientAge::label($record->birth_date, $record->age).'. Solo se ofrecen las coberturas cuyo rango de edad la admite.')
                     ->modalSubmitActionLabel('Guardar cobertura')
                     ->modalWidth(Width::Large)
                     ->fillForm(fn (PlanGeneratorPopulation $record): array => ['column_key' => $record->column_key])

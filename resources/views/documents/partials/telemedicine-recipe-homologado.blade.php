@@ -20,6 +20,7 @@
     $stampSize = \App\Support\Telemedicine\TelemedicineDoctorStamp::displaySize($stampDataUri, 110, 110);
     $doctorName = trim((string) ($data['doctor_name'] ?? ''));
     $coverageGroup = trim((string) ($data['coverage_group'] ?? ''));
+    $caseCode = \App\Support\Telemedicine\TelemedicineDocumentCaseCode::fromData(is_array($data ?? null) ? $data : []);
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -217,6 +218,7 @@
                             <td class="col-title">
                                 {{-- El original va a la farmacia (solo medicamentos): es el récipe. La copia, con las indicaciones, es la del paciente. --}}
                                 <p class="doc-title">{{ $isOriginal ? 'Récipe Médico' : 'Indicaciones Médicas' }}</p>
+                                <p class="doc-sub">{{ \App\Support\Telemedicine\TelemedicineDocumentCaseCode::LABEL }}: <strong>{{ $val($caseCode) }}</strong></p>
                                 <p class="doc-sub">Clave: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
                                 <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
                                 <span class="badge">{{ $copyLabel }}</span>
@@ -245,7 +247,7 @@
                         <tr>
                             <td>
                                 <div class="label">Edad</div>
-                                <div class="value-muted">{{ $val($data['age_patiente'] ?? ($data['age_patient'] ?? null)) }} años</div>
+                                <div class="value-muted">{{ \App\Support\PatientAge::forTelemedicinePatientId($data['telemedicine_patient_id'] ?? null, $data['age_patiente'] ?? ($data['age_patient'] ?? null)) }}</div>
                             </td>
                             <td>
                                 <div class="label">Tipo de servicio</div>
