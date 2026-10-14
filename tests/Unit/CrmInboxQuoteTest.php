@@ -84,6 +84,8 @@ beforeEach(function (): void {
     });
 
     Storage::fake('local');
+
+    crmInboxUpgradeTestSchema();
 });
 
 it('no cotiza sin el caso tomado ni con edades inválidas', function (): void {

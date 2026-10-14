@@ -7,6 +7,7 @@ namespace App\Support\CrmInbox;
 use App\Models\CrmHandoffEnvelope;
 use App\Models\CrmHandoffMessage;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -18,6 +19,17 @@ use Illuminate\Support\Facades\Schema;
 final class CrmInboxQueue
 {
     public const PAGE_SIZE = 25;
+
+    /**
+     * Columnas que la bandeja lee de cada caso. El payload es lo más pesado: no hay otra cosa que traer.
+     *
+     * @var list<string>
+     */
+    public const COLUMNS = [
+        'id', 'handoff_id', 'phone', 'area', 'motivo', 'payload', 'accepted_at', 'taken_at', 'taken_by', 'released_at',
+        'assigned_to', 'assigned_by', 'assigned_at', 'moved_by', 'moved_at', 'last_customer_at', 'last_customer_text',
+        'copilot_feedback', 'follow_up_at', 'follow_up_note', 'follow_up_by', 'first_reply_at',
+    ];
 
     /**
      * @param  list<string>  $areas
@@ -52,6 +64,7 @@ final class CrmInboxQueue
                 'last_reply_text' => $replies[(string) $envelope->handoff_id]['text'] ?? null,
                 'last_quote' => $quotes[(string) $envelope->handoff_id] ?? null,
             ])
+            ->map(fn (array $row): array => [...$row, 'stale' => self::stale($row, $now)])
             ->all();
 
         return [
@@ -104,6 +117,10 @@ final class CrmInboxQueue
             return 'others';
         }
 
+        if (($row['follow_up_due'] ?? false) === true) {
+            return 'reply';
+        }
+
         $customer = $row['waiting_since'] ?? null;
         $reply = $row['last_reply_at'] ?? null;
 
@@ -130,12 +147,22 @@ final class CrmInboxQueue
 
         $names = self::assigneeNames(new Collection([$envelope]));
 
-        return CrmInboxCase::detail(
+        $now = Carbon::now();
+        $detail = CrmInboxCase::detail(
             $envelope,
-            Carbon::now(),
+            $now,
             $envelope->assigned_to !== null ? ($names[(int) $envelope->assigned_to] ?? null) : null,
             $envelope->taken_by !== null ? ($names[(int) $envelope->taken_by] ?? null) : null,
         );
+        $lastReply = null;
+
+        foreach ($detail['attention'] as $message) {
+            if ($message['role'] === 'out' && in_array($message['kind'], CrmHandoffReply::HUMAN, true) && $message['status'] !== 'failed' && is_int($message['at'])) {
+                $lastReply = max($lastReply ?? 0, $message['at']);
+            }
+        }
+
+        return [...$detail, 'last_reply_at' => $lastReply, 'stale' => self::stale([...$detail, 'last_reply_at' => $lastReply], $now)];
     }
 
     /**
@@ -184,7 +211,7 @@ final class CrmInboxQueue
     public static function queryFor(array $areas, bool $includeUnassigned): Builder
     {
         return CrmHandoffEnvelope::query()
-            ->select(['id', 'handoff_id', 'phone', 'area', 'motivo', 'payload', 'accepted_at', 'taken_at', 'taken_by', 'released_at', 'assigned_to', 'assigned_by', 'assigned_at', 'moved_by', 'moved_at', 'last_customer_at', 'last_customer_text', 'copilot_feedback'])
+            ->select(self::COLUMNS)
             ->whereNull('released_at')
             ->whereNull('closed_at')
             ->where(function (Builder $query) use ($areas, $includeUnassigned): void {
@@ -200,6 +227,56 @@ final class CrmInboxQueue
                     $query->whereRaw('1 = 0');
                 }
             });
+    }
+
+    /**
+     * El cliente escribió hace más del umbral de abandono y no hubo respuesta después: un compañero puede relevar.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public static function stale(array $row, CarbonInterface $now): bool
+    {
+        $since = $row['waiting_since'] ?? null;
+        $reply = $row['last_reply_at'] ?? null;
+
+        if (! ($row['taken'] ?? false) || ! is_int($since) || (is_int($reply) && $reply >= $since)) {
+            return false;
+        }
+
+        return $now->getTimestamp() - $since >= CrmInboxWatch::abandonMinutes() * 60;
+    }
+
+    /**
+     * Casos sin tomar en orden para «Tomar el siguiente»: primero los marcados para mí, luego los libres,
+     * y los marcados para alguien que no está. Lo marcado para un compañero presente se respeta.
+     *
+     * @param  list<string>  $areas
+     * @return Collection<int, CrmHandoffEnvelope>
+     */
+    public static function nextCandidates(array $areas, bool $includeUnassigned, int $userId, int $limit = 5): Collection
+    {
+        $candidates = self::queryFor($areas, $includeUnassigned)
+            ->whereNull('taken_at')
+            ->orderByRaw('CASE WHEN assigned_to = ? THEN 0 WHEN assigned_to IS NULL THEN 1 ELSE 2 END', [$userId])
+            ->orderByRaw('COALESCE(last_customer_at, accepted_at) IS NULL')
+            ->orderByRaw('COALESCE(last_customer_at, accepted_at)')
+            ->limit(max(1, $limit) * 3)
+            ->get();
+
+        $others = $candidates->pluck('assigned_to')->filter(fn (mixed $id): bool => $id !== null && (int) $id !== $userId)
+            ->map(fn (mixed $id): int => (int) $id)->unique()->values()->all();
+        $states = CrmInboxPresence::effective($others);
+
+        return $candidates
+            ->filter(function (CrmHandoffEnvelope $envelope) use ($userId, $states): bool {
+                if ($envelope->assigned_to === null || (int) $envelope->assigned_to === $userId) {
+                    return true;
+                }
+
+                return in_array($states[(int) $envelope->assigned_to] ?? CrmInboxPresence::AVAILABLE, [CrmInboxPresence::AWAY, CrmInboxPresence::OFFLINE], true);
+            })
+            ->take(max(1, $limit))
+            ->values();
     }
 
     /**

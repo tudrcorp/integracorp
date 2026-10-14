@@ -83,6 +83,8 @@ beforeEach(function (): void {
         $table->string('content_encoding', 32)->default('aes128gcm');
         $table->timestamps();
     });
+
+    crmInboxUpgradeTestSchema();
 });
 
 it('elige al analista aunque otra suscripción tenga el departamento ilegible', function (): void {

@@ -44,6 +44,8 @@ final class CrmInboxCopilot
      *     handover: ?array{label: string, time: string},
      *     ready: int,
      *     asks: array<string, string>,
+     *     enroll: list<array{key: string, label: string, value: ?string, source: ?string, anchor: ?string}>,
+     *     draft: ?string,
      *     client: array{since: ?string, conversations: int},
      *     proposals: list<array{by: string, mine: bool, control: string, detail: string, total: string}>
      * }
@@ -61,6 +63,8 @@ final class CrmInboxCopilot
         $plan = self::planFact($said, $quote);
         $coverage = $plan !== null ? self::coverageFact($said, $plan['raw']) : null;
         $document = self::documentFact($said);
+        $birth = self::birthFact($said);
+        $email = self::emailFact($said);
 
         $facts = array_values(array_filter([$holder, $ages, $plan, $coverage, $document]));
         $missing = [];
@@ -89,6 +93,25 @@ final class CrmInboxCopilot
         $given = self::given($case);
         $ask = fn (string $question): string => ($given !== '' ? $given.', ¿' : '¿').$question;
 
+        $asks = [
+            'ages' => $ask('me confirmas las edades de las personas que quieres incluir en el plan?'),
+            'plan' => $ask('qué plan te interesa: Inicial, Ideal o Especial?'),
+            'document' => $ask('me confirmas la cédula del titular para revisar tu ficha?'),
+            'birth' => $ask('me indicas la fecha de nacimiento del titular (día/mes/año)?'),
+            'email' => $ask('a qué correo te envío la documentación?'),
+        ];
+        $enroll = [];
+
+        foreach (['document' => ['Cédula', $document], 'birth' => ['Fecha de nacimiento', $birth], 'email' => ['Correo', $email]] as $key => [$label, $fact]) {
+            $enroll[] = [
+                'key' => $key,
+                'label' => $label,
+                'value' => $fact['value'] ?? null,
+                'source' => $fact['source'] ?? null,
+                'anchor' => $fact['anchor'] ?? null,
+            ];
+        }
+
         return [
             'summary' => self::text($session['last_summary'] ?? null) ?? self::text($payload['necesidad'] ?? null),
             'need' => self::text($lead['necesidad'] ?? null),
@@ -101,11 +124,9 @@ final class CrmInboxCopilot
                 : null,
             'handover' => self::handover($envelope, $viewerId, (string) ($case['area_label'] ?? '')),
             'ready' => count(array_filter([$holder, $ages, $plan, $document ?? ($hasRecord === true ? true : null)])),
-            'asks' => [
-                'ages' => $ask('me confirmas las edades de las personas que quieres incluir en el plan?'),
-                'plan' => $ask('qué plan te interesa: Inicial, Ideal o Especial?'),
-                'document' => $ask('me confirmas la cédula del titular para revisar tu ficha?'),
-            ],
+            'asks' => $asks,
+            'enroll' => $enroll,
+            'draft' => $mine ? self::draft($case, $given, $ages !== null, $plan !== null, $enroll) : null,
             'client' => self::client($envelope, $lead),
             'proposals' => self::proposals($quote, $payload, $case),
         ];
@@ -541,6 +562,101 @@ final class CrmInboxCopilot
             if ($document !== null) {
                 return self::fact('document', 'Cédula', $document['label'], self::lineSource($line), $line['anchor'], $document['digits']);
             }
+        }
+
+        return null;
+    }
+
+    /**
+     * Borrador de la siguiente respuesta según en qué punto está el caso. El analista lo edita antes de enviar.
+     *
+     * @param  array<string, mixed>  $case
+     * @param  list<array{key: string, label: string, value: ?string, source: ?string, anchor: ?string}>  $enroll
+     */
+    public static function draft(array $case, string $given, bool $hasAges, bool $hasPlan, array $enroll): string
+    {
+        $hello = $given !== '' ? $given.', ' : '';
+        $attention = array_values(array_filter((array) ($case['attention'] ?? []), 'is_array'));
+        $quoteSent = in_array(true, array_map(
+            fn (array $message): bool => ($message['document'] ?? false) === true && ($message['status'] ?? '') !== 'failed',
+            $attention,
+        ), true);
+
+        if (! $hasAges || ! $hasPlan) {
+            $needs = array_values(array_filter([
+                $hasAges ? null : 'las edades de las personas que quieres incluir',
+                $hasPlan ? null : 'el plan que te interesa (Inicial, Ideal o Especial)',
+            ]));
+
+            return ucfirst($hello.'para prepararte la propuesta necesito '.implode(' y ', $needs).'.');
+        }
+
+        if (! $quoteSent) {
+            return ucfirst(($given !== '' ? 'gracias, '.$given : 'gracias').'. Ya tengo lo necesario; en un momento te envío la propuesta.');
+        }
+
+        $pending = array_values(array_map(
+            fn (array $item): string => mb_strtolower($item['label']),
+            array_filter($enroll, fn (array $item): bool => $item['value'] === null),
+        ));
+
+        if ($pending !== []) {
+            $last = array_pop($pending);
+            $list = $pending === [] ? $last : implode(', ', $pending).' y '.$last;
+
+            return ucfirst($hello.'si quieres avanzar con la afiliación, envíame '.$list.' del titular.');
+        }
+
+        return ucfirst($hello.'¿pudiste revisar la propuesta? Si quieres, la ajustamos a otra cobertura o a otro plan.');
+    }
+
+    /**
+     * Fecha de nacimiento escrita por el cliente: dd/mm/aaaa o dd-mm-aaaa, con un año razonable.
+     *
+     * @param  list<array{text: string, time: ?string, anchor: string}>  $said
+     * @return array{key: string, label: string, value: string, source: string, anchor: ?string, raw: string}|null
+     */
+    private static function birthFact(array $said): ?array
+    {
+        $thisYear = (int) date('Y');
+
+        foreach ($said as $line) {
+            preg_match_all('/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})\b/u', $line['text'], $matches, PREG_SET_ORDER);
+
+            foreach (array_reverse($matches) as $match) {
+                [$day, $month, $year] = [(int) $match[1], (int) $match[2], (int) $match[3]];
+
+                if (! checkdate($month, $day, $year) || $year < $thisYear - 110 || $year > $thisYear) {
+                    continue;
+                }
+
+                $value = sprintf('%02d/%02d/%04d', $day, $month, $year);
+
+                return self::fact('birth', 'Fecha de nacimiento', $value, self::lineSource($line), $line['anchor'], $value);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<array{text: string, time: ?string, anchor: string}>  $said
+     * @return array{key: string, label: string, value: string, source: string, anchor: ?string, raw: string}|null
+     */
+    private static function emailFact(array $said): ?array
+    {
+        foreach ($said as $line) {
+            if (preg_match('/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/u', $line['text'], $match) !== 1) {
+                continue;
+            }
+
+            $email = mb_strtolower(rtrim($match[0], '.'));
+
+            if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+                continue;
+            }
+
+            return self::fact('email', 'Correo', $email, self::lineSource($line), $line['anchor'], $email);
         }
 
         return null;

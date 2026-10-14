@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\CrmInbox;
 
+use App\Enums\CrmCaseOutcome;
 use App\Models\CrmHandoffEnvelope;
 
 /**
@@ -14,7 +15,7 @@ final class CrmHandoffClose
     /**
      * @return array{ok: true, already: bool}|array{ok: false, reason: string}
      */
-    public function close(CrmHandoffEnvelope $envelope, ?int $userId): array
+    public function close(CrmHandoffEnvelope $envelope, ?int $userId, ?CrmCaseOutcome $outcome = null, ?string $note = null): array
     {
         if ($envelope->closed_at !== null || $envelope->released_at !== null) {
             return ['ok' => true, 'already' => true];
@@ -32,7 +33,12 @@ final class CrmHandoffClose
             ->update([
                 'closed_at' => now(),
                 'closed_by' => $userId,
+                ...CrmHandoffOutcome::columns($outcome, $note, $userId),
             ]);
+
+        if ($closed > 0) {
+            CrmInboxPulse::bump();
+        }
 
         return ['ok' => true, 'already' => $closed === 0];
     }

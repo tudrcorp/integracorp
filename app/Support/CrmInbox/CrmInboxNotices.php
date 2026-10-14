@@ -21,15 +21,6 @@ final class CrmInboxNotices
      */
     private const PANELS = ['business', 'operations', 'administration'];
 
-    /**
-     * @var list<string>
-     */
-    private const TITLES = [
-        'Nueva conversación',
-        'Te pasaron una conversación',
-        'Llegó una conversación',
-    ];
-
     public static function flashUnread(): void
     {
         $panel = Filament::getCurrentPanel();
@@ -52,7 +43,7 @@ final class CrmInboxNotices
             $viewData = is_array($data['viewData'] ?? null) ? $data['viewData'] : [];
             $handoffId = (string) ($viewData['handoff_id'] ?? '');
 
-            if ($handoffId === '' || ! in_array($title, self::TITLES, true)) {
+            if ($handoffId === '' || ! in_array($title, CrmInboxAlerts::TITLES, true)) {
                 continue;
             }
 
@@ -70,7 +61,7 @@ final class CrmInboxNotices
 
     public static function toast(string $title, string $body, string $handoffId, ?string $url = null): void
     {
-        if (! in_array($title, self::TITLES, true) || ! preg_match('/^\d{1,18}$/', $handoffId)) {
+        if (! in_array($title, CrmInboxAlerts::TITLES, true) || ! preg_match('/^\d{1,18}$/', $handoffId)) {
             return;
         }
 

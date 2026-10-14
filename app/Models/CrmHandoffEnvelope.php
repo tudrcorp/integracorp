@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\CrmInbox\CrmInboxPulse;
 use Database\Factories\CrmHandoffEnvelopeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -33,7 +34,27 @@ class CrmHandoffEnvelope extends Model
         'last_customer_at',
         'last_customer_text',
         'copilot_feedback',
+        'outcome',
+        'outcome_note',
+        'outcome_by',
+        'outcome_at',
+        'follow_up_at',
+        'follow_up_note',
+        'follow_up_by',
+        'follow_up_notified_at',
+        'sla_alerted_at',
+        'stale_alerted_at',
+        'first_reply_at',
     ];
+
+    /**
+     * Cualquier cambio en un caso despierta a las bandejas abiertas sin que consulten la base.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => CrmInboxPulse::bump());
+        static::deleted(fn () => CrmInboxPulse::bump());
+    }
 
     protected function casts(): array
     {
@@ -47,6 +68,12 @@ class CrmHandoffEnvelope extends Model
             'moved_at' => 'datetime',
             'last_customer_at' => 'datetime',
             'copilot_feedback' => 'array',
+            'outcome_at' => 'datetime',
+            'follow_up_at' => 'datetime',
+            'follow_up_notified_at' => 'datetime',
+            'sla_alerted_at' => 'datetime',
+            'stale_alerted_at' => 'datetime',
+            'first_reply_at' => 'datetime',
         ];
     }
 }

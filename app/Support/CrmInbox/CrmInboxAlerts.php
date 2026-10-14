@@ -19,12 +19,35 @@ use Illuminate\Support\Facades\Schema;
 final class CrmInboxAlerts
 {
     /**
+     * Avisos que van a toda el área del caso.
+     *
+     * @var list<string>
+     */
+    public const AREA_NOTICES = ['new', 'move', 'late'];
+
+    /**
+     * Título de cada aviso. La bandeja abierta solo vuelve a mostrar avisos con estos títulos.
+     *
+     * @var array<string, string>
+     */
+    public const TITLES = [
+        'new' => 'Nueva conversación',
+        'assign' => 'Te pasaron una conversación',
+        'move' => 'Llegó una conversación',
+        'late' => 'Caso sin tomar',
+        'late_mine' => 'Tu cliente espera respuesta',
+        'stale' => 'Caso sin atender',
+        'follow_up' => 'Recordatorio de seguimiento',
+        'relay' => 'Te pasaron un caso en atención',
+    ];
+
+    /**
      * @return Collection<int, CrmPushSubscription>
      */
     /**
      * @return Collection<int, User>
      */
-    public static function recipients(CrmHandoffEnvelope $envelope, ?int $onlyUserId = null): Collection
+    public static function recipients(CrmHandoffEnvelope $envelope, ?int $onlyUserId = null, string $notice = 'new'): Collection
     {
         if (! Schema::hasTable('users')) {
             return new Collection;
@@ -39,22 +62,53 @@ final class CrmInboxAlerts
             $query->whereKey($onlyUserId);
         }
 
-        return $query
+        $users = $query
             ->get(['id', 'email', 'status', 'departament'])
             ->filter(fn (User $user): bool => self::canReceive($user, $department))
             ->values();
+
+        if ($notice === 'stale') {
+            $supervisors = CrmInboxSupervisor::idsFor(CrmInboxAreas::panelFor($envelope->area));
+
+            return $users
+                ->filter(fn (User $user): bool => in_array((int) $user->id, $supervisors, true) || in_array('SUPERADMIN', self::departmentsOf($user), true))
+                ->values();
+        }
+
+        if ($onlyUserId === null && in_array($notice, self::AREA_NOTICES, true)) {
+            return self::presentFirst($users);
+        }
+
+        return $users;
+    }
+
+    /**
+     * En un aviso a toda el área se salta a quien está ausente o desconectado. Si así no queda
+     * nadie, avisa a todos: un caso sin destinatario es peor que un aviso de más.
+     *
+     * @param  Collection<int, User>  $users
+     * @return Collection<int, User>
+     */
+    private static function presentFirst(Collection $users): Collection
+    {
+        $states = CrmInboxPresence::effective($users->pluck('id')->map(fn (mixed $id): int => (int) $id)->all());
+        $present = $users
+            ->filter(fn (User $user): bool => in_array($states[(int) $user->id] ?? CrmInboxPresence::AVAILABLE, [CrmInboxPresence::AVAILABLE, CrmInboxPresence::BUSY], true))
+            ->values();
+
+        return $present->isNotEmpty() ? $present : $users;
     }
 
     /**
      * @return Collection<int, CrmPushSubscription>
      */
-    public static function subscriptionsFor(CrmHandoffEnvelope $envelope, ?int $onlyUserId = null): Collection
+    public static function subscriptionsFor(CrmHandoffEnvelope $envelope, ?int $onlyUserId = null, string $notice = 'new'): Collection
     {
         if (! Schema::hasTable('crm_push_subscriptions')) {
             return new Collection;
         }
 
-        $ids = self::recipients($envelope, $onlyUserId)->pluck('id');
+        $ids = self::recipients($envelope, $onlyUserId, $notice)->pluck('id');
 
         if ($ids->isEmpty()) {
             return new Collection;
@@ -66,7 +120,7 @@ final class CrmInboxAlerts
             ->get();
     }
 
-    public static function remember(CrmHandoffEnvelope $envelope, string $notice = 'new', ?int $onlyUserId = null): void
+    public static function remember(CrmHandoffEnvelope $envelope, string $notice = 'new', ?int $onlyUserId = null, ?string $stamp = null): void
     {
         if (! Schema::hasTable('notifications')) {
             return;
@@ -75,8 +129,8 @@ final class CrmInboxAlerts
         $payload = self::payload($envelope, $notice, $onlyUserId);
         $body = str_replace("\n", ' · ', $payload['body']);
 
-        foreach (self::recipients($envelope, $onlyUserId) as $user) {
-            $key = 'crm-bell:'.$notice.':'.$envelope->handoff_id.':'.$user->id;
+        foreach (self::recipients($envelope, $onlyUserId, $notice) as $user) {
+            $key = 'crm-bell:'.$notice.':'.$envelope->handoff_id.':'.($stamp !== null ? $stamp.':' : '').$user->id;
 
             if (self::cache()->has($key)) {
                 continue;
@@ -132,11 +186,7 @@ final class CrmInboxAlerts
         $panel = CrmInboxAreas::panelFor($envelope->area);
         $url = rtrim((string) config('app.url'), '/').'/'.$panel.'/atencion-whatsapp?caso='.rawurlencode((string) $envelope->handoff_id);
 
-        $title = match ($notice) {
-            'assign' => 'Te pasaron una conversación',
-            'move' => 'Llegó una conversación',
-            default => 'Nueva conversación',
-        };
+        $title = self::TITLES[$notice] ?? self::TITLES['new'];
         $tag = 'crm-handoff-'.$envelope->handoff_id;
 
         if ($notice === 'assign' && $onlyUserId !== null) {
@@ -145,6 +195,10 @@ final class CrmInboxAlerts
 
         if ($notice === 'move') {
             $tag .= '-'.($envelope->area ?? 'area');
+        }
+
+        if (in_array($notice, ['late', 'late_mine', 'stale', 'follow_up', 'relay'], true)) {
+            $tag .= '-'.$notice;
         }
 
         return [

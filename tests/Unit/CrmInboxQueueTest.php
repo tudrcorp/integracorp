@@ -86,6 +86,8 @@ beforeEach(function (): void {
         $table->json('meta')->nullable();
         $table->timestamps();
     });
+
+    crmInboxUpgradeTestSchema();
 });
 
 it('ordena por la espera más larga y cada panel ve solo su área', function (): void {
@@ -271,7 +273,8 @@ it('muestra la cola en el panel y no abre un caso de otra área', function (): v
         ->assertSee('María Peña')
         ->assertSee('el precio me parece alto')
         ->assertDontSee('necesito una cita')
-        ->assertDontSee('Tomar')
+        ->assertDontSee('Tomar el caso')
+        ->assertSee('Tomar el siguiente')
         ->call('select', '900004')
         ->assertSet('selectedHandoffId', null)
         ->call('select', '900002')
@@ -441,10 +444,12 @@ it('devuelve el caso al bot solo cuando n8n confirma', function (): void {
         ->call('take')
         ->assertSee('Devolver al bot')
         ->call('release')
+        ->assertNotified('Elige cómo terminó el caso')
+        ->call('release', 'cotizado')
         ->assertNotified('No se pudo devolver el caso')
         ->assertSee('Enviar por WhatsApp')
         ->assertSee('María Peña')
-        ->call('release')
+        ->call('release', 'cotizado')
         ->assertNotified('El bot volvió a responder')
         ->assertSet('selectedHandoffId', null)
         ->assertSee('Nadie está esperando.')
@@ -499,7 +504,7 @@ it('no devuelve el caso si el cliente no recibió el cierre', function (): void 
     Livewire::test(AtencionWhatsapp::class)
         ->call('select', '900002')
         ->call('take')
-        ->call('release')
+        ->call('release', 'cotizado')
         ->assertNotified('No se pudo avisar al cliente')
         ->assertSee('Reintentar')
         ->assertSee('Enviar por WhatsApp');
@@ -579,7 +584,7 @@ it('el cierre nombra a quien tomó el caso aunque lo devuelva otra persona', fun
 
     Livewire::test(AtencionWhatsapp::class)
         ->call('select', '900002')
-        ->call('release')
+        ->call('release', 'resuelto')
         ->assertNotified('El bot volvió a responder');
 
     expect(CrmHandoffMessage::query()->where('kind', 'closing')->value('body'))->toBe('Laura ya cerró esta parte. Soy SolIA y retomo la conversación. Escríbeme cuando quieras y seguimos con lo que necesitas.');
@@ -605,13 +610,19 @@ it('cierra un caso en espera y no cierra uno que ya está en atención', functio
     Livewire::test(AtencionWhatsapp::class)
         ->call('select', '900002')
         ->call('close')
+        ->assertNotified('Elige cómo terminó el caso')
+        ->call('close', 'otro')
+        ->assertNotified('Cuenta en una línea qué pasó')
+        ->call('close', 'informacion')
         ->assertNotified('Conversación cerrada')
-        ->assertSet('selectedHandoffId', null)
+        ->assertSet('selectedHandoffId', '900006')
         ->call('select', '900006')
-        ->call('close')
+        ->call('close', 'informacion')
         ->assertNotified('Esta conversación está en atención');
 
     expect(CrmHandoffEnvelope::query()->where('handoff_id', '900002')->value('closed_by'))->toBe(9)
+        ->and(CrmHandoffEnvelope::query()->where('handoff_id', '900002')->value('outcome'))->toBe('informacion')
+        ->and(CrmHandoffEnvelope::query()->where('handoff_id', '900002')->value('outcome_by'))->toBe(9)
         ->and(CrmInboxQueue::snapshot(['comercial'], true, 25)['count'])->toBe(1)
         ->and(CrmHandoffEnvelope::query()->where('handoff_id', '900006')->value('closed_at'))->toBeNull();
 });
@@ -811,11 +822,11 @@ it('las respuestas rápidas llevan el nombre del cliente y omiten la propuesta s
     ]);
 
     expect($withQuote)->toBe([
-        ['label' => 'Pedir cédula', 'text' => 'María, ¿me confirmas la cédula?'],
-        ['label' => 'Revisar propuesta', 'text' => 'Tu propuesta 0009018 · USD 186,00.'],
+        ['id' => null, 'label' => 'Pedir cédula', 'text' => 'María, ¿me confirmas la cédula?'],
+        ['id' => null, 'label' => 'Revisar propuesta', 'text' => 'Tu propuesta 0009018 · USD 186,00.'],
     ])
         ->and($withoutQuote)->toBe([
-            ['label' => 'Pedir cédula', 'text' => 'Hola, ¿me confirmas la cédula?'],
+            ['id' => null, 'label' => 'Pedir cédula', 'text' => 'Hola, ¿me confirmas la cédula?'],
         ]);
 });
 

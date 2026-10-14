@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\CrmInbox;
 
+use App\Models\CrmDocument;
 use App\Models\CrmHandoffEnvelope;
 use App\Models\CrmHandoffMessage;
 use Illuminate\Support\Facades\Cache;
@@ -19,6 +20,20 @@ use Throwable;
  */
 final class CrmHandoffReply
 {
+    /**
+     * Lo que sale por WhatsApp. La nota interna no está aquí: nunca se envía.
+     *
+     * @var list<string>
+     */
+    public const SENDABLE = ['message', 'intro', 'closing', 'quote', 'document'];
+
+    /**
+     * Respuestas escritas por el analista: cuentan para la primera respuesta del caso.
+     *
+     * @var list<string>
+     */
+    public const HUMAN = ['message', 'quote', 'document'];
+
     /**
      * @return array{ok: true, already: bool}|array{ok: false, reason: string}
      */
@@ -148,7 +163,7 @@ final class CrmHandoffReply
             ->where('handoff_id', $envelope->handoff_id)
             ->first();
 
-        if ($message === null || $message->direction !== 'out' || ! in_array($message->kind, ['message', 'intro', 'closing', 'quote'], true)) {
+        if ($message === null || $message->direction !== 'out' || ! in_array($message->kind, self::SENDABLE, true)) {
             return ['ok' => false, 'reason' => 'invalid'];
         }
 
@@ -179,12 +194,72 @@ final class CrmHandoffReply
                 return ['ok' => true, 'already' => true];
             }
 
-            return $message->kind === 'quote'
+            $message->forceFill(['attempts' => min(255, (int) $message->attempts + 1)])->save();
+
+            $result = in_array($message->kind, ['quote', 'document'], true)
                 ? $this->postDocument($envelope, $message)
                 : $this->post($envelope, $message);
+
+            $this->afterAttempt($envelope, $message, $result);
+
+            return $result;
         } finally {
             $lock?->release();
         }
+    }
+
+    /**
+     * Deja un documento aprobado en el hilo. Se envía con deliver(), como cualquier respuesta.
+     *
+     * @return array{ok: true, already: bool}|array{ok: false, reason: string}
+     */
+    public function stageDocument(CrmHandoffEnvelope $envelope, ?int $userId, string $replyId, int $documentId): array
+    {
+        if ($envelope->taken_at === null) {
+            return ['ok' => false, 'reason' => 'not_taken'];
+        }
+
+        $replyId = $this->replyId($replyId);
+        $document = CrmInboxLibrary::documentFor($documentId, $envelope->area);
+
+        if ($replyId === null) {
+            return ['ok' => false, 'reason' => 'invalid'];
+        }
+
+        if ($document === null || CrmInboxLibrary::read($document) === null) {
+            return ['ok' => false, 'reason' => 'missing'];
+        }
+
+        $existing = CrmHandoffMessage::query()->where('message_id', $replyId)->first();
+
+        if ($existing !== null) {
+            if ((string) $existing->handoff_id !== (string) $envelope->handoff_id || $existing->direction !== 'out' || $existing->kind !== 'document') {
+                return ['ok' => false, 'reason' => 'invalid'];
+            }
+
+            return ['ok' => true, 'already' => true];
+        }
+
+        CrmHandoffMessage::query()->create([
+            'message_id' => $replyId,
+            'handoff_id' => $envelope->handoff_id,
+            'phone' => $envelope->phone,
+            'body' => mb_substr((string) $document->title, 0, 200),
+            'received_at' => now(),
+            'direction' => 'out',
+            'kind' => 'document',
+            'status' => 'pending',
+            'user_id' => $userId,
+            'meta' => [
+                'document_id' => (int) $document->id,
+                'title' => mb_substr((string) $document->title, 0, 80),
+                'filename' => CrmInboxLibrary::filename($document),
+            ],
+        ]);
+
+        CrmInboxLibrary::countDocument((int) $document->id);
+
+        return ['ok' => true, 'already' => false];
     }
 
     /**
@@ -302,8 +377,7 @@ final class CrmHandoffReply
     {
         $url = $this->documentUrl();
         $key = (string) config('crm-inbox.takeover_key', '');
-        $path = CrmInboxQuote::path((string) $message->message_id);
-        $pdf = Storage::disk('local')->get($path);
+        $file = $this->attachment($message);
 
         if ($url === '' || $key === '') {
             $message->forceFill(['status' => 'failed'])->save();
@@ -311,17 +385,10 @@ final class CrmHandoffReply
             return ['ok' => false, 'reason' => 'unconfigured'];
         }
 
-        if (! is_string($pdf) || ! str_starts_with($pdf, '%PDF')) {
+        if ($file === null) {
             $message->forceFill(['status' => 'failed'])->save();
 
             return ['ok' => false, 'reason' => 'missing'];
-        }
-
-        $filename = 'Propuesta.pdf';
-
-        if (preg_match('/Propuesta\s+(\S+)/', (string) $message->body, $match) === 1) {
-            $safe = preg_replace('/[^A-Za-z0-9._-]/', '', $match[1]) ?? '';
-            $filename = 'Propuesta-'.($safe !== '' ? $safe : 'cotizacion').'.pdf';
         }
 
         try {
@@ -335,14 +402,14 @@ final class CrmHandoffReply
                 ->post($url, [
                     'phone' => $message->phone,
                     'reply_id' => $message->message_id,
-                    'filename' => $filename,
+                    'filename' => $file['filename'],
                     'caption' => $message->body,
-                    'pdf_base64' => base64_encode($pdf),
+                    'pdf_base64' => base64_encode($file['pdf']),
                 ]);
         } catch (Throwable $exception) {
             $message->forceFill(['status' => 'failed'])->save();
 
-            Log::warning('CRM handoff: n8n no confirmó la propuesta', [
+            Log::warning('CRM handoff: n8n no confirmó el documento', [
                 'handoff_id' => $envelope->handoff_id,
                 'error' => $exception->getMessage(),
             ]);
@@ -353,7 +420,7 @@ final class CrmHandoffReply
         if (! $response->successful() || $response->json('ok') !== true) {
             $message->forceFill(['status' => 'failed'])->save();
 
-            Log::warning('CRM handoff: n8n rechazó la propuesta', [
+            Log::warning('CRM handoff: n8n rechazó el documento', [
                 'handoff_id' => $envelope->handoff_id,
                 'status' => $response->status(),
             ]);
@@ -368,9 +435,78 @@ final class CrmHandoffReply
             'provider_message_id' => $providerId !== '' ? $providerId : null,
         ])->save();
 
-        CrmInboxQuote::forget((string) $message->message_id);
+        if ($message->kind === 'quote') {
+            CrmInboxQuote::forget((string) $message->message_id);
+        }
 
         return ['ok' => true, 'already' => $response->json('duplicate') === true];
+    }
+
+    /**
+     * El PDF que acompaña al mensaje: la propuesta calculada o un documento aprobado de la biblioteca.
+     * El documento se busca por su id en la base, no por la ruta que guardó el mensaje.
+     *
+     * @return array{pdf: string, filename: string}|null
+     */
+    private function attachment(CrmHandoffMessage $message): ?array
+    {
+        if ($message->kind === 'document') {
+            $documentId = is_array($message->meta) ? (int) ($message->meta['document_id'] ?? 0) : 0;
+            $document = $documentId > 0 ? CrmDocument::query()->find($documentId) : null;
+            $pdf = $document !== null ? CrmInboxLibrary::read($document) : null;
+
+            return $pdf !== null ? ['pdf' => $pdf, 'filename' => CrmInboxLibrary::filename($document)] : null;
+        }
+
+        $pdf = Storage::disk('local')->get(CrmInboxQuote::path((string) $message->message_id));
+
+        if (! is_string($pdf) || ! str_starts_with($pdf, '%PDF')) {
+            return null;
+        }
+
+        $filename = 'Propuesta.pdf';
+
+        if (preg_match('/Propuesta\s+(\S+)/', (string) $message->body, $match) === 1) {
+            $safe = preg_replace('/[^A-Za-z0-9._-]/', '', $match[1]) ?? '';
+            $filename = 'Propuesta-'.($safe !== '' ? $safe : 'cotizacion').'.pdf';
+        }
+
+        return ['pdf' => $pdf, 'filename' => $filename];
+    }
+
+    /**
+     * Después de cada intento: salud compartida del envío y hora de la primera respuesta humana.
+     *
+     * @param  array{ok: true, already: bool}|array{ok: false, reason: string}  $result
+     */
+    private function afterAttempt(CrmHandoffEnvelope $envelope, CrmHandoffMessage $message, array $result): void
+    {
+        if ($result['ok'] === true) {
+            CrmInboxHealth::delivered();
+
+            if (in_array($message->kind, self::HUMAN, true)) {
+                $stamped = CrmHandoffEnvelope::query()
+                    ->whereKey($envelope->id)
+                    ->whereNull('first_reply_at')
+                    ->update(['first_reply_at' => now()]);
+
+                $followed = CrmHandoffEnvelope::query()
+                    ->whereKey($envelope->id)
+                    ->whereNotNull('follow_up_at')
+                    ->where('follow_up_at', '<=', now())
+                    ->update(['follow_up_at' => null, 'follow_up_note' => null, 'follow_up_notified_at' => null]);
+
+                if ($stamped + $followed > 0) {
+                    CrmInboxPulse::bump();
+                }
+            }
+
+            return;
+        }
+
+        if (in_array($result['reason'], ['unreachable', 'rejected'], true)) {
+            CrmInboxHealth::failed();
+        }
     }
 
     private function url(): string

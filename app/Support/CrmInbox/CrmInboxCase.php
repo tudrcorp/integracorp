@@ -14,6 +14,11 @@ use Carbon\CarbonInterface;
 final class CrmInboxCase
 {
     /**
+     * Mensajes del hilo que se pintan: los más recientes. En una conversación larga, lo viejo no cabe ni ayuda.
+     */
+    public const THREAD_LIMIT = 150;
+
+    /**
      * @return array{
      *     handoff_id: string,
      *     name: string,
@@ -27,7 +32,11 @@ final class CrmInboxCase
      *     taken: bool,
      *     taken_by: ?int,
      *     assigned_to: ?int,
-     *     assignee: ?string
+     *     assignee: ?string,
+     *     follow_up_at: ?int,
+     *     follow_up_label: ?string,
+     *     follow_up_note: ?string,
+     *     follow_up_due: bool
      * }
      */
     public static function row(CrmHandoffEnvelope $envelope, CarbonInterface $now, ?string $assignee = null): array
@@ -49,6 +58,10 @@ final class CrmInboxCase
             'taken_by' => $envelope->taken_at !== null && $envelope->taken_by !== null ? (int) $envelope->taken_by : null,
             'assigned_to' => $envelope->taken_at === null && $envelope->assigned_to !== null ? (int) $envelope->assigned_to : null,
             'assignee' => $envelope->taken_at === null ? $assignee : null,
+            'follow_up_at' => $envelope->follow_up_at?->getTimestamp(),
+            'follow_up_label' => CrmHandoffFollowUp::label($envelope->follow_up_at, $now instanceof \Illuminate\Support\Carbon ? $now : null),
+            'follow_up_note' => $envelope->follow_up_at !== null ? $envelope->follow_up_note : null,
+            'follow_up_due' => $envelope->follow_up_at !== null && $envelope->follow_up_at->getTimestamp() <= $now->getTimestamp(),
         ];
     }
 
@@ -139,6 +152,10 @@ final class CrmInboxCase
             $events[] = [$envelope->taken_at, $taker !== null && $taker !== '' ? 'Lo tomó '.$taker : 'Tomado por un analista'];
         }
 
+        if ($envelope->first_reply_at !== null) {
+            $events[] = [$envelope->first_reply_at, 'Primera respuesta del equipo'];
+        }
+
         if ($envelope->last_customer_at !== null) {
             $events[] = [$envelope->last_customer_at, 'Último mensaje del cliente'];
         }
@@ -182,9 +199,11 @@ final class CrmInboxCase
                         $query->whereNull('handoff_id')->where('phone', $envelope->phone);
                     });
             })
-            ->orderBy('id')
-            ->limit(100)
-            ->get(['message_id', 'body', 'received_at', 'direction', 'kind', 'status', 'meta'])
+            ->orderByDesc('id')
+            ->limit(self::THREAD_LIMIT)
+            ->get(['id', 'message_id', 'body', 'received_at', 'direction', 'kind', 'status', 'meta'])
+            ->reverse()
+            ->values()
             ->map(fn (CrmHandoffMessage $message): array => self::attentionItem($message))
             ->all();
     }
@@ -201,7 +220,7 @@ final class CrmInboxCase
 
         if ($kind === 'note') {
             $role = 'note';
-            $author = 'Nota interna';
+            $author = str_starts_with((string) $message->body, 'Relevo: ') ? 'Relevo' : 'Nota interna';
         } elseif ($direction === 'out') {
             $role = 'out';
             $author = 'Tú';
@@ -215,6 +234,11 @@ final class CrmInboxCase
             'role' => $role,
             'status' => (string) ($message->status ?: 'received'),
             'document' => $kind === 'quote',
+            'kind' => $kind,
+            'library' => $kind === 'document' && is_array($message->meta) ? [
+                'title' => mb_substr((string) ($message->meta['title'] ?? $message->body), 0, 80),
+                'filename' => mb_substr((string) ($message->meta['filename'] ?? ''), 0, 120),
+            ] : null,
             'at' => $message->received_at?->getTimestamp(),
             'day' => $message->received_at?->timezone('America/Caracas')->toDateString(),
             'quote' => $kind === 'quote' && is_array($message->meta) ? $message->meta : null,

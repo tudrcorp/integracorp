@@ -38,6 +38,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const ACCEPT_EARLY_RENOVATION = 'aceptar-renovacion-anticipada';
 
+    public const SUPERVISE_WHATSAPP_INBOX = 'supervisar-atencion-whatsapp';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -133,6 +135,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Renovar antes del período de renovación (individual y corporativa)',
                 'group' => 'AFILIACIONES',
                 'modules' => [self::OWNER_MODULE, 'ADMINISTRACION'],
+            ],
+            self::SUPERVISE_WHATSAPP_INBOX => [
+                'name' => 'Supervisar Atención WhatsApp (tablero, relevos, respuestas y documentos)',
+                'group' => 'ATENCIÓN WHATSAPP',
+                'modules' => [self::OWNER_MODULE, 'OPERACIONES', 'ADMINISTRACION'],
             ],
         ];
     }

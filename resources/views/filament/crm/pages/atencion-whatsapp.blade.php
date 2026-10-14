@@ -672,7 +672,7 @@
         .crm-tool:hover { background: var(--crm-soft); color: var(--crm-text); }
         .crm-tool .crm-kbd { margin-left: 2px; }
         .crm-compose-bar .crm-send { margin-left: auto; }
-        .crm-qr-pop { position: absolute; left: 6px; bottom: calc(100% + 6px); z-index: 30; width: min(26rem, calc(100% - 12px)); display: grid; gap: 2px; padding: 6px; border-radius: 12px; background: var(--crm-panel); border: 1px solid var(--crm-line); box-shadow: var(--crm-shadow-2); }
+        .crm-qr-pop { position: absolute; left: 6px; bottom: calc(100% + 6px); z-index: 30; width: min(26rem, calc(100% - 12px)); max-height: 20rem; overflow-y: auto; display: grid; gap: 2px; padding: 6px; border-radius: 12px; background: var(--crm-panel); border: 1px solid var(--crm-line); box-shadow: var(--crm-shadow-2); }
         .crm-qr-item { display: grid; gap: 1px; text-align: left; border: 0; background: none; padding: 7px 9px; border-radius: 8px; cursor: pointer; }
         .crm-qr-item b { font-size: 12.5px; }
         .crm-qr-item span { font-size: 11.5px; color: var(--crm-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -742,6 +742,57 @@
         @media (prefers-reduced-motion: reduce) {
             .crm-inbox *, .crm-inbox *::before { animation: none !important; transition: none !important; }
         }
+
+        /* Volumen: presencia, siguiente caso, salud de WhatsApp, relevos, recordatorios, biblioteca, ficha 360 */
+        .crm-ops { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .crm-presence { position: relative; }
+        .crm-presence-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--crm-line); background: var(--crm-panel); color: var(--crm-text); border-radius: 999px; padding: 3px 10px 3px 8px; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+        .crm-presence-btn i { width: 8px; height: 8px; border-radius: 50%; background: var(--crm-faint); }
+        .crm-presence-btn.is-available i { background: var(--crm-live); }
+        .crm-presence-btn.is-busy i { background: var(--crm-warn); }
+        .crm-presence-btn.is-away i { background: var(--crm-fail); }
+        .crm-next { display: flex; align-items: center; gap: 8px; }
+        .crm-next .crm-btn { flex: 1 1 auto; justify-content: center; }
+        .crm-load { font-size: 11px; color: var(--crm-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .crm-load.is-full { color: var(--crm-fail); font-weight: 650; }
+        .crm-health { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: var(--crm-fail-bg); color: var(--crm-fail); font-size: 12px; line-height: 1.45; }
+        .crm-health b { display: block; font-size: 12.5px; }
+        .crm-tag.is-follow { background: var(--crm-sol-bg); color: var(--crm-sol); }
+        .crm-tag.is-follow.is-due { background: var(--crm-warn-bg); color: var(--crm-warn); font-weight: 650; }
+        .crm-tag.is-stale { background: var(--crm-fail-bg); color: var(--crm-fail); font-weight: 650; }
+        .crm-relay { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--crm-line); background: var(--crm-raised); }
+        .crm-relay .crm-hint { flex: 1 1 14rem; }
+        .crm-follow-form { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--crm-line-strong); border-radius: 12px; background: var(--crm-raised); }
+        .crm-follow-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+        .crm-follow-form input { border: 1px solid var(--crm-line-strong); background: var(--crm-panel); color: inherit; border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 13px; }
+        .crm-follow-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .crm-follow-row input[type=text] { flex: 1 1 12rem; }
+        .crm-doc-pop { position: absolute; left: 6px; right: 6px; bottom: calc(100% + 6px); z-index: 20; max-height: 18rem; overflow: auto; background: var(--crm-panel); border: 1px solid var(--crm-line-strong); border-radius: 12px; box-shadow: var(--crm-shadow-2, var(--crm-shadow)); padding: 6px; display: grid; gap: 2px; }
+        .crm-doc-item { display: grid; gap: 1px; text-align: left; border: 0; background: none; color: var(--crm-text); padding: 7px 9px; border-radius: 8px; cursor: pointer; }
+        .crm-doc-item:hover, .crm-doc-item:focus-visible { background: var(--crm-soft); outline: none; }
+        .crm-doc-item b { font-size: 12.5px; }
+        .crm-doc-item span { font-size: 11.5px; color: var(--crm-muted); }
+        .crm-libcard { display: flex; gap: 10px; align-items: center; }
+        .crm-libcard b { font-size: 13px; }
+        .crm-outcome { display: grid; gap: 8px; }
+        .crm-outcome-list { display: flex; flex-wrap: wrap; gap: 6px; }
+        .crm-outcome-list button { border: 1px solid var(--crm-line-strong); background: var(--crm-panel); color: var(--crm-text); border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .crm-outcome-list button[aria-pressed=true] { background: var(--crm-action); border-color: var(--crm-action); color: var(--crm-action-text); }
+        .crm-outcome input { border: 1px solid var(--crm-line-strong); background: var(--crm-panel); color: inherit; border-radius: 8px; padding: 7px 8px; font: inherit; font-size: 13px; }
+        .crm-360 { margin: 0; display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: 6px 10px; font-size: 12px; }
+        .crm-360 dt { color: var(--crm-muted); }
+        .crm-360 dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+        .crm-360 dd.is-ok { color: var(--crm-live); }
+        .crm-360 dd.is-warn { color: var(--crm-warn); font-weight: 600; }
+        .crm-360 dd.is-bad { color: var(--crm-fail); font-weight: 650; }
+        .crm-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+        .crm-history li { border: 1px solid var(--crm-line); border-radius: 10px; padding: 7px 9px; display: grid; gap: 3px; font-size: 12px; }
+        .crm-history-top { display: flex; justify-content: space-between; gap: 8px; color: var(--crm-muted); }
+        .crm-history-out { font-weight: 600; color: var(--crm-text); }
+        .crm-history-thread { display: grid; gap: 4px; max-height: 14rem; overflow: auto; padding-top: 4px; border-top: 1px dashed var(--crm-line); margin-top: 3px; }
+        .crm-history-thread p { margin: 0; font-size: 11.5px; line-height: 1.4; }
+        .crm-history-thread p b { color: var(--crm-muted); font-weight: 600; }
+        .crm-draft-btn { color: var(--crm-sol); }
     </style>
 
     @php
@@ -751,6 +802,7 @@
         $context = $case['context'] ?? [];
         $currency = (string) config('crm-inbox.quote_currency', 'USD');
         $quickReplies = $case !== null && $case['taken'] ? $this::quickReplies($case) : [];
+        $documents = $mine ? $this->documentsFor($case) : [];
         $copilot = $case !== null ? $this->copilot($case) : null;
         $suggestion = $mine ? ($copilot['suggestion'] ?? null) : null;
         $lanes = \App\Support\CrmInbox\CrmInboxQueue::lanes($rows, $viewer, true);
@@ -772,7 +824,7 @@
             late: {{ $slaLateSeconds }},
             me: @js($viewer),
             taking: false,
-            confirm: { open: false, title: '', body: '', label: '', danger: true, run: null },
+            confirm: { open: false, title: '', body: '', label: '', danger: true, run: null, outcome: false, picked: '', note: '' },
             timer: null,
             ticks: 0,
             alerted: {},
@@ -889,14 +941,22 @@
                 try { localStorage.setItem('crm-inbox-side', this.sideOpen ? 'open' : 'closed') } catch (error) {}
             },
             ask(options) {
-                this.confirm = { open: true, danger: true, action: '', ...options };
+                this.confirm = { open: true, danger: true, action: '', outcome: false, picked: '', note: '', ...options };
+            },
+            canAccept() {
+                if (!this.confirm.outcome) return true;
+                if (this.confirm.picked === '') return false;
+                return this.confirm.picked !== 'otro' || this.confirm.note.trim() !== '';
             },
             accept() {
+                if (!this.canAccept()) return;
                 const action = this.confirm.action;
                 const run = this.confirm.run;
+                const picked = this.confirm.picked;
+                const note = this.confirm.note.trim();
                 this.confirm.open = false;
-                if (action === 'release') this.$wire.release();
-                else if (action === 'close') this.$wire.close();
+                if (action === 'release') this.$wire.release(picked, note);
+                else if (action === 'close') this.$wire.close(picked, note);
                 else if (typeof run === 'function') run();
             },
             async take() {
@@ -924,6 +984,9 @@
                 else if (key === 'q') { const quote = this.$root.querySelector('[data-quote]'); if (quote) { event.preventDefault(); quote.click(); } }
                 else if (key === 'r') { const draft = this.$root.querySelector('.crm-compose textarea'); if (draft) { event.preventDefault(); draft.focus(); } }
                 else if (key === '/') { event.preventDefault(); this.$refs.search && this.$refs.search.focus(); }
+                else if (key === 'n') { const next = this.$root.querySelector('[data-next]'); if (next && !next.disabled) { event.preventDefault(); next.click(); } }
+                else if (key === 'd') { event.preventDefault(); window.dispatchEvent(new CustomEvent('crm-docs')); }
+                else if (key === 'b') { event.preventDefault(); window.dispatchEvent(new CustomEvent('crm-draft')); }
             },
             follow(force) {
                 const el = this.$refs.stream;
@@ -966,6 +1029,19 @@
                         <div class="crm-q-title">
                             <h2>Cola</h2>
                             <span class="crm-live" title="La cola se actualiza sola"><i aria-hidden="true"></i>En vivo</span>
+                            <div class="crm-presence crm-menu-wrap" x-data="{ open: false }" x-on:keydown.escape.stop="open = false" x-on:click.outside="open = false">
+                                <button type="button" class="crm-presence-btn is-{{ $presence }}" x-on:click="open = !open" x-bind:aria-expanded="open" aria-haspopup="true" title="{{ $presenceOptions[$presence]['hint'] ?? '' }}">
+                                    <i aria-hidden="true"></i>{{ $presenceOptions[$presence]['label'] ?? 'Disponible' }}
+                                </button>
+                                <div class="crm-menu" x-cloak x-show="open" x-transition.origin.top.left role="menu" aria-label="Tu estado" style="left: 0; right: auto;">
+                                    @foreach ($presenceOptions as $value => $option)
+                                        <button type="button" role="menuitemradio" aria-checked="{{ $presence === $value ? 'true' : 'false' }}" x-on:click="open = false; $wire.setPresence(@js($value))" wire:key="presence-{{ $value }}">
+                                            <span class="crm-presence-btn is-{{ $value }}" style="border: 0; padding: 0; background: none;" aria-hidden="true"><i></i></span>
+                                            <span class="crm-menu-text"><span>{{ $option['label'] }}</span><small>{{ $option['hint'] }}</small></span>
+                                        </button>
+                                    @endforeach
+                                </div>
+                            </div>
                             @if ($board['count'] === 0)
                                 <span class="crm-sr">Nadie está esperando.</span>
                             @endif
@@ -1126,6 +1202,31 @@
                         </button>
                     </div>
 
+                    @if ($health['down'])
+                        <div class="crm-health" role="alert">
+                            <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 5v4M8 11.5v.01M2 13.5L8 2.5l6 11H2z"/></svg>
+                            <span>
+                                <b>WhatsApp no responde{{ $health['since'] ? ' desde las '.\Illuminate\Support\Carbon::createFromTimestamp($health['since'])->timezone('America/Caracas')->format('H:i') : '' }}</b>
+                                Lo que envíes queda en el hilo y se reintenta solo cada minuto. No hace falta escribirlo de nuevo.
+                            </span>
+                        </div>
+                    @endif
+
+                    <div class="crm-next">
+                        <button type="button" class="crm-btn is-primary" wire:click="takeNext" wire:loading.attr="disabled" wire:target="takeNext,take" data-next title="Toma el caso que más espera: primero lo marcado para ti, luego lo libre">
+                            <span wire:loading.remove wire:target="takeNext">Tomar el siguiente</span>
+                            <span wire:loading.remove wire:target="takeNext" class="crm-kbd" aria-hidden="true">N</span>
+                            <span wire:loading wire:target="takeNext" class="crm-spin" aria-hidden="true"></span>
+                            <span wire:loading wire:target="takeNext">Tomando…</span>
+                        </button>
+                        @if ($capacity > 0)
+                            <span class="crm-load {{ $activeCount >= $capacity ? 'is-full' : '' }}" title="Casos que tienes en atención y el tope por analista">{{ $activeCount }}/{{ $capacity }} en atención</span>
+                        @endif
+                        @if ($supervisionUrl)
+                            <a class="crm-link" href="{{ $supervisionUrl }}" wire:navigate>Supervisión</a>
+                        @endif
+                    </div>
+
                     <div class="crm-sum" role="group" aria-label="Filtrar la cola">
                         @foreach (['reply' => 'te toca', 'open' => 'sin tomar', 'waiting' => 'esperando'] as $key => $label)
                             <button
@@ -1235,8 +1336,13 @@
                                         @if ($row['last_quote'] ?? null)
                                             <span class="crm-tag is-doc">{{ \Illuminate\Support\Str::limit(str_replace(' al año', '', $row['last_quote']), 34) }}</span>
                                         @endif
+                                        @if ($row['follow_up_label'] ?? null)
+                                            <span class="crm-tag is-follow {{ $row['follow_up_due'] ? 'is-due' : '' }}" title="{{ $row['follow_up_note'] ?? 'Recordatorio' }}">{{ $row['follow_up_due'] ? 'Recordatorio vencido' : 'Recordar '.$row['follow_up_label'] }}</span>
+                                        @endif
                                         @if ($lane_ === 'waiting')
                                             <span class="crm-row-quiet">Sin respuesta · <span x-text="ago({{ $row['last_reply_at'] ?? 'null' }})"></span></span>
+                                        @elseif ($lane_ === 'others' && ($row['stale'] ?? false))
+                                            <span class="crm-tag is-stale" title="El cliente escribió hace más de {{ $abandonMinutes }} min y nadie le respondió">Sin respuesta +{{ $abandonMinutes }} min</span>
                                         @elseif ($lane_ === 'others')
                                             <span class="crm-tag is-live">Lo atiende {{ $row['taken_by'] !== null ? 'otro analista' : 'el equipo' }}</span>
                                         @elseif ($forViewer)
@@ -1275,6 +1381,7 @@
                     <span><span class="crm-kbd">T</span> tomar</span>
                     <span><span class="crm-kbd">R</span> responder</span>
                     <span><span class="crm-kbd">Q</span> cotizar</span>
+                    <span><span class="crm-kbd">N</span> siguiente</span>
                 </div>
             </section>
 
@@ -1311,6 +1418,9 @@
                                     @endif
                                 @endif
                                 <span class="crm-chip-soft">{{ $case['area_label'] }}</span>
+                                @if ($case['follow_up_label'] ?? null)
+                                    <span class="crm-tag is-follow {{ $case['follow_up_due'] ? 'is-due' : '' }}" title="{{ $case['follow_up_note'] ?? 'Recordatorio' }}">{{ $case['follow_up_due'] ? 'Recordatorio vencido' : 'Recordar '.$case['follow_up_label'] }}@if ($case['follow_up_note'] ?? null) · {{ \Illuminate\Support\Str::limit($case['follow_up_note'], 40) }}@endif</span>
+                                @endif
                                 <span class="crm-pop-wrap" x-data="{ open: false }" x-on:mouseenter="open = true" x-on:mouseleave="open = false" x-on:keydown.escape.stop="open = false" wire:key="ctx-{{ $case['handoff_id'] }}">
                                     <button type="button" class="crm-chip-sol" x-on:click="open = !open" x-on:focus="open = true" x-on:blur="open = false" x-bind:aria-expanded="open" aria-controls="crm-ctx-{{ $case['handoff_id'] }}">
                                         <span class="crm-sol-k">SolIA</span>
@@ -1355,6 +1465,24 @@
                                         <small>{{ $summaryOpen ? 'Quitarlo del hilo' : 'Lo que habló antes de pasar el caso' }}</small>
                                     </span>
                                 </button>
+                                @if ($mine)
+                                    <button type="button" role="menuitem" x-on:click="open = false; $wire.set('followUpOpen', true)">
+                                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8.5" r="5.5"/><path d="M8 5.5v3l2 1.5M3 2.5l2 1.5M13 2.5l-2 1.5"/></svg>
+                                        <span class="crm-menu-text"><span>Recordarme…</span><small>El caso vuelve arriba a la hora que elijas</small></span>
+                                    </button>
+                                    @if ($case['follow_up_at'] ?? null)
+                                        <button type="button" role="menuitem" x-on:click="open = false; $wire.clearFollowUp()">
+                                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                                            <span class="crm-menu-text"><span>Quitar recordatorio</span><small>{{ $case['follow_up_label'] }}</small></span>
+                                        </button>
+                                    @endif
+                                @endif
+                                @if ($case['taken'] && ! $mine && $supervisor)
+                                    <button type="button" role="menuitem" x-on:click="open = false; $wire.showRelayTargets()">
+                                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 8h9M9 4.5L12.5 8 9 11.5"/></svg>
+                                        <span class="crm-menu-text"><span>Pasar a otro analista…</span><small>Supervisor · el bot sigue en pausa</small></span>
+                                    </button>
+                                @endif
                                 @if (! $case['taken'])
                                     <button type="button" role="menuitem" x-on:click="open = false; $wire.showDestinations()">
                                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 8h9M9 4.5L12.5 8 9 11.5"/></svg>
@@ -1374,6 +1502,7 @@
                                             body: 'Sale de la bandeja. El cliente no recibe ningún mensaje y SolIA sigue en la conversación.',
                                             label: 'Cerrar el caso',
                                             action: 'close',
+                                            outcome: true,
                                         })"
                                     >
                                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
@@ -1390,6 +1519,7 @@
                                             body: 'El cliente verá quién lo atendió y SolIA retomará la conversación.',
                                             label: 'Devolver al bot',
                                             action: 'release',
+                                            outcome: true,
                                         })"
                                     >
                                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 4.5L2.5 8 6 11.5M3 8h7.5a3 3 0 010 6H9"/></svg>
@@ -1399,6 +1529,56 @@
                             </div>
                         </div>
                     </div>
+
+                    @if ($case['taken'] && ! $mine && (($case['stale'] ?? false) || $supervisor))
+                        <div class="crm-relay" wire:key="relay-{{ $case['handoff_id'] }}">
+                            <p class="crm-hint">
+                                @if ($case['stale'] ?? false)
+                                    <b>El cliente espera hace más de {{ $abandonMinutes }} min sin respuesta.</b> Puedes tomar el relevo: el bot sigue en pausa y al cliente le llega un aviso del cambio.
+                                @else
+                                    Lo atiende {{ $case['taker'] ?: 'otro analista' }}. Como supervisor puedes pasarlo a otra persona.
+                                @endif
+                            </p>
+                            @if ($case['stale'] ?? false)
+                                <button
+                                    type="button"
+                                    class="crm-btn is-primary"
+                                    x-on:click="ask({
+                                        title: '¿Tomas el relevo de este caso?',
+                                        body: @js('Pasa a tu nombre. '.($case['taker'] ?: 'Quien lo atendía').' deja de tenerlo y el cliente recibe un aviso de que ahora lo atiendes tú.'),
+                                        label: 'Tomar el relevo',
+                                        danger: false,
+                                        run: () => $wire.relay(),
+                                    })"
+                                >Tomar el relevo</button>
+                            @endif
+                            @if ($supervisor)
+                                <button type="button" class="crm-btn" wire:click="showRelayTargets" wire:loading.attr="disabled" wire:target="showRelayTargets">Pasar a…</button>
+                            @endif
+                        </div>
+                        @if ($relayOpen)
+                            <div class="crm-relay crm-pass-list">
+                                <p class="crm-hint">¿A quién se lo pasas?</p>
+                                @forelse ($relayTargets as $target)
+                                    <button
+                                        type="button"
+                                        class="crm-btn"
+                                        wire:key="relay-target-{{ $target['id'] }}"
+                                        title="{{ $target['state'] }}"
+                                        x-on:click="ask({
+                                            title: @js('¿Se lo pasas a '.$target['name'].'?'),
+                                            body: @js('Pasa a '.$target['name'].' ('.$target['state'].'). El bot sigue en pausa y el cliente recibe un aviso del cambio.'),
+                                            label: 'Pasar el caso',
+                                            danger: false,
+                                            run: () => $wire.relayTo({{ (int) $target['id'] }}),
+                                        })"
+                                    >{{ $target['name'] }} · <small>{{ $target['state'] }}</small></button>
+                                @empty
+                                    <p class="crm-hint">No hay otro analista en este departamento.</p>
+                                @endforelse
+                            </div>
+                        @endif
+                    @endif
 
                     <div class="crm-offline" wire:offline role="status">
                         <span class="crm-spin" aria-hidden="true"></span>
@@ -1517,10 +1697,14 @@
                                         @if ($first || $message['role'] === 'note')
                                             <span class="crm-by">{{ $message['role'] === 'note' ? 'Nota interna · solo el equipo' : $message['author'] }}</span>
                                         @endif
-                                        @if ($message['document'])
+                                        @if ($message['document'] || ($message['library'] ?? null))
                                             <span class="crm-doc">PDF</span>
                                         @endif
-                                        <p>{{ $message['text'] }}</p>
+                                        @if ($message['library'] ?? null)
+                                            <p class="crm-libcard"><span><b>{{ $message['library']['title'] }}</b>@if ($message['library']['filename'] !== '')<br><small class="crm-hint">{{ $message['library']['filename'] }}</small>@endif</span></p>
+                                        @else
+                                            <p>{{ $message['text'] }}</p>
+                                        @endif
                                         <span class="crm-meta">
                                             @if ($message['status'] === 'pending')
                                                 <span>Enviando…</span>
@@ -1631,11 +1815,20 @@
                                         this.closeReplies();
                                     }
                                 },
+                                docs: { open: false, sending: false },
                                 pick(reply) {
                                     if (!reply) return;
                                     if (this.qr.typed) this.$refs.draft.value = '';
                                     this.closeReplies();
                                     this.insert(reply.text);
+                                    if (reply.id) this.$wire.countReply(reply.id);
+                                },
+                                async sendDocument(id) {
+                                    if (this.docs.sending) return;
+                                    const replyId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : '';
+                                    if (replyId === '') return;
+                                    this.docs = { open: false, sending: true };
+                                    try { await this.$wire.sendDocument(replyId, id) } finally { this.docs.sending = false }
                                 },
                                 repliesKey(event) {
                                     if (!this.qr.open) return false;
@@ -1714,7 +1907,33 @@
                             }"
                             x-init="$nextTick(() => { restore(); grow(); $refs.draft && $refs.draft.focus() })"
                             x-on:crm-insert.window="insert($event.detail.text)"
+                            x-on:crm-docs.window="docs.open = !docs.open"
+                            x-on:crm-draft.window="$refs.draftBtn && $refs.draftBtn.click()"
                         >
+                            @if ($followUpOpen && $mine)
+                                <div class="crm-follow-form" wire:key="follow-{{ $case['handoff_id'] }}" x-data="{ at: '', note: '' }">
+                                    <div class="crm-quote-top">
+                                        <b>Recordarme</b>
+                                        <span class="crm-hint">El caso vuelve a «Te toca responder» y te llega un aviso.</span>
+                                        <button type="button" class="crm-icon-btn is-sm" wire:click="$set('followUpOpen', false)" aria-label="Cerrar" title="Cerrar">
+                                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                                        </button>
+                                    </div>
+                                    <div class="crm-follow-row">
+                                        <input type="text" maxlength="200" x-model="note" placeholder="Para qué (opcional): llamar por la cédula, confirmar pago…" aria-label="Nota del recordatorio">
+                                    </div>
+                                    <div class="crm-follow-presets">
+                                        @foreach ($followUpPresets as $value => $label)
+                                            <button type="button" class="crm-btn" wire:key="follow-preset-{{ $value }}" x-on:click="$wire.setFollowUp(@js($value), note)" wire:loading.attr="disabled" wire:target="setFollowUp">{{ $label }}</button>
+                                        @endforeach
+                                    </div>
+                                    <div class="crm-follow-row">
+                                        <input type="datetime-local" x-model="at" aria-label="Fecha y hora del recordatorio">
+                                        <button type="button" class="crm-btn is-primary" x-bind:disabled="at === ''" x-on:click="$wire.setFollowUp(at, note)" wire:loading.attr="disabled" wire:target="setFollowUp">Programar</button>
+                                    </div>
+                                </div>
+                            @endif
+
                             @if ($suggestion)
                                 <div class="crm-suggest" wire:key="suggest-{{ $case['handoff_id'] }}-{{ $suggestion['key'] }}" role="status">
                                     <span class="crm-sol">Sugerencia</span>
@@ -1797,7 +2016,7 @@
 
                             <div class="crm-compose">
                                 <div class="crm-qr-pop" x-cloak x-show="qr.open" x-on:click.outside="closeReplies()" role="listbox" aria-label="Respuestas rápidas">
-                                    <template x-for="(reply, index) in matches()" x-bind:key="reply.label">
+                                    <template x-for="(reply, index) in matches()" x-bind:key="(reply.id || 'cfg') + '-' + index">
                                         <button type="button" class="crm-qr-item" role="option" x-bind:aria-selected="index === qr.index" x-on:mouseenter="qr.index = index" x-on:click="pick(reply)">
                                             <b x-text="reply.label"></b>
                                             <span x-text="reply.text"></span>
@@ -1806,6 +2025,16 @@
                                     <p class="crm-qr-none" x-show="matches().length === 0">Ninguna respuesta coincide.</p>
                                     <p class="crm-qr-help"><span class="crm-kbd">↑</span><span class="crm-kbd">↓</span> elegir · <span class="crm-kbd">Enter</span> insertar · <span class="crm-kbd">Esc</span> cerrar</p>
                                 </div>
+                                @if ($documents !== [])
+                                    <div class="crm-doc-pop" x-cloak x-show="docs.open" x-on:click.outside="docs.open = false" x-on:keydown.escape.stop="docs.open = false" role="menu" aria-label="Documentos aprobados">
+                                        @foreach ($documents as $document)
+                                            <button type="button" class="crm-doc-item" role="menuitem" wire:key="doc-{{ $document['id'] }}" x-on:click="sendDocument({{ $document['id'] }})">
+                                                <b>{{ $document['title'] }}</b>
+                                                <span>{{ $document['description'] !== '' ? $document['description'] : 'PDF · '.number_format(max(1, intdiv($document['size'], 1024)), 0, ',', '.').' KB' }} · se envía al hacer clic</span>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @endif
                                 <label class="crm-sr" for="crm-draft-{{ $case['handoff_id'] }}">Respuesta</label>
                                 <textarea
                                     id="crm-draft-{{ $case['handoff_id'] }}"
@@ -1824,6 +2053,18 @@
                                         <button type="button" class="crm-tool" x-on:click="qr.open ? closeReplies() : openReplies(false)" x-bind:aria-expanded="qr.open" title="Respuestas rápidas">
                                             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 1.5L3.5 9H8l-1 5.5L12.5 7H8z"/></svg>
                                             Respuestas <span class="crm-kbd" aria-hidden="true">/</span>
+                                        </button>
+                                    @endif
+                                    @if ($documents !== [])
+                                        <button type="button" class="crm-tool" x-on:click="docs.open = !docs.open" x-bind:aria-expanded="docs.open" x-bind:disabled="docs.sending" title="Enviar un documento aprobado">
+                                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M10.5 6.5l-4 4a1.8 1.8 0 01-2.5-2.5l5-5a3 3 0 014.2 4.2L8 12.4"/></svg>
+                                            Documentos <span class="crm-kbd" aria-hidden="true">D</span>
+                                        </button>
+                                    @endif
+                                    @if ($mine && ($copilot['draft'] ?? null))
+                                        <button type="button" class="crm-tool crm-draft-btn" x-ref="draftBtn" x-on:click="insert(@js($copilot['draft']))" title="{{ $copilot['draft'] }}">
+                                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2.5 13.5l1-3.5 7-7 2.5 2.5-7 7zM9.5 4l2.5 2.5"/></svg>
+                                            Borrador <span class="crm-kbd" aria-hidden="true">B</span>
                                         </button>
                                     @endif
                                     @if (! $quoteOpen)
@@ -1857,6 +2098,7 @@
                                         body: 'El cliente verá quién lo atendió y SolIA retomará la conversación.',
                                         label: 'Devolver al bot',
                                         action: 'release',
+                                        outcome: true,
                                     })"
                                 >Devolver al bot</button>
                             </div>
@@ -1994,8 +2236,79 @@
                                         </span>
                                     </div>
                                 </div>
+                                @if ($client360 !== [])
+                                    <dl class="crm-360">
+                                        @foreach ($client360 as $line)
+                                            <dt>{{ $line['label'] }}</dt>
+                                            <dd class="{{ isset($line['tone']) ? 'is-'.$line['tone'] : '' }}" wire:key="c360-{{ $case['handoff_id'] }}-{{ $loop->index }}">{{ $line['value'] }}</dd>
+                                        @endforeach
+                                    </dl>
+                                @endif
                             @endif
                         </section>
+
+                        @if ($copilot !== null && ($copilot['enroll'] ?? []) !== [])
+                            @php
+                                $enrollReady = count(array_filter($copilot['enroll'], fn (array $item): bool => $item['value'] !== null));
+                            @endphp
+                            <section class="crm-section">
+                                <h3 class="crm-h">
+                                    Para afiliar
+                                    <span class="crm-prog" role="progressbar" aria-valuemin="0" aria-valuemax="3" aria-valuenow="{{ $enrollReady }}" aria-label="Datos para afiliar"><i style="width: {{ round($enrollReady / 3 * 100) }}%"></i></span>
+                                    <span class="crm-prog-n crm-num">{{ $enrollReady }} de 3</span>
+                                </h3>
+                                <dl class="crm-facts">
+                                    @foreach ($copilot['enroll'] as $item)
+                                        <dt>{{ $item['label'] }}</dt>
+                                        @if ($item['value'] !== null)
+                                            <dd wire:key="enroll-{{ $case['handoff_id'] }}-{{ $item['key'] }}">
+                                                <span class="crm-fact-value">{{ $item['value'] }}</span>
+                                                @if ($item['anchor'])
+                                                    <button type="button" class="crm-src" x-on:click="jump(@js($item['anchor']))" title="Ir al mensaje del que salió">{{ $item['source'] }} ↗</button>
+                                                @endif
+                                            </dd>
+                                        @else
+                                            <dd class="is-missing" wire:key="enroll-gap-{{ $case['handoff_id'] }}-{{ $item['key'] }}">
+                                                <span>Falta</span>
+                                                @if ($mine && isset($copilot['asks'][$item['key']]))
+                                                    <button type="button" class="crm-ask" x-on:click="$dispatch('crm-insert', { text: @js($copilot['asks'][$item['key']]) })" title="{{ $copilot['asks'][$item['key']] }}">Pedirlo</button>
+                                                @endif
+                                            </dd>
+                                        @endif
+                                    @endforeach
+                                </dl>
+                            </section>
+                        @endif
+
+                        @if (($history ?? []) !== [])
+                            <section class="crm-section">
+                                <h3 class="crm-h">Conversaciones anteriores <span class="crm-prog-n crm-num">{{ count($history) }}</span></h3>
+                                <ul class="crm-history">
+                                    @foreach ($history as $past)
+                                        <li wire:key="past-{{ $past['handoff_id'] }}">
+                                            <span class="crm-history-top"><span class="crm-num">{{ $past['date'] }} · {{ $past['area'] }}</span><span>{{ $past['open'] ? 'Abierta' : ($past['by'] ? 'Atendió '.$past['by'] : 'Sin tomar') }}</span></span>
+                                            @if ($past['outcome'])
+                                                <span class="crm-history-out">{{ $past['outcome'] }}@if ($past['note']) · <span class="crm-hint">{{ $past['note'] }}</span>@endif</span>
+                                            @endif
+                                            @if ($past['motivo'] !== '')
+                                                <span class="crm-hint">{{ $past['motivo'] }}</span>
+                                            @endif
+                                            @if (isset($historyThreads[$past['handoff_id']]))
+                                                <div class="crm-history-thread">
+                                                    @forelse ($historyThreads[$past['handoff_id']] as $line)
+                                                        <p><b>{{ $line['author'] }} · {{ $line['time'] }}</b><br>{{ $line['text'] }}</p>
+                                                    @empty
+                                                        <p class="crm-hint">No hay mensajes guardados de esa conversación.</p>
+                                                    @endforelse
+                                                </div>
+                                            @else
+                                                <button type="button" class="crm-link" wire:click="openHistory('{{ $past['handoff_id'] }}')" wire:loading.attr="disabled" wire:target="openHistory">Ver la conversación</button>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </section>
+                        @endif
 
                         @if (($copilot['proposals'] ?? []) !== [])
                             <section class="crm-section">
@@ -2037,9 +2350,20 @@
                 </div>
                 <h3 id="crm-confirm-title" x-text="confirm.title"></h3>
                 <p id="crm-confirm-body" x-text="confirm.body"></p>
+                <template x-if="confirm.outcome">
+                    <div class="crm-outcome">
+                        <b>¿Cómo terminó?</b>
+                        <div class="crm-outcome-list" role="radiogroup" aria-label="Cómo terminó el caso">
+                            @foreach ($outcomes as $value => $label)
+                                <button type="button" role="radio" x-bind:aria-pressed="confirm.picked === @js($value)" x-bind:aria-checked="confirm.picked === @js($value)" x-on:click="confirm.picked = @js($value)">{{ $label }}</button>
+                            @endforeach
+                        </div>
+                        <input type="text" maxlength="255" x-model="confirm.note" x-bind:placeholder="confirm.picked === 'otro' ? 'Cuenta en una línea qué pasó (obligatorio)' : 'Nota (opcional)'" aria-label="Nota del cierre" x-on:keydown.enter.prevent="accept()">
+                    </div>
+                </template>
                 <div class="crm-dialog-actions">
                     <button type="button" class="crm-btn" x-on:click="confirm.open = false">Cancelar</button>
-                    <button type="button" class="crm-btn" x-bind:class="confirm.danger ? 'is-danger' : 'is-primary'" x-on:click="accept()" x-text="confirm.label"></button>
+                    <button type="button" class="crm-btn" x-bind:class="confirm.danger ? 'is-danger' : 'is-primary'" x-bind:disabled="!canAccept()" x-on:click="accept()" x-text="confirm.label"></button>
                 </div>
             </div>
         </div>

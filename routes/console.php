@@ -270,3 +270,23 @@ Schedule::command('user-activity:purge')
     ->name('user-activity-purge')
     ->withoutOverlapping(60)
     ->runInBackground();
+
+/**
+ * Atención WhatsApp: cada minuto reintenta lo que no salió hace poco y avisa de casos sin tomar,
+ * sin respuesta del analista (y al supervisor si siguen así) o con recordatorio vencido.
+ * En el scheduler, no en la cola, para que avise aunque los workers estén caídos.
+ */
+Schedule::command('crm-inbox:watch')
+    ->everyMinute()
+    ->name('crm-inbox-watch')
+    ->withoutOverlapping(5)
+    ->runInBackground();
+
+/**
+ * Atención WhatsApp: borra cada noche los PDF de propuestas calculadas que nunca se enviaron.
+ */
+Schedule::command('crm-inbox:prune-drafts')
+    ->dailyAt('3:50')
+    ->name('crm-inbox-prune-drafts')
+    ->withoutOverlapping(30)
+    ->runInBackground();

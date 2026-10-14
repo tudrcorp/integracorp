@@ -26,10 +26,18 @@ class NotifyCrmHandoffJob implements ShouldQueue
 
     public int $timeout = 20;
 
+    /**
+     * Avisos que van a una sola persona.
+     *
+     * @var list<string>
+     */
+    public const PERSONAL = ['assign', 'late_mine', 'follow_up', 'relay'];
+
     public function __construct(
         public string $handoffId,
         public string $notice = 'new',
         public ?int $onlyUserId = null,
+        public ?string $stamp = null,
     ) {
         $this->onConnection(StoreCrmHandoffEnvelopeJob::resolveConnection(
             config('crm-inbox.queue_connection'),
@@ -58,8 +66,8 @@ class NotifyCrmHandoffJob implements ShouldQueue
             return;
         }
 
-        $onlyUserId = $this->notice === 'assign' ? $this->onlyUserId : null;
-        CrmInboxAlerts::remember($envelope, $this->notice, $onlyUserId);
+        $onlyUserId = in_array($this->notice, self::PERSONAL, true) ? $this->onlyUserId : null;
+        CrmInboxAlerts::remember($envelope, $this->notice, $onlyUserId, $this->stamp);
 
         if (! Schema::hasTable('crm_push_subscriptions')) {
             return;
@@ -71,11 +79,12 @@ class NotifyCrmHandoffJob implements ShouldQueue
         );
         $failed = false;
 
-        foreach (CrmInboxAlerts::subscriptionsFor($envelope, $onlyUserId) as $subscription) {
+        foreach (CrmInboxAlerts::subscriptionsFor($envelope, $onlyUserId, $this->notice) as $subscription) {
             $key = match ($this->notice) {
                 'assign' => 'crm-push:assign:'.$this->handoffId.':'.$this->onlyUserId.':'.$subscription->id,
                 'move' => 'crm-push:move:'.$this->handoffId.':'.($envelope->area ?? '').':'.$subscription->id,
-                default => 'crm-push:sent:'.$this->handoffId.':'.$subscription->id,
+                'new' => 'crm-push:sent:'.$this->handoffId.':'.$subscription->id,
+                default => 'crm-push:'.$this->notice.':'.$this->handoffId.':'.($this->stamp ?? '').':'.$subscription->id,
             };
 
             if ($this->cache()->has($key)) {

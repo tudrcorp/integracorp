@@ -24,6 +24,10 @@ final class CrmHandoffTakeover
             return ['ok' => true, 'already' => true];
         }
 
+        if ($userId !== null && self::atCapacity($userId)) {
+            return ['ok' => false, 'reason' => 'cap'];
+        }
+
         $url = (string) config('crm-inbox.takeover_url', '');
         $key = (string) config('crm-inbox.takeover_key', '');
 
@@ -68,6 +72,35 @@ final class CrmHandoffTakeover
                 'taken_by' => $userId,
             ]);
 
+        if ($claimed > 0) {
+            CrmInboxPulse::bump();
+        }
+
         return ['ok' => true, 'already' => $claimed === 0];
+    }
+
+    public static function capacity(): int
+    {
+        return max(0, (int) config('crm-inbox.max_active_per_analyst', 8));
+    }
+
+    /**
+     * Casos que la persona tiene en atención ahora mismo (tomados y sin devolver ni cerrar).
+     */
+    public static function activeCount(int $userId): int
+    {
+        return CrmHandoffEnvelope::query()
+            ->where('taken_by', $userId)
+            ->whereNotNull('taken_at')
+            ->whereNull('released_at')
+            ->whereNull('closed_at')
+            ->count();
+    }
+
+    public static function atCapacity(int $userId): bool
+    {
+        $cap = self::capacity();
+
+        return $cap > 0 && self::activeCount($userId) >= $cap;
     }
 }

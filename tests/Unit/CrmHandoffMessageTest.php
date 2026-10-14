@@ -68,6 +68,8 @@ beforeEach(function (): void {
         $table->timestamp('received_at')->nullable();
         $table->timestamps();
     });
+
+    crmInboxUpgradeTestSchema();
 });
 
 it('guarda el mensaje del cliente una sola vez y lo une al caso de ese teléfono', function (): void {

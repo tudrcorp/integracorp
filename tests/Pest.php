@@ -328,3 +328,91 @@ function bootQuoteWhatsAppSqliteSchema(): void
         $table->timestamps();
     });
 }
+
+/**
+ * Lleva el esquema de prueba del CRM (sqlite en memoria) a las columnas y tablas actuales:
+ * motivo de cierre, recordatorios, avisos, intentos de envío, biblioteca y presencia.
+ * Cada archivo de test del CRM crea sus tablas base y llama a esto al final del beforeEach.
+ */
+function crmInboxUpgradeTestSchema(): void
+{
+    if (config('database.default') !== 'sqlite' || config('database.connections.sqlite.database') !== ':memory:') {
+        throw new RuntimeException('El esquema del CRM solo se arma en sqlite en memoria.');
+    }
+
+    $schema = Illuminate\Support\Facades\Schema::getFacadeRoot();
+
+    if ($schema->hasTable('crm_handoff_envelopes')) {
+        $schema->table('crm_handoff_envelopes', function (Illuminate\Database\Schema\Blueprint $table) use ($schema): void {
+            foreach (['outcome' => 32, 'outcome_note' => 255, 'follow_up_note' => 200] as $column => $length) {
+                if (! $schema->hasColumn('crm_handoff_envelopes', $column)) {
+                    $table->string($column, $length)->nullable();
+                }
+            }
+
+            foreach (['outcome_by', 'follow_up_by'] as $column) {
+                if (! $schema->hasColumn('crm_handoff_envelopes', $column)) {
+                    $table->unsignedBigInteger($column)->nullable();
+                }
+            }
+
+            foreach (['outcome_at', 'follow_up_at', 'follow_up_notified_at', 'sla_alerted_at', 'stale_alerted_at', 'first_reply_at'] as $column) {
+                if (! $schema->hasColumn('crm_handoff_envelopes', $column)) {
+                    $table->timestamp($column)->nullable();
+                }
+            }
+        });
+    }
+
+    if ($schema->hasTable('crm_handoff_messages') && ! $schema->hasColumn('crm_handoff_messages', 'attempts')) {
+        $schema->table('crm_handoff_messages', function (Illuminate\Database\Schema\Blueprint $table): void {
+            $table->unsignedTinyInteger('attempts')->default(0);
+        });
+    }
+
+    $schema->dropIfExists('crm_quick_replies');
+    $schema->create('crm_quick_replies', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->string('area', 40)->nullable();
+        $table->string('label', 60);
+        $table->text('body');
+        $table->unsignedSmallInteger('sort')->default(0);
+        $table->boolean('active')->default(true);
+        $table->unsignedInteger('uses')->default(0);
+        $table->unsignedBigInteger('created_by')->nullable();
+        $table->unsignedBigInteger('updated_by')->nullable();
+        $table->timestamps();
+    });
+
+    $schema->dropIfExists('crm_documents');
+    $schema->create('crm_documents', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->string('area', 40)->nullable();
+        $table->string('title', 80);
+        $table->string('description', 200)->nullable();
+        $table->string('path', 255);
+        $table->string('filename', 120);
+        $table->unsignedInteger('size')->default(0);
+        $table->unsignedSmallInteger('sort')->default(0);
+        $table->boolean('active')->default(true);
+        $table->unsignedInteger('uses')->default(0);
+        $table->unsignedBigInteger('created_by')->nullable();
+        $table->unsignedBigInteger('updated_by')->nullable();
+        $table->timestamps();
+    });
+
+    $schema->dropIfExists('crm_analyst_presence');
+    $schema->create('crm_analyst_presence', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->unsignedBigInteger('user_id')->unique();
+        $table->string('status', 16)->default('available');
+        $table->timestamp('status_at')->nullable();
+        $table->timestamp('seen_at')->nullable();
+        $table->timestamps();
+    });
+
+    App\Support\CrmInbox\CrmInboxCache::reset();
+    App\Support\CrmInbox\CrmInboxLibrary::forgetSchema();
+    App\Support\CrmInbox\CrmInboxPresence::forgetSchema();
+    App\Support\CrmInbox\CrmHandoffOutcome::forgetSchema();
+}

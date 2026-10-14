@@ -67,6 +67,8 @@ beforeEach(function (): void {
         $table->timestamps();
         $table->index('user_id');
     });
+
+    crmInboxUpgradeTestSchema();
 });
 
 it('guarda una sola suscripción por navegador y la olvida al salir', function (): void {

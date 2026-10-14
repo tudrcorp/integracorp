@@ -53,6 +53,8 @@ beforeEach(function (): void {
         $table->timestamp('accepted_at')->nullable();
         $table->timestamps();
     });
+
+    crmInboxUpgradeTestSchema();
 });
 
 it('guarda un handoff firmado y no duplica el mismo caso', function (): void {

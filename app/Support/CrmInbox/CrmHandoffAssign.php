@@ -51,6 +51,10 @@ final class CrmHandoffAssign
                 'assigned_at' => now(),
             ]);
 
+        if ($updated > 0) {
+            CrmInboxPulse::bump();
+        }
+
         if ($updated === 0) {
             return ['ok' => false, 'reason' => 'taken'];
         }

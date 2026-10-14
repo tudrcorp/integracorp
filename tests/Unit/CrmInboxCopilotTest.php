@@ -81,6 +81,8 @@ beforeEach(function (): void {
         $table->json('meta')->nullable();
         $table->timestamps();
     });
+
+    crmInboxUpgradeTestSchema();
 });
 
 it('lee edades, plan, cobertura y cédula sin confundirlos con otros números', function (): void {

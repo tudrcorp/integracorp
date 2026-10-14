@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\CrmInbox;
 
+use App\Enums\CrmCaseOutcome;
 use App\Models\CrmHandoffEnvelope;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +19,7 @@ final class CrmHandoffRelease
     /**
      * @return array{ok: true, already: bool}|array{ok: false, reason: string}
      */
-    public function release(CrmHandoffEnvelope $envelope): array
+    public function release(CrmHandoffEnvelope $envelope, ?CrmCaseOutcome $outcome = null, ?string $note = null, ?int $userId = null): array
     {
         if ($envelope->released_at !== null) {
             return ['ok' => true, 'already' => true];
@@ -69,7 +70,12 @@ final class CrmHandoffRelease
             ->whereNull('released_at')
             ->update([
                 'released_at' => now(),
+                ...CrmHandoffOutcome::columns($outcome, $note, $userId),
             ]);
+
+        if ($released > 0) {
+            CrmInboxPulse::bump();
+        }
 
         return ['ok' => true, 'already' => $released === 0];
     }
