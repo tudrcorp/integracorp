@@ -43,6 +43,7 @@ final class TelemedicinePatientPageHeader
             heading: match ($context) {
                 'edit' => 'Editar paciente',
                 'retail' => 'Registrar servicios RETAIL',
+                'services' => 'Servicios del paciente',
                 default => 'Ficha del paciente',
             },
             name: $name,
