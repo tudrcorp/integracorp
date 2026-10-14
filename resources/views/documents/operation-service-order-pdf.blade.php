@@ -407,6 +407,8 @@
             </tbody>
         </table>
     @endif
+
+    @include('documents.partials.operations-seal')
 </div>
 </div>
 </div>

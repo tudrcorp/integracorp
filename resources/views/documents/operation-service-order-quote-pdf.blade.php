@@ -14,7 +14,8 @@
         @page { margin: 0; size: A4 portrait; }
         * { box-sizing: border-box; }
         body {
-            margin: 18mm 20mm 18mm 20mm;
+            /* Abajo se reserva el alto del pie fijo: si no, el resumen y el sello se montan sobre él al final de la hoja. */
+            margin: 18mm 20mm 34mm 20mm;
             font-family: DejaVu Sans, sans-serif;
             font-size: 9pt;
             color: #374151;
@@ -107,6 +108,8 @@
     <div class="summary">
         <div><strong>Precio cotizado (USD):</strong> US$ {{ number_format((float) ($quoteData['price_usd'] ?? 0), 2, ',', '.') }}</div>
     </div>
+
+    @include('documents.partials.operations-seal')
 
     <div class="footer">
         <strong>TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1</strong><br>

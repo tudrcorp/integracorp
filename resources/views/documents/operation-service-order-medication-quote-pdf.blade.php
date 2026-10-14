@@ -99,6 +99,8 @@
         <div class="summary-row"><strong>Total USD:</strong> US$ {{ number_format((float) ($quoteMeta['total_amount_usd'] ?? 0), 2, ',', '.') }}</div>
     </div>
 
+    @include('documents.partials.operations-seal')
+
     <div class="footer">
         <strong>TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1</strong><br>
         Dirección Comercial: Av. Francisco de Miranda, Centro Lido, Torre A, Piso 12, Oficina 124. El Rosal, Caracas.<br>

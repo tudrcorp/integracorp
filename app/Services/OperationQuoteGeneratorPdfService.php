@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\OperationCoordinationService;
 use App\Models\OperationQuoteGenerator;
+use App\Support\Operations\OperationDocumentSeal;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as PdfDocument;
 use Illuminate\Support\Facades\Storage;
@@ -31,6 +32,7 @@ class OperationQuoteGeneratorPdfService
             'coordination' => $coordination,
             'bcvRate' => $bcvRate,
             'logoDataUri' => $logoDataUri,
+            'sealDataUri' => OperationDocumentSeal::dataUri(),
         ])->setPaper('a4', 'portrait');
     }
 

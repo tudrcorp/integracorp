@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\OperationServiceOrder;
+use App\Support\Operations\OperationDocumentSeal;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as PdfDocument;
 use Illuminate\Support\Facades\Storage;
@@ -38,6 +39,7 @@ class OperationServiceOrderPdfService
         return Pdf::loadView('documents.operation-service-order-pdf', [
             'order' => $order,
             'logoDataUri' => $logoDataUri,
+            'sealDataUri' => OperationDocumentSeal::dataUri(),
         ])->setPaper('a4', 'portrait');
     }
 
