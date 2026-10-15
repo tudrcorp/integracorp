@@ -188,7 +188,11 @@ it('la verificación pública encuentra la emisión, rechaza claves inventadas y
     $this->get(route('affiliation-certificate.verify', ['key' => strtolower($issue->verification_key)]))
         ->assertSuccessful()
         ->assertSee($issue->affiliation_code)
-        ->assertSee('Estamos contigo, 24/7');
+        ->assertSee('Estamos contigo, 24/7')
+        ->assertSee('<title>Carnet digital · Tu Dr en Casa</title>', false)
+        ->assertSee('Telemedicina y Atención Médica Domiciliaria (AMD)')
+        ->assertSee('Coordinación de servicios derivados')
+        ->assertDontSee('Plan a la medida');
 
     $this->get(route('affiliation-certificate.verify', ['key' => CertificateVerificationKey::generate()]))
         ->assertSuccessful()
@@ -197,6 +201,22 @@ it('la verificación pública encuentra la emisión, rechaza claves inventadas y
     $this->get(route('affiliation-certificate.verify'))
         ->assertSuccessful()
         ->assertSee('Verifica un certificado');
+});
+
+it('el QR de un certificado corporativo abre el carnet a la medida, solo con MediChat', function (): void {
+    $affiliation = App\Models\AffiliationCorporate::query()->where('status', 'ACTIVA')->latest('id')->firstOrFail();
+    $issue = app(AffiliationCertificateGeneratorService::class)->issueCorporate($affiliation, [], certificateSuperAdmin());
+
+    $this->get(route('affiliation-certificate.verify', ['key' => $issue->verification_key]))
+        ->assertSuccessful()
+        ->assertSee($issue->affiliation_code)
+        ->assertSee('Contratante')
+        ->assertSee('<title>Carnet digital · Plan a la medida · Tu Dr en Casa</title>', false)
+        ->assertSee('Tu plan a la medida: un médico para ti, en casa o en la oficina.')
+        ->assertSee('carnet-digital-portada-a-la-medida.jpg', false)
+        ->assertSee('MediChat')
+        ->assertDontSee('Telemedicina y Atención Médica Domiciliaria (AMD)')
+        ->assertDontSee('Coordinación de servicios derivados');
 });
 
 it('el PDF exige sesión y permiso sobre afiliaciones de Negocios', function (): void {
