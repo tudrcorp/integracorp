@@ -44,7 +44,7 @@ function selectionReviewOrders(): array
 }
 
 /**
- * El flujo del analista: busca, marca (la tabla copia la selección a `serviceOrderSelection`) y vacía el buscador.
+ * El flujo del analista: busca, marca (la tabla copia la selección a `tableSelection`) y vacía el buscador.
  *
  * @param  list<OperationServiceOrder>  $orders
  */
@@ -52,14 +52,14 @@ function searchSelectAndClear(mixed $component, array $orders): mixed
 {
     return $component
         ->set('tableSearch', (string) $orders[0]->order_number)
-        ->set('serviceOrderSelection', array_map(fn (OperationServiceOrder $order): string => (string) $order->id, $orders))
+        ->set('tableSelection', array_map(fn (OperationServiceOrder $order): string => (string) $order->id, $orders))
         ->set('tableSearch', '');
 }
 
 it('la tabla enlaza la selección a una propiedad de Livewire', function (): void {
     $component = Livewire::test(ListOperationServiceOrders::class);
 
-    expect($component->instance()->getTable()->getCurrentSelectionLivewireProperty())->toBe('serviceOrderSelection');
+    expect($component->instance()->getTable()->getCurrentSelectionLivewireProperty())->toBe('tableSelection');
 });
 
 it('al dejar de buscar muestra solo las órdenes seleccionadas', function (): void {
@@ -79,12 +79,12 @@ it('marcar sin haber buscado no reduce la tabla y ofrece ver solo las selecciona
 
     Livewire::test(ListOperationServiceOrders::class)
         ->call('loadTable')
-        ->set('serviceOrderSelection', [(string) $first->id])
+        ->set('tableSelection', [(string) $first->id])
         ->call('gotoPage', 1)
         ->assertSet('reviewingSelection', false)
         ->assertCanSeeTableRecords([$first, $second])
         ->assertSee('Ver solo las seleccionadas')
-        ->call('showSelectedServiceOrdersOnly')
+        ->call('showSelectedRecordsOnly')
         ->assertCanSeeTableRecords([$first])
         ->assertCanNotSeeTableRecords([$second]);
 });
@@ -107,7 +107,7 @@ it('mientras se escribe en el buscador la tabla busca como siempre', function ()
 
     $component = Livewire::test(ListOperationServiceOrders::class)
         ->call('loadTable')
-        ->set('serviceOrderSelection', [(string) $first->id])
+        ->set('tableSelection', [(string) $first->id])
         ->set('tableSearch', (string) $second->order_number);
 
     expect($component->instance()->isShowingSelectedOnly())->toBeFalse();
@@ -119,14 +119,14 @@ it('«Ver todas las órdenes» se mantiene aunque vuelva a buscar, hasta pedir d
     [$first, $second] = selectionReviewOrders();
 
     searchSelectAndClear(Livewire::test(ListOperationServiceOrders::class)->call('loadTable'), [$first])
-        ->call('showAllServiceOrders')
+        ->call('showAllWhileSelectingRecords')
         ->assertCanSeeTableRecords([$first, $second])
         ->assertSee('La tabla muestra todas las órdenes')
         ->set('tableSearch', 'x')
         ->set('tableSearch', '')
         ->assertSet('showAllWhileSelecting', true)
         ->assertCanSeeTableRecords([$second])
-        ->call('showSelectedServiceOrdersOnly')
+        ->call('showSelectedRecordsOnly')
         ->assertCanSeeTableRecords([$first])
         ->assertCanNotSeeTableRecords([$second]);
 });
@@ -135,8 +135,8 @@ it('quitar la selección vuelve a la tabla normal', function (): void {
     [$first, $second] = selectionReviewOrders();
 
     searchSelectAndClear(Livewire::test(ListOperationServiceOrders::class)->call('loadTable'), [$first])
-        ->call('clearServiceOrderSelection')
-        ->assertSet('serviceOrderSelection', [])
+        ->call('clearTableSelection')
+        ->assertSet('tableSelection', [])
         ->assertSet('showAllWhileSelecting', false)
         ->assertSet('reviewingSelection', false)
         ->assertDispatched('deselectAllTableRecords')
@@ -148,8 +148,8 @@ it('si el analista desmarca todo, la próxima selección empieza de cero', funct
     [$first] = selectionReviewOrders();
 
     searchSelectAndClear(Livewire::test(ListOperationServiceOrders::class)->call('loadTable'), [$first])
-        ->call('showAllServiceOrders')
-        ->set('serviceOrderSelection', [])
+        ->call('showAllWhileSelectingRecords')
+        ->set('tableSelection', [])
         ->assertSet('showAllWhileSelecting', false)
         ->assertSet('reviewingSelection', false);
 });
@@ -158,7 +158,7 @@ it('ignora claves que no son ids válidos', function (): void {
     [$first] = selectionReviewOrders();
 
     $component = Livewire::test(ListOperationServiceOrders::class)
-        ->set('serviceOrderSelection', ['abc', '0', '-4', (string) $first->id, (string) $first->id]);
+        ->set('tableSelection', ['abc', '0', '-4', (string) $first->id, (string) $first->id]);
 
-    expect($component->instance()->selectedServiceOrderIds())->toBe([$first->id]);
+    expect($component->instance()->selectedTableRecordIds())->toBe([$first->id]);
 });

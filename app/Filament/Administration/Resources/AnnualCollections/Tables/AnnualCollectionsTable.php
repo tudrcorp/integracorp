@@ -16,6 +16,8 @@ use App\Support\Exports\CollectionReceivableCsvExportService;
 use App\Support\SecurityAudit;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -54,7 +56,11 @@ class AnnualCollectionsTable
             ->recordActions([
                 CollectionObservationsAction::make(),
             ])
-            ->toolbarActions([])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    self::exportSelectedAction(),
+                ]),
+            ])
             ->emptyStateIcon(Heroicon::OutlinedCheckBadge)
             ->emptyStateHeading('No hay cuotas pendientes')
             ->emptyStateDescription('No hay afiliaciones con cuotas por cobrar con los filtros aplicados. Pruebe quitando filtros o cambiando el rango de vencimiento.');
@@ -249,6 +255,30 @@ class AnnualCollectionsTable
                 ], Auth::user());
 
                 return app(CollectionReceivableCsvExportService::class)->streamCsv($livewire->getFilteredSortedTableQuery());
+            });
+    }
+
+    /**
+     * CSV de las cuentas por cobrar seleccionadas, con las mismas columnas que «Descargar CSV».
+     * La consulta no carga los registros en memoria: el servicio los recorre por lotes.
+     */
+    private static function exportSelectedAction(): BulkAction
+    {
+        return BulkAction::make('exportSelectedReceivables')
+            ->label('Exportar CSV')
+            ->icon(Heroicon::OutlinedArrowDownTray)
+            ->color('success')
+            ->fetchSelectedRecords(false)
+            ->action(function (HasTable $livewire): StreamedResponse {
+                SecurityAudit::log('AUDIT_ADMIN_RECEIVABLES_EXPORT_REQUESTED', 'administration.annual-collections.export-selected', [
+                    'panel' => 'administration',
+                    'format' => 'csv',
+                    'scope' => 'selected',
+                ], Auth::user());
+
+                return app(CollectionReceivableCsvExportService::class)->streamCsv(
+                    $livewire->getSelectedTableRecordsQuery(shouldFetchSelectedRecords: false),
+                );
             });
     }
 

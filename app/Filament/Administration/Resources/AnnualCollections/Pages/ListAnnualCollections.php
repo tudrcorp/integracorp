@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Administration\Resources\AnnualCollections\Pages;
 
 use App\Filament\Administration\Resources\AnnualCollections\AnnualCollectionResource;
+use App\Filament\Concerns\ReviewsTableSelection;
 use App\Support\Collections\CollectionReceivableReport;
 use App\Support\Filament\SummaryCards;
 use Filament\Resources\Pages\ListRecords;
@@ -12,6 +13,8 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class ListAnnualCollections extends ListRecords
 {
+    use ReviewsTableSelection;
+
     protected static string $resource = AnnualCollectionResource::class;
 
     protected static ?string $title = 'Cuentas por cobrar';
@@ -99,5 +102,13 @@ class ListAnnualCollections extends ListRecords
         $value = data_get($this->tableFilters, 'aging.value');
 
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * @return array{singular: string, plural: string}
+     */
+    protected function selectionReviewNouns(): array
+    {
+        return ['singular' => 'cuenta por cobrar', 'plural' => 'cuentas por cobrar'];
     }
 }

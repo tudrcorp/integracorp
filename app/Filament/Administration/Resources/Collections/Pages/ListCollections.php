@@ -3,6 +3,7 @@
 namespace App\Filament\Administration\Resources\Collections\Pages;
 
 use App\Filament\Administration\Resources\Collections\CollectionResource;
+use App\Filament\Concerns\ReviewsTableSelection;
 use App\Support\Filament\SummaryCards;
 use Carbon\CarbonImmutable;
 use Filament\Resources\Pages\ListRecords;
@@ -10,6 +11,8 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class ListCollections extends ListRecords
 {
+    use ReviewsTableSelection;
+
     protected static string $resource = CollectionResource::class;
 
     protected static ?string $title = 'Gestión de Cobranza';
@@ -92,5 +95,13 @@ class ListCollections extends ListRecords
             'paid_count' => (int) ($row->paid_count ?? 0),
             'paid_amount' => (float) ($row->paid_amount ?? 0),
         ];
+    }
+
+    /**
+     * @return array{singular: string, plural: string}
+     */
+    protected function selectionReviewNouns(): array
+    {
+        return ['singular' => 'cuota', 'plural' => 'cuotas'];
     }
 }
