@@ -210,7 +210,8 @@ it('la tabla sigue las columnas del reporte CXC y su única acción por fila es 
     expect($source)
         ->toContain("->recordActions([\n                CollectionObservationsAction::make(),\n            ])")
         ->toContain("->withCount('receivableObservations')")
-        ->toContain('->toolbarActions([])')
+        // Única acción en lote: exportar en CSV las cuentas seleccionadas (revisión de selección).
+        ->toContain("BulkAction::make('exportSelectedReceivables')")
         ->toContain('CollectionReceivableReport::agingOptions()')
         ->toContain('public static function runRegeneratePdf(Collection $record): bool')
         ->not->toContain('DeleteBulkAction')

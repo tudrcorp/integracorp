@@ -2,34 +2,47 @@
 
 namespace App\Http\Controllers;
 
-use App\Filament\Administration\Resources\AnnualCollections\Tables\AnnualCollectionsTable;
+use App\Http\Requests\RegenerateAvisoCobroRequest;
 use App\Http\Requests\SendAvisoCobroEmailRequest;
 use App\Mail\AvisoCobroCertificateEmail;
 use App\Models\Collection;
+use App\Support\Collections\CollectionNotice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class AvisoCobroController extends Controller
 {
-    public function regenerateAsync(Collection $collection): JsonResponse
+    /**
+     * Regenera el aviso con lo que editó el analista (o con los datos por defecto) y devuelve la vista previa.
+     */
+    public function regenerateAsync(RegenerateAvisoCobroRequest $request, Collection $collection): JsonResponse
     {
-        $ok = AnnualCollectionsTable::runRegeneratePdf($collection);
-
-        if (! $ok) {
+        try {
+            $regeneration = app(CollectionNotice::class)->regenerate($collection, $request->edits(), $request->user());
+        } catch (ValidationException $exception) {
             return response()->json([
                 'ok' => false,
-                'message' => 'Error al regenerar el PDF.',
+                'message' => collect($exception->errors())->flatten()->first() ?? 'Revise los datos del aviso.',
+                'errors' => $exception->errors(),
             ], 422);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'ok' => false,
+                'message' => 'No se pudo regenerar el PDF. El aviso anterior no cambió; intente de nuevo.',
+            ], 500);
         }
 
-        $filename = 'ADP-'.$collection->collection_invoice_number.'.pdf';
-        $version = (string) time();
-        $directUrl = asset('storage/avisoDeCobro/'.$filename).'?t='.$version;
+        $directUrl = asset('storage/avisoDeCobro/'.CollectionNotice::pdfFilename($collection)).'?t='.$regeneration->id;
 
         return response()->json([
             'ok' => true,
             'preview_url' => $directUrl,
             'direct_url' => $directUrl,
+            'regenerated_at' => $regeneration->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i'),
         ]);
     }
 

@@ -2,13 +2,20 @@
 
 namespace App\Http\Requests;
 
+use App\Support\Collections\CollectionNoticeAccess;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SendAvisoCobroEmailRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return CollectionNoticeAccess::allows($this->user());
+    }
+
+    protected function failedAuthorization(): void
+    {
+        throw new AuthorizationException('No tiene permiso para enviar avisos de cobro.');
     }
 
     /**

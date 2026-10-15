@@ -385,7 +385,7 @@ class CollectionsTable
                         ->icon('heroicon-s-arrow-down-on-square-stack')
                         ->color('warning')
                         ->modalHeading('Aviso de cobro')
-                        ->modalDescription('Se regenera el PDF al abrir. Luego puede previsualizarlo y enviarlo por correo al afiliado.')
+                        ->modalDescription('Revise y corrija los datos del aviso (los cambios valen solo para el PDF), regenérelo y luego envíelo por correo al afiliado.')
                         ->modalIcon('heroicon-o-document-arrow-down')
                         ->modalWidth(Width::SevenExtraLarge)
                         ->modalContent(function (Collection $record): ViewContract {

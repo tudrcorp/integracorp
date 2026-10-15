@@ -253,7 +253,6 @@
                 </td>
                 <td style="width: 52%;">
                     <div class="doc-header-meta">
-                        <p><strong>Aviso de Cobro: Nro. {{ $data['invoice_number'] }}</strong></p>
                         <p><strong>Fecha de Emisión: {{ $data['emission_date'] }}</strong></p>
                         <p><strong>Condiciones de Pago: Contado</strong></p>
                     </div>
@@ -324,6 +323,11 @@
                             TOTAL DE AFILIADOS ASOCIADOS A LA AFILIACIÓN: {{ (int) ($data['affiliates_count'] ?? 0) }}
                         </td>
                     </tr>
+                    @if (filled($data['period_label'] ?? null))
+                        <tr class="affiliates-row">
+                            <td colspan="2">PERIODO DE COBRO: {{ $data['period_label'] }}</td>
+                        </tr>
+                    @endif
                     <tr class="total-row">
                         <td colspan="2">Monto Total: US${{ number_format($data['total_amount'], 2) }}</td>
 

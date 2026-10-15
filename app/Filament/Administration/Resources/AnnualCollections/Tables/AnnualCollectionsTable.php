@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Administration\Resources\AnnualCollections\Tables;
 
 use App\Filament\Administration\Resources\AnnualCollections\Actions\CollectionObservationsAction;
-use App\Http\Controllers\CollectionController;
-use App\Models\Affiliation;
-use App\Models\AffiliationCorporate;
 use App\Models\Agency;
 use App\Models\Collection;
-use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
+use App\Support\Collections\CollectionNotice;
 use App\Support\Collections\CollectionReceivableReport;
 use App\Support\Exports\CollectionReceivableCsvExportService;
 use App\Support\SecurityAudit;
@@ -283,55 +280,19 @@ class AnnualCollectionsTable
     }
 
     /**
-     * Regenera el PDF del aviso de cobro de una cuota. Lo usan `AvisoCobroController`
-     * y la ruta de regeneración en `routes/web.php`.
+     * Regenera el PDF del aviso de cobro de una cuota con los datos por defecto (emisión hoy y período
+     * según su frecuencia). Lo usan la ruta de regeneración y `AvisoCobroController`.
      */
     public static function runRegeneratePdf(Collection $record): bool
     {
         try {
-            if ($record->type === 'AFILIACION INDIVIDUAL') {
-                $address = Affiliation::where('code', $record->affiliation_code)->first();
-                $array_data = [
-                    'invoice_number' => $record->collection_invoice_number,
-                    'emission_date' => $record->next_payment_date,
-                    'full_name_ti' => $record->affiliate_full_name,
-                    'ci_rif_ti' => $record->affiliate_ci_rif,
-                    'address_ti' => $address?->adress_ti ?? '',
-                    'phone_ti' => $record->affiliate_phone,
-                    'email_ti' => $record->affiliate_email,
-                    'total_amount' => $record->total_amount,
-                    'plan' => $record->plan?->description,
-                    'coverage' => $record->coverage?->price ?? null,
-                    'frequency' => $record->payment_frequency,
-                    'affiliates_count' => AffiliationDocumentAffiliatesCount::forAffiliationCode($record->affiliation_code, false),
-                ];
+            app(CollectionNotice::class)->regenerate($record, null, Auth::user());
 
-                return CollectionController::regenerateAvisoDeCobro($array_data);
-            }
-            if ($record->type === 'AFILIACION CORPORATIVA') {
-                $address = AffiliationCorporate::where('code', $record->affiliation_code)->first();
-                $planes = AffiliationCorporate::where('code', $record->affiliation_code)->with('affiliationCorporatePlans')->first()?->toArray();
-                $array_data = [
-                    'invoice_number' => $record->collection_invoice_number,
-                    'emission_date' => $record->next_payment_date,
-                    'full_name_ti' => $record->affiliate_full_name,
-                    'ci_rif_ti' => $record->affiliate_ci_rif,
-                    'address_ti' => $address?->adress_ti ?? '',
-                    'phone_ti' => $record->affiliate_phone,
-                    'email_ti' => $record->affiliate_email,
-                    'total_amount' => $record->total_amount,
-                    'plan' => $planes['affiliation_corporate_plans'] ?? [],
-                    'coverage' => $record->coverage?->price ?? null,
-                    'frequency' => $record->payment_frequency,
-                    'affiliates_count' => AffiliationDocumentAffiliatesCount::forAffiliationCode($record->affiliation_code, true),
-                ];
+            return true;
+        } catch (\Throwable $exception) {
+            report($exception);
 
-                return CollectionController::regenerateAvisoDeCobroCorporate($array_data);
-            }
-        } catch (\Throwable) {
             return false;
         }
-
-        return false;
     }
 }
