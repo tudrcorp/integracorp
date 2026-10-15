@@ -14,7 +14,8 @@ it('registra rutas de documentos de afiliación corporativa en business', functi
         ->toContain('business.affiliation-corporate-documents.tarjetas')
         ->toContain('business.affiliation-corporate-documents.send-email')
         ->toContain('business.affiliation-corporate-documents.send-carnet-emails')
-        ->toContain('business.affiliation-corporate-tarjeta-qr.associate-plan');
+        // El QR de las tarjetas corporativas se cambia en el centro de QR (solo SUPERADMIN); la ruta POST solo pedía sesión.
+        ->not->toContain('business.affiliation-corporate-tarjeta-qr.associate-plan');
 });
 
 it('renderiza la vista modal de documentos de afiliación corporativa', function (): void {

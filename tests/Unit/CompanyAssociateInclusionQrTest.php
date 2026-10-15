@@ -94,16 +94,18 @@ it('genera pdf y qr de inclusion con logo corporativo en el centro', function ()
     @unlink($pdfFixture);
 });
 
-it('registra ruta para asociar qr de inclusion en nuevos negocios', function (): void {
+it('el qr de inclusion se administra desde el centro de qr y ya no por una ruta abierta', function (): void {
     $routes = file_get_contents(dirname(__DIR__, 2).'/routes/web.php');
-    $blade = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/business/pages/generador-qr-personalizado.blade.php');
+    $manager = file_get_contents(dirname(__DIR__, 2).'/app/Support/QrCenter/QrDestinationManager.php');
     $generator = file_get_contents(dirname(__DIR__, 2).'/app/Support/Companies/CompanyAssociateInclusionQrGenerator.php');
+    $carnet = file_get_contents(dirname(__DIR__, 2).'/app/Support/Companies/CompanyAssociateCarnetGenerator.php');
 
-    expect($routes)->toContain('business.company-associate-tarjeta-qr.associate-inclusion');
+    // La ruta POST solo pedía sesión: cualquier usuario podía cambiar el QR de las tarjetas.
+    expect($routes)->not->toContain('business.company-associate-tarjeta-qr.associate-inclusion')
+        ->toContain("->name('qr.go')");
     expect($generator)
         ->toContain('isAutomaticGenerationEnabled')
         ->toContain("environment('production')");
-    expect($blade)
-        ->toContain('downloadAndAssociateInclusionBtn')
-        ->toContain('nuevos negocios (Inclusión)');
+    expect($manager)->toContain("'Tarjetas de nuevos negocios'");
+    expect($carnet)->toContain("'qr_scope' => QrDestination::SCOPE_INCLUSION");
 });

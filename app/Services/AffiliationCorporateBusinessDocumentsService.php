@@ -9,6 +9,7 @@ use App\Jobs\GenerateCorporateCertificateJob;
 use App\Jobs\GenerateCorporateCombinedCardsJob;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
+use App\Models\QrDestination;
 use App\Models\User;
 use App\Support\AffiliateCard\AffiliateCardPageLayout;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
@@ -608,6 +609,7 @@ class AffiliationCorporateBusinessDocumentsService
                 'output_filename' => 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf',
                 'card_layout' => AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION,
                 'template_key' => AffiliateCardPageLayout::TEMPLATE_INDIVIDUAL_AFFILIATION,
+                'qr_scope' => QrDestination::SCOPE_CORPORATE,
             ];
 
             if (is_string($alliedTemplatePath) && $alliedTemplatePath !== '') {

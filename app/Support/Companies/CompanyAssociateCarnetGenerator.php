@@ -6,6 +6,7 @@ namespace App\Support\Companies;
 
 use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Models\CompanyAssociate;
+use App\Models\QrDestination;
 use RuntimeException;
 
 final class CompanyAssociateCarnetGenerator
@@ -113,6 +114,7 @@ final class CompanyAssociateCarnetGenerator
             'code' => self::associateCode($associate),
             'plan' => self::PLAN_LABEL,
             'plan_qr_filename' => 'qr-plan-inclusion.png',
+            'qr_scope' => QrDestination::SCOPE_INCLUSION,
             'template_key' => 'individual',
             'card_layout' => 'individual',
             'frecuencia' => self::PAYMENT_FREQUENCY_LABEL,
