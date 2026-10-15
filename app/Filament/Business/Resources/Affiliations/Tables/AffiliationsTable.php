@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\Affiliations\Tables;
 use App\Filament\Business\Resources\Affiliations\AffiliationResource as BusinessAffiliationResource;
 use App\Filament\Business\Resources\Affiliations\Pages\CertificateGenerator;
 use App\Filament\Resources\Affiliations\AffiliationResource;
+use App\Filament\Shared\Affiliations\ChangeAffiliationPlanBulkAction;
 use App\Http\Controllers\AffiliateExportCsvController;
 use App\Http\Controllers\AffiliationController;
 use App\Http\Controllers\AffiliationExportCsvController;
@@ -18,6 +19,7 @@ use App\Services\AffiliationBusinessDocumentsService;
 use App\Support\AffiliationPaymentBcvRateCalculator;
 use App\Support\AffiliationPaymentTotalAdjustment;
 use App\Support\Affiliations\AffiliationsRankingQuery;
+use App\Support\Affiliations\PlanChange\IndividualAffiliationPlanChanger;
 use App\Support\AffiliationWhiteCompany;
 use App\Support\BcvOfficialRate;
 use App\Support\Filament\FilamentIosButton;
@@ -1288,63 +1290,21 @@ class AffiliationsTable
                                             'TRIMESTRAL' => 'TRIMESTRAL',
                                             'SEMESTRAL' => 'SEMESTRAL',
                                             'ANUAL' => 'ANUAL',
-                                        ]),
+                                        ])
+                                        ->required(),
 
                                 ])->columnSpanFull(),
                         ])
-                        ->action(function (Affiliation $record, array $data) {
-
-                            try {
-
-                                $record->payment_frequency = $data['payment_frequency'];
-
-                                if ($data['payment_frequency'] == 'ANUAL') {
-                                    $record->total_amount = $record->fee_anual;
-                                }
-
-                                if ($data['payment_frequency'] == 'SEMESTRAL') {
-                                    $record->total_amount = $record->fee_anual / 2;
-                                }
-
-                                if ($data['payment_frequency'] == 'TRIMESTRAL') {
-                                    $record->total_amount = $record->fee_anual / 4;
-                                }
-
-                                if ($data['payment_frequency'] == 'MENSUAL') {
-                                    $record->total_amount = $record->fee_anual / 12;
-                                }
-
-                                $record->save();
-
-                                self::audit('AUDIT_BUSINESS_AFFILIATION_PAYMENT_FREQUENCY_UPDATED', 'business.affiliations.edit-frequency', [
-                                    'affiliation_id' => $record->id,
-                                    'affiliation_code' => $record->code,
-                                    'payment_frequency' => $data['payment_frequency'] ?? null,
-                                    'total_amount' => $record->total_amount,
-                                ]);
-
-                                Notification::make()
-                                    ->title('ACTUALIACION EXITOSA')
-                                    ->body('La frecuencia de pago se ha actualizado con exito.')
-                                    ->icon('heroicon-s-check-circle')
-                                    ->success()
-                                    ->send();
-                            } catch (\Throwable $th) {
-                                Log::error($th->getMessage());
-                                self::audit('AUDIT_BUSINESS_AFFILIATION_PAYMENT_FREQUENCY_UPDATE_FAILED', 'business.affiliations.edit-frequency', [
-                                    'affiliation_id' => $record->id,
-                                    'affiliation_code' => $record->code,
-                                    'payment_frequency' => $data['payment_frequency'] ?? null,
-                                    'error' => $th->getMessage(),
-                                ]);
-                                Notification::make()
-                                    ->title('ERROR AL ACTUALIZAR FRECUENCIA DE PAGO')
-                                    ->body($th->getMessage())
-                                    ->icon('heroicon-s-x-circle')
-                                    ->iconColor('danger')
-                                    ->danger()
-                                    ->send();
-                            }
+                        ->action(function (Affiliation $record, array $data): void {
+                            // Pasa por el servicio de cambio de plan: frecuencia de la afiliación y de sus afiliados,
+                            // cuotas POR PAGAR repartidas en la frecuencia nueva, bitácora y auditoría, en una transacción.
+                            $user = Auth::user();
+                            ChangeAffiliationPlanBulkAction::notifySummary(app(IndividualAffiliationPlanChanger::class)->changeFrequencyMany(
+                                [$record],
+                                (string) ($data['payment_frequency'] ?? ''),
+                                $user instanceof User ? $user : null,
+                            ));
+                            $record->refresh();
                         })
                         ->hidden(fn () => ! in_array('SUPERADMIN', Auth::user()->departament)),
 
@@ -2108,60 +2068,16 @@ class AffiliationsTable
                                     'required' => 'Seleccione una frecuencia de pago',
                                 ]),
                         ])
-                        ->action(function (Collection $records, array $data) {
-
-                            try {
-                                $recordIds = $records->pluck('id')->values()->all();
-
-                                // Actualizamos el registro para cambiar la frecuencia de pago
-                                foreach ($records as $record) {
-
-                                    $record->payment_frequency = $data['frequency_payment'];
-
-                                    if ($data['frequency_payment'] == 'TRIMESTRAL') {
-                                        $record->total_amount = $record->fee_anual / 4;
-                                    }
-                                    if ($data['frequency_payment'] == 'SEMESTRAL') {
-                                        $record->total_amount = $record->fee_anual / 2;
-                                    }
-                                    if ($data['frequency_payment'] == 'MENSUAL') {
-                                        $record->total_amount = $record->fee_anual / 12;
-                                    }
-                                    if ($data['frequency_payment'] == 'ANUAL') {
-                                        $record->total_amount = $record->fee_anual;
-                                    }
-
-                                    $record->save();
-                                }
-
-                                Log::info('Frecuencia de pago actualizada con exito. Usuario: '.Auth::user()->name);
-                                Notification::make()
-                                    ->title('NOTIFICACION')
-                                    ->body('La frecuencia de pago se ha actualizado con exito')
-                                    ->icon('heroicon-m-user-plus')
-                                    ->iconColor('success')
-                                    ->success()
-                                    ->send();
-
-                                self::audit('AUDIT_BUSINESS_AFFILIATIONS_BULK_FREQUENCY_UPDATED', 'business.affiliations.bulk-edit-frequency', [
-                                    'record_ids' => $recordIds,
-                                    'total' => count($recordIds),
-                                    'frequency_payment' => $data['frequency_payment'] ?? null,
-                                ]);
-                            } catch (\Throwable $th) {
-                                Log::error($th->getMessage());
-                                self::audit('AUDIT_BUSINESS_AFFILIATIONS_BULK_FREQUENCY_UPDATE_FAILED', 'business.affiliations.bulk-edit-frequency', [
-                                    'frequency_payment' => $data['frequency_payment'] ?? null,
-                                    'error' => $th->getMessage(),
-                                ]);
-                                Notification::make()
-                                    ->title('¡ERROR!')
-                                    ->icon('heroicon-m-exclamation-triangle')
-                                    ->body('Hubo un error al actualizar la frecuencia de pago. Por favor, contacte con el administrador del Sistema.')
-                                    ->danger()
-                                    ->send();
-                            }
+                        ->action(function (Collection $records, array $data): void {
+                            $user = Auth::user();
+                            ChangeAffiliationPlanBulkAction::notifySummary(app(IndividualAffiliationPlanChanger::class)->changeFrequencyMany(
+                                $records,
+                                (string) ($data['frequency_payment'] ?? ''),
+                                $user instanceof User ? $user : null,
+                            ));
                         }),
+
+                    ChangeAffiliationPlanBulkAction::make(),
 
                     BulkAction::make('reassign_affiliation')
                         ->hidden(fn () => Auth::user()->is_business_admin != 1)

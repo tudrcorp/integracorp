@@ -38,6 +38,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const ACCEPT_EARLY_RENOVATION = 'aceptar-renovacion-anticipada';
 
+    public const CHANGE_INDIVIDUAL_AFFILIATION_PLAN = 'cambiar-plan-afiliacion-individual';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -61,6 +63,11 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::MANAGE_CORPORATE_AFFILIATE_UPGRADES => [
                 'name' => 'Agregar y quitar upgrades de afiliados corporativos',
+                'group' => 'AFILIACIONES',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::CHANGE_INDIVIDUAL_AFFILIATION_PLAN => [
+                'name' => 'Cambiar plan de afiliaciones individuales (plan, cobertura, frecuencia y rangos de edad)',
                 'group' => 'AFILIACIONES',
                 'modules' => [self::OWNER_MODULE],
             ],
