@@ -74,6 +74,9 @@ final class IndividualAffiliationPlanChanger
 
     public const MAX_BATCH = 25;
 
+    /** La nota de una excepción debe explicar algo: no basta «ok» ni «autorizado». */
+    public const EXCEPTION_NOTE_MIN_LENGTH = 15;
+
     public function __construct(
         private AffiliationAffiliateFeeCalculator $calculator = new AffiliationAffiliateFeeCalculator,
     ) {}
@@ -90,9 +93,9 @@ final class IndividualAffiliationPlanChanger
                 throw new IndividualPlanChangePreviewRollback($this->apply($affiliation, $request, null, (string) Str::uuid(), simulate: true));
             });
         } catch (IndividualPlanChangePreviewRollback $rollback) {
-            return ['blocked' => null] + $rollback->result;
+            return ['blocked' => null, 'blocked_rule' => null] + $rollback->result;
         } catch (IndividualPlanChangeBlockedException $exception) {
-            return ['blocked' => $exception->getMessage()] + self::identity($affiliation);
+            return ['blocked' => $exception->getMessage(), 'blocked_rule' => $exception->rule] + self::identity($affiliation);
         }
 
         return ['blocked' => 'No se pudo calcular la vista previa.'] + self::identity($affiliation);
@@ -245,6 +248,7 @@ final class IndividualAffiliationPlanChanger
             'white_company' => $whiteCompany,
             'renovations_updated' => $renovations,
             'warnings' => $this->warnings($plan, $locked),
+            'exception' => self::exceptionSummary($lines, $request),
             'change_id' => null,
         ];
 
@@ -359,24 +363,31 @@ final class IndividualAffiliationPlanChanger
             $age = $this->calculator->resolveAffiliateAge($affiliate);
             $override = $request->ageRangeOverrides[(int) $affiliate->id] ?? null;
             $name = trim((string) $affiliate->full_name) ?: 'Afiliado #'.$affiliate->id;
+            $keepCurrent = $samePlan && $override === null && (float) $affiliate->fee > 0;
 
-            if ($planId === AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID && $age !== null
-                && ! $this->calculator->affiliateAgeFitsPlanAgeRanges($planId, $age, $coverageId)) {
+            // Solo se re-tarifica lo que cambia: un cambio de frecuencia no vuelve a juzgar la edad.
+            $outsideIdeal = ! $keepCurrent
+                && $planId === AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID
+                && $age !== null
+                && ! $this->calculator->affiliateAgeFitsPlanAgeRanges($planId, $age, $coverageId);
+
+            if ($outsideIdeal && ! $request->allowIdealAgeException) {
                 $outOfIdeal[] = $name.' ('.$age.' años)';
 
                 continue;
             }
-
-            $keepCurrent = $samePlan && $override === null && (float) $affiliate->fee > 0;
 
             if ($keepCurrent) {
                 $fee = null;
                 $annual = round((float) $affiliate->fee, 2);
                 $ageRangeId = $affiliate->age_range_id !== null ? (int) $affiliate->age_range_id : null;
             } else {
-                $fee = $override !== null
-                    ? IndividualPlanChangeCatalog::feeForAgeRange($planId, $coverageId, (int) $override)
-                    : ($age !== null ? $this->resolveActiveFee($planId, $coverageId, $age) : null);
+                $fee = match (true) {
+                    $override !== null => IndividualPlanChangeCatalog::feeForAgeRange($planId, $coverageId, (int) $override),
+                    $outsideIdeal => IndividualPlanChangeCatalog::nearestFeeForAge($planId, $coverageId, (int) $age),
+                    $age !== null => $this->resolveActiveFee($planId, $coverageId, $age),
+                    default => null,
+                };
 
                 if ($fee === null) {
                     throw new IndividualPlanChangeBlockedException(match (true) {
@@ -405,11 +416,25 @@ final class IndividualAffiliationPlanChanger
                 'new_period' => $this->calculator->totalAmountForPaymentFrequency($annual, $frequency),
                 'overridden' => $override !== null,
                 'kept' => $keepCurrent,
+                'exception' => $outsideIdeal,
             ];
         }
 
         if ($outOfIdeal !== []) {
-            throw new IndividualPlanChangeBlockedException(AffiliationAffiliateFeeCalculator::NEGOTIATION_MESSAGE_IDEAL_OUT_OF_RANGE.' Fuera de rango: '.implode(', ', $outOfIdeal).'.');
+            throw new IndividualPlanChangeBlockedException(
+                AffiliationAffiliateFeeCalculator::NEGOTIATION_MESSAGE_IDEAL_OUT_OF_RANGE.' Fuera de rango: '.implode(', ', $outOfIdeal).'.'
+                .' Si la excepción está autorizada, marque «Autorizar excepción» y explique el motivo.',
+                IndividualPlanChangeBlockedException::RULE_IDEAL_AGE_RANGE,
+            );
+        }
+
+        $exceptionLines = array_filter($lines, fn (array $line): bool => $line['exception']);
+
+        if ($exceptionLines !== [] && mb_strlen(trim($request->exceptionNote)) < self::EXCEPTION_NOTE_MIN_LENGTH) {
+            throw new IndividualPlanChangeBlockedException(
+                'La excepción a la regla de edad del Plan Ideal necesita una nota de al menos '.self::EXCEPTION_NOTE_MIN_LENGTH.' caracteres que explique por qué se autoriza.',
+                IndividualPlanChangeBlockedException::RULE_IDEAL_AGE_RANGE,
+            );
         }
 
         return $lines;
@@ -744,6 +769,7 @@ final class IndividualAffiliationPlanChanger
         $previous = $result['previous'];
         $new = $result['new'];
         $billing = $result['billing'];
+        $exception = $result['exception'];
 
         $change = AffiliationPlanChange::query()->create([
             'batch_uuid' => $batchUuid,
@@ -765,6 +791,9 @@ final class IndividualAffiliationPlanChanger
             'updated_collections' => $billing['updated'] ?: null,
             'snapshot' => $snapshot,
             'reason' => Str::limit(trim($request->reason), 500, '') ?: null,
+            'exception_rule' => $exception['rule'] ?? null,
+            'exception_note' => $exception['note'] ?? null,
+            'exception_affiliates' => $exception['affiliates'] ?? null,
             'performed_by_id' => $actor?->getKey(),
             'performed_by_name' => $actorName,
             'performed_from' => self::currentPanelId(),
@@ -772,7 +801,7 @@ final class IndividualAffiliationPlanChanger
         ]);
 
         $summary = sprintf(
-            '%s: %s%s · %s → %s%s · %s. Tarifa anual US$ %s → US$ %s; monto por período US$ %s → US$ %s.%s',
+            '%s: %s%s · %s → %s%s · %s. Tarifa anual US$ %s → US$ %s; monto por período US$ %s → US$ %s.%s%s',
             $result['action'],
             $previous['plan'],
             $previous['coverage'] !== null ? ' ('.$previous['coverage'].')' : '',
@@ -785,12 +814,17 @@ final class IndividualAffiliationPlanChanger
             number_format((float) $previous['total_amount'], 2, ',', '.'),
             number_format((float) $new['total_amount'], 2, ',', '.'),
             filled($request->reason) ? ' Motivo: '.trim($request->reason) : '',
+            $exception !== null
+                ? ' EXCEPCIÓN AUTORIZADA a la regla de edad del Plan Ideal para '
+                    .implode(', ', array_map(fn (array $item): string => $item['name'].' ('.$item['age'].' años → '.$item['age_range'].')', $exception['affiliates']))
+                    .'. Nota: '.$exception['note']
+                : '',
         );
 
         $affiliation->status_log_affiliations()->create([
             'affiliation_id' => $affiliation->getKey(),
             'action' => $result['action'],
-            'observation' => Str::limit($summary, 1000, ''),
+            'observation' => self::statusLogText($result, $exception !== null),
             'updated_by' => $actorName,
         ]);
 
@@ -810,7 +844,21 @@ final class IndividualAffiliationPlanChanger
             'created_collection_ids' => array_column($billing['created'], 'id'),
             'updated_collection_ids' => array_column($billing['updated'], 'id'),
             'white_company' => $result['white_company'],
+            'exception' => $exception,
         ], $actor);
+
+        if ($exception !== null) {
+            SecurityAudit::log('AUDIT_BUSINESS_AFFILIATION_PLAN_RULE_EXCEPTION', 'business.affiliations.change-plan.exception', [
+                'panel' => self::currentPanelId(),
+                'affiliation_id' => $affiliation->getKey(),
+                'affiliation_code' => $affiliation->code,
+                'change_id' => $change->getKey(),
+                'plan_id' => $new['plan_id'],
+                'rule' => $exception['rule'],
+                'note' => $exception['note'],
+                'affiliates' => $exception['affiliates'],
+            ], $actor);
+        }
 
         return (int) $change->getKey();
     }
@@ -846,6 +894,56 @@ final class IndividualAffiliationPlanChanger
                 ->where('affiliation_id', $affiliation->getKey())
                 ->get(['id', 'plan_id', 'coverage_id', 'payment_frequency', 'status'])
                 ->toArray(),
+        ];
+    }
+
+    /**
+     * La bitácora de estados guarda hasta 255 caracteres: va lo esencial y el detalle completo
+     * (montos, motivo y nota de la excepción) queda en la observación de la afiliación.
+     *
+     * @param  array<string, mixed>  $result
+     */
+    private static function statusLogText(array $result, bool $withException): string
+    {
+        $suffix = $withException ? ' · EXCEPCIÓN de edad del Plan Ideal autorizada (ver observaciones)' : '';
+        $head = sprintf(
+            '%s: %s → %s%s · %s → %s',
+            $result['action'],
+            $result['previous']['plan'],
+            $result['new']['plan'],
+            $result['new']['coverage'] !== null ? ' ('.$result['new']['coverage'].')' : '',
+            $result['previous']['frequency'] ?: 'sin frecuencia',
+            $result['new']['frequency'],
+        );
+
+        return Str::limit($head, 255 - mb_strlen($suffix), '…').$suffix;
+    }
+
+    /**
+     * Afiliados tarifados por excepción, con la nota que la justifica. Null si no hubo excepción.
+     *
+     * @param  list<array<string, mixed>>  $lines
+     * @return array{rule: string, note: string, affiliates: list<array{id: int, name: string, age: int|null, age_range_id: int|null, age_range: string, fee: float}>}|null
+     */
+    private static function exceptionSummary(array $lines, IndividualPlanChangeRequest $request): ?array
+    {
+        $affiliates = array_values(array_map(fn (array $line): array => [
+            'id' => $line['id'],
+            'name' => $line['name'],
+            'age' => $line['age'],
+            'age_range_id' => $line['new_age_range_id'],
+            'age_range' => $line['new_age_range'],
+            'fee' => $line['new_fee'],
+        ], array_filter($lines, fn (array $line): bool => $line['exception'])));
+
+        if ($affiliates === []) {
+            return null;
+        }
+
+        return [
+            'rule' => IndividualPlanChangeBlockedException::RULE_IDEAL_AGE_RANGE,
+            'note' => Str::limit(trim($request->exceptionNote), 1000, ''),
+            'affiliates' => $affiliates,
         ];
     }
 

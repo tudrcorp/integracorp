@@ -14,6 +14,9 @@
         .pcp-chip { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 700; }
         .pcp-chip.is-ok { background: #dcfce7; color: #166534; }
         .pcp-chip.is-bad { background: #fee2e2; color: #991b1b; }
+        .pcp-chip.is-exception { background: #fef3c7; color: #92400e; }
+        .pcp-exception { margin: 0; padding: 8px 10px; border-radius: 10px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; line-height: 1.5; }
+        .pcp-flag { color: #b45309; font-weight: 600; }
         .pcp-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
         .pcp-reason { padding: 0 14px 12px; color: #991b1b; line-height: 1.5; }
         .pcp-compare { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
@@ -35,6 +38,9 @@
         .dark .pcp-table th, .dark .pcp-table td { border-color: rgb(255 255 255 / 8%); }
         .dark .pcp-note { color: rgb(209 213 219); }
         .dark .pcp-warn { color: rgb(253 230 138); }
+        .dark .pcp-chip.is-exception { background: rgb(146 64 14 / 35%); color: rgb(253 230 138); }
+        .dark .pcp-exception { background: rgb(146 64 14 / 18%); border-color: rgb(253 230 138 / 30%); color: rgb(253 230 138); }
+        .dark .pcp-flag { color: rgb(252 211 77); }
         @media (max-width: 760px) { .pcp-compare { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     </style>
 
@@ -65,7 +71,12 @@
             <section class="pcp-card">
                 <div class="pcp-head">
                     <span class="pcp-title">{{ $preview['label'] }}</span>
-                    <span class="pcp-chip is-ok">{{ $preview['action'] === 'CAMBIO DE PLAN' ? 'Cambio de plan' : 'Cambio de frecuencia' }}</span>
+                    <span style="display:inline-flex;gap:6px;">
+                        @if (($preview['exception'] ?? null) !== null)
+                            <span class="pcp-chip is-exception">Con excepción</span>
+                        @endif
+                        <span class="pcp-chip is-ok">{{ $preview['action'] === 'CAMBIO DE PLAN' ? 'Cambio de plan' : 'Cambio de frecuencia' }}</span>
+                    </span>
                 </div>
                 <div class="pcp-body">
                     <div class="pcp-compare">
@@ -82,7 +93,7 @@
                                 <tr>
                                     <td>{{ $line['name'] }}@if ($line['relationship'] !== '') <span style="color:#6b7280;">· {{ $line['relationship'] }}</span>@endif</td>
                                     <td>{{ $line['age'] !== null ? $line['age'].' años' : 'Sin dato' }}</td>
-                                    <td>{{ $line['new_age_range'] }}@if ($line['overridden']) <span style="color:#1d4ed8;">(elegido a mano)</span>@elseif ($line['kept']) <span style="color:#6b7280;">(se conserva)</span>@endif</td>
+                                    <td>{{ $line['new_age_range'] }}@if ($line['overridden']) <span style="color:#1d4ed8;">(elegido a mano)</span>@elseif ($line['kept']) <span style="color:#6b7280;">(se conserva)</span>@endif @if ($line['exception'] ?? false) <span class="pcp-flag">(excepción: fuera de rango)</span>@endif</td>
                                     <td>@if ((float) $line['previous_fee'] !== (float) $line['new_fee'])<em style="font-style:normal;color:#6b7280;text-decoration:line-through;">{{ $money($line['previous_fee']) }}</em> @endif{{ $money($line['new_fee']) }}</td>
                                     <td>{{ $money($line['new_period']) }}</td>
                                 </tr>
@@ -106,6 +117,14 @@
                         @endswitch
                         Las cuotas pagadas no cambian.
                     </p>
+
+                    @if (($preview['exception'] ?? null) !== null)
+                        <p class="pcp-exception">
+                            <strong>Excepción a la regla de edad del Plan Ideal:</strong>
+                            {{ collect($preview['exception']['affiliates'])->map(fn ($item) => $item['name'].' ('.$item['age'].' años) se tarifa en '.$item['age_range'])->implode('; ') }}.
+                            Queda registrada con la nota en la bitácora de la afiliación y en la auditoría de seguridad. En la renovación el sistema volverá a evaluar la edad.
+                        </p>
+                    @endif
 
                     @if ($preview['white_company'])
                         <p class="pcp-note"><strong>Empresa aliada {{ $preview['white_company']['company'] }}:</strong> tarifa negociada recalculada con el plan nuevo · venta {{ $money($preview['white_company']['sale_price']) }} · neta {{ $money($preview['white_company']['neta']) }} al año.</p>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Shared\Affiliations;
 
+use App\Exceptions\IndividualPlanChangeBlockedException;
 use App\Models\Affiliation;
 use App\Models\User;
 use App\Support\AffiliationCorporates\CorporatePaymentFrequency;
@@ -39,6 +40,9 @@ use Illuminate\Support\HtmlString;
  * Paso 1: plan, cobertura y frecuencia. Paso 2: vista previa real (el servicio ejecuta el cambio y
  * lo revierte), con el rango de edad de cada afiliado editable, el motivo y la confirmación.
  * La vista previa se calcula una vez al avanzar y solo se recalcula la afiliación cuyo rango cambia.
+ *
+ * Si alguna afiliación queda bloqueada por la regla de edad del Plan Ideal, aparece la casilla
+ * «Autorizar excepción» con una nota obligatoria; el servicio deja columnas, bitácora y auditoría.
  */
 final class ChangeAffiliationPlanBulkAction
 {
@@ -62,6 +66,8 @@ final class ChangeAffiliationPlanBulkAction
                 'affiliates' => [],
                 'previews' => [],
                 'confirmed' => false,
+                'allow_ideal_exception' => false,
+                'exception_note' => null,
             ])
             ->steps([
                 Step::make('Plan nuevo')
@@ -115,7 +121,7 @@ final class ChangeAffiliationPlanBulkAction
                             throw new Halt;
                         }
 
-                        $previews = self::previews($ids, self::requestFromState($get, []));
+                        $previews = self::previews($ids, self::requestFromState($get));
                         $set('previews', $previews);
                         $set('affiliates', self::affiliateRows($previews));
                     }),
@@ -161,6 +167,29 @@ final class ChangeAffiliationPlanBulkAction
                                     ->columnSpanFull(),
                             ])
                             ->columnSpanFull(),
+                        Section::make('Excepción a la regla de edad del Plan Ideal')
+                            ->description('Use esta opción solo si la excepción está autorizada. Los afiliados fuera de rango toman la tarifa del rango más cercano (o el que elija arriba) y la nota queda en la bitácora y en la auditoría de seguridad.')
+                            ->icon(Heroicon::OutlinedExclamationTriangle)
+                            ->iconColor('warning')
+                            ->visible(fn (Get $get): bool => (bool) $get('allow_ideal_exception') || self::hasIdealAgeIssue((array) $get('previews')))
+                            ->schema([
+                                Checkbox::make('allow_ideal_exception')
+                                    ->label('Autorizar excepción: aplicar el cambio aunque la edad esté fuera de los rangos del Plan Ideal')
+                                    ->live()
+                                    ->afterStateUpdated(fn (Get $get, Set $set) => self::refreshAllPreviews($get, $set)),
+                                Textarea::make('exception_note')
+                                    ->label('¿Por qué se hace la excepción?')
+                                    ->visible(fn (Get $get): bool => (bool) $get('allow_ideal_exception'))
+                                    ->required(fn (Get $get): bool => (bool) $get('allow_ideal_exception'))
+                                    ->minLength(IndividualAffiliationPlanChanger::EXCEPTION_NOTE_MIN_LENGTH)
+                                    ->maxLength(1000)
+                                    ->rows(2)
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(fn (Get $get, Set $set) => self::refreshAllPreviews($get, $set))
+                                    ->placeholder('Ejemplo: aprobado por la Gerencia de Negocios el 15/10; el titular renueva en el Plan Ideal por acuerdo comercial.')
+                                    ->helperText('Obligatoria, mínimo '.IndividualAffiliationPlanChanger::EXCEPTION_NOTE_MIN_LENGTH.' caracteres. Quién lo autorizó y por qué.'),
+                            ])
+                            ->columnSpanFull(),
                         Textarea::make('reason')
                             ->label('Motivo del cambio')
                             ->required()
@@ -195,6 +224,8 @@ final class ChangeAffiliationPlanBulkAction
                         (string) $data['frequency'],
                         $overrides[(int) $affiliation->id] ?? [],
                         (string) ($data['reason'] ?? ''),
+                        (bool) ($data['allow_ideal_exception'] ?? false),
+                        trim((string) ($data['exception_note'] ?? '')),
                     ),
                     $user instanceof User ? $user : null,
                 );
@@ -286,26 +317,85 @@ final class ChangeAffiliationPlanBulkAction
         $rows = (array) $get('../../affiliates');
         $overrides = self::overridesFrom($rows)[$affiliationId] ?? [];
         $previews = (array) $get('../../previews');
-        $previews[(string) $affiliationId] = app(IndividualAffiliationPlanChanger::class)->preview($affiliation, new IndividualPlanChangeRequest(
-            (int) $get('../../plan_id'),
-            filled($get('../../coverage_id')) ? (int) $get('../../coverage_id') : null,
-            (string) $get('../../frequency'),
-            $overrides,
-        ));
+        $previews[(string) $affiliationId] = app(IndividualAffiliationPlanChanger::class)->preview(
+            $affiliation,
+            self::requestFromState($get, [$affiliationId => $overrides], '../../')($affiliation),
+        );
 
         $set('../../previews', $previews);
     }
 
     /**
-     * @param  array<int, int>  $overrides
+     * Al autorizar (o retirar) la excepción cambian las afiliaciones bloqueadas: se recalculan todas
+     * y se agregan las filas de rango de las que se destrabaron, sin perder los rangos ya elegidos.
      */
-    private static function requestFromState(Get $get, array $overrides): callable
+    private static function refreshAllPreviews(Get $get, Set $set): void
+    {
+        $ids = self::affiliationIds($get);
+
+        if ($ids === []) {
+            return;
+        }
+
+        $rows = (array) $get('affiliates');
+        $previews = self::previews($ids, self::requestFromState($get, self::overridesFrom($rows)));
+        $set('previews', $previews);
+        $set('affiliates', self::mergeAffiliateRows($rows, self::affiliateRows($previews)));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $current
+     * @param  list<array<string, mixed>>  $fresh
+     * @return list<array<string, mixed>>
+     */
+    public static function mergeAffiliateRows(array $current, array $fresh): array
+    {
+        $chosen = [];
+
+        foreach ($current as $row) {
+            $rangeId = (int) ($row['age_range_id'] ?? 0);
+
+            if ($rangeId > 0 && $rangeId !== (int) ($row['suggested_age_range_id'] ?? 0)) {
+                $chosen[(int) ($row['affiliate_id'] ?? 0)] = $rangeId;
+            }
+        }
+
+        return array_map(function (array $row) use ($chosen): array {
+            if (isset($chosen[$row['affiliate_id']])) {
+                $row['age_range_id'] = $chosen[$row['affiliate_id']];
+            }
+
+            return $row;
+        }, $fresh);
+    }
+
+    /**
+     * @param  array<int|string, array<string, mixed>>  $previews
+     */
+    public static function hasIdealAgeIssue(array $previews): bool
+    {
+        foreach ($previews as $preview) {
+            if (($preview['blocked_rule'] ?? null) === IndividualPlanChangeBlockedException::RULE_IDEAL_AGE_RANGE || ($preview['exception'] ?? null) !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<int, array<int, int>>  $overrides  id de afiliación => [id de afiliado => id de rango]
+     */
+    private static function requestFromState(Get $get, array $overrides = [], string $prefix = ''): callable
     {
         return fn (Affiliation $affiliation): IndividualPlanChangeRequest => new IndividualPlanChangeRequest(
-            (int) $get('plan_id'),
-            filled($get('coverage_id')) ? (int) $get('coverage_id') : null,
-            (string) $get('frequency'),
-            $overrides,
+            (int) $get($prefix.'plan_id'),
+            filled($get($prefix.'coverage_id')) ? (int) $get($prefix.'coverage_id') : null,
+            (string) $get($prefix.'frequency'),
+            $overrides[(int) $affiliation->id] ?? [],
+            '',
+            (bool) $get($prefix.'allow_ideal_exception'),
+            trim((string) $get($prefix.'exception_note')),
         );
     }
 
@@ -360,10 +450,10 @@ final class ChangeAffiliationPlanBulkAction
         if ($blocked !== []) {
             Notification::make()
                 ->title(count($blocked) === 1 ? '1 afiliación no se cambió' : count($blocked).' afiliaciones no se cambiaron')
-                ->body(new HtmlString(implode('<br>', array_map(
+                ->body(implode('<br>', array_map(
                     fn (array $item): string => '<strong>'.e($item['label']).'</strong>: '.e($item['reason']),
                     $blocked,
-                ))))
+                )))
                 ->warning()
                 ->persistent()
                 ->send();
