@@ -29,9 +29,17 @@ afterEach(function (): void {
     DB::rollBack();
 });
 
+/**
+ * Una cuota sin regeneraciones previas: el historial real (de analistas) cambiaría lo que se precarga.
+ */
 function noticeCollection(string $type = 'AFILIACION INDIVIDUAL'): Collection
 {
-    return Collection::query()->where('type', $type)->where('status', 'POR PAGAR')->latest('id')->firstOrFail();
+    return Collection::query()
+        ->where('type', $type)
+        ->where('status', 'POR PAGAR')
+        ->whereNotIn('id', CollectionNoticeRegeneration::query()->select('collection_id'))
+        ->latest('id')
+        ->firstOrFail();
 }
 
 function noticeAnalyst(array $departments = ['SUPERADMIN', 'ADMINISTRACION']): User
@@ -228,6 +236,7 @@ describe('plantillas', function (): void {
         $source = file_get_contents(resource_path('views/documents/'.$view.'.blade.php'));
 
         expect($source)->not->toContain('Aviso de Cobro: Nro.')
+            ->toContain("<p><strong>AVISO DE COBRO</strong></p>\n                        <p><strong>Fecha de Emisión:")
             ->toContain("PERIODO DE COBRO: {{ \$data['period_label'] }}");
     })->with(['aviso-de-cobro', 'aviso-de-cobro-corporativo']);
 
