@@ -253,6 +253,7 @@
                 </td>
                 <td style="width: 52%;">
                     <div class="doc-header-meta">
+                        <p><strong>AVISO DE COBRO</strong></p>
                         <p><strong>Fecha de Emisión: {{ $data['emission_date'] }}</strong></p>
                         <p><strong>Condiciones de Pago: Contado</strong></p>
                     </div>
