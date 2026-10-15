@@ -6,6 +6,7 @@ namespace App\Filament\Administration\Resources\AffiliationCorporates\Pages;
 
 use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Administration\Resources\AffiliationCorporates\Tables\AffiliationCorporatesTable;
+use App\Filament\Concerns\ReviewsTableSelection;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
 use Filament\Resources\Pages\ListRecords;
@@ -14,6 +15,8 @@ use Illuminate\Support\HtmlString;
 
 class ListAffiliationCorporates extends ListRecords
 {
+    use ReviewsTableSelection;
+
     protected static string $resource = AffiliationCorporateResource::class;
 
     protected static ?string $title = 'Afiliaciones corporativas';
@@ -124,5 +127,13 @@ SVG,
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-4" aria-hidden="true"><path d="M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM14.5 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM1.615 16.428a1.224 1.224 0 0 1-.183-1.661A9.977 9.977 0 0 1 7 12.5c2.042 0 3.928.612 5.55 1.661a1.224 1.224 0 0 1-.183 1.661A9.977 9.977 0 0 1 7 18.5a9.977 9.977 0 0 1-5.385-2.072ZM12.707 15.293a1 1 0 0 1 1.414 0A7.969 7.969 0 0 1 17.5 18a1 1 0 1 1-2 0 5.969 5.969 0 0 0-2.379-4.707 1 1 0 0 1 0-1.414Z"/></svg>
 SVG,
         };
+    }
+
+    /**
+     * @return array{singular: string, plural: string}
+     */
+    protected function selectionReviewNouns(): array
+    {
+        return ['singular' => 'afiliación corporativa', 'plural' => 'afiliaciones corporativas'];
     }
 }
