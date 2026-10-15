@@ -2,18 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Plan;
+use App\Models\QrDestination;
 use App\Support\AffiliateCard\AffiliateCardStampedPdfGenerator;
 use App\Support\AffiliateCard\IndividualAffiliationPlanQrGenerator;
 use App\Support\DomPdfBatchRenderOptions;
+use App\Support\QrCenter\CardQrResolver;
 use App\Support\TarjetaAfiliacionQrPlanCatalog;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Notifications\Notification;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 
 class TarjetaAfiliacionController extends Controller
 {
@@ -67,6 +64,23 @@ class TarjetaAfiliacionController extends Controller
             $data['plan_qr_absolute_path'] = self::resolveQrAbsolutePath($data['plan_qr_filename']);
         }
 
+        /**
+         * Centro de QR: si el destino de esta tarjeta tiene un QR personalizado, se imprime ese.
+         * Solo cambia la imagen; `plan_qr_filename` se conserva porque elige la plantilla.
+         */
+        $qrScope = CardQrResolver::scopeForCard($data);
+
+        if ($qrScope !== null) {
+            $qrPlanId = $qrScope === QrDestination::SCOPE_INCLUSION
+                ? null
+                : ($planId ?? TarjetaAfiliacionQrPlanCatalog::findPlanByDescription($planDescription)?->id);
+            $customQrPath = CardQrResolver::customImagePath($qrScope, $qrPlanId !== null ? (int) $qrPlanId : null);
+
+            if ($customQrPath !== null) {
+                $data['plan_qr_absolute_path'] = $customQrPath;
+            }
+        }
+
         if (($data['card_layout'] ?? null) === 'individual' || ($data['template_key'] ?? null) === 'individual') {
             $data['plan_qr_size_px'] = 80;
             $data['plan_qr_top_px'] = 425;
@@ -85,68 +99,6 @@ class TarjetaAfiliacionController extends Controller
         }
 
         return $data;
-    }
-
-    public function associatePlanQr(Request $request): JsonResponse
-    {
-        return $this->storePlanQr($request, 'individual');
-    }
-
-    public function associateCorporatePlanQr(Request $request): JsonResponse
-    {
-        return $this->storePlanQr($request, 'corporate');
-    }
-
-    public function associateCompanyAssociateInclusionQr(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'qr_image' => ['required', 'image', 'mimes:png', 'max:2048'],
-        ]);
-
-        Storage::disk('public')->putFileAs(
-            'tarjeta-afiliacion/planes',
-            $request->file('qr_image'),
-            'qr-plan-inclusion.png',
-        );
-
-        return response()->json([
-            'ok' => true,
-            'plan' => 'INCLUSIÓN',
-            'affiliation_scope' => 'company_associate',
-            'filename' => 'qr-plan-inclusion.png',
-            'public_url' => asset('storage/tarjeta-afiliacion/planes/qr-plan-inclusion.png'),
-        ]);
-    }
-
-    private function storePlanQr(Request $request, string $affiliationScope): JsonResponse
-    {
-        $allowedPlanIds = $affiliationScope === 'corporate'
-            ? TarjetaAfiliacionQrPlanCatalog::allowedCorporatePlanIds()
-            : TarjetaAfiliacionQrPlanCatalog::allowedIndividualPlanIds();
-
-        $validated = $request->validate([
-            'plan_id' => ['required', 'integer', Rule::in($allowedPlanIds)],
-            'qr_image' => ['required', 'image', 'mimes:png', 'max:2048'],
-        ]);
-
-        $planId = (int) $validated['plan_id'];
-        $filename = TarjetaAfiliacionQrPlanCatalog::qrFilenameForPlanId($planId);
-        Storage::disk('public')->putFileAs(
-            'tarjeta-afiliacion/planes',
-            $request->file('qr_image'),
-            $filename
-        );
-
-        $plan = Plan::query()->find($planId);
-
-        return response()->json([
-            'ok' => true,
-            'plan_id' => $planId,
-            'plan' => $plan?->description,
-            'affiliation_scope' => $affiliationScope,
-            'filename' => $filename,
-            'public_url' => asset('storage/tarjeta-afiliacion/planes/'.$filename),
-        ]);
     }
 
     private static function resolveQrAbsolutePath(?string $fileName): ?string

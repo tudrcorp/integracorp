@@ -626,26 +626,40 @@ Route::post('business/affiliations/documents/send-carnet-emails/{affiliation}', 
     ->middleware(['web', 'auth'])
     ->name('business.affiliation-documents.send-carnet-emails');
 
-Route::post('business/affiliations/tarjeta-qr/associate-plan', [
-    TarjetaAfiliacionController::class,
-    'associatePlanQr',
-])
+/**
+ * Centro de QR de tarjetas. El QR se guarda desde la página de Negocios (Livewire, solo SUPERADMIN);
+ * las antiguas rutas POST que lo reemplazaban solo pedían sesión y se retiraron.
+ */
+Route::get('business/qr-center/imagen/{version}', \App\Http\Controllers\QrCenterImageController::class)
     ->middleware(['web', 'auth'])
-    ->name('business.affiliation-tarjeta-qr.associate-plan');
+    ->whereNumber('version')
+    ->name('business.qr-center.image');
 
-Route::post('business/affiliation-corporates/tarjeta-qr/associate-plan', [
-    TarjetaAfiliacionController::class,
-    'associateCorporatePlanQr',
-])
-    ->middleware(['web', 'auth'])
-    ->name('business.affiliation-corporate-tarjeta-qr.associate-plan');
+/**
+ * Enlace estable del QR y páginas alojadas: públicos, sin sesión (cada escaneo anónimo
+ * crearía una fila en `sessions`) y con límite de frecuencia.
+ */
+Route::get('q/{code}', \App\Http\Controllers\QrRedirectController::class)
+    ->where('code', '[A-Za-z0-9]{6,16}')
+    ->middleware('throttle:120,1')
+    ->withoutMiddleware([
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+    ])
+    ->name('qr.go');
 
-Route::post('business/company-associates/tarjeta-qr/associate-inclusion', [
-    TarjetaAfiliacionController::class,
-    'associateCompanyAssociateInclusionQr',
-])
-    ->middleware(['web', 'auth'])
-    ->name('business.company-associate-tarjeta-qr.associate-inclusion');
+Route::get('p/{slug}', \App\Http\Controllers\QrHostedPageController::class)
+    ->where('slug', '[a-z0-9-]{1,80}')
+    ->middleware('throttle:120,1')
+    ->withoutMiddleware([
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+    ])
+    ->name('qr.page');
 
 Route::get('business/notifications/bell-alert', App\Http\Controllers\Business\DatabaseNotificationBellAlertController::class)
     ->middleware(['web', 'auth'])
