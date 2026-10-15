@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\IndividualPlanChangeBlockedException;
 use App\Filament\Shared\Affiliations\ChangeAffiliationPlanBulkAction;
 use App\Models\Affiliation;
 use App\Models\AffiliationPlanChange;
 use App\Models\AnnualCollection;
 use App\Models\Collection as BillingCollection;
 use App\Models\CollectionObservation;
+use App\Models\Log as AuditLog;
 use App\Models\PaidMembership;
 use App\Models\Renovation;
 use App\Models\User;
@@ -62,6 +64,33 @@ function changeableAffiliation(string $pendingFrequency = 'TRIMESTRAL'): Affilia
 function specialPlanCoverage(): int
 {
     return (int) array_key_first(IndividualPlanChangeCatalog::coverageOptions(AffiliationAffiliateFeeCalculator::SPECIAL_PLAN_ID));
+}
+
+function idealPlanCoverage(): int
+{
+    $coverage = (int) array_key_first(IndividualPlanChangeCatalog::coverageOptions(AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID));
+
+    if ($coverage === 0) {
+        test()->markTestSkipped('El Plan Ideal no tiene coberturas con tarifa en la base local.');
+    }
+
+    return $coverage;
+}
+
+/**
+ * Afiliación cambiable con su primer afiliado activo a una edad que el Plan Ideal no cubre.
+ *
+ * @return array{0: Affiliation, 1: App\Models\Affiliate}
+ */
+function affiliationWithAgeOutsideIdeal(): array
+{
+    $affiliation = changeableAffiliation();
+    $affiliate = $affiliation->affiliates()->where('status', 'ACTIVO')->orderBy('id')->firstOrFail();
+    $affiliate->forceFill(['age' => 99])->save();
+
+    expect((new AffiliationAffiliateFeeCalculator)->affiliateAgeFitsPlanAgeRanges(AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID, 99, idealPlanCoverage()))->toBeFalse();
+
+    return [$affiliation, $affiliate];
 }
 
 describe('vista previa', function (): void {
@@ -343,4 +372,140 @@ it('la acción masiva de la tabla de Negocios cambia el plan de punta a punta', 
     expect($affiliation->fresh()->plan_id)->toBe(3)
         ->and($affiliation->fresh()->payment_frequency)->toBe('MENSUAL')
         ->and(AffiliationPlanChange::query()->where('affiliation_id', $affiliation->id)->value('reason'))->toBe('Cambio solicitado por el cliente');
+});
+
+describe('excepción a la regla de edad del Plan Ideal', function (): void {
+    it('sin autorizar bloquea con la regla identificada y explica cómo exceptuarla', function (): void {
+        [$affiliation] = affiliationWithAgeOutsideIdeal();
+        $request = new IndividualPlanChangeRequest(AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID, idealPlanCoverage(), 'MENSUAL', [], 'Pase al Ideal');
+
+        $preview = app(IndividualAffiliationPlanChanger::class)->preview($affiliation, $request);
+
+        expect($preview['blocked'])->toContain('99 años')->toContain('Autorizar excepción')
+            ->and($preview['blocked_rule'])->toBe(IndividualPlanChangeBlockedException::RULE_IDEAL_AGE_RANGE)
+            ->and(ChangeAffiliationPlanBulkAction::hasIdealAgeIssue([$preview]))->toBeTrue();
+
+        expect(fn () => app(IndividualAffiliationPlanChanger::class)->change($affiliation, $request, planChangeActor()))
+            ->toThrow(IndividualPlanChangeBlockedException::class);
+        expect($affiliation->fresh()->plan_id)->not->toBe(AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID);
+    });
+
+    it('autorizada sin una nota suficiente sigue bloqueada', function (string $note): void {
+        [$affiliation] = affiliationWithAgeOutsideIdeal();
+        $request = (new IndividualPlanChangeRequest(AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID, idealPlanCoverage(), 'MENSUAL', [], 'Pase al Ideal'))
+            ->withIdealAgeException(true, $note);
+
+        $preview = app(IndividualAffiliationPlanChanger::class)->preview($affiliation, $request);
+
+        expect($preview['blocked'])->toContain('nota de al menos')
+            ->and($preview['blocked_rule'])->toBe(IndividualPlanChangeBlockedException::RULE_IDEAL_AGE_RANGE)
+            ->and(AffiliationPlanChange::query()->where('affiliation_id', $affiliation->id)->exists())->toBeFalse();
+    })->with(['vacía' => '', 'corta' => 'autorizado', 'solo espacios' => '                    ']);
+
+    it('autorizada con nota aplica el rango más cercano y deja columnas, bitácora y auditoría', function (): void {
+        [$affiliation, $affiliate] = affiliationWithAgeOutsideIdeal();
+        $coverage = idealPlanCoverage();
+        $nearest = IndividualPlanChangeCatalog::nearestFeeForAge(AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID, $coverage, 99);
+        $auditsBefore = AuditLog::query()->where('action', 'AUDIT_BUSINESS_AFFILIATION_PLAN_RULE_EXCEPTION')->count();
+        $note = 'Autorizado por la Gerencia de Negocios: cliente histórico.';
+
+        $result = app(IndividualAffiliationPlanChanger::class)->change(
+            $affiliation,
+            (new IndividualPlanChangeRequest(AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID, $coverage, 'MENSUAL', [], 'Pase al Ideal'))->withIdealAgeException(true, '  '.$note.'  '),
+            planChangeActor(),
+        );
+        $line = collect($result['affiliates'])->firstWhere('id', (int) $affiliate->id);
+        $change = AffiliationPlanChange::query()->findOrFail($result['change_id']);
+
+        expect($affiliation->fresh()->plan_id)->toBe(AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID)
+            ->and($line['exception'])->toBeTrue()
+            ->and($line['new_age_range_id'])->toBe((int) $nearest->age_range_id)
+            ->and($line['new_fee'])->toBe(round((float) $nearest->price, 2))
+            ->and((float) $affiliate->fresh()->fee)->toBe(round((float) $nearest->price, 2))
+            ->and($change->exception_rule)->toBe(IndividualPlanChangeBlockedException::RULE_IDEAL_AGE_RANGE)
+            ->and($change->exception_note)->toBe($note)
+            ->and(collect($change->exception_affiliates)->pluck('id')->all())->toBe([(int) $affiliate->id])
+            ->and($affiliation->status_log_affiliations()->where('action', 'CAMBIO DE PLAN')->latest('id')->value('observation'))->toContain('EXCEPCIÓN de edad del Plan Ideal autorizada')
+            ->and(mb_strlen((string) $affiliation->status_log_affiliations()->where('action', 'CAMBIO DE PLAN')->latest('id')->value('observation')))->toBeLessThanOrEqual(255)
+            ->and($affiliation->affiliationObservations()->latest('id')->value('description'))->toContain('EXCEPCIÓN AUTORIZADA')->toContain($note)
+            ->and(AuditLog::query()->where('action', 'AUDIT_BUSINESS_AFFILIATION_PLAN_RULE_EXCEPTION')->count())->toBe($auditsBefore + 1);
+
+        $html = view('filament.business.affiliations.plan-change-preview', ['previews' => [$result + ['blocked' => null]]])->render();
+
+        expect($html)->toContain('Con excepción')->toContain('excepción: fuera de rango');
+    });
+
+    it('sin afiliados fuera de rango la casilla no tiene efecto ni deja excepción', function (): void {
+        $affiliation = changeableAffiliation();
+        $coverage = specialPlanCoverage();
+
+        $result = app(IndividualAffiliationPlanChanger::class)->change(
+            $affiliation,
+            (new IndividualPlanChangeRequest(3, $coverage, 'MENSUAL', [], 'Pase al Especial'))->withIdealAgeException(true, ''),
+            planChangeActor(),
+        );
+
+        expect($result['exception'])->toBeNull()
+            ->and(AffiliationPlanChange::query()->findOrFail($result['change_id'])->exception_rule)->toBeNull();
+    });
+
+    it('cambiar solo la frecuencia en el Plan Ideal no vuelve a juzgar la edad', function (): void {
+        [$affiliation] = affiliationWithAgeOutsideIdeal();
+        $changer = app(IndividualAffiliationPlanChanger::class);
+        $changer->change(
+            $affiliation,
+            (new IndividualPlanChangeRequest(AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID, idealPlanCoverage(), 'MENSUAL', [], 'Pase al Ideal'))->withIdealAgeException(true, 'Autorizado por la gerencia comercial.'),
+            planChangeActor(),
+        );
+
+        $summary = $changer->changeFrequencyMany([$affiliation->fresh()], 'TRIMESTRAL', planChangeActor());
+
+        expect($summary['blocked'])->toBe([])
+            ->and($summary['changed'][0]['exception'])->toBeNull()
+            ->and($affiliation->fresh()->payment_frequency)->toBe('TRIMESTRAL');
+    });
+
+    it('al recalcular conserva los rangos que el analista ya eligió', function (): void {
+        $merged = ChangeAffiliationPlanBulkAction::mergeAffiliateRows(
+            [['affiliation_id' => 1, 'affiliate_id' => 10, 'age_range_id' => 7, 'suggested_age_range_id' => 5]],
+            [
+                ['affiliation_id' => 1, 'affiliate_id' => 10, 'label' => 'A', 'age_range_id' => 5, 'suggested_age_range_id' => 5],
+                ['affiliation_id' => 2, 'affiliate_id' => 20, 'label' => 'B', 'age_range_id' => 9, 'suggested_age_range_id' => 9],
+            ],
+        );
+
+        expect(array_column($merged, 'age_range_id'))->toBe([7, 9])
+            ->and(array_column($merged, 'suggested_age_range_id'))->toBe([5, 9]);
+    });
+});
+
+it('la acción masiva exige la nota cuando se autoriza la excepción y la aplica con ella', function (): void {
+    [$affiliation] = affiliationWithAgeOutsideIdeal();
+    Filament\Facades\Filament::setCurrentPanel('business');
+    $user = User::factory()->make(['id' => null, 'name' => 'Analista Negocios', 'email' => 'negocios.prueba@tudrencasa.com', 'status' => 'ACTIVO', 'departament' => ['SUPERADMIN', 'NEGOCIOS'], 'is_business_admin' => 1]);
+    $this->actingAs($user);
+
+    $component = Livewire\Livewire::test(App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations::class)
+        ->call('loadTable')
+        ->selectTableRecords([$affiliation->id])
+        ->mountAction(Filament\Actions\Testing\TestAction::make('change_plan')->table()->bulk())
+        ->set('mountedActions.0.data.plan_id', AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID)
+        ->set('mountedActions.0.data.coverage_id', idealPlanCoverage())
+        ->set('mountedActions.0.data.frequency', 'MENSUAL')
+        ->set('mountedActions.0.data.reason', 'Cambio solicitado por el cliente')
+        ->set('mountedActions.0.data.confirmed', true)
+        ->set('mountedActions.0.data.allow_ideal_exception', true)
+        ->callMountedAction()
+        ->assertHasErrors(['mountedActions.0.data.exception_note']);
+
+    expect($affiliation->fresh()->plan_id)->not->toBe(AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID);
+
+    $component
+        ->set('mountedActions.0.data.exception_note', 'Autorizado por la Gerencia de Negocios.')
+        ->callMountedAction()
+        ->assertHasNoErrors()
+        ->assertNotified('Plan cambiado en 1 afiliación');
+
+    expect($affiliation->fresh()->plan_id)->toBe(AffiliationAffiliateFeeCalculator::IDEAL_PLAN_ID)
+        ->and(AffiliationPlanChange::query()->where('affiliation_id', $affiliation->id)->value('exception_note'))->toBe('Autorizado por la Gerencia de Negocios.');
 });

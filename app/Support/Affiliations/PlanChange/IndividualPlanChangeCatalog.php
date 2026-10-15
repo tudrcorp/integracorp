@@ -98,6 +98,22 @@ final class IndividualPlanChangeCatalog
             ->all();
     }
 
+    /**
+     * Tarifa del rango más cercano a una edad que el plan no cubre: el de mayor edad si es mayor,
+     * el de menor edad si es menor. Solo se usa con una excepción autorizada.
+     */
+    public static function nearestFeeForAge(int $planId, ?int $coverageId, int $age): ?Fee
+    {
+        return self::fees($planId, $coverageId)
+            ->filter(fn (Fee $fee): bool => $fee->ageRange !== null && filled($fee->ageRange->age_init) && filled($fee->ageRange->age_end))
+            ->sortBy(fn (Fee $fee): int => match (true) {
+                $age < (int) $fee->ageRange->age_init => (int) $fee->ageRange->age_init - $age,
+                $age > (int) $fee->ageRange->age_end => $age - (int) $fee->ageRange->age_end,
+                default => 0,
+            })
+            ->first();
+    }
+
     public static function feeForAgeRange(int $planId, ?int $coverageId, int $ageRangeId): ?Fee
     {
         return self::fees($planId, $coverageId)->first(fn (Fee $fee): bool => (int) $fee->age_range_id === $ageRangeId);
