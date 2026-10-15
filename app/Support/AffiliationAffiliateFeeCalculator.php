@@ -246,7 +246,9 @@ final class AffiliationAffiliateFeeCalculator
         int $affiliateAge,
         string $paymentFrequency,
     ): ?array {
-        $isInitial = $planId === self::INITIAL_PLAN_ID;
+        // Cualquier plan armado como paquete (no solo el 1) va sin cobertura: antes los planes
+        // paquete 5, 8, 15… devolvían la cobertura que se les pasara.
+        $isInitial = $this->planHasNoCoverages($planId);
         $fee = $this->resolveFeeForPlanCoverageAndAge($planId, $coverageId, $affiliateAge, $isInitial);
 
         if ($fee === null) {
