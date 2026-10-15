@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\Affiliation;
 use App\Models\AffiliationCertificateIssue;
 use App\Models\AffiliationCorporate;
+use App\Support\Affiliations\Certificates\CarnetDigitalContent;
 use App\Support\Affiliations\Certificates\CertificateVerificationKey;
 use App\Support\Affiliations\Certificates\CorporateCertificateDocument;
 use App\Support\Affiliations\Certificates\IndividualCertificateDocument;
@@ -17,6 +18,10 @@ use Illuminate\Support\Str;
 /**
  * Página pública a la que lleva el QR del certificado: el carnet digital de Tu
  * Doctor en Casa (contactos 24/7) con la verificación de la afiliación.
+ *
+ * El certificado individual abre el carnet «v3» y el corporativo el «v4 Tailor
+ * Made» (plan a la medida, solo MediChat). La URL es la misma para los dos: los
+ * QR ya impresos siguen funcionando y toman el diseño que les corresponde.
  *
  * Muestra lo mínimo para confirmar que el documento es auténtico y está vigente:
  * plan, vigencia y estado, sin datos personales del grupo familiar.
@@ -33,6 +38,9 @@ class AffiliationCertificateVerificationController extends Controller
             : null;
 
         return view('affiliation-certificate-verification', [
+            'carnet' => CarnetDigitalContent::for(
+                $issue !== null && ! $issue->isIndividual() ? CarnetDigitalContent::CORPORATE : CarnetDigitalContent::INDIVIDUAL,
+            ),
             'key' => $normalized ?? trim($candidate),
             'status' => match (true) {
                 trim($candidate) === '' => 'empty',
