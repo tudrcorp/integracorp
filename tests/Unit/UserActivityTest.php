@@ -118,6 +118,7 @@ beforeEach(function (): void {
         'live-presence.activity.enabled' => true,
         'live-presence.activity.idle_after_seconds' => 300,
         'live-presence.geoip.database' => '/no/existe.mmdb',
+        'cache.default' => 'array',
         'session.driver' => 'array',
         'database.connections.user_activity_testing' => [
             'driver' => 'sqlite',
@@ -138,6 +139,7 @@ beforeEach(function (): void {
     seedUserActivitySchema();
     Cache::store('array')->flush();
     LivePresenceStore::swap(null);
+    App\Support\UserActivity\Workday\WorkdayConfig::flushSchemaCache();
 
     /** Miércoles 8 de octubre de 2026, 10:00 en Caracas. */
     $this->travelTo(CarbonImmutable::parse('2026-10-08 10:00:00', 'America/Caracas'));

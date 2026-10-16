@@ -6,13 +6,16 @@ namespace App\Support\UserActivity;
 
 use App\Models\UserActivityDay;
 use App\Models\UserActivityEvent;
+use App\Models\UserWorkAbsence;
+use App\Models\UserWorkBreak;
+use App\Support\UserActivity\Workday\WorkdayConfig;
 use Carbon\CarbonImmutable;
 
 /**
  * Retención de Actividad de usuarios:
  *
  * - recorrido detallado (eventos y barra minuto a minuto): 90 días;
- * - resumen diario: 12 meses.
+ * - resumen diario, almuerzos declarados y ausencias ya terminadas: 12 meses.
  *
  * Borra por lotes de ids para no bloquear las tablas y funcionar en cualquier motor.
  */
@@ -57,6 +60,11 @@ final class UserActivityRetention
 
             $days += $ids->isEmpty() ? 0 : UserActivityDay::query()->whereIn('id', $ids)->delete();
         } while ($ids->count() === self::CHUNK);
+
+        if (WorkdayConfig::enabled()) {
+            UserWorkBreak::query()->whereDate('work_date', '<', $summaryCutoff->toDateString())->delete();
+            UserWorkAbsence::query()->whereDate('ends_on', '<', $summaryCutoff->toDateString())->delete();
+        }
 
         return ['events' => $events, 'bars' => $bars, 'days' => $days];
     }

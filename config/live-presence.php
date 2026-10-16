@@ -61,6 +61,40 @@ return [
         'flush_batch' => 1000,
         /** Hueco máximo entre latidos de una pestaña que se rellena con su estado. */
         'max_gap_minutes' => 3,
+
+        /*
+         * Jornada laboral: la base del 100 % del «Uso de jornada». Aplica a los
+         * internos (@tudrencasa.com) y a los médicos desde `since`; los días
+         * anteriores conservan el cálculo de antes (activo ÷ conectado).
+         * Horas en 24 h, hora de Caracas.
+         */
+        'workday' => [
+            'enabled' => (bool) env('USER_ACTIVITY_WORKDAY_ENABLED', true),
+            'since' => env('USER_ACTIVITY_WORKDAY_SINCE', '2026-10-16'),
+            'start' => '08:00',
+            'end' => '17:00',
+            /** ISO: 1 = lunes … 7 = domingo. */
+            'weekdays' => [1, 2, 3, 4, 5],
+            'lunch_minutes' => 60,
+            /** Ventana para iniciar el almuerzo: unos salen a las 12 y otros a la 1. */
+            'lunch_earliest' => '11:30',
+            'lunch_latest' => '14:00',
+            /** Tras salir a almorzar, minutos en que la interacción no dispara la pregunta «¿Ya volviste?». */
+            'lunch_prompt_grace_minutes' => 3,
+            /** «No, sigo en almuerzo» calla la pregunta estos minutos. */
+            'lunch_prompt_snooze_minutes' => 10,
+            /** Feriados federales de EE. UU. (con su día observado) más las fechas extra `Y-m-d`. */
+            'us_federal_holidays' => (bool) env('USER_ACTIVITY_US_HOLIDAYS', true),
+            'extra_holidays' => array_values(array_filter(array_map('trim', explode(',', (string) env('USER_ACTIVITY_EXTRA_HOLIDAYS', ''))))),
+            /** Horario de cada turno del Calendario TDG. Si el fin es menor o igual al inicio, cruza la medianoche. */
+            'guard_shifts' => [
+                'proveedores' => ['start' => '08:00', 'end' => '17:00'],
+                'ils_capitado' => ['start' => '08:00', 'end' => '17:00'],
+                'nocturna' => ['start' => '17:00', 'end' => '08:00'],
+            ],
+            /** El día siguiente a una guardia que cruza la medianoche es de descanso. */
+            'rest_after_overnight_guard' => true,
+        ],
     ],
 
     /** Muestras de tiempo de respuesta para el rendimiento del sistema. */

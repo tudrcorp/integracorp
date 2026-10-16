@@ -7,6 +7,13 @@ namespace App\Support\UserActivity;
 use App\Models\User;
 use App\Support\LivePresence\LivePresenceRepository;
 use App\Support\LivePresence\LivePresenceStore;
+use App\Support\UserActivity\Workday\WorkBreaks;
+use App\Support\UserActivity\Workday\WorkdayConfig;
+use App\Support\UserActivity\Workday\WorkdayEvaluator;
+use App\Support\UserActivity\Workday\WorkDayPlan;
+use App\Support\UserActivity\Workday\WorkDayPlanner;
+use App\Support\UserActivity\Workday\WorkdaySubjects;
+use Carbon\CarbonImmutable;
 use Throwable;
 
 /**
@@ -15,12 +22,16 @@ use Throwable;
  * Fuentes: las sesiones conectadas y los minutos de hoy salen de Redis/caché
  * (tiempo real); de MySQL solo se lee una vez la ficha de los usuarios
  * (nombre y tipo), con las columnas justas.
+ *
+ * Con jornada, también aparecen quienes debían estar trabajando y no se han
+ * conectado, y cada fila trae su uso de jornada, almuerzo y horas extra (las
+ * jornadas, ausencias, guardias y almuerzos de todos se cargan en lote).
  */
 final class UserActivityLiveBoard
 {
     /**
      * @param  array{state?: string, type?: string, search?: string}  $filters
-     * @return array{rows: list<array<string, mixed>>, kpis: array<string, int>, available: bool}
+     * @return array{rows: list<array<string, mixed>>, kpis: array<string, int|null>, available: bool, workday: bool}
      */
     public static function build(array $filters = [], ?int $now = null, ?LivePresenceRepository $store = null): array
     {
@@ -32,8 +43,13 @@ final class UserActivityLiveBoard
             $todayKey = UserActivityClock::dayKey(UserActivityClock::now());
             $todayUsers = $store->activityUsers($todayKey);
         } catch (Throwable) {
-            return ['rows' => [], 'kpis' => self::emptyKpis(), 'available' => false];
+            return ['rows' => [], 'kpis' => self::emptyKpis(), 'available' => false, 'workday' => false];
         }
+
+        $moment = CarbonImmutable::createFromTimestamp($now, UserActivityClock::timezone());
+        $today = $moment->startOfDay();
+        $regime = WorkdayConfig::appliesTo($today);
+        $subjects = $regime ? WorkdaySubjects::all() : collect();
 
         $sessionsByUser = [];
 
@@ -45,10 +61,13 @@ final class UserActivityLiveBoard
             }
         }
 
-        $userIds = array_values(array_unique([...array_keys($sessionsByUser), ...$todayUsers]));
-        $users = $userIds === []
-            ? collect()
-            : User::query()->whereIn('id', $userIds)->get(UserActivityProfile::COLUMNS)->keyBy('id');
+        $userIds = array_values(array_unique([...array_keys($sessionsByUser), ...$todayUsers, ...$subjects->keys()->map(static fn (mixed $id): int => (int) $id)->all()]));
+        $missing = array_values(array_diff($userIds, $subjects->keys()->map(static fn (mixed $id): int => (int) $id)->all()));
+        $users = $subjects->union($missing === [] ? [] : User::query()->whereIn('id', $missing)->get(WorkdaySubjects::columns())->keyBy('id'));
+        $plans = $regime ? WorkDayPlanner::plans($subjects, $today, $today) : [];
+        $lunches = $regime ? WorkBreaks::forUsers($subjects->keys()->all(), $today, $today) : [];
+        $date = $today->toDateString();
+        $nowMinute = UserActivityClock::minuteOfDay($moment);
 
         $rows = [];
 
@@ -64,6 +83,10 @@ final class UserActivityLiveBoard
             if ($live['state'] === UserActivityState::Offline && $session !== [] && (int) ($session['last_seen'] ?? 0) >= $now - 90) {
                 $live['state'] = ($session['visible'] ?? '1') === '0' ? UserActivityState::Background : UserActivityState::Active;
             }
+
+            $plan = $plans[$userId][$date] ?? null;
+            $lunch = $lunches[$userId][$date] ?? null;
+            $workday = $plan !== null ? WorkdayEvaluator::evaluate($plan, $minutes, $lunch, $moment) : null;
 
             $rows[] = [
                 'user_id' => $userId,
@@ -90,7 +113,11 @@ final class UserActivityLiveBoard
                     'last' => $summary['last'],
                     'usage' => UserActivityMinutes::usagePercent($summary['active'], $summary['online']),
                 ],
-                'segments' => UserActivityMinutes::segments($minutes),
+                'segments' => $workday['segments'] ?? UserActivityMinutes::segments($minutes),
+                'bands' => $workday['bands'] ?? [],
+                'workday' => $workday['summary'] ?? null,
+                'presence' => self::presence($plan, $lunch, $live['state'], $nowMinute),
+                'lunch' => $lunch,
             ];
         }
 
@@ -100,7 +127,33 @@ final class UserActivityLiveBoard
 
         usort($rows, static fn (array $a, array $b): int => [$b['state']->priority(), $b['today']['active'], $a['name']] <=> [$a['state']->priority(), $a['today']['active'], $b['name']]);
 
-        return ['rows' => $rows, 'kpis' => $kpis, 'available' => true];
+        return ['rows' => $rows, 'kpis' => $kpis, 'available' => true, 'workday' => $regime];
+    }
+
+    /**
+     * Situación de jornada de una persona ahora mismo, para la etiqueta y los filtros:
+     * `lunch` (en almuerzo), `lunch_over` (se pasó de la hora), `absent` (debía
+     * estar trabajando y no tiene el sistema abierto) o null.
+     *
+     * @param  array{start: int, end: int|null, reason?: string|null}|null  $lunch
+     */
+    private static function presence(?WorkDayPlan $plan, ?array $lunch, UserActivityState $state, int $nowMinute): ?string
+    {
+        if ($plan === null) {
+            return null;
+        }
+
+        if ($lunch !== null && $lunch['end'] === null && $plan->lunchAllowed()) {
+            return $nowMinute - $lunch['start'] >= WorkdayConfig::lunchMinutes() ? 'lunch_over' : 'lunch';
+        }
+
+        if ($state !== UserActivityState::Offline) {
+            return null;
+        }
+
+        $inGuard = collect($plan->guards)->contains(static fn (array $guard): bool => ! $guard['overtime'] && $nowMinute >= $guard['from'] && $nowMinute < $guard['to']);
+
+        return $plan->inWork($nowMinute) || $inGuard ? 'absent' : null;
     }
 
     /**
@@ -112,20 +165,42 @@ final class UserActivityLiveBoard
         $kpis = self::emptyKpis();
 
         foreach ($rows as $row) {
-            $kpis[match ($row['state']) {
-                UserActivityState::Active => 'active',
-                UserActivityState::Idle => 'idle',
-                UserActivityState::Background => 'background',
-                UserActivityState::Offline => 'offline',
-            }]++;
+            /** Quien no se ha conectado hoy no «se fue»: se cuenta como ausente, no como desconectado. */
+            if ($row['state'] !== UserActivityState::Offline || $row['today']['online'] > 0) {
+                $kpis[match ($row['state']) {
+                    UserActivityState::Active => 'active',
+                    UserActivityState::Idle => 'idle',
+                    UserActivityState::Background => 'background',
+                    UserActivityState::Offline => 'offline',
+                }]++;
+            }
 
             $kpis['active_minutes'] += $row['today']['active'];
             $kpis['online_minutes'] += $row['today']['online'];
+
+            if (in_array($row['presence'], ['lunch', 'lunch_over'], true)) {
+                $kpis['lunch']++;
+            }
+
+            if ($row['presence'] === 'lunch_over') {
+                $kpis['lunch_over']++;
+            }
+
+            if ($row['presence'] === 'absent') {
+                $kpis['absent']++;
+            }
+
+            if ($row['workday'] !== null) {
+                $kpis['work_active'] += (int) $row['workday']['work_active'];
+                $kpis['work_base'] += (int) $row['workday']['base'];
+                $kpis['overtime'] += (int) $row['workday']['overtime'];
+            }
         }
 
         $kpis['connected'] = $kpis['active'] + $kpis['idle'] + $kpis['background'];
         $kpis['usage'] = UserActivityMinutes::usagePercent($kpis['active_minutes'], $kpis['online_minutes']);
-        $kpis['today'] = count($rows);
+        $kpis['work_usage'] = WorkdayEvaluator::usage($kpis['work_active'], $kpis['work_base']);
+        $kpis['today'] = count(array_filter($rows, static fn (array $row): bool => $row['today']['online'] > 0 || $row['state'] !== UserActivityState::Offline));
 
         return $kpis;
     }
@@ -135,7 +210,10 @@ final class UserActivityLiveBoard
      */
     private static function emptyKpis(): array
     {
-        return ['active' => 0, 'idle' => 0, 'background' => 0, 'offline' => 0, 'connected' => 0, 'today' => 0, 'active_minutes' => 0, 'online_minutes' => 0, 'usage' => 0];
+        return [
+            'active' => 0, 'idle' => 0, 'background' => 0, 'offline' => 0, 'connected' => 0, 'today' => 0, 'active_minutes' => 0, 'online_minutes' => 0, 'usage' => 0,
+            'lunch' => 0, 'lunch_over' => 0, 'absent' => 0, 'work_active' => 0, 'work_base' => 0, 'work_usage' => null, 'overtime' => 0,
+        ];
     }
 
     /**
@@ -153,6 +231,8 @@ final class UserActivityLiveBoard
             'idle' => $row['state'] === UserActivityState::Idle,
             'background' => $row['state'] === UserActivityState::Background,
             'offline' => $row['state'] === UserActivityState::Offline,
+            'lunch' => in_array($row['presence'], ['lunch', 'lunch_over'], true),
+            'absent' => $row['presence'] === 'absent',
             default => true,
         };
 
