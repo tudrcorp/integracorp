@@ -9,6 +9,7 @@ use App\Support\SecurityAudit;
 use App\Support\UserActivity\UserActivityClock;
 use App\Support\UserActivity\UserActivityMinutes;
 use App\Support\UserActivity\UserActivityReport;
+use App\Support\UserActivity\Workday\WorkdayConfig;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -39,7 +40,9 @@ class UserActivityExportCsvController extends Controller
 
         $filename = 'actividad-usuarios_'.$from->format('Ymd').'_'.$to->format('Ymd').'.csv';
 
-        return response()->streamDownload(function () use ($report, $from, $to): void {
+        $workday = WorkdayConfig::enabled();
+
+        return response()->streamDownload(function () use ($report, $from, $to, $workday): void {
             $out = fopen('php://output', 'w');
 
             /** BOM: Excel abre el UTF-8 con tildes y eñes correctas. */
@@ -52,6 +55,10 @@ class UserActivityExportCsvController extends Controller
                 'Conectado (min)', 'Activo (min)', 'Abierto sin usar (min)', 'En otra pestaña (min)',
                 'Uso real (%)', 'Activo por día (min)', 'Acciones', 'Pantallas', 'Descargas',
                 'Llega (promedio)', 'Se va (promedio)', 'Último día',
+                ...($workday ? [
+                    'Días con jornada', 'Jornada (min)', 'Activo en jornada (min)', 'Uso de jornada (%)', 'Inactivo en jornada (min)',
+                    'Ausente en jornada (min)', 'Almuerzo (min)', 'Exceso de almuerzo (min)', 'Horas extra (min)', 'Guardia (min)', 'Presencia en guardia (%)',
+                ] : []),
             ], ';');
 
             foreach ($report['rows'] as $row) {
@@ -60,6 +67,10 @@ class UserActivityExportCsvController extends Controller
                     $row['online'], $row['active'], $row['idle'], $row['background'],
                     $row['usage'], $row['avg_active'], $row['actions'], $row['pages'], $row['downloads'],
                     UserActivityClock::formatMinute($row['avg_first']), UserActivityClock::formatMinute($row['avg_last']), $row['last_day'],
+                    ...($workday ? [
+                        $row['workday_days'], $row['work_base'], $row['work_active'], $row['work_usage'] ?? '', $row['work_idle'],
+                        $row['work_absent'], $row['lunch'], $row['lunch_excess'], $row['overtime'], $row['guard'], $row['guard_presence'] ?? '',
+                    ] : []),
                 ], ';');
             }
 

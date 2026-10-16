@@ -100,6 +100,9 @@ class AppServiceProvider extends ServiceProvider
             /** Latido del navegador en todos los paneles; la vista no imprime nada sin sesión. */
             FilamentView::registerRenderHook(PanelsRenderHook::BODY_END, fn (): string => view('live-presence.beacon')->render());
 
+            /** Botón de almuerzo para quien tiene jornada (internos y médicos); el resto no lo ve. */
+            FilamentView::registerRenderHook(PanelsRenderHook::USER_MENU_BEFORE, fn (): string => view('filament.hooks.work-break-toggle')->render());
+
             /** Seguridad: bloqueo temporal de cuentas atacadas, lista negra y detección de ataques. */
             Event::listen(Attempting::class, [SecurityAuthListener::class, 'onAttempting']);
             Event::listen(Failed::class, [SecurityAuthListener::class, 'onFailed']);

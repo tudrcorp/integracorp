@@ -40,6 +40,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const CHANGE_INDIVIDUAL_AFFILIATION_PLAN = 'cambiar-plan-afiliacion-individual';
 
+    public const MANAGE_WORKDAYS = 'gestionar-jornadas-laborales';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -135,6 +137,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Editar datos personales de afiliados corporativos',
                 'group' => 'AFILIADOS',
                 'modules' => ['OPERACIONES'],
+            ],
+            self::MANAGE_WORKDAYS => [
+                'name' => 'Actividad de usuarios: cambiar el tipo de jornada y registrar ausencias (vacaciones, reposos, permisos)',
+                'group' => 'MONITOREO Y SEGURIDAD',
+                'modules' => [self::OWNER_MODULE],
             ],
             self::ACCEPT_EARLY_RENOVATION => [
                 'name' => 'Renovar antes del período de renovación (individual y corporativa)',

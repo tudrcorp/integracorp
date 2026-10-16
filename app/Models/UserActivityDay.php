@@ -31,6 +31,17 @@ class UserActivityDay extends Model
         'downloads',
         'hourly_active',
         'minute_states',
+        'workday_kind',
+        'work_base_minutes',
+        'work_active_minutes',
+        'work_idle_minutes',
+        'work_absent_minutes',
+        'lunch_minutes',
+        'lunch_excess_minutes',
+        'overtime_minutes',
+        'guard_minutes',
+        'guard_present_minutes',
+        'guard_active_minutes',
     ];
 
     protected function casts(): array
@@ -47,6 +58,16 @@ class UserActivityDay extends Model
             'actions' => 'integer',
             'downloads' => 'integer',
             'hourly_active' => 'array',
+            'work_base_minutes' => 'integer',
+            'work_active_minutes' => 'integer',
+            'work_idle_minutes' => 'integer',
+            'work_absent_minutes' => 'integer',
+            'lunch_minutes' => 'integer',
+            'lunch_excess_minutes' => 'integer',
+            'overtime_minutes' => 'integer',
+            'guard_minutes' => 'integer',
+            'guard_present_minutes' => 'integer',
+            'guard_active_minutes' => 'integer',
         ];
     }
 

@@ -8,8 +8,14 @@ use App\Models\UserActivityDay;
 use App\Models\UserActivityEvent;
 use App\Support\LivePresence\LivePresenceRepository;
 use App\Support\LivePresence\LivePresenceStore;
+use App\Support\UserActivity\Workday\WorkBreaks;
+use App\Support\UserActivity\Workday\WorkdayConfig;
+use App\Support\UserActivity\Workday\WorkdayEvaluator;
+use App\Support\UserActivity\Workday\WorkDayPlanner;
+use App\Support\UserActivity\Workday\WorkdaySubjects;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -20,6 +26,9 @@ use Throwable;
  * 2. Los minutos de hoy (y de ayer, recién pasada la medianoche) → una fila por
  *    usuario en `user_activity_days`. Se recalcula el día completo desde los
  *    minutos, no se suma: correrlo dos veces deja el mismo resultado.
+ * 3. Desde que aplica la jornada: las cifras de jornada de cada fila, una fila
+ *    también para quien tenía jornada y no se conectó (ausente todo el día) y el
+ *    cierre de los almuerzos sin regreso marcado.
  */
 final class UserActivityFlusher
 {
@@ -36,6 +45,13 @@ final class UserActivityFlusher
 
         $events = self::flushEvents($store);
         $days = 0;
+
+        try {
+            WorkBreaks::closeExpired($now);
+        } catch (Throwable $exception) {
+            /** Un fallo aquí no frena el volcado: se reintenta en el próximo minuto. */
+            Log::warning('user-activity:flush no pudo cerrar los almuerzos vencidos.', ['message' => $exception->getMessage()]);
+        }
 
         foreach (self::daysToFlush($now) as $day) {
             $days += self::flushDay($store, $day);
@@ -85,22 +101,41 @@ final class UserActivityFlusher
     public static function flushDay(LivePresenceRepository $store, CarbonImmutable $day): int
     {
         $dayKey = UserActivityClock::dayKey($day);
-        $userIds = $store->activityUsers($dayKey);
+        $start = $day->setTimezone(UserActivityClock::timezone())->startOfDay();
+        $regime = WorkdayConfig::appliesTo($start) && $start->lessThanOrEqualTo(UserActivityClock::now());
+        $subjects = $regime ? WorkdaySubjects::all() : collect();
+        $userIds = array_values(array_unique([...$store->activityUsers($dayKey), ...$subjects->keys()->map(static fn (mixed $id): int => (int) $id)->all()]));
 
         if ($userIds === []) {
             return 0;
         }
 
-        $start = $day->setTimezone(UserActivityClock::timezone())->startOfDay();
         $date = $start->toDateString();
         $counts = self::eventCounts($userIds, $start);
+        $plans = $regime ? WorkDayPlanner::plans($subjects, $start, $start) : [];
+        $lunches = $regime ? WorkBreaks::forUsers($subjects->keys()->all(), $start, $start) : [];
+        $nextKey = UserActivityClock::dayKey($start->addDay());
         $timestamp = now();
         $rows = [];
 
         foreach ($userIds as $userId) {
-            $summary = UserActivityMinutes::summarize($store->activityMinutes($userId, $dayKey));
+            $minutes = $store->activityMinutes($userId, $dayKey);
+            $summary = UserActivityMinutes::summarize($minutes);
+            $plan = $plans[$userId][$date] ?? null;
+            $workday = null;
 
-            if ($summary['online'] === 0) {
+            if ($plan !== null) {
+                $workday = WorkdayEvaluator::evaluate(
+                    $plan,
+                    $minutes,
+                    $lunches[$userId][$date] ?? null,
+                    UserActivityClock::now(),
+                    $plan->spill !== [] ? $store->activityMinutes($userId, $nextKey) : [],
+                )['summary'];
+            }
+
+            /** Sin conexión solo se guarda el día si había jornada o guardia que cumplir. */
+            if ($summary['online'] === 0 && ($workday === null || ($workday['base'] === 0 && $workday['guard'] === 0 && $workday['lunch'] === 0))) {
                 continue;
             }
 
@@ -118,17 +153,20 @@ final class UserActivityFlusher
                 'downloads' => $counts[$userId]['download'] ?? 0,
                 'hourly_active' => json_encode($summary['hourly']),
                 'minute_states' => $summary['states'],
+                ...($regime ? self::workdayColumns($workday) : []),
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp,
             ];
         }
 
+        $update = ['first_minute', 'last_minute', 'online_minutes', 'active_minutes', 'idle_minutes', 'background_minutes', 'page_views', 'actions', 'downloads', 'hourly_active', 'minute_states', 'updated_at'];
+
+        if ($regime) {
+            $update = [...$update, ...array_keys(self::workdayColumns(null))];
+        }
+
         foreach (array_chunk($rows, 200) as $chunk) {
-            UserActivityDay::query()->upsert(
-                $chunk,
-                ['user_id', 'activity_date'],
-                ['first_minute', 'last_minute', 'online_minutes', 'active_minutes', 'idle_minutes', 'background_minutes', 'page_views', 'actions', 'downloads', 'hourly_active', 'minute_states', 'updated_at'],
-            );
+            UserActivityDay::query()->upsert($chunk, ['user_id', 'activity_date'], $update);
         }
 
         return count($rows);
@@ -142,12 +180,36 @@ final class UserActivityFlusher
         $local = $now->setTimezone(UserActivityClock::timezone());
         $days = [$local];
 
-        /** Los últimos minutos de ayer se terminan de cerrar en la primera media hora del día. */
-        if ($local->hour === 0 && $local->minute < 30) {
+        /**
+         * Los últimos minutos de ayer se terminan de cerrar en la primera media
+         * hora del día. Con jornada, ayer se recalcula todo el día: una guardia
+         * nocturna de ayer termina hoy y cuenta para ayer.
+         */
+        if (($local->hour === 0 && $local->minute < 30) || WorkdayConfig::appliesTo($local->subDay())) {
             $days[] = $local->subDay();
         }
 
         return $days;
+    }
+
+    /**
+     * Cifras de jornada de una fila. Una persona sin jornada (agente, agencia,
+     * proveedor) se guarda con ceros y sin tipo de día.
+     *
+     * @param  array<string, mixed>|null  $workday
+     * @return array<string, int|string|null>
+     */
+    private static function workdayColumns(?array $workday): array
+    {
+        if ($workday !== null) {
+            return WorkdayEvaluator::dayColumns($workday);
+        }
+
+        return [
+            'workday_kind' => null, 'work_base_minutes' => 0, 'work_active_minutes' => 0, 'work_idle_minutes' => 0,
+            'work_absent_minutes' => 0, 'lunch_minutes' => 0, 'lunch_excess_minutes' => 0, 'overtime_minutes' => 0,
+            'guard_minutes' => 0, 'guard_present_minutes' => 0, 'guard_active_minutes' => 0,
+        ];
     }
 
     /**
