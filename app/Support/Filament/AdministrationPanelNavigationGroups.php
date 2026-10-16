@@ -39,6 +39,10 @@ final class AdministrationPanelNavigationGroups
                 ->icon('heroicon-o-calculator')
                 ->collapsed(),
             NavigationGroup::make()
+                ->label('REPORTES')
+                ->icon('heroicon-o-document-chart-bar')
+                ->collapsed(),
+            NavigationGroup::make()
                 ->label('COMPENSACION TDEV')
                 ->icon('heroicon-o-banknotes')
                 ->collapsed(),

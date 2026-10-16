@@ -207,6 +207,11 @@ Route::get('operations/reportes/descargar/{file}', App\Http\Controllers\Operatio
     ->where('file', 'reporte-operaciones-[a-z0-9-]+\.(xlsx|csv|pdf)')
     ->name('operations.reports.download');
 
+Route::get('administration/reportes/descargar/{file}', App\Http\Controllers\AdministrationReportDownloadController::class)
+    ->middleware(['web', 'auth'])
+    ->where('file', 'reporte-administracion-[a-z0-9-]+\.(xlsx|csv|pdf)')
+    ->name('administration.reports.download');
+
 Route::get('operations/operation-service-orders/report/preview', [App\Http\Controllers\OperationServiceOrderTableReportPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
     ->name('operations.operation-service-orders.report.preview');
