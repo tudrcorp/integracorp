@@ -77,6 +77,30 @@ enum WorkMinuteKind: string
         };
     }
 
+    /**
+     * Qué efecto tiene el tramo en las cifras, para el tooltip de la barra:
+     * texto y tono (`good` suma, `bad` resta, `extra` horas extra, `neutral` no cuenta).
+     *
+     * @return array{0: string, 1: string}
+     */
+    public function impact(): array
+    {
+        return match ($this) {
+            self::WorkActive => ['Suma al uso de jornada', 'good'],
+            self::Meeting => ['Suma al uso de jornada como trabajo', 'good'],
+            self::WorkIdle => ['No suma: sistema abierto sin usarlo', 'neutral'],
+            self::WorkAbsent => ['Baja el uso: ausencia en su horario', 'bad'],
+            self::Lunch => ['No cuenta: hora de almuerzo declarada', 'neutral'],
+            self::LunchExcess => ['Baja el uso: exceso de almuerzo', 'bad'],
+            self::GuardActive => ['Presencia en guardia, usando el sistema', 'good'],
+            self::GuardIdle => ['Presencia en guardia (no se penaliza)', 'good'],
+            self::GuardAbsent => ['Sin presencia en su guardia', 'bad'],
+            self::Overtime => ['Suma a horas extra', 'extra'],
+            self::OffHoursIdle => ['No cuenta: fuera de horario y sin uso', 'neutral'],
+            self::Free => ['', 'neutral'],
+        };
+    }
+
     public function isGuard(): bool
     {
         return in_array($this, [self::GuardActive, self::GuardIdle, self::GuardAbsent], true);
