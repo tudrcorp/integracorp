@@ -75,14 +75,20 @@ return [
             'end' => '17:00',
             /** ISO: 1 = lunes … 7 = domingo. */
             'weekdays' => [1, 2, 3, 4, 5],
+            /** El almuerzo se declara a cualquier hora de la jornada, una vez por día. */
             'lunch_minutes' => 60,
-            /** Ventana para iniciar el almuerzo: unos salen a las 12 y otros a la 1. */
-            'lunch_earliest' => '11:30',
-            'lunch_latest' => '14:00',
-            /** Tras salir a almorzar, minutos en que la interacción no dispara la pregunta «¿Ya volviste?». */
+            /** Tras salir a almorzar o entrar en reunión, minutos en que la interacción no dispara la pregunta «¿Ya volviste?». */
             'lunch_prompt_grace_minutes' => 3,
             /** «No, sigo en almuerzo» calla la pregunta estos minutos. */
             'lunch_prompt_snooze_minutes' => 10,
+            /** «No, sigo en reunión» calla la pregunta estos minutos (en reunión es normal usar el sistema). */
+            'meeting_prompt_snooze_minutes' => 30,
+            /** Una reunión abierta más de esto se marca en el monitor como larga. */
+            'meeting_warning_minutes' => 180,
+            /** Reunión fuera de jornada sin fin marcado: se cierra con esta duración. */
+            'meeting_auto_close_minutes' => 60,
+            /** Una reunión de jornada sin fin marcado se cierra a la hora de salida cuando pasa este margen. */
+            'meeting_close_grace_minutes' => 60,
             /** Feriados federales de EE. UU. (con su día observado) más las fechas extra `Y-m-d`. */
             'us_federal_holidays' => (bool) env('USER_ACTIVITY_US_HOLIDAYS', true),
             'extra_holidays' => array_values(array_filter(array_map('trim', explode(',', (string) env('USER_ACTIVITY_EXTRA_HOLIDAYS', ''))))),

@@ -17,7 +17,7 @@ use Throwable;
  */
 final class WorkdayConfig
 {
-    private const SCHEMA_CACHE_KEY = 'ua:workday-schema-ready';
+    private const SCHEMA_CACHE_KEY = 'ua:workday-schema-ready:v2';
 
     /**
      * Respaldo si la configuración cacheada aún no trae el bloque `workday`
@@ -88,14 +88,37 @@ final class WorkdayConfig
         return max(15, min(180, (int) config('live-presence.activity.workday.lunch_minutes', 60)));
     }
 
+    /**
+     * El almuerzo se declara a cualquier hora de la jornada: hay quien sale tarde por carga de trabajo.
+     */
     public static function lunchEarliest(): int
     {
-        return self::minute('lunch_earliest', 11 * 60 + 30);
+        return self::workStart();
     }
 
     public static function lunchLatest(): int
     {
-        return self::minute('lunch_latest', 14 * 60);
+        return self::workEnd();
+    }
+
+    public static function meetingPromptSnoozeMinutes(): int
+    {
+        return max(1, (int) config('live-presence.activity.workday.meeting_prompt_snooze_minutes', 30));
+    }
+
+    public static function meetingWarningMinutes(): int
+    {
+        return max(15, (int) config('live-presence.activity.workday.meeting_warning_minutes', 180));
+    }
+
+    public static function meetingAutoCloseMinutes(): int
+    {
+        return max(0, (int) config('live-presence.activity.workday.meeting_auto_close_minutes', 60));
+    }
+
+    public static function meetingCloseGraceMinutes(): int
+    {
+        return max(0, (int) config('live-presence.activity.workday.meeting_close_grace_minutes', 60));
     }
 
     public static function promptGraceMinutes(): int
@@ -207,7 +230,9 @@ final class WorkdayConfig
                 return self::$schemaReady = true;
             }
 
-            self::$schemaReady = Schema::hasTable('user_work_breaks') && Schema::hasColumn('user_activity_days', 'workday_kind');
+            self::$schemaReady = Schema::hasTable('user_work_breaks')
+                && Schema::hasTable('user_work_meetings')
+                && Schema::hasColumn('user_activity_days', 'work_meeting_minutes');
 
             if (self::$schemaReady) {
                 Cache::put(self::SCHEMA_CACHE_KEY, true, 3600);

@@ -6,15 +6,18 @@ namespace App\Livewire;
 
 use App\Models\User;
 use App\Models\UserWorkBreak;
+use App\Models\UserWorkMeeting;
 use App\Support\UserActivity\UserActivityClock;
 use App\Support\UserActivity\Workday\WorkBreakException;
 use App\Support\UserActivity\Workday\WorkBreaks;
 use App\Support\UserActivity\Workday\WorkdayConfig;
 use App\Support\UserActivity\Workday\WorkdaySubjects;
+use App\Support\UserActivity\Workday\WorkMeetings;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
@@ -25,12 +28,14 @@ use Livewire\Component;
 use Throwable;
 
 /**
- * Botón de almuerzo en la barra superior de los paneles internos.
+ * Almuerzo y reuniones en la barra superior de los paneles internos.
  *
- * «Salir a almorzar» → «En almuerzo 00:42 · Volver» (en naranja al pasar de la
- * hora). Si el colaborador vuelve a usar el sistema sin marcar el regreso, se le
- * pregunta «¿Ya volviste del almuerzo?»; «No, sigo» calla la pregunta unos minutos
- * en todas sus pestañas.
+ * - «Salir a almorzar» → «En almuerzo 00:42 · Volver» (en naranja al pasar de la
+ *   hora). Visible todo el día laboral; se declara a cualquier hora de la jornada.
+ * - «Reunión» (con motivo obligatorio) → «En reunión 00:35 · Terminé». Puede
+ *   cerrar sesión: al volver a entrar sigue «en reunión» hasta marcar el fin.
+ * - Si vuelve a usar el sistema sin marcar el regreso o el fin, se le pregunta;
+ *   «No, sigo» calla la pregunta unos minutos en todas sus pestañas.
  */
 class WorkBreakToggle extends Component implements HasActions, HasSchemas
 {
@@ -39,10 +44,17 @@ class WorkBreakToggle extends Component implements HasActions, HasSchemas
 
     private const SNOOZE_SESSION_KEY = 'work_break.prompt_snooze_until';
 
+    private const MEETING_SNOOZE_SESSION_KEY = 'work_meeting.prompt_snooze_until';
+
     /** @var array<string, mixed> */
     public array $status = [];
 
+    /** @var array<string, mixed> */
+    public array $meeting = [];
+
     public int $snoozeUntil = 0;
+
+    public int $meetingSnoozeUntil = 0;
 
     public ?string $panel = null;
 
@@ -77,12 +89,15 @@ class WorkBreakToggle extends Component implements HasActions, HasSchemas
 
         try {
             $this->status = $user instanceof User ? WorkBreaks::status($user) : [];
+            $this->meeting = $user instanceof User ? WorkMeetings::status($user) : [];
         } catch (Throwable $exception) {
             report($exception);
             $this->status = [];
+            $this->meeting = [];
         }
 
         $this->snoozeUntil = (int) session(self::SNOOZE_SESSION_KEY, 0);
+        $this->meetingSnoozeUntil = (int) session(self::MEETING_SNOOZE_SESSION_KEY, 0);
     }
 
     public function startLunchAction(): Action
@@ -94,7 +109,7 @@ class WorkBreakToggle extends Component implements HasActions, HasSchemas
             ->requiresConfirmation()
             ->modalIcon(Heroicon::OutlinedClock)
             ->modalHeading('¿Sales a almorzar ahora?')
-            ->modalDescription('Tienes '.WorkdayConfig::lunchMinutes().' minutos. El monitor te mostrará «En almuerzo» hasta que pulses «Volver del almuerzo». El tiempo de más se registra como exceso.')
+            ->modalDescription(fn (): string => 'Tienes '.WorkdayConfig::lunchMinutes().' minutos. El monitor te mostrará «En almuerzo» hasta que pulses «Volver del almuerzo». El tiempo de más se registra como exceso.'.(($this->meeting['open'] ?? false) ? ' Tu reunión en curso se dará por terminada.' : ''))
             ->modalSubmitActionLabel('Sí, salgo a almorzar')
             ->modalCancelActionLabel('Todavía no')
             ->action(function (): void {
@@ -155,6 +170,93 @@ class WorkBreakToggle extends Component implements HasActions, HasSchemas
             ->action(fn () => $this->finishLunch(UserWorkBreak::END_PROMPT));
     }
 
+    public function startMeetingAction(): Action
+    {
+        return Action::make('startMeeting')
+            ->label('Entrar en reunión')
+            ->icon(Heroicon::OutlinedUserGroup)
+            ->color('primary')
+            ->modalIcon(Heroicon::OutlinedUserGroup)
+            ->modalIconColor('primary')
+            ->modalHeading('¿Entras en una reunión?')
+            ->modalDescription(fn (): string => 'Mientras estés en reunión no contará como inactividad, aunque cierres sesión. Al terminar, entra de nuevo y pulsa «Terminé la reunión».'.(($this->status['state'] ?? null) === 'on' ? ' Tu almuerzo en curso se dará por terminado.' : ''))
+            ->modalWidth('md')
+            ->modalSubmitActionLabel('Entrar en reunión')
+            ->modalCancelActionLabel('Cancelar')
+            ->form([
+                TextInput::make('reason')
+                    ->label('Motivo de la reunión')
+                    ->placeholder('Por ejemplo: revisión de casos con la clínica')
+                    ->helperText('Lo verá el administrador en el monitor de actividad.')
+                    ->required()
+                    ->minLength(WorkMeetings::REASON_MIN)
+                    ->maxLength(WorkMeetings::REASON_MAX)
+                    ->autofocus(),
+            ])
+            ->action(function (array $data): void {
+                $user = Auth::user();
+
+                if (! $user instanceof User) {
+                    return;
+                }
+
+                try {
+                    WorkMeetings::start($user, (string) ($data['reason'] ?? ''), $this->panel);
+                } catch (WorkBreakException $exception) {
+                    Notification::make()->danger()->title('No se pudo registrar la reunión')->body($exception->getMessage())->send();
+                    $this->refreshStatus();
+
+                    return;
+                }
+
+                session()->forget(self::MEETING_SNOOZE_SESSION_KEY);
+                session()->forget(self::SNOOZE_SESSION_KEY);
+
+                Notification::make()
+                    ->success()
+                    ->title('Quedaste en reunión')
+                    ->body('Puedes cerrar sesión si lo necesitas. Al volver, pulsa «Terminé la reunión».')
+                    ->send();
+
+                $this->refreshStatus();
+            });
+    }
+
+    public function endMeetingAction(): Action
+    {
+        return Action::make('endMeeting')
+            ->label('Terminé la reunión')
+            ->icon(Heroicon::OutlinedCheck)
+            ->color('success')
+            ->action(fn () => $this->finishMeeting(UserWorkMeeting::END_MANUAL));
+    }
+
+    public function meetingPromptAction(): Action
+    {
+        return Action::make('meetingPrompt')
+            ->modalIcon(Heroicon::OutlinedUserGroup)
+            ->modalIconColor('primary')
+            ->modalHeading('¿Ya terminó tu reunión?')
+            ->modalDescription(fn (): string => 'Sigues marcado en reunión'.(filled($this->meeting['reason'] ?? null) ? ' («'.$this->meeting['reason'].'»)' : '').'. Si ya terminó, confírmalo para que el monitor te vuelva a medir con normalidad.')
+            ->modalWidth('md')
+            ->modalSubmitActionLabel('Sí, ya terminó')
+            ->modalCancelAction(false)
+            ->extraModalFooterActions([
+                Action::make('stillInMeeting')
+                    ->label('No, sigo en reunión')
+                    ->color('gray')
+                    ->cancelParentActions()
+                    ->action(fn () => $this->snoozeMeetingPrompt()),
+            ])
+            ->action(fn () => $this->finishMeeting(UserWorkMeeting::END_PROMPT));
+    }
+
+    public function snoozeMeetingPrompt(): void
+    {
+        $this->meetingSnoozeUntil = now()->addMinutes(WorkdayConfig::meetingPromptSnoozeMinutes())->getTimestamp();
+        session()->put(self::MEETING_SNOOZE_SESSION_KEY, $this->meetingSnoozeUntil);
+    }
+
     public function snoozePrompt(): void
     {
         $this->snoozeUntil = now()->addMinutes(WorkdayConfig::promptSnoozeMinutes())->getTimestamp();
@@ -166,6 +268,31 @@ class WorkBreakToggle extends Component implements HasActions, HasSchemas
         return view('livewire.work-break-toggle', [
             'graceSeconds' => WorkdayConfig::promptGraceMinutes() * 60,
         ]);
+    }
+
+    private function finishMeeting(string $reason): void
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User) {
+            return;
+        }
+
+        $meeting = WorkMeetings::end($user, $reason);
+        session()->forget(self::MEETING_SNOOZE_SESSION_KEY);
+        $this->refreshStatus();
+
+        if ($meeting === null) {
+            return;
+        }
+
+        $minutes = max(0, (int) floor(($meeting->ended_at->getTimestamp() - $meeting->started_at->getTimestamp()) / 60));
+
+        Notification::make()
+            ->success()
+            ->title('Reunión terminada')
+            ->body('«'.$meeting->reason.'» · '.UserActivityClock::formatDuration($minutes).'. Hoy llevas '.UserActivityClock::formatDuration((int) ($this->meeting['today_minutes'] ?? 0)).' en reuniones.')
+            ->send();
     }
 
     private function finishLunch(string $reason): void

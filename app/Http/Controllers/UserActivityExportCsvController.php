@@ -57,7 +57,7 @@ class UserActivityExportCsvController extends Controller
                 'Llega (promedio)', 'Se va (promedio)', 'Último día',
                 ...($workday ? [
                     'Días con jornada', 'Jornada (min)', 'Activo en jornada (min)', 'Uso de jornada (%)', 'Inactivo en jornada (min)',
-                    'Ausente en jornada (min)', 'Almuerzo (min)', 'Exceso de almuerzo (min)', 'Horas extra (min)', 'Guardia (min)', 'Presencia en guardia (%)',
+                    'Ausente en jornada (min)', 'En reuniones (min)', 'Almuerzo (min)', 'Exceso de almuerzo (min)', 'Horas extra (min)', 'Guardia (min)', 'Presencia en guardia (%)',
                 ] : []),
             ], ';');
 
@@ -69,7 +69,7 @@ class UserActivityExportCsvController extends Controller
                     UserActivityClock::formatMinute($row['avg_first']), UserActivityClock::formatMinute($row['avg_last']), $row['last_day'],
                     ...($workday ? [
                         $row['workday_days'], $row['work_base'], $row['work_active'], $row['work_usage'] ?? '', $row['work_idle'],
-                        $row['work_absent'], $row['lunch'], $row['lunch_excess'], $row['overtime'], $row['guard'], $row['guard_presence'] ?? '',
+                        $row['work_absent'], $row['meeting'], $row['lunch'], $row['lunch_excess'], $row['overtime'], $row['guard'], $row['guard_presence'] ?? '',
                     ] : []),
                 ], ';');
             }

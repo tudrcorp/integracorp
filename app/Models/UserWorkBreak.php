@@ -11,7 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Almuerzo declarado por un colaborador: uno por día. `ended_at` NULL = sigue
  * almorzando. `end_reason`: `manual` (pulsó «Volver»), `prompt` (respondió que
- * volvió) o `auto` (no lo marcó y se cerró al terminar la jornada).
+ * volvió), `meeting` (entró en una reunión) o `auto` (no lo marcó y se cerró
+ * al terminar la jornada).
  */
 class UserWorkBreak extends Model
 {
@@ -21,6 +22,8 @@ class UserWorkBreak extends Model
     public const END_MANUAL = 'manual';
 
     public const END_PROMPT = 'prompt';
+
+    public const END_MEETING = 'meeting';
 
     public const END_AUTO = 'auto';
 

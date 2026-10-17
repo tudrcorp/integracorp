@@ -15,6 +15,7 @@ use App\Support\UserActivity\Workday\WorkDayKind;
 use App\Support\UserActivity\Workday\WorkDayPlan;
 use App\Support\UserActivity\Workday\WorkDayPlanner;
 use App\Support\UserActivity\Workday\WorkdaySubjects;
+use App\Support\UserActivity\Workday\WorkMeetings;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -30,7 +31,7 @@ final class UserActivityReport
     public const MAX_RANGE_DAYS = 366;
 
     /** @var list<string> */
-    public const SORTABLE = ['name', 'days', 'online', 'active', 'idle', 'background', 'usage', 'avg_active', 'actions', 'pages', 'avg_first', 'avg_last', 'work_base', 'work_active', 'work_usage', 'work_absent', 'lunch_excess', 'overtime', 'guard'];
+    public const SORTABLE = ['name', 'days', 'online', 'active', 'idle', 'background', 'usage', 'avg_active', 'actions', 'pages', 'avg_first', 'avg_last', 'work_base', 'work_active', 'work_usage', 'work_absent', 'lunch_excess', 'overtime', 'guard', 'meeting'];
 
     /** @var array<string, string> Cifra del reporte => columna de `user_activity_days`. */
     private const WORKDAY_SUMS = [
@@ -43,6 +44,8 @@ final class UserActivityReport
         'overtime' => 'overtime_minutes',
         'guard' => 'guard_minutes',
         'guard_present' => 'guard_present_minutes',
+        'meeting' => 'meeting_minutes',
+        'work_meeting' => 'work_meeting_minutes',
     ];
 
     /**
@@ -186,7 +189,7 @@ final class UserActivityReport
         }
 
         $totals['workday_days'] = array_sum(array_column($rows, 'workday_days'));
-        $totals['work_usage'] = WorkdayEvaluator::usage($totals['work_active'], $totals['work_base']);
+        $totals['work_usage'] = WorkdayEvaluator::usage($totals['work_active'] + $totals['work_meeting'], $totals['work_base']);
 
         return ['rows' => $rows, 'totals' => $totals];
     }
@@ -205,7 +208,7 @@ final class UserActivityReport
             $figures[$key] = (int) ($aggregate->{$key} ?? 0);
         }
 
-        $figures['work_usage'] = WorkdayEvaluator::usage($figures['work_active'], $figures['work_base']);
+        $figures['work_usage'] = WorkdayEvaluator::usage($figures['work_active'] + $figures['work_meeting'], $figures['work_base']);
         $figures['guard_presence'] = $figures['guard'] > 0 ? (int) round($figures['guard_present'] * 100 / $figures['guard']) : null;
 
         return $figures;
@@ -422,7 +425,8 @@ final class UserActivityReport
 
         $plan = WorkDayPlanner::forDay($user, $date);
         $lunch = WorkBreaks::forUsers([$userId], $date, $date)[$userId][$date->toDateString()] ?? null;
-        $result = WorkdayEvaluator::evaluate($plan, $minutes, $lunch);
+        $meetings = WorkMeetings::forUsers([$userId], $date, $date)[$userId][$date->toDateString()] ?? [];
+        $result = WorkdayEvaluator::evaluate($plan, $minutes, $lunch, null, [], $meetings);
 
         if ($record !== null && $record->workday_kind !== null && ! $isToday) {
             $result['summary'] = [...$result['summary'], ...self::storedWorkday($record)];
@@ -434,7 +438,7 @@ final class UserActivityReport
     /**
      * Contexto para pintar varios días de una persona: su jornada y almuerzos del rango, en lote.
      *
-     * @return array{plans: array<string, WorkDayPlan>, lunches: array<string, array{start: int, end: int|null, reason: string|null}>}|null
+     * @return array{plans: array<string, WorkDayPlan>, lunches: array<string, array{start: int, end: int|null, reason: string|null}>, meetings: array<string, list<array{start: int, end: int|null, reason: string, end_reason: string|null}>>}|null
      */
     private static function workdayContext(int $userId, CarbonImmutable $from, CarbonImmutable $to, bool $hasWorkdayDays): ?array
     {
@@ -451,13 +455,14 @@ final class UserActivityReport
         return [
             'plans' => WorkDayPlanner::plans(collect([$user->id => $user]), $from, $to)[$user->id] ?? [],
             'lunches' => WorkBreaks::forUsers([$userId], $from, $to)[$userId] ?? [],
+            'meetings' => WorkMeetings::forUsers([$userId], $from, $to)[$userId] ?? [],
         ];
     }
 
     /**
      * Barra y cifras de jornada de un día guardado.
      *
-     * @param  array{plans: array<string, WorkDayPlan>, lunches: array<string, array{start: int, end: int|null, reason: string|null}>}|null  $context
+     * @param  array{plans: array<string, WorkDayPlan>, lunches: array<string, array{start: int, end: int|null, reason: string|null}>, meetings: array<string, list<array{start: int, end: int|null, reason: string, end_reason: string|null}>>}|null  $context
      * @return array<string, mixed>
      */
     private static function recordWorkday(UserActivityDay $record, ?array $context): array
@@ -470,7 +475,7 @@ final class UserActivityReport
             return ['segments' => UserActivityMinutes::segments($minutes), 'bands' => [], 'workday' => null];
         }
 
-        $result = WorkdayEvaluator::evaluate($plan, $minutes, $context['lunches'][$date] ?? null);
+        $result = WorkdayEvaluator::evaluate($plan, $minutes, $context['lunches'][$date] ?? null, null, [], $context['meetings'][$date] ?? []);
 
         return [
             'segments' => $record->minute_states === null ? [] : $result['segments'],
@@ -499,7 +504,9 @@ final class UserActivityReport
             'guard' => $guard,
             'guard_present' => (int) $record->guard_present_minutes,
             'guard_active' => (int) $record->guard_active_minutes,
-            'usage' => WorkdayEvaluator::usage((int) $record->work_active_minutes, $base),
+            'meeting' => (int) $record->meeting_minutes,
+            'work_meeting' => (int) $record->work_meeting_minutes,
+            'usage' => WorkdayEvaluator::usage((int) $record->work_active_minutes + (int) $record->work_meeting_minutes, $base),
             'guard_presence' => $guard > 0 ? (int) round((int) $record->guard_present_minutes * 100 / $guard) : null,
         ];
     }

@@ -17,9 +17,10 @@ final class WorkdayEvaluator
      * @param  array<int, string>  $minutes
      * @param  array{start: int, end: int|null, reason?: string|null}|null  $lunch
      * @param  array<int, string>  $nextMinutes
+     * @param  list<array{start: int, end: int|null, reason: string, end_reason?: string|null}>  $meetings
      * @return array{summary: array<string, mixed>, codes: string, segments: list<array{from: int, to: int, kind: WorkMinuteKind, note: string}>, bands: list<array{from: int, to: int, type: string, label: string}>}
      */
-    public static function evaluate(WorkDayPlan $plan, array $minutes, ?array $lunch, ?CarbonImmutable $now = null, array $nextMinutes = []): array
+    public static function evaluate(WorkDayPlan $plan, array $minutes, ?array $lunch, ?CarbonImmutable $now = null, array $nextMinutes = [], array $meetings = []): array
     {
         $now = ($now ?? UserActivityClock::now())->setTimezone(UserActivityClock::timezone());
         $date = CarbonImmutable::parse($plan->date, UserActivityClock::timezone())->startOfDay();
@@ -31,6 +32,7 @@ final class WorkdayEvaluator
             self::cutoff($date, $now),
             $nextMinutes,
             self::cutoff($date->addDay(), $now),
+            $meetings,
         );
     }
 
@@ -71,11 +73,14 @@ final class WorkdayEvaluator
             'guard_minutes' => $clamp($summary['guard']),
             'guard_present_minutes' => $clamp($summary['guard_present']),
             'guard_active_minutes' => $clamp($summary['guard_active']),
+            'meeting_minutes' => $clamp($summary['meeting']),
+            'work_meeting_minutes' => $clamp($summary['work_meeting']),
         ];
     }
 
     /**
-     * Uso de jornada de cifras sumadas (rango o grupo).
+     * Uso de jornada de cifras sumadas (rango o grupo). `$workActive` ya incluye
+     * el tiempo en reunión dentro de la jornada.
      */
     public static function usage(int $workActive, int $base): ?int
     {

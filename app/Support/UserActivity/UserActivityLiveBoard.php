@@ -13,6 +13,7 @@ use App\Support\UserActivity\Workday\WorkdayEvaluator;
 use App\Support\UserActivity\Workday\WorkDayPlan;
 use App\Support\UserActivity\Workday\WorkDayPlanner;
 use App\Support\UserActivity\Workday\WorkdaySubjects;
+use App\Support\UserActivity\Workday\WorkMeetings;
 use Carbon\CarbonImmutable;
 use Throwable;
 
@@ -66,6 +67,7 @@ final class UserActivityLiveBoard
         $users = $subjects->union($missing === [] ? [] : User::query()->whereIn('id', $missing)->get(WorkdaySubjects::columns())->keyBy('id'));
         $plans = $regime ? WorkDayPlanner::plans($subjects, $today, $today) : [];
         $lunches = $regime ? WorkBreaks::forUsers($subjects->keys()->all(), $today, $today) : [];
+        $meetings = $regime ? WorkMeetings::forUsers($subjects->keys()->all(), $today, $today) : [];
         $date = $today->toDateString();
         $nowMinute = UserActivityClock::minuteOfDay($moment);
 
@@ -86,7 +88,9 @@ final class UserActivityLiveBoard
 
             $plan = $plans[$userId][$date] ?? null;
             $lunch = $lunches[$userId][$date] ?? null;
-            $workday = $plan !== null ? WorkdayEvaluator::evaluate($plan, $minutes, $lunch, $moment) : null;
+            $dayMeetings = $meetings[$userId][$date] ?? [];
+            $openMeeting = collect($dayMeetings)->first(static fn (array $meeting): bool => $meeting['end'] === null);
+            $workday = $plan !== null ? WorkdayEvaluator::evaluate($plan, $minutes, $lunch, $moment, [], $dayMeetings) : null;
 
             $rows[] = [
                 'user_id' => $userId,
@@ -116,8 +120,9 @@ final class UserActivityLiveBoard
                 'segments' => $workday['segments'] ?? UserActivityMinutes::segments($minutes),
                 'bands' => $workday['bands'] ?? [],
                 'workday' => $workday['summary'] ?? null,
-                'presence' => self::presence($plan, $lunch, $live['state'], $nowMinute),
+                'presence' => self::presence($plan, $lunch, $openMeeting, $live['state'], $nowMinute),
                 'lunch' => $lunch,
+                'meeting' => $openMeeting,
             ];
         }
 
@@ -132,12 +137,14 @@ final class UserActivityLiveBoard
 
     /**
      * Situación de jornada de una persona ahora mismo, para la etiqueta y los filtros:
-     * `lunch` (en almuerzo), `lunch_over` (se pasó de la hora), `absent` (debía
+     * `lunch` (en almuerzo), `lunch_over` (se pasó de la hora), `meeting` (en
+     * reunión), `meeting_long` (reunión abierta hace demasiado), `absent` (debía
      * estar trabajando y no tiene el sistema abierto) o null.
      *
      * @param  array{start: int, end: int|null, reason?: string|null}|null  $lunch
+     * @param  array{start: int, end: int|null, reason: string, end_reason?: string|null}|null  $meeting
      */
-    private static function presence(?WorkDayPlan $plan, ?array $lunch, UserActivityState $state, int $nowMinute): ?string
+    private static function presence(?WorkDayPlan $plan, ?array $lunch, ?array $meeting, UserActivityState $state, int $nowMinute): ?string
     {
         if ($plan === null) {
             return null;
@@ -145,6 +152,10 @@ final class UserActivityLiveBoard
 
         if ($lunch !== null && $lunch['end'] === null && $plan->lunchAllowed()) {
             return $nowMinute - $lunch['start'] >= WorkdayConfig::lunchMinutes() ? 'lunch_over' : 'lunch';
+        }
+
+        if ($meeting !== null) {
+            return $nowMinute - $meeting['start'] >= WorkdayConfig::meetingWarningMinutes() ? 'meeting_long' : 'meeting';
         }
 
         if ($state !== UserActivityState::Offline) {
@@ -190,8 +201,16 @@ final class UserActivityLiveBoard
                 $kpis['absent']++;
             }
 
+            if (in_array($row['presence'], ['meeting', 'meeting_long'], true)) {
+                $kpis['meeting']++;
+            }
+
+            if ($row['presence'] === 'meeting_long') {
+                $kpis['meeting_long']++;
+            }
+
             if ($row['workday'] !== null) {
-                $kpis['work_active'] += (int) $row['workday']['work_active'];
+                $kpis['work_active'] += (int) $row['workday']['work_active'] + (int) $row['workday']['work_meeting'];
                 $kpis['work_base'] += (int) $row['workday']['base'];
                 $kpis['overtime'] += (int) $row['workday']['overtime'];
             }
@@ -212,7 +231,7 @@ final class UserActivityLiveBoard
     {
         return [
             'active' => 0, 'idle' => 0, 'background' => 0, 'offline' => 0, 'connected' => 0, 'today' => 0, 'active_minutes' => 0, 'online_minutes' => 0, 'usage' => 0,
-            'lunch' => 0, 'lunch_over' => 0, 'absent' => 0, 'work_active' => 0, 'work_base' => 0, 'work_usage' => null, 'overtime' => 0,
+            'lunch' => 0, 'lunch_over' => 0, 'meeting' => 0, 'meeting_long' => 0, 'absent' => 0, 'work_active' => 0, 'work_base' => 0, 'work_usage' => null, 'overtime' => 0,
         ];
     }
 
@@ -233,6 +252,7 @@ final class UserActivityLiveBoard
             'offline' => $row['state'] === UserActivityState::Offline,
             'lunch' => in_array($row['presence'], ['lunch', 'lunch_over'], true),
             'absent' => $row['presence'] === 'absent',
+            'meeting' => in_array($row['presence'], ['meeting', 'meeting_long'], true),
             default => true,
         };
 
