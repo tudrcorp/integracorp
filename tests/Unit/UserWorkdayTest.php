@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserActivityDay;
 use App\Models\UserWorkAbsence;
 use App\Models\UserWorkBreak;
+use App\Models\UserWorkMeeting;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\LivePresence\CacheLivePresenceRepository;
 use App\Support\LivePresence\LivePresenceStore;
@@ -26,6 +27,7 @@ use App\Support\UserActivity\Workday\WorkDayPlanner;
 use App\Support\UserActivity\Workday\WorkdaySubjects;
 use App\Support\UserActivity\Workday\WorkGuardSource;
 use App\Support\UserActivity\Workday\WorkHolidays;
+use App\Support\UserActivity\Workday\WorkMeetings;
 use App\Support\UserActivity\Workday\WorkMinuteKind;
 use App\Support\UserActivity\Workday\WorkScheduleType;
 use Carbon\CarbonImmutable;
@@ -153,6 +155,10 @@ function workdaySchema(): void
     $migration = require base_path('database/migrations/2026_10_16_120000_create_user_workday_tables.php');
     $migration->up();
     $migration->up();
+
+    $meetings = require base_path('database/migrations/2026_10_16_200000_create_user_work_meetings_table.php');
+    $meetings->up();
+    $meetings->up();
 
     $base = ['departament' => null, 'is_agent' => false, 'is_agency' => false, 'agency_type' => null, 'code_agency' => null, 'is_doctor' => false, 'status' => 'ACTIVO'];
 
@@ -446,10 +452,12 @@ it('la jornada exenta mide el uso sin base ni horas extra', function (): void {
     expect($result['summary'])->toMatchArray(['base' => 0, 'usage' => null, 'overtime' => 0, 'work_active' => 180, 'work_absent' => 0]);
 });
 
-it('el almuerzo se inicia en su ventana, una vez por día, y repetir el clic no duplica', function (): void {
+it('el almuerzo se declara a cualquier hora de la jornada, una vez por día, y repetir el clic no duplica', function (): void {
     $ana = wdUser(601);
 
-    expect(fn () => WorkBreaks::start($ana, 'business', wdAt('2026-10-15 11:00')))->toThrow(WorkBreakException::class, 'El almuerzo se inicia entre las 11:30 a. m. y las 2:00 p. m.');
+    expect(fn () => WorkBreaks::start($ana, 'business', wdAt('2026-10-15 07:50')))->toThrow(WorkBreakException::class, 'El almuerzo se declara dentro de tu jornada, de 8:00 a. m. a 5:00 p. m.')
+        ->and(fn () => WorkBreaks::start($ana, 'business', wdAt('2026-10-15 17:00')))->toThrow(WorkBreakException::class, 'dentro de tu jornada')
+        ->and(WorkBreaks::status($ana, wdAt('2026-10-15 15:40'))['state'])->toBe('ready');
 
     $first = WorkBreaks::start($ana, 'business', wdAt('2026-10-15 12:00'));
     $again = WorkBreaks::start($ana, 'business', wdAt('2026-10-15 12:01'));
@@ -473,8 +481,9 @@ it('no deja declarar almuerzo sin jornada: fin de semana, agente o ausencia', fu
     expect(fn () => WorkBreaks::start(wdUser(601), null, wdAt('2026-10-17 12:00')))->toThrow(WorkBreakException::class, 'Hoy no tienes jornada laboral (fin de semana)')
         ->and(fn () => WorkBreaks::start(wdUser(603), null, wdAt('2026-10-15 12:00')))->toThrow(WorkBreakException::class, 'no tiene jornada laboral')
         ->and(WorkBreaks::status(wdUser(603), wdAt('2026-10-15 12:00'))['state'])->toBe('hidden')
-        ->and(WorkBreaks::status(wdUser(601), wdAt('2026-10-15 09:00'))['state'])->toBe('early')
-        ->and(WorkBreaks::status(wdUser(601), wdAt('2026-10-15 15:00'))['state'])->toBe('missed');
+        ->and(WorkBreaks::status(wdUser(601), wdAt('2026-10-15 07:30'))['state'])->toBe('early')
+        ->and(WorkBreaks::status(wdUser(601), wdAt('2026-10-15 09:00'))['state'])->toBe('ready')
+        ->and(WorkBreaks::status(wdUser(601), wdAt('2026-10-15 17:10'))['state'])->toBe('missed');
 
     UserWorkAbsence::factory()->create(['user_id' => 602, 'type' => WorkAbsenceType::MedicalLeave, 'starts_on' => '2026-10-15', 'ends_on' => '2026-10-15']);
     expect(fn () => WorkBreaks::start(wdUser(602), null, wdAt('2026-10-15 12:00')))->toThrow(WorkBreakException::class, 'ausencia justificada');
@@ -606,12 +615,13 @@ it('el botón de almuerzo: salir, volver y la pregunta al retomar el trabajo', f
     expect(WorkBreakToggle::shouldRender())->toBeTrue();
 
     $component = Livewire::test(WorkBreakToggle::class)
-        ->assertSee('Salir a almorzar')
+        ->assertSet('status.state', 'ready')
         ->call('mountAction', 'startLunch')
         ->call('callMountedAction')
         ->assertNotified('¡Buen provecho!')
         ->assertSet('status.state', 'on')
-        ->assertSee('En almuerzo');
+        ->assertSee('En almuerzo')
+        ->assertSee('Volver del almuerzo');
 
     $this->travelTo(wdAt('2026-10-15 13:05'));
 
@@ -622,7 +632,7 @@ it('el botón de almuerzo: salir, volver y la pregunta al retomar el trabajo', f
         ->call('callMountedAction')
         ->assertNotified('¡De vuelta al trabajo!')
         ->assertSet('status.state', 'done')
-        ->assertSee('Almuerzo 1 h 5 min');
+        ->assertSet('status.minutes', 65);
 
     expect(UserWorkBreak::query()->first()->end_reason)->toBe(UserWorkBreak::END_PROMPT);
 
@@ -732,5 +742,194 @@ it('la descarga a Excel trae las cifras de jornada', function (): void {
 
     expect($csv)->toContain('Uso de jornada (%)')
         ->and($csv)->toContain('Horas extra (min)')
-        ->and($csv)->toContain(';1;480;400;83;0;0;60;0;15;0;');
+        ->and($csv)->toContain('En reuniones (min)')
+        ->and($csv)->toContain(';1;480;400;83;0;0;0;60;0;15;0;');
+});
+
+it('una reunión exige motivo, no se duplica y puede haber varias en el día', function (): void {
+    $ana = wdUser(601);
+
+    expect(fn () => WorkMeetings::start($ana, '  ', 'business', wdAt('2026-10-15 10:00')))->toThrow(WorkBreakException::class, 'Indica el motivo de la reunión')
+        ->and(fn () => WorkMeetings::start(wdUser(603), 'Comité', 'business', wdAt('2026-10-15 10:00')))->toThrow(WorkBreakException::class, 'no tiene jornada laboral');
+
+    $first = WorkMeetings::start($ana, '  Revisión   de casos ', 'business', wdAt('2026-10-15 10:00'));
+    $again = WorkMeetings::start($ana, 'Otra cosa', 'business', wdAt('2026-10-15 10:05'));
+
+    expect($again->id)->toBe($first->id)
+        ->and($first->reason)->toBe('Revisión de casos')
+        ->and(WorkMeetings::status($ana, wdAt('2026-10-15 10:40')))->toMatchArray(['open' => true, 'minutes' => 40, 'reason' => 'Revisión de casos', 'long' => false]);
+
+    WorkMeetings::end($ana, UserWorkMeeting::END_MANUAL, wdAt('2026-10-15 11:00'));
+    WorkMeetings::start($ana, 'Comité comercial', null, wdAt('2026-10-15 15:00'));
+    WorkMeetings::end($ana, UserWorkMeeting::END_PROMPT, wdAt('2026-10-15 16:30'));
+
+    expect(WorkMeetings::end($ana, UserWorkMeeting::END_MANUAL, wdAt('2026-10-15 16:40')))->toBeNull()
+        ->and(WorkMeetings::status($ana, wdAt('2026-10-15 16:45')))->toMatchArray(['open' => false, 'today_count' => 2, 'today_minutes' => 150])
+        ->and(WorkMeetings::forUsers([601], wdAt('2026-10-15'), wdAt('2026-10-15'))[601]['2026-10-15'])->toBe([
+            ['start' => 600, 'end' => 660, 'reason' => 'Revisión de casos', 'end_reason' => 'manual'],
+            ['start' => 900, 'end' => 990, 'reason' => 'Comité comercial', 'end_reason' => 'prompt'],
+        ])
+        ->and(DB::table('logs')->pluck('action')->all())->toBe(['AUDIT_WORK_MEETING_STARTED', 'AUDIT_WORK_MEETING_ENDED', 'AUDIT_WORK_MEETING_STARTED', 'AUDIT_WORK_MEETING_ENDED']);
+});
+
+it('la reunión cuenta como trabajo en la jornada y como horas extra fuera de ella, aunque no esté conectado', function (): void {
+    $plan = WorkDayPlanner::forDay(wdUser(601), wdAt('2026-10-15'));
+    $meetings = [
+        ['start' => 600, 'end' => 720, 'reason' => 'Comité', 'end_reason' => 'manual'],
+        ['start' => 1050, 'end' => 1110, 'reason' => 'Cliente en la tarde', 'end_reason' => 'manual'],
+    ];
+    $result = WorkDayClassifier::classify($plan, wdMinutes([[480, 600, 'a'], [780, 1020, 'a']]), ['start' => 720, 'end' => 780], 1440, [], 1440, $meetings);
+
+    expect($result['summary'])->toMatchArray([
+        'base' => 480, 'work_active' => 360, 'work_meeting' => 120, 'meeting' => 180, 'overtime' => 60, 'work_absent' => 0, 'usage' => 100,
+    ])
+        ->and($result['codes'][650])->toBe(WorkMinuteKind::Meeting->value)
+        ->and($result['codes'][1060])->toBe(WorkMinuteKind::Meeting->value)
+        ->and(collect($result['segments'])->firstWhere('from', 600)['note'])->toBe('Reunión: Comité')
+        ->and(collect($result['segments'])->firstWhere('from', 1050)['note'])->toBe('Reunión: Cliente en la tarde · cuenta como horas extra');
+});
+
+it('una reunión abierta que empezó en la jornada no suma horas extra mientras siga abierta', function (): void {
+    $plan = WorkDayPlanner::forDay(wdUser(601), wdAt('2026-10-15'));
+    $result = WorkDayClassifier::classify($plan, [], null, 1140, [], 1440, [['start' => 900, 'end' => null, 'reason' => 'Larga']]);
+
+    expect($result['summary'])->toMatchArray(['work_meeting' => 120, 'meeting' => 120, 'overtime' => 0, 'meeting_open' => true]);
+});
+
+it('entrar en reunión cierra el almuerzo y salir a almorzar cierra la reunión', function (): void {
+    $ana = wdUser(601);
+
+    WorkBreaks::start($ana, null, wdAt('2026-10-15 12:00'));
+    WorkMeetings::start($ana, 'Llamada urgente', null, wdAt('2026-10-15 12:20'));
+
+    expect(UserWorkBreak::query()->sole())->ended_at->format('H:i')->toBe('12:20')
+        ->and(UserWorkBreak::query()->sole()->end_reason)->toBe(UserWorkBreak::END_MEETING);
+
+    DB::table('user_work_breaks')->delete();
+    WorkBreaks::start($ana, null, wdAt('2026-10-15 13:00'));
+
+    expect(UserWorkMeeting::query()->sole()->ended_at->format('H:i'))->toBe('13:00')
+        ->and(UserWorkMeeting::query()->sole()->end_reason)->toBe(UserWorkMeeting::END_LUNCH);
+});
+
+it('una reunión sin fin marcado se cierra sola: a la salida en la jornada y con una hora fuera de ella', function (): void {
+    WorkMeetings::start(wdUser(601), 'Comité', null, wdAt('2026-10-15 15:00'));
+    WorkMeetings::start(wdUser(602), 'Guardia con paciente', null, wdAt('2026-10-17 20:00'));
+
+    expect(WorkMeetings::closeExpired(wdAt('2026-10-15 17:30')))->toBe(0)
+        ->and(WorkMeetings::closeExpired(wdAt('2026-10-15 18:00')))->toBe(1)
+        ->and(WorkMeetings::closeExpired(wdAt('2026-10-17 23:59')))->toBe(0)
+        ->and(WorkMeetings::closeExpired(wdAt('2026-10-18 00:01')))->toBe(1)
+        ->and(WorkMeetings::closeExpired(wdAt('2026-10-18 00:02')))->toBe(0);
+
+    $meetings = UserWorkMeeting::query()->orderBy('id')->get();
+
+    expect($meetings[0]->ended_at->format('Y-m-d H:i'))->toBe('2026-10-15 17:00')
+        ->and($meetings[0]->end_reason)->toBe(UserWorkMeeting::END_AUTO)
+        ->and($meetings[1]->ended_at->format('Y-m-d H:i'))->toBe('2026-10-17 21:00');
+});
+
+it('el tablero muestra quién está en reunión y avisa la reunión larga', function (): void {
+    $this->travelTo(wdAt('2026-10-15 14:00'));
+    $store = wdStore();
+    $now = UserActivityClock::now()->getTimestamp();
+
+    WorkMeetings::start(wdUser(601), 'Comité de riesgos', null, wdAt('2026-10-15 13:30'));
+    WorkMeetings::start(wdUser(602), 'Junta médica', null, wdAt('2026-10-15 10:30'));
+
+    $board = UserActivityLiveBoard::build(['state' => 'all'], $now, $store);
+    $rows = collect($board['rows'])->keyBy('user_id');
+
+    expect($rows[601]['presence'])->toBe('meeting')
+        ->and($rows[602]['presence'])->toBe('meeting_long')
+        ->and($rows[601]['meeting']['reason'])->toBe('Comité de riesgos')
+        ->and($rows[602]['workday']['work_meeting'])->toBe(210)
+        ->and($board['kpis'])->toMatchArray(['meeting' => 2, 'meeting_long' => 1])
+        ->and(array_column(UserActivityLiveBoard::build(['state' => 'meeting'], $now, $store)['rows'], 'user_id'))->toEqualCanonicalizing([601, 602]);
+});
+
+it('el botón de reunión pide el motivo y se termina con un clic o al responder la pregunta', function (): void {
+    Filament::setCurrentPanel('business');
+    $this->travelTo(wdAt('2026-10-17 10:00'));
+    $this->actingAs(User::query()->findOrFail(601));
+
+    $component = Livewire::test(WorkBreakToggle::class)
+        ->assertSet('meeting.available', true)
+        ->assertSet('status.state', 'hidden')
+        ->call('mountAction', 'startMeeting')
+        ->call('callMountedAction')
+        ->assertHasActionErrors(['reason' => 'required'])
+        ->set('mountedActions.0.data.reason', 'Revisión de cierre de mes')
+        ->call('callMountedAction')
+        ->assertHasNoActionErrors()
+        ->assertNotified('Quedaste en reunión')
+        ->assertSet('meeting.open', true)
+        ->assertSee('Revisión de cierre de mes');
+
+    $this->travelTo(wdAt('2026-10-17 11:00'));
+
+    $component->call('refreshStatus')
+        ->call('mountAction', 'meetingPrompt')
+        ->assertMountedActionModalSee('¿Ya terminó tu reunión?')
+        ->call('callMountedAction')
+        ->assertNotified('Reunión terminada')
+        ->assertSet('meeting.open', false);
+
+    expect(UserWorkMeeting::query()->sole()->end_reason)->toBe(UserWorkMeeting::END_PROMPT);
+});
+
+it('en un día laboral el almuerzo siempre está en el menú, también si no se declaró', function (): void {
+    Filament::setCurrentPanel('business');
+    $this->actingAs(User::query()->findOrFail(601));
+
+    $this->travelTo(wdAt('2026-10-15 07:30'));
+    Livewire::test(WorkBreakToggle::class)->assertSet('status.state', 'early')->assertSet('status.opens_at', '8:00 a. m.');
+
+    $this->travelTo(wdAt('2026-10-15 16:30'));
+    Livewire::test(WorkBreakToggle::class)->assertSet('status.state', 'ready');
+
+    $this->travelTo(wdAt('2026-10-15 19:00'));
+    Livewire::test(WorkBreakToggle::class)->assertSet('status.state', 'missed');
+});
+
+it('las acciones van en el menú de usuario y la barra solo muestra el indicador mientras corren', function (): void {
+    Filament::setCurrentPanel('business');
+    $this->travelTo(wdAt('2026-10-15 12:00'));
+    $this->actingAs(User::query()->findOrFail(601));
+
+    $menu = view('filament.hooks.work-break-menu-items')->render();
+
+    expect($menu)->toContain('Entrar en reunión')
+        ->and($menu)->toContain('Terminé la reunión')
+        ->and($menu)->toContain('Salir a almorzar')
+        ->and($menu)->toContain('Volver del almuerzo')
+        ->and($menu)->toContain("\$dispatch('wbt-action', 'startMeeting')");
+
+    Livewire::test(WorkBreakToggle::class)
+        ->assertDontSee('wbt-pill wbt-on')
+        ->assertSeeHtml('x-on:wbt-action.window');
+
+    WorkBreaks::start(wdUser(601), null, wdAt('2026-10-15 12:00'));
+    Livewire::test(WorkBreakToggle::class)->assertSeeHtml('wbt-pill wbt-on');
+
+    $this->actingAs(User::query()->findOrFail(603));
+    expect(trim(view('filament.hooks.work-break-menu-items')->render()))->toBe('');
+});
+
+it('el volcado y el reporte guardan y suman el tiempo en reunión', function (): void {
+    $this->travelTo(wdAt('2026-10-15 17:30'));
+    $store = wdStore();
+
+    WorkMeetings::start(wdUser(601), 'Comité', null, wdAt('2026-10-15 09:00'));
+    WorkMeetings::end(wdUser(601), UserWorkMeeting::END_MANUAL, wdAt('2026-10-15 11:00'));
+    UserActivityFlusher::flush(UserActivityClock::now(), $store);
+
+    $row = UserActivityDay::query()->where('user_id', 601)->whereDate('activity_date', '2026-10-15')->sole();
+    [$from, $to] = UserActivityReport::range('2026-10-15', '2026-10-15');
+    $report = collect(UserActivityReport::summary($from, $to)['rows'])->keyBy('user_id');
+
+    expect($row->meeting_minutes)->toBe(120)
+        ->and($row->work_meeting_minutes)->toBe(120)
+        ->and($row->work_absent_minutes)->toBe(420)
+        ->and($report[601])->toMatchArray(['meeting' => 120, 'work_meeting' => 120, 'work_usage' => 22]);
 });

@@ -5,6 +5,7 @@
     use App\Support\UserActivity\Workday\WorkdayConfig;
 
     $lunchLimit = WorkdayConfig::lunchMinutes();
+    $meetingWarning = WorkdayConfig::meetingWarningMinutes();
 
     $fmt = fn (int $minutes): string => Clock::formatDuration($minutes);
     $ago = function (?int $timestamp): string {
@@ -41,6 +42,7 @@
         'idle' => '⏸️',
         'active' => '▶️',
         'lunch' => '🍽️',
+        'meeting' => '👥',
         default => '•',
     };
 @endphp
@@ -161,6 +163,14 @@
         .uam-state.lunch { background: rgba(59, 130, 246, .15); color: #1d4ed8; }
         .uam-state.over { background: rgba(249, 115, 22, .17); color: #c2410c; }
         .uam-state.absent { background: rgba(239, 68, 68, .14); color: #b91c1c; }
+        .uam-state.meeting { background: rgba(13, 148, 136, .15); color: #0f766e; }
+        .dark .uam-state.meeting { color: #5eead4; }
+        .uam-badge.meeting { background: rgba(13, 148, 136, .14); color: #0f766e; }
+        .dark .uam-badge.meeting { color: #5eead4; }
+        .uam-table tr.row.p-meeting > td:first-child { box-shadow: inset 4px 0 0 #0d9488; }
+        .uam-table tr.row.p-meeting_long > td:first-child { box-shadow: inset 4px 0 0 #f97316; }
+        .uam-meetings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+        .uam-meetings li { display: grid; grid-template-columns: 130px 1fr auto; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; background: var(--uam-bg); border: 1px solid var(--uam-border); border-left: 4px solid #0d9488; }
         .dark .uam-state.lunch { color: #93c5fd; } .dark .uam-state.over { color: #fdba74; } .dark .uam-state.absent { color: #fca5a5; }
         .uam-table tr.row.p-lunch > td:first-child { box-shadow: inset 4px 0 0 #3b82f6; }
         .uam-table tr.row.p-lunch_over > td:first-child { box-shadow: inset 4px 0 0 #f97316; }
@@ -277,11 +287,13 @@
                         <div class="uam-kpi-value" style="color: #d97706;">{{ $live['kpis']['idle'] }}</div>
                         <div class="uam-kpi-hint">Sistema abierto sin tocarlo (+{{ $idleMinutes }} min)</div>
                     </button>
-                    <button type="button" class="uam-kpi {{ $liveState === 'background' ? 'on' : '' }}" wire:click="filterState('background')">
-                        <div class="uam-kpi-label"><i style="width: 8px; height: 8px; border-radius: 999px; background: var(--uam-bgtab); display: inline-block;"></i> En otra pestaña</div>
-                        <div class="uam-kpi-value">{{ $live['kpis']['background'] }}</div>
-                        <div class="uam-kpi-hint">Sistema minimizado u oculto</div>
-                    </button>
+                    @unless ($live['workday'])
+                        <button type="button" class="uam-kpi {{ $liveState === 'background' ? 'on' : '' }}" wire:click="filterState('background')">
+                            <div class="uam-kpi-label"><i style="width: 8px; height: 8px; border-radius: 999px; background: var(--uam-bgtab); display: inline-block;"></i> En otra pestaña</div>
+                            <div class="uam-kpi-value">{{ $live['kpis']['background'] }}</div>
+                            <div class="uam-kpi-hint">Sistema minimizado u oculto</div>
+                        </button>
+                    @endunless
                     <button type="button" class="uam-kpi {{ $liveState === 'all' ? 'on' : '' }}" wire:click="filterState('all')">
                         <div class="uam-kpi-label">👥 Trabajaron hoy</div>
                         <div class="uam-kpi-value">{{ $live['kpis']['today'] }}</div>
@@ -295,6 +307,13 @@
                                 {{ $live['kpis']['lunch_over'] > 0 ? '⏰ '.$live['kpis']['lunch_over'].' ya pasaron de la hora' : 'Declararon su hora de almuerzo' }}
                             </div>
                         </button>
+                        <button type="button" class="uam-kpi {{ $liveState === 'meeting' ? 'on' : '' }}" wire:click="filterState('meeting')">
+                            <div class="uam-kpi-label"><i style="width: 8px; height: 8px; border-radius: 999px; background: {{ Kind::Meeting->color() }}; display: inline-block;"></i> En reunión</div>
+                            <div class="uam-kpi-value" style="color: {{ Kind::Meeting->color() }};">{{ $live['kpis']['meeting'] }}</div>
+                            <div class="uam-kpi-hint" @if ($live['kpis']['meeting_long'] > 0) style="color: #c2410c; font-weight: 700;" @endif>
+                                {{ $live['kpis']['meeting_long'] > 0 ? '⏰ '.$live['kpis']['meeting_long'].' llevan más de '.$fmt($meetingWarning) : 'Declararon que están en reunión' }}
+                            </div>
+                        </button>
                         <button type="button" class="uam-kpi {{ $liveState === 'absent' ? 'on' : '' }}" wire:click="filterState('absent')">
                             <div class="uam-kpi-label"><i style="width: 8px; height: 8px; border-radius: 999px; background: {{ Kind::WorkAbsent->color() }}; display: inline-block;"></i> Ausentes en jornada</div>
                             <div class="uam-kpi-value" style="color: {{ $live['kpis']['absent'] > 0 ? Kind::WorkAbsent->color() : 'inherit' }};">{{ $live['kpis']['absent'] }}</div>
@@ -303,7 +322,7 @@
                         <div class="uam-kpi">
                             <div class="uam-kpi-label">💼 Uso de jornada hoy @include('filament.business.pages.partials.user-activity-usage-help')</div>
                             <div class="uam-kpi-value"><span class="uam-usage {{ $usageClass($live['kpis']['work_usage']) }}" style="font-size: 26px;">{{ $live['kpis']['work_usage'] !== null ? $live['kpis']['work_usage'].'%' : '—' }}</span></div>
-                            <div class="uam-kpi-hint">{{ $fmt($live['kpis']['work_active']) }} activos de {{ $fmt($live['kpis']['work_base']) }} de jornada transcurrida</div>
+                            <div class="uam-kpi-hint">{{ $fmt($live['kpis']['work_active']) }} trabajados (activo + reuniones) de {{ $fmt($live['kpis']['work_base']) }} de jornada transcurrida</div>
                         </div>
                         <div class="uam-kpi">
                             <div class="uam-kpi-label"><i style="width: 8px; height: 8px; border-radius: 999px; background: {{ Kind::Overtime->color() }}; display: inline-block;"></i> Horas extra hoy</div>
@@ -320,7 +339,7 @@
                 </div>
 
                 <div class="uam-filters">
-                    @foreach (['connected' => 'Conectados', 'active' => 'Activos', 'idle' => 'Inactivos', 'background' => 'Otra pestaña', 'offline' => 'Desconectados', ...($live['workday'] ? ['lunch' => '🍽️ En almuerzo', 'absent' => 'Ausentes en jornada'] : []), 'all' => 'Todos los de hoy'] as $key => $label)
+                    @foreach (['connected' => 'Conectados', 'active' => 'Activos', 'idle' => 'Inactivos', 'background' => 'Otra pestaña', 'offline' => 'Desconectados', ...($live['workday'] ? ['lunch' => '🍽️ En almuerzo', 'meeting' => '👥 En reunión', 'absent' => 'Ausentes en jornada'] : []), 'all' => 'Todos los de hoy'] as $key => $label)
                         <button type="button" wire:key="state-{{ $key }}" class="uam-chip {{ $liveState === $key ? 'on' : '' }}" wire:click="filterState('{{ $key }}')">{{ $label }}</button>
                     @endforeach
                     <span class="uam-sub" style="margin: 0 4px;">|</span>
@@ -338,6 +357,8 @@
                             <x-filament::icon icon="heroicon-o-user-group" style="width: 32px; height: 32px; margin: 0 auto 8px;" />
                             @if ($liveState === 'lunch' && $search === '' && $userType === 'all')
                                 Nadie está en almuerzo en este momento.
+                            @elseif ($liveState === 'meeting' && $search === '' && $userType === 'all')
+                                Nadie está en reunión en este momento.
                             @elseif ($liveState === 'absent' && $search === '' && $userType === 'all')
                                 ✅ Nadie está ausente en su jornada en este momento.
                             @else
@@ -380,6 +401,9 @@
                                                 <span class="uam-state lunch" title="Declaró su hora de almuerzo"><i style="background: {{ Kind::Lunch->color() }};"></i>🍽️ En almuerzo · {{ $clock($lunchMinutes) }}</span>
                                             @elseif ($presence === 'lunch_over')
                                                 <span class="uam-state over" title="Pasó de los {{ $lunchLimit }} minutos de almuerzo y no ha marcado el regreso"><i style="background: {{ Kind::LunchExcess->color() }};"></i>⏰ Almuerzo excedido +{{ $clock($lunchMinutes - $lunchLimit) }}</span>
+                                            @elseif (in_array($presence, ['meeting', 'meeting_long'], true))
+                                                @php $meetingMinutes = max(0, $nowMinute - $row['meeting']['start']); @endphp
+                                                <span class="uam-state {{ $presence === 'meeting_long' ? 'over' : 'meeting' }}" title="{{ $presence === 'meeting_long' ? 'Reunión abierta hace más de '.$fmt($meetingWarning).': puede que haya olvidado marcar el fin' : 'Declaró que está en reunión' }}"><i style="background: {{ $presence === 'meeting_long' ? Kind::LunchExcess->color() : Kind::Meeting->color() }};"></i>👥 {{ $presence === 'meeting_long' ? 'Reunión larga' : 'En reunión' }} · {{ $clock($meetingMinutes) }}</span>
                                             @elseif ($presence === 'absent')
                                                 <span class="uam-state absent" title="Está en su horario y no tiene el sistema abierto"><i style="background: {{ Kind::WorkAbsent->color() }};"></i>Ausente en jornada</span>
                                             @else
@@ -388,6 +412,8 @@
                                             <div class="uam-sub" style="margin-top: 3px;">
                                                 @if (in_array($presence, ['lunch', 'lunch_over'], true))
                                                     Salió a las {{ Clock::formatMinute($row['lunch']['start']) }}
+                                                @elseif (in_array($presence, ['meeting', 'meeting_long'], true))
+                                                    <span title="{{ $row['meeting']['reason'] }}">«{{ \Illuminate\Support\Str::limit($row['meeting']['reason'], 40) }}» · desde {{ Clock::formatMinute($row['meeting']['start']) }}</span>
                                                 @elseif ($presence === 'absent' && $row['today']['online'] === 0)
                                                     No se ha conectado hoy
                                                 @elseif ($key === 'idle' && $row['last_interaction_at'])
@@ -482,6 +508,7 @@
                                         {!! $th('work_active', 'Activo en jornada') !!}
                                         {!! $th('work_usage', 'Uso de jornada') !!}
                                         {!! $th('work_absent', 'Ausente') !!}
+                                        {!! $th('meeting', 'En reuniones') !!}
                                         {!! $th('lunch_excess', 'Exceso almuerzo') !!}
                                         {!! $th('overtime', 'Horas extra') !!}
                                         {!! $th('guard', 'Guardia') !!}
@@ -521,6 +548,7 @@
                                                 @endif
                                             </td>
                                             <td class="num" style="color: {{ $row['work_absent'] > 0 ? '#dc2626' : 'inherit' }};">{{ $fmt($row['work_absent']) }}</td>
+                                            <td class="num" style="color: {{ $row['meeting'] > 0 ? '#0f766e' : 'inherit' }};">{{ $fmt($row['meeting']) }}</td>
                                             <td class="num" style="color: {{ $row['lunch_excess'] > 0 ? '#c2410c' : 'inherit' }};">{{ $fmt($row['lunch_excess']) }}</td>
                                             <td class="num" style="color: {{ $row['overtime'] > 0 ? '#a21caf' : 'inherit' }};">{{ $fmt($row['overtime']) }}</td>
                                             <td class="num uam-sub">{{ $row['guard'] > 0 ? $fmt($row['guard']).' · '.$row['guard_presence'].'%' : '—' }}</td>
@@ -546,7 +574,7 @@
                 </div>
                 <p class="uam-sub">
                     @if ($workdayEnabled)
-                        «Uso de jornada» = activo en jornada ÷ jornada (8 h con almuerzo declarado; sin declararlo, esa hora también es jornada). «Guardia» = horas de guardia y % con el sistema abierto.
+                        «Uso de jornada» = (activo + reuniones, en jornada) ÷ jornada (8 h con almuerzo declarado; sin declararlo, esa hora también es jornada). Las reuniones fuera de horario suman a horas extra. «Guardia» = horas de guardia y % con el sistema abierto.
                     @endif
                     «Uso real» = tiempo activo ÷ tiempo conectado. «Llega» y «Se va» son el promedio de la primera y la última conexión de cada día. El resumen de hoy se actualiza cada minuto.
                 </p>
@@ -610,11 +638,29 @@
                                     @endif
                                 </dd>
                             </div>
+                            <div class="uam-stat"><dt>En reuniones</dt><dd style="color: {{ Kind::Meeting->color() }};">{{ $fmt((int) $dayWork['meeting']) }} <span class="uam-sub">· {{ count($dayWork['meetings'] ?? []) }}</span></dd></div>
                             <div class="uam-stat"><dt>Horas extra</dt><dd style="color: {{ Kind::Overtime->color() }};">{{ $fmt((int) $dayWork['overtime']) }}</dd></div>
                             @if ($dayWork['guard'] > 0)
                                 <div class="uam-stat"><dt>Guardia</dt><dd style="color: {{ Kind::GuardActive->color() }};">{{ $fmt((int) $dayWork['guard']) }} <span class="uam-sub">· {{ $dayWork['guard_presence'] }}% presente</span></dd></div>
                             @endif
                         </dl>
+                        @if (($dayWork['meetings'] ?? []) !== [])
+                            <div>
+                                <div class="uam-section-title" style="margin-bottom: 6px;">Reuniones del día</div>
+                                <ul class="uam-meetings">
+                                    @foreach ($dayWork['meetings'] as $index => $dayMeeting)
+                                        <li wire:key="meeting-{{ $day['date'] }}-{{ $index }}">
+                                            <strong style="font-variant-numeric: tabular-nums;">{{ Clock::formatMinute($dayMeeting['start']) }} – {{ $dayMeeting['end'] !== null ? Clock::formatMinute($dayMeeting['end']) : 'en curso' }}</strong>
+                                            <span style="overflow: hidden; text-overflow: ellipsis;" title="{{ $dayMeeting['reason'] }}">{{ $dayMeeting['reason'] }}</span>
+                                            <span class="uam-sub" style="white-space: nowrap;">
+                                                {{ $dayMeeting['end'] !== null ? $fmt(max(0, $dayMeeting['end'] - $dayMeeting['start'])) : '' }}
+                                                @if (($dayMeeting['end_reason'] ?? null) === 'auto')<span class="uam-badge over">no marcó el fin</span>@endif
+                                            </span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
                     </div>
                 @endif
 

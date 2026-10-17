@@ -10,10 +10,10 @@
     $lunchClosed = ! $isToday || $nowMinute >= \App\Support\UserActivity\Workday\WorkdayConfig::lunchLatest();
 @endphp
 @if ($work['usage'] !== null)
-    <span class="uam-usage {{ $usageClass($work['usage']) }}" title="Activo en jornada ÷ jornada transcurrida, sin contar el almuerzo declarado">
+    <span class="uam-usage {{ $usageClass($work['usage']) }}" title="(Activo + reuniones, en jornada) ÷ jornada transcurrida, sin contar el almuerzo declarado">
         <span class="track"><span class="fill" style="width: {{ $work['usage'] }}%; display: block;"></span></span>{{ $work['usage'] }}%
     </span>
-    <div class="uam-sub">{{ $fmt((int) $work['work_active']) }} de {{ $fmt((int) $work['base']) }}</div>
+    <div class="uam-sub">{{ $fmt((int) $work['work_active'] + (int) $work['work_meeting']) }} de {{ $fmt((int) $work['base']) }}</div>
 @elseif ($isWorkday)
     <span class="uam-usage none" title="La jornada empieza a las {{ \App\Support\UserActivity\UserActivityClock::formatMinute($work['work_start']) }}">⏳ Aún no empieza</span>
 @else
@@ -25,6 +25,9 @@
     @endif
     @if ($isWorkday && ! $work['lunch_declared'] && $lunchClosed && $work['base'] > 0)
         <span class="uam-badge absent" title="No declaró almuerzo: esa hora cuenta como jornada y, si no trabajó, como ausencia">Sin almuerzo declarado</span>
+    @endif
+    @if ($work['meeting'] > 0)
+        <span class="uam-badge meeting" title="Tiempo en reuniones declaradas">👥 {{ $fmt((int) $work['meeting']) }} en reuniones</span>
     @endif
     @if ($work['overtime'] > 0)
         <span class="uam-badge extra" title="Uso del sistema fuera de su horario, en fin de semana o feriado">🌙 +{{ $fmt((int) $work['overtime']) }} extra</span>

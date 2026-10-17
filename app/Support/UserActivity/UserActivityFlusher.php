@@ -13,6 +13,7 @@ use App\Support\UserActivity\Workday\WorkdayConfig;
 use App\Support\UserActivity\Workday\WorkdayEvaluator;
 use App\Support\UserActivity\Workday\WorkDayPlanner;
 use App\Support\UserActivity\Workday\WorkdaySubjects;
+use App\Support\UserActivity\Workday\WorkMeetings;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -48,9 +49,10 @@ final class UserActivityFlusher
 
         try {
             WorkBreaks::closeExpired($now);
+            WorkMeetings::closeExpired($now);
         } catch (Throwable $exception) {
             /** Un fallo aquí no frena el volcado: se reintenta en el próximo minuto. */
-            Log::warning('user-activity:flush no pudo cerrar los almuerzos vencidos.', ['message' => $exception->getMessage()]);
+            Log::warning('user-activity:flush no pudo cerrar los almuerzos o reuniones vencidos.', ['message' => $exception->getMessage()]);
         }
 
         foreach (self::daysToFlush($now) as $day) {
@@ -114,6 +116,7 @@ final class UserActivityFlusher
         $counts = self::eventCounts($userIds, $start);
         $plans = $regime ? WorkDayPlanner::plans($subjects, $start, $start) : [];
         $lunches = $regime ? WorkBreaks::forUsers($subjects->keys()->all(), $start, $start) : [];
+        $meetings = $regime ? WorkMeetings::forUsers($subjects->keys()->all(), $start, $start) : [];
         $nextKey = UserActivityClock::dayKey($start->addDay());
         $timestamp = now();
         $rows = [];
@@ -131,11 +134,12 @@ final class UserActivityFlusher
                     $lunches[$userId][$date] ?? null,
                     UserActivityClock::now(),
                     $plan->spill !== [] ? $store->activityMinutes($userId, $nextKey) : [],
+                    $meetings[$userId][$date] ?? [],
                 )['summary'];
             }
 
             /** Sin conexión solo se guarda el día si había jornada o guardia que cumplir. */
-            if ($summary['online'] === 0 && ($workday === null || ($workday['base'] === 0 && $workday['guard'] === 0 && $workday['lunch'] === 0))) {
+            if ($summary['online'] === 0 && ($workday === null || ($workday['base'] === 0 && $workday['guard'] === 0 && $workday['lunch'] === 0 && $workday['meeting'] === 0))) {
                 continue;
             }
 
@@ -209,6 +213,7 @@ final class UserActivityFlusher
             'workday_kind' => null, 'work_base_minutes' => 0, 'work_active_minutes' => 0, 'work_idle_minutes' => 0,
             'work_absent_minutes' => 0, 'lunch_minutes' => 0, 'lunch_excess_minutes' => 0, 'overtime_minutes' => 0,
             'guard_minutes' => 0, 'guard_present_minutes' => 0, 'guard_active_minutes' => 0,
+            'meeting_minutes' => 0, 'work_meeting_minutes' => 0,
         ];
     }
 

@@ -133,8 +133,9 @@ class UserActivityMonitor extends Page
         if (WorkdayConfig::enabled()) {
             $lunch = WorkdayConfig::lunchMinutes();
             $legend = [
-                [WorkMinuteKind::WorkActive->color(), 'Jornada', UserActivityClock::formatMinute(WorkdayConfig::workStart()).' a '.UserActivityClock::formatMinute(WorkdayConfig::workEnd()).', lunes a viernes = 100 %', 'Internos y médicos. Uso de jornada = activo en jornada ÷ jornada transcurrida, sin el almuerzo declarado.'],
-                [WorkMinuteKind::Lunch->color(), 'Almuerzo', $lunch.' min declarados con el botón «Salir a almorzar»', 'Se inicia entre las '.UserActivityClock::formatMinute(WorkdayConfig::lunchEarliest()).' y las '.UserActivityClock::formatMinute(WorkdayConfig::lunchLatest()).'. Sin declararlo, esa hora cuenta como jornada.'],
+                [WorkMinuteKind::WorkActive->color(), 'Jornada', UserActivityClock::formatMinute(WorkdayConfig::workStart()).' a '.UserActivityClock::formatMinute(WorkdayConfig::workEnd()).', lunes a viernes = 100 %', 'Internos y médicos. Uso de jornada = (activo + reuniones, en jornada) ÷ jornada transcurrida, sin el almuerzo declarado.'],
+                [WorkMinuteKind::Lunch->color(), 'Almuerzo', $lunch.' min declarados con el botón «Salir a almorzar»', 'Se declara a cualquier hora de la jornada, una vez por día. Sin declararlo, esa hora cuenta como jornada.'],
+                [WorkMinuteKind::Meeting->color(), 'Reunión', 'Declarada con su motivo: cuenta como trabajo', 'Con el botón «Reunión». Puede cerrar sesión mientras dura. Fuera de horario cuenta como horas extra.'],
                 [WorkMinuteKind::LunchExcess->color(), 'Exceso', 'Más de '.$lunch.' min de almuerzo', WorkMinuteKind::LunchExcess->description()],
                 [WorkMinuteKind::WorkAbsent->color(), 'Ausente', 'En su horario sin el sistema abierto', WorkMinuteKind::WorkAbsent->description()],
                 [WorkMinuteKind::Overtime->color(), 'Horas extra', 'Fuera de horario, fin de semana o feriado', WorkMinuteKind::Overtime->description()],
@@ -183,7 +184,7 @@ class UserActivityMonitor extends Page
 
     public function filterState(string $state): void
     {
-        $this->liveState = in_array($state, ['connected', 'active', 'idle', 'background', 'offline', 'lunch', 'absent', 'all'], true) ? $state : 'connected';
+        $this->liveState = in_array($state, ['connected', 'active', 'idle', 'background', 'offline', 'lunch', 'meeting', 'absent', 'all'], true) ? $state : 'connected';
     }
 
     public static function canManageWorkdays(): bool

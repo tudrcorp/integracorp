@@ -11,6 +11,7 @@ namespace App\Support\UserActivity\Workday;
 enum WorkMinuteKind: string
 {
     case WorkActive = 'W';
+    case Meeting = 'M';
     case WorkIdle = 'I';
     case WorkAbsent = 'X';
     case Lunch = 'L';
@@ -26,6 +27,7 @@ enum WorkMinuteKind: string
     {
         return match ($this) {
             self::WorkActive => 'Activo en jornada',
+            self::Meeting => 'En reunión',
             self::WorkIdle => 'Inactivo en jornada',
             self::WorkAbsent => 'Ausente en jornada',
             self::Lunch => 'Almuerzo',
@@ -43,6 +45,7 @@ enum WorkMinuteKind: string
     {
         return match ($this) {
             self::WorkActive => 'En su horario y usando el sistema.',
+            self::Meeting => 'Reunión declarada con su motivo. En la jornada cuenta como trabajo; fuera de ella, como horas extra.',
             self::WorkIdle => 'En su horario, con el sistema abierto pero sin tocarlo o en otra pestaña.',
             self::WorkAbsent => 'En su horario y sin el sistema abierto, sin haber declarado almuerzo.',
             self::Lunch => 'Hora de almuerzo declarada (hasta 60 min).',
@@ -60,6 +63,7 @@ enum WorkMinuteKind: string
     {
         return match ($this) {
             self::WorkActive => '#16a34a',
+            self::Meeting => '#0d9488',
             self::WorkIdle => '#facc15',
             self::WorkAbsent => '#ef4444',
             self::Lunch => '#3b82f6',
@@ -86,7 +90,7 @@ enum WorkMinuteKind: string
     public static function legend(): array
     {
         return [
-            self::WorkActive, self::WorkIdle, self::WorkAbsent, self::Lunch, self::LunchExcess,
+            self::WorkActive, self::Meeting, self::WorkIdle, self::WorkAbsent, self::Lunch, self::LunchExcess,
             self::Overtime, self::GuardActive, self::GuardIdle, self::GuardAbsent, self::OffHoursIdle,
         ];
     }

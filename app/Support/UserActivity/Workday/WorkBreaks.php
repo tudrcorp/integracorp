@@ -6,6 +6,7 @@ namespace App\Support\UserActivity\Workday;
 
 use App\Models\User;
 use App\Models\UserWorkBreak;
+use App\Models\UserWorkMeeting;
 use App\Support\SecurityAudit;
 use App\Support\UserActivity\UserActivityClock;
 use App\Support\UserActivity\UserActivityTracker;
@@ -16,7 +17,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * El almuerzo que declara cada colaborador.
  *
- * - Uno por día, iniciado entre `lunch_earliest` y `lunch_latest` de un día laboral.
+ * - Uno por día, a cualquier hora de la jornada de un día laboral (hay quien
+ *   almuerza tarde por carga de trabajo).
+ * - No se puede estar almorzando y en reunión: salir a almorzar cierra la reunión.
  * - Iniciar y volver son idempotentes: un doble clic o dos pestañas no crean dos
  *   almuerzos ni mueven la hora de regreso.
  * - Si no marca el regreso, se cierra solo al terminar la jornada (`auto`) y el
@@ -72,8 +75,8 @@ final class WorkBreaks
         }
 
         return match (true) {
-            $minuteNow < WorkdayConfig::lunchEarliest() => [...$base, 'eligible' => true, 'state' => 'early', 'message' => 'Podrás salir a almorzar desde las '.$base['opens_at'].'.'],
-            $minuteNow >= WorkdayConfig::lunchLatest() => [...$base, 'eligible' => true, 'state' => 'missed', 'message' => 'No declaraste almuerzo hoy: esa hora cuenta como jornada.'],
+            $minuteNow < WorkdayConfig::lunchEarliest() => [...$base, 'eligible' => true, 'state' => 'early', 'message' => 'Podrás declarar tu almuerzo cuando empiece tu jornada, a las '.$base['opens_at'].'.'],
+            $minuteNow >= WorkdayConfig::lunchLatest() => [...$base, 'eligible' => true, 'state' => 'missed', 'message' => 'No declaraste almuerzo hoy: esa hora contó como jornada y, si no trabajaste, como ausencia.'],
             default => [...$base, 'eligible' => true, 'state' => 'ready', 'message' => 'Tienes '.$limit.' minutos. Al volver, pulsa «Volver del almuerzo».'],
         };
     }
@@ -98,7 +101,7 @@ final class WorkBreaks
         $minute = UserActivityClock::minuteOfDay($now);
 
         if ($minute < WorkdayConfig::lunchEarliest() || $minute >= WorkdayConfig::lunchLatest()) {
-            throw new WorkBreakException('El almuerzo se inicia entre las '.UserActivityClock::formatMinute(WorkdayConfig::lunchEarliest()).' y las '.UserActivityClock::formatMinute(WorkdayConfig::lunchLatest()).'.');
+            throw new WorkBreakException('El almuerzo se declara dentro de tu jornada, de '.UserActivityClock::formatMinute(WorkdayConfig::lunchEarliest()).' a '.UserActivityClock::formatMinute(WorkdayConfig::lunchLatest()).'.');
         }
 
         $existing = self::today((int) $user->id, $now);
@@ -125,6 +128,9 @@ final class WorkBreaks
             return $break;
         }
 
+        /** No se puede estar almorzando y en reunión: la reunión abierta termina aquí. */
+        WorkMeetings::end($user, UserWorkMeeting::END_LUNCH, $now);
+
         SecurityAudit::log('AUDIT_WORK_BREAK_STARTED', 'work-break.start', ['work_break_id' => $break->id, 'panel' => $panel], $user);
         UserActivityTracker::recordStep((int) $user->id, ['type' => 'lunch', 'label' => 'Salió a almorzar', 'panel' => $panel], $now->getTimestamp());
 
@@ -137,7 +143,7 @@ final class WorkBreaks
     public static function end(User $user, string $reason = UserWorkBreak::END_MANUAL, ?CarbonImmutable $now = null): ?UserWorkBreak
     {
         $now = ($now ?? UserActivityClock::now())->setTimezone(UserActivityClock::timezone());
-        $reason = in_array($reason, [UserWorkBreak::END_MANUAL, UserWorkBreak::END_PROMPT], true) ? $reason : UserWorkBreak::END_MANUAL;
+        $reason = in_array($reason, [UserWorkBreak::END_MANUAL, UserWorkBreak::END_PROMPT, UserWorkBreak::END_MEETING], true) ? $reason : UserWorkBreak::END_MANUAL;
 
         $break = DB::transaction(static function () use ($user, $now, $reason): ?UserWorkBreak {
             $break = UserWorkBreak::query()

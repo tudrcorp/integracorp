@@ -13,13 +13,15 @@ use Carbon\CarbonImmutable;
  *
  * Regla de cada minuto, en este orden:
  * 1. Dentro del almuerzo declarado: «Almuerzo» los primeros 60 min y «Exceso» después.
+ *    Dentro de una reunión declarada: «En reunión» (trabajo en la jornada, horas
+ *    extra fuera de ella), aunque no tenga el sistema abierto.
  * 2. Dentro de la franja laboral: activo, inactivo (abierto sin tocarlo u otra
  *    pestaña) o ausente (sin el sistema abierto). Lo que aún no pasó no cuenta.
  * 3. Dentro de una guardia: activo, conectado o sin conexión. Si la guardia es en
  *    fin de semana o feriado, su uso cuenta como horas extra.
  * 4. Fuera de todo: usarlo es «horas extra»; tenerlo abierto sin usarlo, no.
  *
- * Uso de jornada = activo en jornada ÷ (franja transcurrida − almuerzo declarado
+ * Uso de jornada = (activo + en reunión, en jornada) ÷ (franja transcurrida − almuerzo declarado
  * hasta 60 min). Sin almuerzo declarado esa hora sigue siendo jornada: si no se
  * trabajó, cuenta como ausencia.
  */
@@ -30,20 +32,22 @@ final class WorkDayClassifier
      * @param  array{start: int, end: int|null, reason?: string|null}|null  $lunch  Minutos del día.
      * @param  int  $cutoff  Primer minuto que aún no pasó (1440 para un día cerrado).
      * @param  array<int, string>  $nextMinutes  Minutos de mañana, para la parte de una guardia que cruza la medianoche.
+     * @param  list<array{start: int, end: int|null, reason: string, end_reason?: string|null}>  $meetings  Minutos del día.
      * @return array{summary: array<string, mixed>, codes: string, segments: list<array{from: int, to: int, kind: WorkMinuteKind, note: string}>, bands: list<array{from: int, to: int, type: string, label: string}>}
      */
-    public static function classify(WorkDayPlan $plan, array $minutes, ?array $lunch, int $cutoff = 1440, array $nextMinutes = [], int $nextCutoff = 1440): array
+    public static function classify(WorkDayPlan $plan, array $minutes, ?array $lunch, int $cutoff = 1440, array $nextMinutes = [], int $nextCutoff = 1440, array $meetings = []): array
     {
         $cutoff = max(0, min(1440, $cutoff));
         $lunchMinutes = WorkdayConfig::lunchMinutes();
         $lunchAt = self::lunchMap($plan, $lunch, $cutoff, $lunchMinutes);
+        $meetingAt = self::meetingMap($plan, $meetings, $cutoff);
         $guardAt = self::guardMap($plan->guards);
         $exempt = $plan->kind === WorkDayKind::Exempt;
 
         $codes = str_repeat(WorkMinuteKind::Free->value, 1440);
         $notes = [];
         $totals = [
-            'window' => 0, 'work_active' => 0, 'work_idle' => 0, 'work_absent' => 0, 'lunch' => 0, 'lunch_excess' => 0,
+            'window' => 0, 'work_active' => 0, 'meeting' => 0, 'work_meeting' => 0, 'work_idle' => 0, 'work_absent' => 0, 'lunch' => 0, 'lunch_excess' => 0,
             'overtime' => 0, 'guard' => 0, 'guard_present' => 0, 'guard_active' => 0,
         ];
 
@@ -59,6 +63,14 @@ final class WorkDayClassifier
 
             if (isset($lunchAt[$minute])) {
                 $kind = $lunchAt[$minute];
+            } elseif (isset($meetingAt[$minute])) {
+                $kind = WorkMinuteKind::Meeting;
+                $notes[$minute] = $meetingAt[$minute].(! $exempt && ! $plan->inWork($minute) && ($guard === null || $guard['overtime']) ? ' · cuenta como horas extra' : '');
+                self::countMeeting($totals, $plan, $minute, $guard, $owned, $exempt);
+
+                $codes[$minute] = $kind->value;
+
+                continue;
             } elseif ($exempt) {
                 $kind = self::exemptKind($state);
             } elseif ($plan->inWork($minute)) {
@@ -91,6 +103,7 @@ final class WorkDayClassifier
         }
 
         $base = max(0, $totals['window'] - $totals['lunch']);
+        $worked = $totals['work_active'] + $totals['work_meeting'];
         $lunchOpen = $lunch !== null && ($lunch['end'] ?? null) === null && $plan->lunchAllowed();
 
         return [
@@ -104,7 +117,7 @@ final class WorkDayClassifier
                 'work_end' => $plan->workEnd,
                 'base' => $base,
                 'expected' => $plan->hasJornada() ? $plan->windowMinutes() - $lunchMinutes : 0,
-                'usage' => $base > 0 ? min(100, (int) round($totals['work_active'] * 100 / $base)) : null,
+                'usage' => $base > 0 ? min(100, (int) round($worked * 100 / $base)) : null,
                 'guard_presence' => $totals['guard'] > 0 ? (int) round($totals['guard_present'] * 100 / $totals['guard']) : null,
                 'lunch_open' => $lunchOpen,
                 'lunch_start' => $lunch['start'] ?? null,
@@ -112,6 +125,8 @@ final class WorkDayClassifier
                 'lunch_reason' => $lunch['reason'] ?? null,
                 'lunch_declared' => $lunch !== null,
                 'has_guard' => $plan->ownsGuards(),
+                'meetings' => $meetings,
+                'meeting_open' => collect($meetings)->contains(static fn (array $meeting): bool => ($meeting['end'] ?? null) === null),
             ],
             'codes' => $codes,
             'segments' => self::segments($codes, $notes, $lunch),
@@ -139,6 +154,70 @@ final class WorkDayClassifier
         }
 
         return $map;
+    }
+
+    /**
+     * Minuto => motivo de la reunión. Una reunión abierta que empezó en la
+     * jornada no suma más allá de la hora de salida mientras siga abierta: si se
+     * olvidó cerrarla, la tarde no se vuelve horas extra.
+     *
+     * @param  list<array{start: int, end: int|null, reason: string, end_reason?: string|null}>  $meetings
+     * @return array<int, string>
+     */
+    private static function meetingMap(WorkDayPlan $plan, array $meetings, int $cutoff): array
+    {
+        $map = [];
+
+        foreach ($meetings as $meeting) {
+            $start = max(0, (int) $meeting['start']);
+            $end = $meeting['end'] ?? null;
+
+            if ($end === null) {
+                $end = $plan->hasJornada() && $start < (int) $plan->workEnd ? min($cutoff, (int) $plan->workEnd) : $cutoff;
+            }
+
+            $end = min((int) $end, $cutoff, 1440);
+            $note = 'Reunión: '.$meeting['reason'].(($meeting['end_reason'] ?? null) === 'auto' ? ' · no marcó el fin' : '');
+
+            for ($minute = $start; $minute < $end; $minute++) {
+                $map[$minute] ??= $note;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * Una reunión en la jornada es trabajo; en una guardia, presencia; fuera de todo, horas extra.
+     *
+     * @param  array<string, int>  $totals
+     * @param  array{owner: string, label: string, overtime: bool}|null  $guard
+     */
+    private static function countMeeting(array &$totals, WorkDayPlan $plan, int $minute, ?array $guard, bool $owned, bool $exempt): void
+    {
+        $totals['meeting']++;
+
+        if ($exempt) {
+            return;
+        }
+
+        if ($plan->inWork($minute)) {
+            $totals['work_meeting']++;
+
+            return;
+        }
+
+        if ($guard !== null && ! $guard['overtime']) {
+            if ($owned) {
+                $totals['guard']++;
+                $totals['guard_present']++;
+                $totals['guard_active']++;
+            }
+
+            return;
+        }
+
+        $totals['overtime']++;
     }
 
     /**

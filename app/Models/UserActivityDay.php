@@ -42,6 +42,8 @@ class UserActivityDay extends Model
         'guard_minutes',
         'guard_present_minutes',
         'guard_active_minutes',
+        'meeting_minutes',
+        'work_meeting_minutes',
     ];
 
     protected function casts(): array
@@ -68,6 +70,8 @@ class UserActivityDay extends Model
             'guard_minutes' => 'integer',
             'guard_present_minutes' => 'integer',
             'guard_active_minutes' => 'integer',
+            'meeting_minutes' => 'integer',
+            'work_meeting_minutes' => 'integer',
         ];
     }
 
