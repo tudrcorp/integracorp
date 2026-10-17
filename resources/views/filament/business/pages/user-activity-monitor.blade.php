@@ -181,6 +181,30 @@
         .uam-absences { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
         .uam-absences li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--uam-bg); border: 1px solid var(--uam-border); }
         .uam-legend .band { width: 18px; height: 10px; border-radius: 3px; display: inline-block; }
+        .uam-tip-target { cursor: help; transition: opacity .12s; }
+        .uam-dayline:hover .uam-tip-target:not(:hover) { opacity: .82; }
+        .uam-tip { position: fixed; left: -9999px; top: -9999px; z-index: 60; width: max-content; max-width: 300px; pointer-events: none; padding: 11px 13px 11px 15px; border-radius: 12px;
+                   background: var(--uam-bg); color: var(--uam-text); border: 1px solid var(--uam-border); box-shadow: 0 18px 40px -12px rgba(15, 23, 42, .35), 0 2px 6px rgba(15, 23, 42, .08);
+                   display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; line-height: 1.35; overflow: hidden; }
+        .uam-tip::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--tip-color, #94a3b8); }
+        .dark .uam-tip { box-shadow: 0 18px 40px -12px rgba(0, 0, 0, .7), 0 0 0 1px rgba(148, 163, 184, .08); }
+        .uam-tip-head { display: flex; align-items: center; gap: 8px; }
+        .uam-tip-head strong { font-size: 13.5px; font-weight: 800; }
+        .uam-tip-dot { width: 10px; height: 10px; border-radius: 999px; flex-shrink: 0; background: var(--tip-color, #94a3b8); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tip-color, #94a3b8) 25%, transparent); }
+        .uam-tip-duration { margin-left: auto; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums;
+                            background: color-mix(in srgb, var(--tip-color, #94a3b8) 16%, transparent); color: var(--uam-text); white-space: nowrap; }
+        .uam-tip-range { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .uam-tip-range svg { width: 15px; height: 15px; color: var(--uam-muted); flex-shrink: 0; }
+        .uam-tip-note { padding: 6px 8px; border-radius: 8px; background: var(--uam-soft); border: 1px solid var(--uam-border); font-weight: 600; }
+        .uam-tip-impact { display: inline-flex; align-self: flex-start; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+        .uam-tip-impact::before { content: ''; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+        .uam-tip-impact.is-good { background: rgba(22, 163, 74, .13); color: #15803d; }
+        .uam-tip-impact.is-bad { background: rgba(239, 68, 68, .13); color: #b91c1c; }
+        .uam-tip-impact.is-extra { background: rgba(217, 70, 239, .13); color: #a21caf; }
+        .uam-tip-impact.is-neutral { background: rgba(100, 116, 139, .13); color: var(--uam-muted); }
+        .dark .uam-tip-impact.is-good { color: #86efac; } .dark .uam-tip-impact.is-bad { color: #fca5a5; } .dark .uam-tip-impact.is-extra { color: #f0abfc; }
+        .uam-tip-desc { color: var(--uam-muted); font-size: 11.5px; }
+        [x-cloak] { display: none !important; }
         @media (max-width: 768px) { .uam-search { margin-left: 0; width: 100%; min-width: 0; } }
     </style>
 
@@ -190,33 +214,61 @@
          * guardias (índigo tenue), y encima cada tramo con el color de su categoría.
          * Sin jornada (días anteriores, agentes): los estados de conexión de siempre.
          */
-        $dayline = function (array $segments, bool $big = false, bool $showNow = false, array $bands = []) use ($nowMinute): string {
+        /**
+         * Datos del tooltip de un tramo: van en atributos `data-tip-*` y los dibuja
+         * una sola tarjeta flotante (ver `.uam-tip`), no el `<title>` del navegador.
+         */
+        $tip = function (string $label, string $color, int $from, int $to, string $note = '', string $description = '', array $impact = ['', 'neutral']): string {
+            $minutes = max(1, $to - $from);
+
+            return ' data-tip-label="'.e($label).'" data-tip-color="'.e($color).'"'
+                .' data-tip-range="'.e(Clock::formatMinute($from).' – '.Clock::formatMinute(min(1440, $to))).'"'
+                .' data-tip-duration="'.e(Clock::formatDuration($minutes)).'"'
+                .' data-tip-note="'.e($note).'" data-tip-desc="'.e($description).'"'
+                .' data-tip-impact="'.e($impact[0]).'" data-tip-tone="'.e($impact[1]).'"';
+        };
+
+        /**
+         * Barra del día. Con jornada: de fondo la franja laboral (verde tenue) y las
+         * guardias (índigo tenue), y encima cada tramo con el color de su categoría.
+         * Sin jornada (días anteriores, agentes): los estados de conexión de siempre.
+         */
+        $dayline = function (array $segments, bool $big = false, bool $showNow = false, array $bands = []) use ($nowMinute, $tip): string {
             $rects = '';
             foreach ($bands as $band) {
-                $fill = match ($band['type']) {
-                    'work' => 'rgba(22,163,74,.13)',
-                    'guard' => 'rgba(79,70,229,.15)',
-                    default => 'rgba(217,70,239,.12)',
+                [$fill, $edge, $bandLabel, $bandDescription] = match ($band['type']) {
+                    'work' => ['rgba(22,163,74,.13)', 'rgba(22,163,74,.55)', 'Franja de jornada', 'Horario en que debe estar trabajando. Lo que aún no pasa se ve vacío.'],
+                    'guard' => ['rgba(79,70,229,.15)', 'rgba(79,70,229,.55)', 'Franja de guardia', 'Guardia asignada: se mide la presencia, no se penaliza la inactividad.'],
+                    default => ['rgba(217,70,239,.12)', 'rgba(217,70,239,.55)', 'Guardia en día libre', 'Guardia en fin de semana o feriado: su uso cuenta como horas extra.'],
                 };
-                $rects .= '<rect x="'.$band['from'].'" y="0" width="'.max(1, $band['to'] - $band['from']).'" height="10" fill="'.$fill.'"><title>'.e($band['label']).'</title></rect>'
-                    .'<rect x="'.$band['from'].'" y="0" width="2" height="10" fill="'.($band['type'] === 'work' ? 'rgba(22,163,74,.55)' : 'rgba(79,70,229,.55)').'"></rect>'
-                    .'<rect x="'.max(0, $band['to'] - 2).'" y="0" width="2" height="10" fill="'.($band['type'] === 'work' ? 'rgba(22,163,74,.55)' : 'rgba(79,70,229,.55)').'"></rect>';
+                $rects .= '<rect class="uam-tip-target" x="'.$band['from'].'" y="0" width="'.max(1, $band['to'] - $band['from']).'" height="10" fill="'.$fill.'"'
+                    .$tip($bandLabel, $edge, $band['from'], $band['to'], $band['type'] === 'work' ? '' : $band['label'], $bandDescription).'></rect>'
+                    .'<rect x="'.$band['from'].'" y="0" width="2" height="10" fill="'.$edge.'" pointer-events="none"></rect>'
+                    .'<rect x="'.max(0, $band['to'] - 2).'" y="0" width="2" height="10" fill="'.$edge.'" pointer-events="none"></rect>';
             }
             foreach ($segments as $segment) {
                 $kind = $segment['kind'] ?? null;
                 $color = $kind instanceof Kind ? $kind->color() : $segment['state']->color();
                 $label = $kind instanceof Kind ? $kind->label() : $segment['state']->label();
-                $minutes = $segment['to'] - $segment['from'] + 1;
+                $description = $kind instanceof Kind ? $kind->description() : $segment['state']->description();
                 $note = trim((string) ($segment['note'] ?? ''));
-                $rects .= '<rect x="'.$segment['from'].'" y="0" width="'.$minutes.'" height="10" fill="'.$color.'"><title>'
-                    .e($label.' · '.Clock::formatMinute($segment['from']).' – '.Clock::formatMinute($segment['to'] + 1).' · '.Clock::formatDuration($minutes).($note !== '' ? ' · '.$note : '')).'</title></rect>';
+                $impact = $kind instanceof Kind ? $kind->impact() : ['', 'neutral'];
+
+                if ($kind === Kind::Meeting && str_contains($note, 'horas extra')) {
+                    $impact = ['Suma a horas extra', 'extra'];
+                    $note = trim(str_replace('· cuenta como horas extra', '', $note));
+                }
+
+                $rects .= '<rect class="uam-tip-target" x="'.$segment['from'].'" y="0" width="'.($segment['to'] - $segment['from'] + 1).'" height="10" fill="'.$color.'"'
+                    .$tip($label, $color, $segment['from'], $segment['to'] + 1, $note, $description, $impact).'></rect>';
             }
             if ($showNow) {
-                $rects .= '<rect x="'.$nowMinute.'" y="0" width="3" height="10" fill="#0ea5e9"><title>Ahora</title></rect>';
+                $rects .= '<rect class="uam-tip-target" x="'.max(0, $nowMinute - 2).'" y="0" width="5" height="10" fill="#0ea5e9"'
+                    .' data-tip-label="Ahora" data-tip-color="#0ea5e9" data-tip-range="'.e(Clock::formatMinute($nowMinute)).'" data-tip-duration="" data-tip-note="" data-tip-desc="Lo que está a la derecha aún no ha pasado." data-tip-impact="" data-tip-tone="neutral"></rect>';
             }
             /** Guías cada 3 h, más marcadas a las 6, 12 y 18 h: coinciden con la escala de horas. */
             foreach ([180, 360, 540, 720, 900, 1080, 1260] as $guide) {
-                $rects .= '<rect x="'.$guide.'" y="0" width="1.5" height="10" fill="'.($guide % 360 === 0 ? 'rgba(100,116,139,.35)' : 'rgba(100,116,139,.18)').'"></rect>';
+                $rects .= '<rect x="'.$guide.'" y="0" width="1.5" height="10" pointer-events="none" fill="'.($guide % 360 === 0 ? 'rgba(100,116,139,.35)' : 'rgba(100,116,139,.18)').'"></rect>';
             }
 
             return '<svg class="uam-dayline'.($big ? ' big' : '').'" viewBox="0 0 1440 10" preserveAspectRatio="none" role="img" aria-label="Actividad del día">'.$rects.'</svg>';
@@ -240,7 +292,76 @@
         };
     @endphp
 
-    <div class="uam" @if ($tab === 'live' && ! $paused) wire:poll.5s.visible @endif>
+    <div
+        class="uam"
+        @if ($tab === 'live' && ! $paused) wire:poll.5s.visible @endif
+        x-data="{
+            tip: { show: false, label: '', range: '', duration: '', note: '', desc: '', impact: '', tone: 'neutral' },
+            tipTarget: null,
+            {{-- Una sola tarjeta para toda la página. El color y la posición se ponen
+                 directo en el elemento: un x-bind:style reemplazaría el style entero
+                 en cada movimiento y la tarjeta saltaría (se veía doble). --}}
+            showTip(event) {
+                const target = event.target.closest ? event.target.closest('.uam-tip-target') : null;
+
+                if (! target) {
+                    this.hideTip();
+                    return;
+                }
+
+                if (target !== this.tipTarget) {
+                    const data = target.dataset;
+                    this.tipTarget = target;
+                    this.tip = { show: true, label: data.tipLabel, range: data.tipRange, duration: data.tipDuration, note: data.tipNote, desc: data.tipDesc, impact: data.tipImpact, tone: data.tipTone };
+                    this.$refs.tip.style.setProperty('--tip-color', data.tipColor || '#94a3b8');
+                }
+
+                this.$nextTick(() => this.placeTip(event));
+            },
+            hideTip() {
+                if (! this.tip.show) return;
+
+                this.tip.show = false;
+                this.tipTarget = null;
+                this.$refs.tip.style.left = '-9999px';
+                this.$refs.tip.style.top = '-9999px';
+            },
+            placeTip(event) {
+                const el = this.$refs.tip;
+
+                if (! el || ! this.tip.show) return;
+
+                const width = el.offsetWidth;
+                const height = el.offsetHeight;
+                let x = event.clientX + 16;
+                let y = event.clientY + 18;
+
+                if (x + width > window.innerWidth - 8) x = event.clientX - width - 16;
+                if (y + height > window.innerHeight - 8) y = event.clientY - height - 14;
+
+                el.style.left = Math.max(8, x) + 'px';
+                el.style.top = Math.max(8, y) + 'px';
+            },
+        }"
+        x-on:mousemove="showTip($event)"
+        x-on:mouseleave="hideTip()"
+        x-on:scroll.window.passive="hideTip()"
+    >
+        <div class="uam-tip" wire:ignore x-ref="tip" x-show="tip.show" x-cloak role="tooltip">
+            <div class="uam-tip-head">
+                <i class="uam-tip-dot"></i>
+                <strong x-text="tip.label"></strong>
+                <span class="uam-tip-duration" x-show="tip.duration" x-text="tip.duration"></span>
+            </div>
+            <div class="uam-tip-range">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .2.08.39.22.53l3 3a.75.75 0 1 0 1.06-1.06l-2.78-2.78V5Z" clip-rule="evenodd"/></svg>
+                <span x-text="tip.range"></span>
+            </div>
+            <div class="uam-tip-note" x-show="tip.note" x-text="tip.note"></div>
+            <div class="uam-tip-impact" x-show="tip.impact" x-bind:class="'is-' + tip.tone" x-text="tip.impact"></div>
+            <div class="uam-tip-desc" x-show="tip.desc" x-text="tip.desc"></div>
+        </div>
+
         <div class="uam-bar-top">
             <div class="uam-seg" role="tablist">
                 <button type="button" role="tab" class="{{ $tab === 'live' ? 'on' : '' }}" wire:click="setTab('live')" aria-selected="{{ $tab === 'live' ? 'true' : 'false' }}">
