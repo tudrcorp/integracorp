@@ -67,15 +67,37 @@
             max-width: 100%;
             text-align: center;
         }
-        .doc-footer {
+        table.doc-closing {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            page-break-inside: avoid;
+        }
+        td.doc-closing-cell {
+            padding: 0;
+        }
+        table.doc-footer {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            page-break-inside: avoid;
+        }
+        table.doc-footer td {
+            padding: 4mm 8mm 8mm 8mm;
             text-align: center;
             font-size: 6pt;
+            line-height: 1.5;
             color: #64748b;
-            margin: 4mm 8mm 8mm 8mm;
-            padding-top: 8px;
+        }
+        .doc-footer-rule {
             border-top: 1px solid #e2e8f0;
-            page-break-inside: avoid;
-            word-break: break-all;
+            padding-top: 8px;
+        }
+        .doc-footer-key {
+            font-family: DejaVu Sans Mono, monospace;
+            font-size: 5pt;
+            color: #94a3b8;
+            word-wrap: break-word;
         }
         .logo-row {
             text-align: center;
@@ -162,14 +184,28 @@
         </table>
     </div>
 
-    @if (! empty($footerBannerDataUri))
-        <div class="footer-banner">
-            <img src="{{ $footerBannerDataUri }}" alt="Tu Doctor en Casa" />
-        </div>
-    @endif
+    {{-- Banner y pie en una sola celda: DomPDF no parte una celda, así que nunca quedan en páginas distintas. --}}
+    <table class="doc-closing">
+        <tr>
+            <td class="doc-closing-cell">
+                @if (! empty($footerBannerDataUri))
+                    <div class="footer-banner">
+                        <img src="{{ $footerBannerDataUri }}" alt="Tu Doctor en Casa" />
+                    </div>
+                @endif
 
-    <footer class="doc-footer">
-        Generado: {{ $generatedAtLabel }} - {{ $encryptedGeneratedAt }} · INTEGRACORP
-    </footer>
+                <table class="doc-footer">
+                    <tr>
+                        <td>
+                            <div class="doc-footer-rule">Generado: {{ $generatedAtLabel }} · INTEGRACORP</div>
+                            @if (! empty($encryptedGeneratedAt))
+                                <div class="doc-footer-key">{{ $encryptedGeneratedAt }}</div>
+                            @endif
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

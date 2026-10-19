@@ -12,6 +12,7 @@ use App\Jobs\MarkHelpdeskSlaBreachesJob;
 use App\Jobs\PrepareAffiliationCorporateRenovations;
 use App\Jobs\PrepareAffiliationRenovations;
 use App\Jobs\ReconcileOrphanedMassNotificationEmails;
+use App\Jobs\RegenerateSupplierReportPdfJob;
 use App\Jobs\SendCollaboratorAnniversaryNotification;
 use App\Jobs\SendDailyAuditSummary;
 use App\Jobs\SendIndividualQuoteDayFiveFollowUp;
@@ -213,6 +214,13 @@ Schedule::command('telemedicine:audit-patient-case-identity')
 Schedule::job(new SendOperationInventoryLowStockAlert, 'system')
     ->dailyAt('8:00')
     ->when($operationInventoryLowStockIsActive);
+
+/**
+ * Reporte de proveedores (Operaciones): deja el PDF listo en disco antes de la jornada.
+ * El observer de Supplier ya lo regenera al editar un proveedor; esto cubre cambios que no pasan
+ * por el modelo (estados, ciudades, clasificaciones o updates masivos). Si nada cambió, no hace nada.
+ */
+Schedule::job(new RegenerateSupplierReportPdfJob, 'system')->dailyAt('5:30');
 
 /**
  * Base de ubicación por IP del monitor en vivo (DB-IP «IP to City Lite»).
