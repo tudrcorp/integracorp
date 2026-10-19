@@ -75,6 +75,6 @@ class EditAffiliationCorporate extends EditRecord
 
     protected function getRedirectUrl(): string
     {
-        return $this->getResource()::getUrl('index');
+        return $this->getResource()::getUrl('view', ['record' => $this->getRecord()]);
     }
 }

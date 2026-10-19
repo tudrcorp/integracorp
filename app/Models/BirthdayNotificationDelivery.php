@@ -15,6 +15,8 @@ class BirthdayNotificationDelivery extends Model
         'full_name',
         'email',
         'phone',
+        'document_number',
+        'birth_date',
         'delivery_date',
         'email_status',
         'email_sent_at',
@@ -28,6 +30,7 @@ class BirthdayNotificationDelivery extends Model
     {
         return [
             'delivery_date' => 'date',
+            'birth_date' => 'date',
             'email_status' => MassNotificationDeliveryStatus::class,
             'whatsapp_status' => MassNotificationDeliveryStatus::class,
             'email_sent_at' => 'datetime',

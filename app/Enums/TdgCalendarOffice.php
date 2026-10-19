@@ -9,6 +9,7 @@ enum TdgCalendarOffice: string
     case CentralLido = 'central_lido';
     case FarmadocSanBernardino = 'farmadoc_san_bernardino';
     case FarmadocLasDelicias = 'farmadoc_las_delicias';
+    case HomeOffice = 'home_office';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum TdgCalendarOffice: string
             self::CentralLido => 'Centro Lido',
             self::FarmadocSanBernardino => 'Farmadoc (San Bernardino)',
             self::FarmadocLasDelicias => 'Farmadoc (Las Delicias)',
+            self::HomeOffice => 'Home Office',
         };
     }
 

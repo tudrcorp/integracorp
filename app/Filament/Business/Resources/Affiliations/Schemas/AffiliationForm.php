@@ -18,6 +18,7 @@ use App\Models\Region;
 use App\Models\State;
 use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
 use App\Support\AffiliationAffiliateTypeSynchronizer;
+use App\Support\Affiliations\AffiliationContactPayload;
 use App\Support\Affiliations\AffiliationIndividualQuoteField;
 use App\Support\Affiliations\AffiliationServiceProvidersField;
 use App\Support\Filament\FilamentIosButton;
@@ -636,6 +637,78 @@ class AffiliationForm
                                                     ->inlineLabel(false),
                                             ])->columnSpanFull()->hiddenOn('edit'),
                                     ]),
+                                Fieldset::make('Contactos adicionales')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->hiddenOn('create')
+                                    ->schema([
+                                        Repeater::make('affiliationContacts')
+                                            ->relationship()
+                                            ->label('Contactos')
+                                            ->helperText('El teléfono y el correo de arriba siguen siendo el contacto principal del titular. Agrega aquí otras personas o números.')
+                                            ->schema([
+                                                TextInput::make('name')
+                                                    ->label('Nombre del contacto')
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('name', $state.toUpperCase());
+                                                    JS)
+                                                    ->live(onBlur: true)
+                                                    ->prefixIcon('heroicon-s-user')
+                                                    ->maxLength(255)
+                                                    ->placeholder('Ej. María Pérez')
+                                                    ->required(fn (Get $get): bool => filled($get('phone')) || filled($get('email')) || filled($get('relationship')))
+                                                    ->validationMessages([
+                                                        'required' => 'Indica el nombre del contacto.',
+                                                    ]),
+                                                TextInput::make('relationship')
+                                                    ->label('Relación')
+                                                    ->afterStateUpdatedJs(<<<'JS'
+                                                        $set('relationship', $state.toUpperCase());
+                                                    JS)
+                                                    ->live(onBlur: true)
+                                                    ->prefixIcon('heroicon-s-user-group')
+                                                    ->maxLength(100)
+                                                    ->placeholder('Ej. esposa, trabajo, emergencia'),
+                                                TextInput::make('phone')
+                                                    ->label('Teléfono')
+                                                    ->tel()
+                                                    ->prefixIcon('heroicon-s-phone')
+                                                    ->maxLength(30)
+                                                    ->placeholder('+584121234567')
+                                                    ->helperText('Incluye el código de país.')
+                                                    ->required(fn (Get $get): bool => blank($get('email')) && (filled($get('name')) || filled($get('relationship'))))
+                                                    ->validationMessages([
+                                                        'required' => 'Indica un teléfono o un correo.',
+                                                    ]),
+                                                TextInput::make('email')
+                                                    ->label('Correo electrónico')
+                                                    ->email()
+                                                    ->prefixIcon('heroicon-s-envelope')
+                                                    ->maxLength(255)
+                                                    ->placeholder('contacto@ejemplo.com')
+                                                    ->rule('regex:/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/')
+                                                    ->required(fn (Get $get): bool => blank($get('phone')) && (filled($get('name')) || filled($get('relationship'))))
+                                                    ->validationMessages([
+                                                        'required' => 'Indica un teléfono o un correo.',
+                                                        'email' => 'El correo no es válido.',
+                                                        'regex' => 'El correo no debe contener mayúsculas, espacios, ñ, ni caracteres especiales no permitidos.',
+                                                    ]),
+                                            ])
+                                            ->columns(['default' => 1, 'lg' => 2])
+                                            ->defaultItems(0)
+                                            ->minItems(0)
+                                            ->maxItems(8)
+                                            ->addActionLabel('Agregar contacto')
+                                            ->reorderable()
+                                            ->orderColumn('sort_order')
+                                            ->mutateRelationshipDataBeforeCreateUsing(fn (array $data): ?array => AffiliationContactPayload::discardIfEmpty($data))
+                                            ->mutateRelationshipDataBeforeSaveUsing(fn (array $data): ?array => AffiliationContactPayload::discardIfEmpty($data))
+                                            ->collapsible()
+                                            ->itemLabel(fn (array $state): string => filled($state['name'] ?? null)
+                                                ? (string) $state['name']
+                                                : 'Nuevo contacto')
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
                             ]),
                         Tab::make('Afiliados')
                             ->icon('heroicon-o-users')

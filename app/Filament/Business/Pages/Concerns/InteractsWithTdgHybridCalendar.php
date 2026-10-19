@@ -13,8 +13,12 @@ use App\Models\TdgCalendarDepartmentAssignment;
 use App\Models\TdgCalendarDepartmentColaboradorAssignment;
 use App\Models\TdgCalendarGuardAssignment;
 use App\Models\TdgCalendarOfficeAssignment;
+use App\Models\User;
+use App\Support\Filament\UserNavigationAccess;
+use App\Support\TdgCalendar\TdgCalendarGuardAttendanceNotifier;
 use App\Support\TdgCalendar\TdgCalendarOfficeAttendanceNotifier;
 use App\Support\TdgCalendarDepartmentCatalog;
+use App\Support\TdgCalendarEditAuthorization;
 use App\Support\TdgCalendarOfficeCatalog;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
@@ -114,6 +118,26 @@ trait InteractsWithTdgHybridCalendar
      */
     public array $pendingOfficeAttendanceNewDates = [];
 
+    /**
+     * @var array<int, int>
+     */
+    public array $pendingGuardAttendanceColaboradorIds = [];
+
+    /**
+     * @var array<int, string>
+     */
+    public array $pendingGuardAttendanceDates = [];
+
+    /**
+     * @var array<int, int>
+     */
+    public array $pendingGuardAttendanceNewColaboradorIds = [];
+
+    /**
+     * @var array<int, string>
+     */
+    public array $pendingGuardAttendanceNewDates = [];
+
     /** @var array<int, array{id:int,name:string,email:string|null,avatar_url:string|null,initials:string}>|null */
     protected ?array $collaboratorOptionsCache = null;
 
@@ -153,11 +177,161 @@ trait InteractsWithTdgHybridCalendar
         $this->pendingOfficeAttendanceDates = [];
         $this->pendingOfficeAttendanceNewColaboradorIds = [];
         $this->pendingOfficeAttendanceNewDates = [];
+        $this->pendingGuardAttendanceColaboradorIds = [];
+        $this->pendingGuardAttendanceDates = [];
+        $this->pendingGuardAttendanceNewColaboradorIds = [];
+        $this->pendingGuardAttendanceNewDates = [];
+        $this->modalWorkspace = $this->tdgCalendarWorkspaces()[0];
     }
 
     public function calendarDayInteractionsEnabled(): bool
     {
         return true;
+    }
+
+    /**
+     * @return list<'offices'|'guards'|'departments'>
+     */
+    public function tdgCalendarWorkspaces(): array
+    {
+        return ['offices'];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function tdgCalendarFilterCategories(): array
+    {
+        $labels = [
+            'offices' => 'Guardias oficinas',
+            'guards' => 'Guardias operaciones',
+            'departments' => 'Guardias sistema',
+        ];
+
+        return array_intersect_key($labels, array_flip($this->tdgCalendarWorkspaces()));
+    }
+
+    public function showsOfficeFilter(): bool
+    {
+        if (! in_array('offices', $this->tdgCalendarWorkspaces(), true)) {
+            return false;
+        }
+
+        return count($this->tdgCalendarWorkspaces()) === 1 || $this->agendaFilterCategory === 'offices';
+    }
+
+    public function showsGuardShiftFilter(): bool
+    {
+        if (! in_array('guards', $this->tdgCalendarWorkspaces(), true)) {
+            return false;
+        }
+
+        return count($this->tdgCalendarWorkspaces()) === 1 || $this->agendaFilterCategory === 'guards';
+    }
+
+    public function canEditGuardiaOficinas(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && TdgCalendarEditAuthorization::allows($user);
+    }
+
+    public function canEditGuardiasOperaciones(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && TdgCalendarEditAuthorization::allowsOperationsGuards($user);
+    }
+
+    public function canSendGuardAttendanceMail(): bool
+    {
+        if ($this->canEditGuardiasOperaciones()) {
+            return true;
+        }
+
+        $user = Auth::user();
+
+        return $user instanceof User && UserNavigationAccess::isSuperAdmin($user);
+    }
+
+    public function tdgCalendarReadOnlyNotice(): string
+    {
+        if ($this->tdgCalendarIsOperationsGuards()) {
+            return 'Estás consultando la guardia. Solo Becky Acosta y los superadministradores pueden editarla.';
+        }
+
+        return 'Estás consultando la guardia. Solo Andreína Reyes, Katty Domingues y los superadministradores pueden editarla.';
+    }
+
+    public function canEditCurrentTdgCalendar(): bool
+    {
+        if (! Auth::check()) {
+            return false;
+        }
+
+        if ($this->tdgCalendarIsOperationsGuards()) {
+            return $this->canEditGuardiasOperaciones();
+        }
+
+        $workspaces = $this->tdgCalendarWorkspaces();
+
+        if (in_array('offices', $workspaces, true) || in_array('departments', $workspaces, true)) {
+            return $this->canEditGuardiaOficinas();
+        }
+
+        return false;
+    }
+
+    private function tdgCalendarIsOperationsGuards(): bool
+    {
+        $workspaces = $this->tdgCalendarWorkspaces();
+
+        return in_array('guards', $workspaces, true)
+            && ! in_array('offices', $workspaces, true)
+            && ! in_array('departments', $workspaces, true);
+    }
+
+    private function denyCurrentTdgCalendarEdit(): bool
+    {
+        if ($this->canEditCurrentTdgCalendar()) {
+            return false;
+        }
+
+        $body = $this->tdgCalendarIsOperationsGuards()
+            ? 'Solo Becky Acosta y los superadministradores pueden modificar Guardias Operaciones.'
+            : 'Solo Andreína Reyes, Katty Domingues y los superadministradores pueden modificar Guardia Oficinas.';
+
+        Notification::make()
+            ->title('Sin permiso para editar')
+            ->body($body)
+            ->danger()
+            ->send();
+
+        return true;
+    }
+
+    private function denyGuardAttendanceNotify(): bool
+    {
+        if ($this->canSendGuardAttendanceMail()) {
+            return false;
+        }
+
+        return $this->denyTdgWorkspaceEdit('guards');
+    }
+
+    private function denyTdgWorkspaceEdit(string $workspace): bool
+    {
+        if (! in_array($workspace, $this->tdgCalendarWorkspaces(), true)) {
+            Notification::make()
+                ->title('Sección no disponible')
+                ->body('Esa sección no se edita en este calendario.')
+                ->warning()
+                ->send();
+
+            return true;
+        }
+
+        return $this->denyCurrentTdgCalendarEdit();
     }
 
     public function shouldShowTdgAgendaFilters(): bool
@@ -177,7 +351,8 @@ trait InteractsWithTdgHybridCalendar
 
     public function clearAgendaFilters(): void
     {
-        $this->agendaFilterCategory = '';
+        $workspaces = $this->tdgCalendarWorkspaces();
+        $this->agendaFilterCategory = count($workspaces) === 1 ? $workspaces[0] : '';
         $this->agendaFilterOffice = '';
         $this->agendaFilterGuardShift = '';
         $this->agendaFilterDepartment = '';
@@ -250,6 +425,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function assignOfficeCollaborator(string $office, int $colaboradorId): void
     {
+        if ($this->denyTdgWorkspaceEdit('offices')) {
+            return;
+        }
+
         if (! in_array($office, TdgCalendarOffice::values(), true)) {
             return;
         }
@@ -278,6 +457,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function removeOfficeCollaborator(string $office, int $colaboradorId): void
     {
+        if ($this->denyTdgWorkspaceEdit('offices')) {
+            return;
+        }
+
         if (! array_key_exists($office, $this->officeAssignmentsForm)) {
             return;
         }
@@ -291,6 +474,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function clearOfficeCollaborators(string $office): void
     {
+        if ($this->denyTdgWorkspaceEdit('offices')) {
+            return;
+        }
+
         if (! array_key_exists($office, $this->officeAssignmentsForm)) {
             return;
         }
@@ -359,6 +546,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function replicateGuardAssignmentsToSelectedDays(): void
     {
+        if ($this->denyTdgWorkspaceEdit('guards')) {
+            return;
+        }
+
         $targetDates = $this->resolveReplicationTargetDates($this->guardReplicationDates);
 
         if ($targetDates->isEmpty()) {
@@ -383,6 +574,9 @@ trait InteractsWithTdgHybridCalendar
             return;
         }
 
+        $targetDateStrings = $targetDates->values()->all();
+        $existingGuardMapsByDate = $this->guardAssignmentMapsForDates($targetDateStrings);
+
         $replicatedCount = 0;
 
         DB::transaction(function () use ($targetDates, $guardSnapshot, &$replicatedCount): void {
@@ -404,11 +598,19 @@ trait InteractsWithTdgHybridCalendar
         $this->forgetTdgMonthDayPayloadCache();
         $this->guardReplicationDates = [];
 
+        $nextGuardMap = $this->guardAssignmentMapFromForm($guardSnapshot);
+
+        foreach ($existingGuardMapsByDate as $date => $previousGuardMap) {
+            $this->recordGuardAttendanceChanges((string) $date, $previousGuardMap, $nextGuardMap);
+        }
+
+        $body = $replicatedCount === 1
+            ? 'Las guardias se copiaron a 1 día.'
+            : "Las guardias se copiaron a {$replicatedCount} días.";
+
         Notification::make()
             ->title('Guardias replicadas')
-            ->body($replicatedCount === 1
-                ? 'Las guardias se copiaron a 1 día.'
-                : "Las guardias se copiaron a {$replicatedCount} días.")
+            ->body($this->guardAttendancePendingHint($body))
             ->success()
             ->send();
     }
@@ -461,6 +663,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function replicateDepartmentAssignmentsToSelectedDays(): void
     {
+        if ($this->denyTdgWorkspaceEdit('departments')) {
+            return;
+        }
+
         $targetDates = $this->resolveReplicationTargetDates($this->departmentReplicationDates);
 
         if ($targetDates->isEmpty()) {
@@ -558,6 +764,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function replicateOfficeAssignmentsToSelectedDays(): void
     {
+        if ($this->denyTdgWorkspaceEdit('offices')) {
+            return;
+        }
+
         $targetDates = $this->resolveReplicationTargetDates($this->officeReplicationDates);
 
         if ($targetDates->isEmpty()) {
@@ -633,7 +843,8 @@ trait InteractsWithTdgHybridCalendar
 
     public function shouldShowTdgOfficeAttendanceNotifyAction(): bool
     {
-        return true;
+        return in_array('offices', $this->tdgCalendarWorkspaces(), true)
+            && $this->canEditGuardiaOficinas();
     }
 
     public function hasPendingOfficeAttendanceModifications(): bool
@@ -675,6 +886,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function notifyMonthOfficeAttendance(): void
     {
+        if ($this->denyTdgWorkspaceEdit('offices')) {
+            return;
+        }
+
         $notifier = app(TdgCalendarOfficeAttendanceNotifier::class);
         $hasMods = $this->hasPendingOfficeAttendanceModifications();
         $hasNew = $this->hasPendingOfficeAttendanceNewAssignments();
@@ -733,6 +948,117 @@ trait InteractsWithTdgHybridCalendar
         Notification::make()
             ->title('Asistencia notificada')
             ->body($body !== '' ? $body : 'Se procesó la notificación de asistencia a oficina.')
+            ->success()
+            ->send();
+    }
+
+    public function shouldShowTdgGuardAttendanceNotifyAction(): bool
+    {
+        return in_array('guards', $this->tdgCalendarWorkspaces(), true)
+            && $this->canSendGuardAttendanceMail();
+    }
+
+    public function hasPendingGuardAttendanceModifications(): bool
+    {
+        return $this->pendingGuardAttendanceColaboradorIds !== [];
+    }
+
+    public function hasPendingGuardAttendanceNewAssignments(): bool
+    {
+        return $this->pendingGuardAttendanceNewColaboradorIds !== [];
+    }
+
+    public function tdgGuardAttendanceNotifyButtonLabel(): string
+    {
+        return $this->hasPendingGuardAttendanceModifications()
+            ? 'Enviar guardias por correo (modificaciones)'
+            : 'Enviar guardias por correo';
+    }
+
+    public function tdgGuardAttendanceNotifyConfirmMessage(): string
+    {
+        $hasMods = $this->hasPendingGuardAttendanceModifications();
+        $hasNew = $this->hasPendingGuardAttendanceNewAssignments();
+
+        if ($hasMods && $hasNew) {
+            return 'Se enviará la actualización al colaborador modificado y el horario nuevo a quienes se agregaron. ¿Continuar?';
+        }
+
+        if ($hasMods) {
+            return 'Se enviará la actualización solo a los colaboradores involucrados en las modificaciones. ¿Continuar?';
+        }
+
+        if ($hasNew) {
+            return 'Se enviará el horario nuevo a los colaboradores recién asignados. ¿Continuar?';
+        }
+
+        return 'Se enviará a cada colaborador sus guardias de operaciones del mes visible. ¿Continuar?';
+    }
+
+    public function notifyMonthGuardAttendance(): void
+    {
+        if ($this->denyGuardAttendanceNotify()) {
+            return;
+        }
+
+        $notifier = app(TdgCalendarGuardAttendanceNotifier::class);
+        $hasMods = $this->hasPendingGuardAttendanceModifications();
+        $hasNew = $this->hasPendingGuardAttendanceNewAssignments();
+        $hasPending = $hasMods || $hasNew;
+
+        $modReport = ['sent' => 0, 'skipped' => 0];
+        $newReport = ['sent' => 0, 'skipped' => 0];
+
+        if ($hasMods) {
+            $modReport = $notifier->notifyForDates(
+                $this->pendingGuardAttendanceDates,
+                $this->pendingGuardAttendanceColaboradorIds,
+                true,
+            );
+        }
+
+        $newIds = array_values(array_diff(
+            $this->pendingGuardAttendanceNewColaboradorIds,
+            $this->pendingGuardAttendanceColaboradorIds,
+        ));
+
+        if ($newIds !== []) {
+            $newReport = $notifier->notifyForDates(
+                $this->pendingGuardAttendanceNewDates,
+                $newIds,
+                false,
+            );
+        } elseif (! $hasPending) {
+            $newReport = $notifier->notifyForMonth($this->resolveCorporateCalendarCursor());
+        }
+
+        $report = [
+            'sent' => (int) ($modReport['sent'] ?? 0) + (int) ($newReport['sent'] ?? 0),
+            'skipped' => (int) ($modReport['skipped'] ?? 0) + (int) ($newReport['skipped'] ?? 0),
+        ];
+        $body = $notifier->formatNotificationBody($report);
+
+        if (($report['sent'] ?? 0) === 0 && ($report['skipped'] ?? 0) === 0) {
+            Notification::make()
+                ->title($hasPending ? 'Sin colaboradores involucrados' : 'Sin guardias de operaciones')
+                ->body($hasPending
+                    ? 'No hay colaboradores pendientes de notificar.'
+                    : 'No hay colaboradores asignados a guardias de operaciones en el mes visible.')
+                ->warning()
+                ->send();
+
+            if ($hasPending) {
+                $this->clearPendingGuardAttendanceModifications();
+            }
+
+            return;
+        }
+
+        $this->clearPendingGuardAttendanceModifications();
+
+        Notification::make()
+            ->title('Guardias notificadas')
+            ->body($body !== '' ? $body : 'Se procesó la notificación de guardias de operaciones.')
             ->success()
             ->send();
     }
@@ -875,6 +1201,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function assignGuardCollaborator(string $guardShift, int $colaboradorId): void
     {
+        if ($this->denyTdgWorkspaceEdit('guards')) {
+            return;
+        }
+
         if (! in_array($guardShift, TdgCalendarGuardShift::values(), true)) {
             return;
         }
@@ -890,6 +1220,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function clearGuardCollaborator(string $guardShift): void
     {
+        if ($this->denyTdgWorkspaceEdit('guards')) {
+            return;
+        }
+
         if (! array_key_exists($guardShift, $this->guardAssignmentsForm)) {
             return;
         }
@@ -917,7 +1251,10 @@ trait InteractsWithTdgHybridCalendar
     {
         $this->selectedDate = Carbon::parse($date)->toDateString();
         $this->selectedWeekDate = $this->selectedDate;
-        $this->modalWorkspace = in_array($workspace, ['offices', 'guards', 'departments'], true) ? $workspace : 'offices';
+        $allowedWorkspaces = $this->tdgCalendarWorkspaces();
+        $this->modalWorkspace = in_array($workspace, $allowedWorkspaces, true)
+            ? $workspace
+            : $allowedWorkspaces[0];
         $this->collaboratorSearch = '';
         $this->officeReplicationDates = [];
         $this->officeReplicationMonth = Carbon::parse($this->selectedDate)->format('Y-m');
@@ -942,7 +1279,7 @@ trait InteractsWithTdgHybridCalendar
 
     public function setModalWorkspace(string $workspace): void
     {
-        if (! in_array($workspace, ['offices', 'guards', 'departments'], true)) {
+        if (! in_array($workspace, $this->tdgCalendarWorkspaces(), true)) {
             return;
         }
 
@@ -954,6 +1291,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function updatedUseSameGuardCollaborator(bool $value): void
     {
+        if ($this->denyTdgWorkspaceEdit('guards')) {
+            return;
+        }
+
         if (! $value) {
             return;
         }
@@ -969,6 +1310,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function saveDayAssignments(): void
     {
+        if ($this->denyCurrentTdgCalendarEdit()) {
+            return;
+        }
+
         $validated = $this->validate([
             'selectedDate' => ['required', 'date'],
             'officeAssignmentsForm' => ['array'],
@@ -992,9 +1337,14 @@ trait InteractsWithTdgHybridCalendar
         }
 
         $calendarDate = (string) $validated['selectedDate'];
-        $previousOfficeMap = $this->officeAssignmentMapForDate($calendarDate);
+        $workspaces = $this->tdgCalendarWorkspaces();
+        $managesOffices = in_array('offices', $workspaces, true);
+        $managesGuards = in_array('guards', $workspaces, true);
+        $managesDepartments = in_array('departments', $workspaces, true);
+        $previousOfficeMap = $managesOffices ? $this->officeAssignmentMapForDate($calendarDate) : [];
+        $previousGuardMap = $managesGuards ? $this->guardAssignmentMapForDate($calendarDate) : [];
 
-        $duplicateColaboradorIds = collect($this->officeAssignmentsForm)
+        $duplicateColaboradorIds = $managesOffices ? collect($this->officeAssignmentsForm)
             ->flatMap(function (mixed $ids): array {
                 if (! is_array($ids)) {
                     return filled($ids) ? [(int) $ids] : [];
@@ -1007,7 +1357,7 @@ trait InteractsWithTdgHybridCalendar
             })
             ->duplicates()
             ->unique()
-            ->values();
+            ->values() : collect();
 
         if ($duplicateColaboradorIds->isNotEmpty()) {
             Notification::make()
@@ -1019,28 +1369,55 @@ trait InteractsWithTdgHybridCalendar
             return;
         }
 
-        $hasOfficeAssignments = collect($this->officeAssignmentsForm)
+        $hasOfficeAssignments = $managesOffices && collect($this->officeAssignmentsForm)
             ->flatten()
             ->contains(fn (mixed $id): bool => filled($id) && (int) $id > 0);
-        $hasGuardAssignments = collect($this->guardAssignmentsForm)
+        $hasGuardAssignments = $managesGuards && collect($this->guardAssignmentsForm)
             ->contains(fn (mixed $id): bool => filled($id));
-        $hasDepartmentAssignments = $this->departmentAssignmentsForm !== [];
+        $hasDepartmentAssignments = $managesDepartments && $this->departmentAssignmentsForm !== [];
 
         if (! $hasOfficeAssignments && ! $hasGuardAssignments && ! $hasDepartmentAssignments) {
-            TdgCalendarDay::query()
-                ->where('calendar_date', $calendarDate)
-                ->each(fn (TdgCalendarDay $day): mixed => $day->delete());
+            $day = TdgCalendarDay::query()->where('calendar_date', $calendarDate)->first();
+
+            if ($day instanceof TdgCalendarDay) {
+                $this->clearManagedDayAssignments($day, $managesOffices, $managesGuards, $managesDepartments);
+
+                if ($managesOffices) {
+                    $this->recordOfficeAttendanceModifications(
+                        [$calendarDate],
+                        array_map(intval(...), array_keys($previousOfficeMap)),
+                    );
+                }
+
+                if ($managesGuards) {
+                    $this->recordGuardAttendanceModifications(
+                        [$calendarDate],
+                        array_map(intval(...), array_keys($previousGuardMap)),
+                    );
+                }
+
+                if (! $this->calendarDayStillHasAssignments($day)) {
+                    $day->delete();
+                }
+            }
 
             $this->forgetTdgMonthDayPayloadCache();
 
-            $this->recordOfficeAttendanceModifications(
-                [$calendarDate],
-                array_map(intval(...), array_keys($previousOfficeMap)),
-            );
+            $clearedBody = $managesOffices
+                ? 'Se eliminaron las asignaciones del día seleccionado.'
+                : 'Se eliminaron las guardias del día seleccionado.';
+
+            if ($managesOffices) {
+                $clearedBody = $this->officeAttendancePendingHint($clearedBody);
+            }
+
+            if ($managesGuards) {
+                $clearedBody = $this->guardAttendancePendingHint($clearedBody);
+            }
 
             Notification::make()
                 ->title('Día limpiado')
-                ->body($this->officeAttendancePendingHint('Se eliminaron las asignaciones del día seleccionado.'))
+                ->body($clearedBody)
                 ->success()
                 ->send();
 
@@ -1054,22 +1431,75 @@ trait InteractsWithTdgHybridCalendar
 
         $day->update(['updated_by_user_id' => Auth::id()]);
 
-        $this->syncOfficeAssignments($day);
-        $this->syncGuardAssignments($day);
-        $this->syncDepartmentAssignments($day);
-        $this->syncDepartmentCollaboratorAssignments($day);
+        if ($managesOffices) {
+            $this->syncOfficeAssignments($day);
+        }
+
+        if ($managesGuards) {
+            $this->syncGuardAssignments($day);
+        }
+
+        if ($managesDepartments) {
+            $this->syncDepartmentAssignments($day);
+            $this->syncDepartmentCollaboratorAssignments($day);
+        }
 
         $this->forgetTdgMonthDayPayloadCache();
         $this->hydrateDayFormsFromDatabase();
 
-        $nextOfficeMap = $this->officeAssignmentMapForDate($calendarDate);
-        $this->recordOfficeAttendanceChanges($calendarDate, $previousOfficeMap, $nextOfficeMap);
+        if ($managesOffices) {
+            $nextOfficeMap = $this->officeAssignmentMapForDate($calendarDate);
+            $this->recordOfficeAttendanceChanges($calendarDate, $previousOfficeMap, $nextOfficeMap);
+        }
+
+        if ($managesGuards) {
+            $nextGuardMap = $this->guardAssignmentMapForDate($calendarDate);
+            $this->recordGuardAttendanceChanges($calendarDate, $previousGuardMap, $nextGuardMap);
+        }
+
+        $savedBody = 'Las asignaciones del día fueron actualizadas correctamente.';
+
+        if ($managesOffices) {
+            $savedBody = $this->officeAttendancePendingHint($savedBody);
+        }
+
+        if ($managesGuards) {
+            $savedBody = $this->guardAttendancePendingHint($savedBody);
+        }
 
         Notification::make()
-            ->title('Agenda guardada')
-            ->body($this->officeAttendancePendingHint('Las asignaciones del día fueron actualizadas correctamente.'))
+            ->title($managesGuards && ! $managesOffices ? 'Guardias guardadas' : 'Agenda guardada')
+            ->body($savedBody)
             ->success()
             ->send();
+    }
+
+    private function clearManagedDayAssignments(
+        TdgCalendarDay $day,
+        bool $managesOffices,
+        bool $managesGuards,
+        bool $managesDepartments,
+    ): void {
+        if ($managesOffices) {
+            $day->officeAssignments()->delete();
+        }
+
+        if ($managesGuards) {
+            $day->guardAssignments()->delete();
+        }
+
+        if ($managesDepartments) {
+            $day->departmentAssignments()->delete();
+            $day->departmentColaboradorAssignments()->delete();
+        }
+    }
+
+    private function calendarDayStillHasAssignments(TdgCalendarDay $day): bool
+    {
+        return $day->officeAssignments()->exists()
+            || $day->guardAssignments()->exists()
+            || $day->departmentAssignments()->exists()
+            || $day->departmentColaboradorAssignments()->exists();
     }
 
     /**
@@ -1224,6 +1654,123 @@ trait InteractsWithTdgHybridCalendar
     }
 
     /**
+     * Catálogo que la modal pinta una sola vez. Los clics se resuelven en el navegador.
+     *
+     * @return array{
+     *     offices: list<array{value: string, label: string, home: bool}>,
+     *     collaborators: list<array{id: int, name: string, email: string, initials: string, avatar_url: string|null}>,
+     *     assignments: array<string, list<int>>,
+     *     activeOffice: string
+     * }
+     */
+    public function officePickerConfig(): array
+    {
+        $offices = [];
+
+        foreach (TdgCalendarOffice::cases() as $office) {
+            $offices[] = [
+                'value' => $office->value,
+                'label' => $office->label(),
+                'home' => $office === TdgCalendarOffice::HomeOffice,
+            ];
+        }
+
+        $collaborators = [];
+
+        foreach ($this->collaboratorOptions as $collaborator) {
+            $avatarUrl = $collaborator['avatar_url'] ?? null;
+
+            $collaborators[] = [
+                'id' => (int) $collaborator['id'],
+                'name' => (string) ($collaborator['name'] ?? ''),
+                'email' => (string) ($collaborator['email'] ?? ''),
+                'initials' => (string) ($collaborator['initials'] ?? ''),
+                'avatar_url' => is_string($avatarUrl) && $avatarUrl !== '' ? $avatarUrl : null,
+            ];
+        }
+
+        return [
+            'offices' => $offices,
+            'collaborators' => $collaborators,
+            'assignments' => $this->normalizedOfficeAssignmentsForPicker(),
+            'activeOffice' => TdgCalendarOffice::CentralLido->value,
+        ];
+    }
+
+    /**
+     * @return array<string, list<int>>
+     */
+    private function normalizedOfficeAssignmentsForPicker(): array
+    {
+        $assignments = [];
+
+        foreach (TdgCalendarOffice::cases() as $office) {
+            $assignments[$office->value] = collect($this->officeAssignmentsForm[$office->value] ?? [])
+                ->map(fn (mixed $id): int => (int) $id)
+                ->filter(fn (int $id): bool => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        return $assignments;
+    }
+
+    /**
+     * Catálogo de Guardias Operaciones. Los clics se resuelven en el navegador.
+     *
+     * @return array{
+     *     shifts: list<array{value: string, label: string, nocturnal: bool, daytime: bool}>,
+     *     collaborators: list<array{id: int, name: string, email: string, initials: string, avatar_url: string|null}>,
+     *     assignments: array<string, int|null>,
+     *     activeShift: string,
+     *     sameCollaborator: bool
+     * }
+     */
+    public function guardPickerConfig(): array
+    {
+        $shifts = [];
+
+        foreach (TdgCalendarGuardShift::cases() as $shift) {
+            $shifts[] = [
+                'value' => $shift->value,
+                'label' => $shift->label(),
+                'nocturnal' => $shift->isNocturnalShift(),
+                'daytime' => $shift->isDaytimeOperationsShift(),
+            ];
+        }
+
+        $collaborators = [];
+
+        foreach ($this->collaboratorOptions as $collaborator) {
+            $avatarUrl = $collaborator['avatar_url'] ?? null;
+
+            $collaborators[] = [
+                'id' => (int) $collaborator['id'],
+                'name' => (string) ($collaborator['name'] ?? ''),
+                'email' => (string) ($collaborator['email'] ?? ''),
+                'initials' => (string) ($collaborator['initials'] ?? ''),
+                'avatar_url' => is_string($avatarUrl) && $avatarUrl !== '' ? $avatarUrl : null,
+            ];
+        }
+
+        $assignments = [];
+
+        foreach (TdgCalendarGuardShift::cases() as $shift) {
+            $id = (int) ($this->guardAssignmentsForm[$shift->value] ?? 0);
+            $assignments[$shift->value] = $id > 0 ? $id : null;
+        }
+
+        return [
+            'shifts' => $shifts,
+            'collaborators' => $collaborators,
+            'assignments' => $assignments,
+            'activeShift' => TdgCalendarGuardShift::Proveedores->value,
+            'sameCollaborator' => $this->useSameGuardCollaborator,
+        ];
+    }
+
+    /**
      * @return array<int, array{id:int,name:string,email:string|null}>
      */
     public function getOperationsCollaboratorOptionsProperty(): array
@@ -1316,6 +1863,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function toggleDepartment(string $department): void
     {
+        if ($this->denyTdgWorkspaceEdit('departments')) {
+            return;
+        }
+
         if (! in_array($department, TdgCalendarDepartment::values(), true)) {
             return;
         }
@@ -1346,6 +1897,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function assignDepartmentCollaborator(string $department, int $colaboradorId): void
     {
+        if ($this->denyTdgWorkspaceEdit('departments')) {
+            return;
+        }
+
         if (! in_array($department, TdgCalendarDepartment::values(), true)) {
             return;
         }
@@ -1380,6 +1935,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function removeDepartmentCollaborator(string $department, int $colaboradorId): void
     {
+        if ($this->denyTdgWorkspaceEdit('departments')) {
+            return;
+        }
+
         if (! array_key_exists($department, $this->departmentCollaboratorAssignmentsForm)) {
             return;
         }
@@ -1393,6 +1952,10 @@ trait InteractsWithTdgHybridCalendar
 
     public function clearDepartmentCollaborators(string $department): void
     {
+        if ($this->denyTdgWorkspaceEdit('departments')) {
+            return;
+        }
+
         if (! array_key_exists($department, $this->departmentCollaboratorAssignmentsForm)) {
             return;
         }
@@ -1554,28 +2117,41 @@ trait InteractsWithTdgHybridCalendar
         ];
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
+    protected function agendaFilterHasSpecificValue(): bool
+    {
+        return match ($this->agendaFilterCategory) {
+            'offices' => $this->agendaFilterOffice !== '',
+            'guards' => $this->agendaFilterGuardShift !== '',
+            'departments' => $this->agendaFilterDepartment !== '' || $this->agendaFilterSystemsColaborador !== '',
+            default => false,
+        };
+    }
+
     protected function resolveAgendaFilterCategory(): string
     {
         if ($this->resolvedAgendaFilterCategoryCache !== null) {
             return $this->resolvedAgendaFilterCategoryCache;
         }
 
-        if (in_array($this->agendaFilterCategory, ['offices', 'guards', 'departments'], true)) {
+        if (in_array($this->agendaFilterCategory, $this->tdgCalendarWorkspaces(), true)) {
+            if (count($this->tdgCalendarWorkspaces()) === 1 && ! $this->agendaFilterHasSpecificValue()) {
+                return $this->resolvedAgendaFilterCategoryCache = '';
+            }
+
             return $this->resolvedAgendaFilterCategoryCache = $this->agendaFilterCategory;
         }
 
-        if ($this->agendaFilterOffice !== '') {
+        $workspaces = $this->tdgCalendarWorkspaces();
+
+        if ($this->agendaFilterOffice !== '' && in_array('offices', $workspaces, true)) {
             return $this->resolvedAgendaFilterCategoryCache = 'offices';
         }
 
-        if ($this->agendaFilterGuardShift !== '') {
+        if ($this->agendaFilterGuardShift !== '' && in_array('guards', $workspaces, true)) {
             return $this->resolvedAgendaFilterCategoryCache = 'guards';
         }
 
-        if ($this->agendaFilterDepartment !== '') {
+        if ($this->agendaFilterDepartment !== '' && in_array('departments', $workspaces, true)) {
             return $this->resolvedAgendaFilterCategoryCache = 'departments';
         }
 
@@ -1672,17 +2248,35 @@ trait InteractsWithTdgHybridCalendar
             ];
         }
 
+        $workspaces = $this->tdgCalendarWorkspaces();
+        $includeOffices = in_array('offices', $workspaces, true);
+        $includeGuards = in_array('guards', $workspaces, true);
+        $includeDepartments = in_array('departments', $workspaces, true);
+        $avatarGroups = [];
+
+        if ($includeOffices) {
+            $avatarGroups[] = $this->buildOfficeFilterAvatarsFromPayload($officeAssignments);
+        }
+
+        if ($includeGuards) {
+            $avatarGroups[] = $this->buildGuardColaboradorAvatarsFromPayload($guardAssignments);
+        }
+
+        if ($includeDepartments) {
+            $avatarGroups[] = $this->buildDepartmentColaboradorAvatarsFromPayload($departmentAssignments);
+        }
+
+        $officeCount = $includeOffices ? (int) ($payload['office_count'] ?? 0) : 0;
+        $guardCount = $includeGuards ? (int) ($payload['guard_count'] ?? 0) : 0;
+        $departmentBadgeCount = $includeDepartments ? count($departmentBadges) : 0;
+
         return [
-            'department_badges' => $departmentBadges,
-            'office_badges' => $officeBadges,
-            'office_count' => (int) ($payload['office_count'] ?? 0),
-            'guard_count' => (int) ($payload['guard_count'] ?? 0),
-            'filter_avatars' => $this->mergeCalendarAvatars(
-                $this->buildOfficeFilterAvatarsFromPayload($officeAssignments),
-                $this->buildGuardColaboradorAvatarsFromPayload($guardAssignments),
-                $this->buildDepartmentColaboradorAvatarsFromPayload($departmentAssignments),
-            ),
-            'filtered_assignment_count' => (int) ($payload['assignment_count'] ?? 0),
+            'department_badges' => $includeDepartments ? $departmentBadges : [],
+            'office_badges' => $includeOffices ? $officeBadges : [],
+            'office_count' => $officeCount,
+            'guard_count' => $guardCount,
+            'filter_avatars' => $avatarGroups === [] ? [] : $this->mergeCalendarAvatars(...$avatarGroups),
+            'filtered_assignment_count' => $officeCount + $guardCount + $departmentBadgeCount,
         ];
     }
 
@@ -3044,6 +3638,185 @@ trait InteractsWithTdgHybridCalendar
         $this->pendingOfficeAttendanceDates = [];
         $this->pendingOfficeAttendanceNewColaboradorIds = [];
         $this->pendingOfficeAttendanceNewDates = [];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function guardAssignmentMapForDate(string $calendarDate): array
+    {
+        return $this->guardAssignmentMapsForDates([$calendarDate])[$calendarDate] ?? [];
+    }
+
+    /**
+     * @param  list<string>  $dates
+     * @return array<string, array<int, string>>
+     */
+    private function guardAssignmentMapsForDates(array $dates): array
+    {
+        $normalizedDates = collect($dates)
+            ->map(fn (string $date): string => Carbon::parse($date)->toDateString())
+            ->unique()
+            ->values();
+
+        $maps = $normalizedDates
+            ->mapWithKeys(fn (string $date): array => [$date => []])
+            ->all();
+
+        if ($normalizedDates->isEmpty()) {
+            return $maps;
+        }
+
+        $days = TdgCalendarDay::query()
+            ->whereIn('calendar_date', $normalizedDates->all())
+            ->with('guardAssignments')
+            ->get();
+
+        foreach ($days as $day) {
+            $dateKey = Carbon::parse($day->calendar_date)->toDateString();
+            $maps[$dateKey] = $this->guardAssignmentMapFromRows($day->guardAssignments);
+        }
+
+        return $maps;
+    }
+
+    /**
+     * @param  iterable<int, TdgCalendarGuardAssignment>  $assignments
+     * @return array<int, string>
+     */
+    private function guardAssignmentMapFromRows(iterable $assignments): array
+    {
+        $shiftsByColaborador = [];
+
+        foreach ($assignments as $assignment) {
+            $colaboradorId = (int) $assignment->rrhh_colaborador_id;
+
+            if ($colaboradorId <= 0) {
+                continue;
+            }
+
+            $shift = $assignment->guard_shift;
+            $shiftsByColaborador[$colaboradorId][] = $shift instanceof TdgCalendarGuardShift
+                ? $shift->value
+                : (string) $shift;
+        }
+
+        return $this->guardAssignmentSignatureMap($shiftsByColaborador);
+    }
+
+    /**
+     * @param  array<string, int|null>  $form
+     * @return array<int, string>
+     */
+    private function guardAssignmentMapFromForm(array $form): array
+    {
+        $shiftsByColaborador = [];
+
+        foreach ($form as $shift => $colaboradorId) {
+            $id = (int) $colaboradorId;
+
+            if ($id <= 0 || ! is_string($shift) || $shift === '') {
+                continue;
+            }
+
+            $shiftsByColaborador[$id][] = $shift;
+        }
+
+        return $this->guardAssignmentSignatureMap($shiftsByColaborador);
+    }
+
+    /**
+     * @param  array<int, list<string>>  $shiftsByColaborador
+     * @return array<int, string>
+     */
+    private function guardAssignmentSignatureMap(array $shiftsByColaborador): array
+    {
+        $map = [];
+
+        foreach ($shiftsByColaborador as $colaboradorId => $shifts) {
+            $normalized = array_values(array_unique(array_filter($shifts, fn (string $shift): bool => $shift !== '')));
+            sort($normalized);
+
+            if ($normalized === []) {
+                continue;
+            }
+
+            $map[(int) $colaboradorId] = implode(',', $normalized);
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  array<int, string>  $previous
+     * @param  array<int, string>  $next
+     */
+    private function recordGuardAttendanceChanges(string $date, array $previous, array $next): void
+    {
+        $this->recordGuardAttendanceModifications(
+            [$date],
+            TdgCalendarGuardAttendanceNotifier::colaboradorIdsModified($previous, $next),
+        );
+        $this->recordGuardAttendanceNewAssignments(
+            [$date],
+            TdgCalendarGuardAttendanceNotifier::colaboradorIdsAdded($previous, $next),
+        );
+    }
+
+    /**
+     * @param  list<string>  $dates
+     * @param  list<int>  $colaboradorIds
+     */
+    private function recordGuardAttendanceModifications(array $dates, array $colaboradorIds): void
+    {
+        $this->mergePendingOfficeAttendance(
+            $this->pendingGuardAttendanceColaboradorIds,
+            $this->pendingGuardAttendanceDates,
+            $dates,
+            $colaboradorIds,
+        );
+    }
+
+    /**
+     * @param  list<string>  $dates
+     * @param  list<int>  $colaboradorIds
+     */
+    private function recordGuardAttendanceNewAssignments(array $dates, array $colaboradorIds): void
+    {
+        $this->mergePendingOfficeAttendance(
+            $this->pendingGuardAttendanceNewColaboradorIds,
+            $this->pendingGuardAttendanceNewDates,
+            $dates,
+            $colaboradorIds,
+        );
+    }
+
+    private function guardAttendancePendingHint(string $body): string
+    {
+        $hasMods = $this->hasPendingGuardAttendanceModifications();
+        $hasNew = $this->hasPendingGuardAttendanceNewAssignments();
+
+        if ($hasMods && $hasNew) {
+            return $body.' Usa el botón de guardias: el modificado recibirá actualización y los horarios nuevos un correo aparte.';
+        }
+
+        if ($hasMods) {
+            return $body.' Usa el botón de guardias para notificar a los colaboradores modificados.';
+        }
+
+        if ($hasNew) {
+            return $body.' Usa el botón de guardias para notificar los horarios nuevos.';
+        }
+
+        return $body;
+    }
+
+    private function clearPendingGuardAttendanceModifications(): void
+    {
+        $this->pendingGuardAttendanceColaboradorIds = [];
+        $this->pendingGuardAttendanceDates = [];
+        $this->pendingGuardAttendanceNewColaboradorIds = [];
+        $this->pendingGuardAttendanceNewDates = [];
     }
 
     private function forgetTdgMonthDayPayloadCache(): void

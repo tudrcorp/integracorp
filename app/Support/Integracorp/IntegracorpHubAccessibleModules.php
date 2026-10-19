@@ -75,7 +75,15 @@ final class IntegracorpHubAccessibleModules
             $modules[] = self::cardFromDefinition($definition, $definition['route']);
         }
 
-        usort($modules, fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
+        $sortById = [];
+        foreach (IntegracorpHubModuleRegistry::definitions() as $definition) {
+            $sortById[$definition['id']] = $definition['sort'];
+        }
+
+        usort(
+            $modules,
+            fn (array $a, array $b): int => ($sortById[$a['id']] ?? PHP_INT_MAX) <=> ($sortById[$b['id']] ?? PHP_INT_MAX),
+        );
 
         return $modules;
     }

@@ -13,6 +13,35 @@ uses(TestCase::class);
 beforeEach(fn () => DB::beginTransaction());
 afterEach(fn () => DB::rollBack());
 
+it('ordena el catálogo del hub en la secuencia operativa', function (): void {
+    $ordered = collect(IntegracorpHubModuleRegistry::definitions())
+        ->reject(fn (array $definition): bool => $definition['id'] === 'admin')
+        ->sortBy('sort')
+        ->pluck('id')
+        ->values()
+        ->all();
+
+    expect($ordered)->toBe([
+        'business',
+        'administration',
+        'operations',
+        'marketing',
+        'projects',
+        'telemedicina',
+        'metrics',
+        'agents',
+    ]);
+});
+
+it('ordena las tarjetas visibles por el campo sort del catálogo', function (): void {
+    $source = file_get_contents(base_path('app/Support/Integracorp/IntegracorpHubAccessibleModules.php'));
+
+    expect($source)
+        ->toContain('$sortById[$definition[\'id\']] = $definition[\'sort\']')
+        ->toContain('($sortById[$a[\'id\']] ?? PHP_INT_MAX) <=> ($sortById[$b[\'id\']] ?? PHP_INT_MAX)')
+        ->not->toContain('strcmp($a[\'name\']');
+});
+
 it('expone definiciones de módulos con nombre, objetivo e imagen', function (): void {
     $definitions = IntegracorpHubModuleRegistry::definitions();
 

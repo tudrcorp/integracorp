@@ -4,6 +4,7 @@
     </p>
 
     <div class="grid gap-3 md:grid-cols-2">
+        @if (count($this->tdgCalendarWorkspaces()) > 1)
         <div class="md:col-span-2">
             <label class="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Mostrar en calendario</label>
             <select
@@ -11,13 +12,14 @@
                 class="w-full rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-sm text-slate-800 dark:border-white/10 dark:bg-slate-950 dark:text-slate-100"
             >
                 <option value="">Calendario completo</option>
-                <option value="offices">Guardias oficinas</option>
-                <option value="guards">Guardas operaciones</option>
-                <option value="departments">Guardias sistema</option>
+                @foreach ($this->tdgCalendarFilterCategories() as $categoryValue => $categoryLabel)
+                    <option value="{{ $categoryValue }}">{{ $categoryLabel }}</option>
+                @endforeach
             </select>
         </div>
+        @endif
 
-        @if ($agendaFilterCategory === 'offices')
+        @if ($this->showsOfficeFilter())
             <div class="md:col-span-2">
                 <label class="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Oficina</label>
                 <select
@@ -32,7 +34,7 @@
             </div>
         @endif
 
-        @if ($agendaFilterCategory === 'guards')
+        @if ($this->showsGuardShiftFilter())
             <div class="md:col-span-2">
                 <label class="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-300">Horario de guardia</label>
                 <select

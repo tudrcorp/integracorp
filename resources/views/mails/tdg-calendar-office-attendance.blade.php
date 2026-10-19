@@ -23,7 +23,7 @@
                     <tr>
                         <td style="padding: 8px 24px 8px 24px;">
                             <p style="margin: 0; font-size: 13px; font-weight: 600; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.06em;">
-                                Calendario TDG
+                                Guardia Oficinas
                             </p>
                             <h1 style="margin: 8px 0 0 0; font-size: 22px; font-weight: 700; color: #1c1c1e; letter-spacing: -0.02em;">
                                 {{ $isUpdate ? 'Actualización de tu asistencia a oficina' : 'Tu asistencia a oficina' }}

@@ -10,14 +10,29 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\UtilsController;
 use App\Jobs\WhatsAppBirthdayNotification;
 use App\Mail\BirthdayNotificationSummaryMail;
+use App\Models\BirthdayNotification;
+use App\Support\Birthday\BirthdayCelebrationAccessIssuer;
+use App\Support\Birthday\BirthdayCelebrationCard;
+use App\Support\Birthday\BirthdayCelebrationRecipientGate;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Mail\PendingMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 final class BirthdayNotificationRunReport
 {
     private const SUMMARY_IMAGE = WhatsAppBrandImage::RELATIVE_PATH;
+
+    /** @var list<string> */
+    private const CELEBRATION_BCC_EMAILS = [
+        'solrodriguez@tudrencasa.com',
+        'aaular@tudrencasa.com',
+    ];
+
+    private const CELEBRATION_COPY_WHATSAPP = '+584121931865';
 
     /** @var list<string> */
     private const ALL_GROUPS = [
@@ -56,6 +71,11 @@ final class BirthdayNotificationRunReport
 
     private static ?int $currentNotificationId = null;
 
+    private static bool $currentSendsCelebrationCard = false;
+
+    /** @var array<int, true> */
+    private static array $excludedRecipientIds = [];
+
     /** @var array<string, array{whatsapp: int, email: int, failures: array<string, int>, records_in_source: int, validation_passes: int, validations_total: int, channels_seen: array<string, bool>}> */
     private static array $stats = [];
 
@@ -78,6 +98,8 @@ final class BirthdayNotificationRunReport
 
         self::$currentGroup = null;
         self::$currentNotificationId = null;
+        self::$currentSendsCelebrationCard = false;
+        self::$excludedRecipientIds = [];
         self::$criticalFailure = false;
         self::$criticalMessage = null;
     }
@@ -113,6 +135,48 @@ final class BirthdayNotificationRunReport
     public static function setCurrentNotification(?int $birthdayNotificationId): void
     {
         self::$currentNotificationId = $birthdayNotificationId;
+        self::$currentSendsCelebrationCard = false;
+        self::$excludedRecipientIds = [];
+
+        if ($birthdayNotificationId === null || ! Schema::hasColumn('birthday_notifications', 'sends_celebration_card')) {
+            return;
+        }
+
+        $notification = BirthdayNotification::query()->find($birthdayNotificationId);
+
+        if ($notification === null || ! $notification->sends_celebration_card) {
+            return;
+        }
+
+        self::$currentSendsCelebrationCard = true;
+        self::$excludedRecipientIds = BirthdayCelebrationRecipientGate::excludedIdMap(
+            $notification->id,
+            (string) $notification->data_type,
+        );
+    }
+
+    /**
+     * @param  list<object>  $rows
+     * @return list<object>
+     */
+    public static function withoutExcludedRecipients(array $rows): array
+    {
+        if (self::$excludedRecipientIds === []) {
+            return $rows;
+        }
+
+        return array_values(array_filter(
+            $rows,
+            static function (object $row): bool {
+                $recipientId = $row->id ?? null;
+
+                if ($recipientId === null) {
+                    return true;
+                }
+
+                return ! isset(self::$excludedRecipientIds[(int) $recipientId]);
+            },
+        ));
     }
 
     public static function currentNotificationId(): ?int
@@ -149,9 +213,13 @@ final class BirthdayNotificationRunReport
         string $content,
         string $file,
         string $type,
+        ?string $documentNumber = null,
+        ?string $birthDate = null,
+        bool $attachCelebrationLink = true,
     ): \Illuminate\Foundation\Bus\PendingDispatch {
         $isControlCopy = self::isWitnessCopyPhone($phone);
         $deliveryId = null;
+        $contentToSend = $content;
 
         if (self::$active && self::$currentGroup !== null && ! $isControlCopy) {
             self::incrementSent(self::$currentGroup, 'whatsapp');
@@ -163,14 +231,35 @@ final class BirthdayNotificationRunReport
                 $name,
                 $phone,
                 MassNotificationDeliveryStatus::Sent,
+                null,
+                null,
+                null,
+                $documentNumber,
+                $birthDate,
             );
             $deliveryId = $delivery->id;
+
+            if ($attachCelebrationLink && self::$currentSendsCelebrationCard) {
+                $animationUrl = self::resolveAnimationUrlForRecipient(
+                    $name,
+                    $phone,
+                    null,
+                    $documentNumber,
+                    $birthDate,
+                );
+                $contentToSend = trim($content).self::formatCelebrationLinkForMessage($animationUrl);
+            }
+        }
+
+        if (self::$currentSendsCelebrationCard) {
+            $file = BirthdayCelebrationCard::PUBLIC_RELATIVE_PATH;
+            $type = 'image';
         }
 
         return WhatsAppBirthdayNotification::dispatch(
             $name,
             $phone,
-            $content,
+            $contentToSend,
             $file,
             $type,
             $isControlCopy,
@@ -187,10 +276,33 @@ final class BirthdayNotificationRunReport
         string $file,
         string $type,
     ): void {
-        foreach (self::witnessCopyPhones() as $index => $phone) {
+        foreach (self::celebrationCopyPhones(self::witnessCopyPhones()) as $index => $phone) {
             self::queueWhatsApp($name, $phone, $content, $file, $type)
                 ->delay(now()->addSeconds(10 + ($index * 2)));
         }
+    }
+
+    /**
+     * @param  list<string>  $phones
+     * @return list<string>
+     */
+    private static function celebrationCopyPhones(array $phones): array
+    {
+        if (! self::$currentSendsCelebrationCard) {
+            return $phones;
+        }
+
+        $target = self::normalizePhoneDigits(self::CELEBRATION_COPY_WHATSAPP);
+
+        foreach ($phones as $phone) {
+            if (self::phonesMatch($target, self::normalizePhoneDigits($phone))) {
+                return array_values($phones);
+            }
+        }
+
+        $phones[] = self::CELEBRATION_COPY_WHATSAPP;
+
+        return array_values($phones);
     }
 
     /**
@@ -198,6 +310,10 @@ final class BirthdayNotificationRunReport
      */
     public static function witnessCopyEmails(): array
     {
+        if (! Schema::hasTable('system_notification_recipient_settings')) {
+            return [];
+        }
+
         if (! SystemNotificationRecipients::isActive(SystemNotificationKey::BirthdayNotificationWitnessCopy)) {
             return [];
         }
@@ -210,6 +326,10 @@ final class BirthdayNotificationRunReport
      */
     public static function witnessCopyPhones(): array
     {
+        if (! Schema::hasTable('system_notification_recipient_settings')) {
+            return [];
+        }
+
         if (! SystemNotificationRecipients::isActive(SystemNotificationKey::BirthdayNotificationWitnessCopy)) {
             return [];
         }
@@ -226,16 +346,30 @@ final class BirthdayNotificationRunReport
             $mailer->cc($cc);
         }
 
+        if (self::$currentSendsCelebrationCard) {
+            $bcc = array_values(array_filter(
+                self::CELEBRATION_BCC_EMAILS,
+                static fn (string $email): bool => strcasecmp($email, $toEmail) !== 0,
+            ));
+
+            if ($bcc !== []) {
+                $mailer->bcc($bcc);
+            }
+        }
+
         return $mailer;
     }
 
     /**
-     * @param  callable(): void  $sendMail
+     * @param  callable(?string $animationUrl): void  $sendMail
      */
     public static function sendBirthdayEmail(
         ?string $email,
         string $name,
         callable $sendMail,
+        ?string $phone = null,
+        ?string $documentNumber = null,
+        ?string $birthDate = null,
     ): void {
         $group = self::$currentGroup ?? 'general';
 
@@ -272,7 +406,17 @@ final class BirthdayNotificationRunReport
         }
 
         try {
-            $sendMail();
+            $animationUrl = self::$currentSendsCelebrationCard
+                ? self::resolveAnimationUrlForRecipient(
+                    $name,
+                    $phone,
+                    $email,
+                    $documentNumber,
+                    $birthDate,
+                )
+                : null;
+
+            $sendMail($animationUrl);
 
             if (self::$active && self::$currentGroup !== null) {
                 self::incrementSent(self::$currentGroup, 'email');
@@ -284,6 +428,8 @@ final class BirthdayNotificationRunReport
                     $name,
                     $email,
                     MassNotificationDeliveryStatus::Sent,
+                    null,
+                    $phone,
                 );
             }
         } catch (Throwable $exception) {
@@ -468,6 +614,17 @@ final class BirthdayNotificationRunReport
     private static function isWitnessCopyPhone(string $phone): bool
     {
         $normalized = self::normalizePhoneDigits($phone);
+
+        if (
+            self::$currentSendsCelebrationCard
+            && self::phonesMatch($normalized, self::normalizePhoneDigits(self::CELEBRATION_COPY_WHATSAPP))
+        ) {
+            return true;
+        }
+
+        if (! Schema::hasTable('system_notification_recipient_settings')) {
+            return false;
+        }
 
         if ($normalized === '') {
             return false;
@@ -711,6 +868,80 @@ final class BirthdayNotificationRunReport
         }
 
         return $count;
+    }
+
+    public static function resolveAnimationUrlForRecipient(
+        string $name,
+        ?string $phone = null,
+        ?string $email = null,
+        ?string $documentNumber = null,
+        ?string $birthDate = null,
+    ): ?string {
+        if (self::$currentNotificationId === null || ! Schema::hasTable('birthday_celebration_accesses')) {
+            return null;
+        }
+
+        try {
+            $delivery = BirthdayNotificationRecipientDelivery::resolveDelivery(
+                self::$currentNotificationId,
+                $name,
+                $email,
+                $phone,
+                null,
+                $documentNumber,
+                $birthDate,
+            );
+
+            $access = BirthdayCelebrationAccessIssuer::ensureForDelivery(
+                $delivery->id,
+                $name,
+                $phone,
+                $documentNumber,
+                self::parseBirthDate($birthDate),
+                now(),
+            );
+
+            return route('birthday.animation.access', ['token' => $access->public_token]);
+        } catch (Throwable $exception) {
+            Log::warning('No se pudo emitir acceso de animación/cupones de cumpleaños.', [
+                'recipient' => $name,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    public static function formatCelebrationLinkForMessage(?string $animationUrl): string
+    {
+        if (blank($animationUrl)) {
+            return '';
+        }
+
+        return "\n\n¡Haz clic aquí para ver tus regalos!\n".$animationUrl;
+    }
+
+    private static function parseBirthDate(?string $birthDate): ?CarbonInterface
+    {
+        if (! filled($birthDate)) {
+            return null;
+        }
+
+        $value = trim($birthDate);
+
+        foreach (['d/m/Y', 'Y-m-d', 'd-m-Y'] as $format) {
+            try {
+                return Carbon::createFromFormat($format, $value)->startOfDay();
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        try {
+            return Carbon::parse($value)->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

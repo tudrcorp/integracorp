@@ -8,6 +8,7 @@ use App\Filament\Administration\Pages\AgendaCorporativa as AdministrationAgendaC
 use App\Filament\Administration\Pages\CalendariosTdg as AdministrationCalendariosTdg;
 use App\Filament\Administration\Pages\CompensacionVaucher;
 use App\Filament\Administration\Pages\Dashboard as AdministrationEscritorio;
+use App\Filament\Administration\Pages\GuardiasOperaciones as AdministrationGuardiasOperaciones;
 use App\Filament\Administration\Resources\AffiliationCorporatePaymentFrequencyChanges\AffiliationCorporatePaymentFrequencyChangeResource;
 use App\Filament\Administration\Resources\AffiliationCorporateRenovationHistories\AffiliationCorporateRenovationHistoryResource as AdministrationAffiliationCorporateRenovationHistoryResource;
 use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource as AdministrationAffiliationCorporateResource;
@@ -39,6 +40,7 @@ use App\Filament\Administration\Resources\WhiteCompanies\WhiteCompanyResource as
 use App\Filament\Business\Clusters\NuevosNegocios\NuevosNegociosCluster;
 use App\Filament\Business\Pages\AgendaCorporativa;
 use App\Filament\Business\Pages\CalendariosTdg;
+use App\Filament\Business\Pages\GuardiasOperaciones;
 use App\Filament\Business\Resources\AccountManagers\AccountManagerResource;
 use App\Filament\Business\Resources\AffiliateCorporates\AffiliateCorporateResource as BusinessAffiliateCorporateResource;
 use App\Filament\Business\Resources\Affiliates\AffiliateResource as BusinessAffiliateResource;
@@ -85,6 +87,7 @@ use App\Filament\Business\Resources\WhiteCompanies\WhiteCompanyResource;
 use App\Filament\Business\Resources\Zones\ZoneResource;
 use App\Filament\Marketing\Pages\AgendaCorporativa as MarketingAgendaCorporativa;
 use App\Filament\Marketing\Pages\CalendariosTdg as MarketingCalendariosTdg;
+use App\Filament\Marketing\Pages\GuardiasOperaciones as MarketingGuardiasOperaciones;
 use App\Filament\Marketing\Resources\AffiliationCorporates\AffiliationCorporateResource as MarketingAffiliationCorporateResource;
 use App\Filament\Marketing\Resources\Affiliations\AffiliationResource as MarketingAffiliationResource;
 use App\Filament\Marketing\Resources\Agencies\AgencyResource as MarketingAgencyResource;
@@ -121,6 +124,7 @@ use App\Filament\Operations\Pages\Dashboard as OperationsEscritorio;
 use App\Filament\Operations\Pages\DashboardOperaciones;
 use App\Filament\Operations\Pages\DashboardProveedor;
 use App\Filament\Operations\Pages\GeneradorDeReportes;
+use App\Filament\Operations\Pages\GuardiasOperaciones as OperationsGuardiasOperaciones;
 use App\Filament\Operations\Pages\ManageOperationInventoryParameters;
 use App\Filament\Operations\Resources\AccountsPayables\AccountsPayableResource;
 use App\Filament\Operations\Resources\AccountsReceivables\AccountsReceivableResource;
@@ -221,6 +225,7 @@ final class DepartmentNavigationPermissionRegistry
         AgendaCorporativa::class => ['agenda-corporativa'],
         CalendariosTdg::class => ['calendarios-tdg'],
         \App\Filament\Business\Pages\UserActivityMonitor::class => ['actividad-usuarios'],
+        GuardiasOperaciones::class => ['guardias-operaciones'],
         GuiaChatFeedbackResource::class => ['guia-chat'],
         ConfigCostoBenefitResource::class => ['porcentajes-costos'],
         PlanResource::class => ['planes'],
@@ -239,6 +244,7 @@ final class DepartmentNavigationPermissionRegistry
         AdministrationEscritorio::class => ['escritorio'],
         AdministrationAgendaCorporativa::class => ['agenda-corporativa'],
         AdministrationCalendariosTdg::class => ['calendarios-tdg'],
+        AdministrationGuardiasOperaciones::class => ['guardias-operaciones'],
         AdministrationAffiliationResource::class => ['afiliaciones-individuales'],
         AdministrationAffiliationCorporateResource::class => ['afiliaciones-corporativas'],
         AdministrationRenovationResource::class => ['renovaciones-individuales'],
@@ -272,6 +278,7 @@ final class DepartmentNavigationPermissionRegistry
         // MARKETING
         MarketingAgendaCorporativa::class => ['agenda-corporativa'],
         MarketingCalendariosTdg::class => ['calendarios-tdg'],
+        MarketingGuardiasOperaciones::class => ['guardias-operaciones'],
         MarketingAffiliationResource::class => ['afiliaciones-individuales'],
         MarketingAffiliationCorporateResource::class => ['afiliaciones-corporativas'],
         MarketingAgencyResource::class => ['agencias-de-corretaje'],
@@ -293,6 +300,7 @@ final class DepartmentNavigationPermissionRegistry
         // OPERACIONES
         OperationsAgendaCorporativa::class => ['agenda-corporativa'],
         OperationsCalendariosTdg::class => ['calendarios-tdg'],
+        OperationsGuardiasOperaciones::class => ['guardias-operaciones'],
         AffiliateResource::class => ['afiliados-individuales'],
         AffiliateCorporateResource::class => ['afiliados-corporativos'],
         NuevosNegociosAssociateResource::class => ['afiliados-nuevos-negocios'],

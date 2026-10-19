@@ -81,6 +81,8 @@ class BirthdayNotificationRecipientDelivery
         ?string $errorMessage = null,
         ?string $email = null,
         ?CarbonInterface $deliveryDate = null,
+        ?string $documentNumber = null,
+        ?string $birthDate = null,
     ): BirthdayNotificationDelivery {
         $delivery = self::resolveDelivery(
             $birthdayNotificationId,
@@ -88,6 +90,8 @@ class BirthdayNotificationRecipientDelivery
             $email,
             $phone,
             $deliveryDate,
+            $documentNumber,
+            $birthDate,
         );
 
         self::updateWhatsapp($delivery->id, $status, $errorMessage);
@@ -124,6 +128,8 @@ class BirthdayNotificationRecipientDelivery
         ?string $email = null,
         ?string $phone = null,
         ?CarbonInterface $deliveryDate = null,
+        ?string $documentNumber = null,
+        ?string $birthDate = null,
     ): BirthdayNotificationDelivery {
         $date = ($deliveryDate ?? now())->toDateString();
         $normalizedName = trim($fullName);
@@ -149,6 +155,8 @@ class BirthdayNotificationRecipientDelivery
                     $existing->forceFill(['email' => $email])->save();
                 }
 
+                self::mergeRecipientSnapshot($existing, $documentNumber, $birthDate);
+
                 return $existing->refresh();
             }
         }
@@ -172,6 +180,8 @@ class BirthdayNotificationRecipientDelivery
                     $existing->forceFill(['phone' => $phone])->save();
                 }
 
+                self::mergeRecipientSnapshot($existing, $documentNumber, $birthDate);
+
                 return $existing->refresh();
             }
         }
@@ -184,16 +194,62 @@ class BirthdayNotificationRecipientDelivery
                 'phone' => filled($phone) && blank($existingByName->phone) ? $phone : null,
             ], fn ($value) => $value !== null))->save();
 
+            self::mergeRecipientSnapshot($existingByName, $documentNumber, $birthDate);
+
             return $existingByName->refresh();
         }
+
+        $parsedBirthDate = self::normalizeBirthDateForStorage($birthDate);
 
         return BirthdayNotificationDelivery::query()->create([
             'birthday_notification_id' => $birthdayNotificationId,
             'full_name' => $normalizedName,
             'email' => $email,
             'phone' => $phone,
+            'document_number' => filled($documentNumber) ? mb_strtoupper(trim($documentNumber)) : null,
+            'birth_date' => $parsedBirthDate,
             'delivery_date' => $date,
         ]);
+    }
+
+    private static function mergeRecipientSnapshot(
+        BirthdayNotificationDelivery $delivery,
+        ?string $documentNumber,
+        ?string $birthDate,
+    ): void {
+        $updates = array_filter([
+            'document_number' => filled($documentNumber) && blank($delivery->document_number)
+                ? mb_strtoupper(trim($documentNumber))
+                : null,
+            'birth_date' => blank($delivery->birth_date) ? self::normalizeBirthDateForStorage($birthDate) : null,
+        ], fn ($value) => $value !== null);
+
+        if ($updates !== []) {
+            $delivery->forceFill($updates)->save();
+        }
+    }
+
+    private static function normalizeBirthDateForStorage(?string $birthDate): ?string
+    {
+        if (! filled($birthDate)) {
+            return null;
+        }
+
+        $value = trim($birthDate);
+
+        foreach (['d/m/Y', 'Y-m-d', 'd-m-Y'] as $format) {
+            try {
+                return \Carbon\Carbon::createFromFormat($format, $value)->toDateString();
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

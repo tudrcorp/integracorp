@@ -8,6 +8,8 @@ use App\Http\Controllers\AffiliationCorporateFichaPdfController;
 use App\Http\Controllers\AffiliationFichaPdfController;
 use App\Http\Controllers\AgenciasTdevPresentationController;
 use App\Http\Controllers\ApiBcvController;
+use App\Http\Controllers\BirthdayAnimationAccessController;
+use App\Http\Controllers\BirthdayCouponRedemptionController;
 use App\Http\Controllers\Business\CorporateAgendaInvitationResponseController;
 use App\Http\Controllers\Business\MarkHelpdeskTicketInProgressController;
 use App\Http\Controllers\BusinessAgencyFichaPdfController;
@@ -2190,6 +2192,24 @@ Route::get('/ldi/{transaction_id}', [UtilsController::class, 'show'])
  * @return void
  */
 Route::get('/cierre-mes', CierreMesController::class);
+
+Route::redirect('/animacion-cumpleanos/index.html', '/feliz-cumpleanos');
+
+Route::get('/feliz-cumpleanos', fn () => abort(404))->name('birthday.animation.legacy');
+
+Route::get('/feliz-cumpleanos/{token}', BirthdayAnimationAccessController::class)
+    ->where('token', '[A-Za-z0-9]{32,64}')
+    ->name('birthday.animation.access');
+
+Route::get('/cupon-cumpleanos/{token}', [BirthdayCouponRedemptionController::class, 'show'])
+    ->middleware('birthday.coupon.auth')
+    ->where('token', '[A-Za-z0-9]{32,64}')
+    ->name('birthday.coupon.show');
+
+Route::post('/cupon-cumpleanos/{token}/usar', [BirthdayCouponRedemptionController::class, 'redeem'])
+    ->middleware('birthday.coupon.auth')
+    ->where('token', '[A-Za-z0-9]{32,64}')
+    ->name('birthday.coupon.redeem');
 
 Route::get('/dpto-tecnologia-sistemas', [PresentationHubController::class, 'index']);
 Route::post('/dpto-tecnologia-sistemas/auth', [PresentationHubController::class, 'authenticate']);

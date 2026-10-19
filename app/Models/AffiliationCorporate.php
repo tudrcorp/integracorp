@@ -140,6 +140,16 @@ class AffiliationCorporate extends Model
         return $this->hasMany(AfilliationCorporatePlan::class);
     }
 
+    /**
+     * Teléfonos y correos extra. El contacto principal sigue en full_name_contact, phone_contact y email_contact.
+     *
+     * @return HasMany<AffiliationCorporateContact, $this>
+     */
+    public function affiliationCorporateContacts(): HasMany
+    {
+        return $this->hasMany(AffiliationCorporateContact::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function agent()
     {
         return $this->belongsTo(Agent::class);

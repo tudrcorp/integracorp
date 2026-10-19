@@ -12,8 +12,10 @@ use App\Models\DataNotification;
 use App\Models\Guest;
 use App\Models\MassNotification;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\Birthday\BirthdayCelebrationCard;
 use App\Support\MassNotificationEmailFailureLogger;
 use App\Support\MassNotificationRecipientDelivery;
+use App\Support\PublicStorageAssetUrl;
 use App\Support\RunReportMessageFormatter;
 use App\Support\ScheduledNotificationPhones;
 use App\Support\UrlPathEncoder;
@@ -2087,11 +2089,14 @@ class NotificationController extends Controller
 
             if ($type == 'image') {
                 Log::info('es imagen');
-                $imagePath = filled($file) ? $file : WhatsAppBrandImage::RELATIVE_PATH;
+                $imagePath = filled($file) ? (string) $file : WhatsAppBrandImage::RELATIVE_PATH;
+                $imageUrl = BirthdayCelebrationCard::isOfficialCard($imagePath)
+                    ? BirthdayCelebrationCard::publicUrl()
+                    : PublicStorageAssetUrl::url($imagePath);
                 $params = [
                     'token' => config('parameters.TOKEN'),
                     'to' => $phone,
-                    'image' => config('parameters.PUBLIC_URL').'/'.$imagePath,
+                    'image' => $imageUrl,
                     'caption' => $body,
                 ];
                 $curl = curl_init();
@@ -2117,7 +2122,7 @@ class NotificationController extends Controller
                 $params = [
                     'token' => config('parameters.TOKEN'),
                     'to' => $phone,
-                    'video' => config('parameters.PUBLIC_URL').'/'.$file,
+                    'video' => \App\Support\PublicStorageAssetUrl::url($file),
                     'caption' => $body,
                 ];
                 $curl = curl_init();

@@ -2,8 +2,11 @@
 
 namespace App\Filament\Marketing\Resources\BirthdayNotifications\Schemas;
 
+use App\Models\BirthdayNotification;
+use App\Support\Birthday\BirthdayCelebrationCard;
 use App\Support\BirthdayNotificationAudience;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -57,7 +60,9 @@ class BirthdayNotificationForm
                                         ->required()
                                         ->searchable()
                                         ->label('Destinatarios')
-                                        ->helperText('Selecciona los destinatarios de la notificación.'),
+                                        ->helperText(fn (?BirthdayNotification $record): string => $record?->sends_celebration_card
+                                            ? 'Grupo que recibe la tarjeta animada. No cambia las otras notificaciones. En la tabla de abajo apagas a quien no deba recibirla.'
+                                            : 'Selecciona los destinatarios de la notificación.'),
                                     Fieldset::make()
                                         ->schema([
                                             Radio::make('type')
@@ -85,12 +90,21 @@ class BirthdayNotificationForm
                                                 ])
                                                 ->helperText('Aquí puedes escribir el titulo de la notificación que se enviará a los usuarios. Ejemplo: Estimado(a):, Sr(a)., Amigo(a), etc.'),
                                         ])->columnSpanFull(),
+                                    Placeholder::make('celebration_card_preview')
+                                        ->label('Tarjeta animada')
+                                        ->visible(fn (?BirthdayNotification $record): bool => (bool) $record?->sends_celebration_card)
+                                        ->content(new HtmlString(
+                                            '<img src="'.e(BirthdayCelebrationCard::publicUrl()).'" alt="Tarjeta de cumpleaños" style="display:block;max-width:280px;height:auto;border-radius:12px;">'
+                                            .'<p style="margin-top:8px;">Esta notificación es independiente. Envía la tarjeta animada y el enlace de 24 horas solo a las personas que dejes encendidas.</p>'
+                                        ))
+                                        ->columnSpanFull(),
                                     Fieldset::make('Archivo')
-                                        ->hidden(fn (Get $get) => $get('type') == 'url')
+                                        ->hidden(fn (Get $get, ?BirthdayNotification $record): bool => $get('type') == 'url' || (bool) $record?->sends_celebration_card)
                                         ->schema([
                                             FileUpload::make('file')
                                                 ->label('Archivo de la notificación (Imagen o Video)')
-                                                ->required()
+                                                ->required(fn (?BirthdayNotification $record): bool => ! $record?->sends_celebration_card)
+                                                ->dehydrated(fn (?BirthdayNotification $record): bool => ! $record?->sends_celebration_card)
                                                 ->directory('birthday-notifications')
                                                 ->validationMessages([
                                                     'required' => 'La imagen es obligatoria.',
