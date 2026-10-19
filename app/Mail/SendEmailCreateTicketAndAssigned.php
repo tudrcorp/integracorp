@@ -7,6 +7,7 @@ namespace App\Mail;
 use App\Exceptions\HelpdeskTicketMailException;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
+use App\Support\HelpdeskPlainText;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
@@ -116,7 +117,7 @@ final class SendEmailCreateTicketAndAssigned extends Mailable implements ShouldQ
      */
     public function buildViewData(): array
     {
-        $description = (string) ($this->helpDesk->description ?? '');
+        $description = HelpdeskPlainText::readable((string) ($this->helpDesk->description ?? ''));
         $description = Str::of($description)->trim()->limit(8000)->toString();
 
         $recipient = $this->emailRecipientColaborador;

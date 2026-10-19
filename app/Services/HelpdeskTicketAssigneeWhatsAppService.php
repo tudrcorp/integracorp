@@ -8,6 +8,7 @@ use App\Jobs\SendNotificacionWhatsApp;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Models\User;
+use App\Support\HelpdeskPlainText;
 use App\Support\SecurityAudit;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +25,7 @@ final class HelpdeskTicketAssigneeWhatsAppService
             : '—';
         $creator = filled($ticket->created_by) ? (string) $ticket->created_by : '—';
         $priorityLabel = self::priorityLabelForWhatsApp((string) $ticket->priority);
-        $description = trim(html_entity_decode(strip_tags((string) $ticket->description), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $description = HelpdeskPlainText::inline((string) $ticket->description);
         if (mb_strlen($description) > 900) {
             $description = mb_substr($description, 0, 897).'...';
         }
@@ -125,7 +126,7 @@ TEXT;
         $tz = (string) config('app.timezone');
         $updatedAt = now()->timezone($tz)->format('d/m/Y H:i');
         $ticketNo = (string) $ticket->getKey();
-        $description = trim(html_entity_decode(strip_tags((string) $ticket->description), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $description = HelpdeskPlainText::inline((string) $ticket->description);
         if (mb_strlen($description) > 350) {
             $description = mb_substr($description, 0, 347).'...';
         }
@@ -245,7 +246,7 @@ TEXT;
         $tz = (string) config('app.timezone');
         $closedAt = now()->timezone($tz)->format('d/m/Y H:i');
         $ticketNo = (string) $ticket->getKey();
-        $description = trim(html_entity_decode(strip_tags((string) $ticket->description), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $description = HelpdeskPlainText::inline((string) $ticket->description);
         if (mb_strlen($description) > 350) {
             $description = mb_substr($description, 0, 347).'...';
         }
@@ -275,7 +276,7 @@ TEXT;
         $ticketNo = (string) $ticket->getKey();
         $prevLabel = self::priorityLabelForWhatsApp($previousPriority);
         $newLabel = self::priorityLabelForWhatsApp($newPriority);
-        $description = trim(html_entity_decode(strip_tags((string) $ticket->description), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $description = HelpdeskPlainText::inline((string) $ticket->description);
         if (mb_strlen($description) > 350) {
             $description = mb_substr($description, 0, 347).'...';
         }
