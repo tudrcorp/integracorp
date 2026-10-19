@@ -165,7 +165,7 @@ function workdaySchema(): void
     DB::table('users')->insert([
         [...$base, 'id' => 601, 'name' => 'Ana Interna', 'email' => 'ana@tudrencasa.com', 'departament' => '["NEGOCIOS"]'],
         [...$base, 'id' => 602, 'name' => 'Dra. Externa', 'email' => 'dra@gmail.com', 'is_doctor' => true],
-        [...$base, 'id' => 603, 'name' => 'Agente Casa', 'email' => 'agente@tudrencasa.com', 'is_agent' => true, 'code_agency' => 'TDG-100'],
+        [...$base, 'id' => 603, 'name' => 'Agente Externo', 'email' => 'agente@gmail.com', 'is_agent' => true, 'code_agency' => 'TDG-100'],
         [...$base, 'id' => 604, 'name' => 'Nora Nocturna', 'email' => 'nora@tudrencasa.com', 'departament' => '["OPERACIONES"]'],
         [...$base, 'id' => 605, 'name' => 'Inés Inactiva', 'email' => 'ines@tudrencasa.com', 'departament' => '["NEGOCIOS"]', 'status' => 'INACTIVO'],
     ]);
@@ -293,11 +293,28 @@ it('calcula los feriados federales de EE. UU. con su día observado', function (
     expect(WorkHolidays::nameFor(wdAt('2026-10-12')))->toBeNull();
 });
 
-it('mide a los internos activos y a todos los médicos, no a agentes ni inactivos', function (): void {
+it('mide a los internos activos y a todos los médicos, no a agentes externos ni inactivos', function (): void {
     expect(WorkdaySubjects::all()->keys()->sort()->values()->all())->toBe([601, 602, 604])
         ->and(WorkdaySubjects::isSubject(wdUser(603)))->toBeFalse()
         ->and(WorkdaySubjects::isSubject(wdUser(605)))->toBeFalse()
         ->and(WorkdaySubjects::isSubject(null))->toBeFalse();
+});
+
+it('da jornada y menú a quien tiene correo @tudrencasa.com aunque también sea agente', function (): void {
+    DB::table('users')->insert([
+        'id' => 606, 'name' => 'Agente Interna', 'email' => 'MCastillo@TuDrEnCasa.com', 'departament' => null,
+        'is_agent' => true, 'is_agency' => false, 'agency_type' => null, 'code_agency' => null, 'is_doctor' => false, 'status' => 'ACTIVO',
+    ]);
+
+    expect(WorkdaySubjects::isSubject(wdUser(606)))->toBeTrue()
+        ->and(WorkdaySubjects::all()->keys()->sort()->values()->all())->toBe([601, 602, 604, 606]);
+
+    $this->travelTo(wdAt('2026-10-15 12:00'));
+    Filament::setCurrentPanel(Filament::getPanel('business'));
+    $this->actingAs(User::query()->findOrFail(606));
+
+    expect(WorkBreakToggle::shouldRender())->toBeTrue()
+        ->and(view('filament.hooks.work-break-menu-items')->render())->toContain('Entrar en reunión')->toContain('Salir a almorzar');
 });
 
 it('arma el día: laboral, fin de semana, feriado, ausencia, exenta y sin turno', function (): void {

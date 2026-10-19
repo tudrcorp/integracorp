@@ -9,9 +9,10 @@ use App\Support\UserActivity\UserActivityProfile;
 use Illuminate\Support\Collection;
 
 /**
- * Quién tiene jornada: los internos activos (@tudrencasa.com o con
- * departamento) y todos los médicos, tengan o no correo interno. Agentes,
- * agencias y proveedores se siguen midiendo, pero sin jornada.
+ * Quién tiene jornada: todo activo con correo @tudrencasa.com (aunque además
+ * tenga marca de agente), los internos con departamento y todos los médicos,
+ * tengan o no correo interno. Agentes, agencias y proveedores externos se
+ * siguen midiendo, pero sin jornada.
  */
 final class WorkdaySubjects
 {
@@ -32,7 +33,9 @@ final class WorkdaySubjects
             return false;
         }
 
-        return (bool) $user->is_doctor || UserActivityProfile::classify($user)['type'] === 'internal';
+        return (bool) $user->is_doctor
+            || str_ends_with(mb_strtolower((string) $user->email), '@tudrencasa.com')
+            || UserActivityProfile::classify($user)['type'] === 'internal';
     }
 
     /**
