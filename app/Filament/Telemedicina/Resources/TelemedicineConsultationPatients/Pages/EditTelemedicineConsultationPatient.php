@@ -11,6 +11,7 @@ use App\Jobs\GeneratePdfInformeSeguimiento;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\User;
 use App\Services\TelemedicineSupplyConsumptionRecorder;
+use App\Support\Telemedicine\TelemedicineAmdFollowUpVisit;
 use App\Support\Telemedicine\TelemedicineFollowUpReportDocument;
 use App\Support\Telemedicine\TelemedicineInitialDiagnosisUpdater;
 use Filament\Actions\DeleteAction;
@@ -96,7 +97,7 @@ class EditTelemedicineConsultationPatient extends EditRecord
         try {
             TelemedicineInitialDiagnosisUpdater::syncFromFollowUp(
                 (int) $record->telemedicine_case_id,
-                (string) ($record->diagnostic_impression ?? $this->data[TelemedicineInitialDiagnosisUpdater::FORM_FIELD] ?? ''),
+                TelemedicineAmdFollowUpVisit::diagnosisToSync($record->diagnostic_impression, $this->data),
                 Auth::user() instanceof User ? Auth::user() : null,
                 filled($record->code_reference) ? (string) $record->code_reference : null,
             );

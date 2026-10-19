@@ -27,19 +27,24 @@
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; background: #ffffff; }
         body {
-            margin: 44mm 20mm 32mm 20mm;
+            margin: 44mm 20mm 37mm 20mm; /* reserva el pie fijo y, debajo, el folio «Página X de Y» */
             font-family: DejaVu Sans, sans-serif;
             font-size: 7.5pt;
             line-height: 1.28;
             color: #374151;
         }
         .doc-root { position: relative; z-index: 1; }
+        /*
+         * Encabezado fijo: se repite en cada página dentro de la banda que reserva
+         * el margen superior. Va como hijo directo de <body> y con ancho explícito:
+         * dentro de otro contenedor DomPDF solo lo pintaba en la primera hoja, y
+         * una tabla ignora `left` + `right` y se encogía a media página.
+         */
         .header-bar {
             position: fixed;
             top: 12mm;
             left: 20mm;
-            right: 20mm;
-            width: auto;
+            width: 170mm;
             table-layout: fixed;
             border-collapse: separate;
             border-spacing: 0;
@@ -181,7 +186,7 @@
         .doc-content { padding: 0; }
         .footer-fixed {
             position: fixed;
-            bottom: 10mm;
+            bottom: 18mm;
             left: 20mm;
             right: 20mm;
             text-align: center;
@@ -196,7 +201,6 @@
     </style>
 </head>
 <body>
-<div class="doc-root">
 <table class="header-bar">
     <tr>
         <td class="col-logo">
@@ -221,6 +225,7 @@
         <td class="header-rule-space" colspan="2">&nbsp;</td>
     </tr>
 </table>
+<div class="doc-root">
 <div class="doc-content">
     @include('documents.partials.bitacora-caso-section', ['title' => 'Identificación del caso', 'map' => $dossier['header'] ?? []])
     @include('documents.partials.bitacora-caso-section', ['title' => 'Paciente', 'map' => $dossier['patient'] ?? []])

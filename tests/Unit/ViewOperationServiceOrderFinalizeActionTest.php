@@ -19,9 +19,13 @@ it('expone acción de header para finalizar la orden de servicio', function (): 
         ->toContain("->color('success')")
         ->toContain("->modalCancelActionLabel('Cancelar')")
         ->toContain('makeModalSubmitAction')
-        ->toContain('OperationServiceOrderCoordinationSync::finalizeOrder')
+        ->toContain('OperationServiceOrderDocuments::finalize(')
         ->toContain('OperationServiceOrderViewActions::canFinalize')
-        ->toContain('LabImagingResultsFollowUpRegistrar::registerFromServiceOrder')
         ->toContain('renderVigenciaHeaderPill')
         ->toContain('shouldHighlightVigencia');
+
+    // Cierre de la orden y seguimiento por resultados viven en el servicio compartido.
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/OperationServiceOrderDocuments.php'))
+        ->toContain('OperationServiceOrderCoordinationSync::finalizeOrder($locked)')
+        ->toContain('LabImagingResultsFollowUpRegistrar::registerFromServiceOrder');
 });

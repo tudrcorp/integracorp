@@ -37,7 +37,10 @@
     };
     $items = \App\Support\Telemedicine\TelemedicineDocumentOrderItems::forDocument((string) $docType, $data);
     $stampDataUri = \App\Support\Telemedicine\TelemedicineDoctorStamp::dataUri($data['signature'] ?? null);
-    $stampSize = \App\Support\Telemedicine\TelemedicineDoctorStamp::displaySize($stampDataUri);
+    /** Mismo sello que el informe (34 × 17 mm): tiene que caber en su banda reservada. */
+    $stampSize = \App\Support\Telemedicine\TelemedicineDoctorStamp::displaySize($stampDataUri, 128, 64);
+    $signatureTopMm = \App\Support\Telemedicine\TelemedicineInformeSignatureStamp::PAGE_HEIGHT_MM
+        - \App\Support\Telemedicine\TelemedicineInformeSignatureStamp::bottomMarginMm();
     $doctorName = trim((string) ($data['doctor_name'] ?? ''));
     $stageLabel = \App\Support\Telemedicine\TelemedicineConsultationStageLabel::forDocumentData($data);
     $caseCode = \App\Support\Telemedicine\TelemedicineDocumentCaseCode::fromData(is_array($data ?? null) ? $data : []);
@@ -51,8 +54,14 @@
         @page { margin: 0; size: A4 portrait; }
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; background: #ffffff; }
+        /*
+         * El margen inferior reserva, en cada página, la banda de la firma y la
+         * del pie (las mismas del informe). Firma y pie son fijos: se repiten en
+         * todas las hojas fuera del flujo, así que nunca pisan la lista ni pueden
+         * abrir una página para ellos solos.
+         */
         body {
-            margin: 18mm 20mm;
+            margin: 18mm 20mm {{ \App\Support\Telemedicine\TelemedicineInformeSignatureStamp::bottomMarginMm() }}mm 20mm;
             font-family: DejaVu Sans, sans-serif;
             font-size: 7.5pt;
             line-height: 1.28;
@@ -116,10 +125,30 @@
         }
         .value { font-size: 7.5pt; color: #111827; font-weight: 600; }
         .value-muted { font-size: 7.35pt; color: #4b5563; }
+        /* La lista se parte entre páginas; su título y cabecera se repiten en cada una. */
         table.items {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
-            margin-top: 3px;
+            margin-top: 8px;
+        }
+        table.items thead { display: table-header-group; }
+        table.items tr { page-break-inside: avoid; }
+        table.items th.section-head {
+            background: #f0fdff;
+            color: #0c4a6e;
+            border: 0;
+            border-left: 2.5px solid {{ $brandCyan }};
+            font-size: 7.5pt;
+            padding: 2px 5px 2px 6px;
+        }
+        table.items th.section-gap {
+            background: #ffffff;
+            border: 0;
+            padding: 0;
+            height: 3px;
+            font-size: 1px;
+            line-height: 1px;
         }
         table.items th {
             background-color: {{ $brandCyan }};
@@ -145,8 +174,6 @@
             background: #f9fafb;
             border: 1px dashed #d1d5db;
         }
-        .keep-together { page-break-inside: avoid; }
-        .doc-content { padding: 0 0 28mm 0; }
         .footer-fixed {
             position: fixed;
             bottom: 18mm;
@@ -163,7 +190,7 @@
         .footer-brand { font-weight: bold; color: {{ $brandCyan }}; }
         .doctor-signature {
             position: fixed;
-            top: 222mm;
+            top: {{ $signatureTopMm }}mm;
             left: 20mm;
             right: 20mm;
             width: auto;
@@ -240,27 +267,31 @@
         </tr>
     </table>
 
-    <div class="keep-together">
+    @if($items === [])
         <div class="section-title">{{ $sectionTitle }}</div>
-        @if($items === [])
-            <p class="items-empty">{{ $emptyText }}</p>
-        @else
-            <table class="items">
-                <thead>
+        <p class="items-empty">{{ $emptyText }}</p>
+    @else
+        <table class="items">
+            <thead>
+                <tr>
+                    <th class="section-head">{{ $sectionTitle }}</th>
+                </tr>
+                <tr>
+                    <th class="section-gap">&nbsp;</th>
+                </tr>
+                <tr>
+                    <th>{{ $columnTitle }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($items as $item)
                     <tr>
-                        <th style="width:100%">{{ $columnTitle }}</th>
+                        <td>{{ $val($item['label'] ?? '') }}</td>
                     </tr>
-                </thead>
-                <tbody>
-                    @foreach ($items as $item)
-                        <tr>
-                            <td>{{ $val($item['label'] ?? '') }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
-    </div>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
 </div>
 </div>
 <div class="doctor-signature">

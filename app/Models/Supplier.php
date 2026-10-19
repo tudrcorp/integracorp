@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Operations\OutsourcingMedicalDepartment;
+use App\Support\Operations\SupplierServiceOrderBuckets;
 use Illuminate\Database\Eloquent\Model;
 
 class Supplier extends Model
@@ -290,6 +291,33 @@ class Supplier extends Model
         return $this->hasMany(OperationServiceOrder::class, 'supplier_id')
             ->whereIn('status', OperationServiceOrderValidity::closedStatuses())
             ->orderByDesc('created_at');
+    }
+
+    /**
+     * Las 10 finalizadas más recientes, para la pestaña de la ficha (la lista
+     * completa está en la pantalla de órdenes del proveedor).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<OperationServiceOrder, $this>
+     */
+    public function completedOperationServiceOrders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(OperationServiceOrder::class, 'supplier_id')
+            ->where('status', SupplierServiceOrderBuckets::FINALIZED_STATUS)
+            ->orderByDesc('created_at')
+            ->limit(10);
+    }
+
+    /**
+     * Las 10 canceladas o caducadas más recientes, para la pestaña de la ficha.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<OperationServiceOrder, $this>
+     */
+    public function unfinishedClosedOperationServiceOrders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(OperationServiceOrder::class, 'supplier_id')
+            ->whereIn('status', SupplierServiceOrderBuckets::CLOSED_UNFINISHED_STATUSES)
+            ->orderByDesc('created_at')
+            ->limit(10);
     }
 
     /**

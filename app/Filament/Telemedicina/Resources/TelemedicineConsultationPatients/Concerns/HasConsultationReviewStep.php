@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns;
 
-use App\Models\TelemedicineAmdInform;
-use App\Support\Telemedicine\TelemedicineAmdInformRegistrar;
 use App\Support\Telemedicine\TelemedicineConsultationReview;
 use App\Support\Telemedicine\TelemedicineConsultationWizardSteps;
 use Filament\Schemas\Components\Wizard;
@@ -33,10 +31,10 @@ trait HasConsultationReviewStep
         $this->consultationReviewVisited = true;
 
         try {
-            $review = TelemedicineConsultationReview::build($this->form->getRawState(), [
-                'amd_inform' => $this->consultationReviewHasAmdInform(),
-                'amd_exam' => method_exists($this, 'hasAmdPhysicalExam') && $this->hasAmdPhysicalExam(),
-            ]);
+            $review = TelemedicineConsultationReview::build(
+                $this->form->getRawState(),
+                method_exists($this, 'amdVisitProgress') ? $this->amdVisitProgress() : null,
+            );
         } catch (Throwable $exception) {
             report($exception);
 
@@ -91,20 +89,5 @@ trait HasConsultationReviewStep
         }
 
         return null;
-    }
-
-    private function consultationReviewHasAmdInform(): bool
-    {
-        if (method_exists($this, 'resolveConsultationForInformAmd')) {
-            $consultation = $this->resolveConsultationForInformAmd();
-
-            if ($consultation !== null) {
-                return TelemedicineAmdInform::query()->where('telemedicine_consultation_patient_id', $consultation->id)->exists();
-            }
-        }
-
-        $pendingId = ($this->pendingAmdInformId ?? null) ?? session()->get(TelemedicineAmdInformRegistrar::SESSION_PENDING_INFORM_ID);
-
-        return filled($pendingId) && TelemedicineAmdInform::query()->whereKey((int) $pendingId)->exists();
     }
 }

@@ -120,11 +120,11 @@ it('el recipe de medicamentos de producción usa el diseño homologado en horizo
         ->toContain('Omeprazol 20 mg')
         ->toContain('Indicaciones')
         ->toContain('1 tableta vía oral cada 8 horas por 5 días si hay fiebre o dolor.')
-        ->toContain('items-original')
-        ->toContain('items-copy')
+        ->toContain('item-original')
+        ->toContain('item-copy')
         ->toContain('doctor-signature-original')
         ->toContain('doctor-signature-copy')
-        ->toContain('top: 96mm')
+        ->toContain('top: 154mm')
         ->toContain('Dra. Carolina Josefina Pinillo Lameda')
         ->toContain('MPPS: MPPS-11209')
         ->toContain('Firma y sello del médico')
@@ -137,18 +137,17 @@ it('el recipe de medicamentos de producción usa el diseño homologado en horizo
         ->and($html)->not->toContain('Sello digital')
         ->and($html)->not->toContain('telemedicine-doctor-stamp');
 
-    preg_match('/class="items items-original".*?<\/thead>/s', $html, $originalHead);
-    preg_match('/class="items items-copy".*?<\/thead>/s', $html, $copyHead);
+    // Original y copia comparten la tabla fila por fila: la cabecera trae
+    // «Medicamento» en cada mitad e «Indicaciones» solo en la copia.
+    preg_match('/<table class="items">.*?<\/thead>/s', $html, $head);
 
-    expect($originalHead[0] ?? '')
-        ->toContain('Medicamento')
-        ->and($originalHead[0] ?? '')->not->toContain('Indicaciones')
-        ->and($originalHead[0] ?? '')->not->toContain('Cobertura');
+    expect(substr_count($head[0] ?? '', '>Medicamento<'))->toBe(2)
+        ->and(substr_count($head[0] ?? '', '>Indicaciones<'))->toBe(1)
+        ->and($head[0] ?? '')->not->toContain('Cobertura');
 
-    expect($copyHead[0] ?? '')
-        ->toContain('Medicamento')
-        ->toContain('Indicaciones')
-        ->and($copyHead[0] ?? '')->not->toContain('Cobertura');
+    // El original (farmacia) nunca lleva las indicaciones: cada una se imprime una sola vez, en la copia.
+    expect(substr_count($html, '1 tableta vía oral cada 8 horas por 5 días si hay fiebre o dolor.'))->toBe(1)
+        ->and($html)->toMatch('/class="item-copy">1 tableta vía oral cada 8 horas/');
 
     expect($path)->toBeFile()
         ->and(filesize($path))->toBeGreaterThan(8_000);
@@ -190,7 +189,7 @@ it('la orden de laboratorios de producción usa el diseño homologado', function
         ->not->toContain('Cobertura')
         ->not->toContain('No cubierto')
         ->toContain('doctor-signature')
-        ->toContain('top: 222mm')
+        ->toContain('top: 235mm')
         ->toContain('Firma y sello del médico')
         ->toContain('Dra. Carolina Josefina Pinillo Lameda')
         ->toContain('MPPS: MPPS-11209')
@@ -274,7 +273,7 @@ it('la orden de estudios e imagenología de producción usa el diseño homologad
         ->not->toContain('Cobertura')
         ->not->toContain('No cubierto')
         ->toContain('doctor-signature')
-        ->toContain('top: 222mm')
+        ->toContain('top: 235mm')
         ->toContain('Firma y sello del médico')
         ->toContain('Dra. Carolina Josefina Pinillo Lameda')
         ->toContain('MPPS: MPPS-11209')
@@ -314,7 +313,7 @@ it('la referencia a especialistas de producción usa el diseño homologado', fun
         ->not->toContain('Cobertura')
         ->not->toContain('No cubierto')
         ->toContain('doctor-signature')
-        ->toContain('top: 222mm')
+        ->toContain('top: 235mm')
         ->toContain('Firma y sello del médico')
         ->toContain('Dra. Carolina Josefina Pinillo Lameda')
         ->toContain('MPPS: MPPS-11209')

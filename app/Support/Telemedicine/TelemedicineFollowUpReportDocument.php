@@ -68,15 +68,24 @@ final class TelemedicineFollowUpReportDocument
             $diagnosis = TelemedicineInitialDiagnosisUpdater::currentDiagnosis((int) ($record['telemedicine_case_id'] ?? 0));
         }
 
+        // Visita AMD: la historia y la evolución están ocultas y no se guardan.
+        // El estado del formulario puede conservar lo escrito antes de elegir AMD;
+        // el informe debe decir lo mismo que quedó registrado.
+        $clinicalSource = TelemedicineAmdFollowUpVisit::applies(
+            $record['telemedicine_service_list_id'] ?? $formData['telemedicine_service_list_id'] ?? null,
+            $formData['feedbackOne'] ?? false,
+        ) ? $record : $formData + $record;
+
         return self::payload([
             'code_reference' => $formData['code_reference'] ?? $record['code_reference'] ?? null,
             'name_patient' => $patientDisplayName,
             'ci_patient' => $formData['nro_identificacion'] ?? $record['nro_identificacion'] ?? null,
             'age_patient' => $formData['age'] ?? $record['age'] ?? null,
             'diagnostic_impression' => $diagnosis,
-            'current_illness_history' => $formData['current_illness_history'] ?? $record['current_illness_history'] ?? null,
-            'patient_evolution' => $formData['patient_evolution'] ?? $record['patient_evolution'] ?? null,
+            'current_illness_history' => $clinicalSource['current_illness_history'] ?? null,
+            'patient_evolution' => $clinicalSource['patient_evolution'] ?? null,
             'observations' => $formData['observations'] ?? $record['observations'] ?? null,
+            'is_amd_visit' => self::isAmdVisit($record['telemedicine_service_list_id'] ?? $formData['telemedicine_service_list_id'] ?? null),
             'phone' => $formData['phone_ppal'] ?? null,
             'doctor_name' => $doctor['full_name'] ?? null,
             'code_cm' => $doctor['code_cm'] ?? null,
@@ -125,6 +134,7 @@ final class TelemedicineFollowUpReportDocument
             'current_illness_history' => $consultation->current_illness_history,
             'patient_evolution' => $consultation->patient_evolution,
             'observations' => $consultation->observations,
+            'is_amd_visit' => self::isAmdVisit($consultation->telemedicine_service_list_id),
             'phone' => $patient->phone ?? $consultation->phone_ppal ?? null,
             'doctor_name' => $doctor->full_name,
             'code_cm' => $doctor->code_cm,
@@ -172,6 +182,7 @@ final class TelemedicineFollowUpReportDocument
             'current_illness_history' => $input['current_illness_history'] ?? null,
             'patient_evolution' => $input['patient_evolution'] ?? null,
             'observations' => $input['observations'] ?? null,
+            'is_amd_visit' => (bool) ($input['is_amd_visit'] ?? false),
             'phone' => $input['phone'] ?? null,
             'doctor_name' => $input['doctor_name'] ?? null,
             'code_cm' => $input['code_cm'] ?? null,
@@ -182,6 +193,15 @@ final class TelemedicineFollowUpReportDocument
             'telemedicine_patient_id' => $input['telemedicine_patient_id'] ?? null,
             ...TelemedicineInformeClinicalOrders::onlyPayloadKeys($input),
         ];
+    }
+
+    /**
+     * El informe marca la visita AMD para omitir la historia y la evolución
+     * vacías. Sin alta: un seguimiento guardado con servicio AMD lo es.
+     */
+    private static function isAmdVisit(mixed $serviceListId): bool
+    {
+        return TelemedicineAmdFollowUpVisit::applies($serviceListId);
     }
 
     public static function makeJob(array $payload, mixed $user): GeneratePdfInformeSeguimiento

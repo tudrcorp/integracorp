@@ -32,6 +32,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const MANAGE_SUPPLIER_INTEGRACORP_PROCESSES = 'gestionar-procesos-integracorp-proveedores';
 
+    public const FINALIZE_OPERATION_SERVICE_ORDER = 'finalizar-ordenes-servicio';
+
     public const EDIT_INDIVIDUAL_AFFILIATE_PERSONAL_DATA = 'editar-afiliados-individuales';
 
     public const EDIT_CORPORATE_AFFILIATE_PERSONAL_DATA = 'editar-afiliados-corporativos';
@@ -120,6 +122,11 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::REGISTER_DIRECT_MEDICAL_SERVICE => [
                 'name' => 'Registrar servicio médico directo',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::FINALIZE_OPERATION_SERVICE_ORDER => [
+                'name' => 'Finalizar órdenes de servicio (cargando el documento)',
                 'group' => 'COORDINACIÓN DE SERVICIOS',
                 'modules' => ['OPERACIONES'],
             ],

@@ -21,6 +21,7 @@ use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
 use App\Support\Telemedicine\ConsultationFormContext;
 use App\Support\Telemedicine\ProvidesConsultationFormContext;
+use App\Support\Telemedicine\TelemedicineAmdFollowUpVisit;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineConsultationReference;
@@ -228,6 +229,30 @@ class TelemedicineConsultationPatientForm
         return View::make('filament.telemedicina.consultations.inform-amd-trigger')
             ->columnSpanFull()
             ->visible(fn (Get $get): bool => (int) $get('telemedicine_service_list_id') === TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID);
+    }
+
+    /**
+     * Seguimiento hecho como visita AMD: su historia va por «Informar AMD».
+     * Ver {@see TelemedicineAmdFollowUpVisit}.
+     */
+    private static function isAmdFollowUpVisit(Get $get): bool
+    {
+        return TelemedicineAmdFollowUpVisit::applies(
+            $get('telemedicine_service_list_id'),
+            $get('feedbackOne'),
+        );
+    }
+
+    /**
+     * Ocupa el lugar de las secciones ocultas para que el médico sepa por qué no
+     * las ve y dónde registrar la visita.
+     */
+    private static function amdFollowUpNotice(): View
+    {
+        return View::make('filament.telemedicina.consultations.amd-follow-up-notice')
+            ->viewData(['notice' => TelemedicineAmdFollowUpVisit::NOTICE])
+            ->columnSpanFull()
+            ->visible(fn (Get $get): bool => self::isAmdFollowUpVisit($get));
     }
 
     private static function isConsultaGeneralSelected(Get $get): bool
@@ -794,7 +819,9 @@ class TelemedicineConsultationPatientForm
                         ->schema([
                             self::returnToReviewBar(),
                             self::labImagingResultsPreview($labImagingResultDocuments, $countCase),
+                            self::amdFollowUpNotice(),
                             Fieldset::make('Diagnóstico principal')
+                                ->hidden(fn (Get $get): bool => self::isAmdFollowUpVisit($get))
                                 ->schema([
                                     Textarea::make(TelemedicineInitialDiagnosisUpdater::FORM_FIELD)
                                         ->label('Diagnóstico principal de la consulta inicial')
@@ -821,6 +848,7 @@ class TelemedicineConsultationPatientForm
                                                 JS),
                                 ])->columnSpanFull(),
                             Fieldset::make('Historia clínica de seguimiento')
+                                ->hidden(fn (Get $get): bool => self::isAmdFollowUpVisit($get))
                                 ->schema([
                                     Textarea::make('current_illness_history')
                                         ->label('Historia de la enfermedad actual')
@@ -843,6 +871,7 @@ class TelemedicineConsultationPatientForm
                                 ])->columnSpanFull(),
                             // ...Preguntas
                             Fieldset::make('Preguntas de Seguimiento')
+                                ->hidden(fn (Get $get): bool => self::isAmdFollowUpVisit($get))
                                 ->schema([
                                     Textarea::make('cuestion_1')
                                         ->label('1.- ¿COMO SE SIENTE EL DIA DE HOY?')

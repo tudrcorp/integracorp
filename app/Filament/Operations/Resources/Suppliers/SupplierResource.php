@@ -7,6 +7,7 @@ use App\Filament\Operations\Resources\Concerns\ConfiguresOperationsSupplierGloba
 use App\Filament\Operations\Resources\Suppliers\Pages\CreateSupplier;
 use App\Filament\Operations\Resources\Suppliers\Pages\EditSupplier;
 use App\Filament\Operations\Resources\Suppliers\Pages\ListSuppliers;
+use App\Filament\Operations\Resources\Suppliers\Pages\SupplierServiceOrders;
 use App\Filament\Operations\Resources\Suppliers\Pages\ViewSupplier;
 use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierContactPrincipalsRelationManager;
 use App\Filament\Operations\Resources\Suppliers\RelationManagers\SupplierObservacionsRelationManager;
@@ -104,6 +105,7 @@ class SupplierResource extends Resource
             'create' => CreateSupplier::route('/create'),
             'view' => ViewSupplier::route('/{record}'),
             'edit' => EditSupplier::route('/{record}/edit'),
+            'service-orders' => SupplierServiceOrders::route('/{record}/ordenes-de-servicio'),
         ];
     }
 

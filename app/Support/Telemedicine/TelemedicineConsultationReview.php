@@ -22,23 +22,26 @@ final class TelemedicineConsultationReview
 {
     /**
      * @param  array<string, mixed>  $state  Estado crudo del formulario.
-     * @param  array{amd_inform: bool, amd_exam: bool}  $amd  Qué se cargó de la AMD.
+     * @param  TelemedicineAmdVisitProgress|null  $amd  Avance de la visita AMD (null si la página no lo sabe calcular).
      * @return array{
      *     kind: string,
      *     tone: string,
      *     is_discharge: bool,
      *     sections: list<array{title: string, step: string, fields: array<string, string>, lists: list<array{title: string, tone: string, items: list<string>}>, empty: string|null}>,
      *     warnings: list<string>,
-     *     notes: list<string>
+     *     notes: list<string>,
+     *     amd: array{complete: bool, completed: int, total: int, message: string, steps: list<array{key: string, label: string, detail: string, done: bool, optional: bool}>}|null
      * }
      */
-    public static function build(array $state, array $amd = ['amd_inform' => false, 'amd_exam' => false]): array
+    public static function build(array $state, ?TelemedicineAmdVisitProgress $amd = null): array
     {
         $isFollowUp = mb_strtoupper(trim((string) ($state['status'] ?? ''))) === 'EN SEGUIMIENTO';
         $isDischarge = (bool) ($state['feedbackOne'] ?? false);
         $complements = array_map('intval', (array) ($state['complements'] ?? []));
         $serviceId = (int) ($state['telemedicine_service_list_id'] ?? 0);
-        $isAmd = $serviceId === TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID;
+        // Las acciones AMD solo existen con el servicio AMD y sin alta médica.
+        $isAmd = TelemedicineAmdFollowUpVisit::applies($serviceId, $isDischarge);
+        $amd ??= new TelemedicineAmdVisitProgress(hasInform: false, hasExam: false);
 
         $sections = [self::patientSection($state)];
         $sections[] = $isFollowUp ? self::followUpSection($state) : self::reasonSection($state);
@@ -65,8 +68,10 @@ final class TelemedicineConsultationReview
             'tone' => $isDischarge ? 'discharge' : ($isFollowUp ? 'follow_up' : 'initial'),
             'is_discharge' => $isDischarge,
             'sections' => $sections,
-            'warnings' => self::warnings($state, $sections, $isFollowUp, $isDischarge, $isAmd, $amd),
+            'warnings' => self::warnings($state, $sections, $isFollowUp),
             'notes' => self::notes($state, $isDischarge),
+            // Recuadro propio en la revisión: avisa lo pendiente sin bloquear el registro.
+            'amd' => $isAmd ? $amd->toArray() : null,
         ];
     }
 
@@ -111,14 +116,22 @@ final class TelemedicineConsultationReview
      */
     private static function followUpSection(array $state): array
     {
+        // Visita AMD: esos campos están ocultos y no se guardan; lo que haya
+        // quedado escrito antes de elegir AMD no debe aparecer como registrado.
+        $clinical = TelemedicineAmdFollowUpVisit::applies($state['telemedicine_service_list_id'] ?? null, $state['feedbackOne'] ?? false)
+            ? []
+            : [
+                'Historia de la enfermedad actual' => $state['current_illness_history'] ?? null,
+                'Evolución' => $state['patient_evolution'] ?? null,
+                'Cómo se siente' => $state['cuestion_1'] ?? null,
+                'Respuesta al tratamiento' => $state['cuestion_2'] ?? null,
+                'Mejoría de síntomas' => $state['cuestion_3'] ?? null,
+                'Estudios realizados' => $state['cuestion_4'] ?? null,
+                'Ajuste de indicaciones' => $state['cuestion_5'] ?? null,
+            ];
+
         return self::section('Cuestionario de seguimiento', TelemedicineConsultationWizardSteps::FOLLOW_UP, [
-            'Historia de la enfermedad actual' => $state['current_illness_history'] ?? null,
-            'Evolución' => $state['patient_evolution'] ?? null,
-            'Cómo se siente' => $state['cuestion_1'] ?? null,
-            'Respuesta al tratamiento' => $state['cuestion_2'] ?? null,
-            'Mejoría de síntomas' => $state['cuestion_3'] ?? null,
-            'Estudios realizados' => $state['cuestion_4'] ?? null,
-            'Ajuste de indicaciones' => $state['cuestion_5'] ?? null,
+            ...$clinical,
             ...self::serviceFields($state),
             'Observaciones' => $state['observations'] ?? null,
         ]);
@@ -188,10 +201,9 @@ final class TelemedicineConsultationReview
     /**
      * @param  array<string, mixed>  $state
      * @param  list<array<string, mixed>>  $sections
-     * @param  array{amd_inform: bool, amd_exam: bool}  $amd
      * @return list<string>
      */
-    private static function warnings(array $state, array $sections, bool $isFollowUp, bool $isDischarge, bool $isAmd, array $amd): array
+    private static function warnings(array $state, array $sections, bool $isFollowUp): array
     {
         $warnings = [];
 
@@ -207,14 +219,6 @@ final class TelemedicineConsultationReview
             if ($section['empty'] !== null) {
                 $warnings[] = $section['title'].': '.$section['empty'];
             }
-        }
-
-        if ($isAmd && ! $amd['amd_exam']) {
-            $warnings[] = 'Es una AMD y todavía no cargó el examen físico.';
-        }
-
-        if ($isAmd && ! $amd['amd_inform']) {
-            $warnings[] = 'Es una AMD y todavía no registró el informe AMD.';
         }
 
         return $warnings;

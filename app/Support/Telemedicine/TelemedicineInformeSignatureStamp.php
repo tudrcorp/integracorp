@@ -7,7 +7,10 @@ namespace App\Support\Telemedicine;
 use Dompdf\Dompdf;
 
 /**
- * Estampa la firma del médico en la ÚLTIMA página del informe.
+ * Estampa la firma del médico en TODAS las páginas del informe.
+ *
+ * Un informe de varias páginas debe llevar firma y sello en cada hoja: una hoja
+ * suelta sin firma no vale como documento médico.
  *
  * La firma no puede ir en el flujo del documento. Ocupa unos 34 mm y, cuando en
  * la última página quedaba menos que eso, saltaba entera y se llevaba una hoja
@@ -88,10 +91,6 @@ final class TelemedicineInformeSignatureStamp
             $canvas,
             $fontMetrics
         ) use ($stampPath, $doctorName, $mpps): void {
-            if ($pageNumber !== $pageCount) {
-                return;
-            }
-
             self::draw($canvas, $fontMetrics, $stampPath, $doctorName, $mpps);
         });
 

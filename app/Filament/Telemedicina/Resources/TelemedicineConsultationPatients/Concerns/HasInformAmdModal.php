@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns;
 
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Schemas\TelemedicineAmdInformFormSchema;
+use App\Models\TelemedicineAmdInform;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineDocument;
 use App\Support\Telemedicine\TelemedicineAmdFileRegistrar;
 use App\Support\Telemedicine\TelemedicineAmdInformRegistrar;
+use App\Support\Telemedicine\TelemedicineAmdVisitProgress;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
@@ -16,6 +18,15 @@ use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\HtmlString;
 
+/**
+ * Acciones AMD de la consulta: «Informar AMD» y «Cargar Archivo AMD».
+ *
+ * Leen el formulario con `getRawState()`, nunca con `getState()`: este último
+ * valida la consulta entera y, si falta cualquier campo obligatorio de otro paso
+ * (p. ej. el servicio de deriva), corta la acción sin abrir el modal. El médico
+ * debe poder registrar la AMD en cualquier momento; la consulta se valida al
+ * guardarla.
+ */
 trait HasInformAmdModal
 {
     public ?int $pendingAmdInformId = null;
@@ -33,13 +44,13 @@ trait HasInformAmdModal
         return Action::make('informAmd')
             ->label('Informar AMD')
             ->modalHeading('Informe AMD — Consulta Inicial')
-            ->modalDescription(new HtmlString('<p class="text-sm text-gray-500 dark:text-gray-400">Complete los datos clínicos de la consulta inicial. Al guardar se generará el Informe Médico Largo. Puede continuar con la consulta después.</p>'))
+            ->modalDescription(new HtmlString('<p class="text-sm text-gray-500 dark:text-gray-400">Complete los datos clínicos de la consulta inicial. Al guardar se generará el Informe Médico. Puede continuar con la consulta después.</p>'))
             ->modalWidth(Width::SevenExtraLarge)
             ->modalSubmitActionLabel('Guardar y generar PDF')
             ->form(TelemedicineAmdInformFormSchema::components())
             ->fillForm(fn (): array => $this->informAmdFormDefaults())
             ->action(function (array $data): void {
-                $formState = $this->form->getState();
+                $formState = $this->form->getRawState();
                 $serviceId = (int) ($formState['telemedicine_service_list_id'] ?? 0);
 
                 if ($serviceId !== TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID) {
@@ -72,9 +83,10 @@ trait HasInformAmdModal
 
                 Notification::make()
                     ->title('Informe AMD registrado')
-                    ->body($consultation
-                        ? 'El Informe Médico Largo se está generando y aparecerá en los documentos del caso.'
-                        : 'El Informe Médico Largo se está generando. Puede continuar con la consulta; al guardarla se vinculará automáticamente al caso.')
+                    ->body(($consultation
+                        ? 'El Informe Médico se está generando y aparecerá en los documentos del caso.'
+                        : 'El Informe Médico se está generando; al guardar la consulta se vinculará al caso.')
+                        .' '.$this->amdVisitProgress()->nextStepMessage())
                     ->success()
                     ->send();
             });
@@ -85,7 +97,7 @@ trait HasInformAmdModal
         return Action::make('uploadAmdFile')
             ->label('Cargar Archivo AMD')
             ->modalHeading('Cargar Archivo AMD')
-            ->modalDescription(new HtmlString('<p class="text-sm text-gray-500 dark:text-gray-400">Adjunte una imagen o archivo relacionado con la AMD. Quedará disponible en los documentos del caso.</p>'))
+            ->modalDescription(new HtmlString('<p class="text-sm text-gray-500 dark:text-gray-400">Adjunte una imagen o archivo relacionado con la AMD. Quedará disponible en los documentos del caso y en la pestaña «Bitácoras AMD».</p>'))
             ->modalWidth(Width::Large)
             ->modalSubmitActionLabel('Guardar archivo')
             ->form([
@@ -109,7 +121,7 @@ trait HasInformAmdModal
                     ->required(),
             ])
             ->action(function (array $data): void {
-                $formState = $this->form->getState();
+                $formState = $this->form->getRawState();
                 $serviceId = (int) ($formState['telemedicine_service_list_id'] ?? 0);
 
                 if ($serviceId !== TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID) {
@@ -160,12 +172,62 @@ trait HasInformAmdModal
 
                 Notification::make()
                     ->title('Archivo AMD guardado')
-                    ->body($consultation
-                        ? 'El archivo ya está disponible en los documentos del caso.'
-                        : 'El archivo se vinculará al caso cuando guarde la consulta.')
+                    ->body(($consultation
+                        ? 'Ya está disponible en los documentos del caso y en la pestaña «Bitácoras AMD».'
+                        : 'Al guardar la consulta quedará en los documentos del caso y en la pestaña «Bitácoras AMD».')
+                        .' '.$this->amdVisitProgress()->nextStepMessage())
                     ->success()
                     ->send();
             });
+    }
+
+    /**
+     * Avance de la visita AMD de esta consulta (guardada o aún pendiente).
+     */
+    public function amdVisitProgress(): TelemedicineAmdVisitProgress
+    {
+        return new TelemedicineAmdVisitProgress(
+            hasInform: $this->hasAmdInform(),
+            hasExam: method_exists($this, 'hasAmdPhysicalExam') && $this->hasAmdPhysicalExam(),
+            files: $this->amdFilesCount(),
+            examReport: method_exists($this, 'amdPhysicalExamReportLabel') ? $this->amdPhysicalExamReportLabel() : null,
+        );
+    }
+
+    /**
+     * Si el Informe AMD ya se registró: el de la consulta guardada o, si aún no
+     * existe, el pendiente de esta sesión.
+     */
+    public function hasAmdInform(): bool
+    {
+        $consultation = $this->resolveConsultationForInformAmd();
+
+        if ($consultation instanceof TelemedicineConsultationPatient) {
+            return TelemedicineAmdInform::query()
+                ->where('telemedicine_consultation_patient_id', $consultation->id)
+                ->exists();
+        }
+
+        $pendingId = $this->pendingAmdInformId ?? session()->get(TelemedicineAmdInformRegistrar::SESSION_PENDING_INFORM_ID);
+
+        return filled($pendingId) && TelemedicineAmdInform::query()->whereKey((int) $pendingId)->exists();
+    }
+
+    protected function amdFilesCount(): int
+    {
+        $consultation = $this->resolveConsultationForInformAmd();
+
+        if ($consultation instanceof TelemedicineConsultationPatient) {
+            return TelemedicineAmdFileRegistrar::countForConsultation($consultation);
+        }
+
+        $sessionIds = session()->get(TelemedicineAmdFileRegistrar::SESSION_PENDING_DOCUMENT_IDS, []);
+        $caseId = property_exists($this, 'case') && $this->case !== null ? (int) $this->case->id : null;
+
+        return TelemedicineAmdFileRegistrar::countPending(
+            [...$this->pendingAmdDocumentIds, ...(is_array($sessionIds) ? $sessionIds : [])],
+            $caseId,
+        );
     }
 
     /**
@@ -173,7 +235,7 @@ trait HasInformAmdModal
      */
     protected function informAmdFormDefaults(): array
     {
-        $formState = $this->form->getState();
+        $formState = $this->form->getRawState();
 
         return [
             'reason_consultation' => $formState['reason_consultation'] ?? null,

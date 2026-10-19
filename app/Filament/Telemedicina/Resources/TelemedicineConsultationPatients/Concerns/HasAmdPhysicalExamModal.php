@@ -6,7 +6,9 @@ namespace App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\C
 
 use App\Models\TelemedicineAmdPhysicalExam;
 use App\Models\TelemedicineConsultationPatient;
+use App\Models\User;
 use App\Support\Telemedicine\TelemedicineAmdPhysicalExamRegistrar;
+use App\Support\Telemedicine\TelemedicineAmdPhysicalExamReport;
 use App\Support\Telemedicine\TelemedicineAmdPhysicalExamTemplate;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use Filament\Actions\Action;
@@ -25,6 +27,10 @@ use Throwable;
 /**
  * Examen físico AMD: signos vitales (opcionales) y exploración por sistemas
  * con el texto normal ya escrito. Uno por consulta; reabrirlo edita el mismo.
+ *
+ * Se anexa al informe de la consulta (Informe Médico o de Seguimiento, ver
+ * {@see TelemedicineAmdPhysicalExamReport}); la UI se lo dice al médico antes
+ * y después de guardar.
  */
 trait HasAmdPhysicalExamModal
 {
@@ -35,7 +41,7 @@ trait HasAmdPhysicalExamModal
         return Action::make('amdPhysicalExam')
             ->label('Examen físico AMD')
             ->modalHeading('Examen físico AMD')
-            ->modalDescription(new HtmlString('<p class="text-sm text-gray-500 dark:text-gray-400">Cada sistema trae el hallazgo normal ya escrito: edite sólo lo que encuentre alterado. Los signos vitales son opcionales.</p>'))
+            ->modalDescription(fn (): HtmlString => $this->amdPhysicalExamModalDescription())
             ->modalWidth(Width::FiveExtraLarge)
             ->modalSubmitActionLabel('Guardar examen físico')
             ->form([
@@ -101,14 +107,99 @@ trait HasAmdPhysicalExamModal
                     return;
                 }
 
-                Notification::make()
-                    ->title('Examen físico guardado')
-                    ->body($exam->telemedicine_consultation_patient_id !== null
-                        ? 'Quedó en la bitácora del caso y en el Informe Médico Largo.'
-                        : 'Al guardar la consulta quedará en la bitácora del caso y en el Informe Médico Largo.')
-                    ->success()
-                    ->send();
+                $consultation = $this->resolveConsultationForInformAmd();
+
+                if (! $consultation instanceof TelemedicineConsultationPatient) {
+                    $report = $this->amdPhysicalExamReportLabel() ?? 'informe de la consulta';
+
+                    Notification::make()
+                        ->title('Examen físico guardado')
+                        ->body(trim("Al guardar la consulta se anexará al {$report} y quedará en la bitácora del caso. ".$this->amdNextStepMessage()))
+                        ->success()
+                        ->send();
+
+                    return;
+                }
+
+                $this->refreshReportWithAmdPhysicalExam($consultation);
             });
+    }
+
+    /**
+     * Informe al que se anexa el examen de esta consulta, o null si todavía no
+     * se sabe si es la consulta inicial o un seguimiento.
+     */
+    public function amdPhysicalExamReportLabel(): ?string
+    {
+        $consultation = $this->resolveConsultationForInformAmd();
+        $status = $consultation instanceof TelemedicineConsultationPatient
+            ? $consultation->status
+            : ($this->form->getRawState()['status'] ?? null);
+
+        return TelemedicineAmdPhysicalExamReport::labelForStatus(is_string($status) ? $status : null);
+    }
+
+    protected function amdPhysicalExamModalDescription(): HtmlString
+    {
+        $report = e($this->amdPhysicalExamReportLabel() ?? 'informe de esta consulta');
+        $when = $this->resolveConsultationForInformAmd() instanceof TelemedicineConsultationPatient
+            ? 'Al guardar, el informe se actualiza solo con el examen incluido.'
+            : 'Se incluirá al guardar la consulta.';
+
+        return new HtmlString(
+            '<div class="space-y-2">'
+            .'<p class="text-sm text-gray-500 dark:text-gray-400">Cada sistema trae el hallazgo normal ya escrito: edite sólo lo que encuentre alterado. Los signos vitales son opcionales.</p>'
+            .'<p class="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:border-sky-500/30 dark:bg-sky-950/40 dark:text-sky-100">'
+            .svg('heroicon-o-paper-clip', 'mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-300')->toHtml()
+            .'<span>Este examen se anexa al <strong>'.$report.'</strong>. '.e($when).'</span>'
+            .'</p>'
+            .'</div>'
+        );
+    }
+
+    /**
+     * Encola el informe de la consulta ya guardada para que salga con el examen.
+     * El examen ya quedó guardado: si el informe no se puede encolar se avisa
+     * cómo incluirlo, sin deshacer nada.
+     */
+    protected function refreshReportWithAmdPhysicalExam(TelemedicineConsultationPatient $consultation): void
+    {
+        $user = auth()->user();
+
+        try {
+            $report = $user instanceof User
+                ? TelemedicineAmdPhysicalExamReport::queueReportRefresh($consultation, $user)
+                : null;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            Notification::make()
+                ->title('Examen físico guardado, informe sin actualizar')
+                ->body('El examen quedó guardado en la bitácora del caso, pero el informe no se pudo actualizar. Use «Generar documentos» en el caso para incluirlo.')
+                ->warning()
+                ->persistent()
+                ->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title('Examen físico guardado')
+            ->body(trim(($report !== null
+                ? "Estamos actualizando el {$report} con el examen anexado. Le avisaremos cuando esté listo en los documentos del caso."
+                : 'Quedó en la bitácora del caso. Se anexará al informe cuando la consulta tenga los datos para emitirlo.')
+                .' '.$this->amdNextStepMessage()))
+            ->success()
+            ->send();
+    }
+
+    /**
+     * Qué le falta de la visita AMD, para cerrar cada mensaje con el siguiente
+     * paso. Vacío si la página no calcula el avance.
+     */
+    protected function amdNextStepMessage(): string
+    {
+        return method_exists($this, 'amdVisitProgress') ? $this->amdVisitProgress()->nextStepMessage() : '';
     }
 
     public function hasAmdPhysicalExam(): bool

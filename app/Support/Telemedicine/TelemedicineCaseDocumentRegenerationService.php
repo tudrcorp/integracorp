@@ -304,6 +304,47 @@ class TelemedicineCaseDocumentRegenerationService
     }
 
     /**
+     * Job del informe propio de una consulta (Informe Médico si es la inicial,
+     * Informe de Seguimiento si no), con los mismos datos que «Generar
+     * documentos». El llamador decide si lo encola.
+     *
+     * Null cuando la consulta no emite informe: sin médico que firme, sin
+     * paciente o sin contenido clínico.
+     */
+    public function informeJobFor(TelemedicineConsultationPatient $consultation, User $user): GeneratePdfInformeMedicoLargo|GeneratePdfInformeSeguimiento|null
+    {
+        $consultation->loadMissing('telemedicineCase');
+        $case = $consultation->telemedicineCase;
+        $doctor = $this->signingDoctorFor($consultation);
+
+        if (! $case instanceof TelemedicineCase || $doctor === null) {
+            return null;
+        }
+
+        $patient = $this->resolvePatient($consultation, $case);
+
+        if ($patient === null) {
+            return null;
+        }
+
+        $available = $this->availableOptions($consultation);
+
+        if (array_key_exists(self::DOCUMENT_INFORME_MEDICO, $available)) {
+            return new GeneratePdfInformeMedicoLargo(
+                $this->buildInformePayload($consultation, $doctor, $patient, $case, includeVitals: true),
+                $user,
+                self::DOCUMENT_INFORME_MEDICO,
+            );
+        }
+
+        if (array_key_exists(self::DOCUMENT_INFORME_SEGUIMIENTO, $available)) {
+            return $this->makeFollowUpReportJob($consultation, $doctor, $patient, $user);
+        }
+
+        return null;
+    }
+
+    /**
      * Ejecuta los jobs en el propio request, uno a uno y sin cola.
      *
      * @param  array<string, object>  $jobs  Clave de documento => job.

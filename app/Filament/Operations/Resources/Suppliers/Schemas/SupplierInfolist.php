@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\Suppliers\Schemas;
 
 use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrderResource;
+use App\Filament\Operations\Resources\Suppliers\Pages\SupplierServiceOrders;
 use App\Filament\Operations\Resources\Suppliers\Tables\SuppliersTable;
 use App\Filament\Operations\Support\OperationsLocationMapAction;
 use App\Models\OperationServiceOrder;
@@ -13,6 +14,8 @@ use App\Support\Filament\Operations\OutsourcingMedicalDepartmentFields;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingInfolist;
 use App\Support\Filament\Operations\SupplierIntegracorpManagementTab;
 use App\Support\Operations\SupplierInfrastructureCatalog;
+use App\Support\Operations\SupplierServiceOrderBuckets;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -42,7 +45,11 @@ class SupplierInfolist
 
     private const IOS_ORDERS_TABLE_WRAP_CLASS = 'rounded-2xl border border-sky-200/65 bg-white/95 shadow-[0_8px_30px_-12px_rgba(14,165,233,0.28)] dark:border-sky-500/25 dark:bg-gray-950/55 overflow-hidden';
 
-    private static function statusBadgeColor(?string $state): string
+    /**
+     * Color Filament del estatus de convenio o de sistema. Lo comparte el
+     * encabezado de la ficha.
+     */
+    public static function statusBadgeColor(?string $state): string
     {
         return match (strtoupper((string) $state)) {
             'ACTIVO', 'ACTIVA', 'VIGENTE', 'APROBADO' => 'success',
@@ -479,82 +486,121 @@ class SupplierInfolist
                         Tab::make('Órdenes de servicio')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->schema([
-                                Section::make('Órdenes de servicio atendidas')
-                                    ->description('Órdenes finalizadas, canceladas o caducadas vinculadas a este proveedor en coordinación.')
-                                    ->icon(Heroicon::OutlinedClipboardDocumentCheck)
-                                    ->extraAttributes([
-                                        'class' => self::IOS_ORDERS_SECTION_CLASS,
-                                    ])
-                                    ->schema([
-                                        Grid::make(1)
-                                            ->extraAttributes([
-                                                'class' => self::IOS_ORDERS_FRAME_CLASS,
-                                            ])
-                                            ->schema([
-                                                RepeatableEntry::make('finalizedOperationServiceOrders')
-                                                    ->label('Órdenes cerradas')
-                                                    ->placeholder('Este proveedor no tiene órdenes de servicio finalizadas, canceladas o caducadas.')
-                                                    ->extraAttributes([
-                                                        'class' => self::IOS_ORDERS_TABLE_WRAP_CLASS,
-                                                    ])
-                                                    ->table([
-                                                        TableColumn::make('Nº orden'),
-                                                        TableColumn::make('Estado'),
-                                                        TableColumn::make('Prioridad'),
-                                                        TableColumn::make('Referencia caso'),
-                                                        TableColumn::make('Tipo servicio'),
-                                                        TableColumn::make('Total US$'),
-                                                        TableColumn::make('Total Bs.'),
-                                                        TableColumn::make('Registro'),
-                                                    ])
-                                                    ->schema([
-                                                        TextEntry::make('order_number')
-                                                            ->label('Nº orden')
-                                                            ->weight('semibold')
-                                                            ->icon(Heroicon::OutlinedHashtag)
-                                                            ->color('primary')
-                                                            ->copyable()
-                                                            ->url(fn (OperationServiceOrder $record): string => OperationServiceOrderResource::getUrl('view', ['record' => $record])),
-                                                        TextEntry::make('status')
-                                                            ->label('Estado')
-                                                            ->badge()
-                                                            ->color(fn (?string $state): string => self::operationServiceOrderStatusColor($state))
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('telemedicinePriority.name')
-                                                            ->label('Prioridad')
-                                                            ->badge()
-                                                            ->color(fn (?string $state): string => self::operationServiceOrderPriorityColor($state))
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('operationCoordinationService.reference_number')
-                                                            ->label('Referencia caso')
-                                                            ->placeholder('—')
-                                                            ->tooltip(fn (OperationServiceOrder $record): ?string => filled($record->operationCoordinationService?->patient)
-                                                                ? 'Paciente: '.$record->operationCoordinationService->patient
-                                                                : null),
-                                                        TextEntry::make('service_type')
-                                                            ->label('Tipo servicio')
-                                                            ->badge()
-                                                            ->color('gray')
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('total_amount_usd')
-                                                            ->label('Total US$')
-                                                            ->formatStateUsing(fn (mixed $state): ?string => self::formatMoneyUsd($state))
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('total_amount_ves')
-                                                            ->label('Total Bs.')
-                                                            ->formatStateUsing(fn (mixed $state): ?string => self::formatMoneyVes($state))
-                                                            ->placeholder('—'),
-                                                        TextEntry::make('created_at')
-                                                            ->label('Registro')
-                                                            ->dateTime('d/m/Y H:i')
-                                                            ->icon(Heroicon::OutlinedCalendarDays)
-                                                            ->placeholder('—'),
-                                                    ]),
-                                            ]),
-                                    ])
-                                    ->columnSpanFull(),
+                                self::serviceOrdersSection(
+                                    title: 'Órdenes finalizadas',
+                                    description: 'Las 10 más recientes en las que este proveedor prestó el servicio.',
+                                    icon: Heroicon::OutlinedCheckBadge,
+                                    relationship: 'completedOperationServiceOrders',
+                                    placeholder: 'Este proveedor aún no tiene órdenes de servicio finalizadas.',
+                                    bucket: SupplierServiceOrderBuckets::FINALIZED,
+                                ),
+                                self::serviceOrdersSection(
+                                    title: 'Órdenes canceladas o caducadas',
+                                    description: 'Las 10 más recientes que se cerraron sin finalizar el servicio.',
+                                    icon: Heroicon::OutlinedXCircle,
+                                    relationship: 'unfinishedClosedOperationServiceOrders',
+                                    placeholder: 'Este proveedor no tiene órdenes canceladas ni caducadas.',
+                                    bucket: SupplierServiceOrderBuckets::CLOSED_UNFINISHED,
+                                ),
                             ]),
                     ]),
             ]);
+    }
+
+    /**
+     * Sección de la pestaña de órdenes: las más recientes de un grupo y acceso a
+     * la lista completa en la pantalla de órdenes del proveedor.
+     */
+    private static function serviceOrdersSection(
+        string $title,
+        string $description,
+        Heroicon $icon,
+        string $relationship,
+        string $placeholder,
+        string $bucket,
+    ): Section {
+        return Section::make($title)
+            ->description($description)
+            ->icon($icon)
+            ->headerActions([
+                Action::make('viewAll_'.$bucket)
+                    ->label('Ver todas')
+                    ->icon(Heroicon::OutlinedArrowRight)
+                    ->iconPosition('after')
+                    ->link()
+                    ->url(fn (Supplier $record): string => SupplierServiceOrders::getUrl(['record' => $record]).'?grupo='.$bucket)
+                    ->visible(fn (): bool => SupplierServiceOrders::canAccess()),
+            ])
+            ->extraAttributes([
+                'class' => self::IOS_ORDERS_SECTION_CLASS,
+            ])
+            ->schema([
+                Grid::make(1)
+                    ->extraAttributes([
+                        'class' => self::IOS_ORDERS_FRAME_CLASS,
+                    ])
+                    ->schema([
+                        RepeatableEntry::make($relationship)
+                            ->hiddenLabel()
+                            ->placeholder($placeholder)
+                            ->extraAttributes([
+                                'class' => self::IOS_ORDERS_TABLE_WRAP_CLASS,
+                            ])
+                            ->table([
+                                TableColumn::make('Nº orden'),
+                                TableColumn::make('Estado'),
+                                TableColumn::make('Prioridad'),
+                                TableColumn::make('Referencia caso'),
+                                TableColumn::make('Tipo servicio'),
+                                TableColumn::make('Total US$'),
+                                TableColumn::make('Total Bs.'),
+                                TableColumn::make('Registro'),
+                            ])
+                            ->schema([
+                                TextEntry::make('order_number')
+                                    ->label('Nº orden')
+                                    ->weight('semibold')
+                                    ->icon(Heroicon::OutlinedHashtag)
+                                    ->color('primary')
+                                    ->copyable()
+                                    ->url(fn (OperationServiceOrder $record): string => OperationServiceOrderResource::getUrl('view', ['record' => $record])),
+                                TextEntry::make('status')
+                                    ->label('Estado')
+                                    ->badge()
+                                    ->color(fn (?string $state): string => self::operationServiceOrderStatusColor($state))
+                                    ->placeholder('—'),
+                                TextEntry::make('telemedicinePriority.name')
+                                    ->label('Prioridad')
+                                    ->badge()
+                                    ->color(fn (?string $state): string => self::operationServiceOrderPriorityColor($state))
+                                    ->placeholder('—'),
+                                TextEntry::make('operationCoordinationService.reference_number')
+                                    ->label('Referencia caso')
+                                    ->placeholder('—')
+                                    ->tooltip(fn (OperationServiceOrder $record): ?string => filled($record->operationCoordinationService?->patient)
+                                        ? 'Paciente: '.$record->operationCoordinationService->patient
+                                        : null),
+                                TextEntry::make('service_type')
+                                    ->label('Tipo servicio')
+                                    ->badge()
+                                    ->color('gray')
+                                    ->placeholder('—'),
+                                TextEntry::make('total_amount_usd')
+                                    ->label('Total US$')
+                                    ->formatStateUsing(fn (mixed $state): ?string => self::formatMoneyUsd($state))
+                                    ->placeholder('—'),
+                                TextEntry::make('total_amount_ves')
+                                    ->label('Total Bs.')
+                                    ->formatStateUsing(fn (mixed $state): ?string => self::formatMoneyVes($state))
+                                    ->placeholder('—'),
+                                TextEntry::make('created_at')
+                                    ->label('Registro')
+                                    ->dateTime('d/m/Y H:i')
+                                    ->icon(Heroicon::OutlinedCalendarDays)
+                                    ->placeholder('—'),
+                            ]),
+                    ]),
+            ])
+            ->columnSpanFull();
     }
 }

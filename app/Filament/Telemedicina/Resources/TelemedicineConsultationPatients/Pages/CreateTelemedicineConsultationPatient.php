@@ -48,6 +48,7 @@ use App\Support\Telemedicine\ConsultationCreateWizardDefaults;
 use App\Support\Telemedicine\ConsultationFormContext;
 use App\Support\Telemedicine\ProvidesConsultationFormContext;
 use App\Support\Telemedicine\TelemedicineAmdFileRegistrar;
+use App\Support\Telemedicine\TelemedicineAmdFollowUpVisit;
 use App\Support\Telemedicine\TelemedicineAmdInformRegistrar;
 use App\Support\Telemedicine\TelemedicineAmdPhysicalExamRegistrar;
 use App\Support\Telemedicine\TelemedicineCaseAttachmentRegistrar;
@@ -1345,7 +1346,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                 try {
                     TelemedicineInitialDiagnosisUpdater::syncFromFollowUp(
                         (int) ($record['telemedicine_case_id'] ?? 0),
-                        (string) ($record['diagnostic_impression'] ?? $this->data[TelemedicineInitialDiagnosisUpdater::FORM_FIELD] ?? ''),
+                        TelemedicineAmdFollowUpVisit::diagnosisToSync($record['diagnostic_impression'] ?? null, $this->data),
                         Auth::user() instanceof User ? Auth::user() : null,
                         isset($record['code_reference']) ? (string) $record['code_reference'] : null,
                     );

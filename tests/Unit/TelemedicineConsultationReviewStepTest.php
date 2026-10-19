@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Filament\Telemedicina\Resources\TelemedicineConsultationPatients\Concerns\HasConsultationReviewStep;
+use App\Support\Telemedicine\TelemedicineAmdVisitProgress;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineConsultationReview;
 use App\Support\Telemedicine\TelemedicineConsultationWizardSteps;
@@ -138,10 +139,18 @@ it('un alta médica no muestra indicaciones y lo explica', function (): void {
 it('en una AMD recuerda el examen físico y el informe pendientes', function (): void {
     $estado = estadoConsultaInicial(['telemedicine_service_list_id' => TelemedicineCaseTdgReassignmentCoordination::AMD_SERVICE_LIST_ID]);
 
-    expect(TelemedicineConsultationReview::build($estado)['warnings'])
-        ->toContain('Es una AMD y todavía no cargó el examen físico.')
-        ->toContain('Es una AMD y todavía no registró el informe AMD.')
-        ->and(TelemedicineConsultationReview::build($estado, ['amd_inform' => true, 'amd_exam' => true])['warnings'])->toBe([]);
+    // Lo pendiente de la AMD va en su propio recuadro, no entre los avisos generales.
+    $pendiente = TelemedicineConsultationReview::build($estado);
+
+    expect($pendiente['amd']['complete'])->toBeFalse()
+        ->and($pendiente['amd']['message'])->toBe('Le falta: el Informe AMD y el examen físico AMD.')
+        ->and(implode(' ', $pendiente['warnings']))->not->toContain('AMD');
+
+    $completa = TelemedicineConsultationReview::build($estado, new TelemedicineAmdVisitProgress(hasInform: true, hasExam: true));
+
+    expect($completa['amd']['complete'])->toBeTrue()
+        ->and($completa['amd']['message'])->toBe(TelemedicineAmdVisitProgress::COMPLETE_MESSAGE)
+        ->and($completa['warnings'])->toBe([]);
 });
 
 it('los medicamentos muestran nombre, indicación, cantidad y duración', function (): void {
