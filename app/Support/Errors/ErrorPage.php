@@ -126,6 +126,24 @@ final class ErrorPage
     }
 
     /**
+     * Nombre corto del error para tickets y reportes internos.
+     */
+    public static function shortLabel(int $status): string
+    {
+        return match (true) {
+            $status === 401 => 'Sin sesión',
+            $status === 403 => 'Sin permiso',
+            $status === 404 => 'No encontrado',
+            $status === 405 => 'Método no permitido',
+            $status === 419 => 'Sesión expirada',
+            $status === 429 => 'Demasiados intentos',
+            $status === 503 => 'En mantenimiento',
+            $status >= 500 => 'Error del servidor',
+            default => 'Solicitud rechazada',
+        };
+    }
+
+    /**
      * Mensaje propio del abort (p. ej. «Documento no encontrado.»). Solo en 4xx:
      * un 5xx puede traer detalles internos que el usuario no debe ver.
      */
@@ -151,6 +169,22 @@ final class ErrorPage
      */
     public static function home(Request $request): array
     {
+        $panel = self::panel($request);
+
+        if ($panel !== null) {
+            return ['url' => url('/'.$panel['path']), 'label' => 'Ir al inicio de '.$panel['label']];
+        }
+
+        return ['url' => url('/'), 'label' => 'Ir al inicio'];
+    }
+
+    /**
+     * Panel Filament al que pertenece la URL (por su primer segmento).
+     *
+     * @return array{id: string, path: string, label: string}|null
+     */
+    public static function panel(Request $request): ?array
+    {
         $segment = mb_strtolower((string) $request->segment(1));
 
         try {
@@ -158,16 +192,28 @@ final class ErrorPage
                 $path = trim((string) $panel->getPath(), '/');
 
                 if ($path !== '' && $path === $segment) {
-                    $label = self::PANEL_LABELS[$panel->getId()] ?? 'mi panel';
-
-                    return ['url' => url('/'.$path), 'label' => 'Ir al inicio de '.$label];
+                    return ['id' => $panel->getId(), 'path' => $path, 'label' => self::panelLabel($panel->getId())];
                 }
             }
         } catch (Throwable) {
-            // Sin Filament disponible se cae al inicio del sitio.
+            // Sin Filament disponible no hay panel.
         }
 
-        return ['url' => url('/'), 'label' => 'Ir al inicio'];
+        return null;
+    }
+
+    public static function panelLabel(?string $panelId): string
+    {
+        return self::PANEL_LABELS[(string) $panelId] ?? 'mi panel';
+    }
+
+    /**
+     * Errores que tiene sentido mandar a Sistemas. No: sesión (401/419), exceso
+     * de intentos (429) ni mantenimiento (503), que no son fallas a corregir.
+     */
+    public static function reportable(int $status): bool
+    {
+        return ! in_array($status, [401, 419, 429, 503], true);
     }
 
     /**

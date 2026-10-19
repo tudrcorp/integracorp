@@ -2279,3 +2279,11 @@ Route::get('/monitor/tv/{token}', \App\Livewire\LiveMonitorTv::class)
     ->where('token', '[A-Za-z0-9]{32,128}')
     ->middleware('throttle:30,1')
     ->name('live-monitor.tv');
+
+/*
+| «Reportar a Sistemas» desde la página de error: abre un ticket de incidente
+| para los desarrolladores. El contexto del error viaja cifrado desde la página.
+*/
+Route::post('/soporte/incidencias', \App\Http\Controllers\ErrorReportController::class)
+    ->middleware(['auth', 'throttle:5,1'])
+    ->name('error-report.store');
