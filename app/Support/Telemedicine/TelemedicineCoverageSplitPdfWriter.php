@@ -51,9 +51,7 @@ final class TelemedicineCoverageSplitPdfWriter
                 mkdir($directory, 0755, true);
             }
 
-            Pdf::loadView($view, ['data' => $payload])
-                ->setPaper('a4', $orientation)
-                ->save($directory.'/'.$namePdf);
+            file_put_contents($directory.'/'.$namePdf, self::render($view, $orientation, $payload));
 
             $filenames[] = $namePdf;
             $documents[] = [
@@ -68,6 +66,28 @@ final class TelemedicineCoverageSplitPdfWriter
         self::syncConsultation($sourceData, $documentTypeId, $documents, $familyFilenames);
 
         return $filenames;
+    }
+
+    /**
+     * Renderiza con el folio «Página X de Y». El récipe (horizontal) lleva un folio
+     * por mitad; las órdenes (verticales), uno centrado.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public static function render(string $view, string $orientation, array $payload): string
+    {
+        $dompdf = Pdf::loadView($view, ['data' => $payload])
+            ->setPaper('a4', $orientation)
+            ->getDomPDF();
+        $dompdf->render();
+
+        if ($orientation === 'landscape') {
+            TelemedicinePdfPageNumbers::applyToRecipe($dompdf);
+        } else {
+            TelemedicinePdfPageNumbers::applyToPortrait($dompdf);
+        }
+
+        return (string) $dompdf->output();
     }
 
     /**

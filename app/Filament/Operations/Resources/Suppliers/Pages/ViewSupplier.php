@@ -5,20 +5,24 @@ namespace App\Filament\Operations\Resources\Suppliers\Pages;
 use App\Filament\Operations\Concerns\AppliesOperationsAddressFromMaps;
 use App\Filament\Operations\Resources\Suppliers\SupplierResource;
 use App\Models\Supplier;
+use App\Support\Filament\FilamentIosActionsMenu;
+use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\SupplierIntegracorpManagement;
+use App\Support\Operations\SupplierServiceOrderBuckets;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Enums\Width;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 class ViewSupplier extends ViewRecord
@@ -95,6 +99,37 @@ class ViewSupplier extends ViewRecord
             ->send();
     }
 
+    /**
+     * El encabezado nombra al proveedor; «Ficha Técnica del Proveedor» queda en
+     * la pestaña del navegador y en las migas.
+     */
+    public function getHeading(): string|Htmlable
+    {
+        /** @var Supplier $supplier */
+        $supplier = $this->getRecord();
+
+        return filled($supplier->name) ? (string) $supplier->name : 'Proveedor';
+    }
+
+    /**
+     * Identidad, estatus y, si el usuario ve órdenes de servicio, sus contadores
+     * con acceso directo a cada grupo.
+     */
+    public function getSubheading(): string|Htmlable|null
+    {
+        /** @var Supplier $supplier */
+        $supplier = $this->getRecord();
+        $canSeeOrders = SupplierServiceOrders::canAccess();
+
+        return new HtmlString(View::make('filament.operations.suppliers.supplier-page-header', [
+            'supplier' => $supplier,
+            'counts' => $canSeeOrders ? SupplierServiceOrderBuckets::counts($supplier) : null,
+            'buckets' => SupplierServiceOrderBuckets::definitions(),
+            'bucketUrl' => fn (string $bucket): string => SupplierServiceOrders::getUrl(['record' => $supplier])
+                .($bucket === SupplierServiceOrderBuckets::IN_PROGRESS ? '' : '?grupo='.$bucket),
+        ])->render());
+    }
+
     public function getFooter(): ?ViewContract
     {
         return view('filament.operations.suppliers.supplier-location-maps-loader');
@@ -106,25 +141,17 @@ class ViewSupplier extends ViewRecord
         $record = parent::resolveRecord($key);
 
         $record->load([
-            'finalizedOperationServiceOrders.telemedicinePriority',
-            'finalizedOperationServiceOrders.operationCoordinationService',
+            'SupplierClasificacion',
+            'state',
+            'city',
+            'completedOperationServiceOrders.telemedicinePriority',
+            'completedOperationServiceOrders.operationCoordinationService',
+            'unfinishedClosedOperationServiceOrders.telemedicinePriority',
+            'unfinishedClosedOperationServiceOrders.operationCoordinationService',
         ]);
 
         return $record;
     }
-
-    /**
-     * Idéntico a Crear Ticket / Crear Nuevo Paciente: .ticket-btn-ios en theme.css (verde, sombras iOS, hover).
-     */
-    private const TICKET_BUTTON_CLASS = 'ticket-btn-ios shrink-0 inline-flex w-full items-center justify-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
-
-    private const PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary shrink-0 inline-flex w-full items-center justify-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
-
-    private const WARNING_BUTTON_CLASS = 'aviso-btn-ios-warning shrink-0 inline-flex w-full items-center justify-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
-
-    private const TICKET_BUTTON_GRAY_CLASS = 'ticket-btn-ios-gray shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
-
-    private const ACTIONS_TRIGGER_CLASS = 'supplier-actions-trigger ticket-btn-ios shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
 
     /**
      * @return list<string>
@@ -222,22 +249,27 @@ class ViewSupplier extends ViewRecord
                 ->color('gray')
                 ->url(SupplierResource::getUrl('index'))
                 ->extraAttributes([
-                    'class' => self::TICKET_BUTTON_GRAY_CLASS,
+                    'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
                 ]),
 
-            ActionGroup::make([
+            // Mismo menú que las fichas de Negocios: botón iOS «Acciones» con opciones simples.
+            FilamentIosActionsMenu::make([
                 EditAction::make()
                     ->label('Editar')
                     ->icon('heroicon-o-pencil')
+                    ->color('primary'),
+
+                Action::make('service_orders')
+                    ->label('Órdenes de servicio')
+                    ->icon('heroicon-o-clipboard-document-check')
                     ->color('primary')
-                    ->extraAttributes([
-                        'class' => self::PRIMARY_BUTTON_CLASS,
-                    ]),
+                    ->url(fn (Supplier $record): string => SupplierServiceOrders::getUrl(['record' => $record]))
+                    ->visible(fn (): bool => SupplierServiceOrders::canAccess()),
 
                 Action::make('print_pdf')
                     ->label('Ficha Técnica del Proveedor')
                     ->icon('heroicon-o-printer')
-                    ->color('success')
+                    ->color('primary')
                     ->modalHeading('Ficha del proveedor en PDF')
                     ->modalDescription('Vista previa de la ficha técnica. La primera generación puede tardar; las siguientes suelen ser más rápidas mientras los datos no cambien (caché por proveedor).')
                     ->modalWidth(Width::SevenExtraLarge)
@@ -251,15 +283,12 @@ class ViewSupplier extends ViewRecord
                     })
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar')
-                    ->action(fn () => null)
-                    ->extraAttributes([
-                        'class' => self::TICKET_BUTTON_CLASS,
-                    ]),
+                    ->action(fn () => null),
 
                 Action::make('add_carta_acceptance')
                     ->label('Agregar Carta de Aceptación')
-                    ->icon('heroicon-s-document-text')
-                    ->color('warning')
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->color('primary')
                     ->modalHeading('Cargar carta de aceptación')
                     ->modalDescription('Seleccione el archivo. Se guardará al confirmar.')
                     ->form([
@@ -288,15 +317,12 @@ class ViewSupplier extends ViewRecord
                             ->success()
                             ->send();
                     })
-                    ->hidden(fn (Supplier $record) => $record->carta_acceptance != null)
-                    ->extraAttributes([
-                        'class' => self::WARNING_BUTTON_CLASS,
-                    ]),
+                    ->hidden(fn (Supplier $record) => $record->carta_acceptance != null),
 
                 Action::make('view_carta_acceptance')
                     ->label('Ver Carta de Aceptación')
-                    ->icon('heroicon-s-document-text')
-                    ->color('success')
+                    ->icon('heroicon-o-document-magnifying-glass')
+                    ->color('primary')
                     ->modalHeading('Carta de aceptación')
                     ->modalDescription('Vista previa del documento cargado. Use «Abrir en pestaña» o «Descargar» desde el pie del visor si lo necesita.')
                     ->modalWidth(Width::SevenExtraLarge)
@@ -335,15 +361,12 @@ class ViewSupplier extends ViewRecord
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar')
                     ->action(fn () => null)
-                    ->hidden(fn (Supplier $record) => $record->carta_acceptance == null)
-                    ->extraAttributes([
-                        'class' => self::TICKET_BUTTON_CLASS,
-                    ]),
+                    ->hidden(fn (Supplier $record) => $record->carta_acceptance == null),
 
                 Action::make('view_documents')
                     ->label('Documentos de Afiliación')
-                    ->icon('heroicon-s-document-text')
-                    ->color('success')
+                    ->icon('heroicon-o-folder-open')
+                    ->color('primary')
                     ->modalHeading('Documentos de afiliación')
                     ->modalDescription('Vista previa, agregar nuevos archivos o quitar documentos existentes.')
                     ->modalWidth(Width::SevenExtraLarge)
@@ -422,25 +445,8 @@ class ViewSupplier extends ViewRecord
                     ])
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar')
-                    ->action(fn () => null)
-                    ->extraAttributes([
-                        'class' => self::TICKET_BUTTON_CLASS,
-                    ]),
-            ])
-                ->label('Acciones')
-                ->icon('heroicon-m-squares-2x2')
-                ->color('success')
-                ->button()
-                ->tooltip('Acciones del proveedor')
-                ->dropdownPlacement('bottom-end')
-                ->dropdownWidth(Width::Large)
-                ->extraAttributes([
-                    'x-on:click.stop' => '',
-                    'class' => self::ACTIONS_TRIGGER_CLASS,
-                ])
-                ->extraDropdownAttributes([
-                    'class' => 'fi-supplier-actions-menu',
-                ]),
+                    ->action(fn () => null),
+            ]),
         ];
     }
 

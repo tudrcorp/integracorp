@@ -645,9 +645,23 @@ class OperationServiceOrdersTable
                         'EN GESTION' => 'En gestión',
                         'FINALIZADO' => 'Finalizado',
                         'CADUCADA' => 'Caducada',
-                        'CANCELADO' => 'Cancelado',
+                        'CANCELADA' => 'Cancelada',
                     ])
-                    ->multiple(),
+                    ->multiple()
+                    // El sistema guarda CANCELADA; CANCELADO es un valor heredado que también cuenta como cancelado.
+                    ->query(function (Builder $query, array $data): Builder {
+                        $values = array_values(array_filter((array) ($data['values'] ?? [])));
+
+                        if ($values === []) {
+                            return $query;
+                        }
+
+                        if (in_array('CANCELADA', $values, true)) {
+                            $values[] = 'CANCELADO';
+                        }
+
+                        return $query->whereIn('status', array_values(array_unique($values)));
+                    }),
                 SelectFilter::make('administrative_status')
                     ->label('Estatus administrativo')
                     ->options(OperationServiceOrderListDisplay::administrativeStatusOptions())

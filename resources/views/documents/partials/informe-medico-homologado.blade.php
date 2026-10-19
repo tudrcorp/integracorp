@@ -292,10 +292,11 @@
         }
         /*
          * La firma NO se maqueta aquí: la estampa
-         * TelemedicineInformeSignatureStamp sobre la banda inferior de la última
+         * TelemedicineInformeSignatureStamp sobre la banda inferior de cada
          * página. En el flujo ocupaba ~34 mm y, cuando no cabían, saltaba sola a
          * una hoja vacía. Su banda queda reservada por el margen inferior del
-         * cuerpo, declarado arriba con la misma constante.
+         * cuerpo, declarado arriba con la misma constante. El folio «Página X de
+         * Y» lo dibuja TelemedicinePdfPageNumbers debajo del pie.
          */
     </style>
 </head>
@@ -355,15 +356,29 @@
         <div class="section-title section-title--block">Diagnóstico principal de la consulta inicial</div>
         <table class="prose-box"><tr><td>{{ $val($data['diagnostic_impression'] ?? null) }}</td></tr></table>
 
-        <div class="section-title section-title--block">Historia de la enfermedad actual</div>
-        <table class="prose-box"><tr><td>{{ $val($data['current_illness_history'] ?? null) }}</td></tr></table>
+        @php
+            /*
+             * Visita AMD: el formulario no pide historia ni evolución (van por el
+             * Informe AMD). Vacías se omiten en vez de imprimir «—»; si un
+             * seguimiento AMD antiguo sí las tiene, se conservan.
+             */
+            $isAmdVisit = (bool) ($data['is_amd_visit'] ?? false);
+            $showIllnessHistory = ! $isAmdVisit || filled($data['current_illness_history'] ?? null);
+            $showEvolution = ! $isAmdVisit || filled($data['patient_evolution'] ?? null);
+        @endphp
 
-        <div class="section-title section-title--block">Evolución del paciente</div>
-        <table class="prose-box"><tr><td>{{ $val($data['patient_evolution'] ?? null) }}</td></tr></table>
-
-        @if($isLong)
-            @include('documents.partials.informe-examen-fisico-amd', ['exam' => $data['physical_exam'] ?? null])
+        @if($showIllnessHistory)
+            <div class="section-title section-title--block">Historia de la enfermedad actual</div>
+            <table class="prose-box"><tr><td>{{ $val($data['current_illness_history'] ?? null) }}</td></tr></table>
         @endif
+
+        @if($showEvolution)
+            <div class="section-title section-title--block">Evolución del paciente</div>
+            <table class="prose-box"><tr><td>{{ $val($data['patient_evolution'] ?? null) }}</td></tr></table>
+        @endif
+
+        {{-- Visita AMD de seguimiento: su examen físico se anexa a este informe. --}}
+        @include('documents.partials.informe-examen-fisico-amd', ['exam' => $data['physical_exam'] ?? null])
     @else
         <div class="section-title section-title--block">Motivo de consulta</div>
         <table class="prose-box"><tr><td>{{ $val($data['reason'] ?? null) }}</td></tr></table>
@@ -547,7 +562,7 @@
 <div class="footer-fixed">
     <strong>TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1</strong><br>
     Dirección Comercial: Av. Francisco de Miranda, Centro Lido, Torre A, Piso 12, Oficina 124. El Rosal, Caracas.<br>
-    <strong>Teléfono MediChat atención 24 horas: (0424) 213 21 12<strong> Celular Coordinación de servicios: (0414) 901 03 52<br>
+    Teléfono MediChat atención 24 horas: (0424) 213 21 12- Celular Coordinación de servicios: (0414) 901 03 52<br>
     Correo: 24H@tudrencasa.com IG: @tudrencasa WEB: https://tudrencasa.com/
 </div>
 </body>

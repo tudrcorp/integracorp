@@ -29,14 +29,20 @@ final class TelemedicineInformePdfRenderer
     {
         ini_set('memory_limit', '2048M');
 
+        // El examen físico AMD se resuelve aquí, en el único paso que comparten
+        // todos los informes: así ningún camino (crear, editar, regenerar,
+        // Informe AMD) puede olvidarlo.
+        $data['physical_exam'] = TelemedicineAmdPhysicalExamReport::forInformeData($data);
+
         $pdf = Pdf::loadView($view, ['data' => $data])->setPaper('a4', 'portrait');
 
         $dompdf = $pdf->getDomPDF();
         $dompdf->render();
 
-        // El script se registra tras el layout y se ejecuta al volcar el PDF:
-        // para entonces ya se sabe cuál es la última página.
+        // Los scripts se registran tras el layout: para entonces ya se sabe
+        // cuántas páginas tiene el informe.
         $stampPath = TelemedicineInformeSignatureStamp::applyTo($dompdf, $data);
+        TelemedicinePdfPageNumbers::applyToPortrait($dompdf);
 
         try {
             return (string) $dompdf->output();

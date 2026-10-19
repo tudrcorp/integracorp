@@ -78,6 +78,55 @@ final class TelemedicineAmdFileRegistrar
             });
     }
 
+    /**
+     * Si una entrada de `uploaded_documents` es un archivo cargado con «Cargar
+     * Archivo AMD». La fila de `telemedicine_documents` no guarda el tipo: solo
+     * la etiqueta en los documentos de la consulta lo distingue.
+     */
+    public static function isAmdUploadedDocument(mixed $document): bool
+    {
+        if (! is_array($document) || ! filled($document['document_name'] ?? null)) {
+            return false;
+        }
+
+        $types = is_array($document['document_types'] ?? null) ? $document['document_types'] : [];
+
+        return in_array(self::DOCUMENT_TYPE_LABEL, $types, true);
+    }
+
+    /**
+     * Archivos AMD de una consulta ya guardada.
+     */
+    public static function countForConsultation(TelemedicineConsultationPatient $consultation): int
+    {
+        $documents = is_array($consultation->uploaded_documents) ? $consultation->uploaded_documents : [];
+
+        return count(array_filter($documents, static fn (mixed $document): bool => self::isAmdUploadedDocument($document)));
+    }
+
+    /**
+     * Archivos AMD cargados mientras la consulta aún no existe: los ids pendientes
+     * que siguen en la base y son de este caso.
+     *
+     * @param  array<int, mixed>  $documentIds
+     */
+    public static function countPending(array $documentIds, ?int $caseId): int
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', $documentIds),
+            static fn (int $id): bool => $id > 0,
+        )));
+
+        if ($ids === []) {
+            return 0;
+        }
+
+        return TelemedicineDocument::query()
+            ->whereKey($ids)
+            ->when($caseId !== null && $caseId > 0, fn ($query) => $query->where('telemedicine_case_id', $caseId))
+            ->count();
+    }
+
     public static function resolveStoredFilePath(mixed $fileState): ?string
     {
         $path = null;

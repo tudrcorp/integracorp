@@ -15,9 +15,10 @@ uses(Tests\TestCase::class);
  * cuando no cabían, saltaba sola a una hoja vacía: el 31 % de los informes.
  *
  * Hoy se dibuja sobre el canvas, fuera del flujo, dentro de la banda que el
- * margen inferior reserva en todas las páginas. Estas pruebas fijan las dos
- * garantías que se derivan de eso: la firma no puede crear una página, y no
- * puede invadir ni el texto ni el pie.
+ * margen inferior reserva en todas las páginas, y se estampa en CADA página: un
+ * informe de varias hojas lleva firma en todas. Estas pruebas fijan las
+ * garantías que se derivan de eso: la firma no puede crear una página, no puede
+ * invadir ni el texto ni el pie, y ninguna hoja queda sin firmar.
  */
 function informeMedicoPartialSource(): string
 {
@@ -162,14 +163,14 @@ it('el margen inferior reserva las bandas del pie y de la firma', function (): v
         ->toBe(TelemedicineInformeSignatureStamp::FOOTER_BAND_MM + TelemedicineInformeSignatureStamp::SIGNATURE_BAND_MM);
 });
 
-it('la firma solo se dibuja en la última página', function (): void {
+it('la firma se dibuja en todas las páginas, no solo en la última', function (): void {
     $source = (string) file_get_contents(
         dirname(__DIR__, 2).'/app/Support/Telemedicine/TelemedicineInformeSignatureStamp.php'
     );
 
     expect($source)
         ->toContain('page_script')
-        ->toContain('if ($pageNumber !== $pageCount)');
+        ->not->toContain('$pageNumber !== $pageCount');
 });
 
 it('ambos informes se generan por el mismo renderizador', function (): void {
@@ -180,7 +181,7 @@ it('ambos informes se generan por el mismo renderizador', function (): void {
         ->and($largo)->toContain('TelemedicineInformePdfRenderer::save');
 });
 
-it('estampa la firma y nunca la deja sola en la última página', function (string $variant, int $repetitions): void {
+it('estampa la firma en cada página y nunca la deja sola en la última', function (string $variant, int $repetitions): void {
     informeMedicoSkipWithoutSips();
 
     $path = tempnam(sys_get_temp_dir(), 'informe-orphan-').'.pdf';
@@ -196,12 +197,15 @@ it('estampa la firma y nunca la deja sola en la última página', function (stri
     $signatureBandTop = $pageHeight - TelemedicineInformeSignatureStamp::bottomMarginMm();
     $footerBandTop = $pageHeight - TelemedicineInformeSignatureStamp::FOOTER_BAND_MM;
 
+    for ($page = 1; $page <= $pages; $page++) {
+        $firma = informeMedicoInkBetween($path, $page, $signatureBandTop, $footerBandTop);
+
+        expect($firma)->toBeGreaterThan(0, "El informe {$variant} (x{$repetitions}) no estampó la firma en la página {$page} de {$pages}.");
+    }
+
     $contenido = informeMedicoInkBetween($path, $pages, 20.0, $signatureBandTop);
-    $firma = informeMedicoInkBetween($path, $pages, $signatureBandTop, $footerBandTop);
 
     @unlink($path);
-
-    expect($firma)->toBeGreaterThan(0, "El informe {$variant} (x{$repetitions}) no estampó la firma en la última página.");
 
     if ($pages > 1) {
         expect($contenido)->toBeGreaterThan(0, "El informe {$variant} (x{$repetitions}) dejó la última página solo con la firma.");

@@ -22,7 +22,11 @@ it('define sincronizacion de items de coordinacion al finalizar orden', function
         ->toContain('LABORATORIOS')
         ->toContain('TelemedicinePatientLab');
 
-    expect($viewPath)->toContain('OperationServiceOrderCoordinationSync::finalizeOrder');
+    // La vista finaliza por el servicio compartido con la ficha del proveedor, que es quien sincroniza.
+    $documentsPath = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/OperationServiceOrderDocuments.php');
+
+    expect($viewPath)->toContain('OperationServiceOrderDocuments::finalize(')
+        ->and($documentsPath)->toContain('OperationServiceOrderCoordinationSync::finalizeOrder($locked)');
 
     // La finalización se hace desde la ficha de la orden; la tabla ya no carga soportes ni finaliza.
     expect($tablePath)->not->toContain('OperationServiceOrderCoordinationSync::finalizeOrder');

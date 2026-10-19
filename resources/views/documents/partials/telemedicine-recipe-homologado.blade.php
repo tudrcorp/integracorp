@@ -17,7 +17,15 @@
     );
     $copies = ['Original', 'Copia'];
     $stampDataUri = \App\Support\Telemedicine\TelemedicineDoctorStamp::dataUri($data['signature'] ?? null);
-    $stampSize = \App\Support\Telemedicine\TelemedicineDoctorStamp::displaySize($stampDataUri, 110, 110);
+    /** Mismo sello que informes y órdenes (34 × 17 mm): tiene que caber en su banda. */
+    $stampSize = \App\Support\Telemedicine\TelemedicineDoctorStamp::displaySize($stampDataUri, 128, 64);
+    /**
+     * Bandas inferiores reservadas en CADA página de la hoja horizontal (210 mm):
+     * el pie (fijo a 12 mm del borde, con el folio debajo) y, encima, la firma.
+     */
+    $footerBandMm = 30;
+    $signatureBandMm = 26;
+    $signatureTopMm = 210 - $footerBandMm - $signatureBandMm;
     $doctorName = trim((string) ($data['doctor_name'] ?? ''));
     $coverageGroup = trim((string) ($data['coverage_group'] ?? ''));
     $caseCode = \App\Support\Telemedicine\TelemedicineDocumentCaseCode::fromData(is_array($data ?? null) ? $data : []);
@@ -38,30 +46,42 @@
             padding: 0;
             background: #ffffff;
         }
+        /*
+         * El margen inferior reserva la banda de la firma y la del pie en todas
+         * las páginas. Ambos son fijos: se repiten en cada hoja fuera del flujo,
+         * así que nunca pisan la lista ni abren una página para ellos solos.
+         */
         body {
-            margin: 10mm 12mm;
+            margin: 10mm 12mm {{ $footerBandMm + $signatureBandMm }}mm 12mm;
             font-family: DejaVu Sans, sans-serif;
             font-size: 7pt;
             line-height: 1.25;
             color: #374151;
         }
-        .copies {
+        /*
+         * Original y copia comparten tablas fila por fila: DomPDF no parte una
+         * celda entre páginas, así que dos columnas independientes se desfasaban
+         * al paginar. Así cada página trae las dos mitades a la misma altura.
+         */
+        .copies,
+        table.items {
             width: 100%;
             table-layout: fixed;
-            border-collapse: separate;
-            border-spacing: 0;
             position: relative;
             z-index: 1;
         }
-        .copies .copy-col {
-            width: 49%;
-            vertical-align: top;
-            padding: 0 8px 0 0;
+        .copies { border-collapse: separate; border-spacing: 0; }
+        .copies td { vertical-align: top; padding: 0; }
+        .copies .copy-col { width: 48.5%; }
+        td.gutter,
+        th.gutter {
+            width: 1.5%;
+            padding: 0 !important;
+            border: 0 !important;
+            background: #ffffff !important;
         }
-        .copies .copy-col:last-child {
-            padding: 0 0 0 8px;
-            border-left: 1px dashed #d1d5db;
-        }
+        td.gutter-line,
+        th.gutter-line { border-left: 1px dashed #d1d5db !important; }
         .header-bar {
             width: 100%;
             table-layout: fixed;
@@ -119,10 +139,26 @@
         .value { font-size: 7pt; color: #111827; font-weight: 600; }
         .value-muted { font-size: 6.75pt; color: #4b5563; }
         table.items {
-            width: 100%;
             border-collapse: collapse;
-            margin-top: 2px;
-            table-layout: fixed;
+            margin-top: 0;
+        }
+        table.items thead { display: table-header-group; }
+        table.items tr { page-break-inside: avoid; }
+        table.items th.section-head {
+            background: #f0fdff;
+            color: #0c4a6e;
+            border: 0;
+            border-left: 2.5px solid {{ $brandCyan }};
+            font-size: 7pt;
+            padding: 2px 5px 2px 6px;
+        }
+        table.items th.section-gap {
+            background: #ffffff;
+            border: 0;
+            padding: 0;
+            height: 2px;
+            font-size: 1px;
+            line-height: 1px;
         }
         table.items th {
             background-color: {{ $brandCyan }};
@@ -140,6 +176,7 @@
             word-wrap: break-word;
         }
         table.items tr:nth-child(even) td { background: #fafafa; }
+        table.items td.items-empty-cell { border: 0; padding: 0; background: #ffffff; }
         .items-empty {
             font-size: 6.75pt;
             color: #6b7280;
@@ -151,7 +188,7 @@
         /* Un pie por mitad, alineado con su firma: al cortar la hoja, original y copia quedan completas. */
         .footer-fixed {
             position: fixed;
-            bottom: 8mm;
+            bottom: 12mm;
             width: 128mm;
             text-align: center;
             padding-top: 4px;
@@ -164,11 +201,10 @@
         .footer-fixed-original { left: 14mm; }
         .footer-fixed-copy { right: 14mm; left: auto; }
         .footer-brand { font-weight: bold; color: {{ $brandCyan }}; }
-        .panel { padding-bottom: 52mm; }
         .doctor-signature {
             position: fixed;
-            top: 96mm;
             width: 128mm;
+            top: {{ $signatureTopMm }}mm;
             margin: 0;
             padding: 0;
             text-align: center;
@@ -204,89 +240,109 @@
             @php
                 $isOriginal = $copyLabel === 'Original';
             @endphp
+            @unless($isOriginal)
+                <td class="gutter"></td>
+                <td class="gutter gutter-line"></td>
+            @endunless
             <td class="copy-col">
-                <div class="panel">
-                    <table class="header-bar">
-                        <tr>
-                            <td class="col-logo">
-                                @if($logoDataUri !== '')
-                                    <img class="header-logo" src="{{ $logoDataUri }}" width="88" alt="Tu Doctor en Casa">
-                                @else
-                                    <span style="font-weight:bold;color:{{ $brandCyan }};font-size:8pt;">Tu Doctor en Casa</span>
-                                @endif
-                            </td>
-                            <td class="col-title">
-                                {{-- El original va a la farmacia (solo medicamentos): es el récipe. La copia, con las indicaciones, es la del paciente. --}}
-                                <p class="doc-title">{{ $isOriginal ? 'Récipe Médico' : 'Indicaciones Médicas' }}</p>
-                                <p class="doc-sub">{{ \App\Support\Telemedicine\TelemedicineDocumentCaseCode::LABEL }}: <strong>{{ $val($caseCode) }}</strong></p>
-                                <p class="doc-sub">Clave: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
-                                <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
-                                <span class="badge">{{ $copyLabel }}</span>
-                                @if($coverageGroup !== '')
-                                    <span class="badge">{{ $coverageGroup }}</span>
-                                @endif
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="header-rule-space" colspan="2">&nbsp;</td>
-                        </tr>
-                    </table>
+                <table class="header-bar">
+                    <tr>
+                        <td class="col-logo">
+                            @if($logoDataUri !== '')
+                                <img class="header-logo" src="{{ $logoDataUri }}" width="88" alt="Tu Doctor en Casa">
+                            @else
+                                <span style="font-weight:bold;color:{{ $brandCyan }};font-size:8pt;">Tu Doctor en Casa</span>
+                            @endif
+                        </td>
+                        <td class="col-title">
+                            {{-- El original va a la farmacia (solo medicamentos): es el récipe. La copia, con las indicaciones, es la del paciente. --}}
+                            <p class="doc-title">{{ $isOriginal ? 'Récipe Médico' : 'Indicaciones Médicas' }}</p>
+                            <p class="doc-sub">{{ \App\Support\Telemedicine\TelemedicineDocumentCaseCode::LABEL }}: <strong>{{ $val($caseCode) }}</strong></p>
+                            <p class="doc-sub">Clave: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
+                            <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
+                            <span class="badge">{{ $copyLabel }}</span>
+                            @if($coverageGroup !== '')
+                                <span class="badge">{{ $coverageGroup }}</span>
+                            @endif
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="header-rule-space" colspan="2">&nbsp;</td>
+                    </tr>
+                </table>
 
-                    <div class="section-title">Datos del paciente</div>
-                    <table class="grid">
-                        <tr>
-                            <td>
-                                <div class="label">Paciente</div>
-                                <div class="value">{{ $val($data['name_patiente'] ?? ($data['name_patient'] ?? null)) }}</div>
-                            </td>
-                            <td>
-                                <div class="label">Cédula</div>
-                                <div class="value-muted">{{ $val($data['ci_patiente'] ?? ($data['ci_patient'] ?? null)) }}</div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="label">Edad</div>
-                                <div class="value-muted">{{ \App\Support\PatientAge::forTelemedicinePatientId($data['telemedicine_patient_id'] ?? null, $data['age_patiente'] ?? ($data['age_patient'] ?? null)) }}</div>
-                            </td>
-                            <td>
-                                <div class="label">Tipo de servicio</div>
-                                <div class="value-muted">Telemedicina</div>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <div class="section-title">Medicamentos indicados</div>
-                    @if($medications === [])
-                        <p class="items-empty">Sin medicamentos indicados.</p>
-                    @else
-                        <table class="items items-{{ $isOriginal ? 'original' : 'copy' }}">
-                            <thead>
-                                <tr>
-                                    @if($isOriginal)
-                                        <th>Medicamento</th>
-                                    @else
-                                        <th style="width:48%">Medicamento</th>
-                                        <th style="width:52%">Indicaciones</th>
-                                    @endif
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($medications as $item)
-                                    <tr>
-                                        <td>{{ $val(is_array($item) ? ($item['medicines'] ?? null) : $item) }}</td>
-                                        @unless($isOriginal)
-                                            <td>{{ $val(is_array($item) ? ($item['indications'] ?? null) : null) }}</td>
-                                        @endunless
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @endif
-                </div>
+                <div class="section-title">Datos del paciente</div>
+                <table class="grid">
+                    <tr>
+                        <td>
+                            <div class="label">Paciente</div>
+                            <div class="value">{{ $val($data['name_patiente'] ?? ($data['name_patient'] ?? null)) }}</div>
+                        </td>
+                        <td>
+                            <div class="label">Cédula</div>
+                            <div class="value-muted">{{ $val($data['ci_patiente'] ?? ($data['ci_patient'] ?? null)) }}</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="label">Edad</div>
+                            <div class="value-muted">{{ \App\Support\PatientAge::forTelemedicinePatientId($data['telemedicine_patient_id'] ?? null, $data['age_patiente'] ?? ($data['age_patient'] ?? null)) }}</div>
+                        </td>
+                        <td>
+                            <div class="label">Tipo de servicio</div>
+                            <div class="value-muted">Telemedicina</div>
+                        </td>
+                    </tr>
+                </table>
             </td>
         @endforeach
     </tr>
+</table>
+
+<table class="items">
+    <thead>
+        <tr>
+            <th class="section-head" style="width:48.5%">Medicamentos indicados</th>
+            <th class="gutter"></th>
+            <th class="gutter gutter-line"></th>
+            <th class="section-head" colspan="2" style="width:48.5%">Medicamentos indicados</th>
+        </tr>
+        <tr>
+            <th class="section-gap">&nbsp;</th>
+            <th class="gutter"></th>
+            <th class="gutter gutter-line"></th>
+            <th class="section-gap" colspan="2">&nbsp;</th>
+        </tr>
+        @if($medications !== [])
+            <tr>
+                <th>Medicamento</th>
+                <th class="gutter"></th>
+                <th class="gutter gutter-line"></th>
+                <th style="width:23%">Medicamento</th>
+                <th style="width:25.5%">Indicaciones</th>
+            </tr>
+        @endif
+    </thead>
+    <tbody>
+        @if($medications === [])
+            <tr>
+                <td class="items-empty-cell"><p class="items-empty">Sin medicamentos indicados.</p></td>
+                <td class="gutter"></td>
+                <td class="gutter gutter-line"></td>
+                <td class="items-empty-cell" colspan="2"><p class="items-empty">Sin medicamentos indicados.</p></td>
+            </tr>
+        @else
+            @foreach ($medications as $item)
+                <tr>
+                    <td class="item-original">{{ $val(is_array($item) ? ($item['medicines'] ?? null) : $item) }}</td>
+                    <td class="gutter"></td>
+                    <td class="gutter gutter-line"></td>
+                    <td class="item-copy">{{ $val(is_array($item) ? ($item['medicines'] ?? null) : $item) }}</td>
+                    <td class="item-copy">{{ $val(is_array($item) ? ($item['indications'] ?? null) : null) }}</td>
+                </tr>
+            @endforeach
+        @endif
+    </tbody>
 </table>
 @foreach ($copies as $copyLabel)
     <div class="doctor-signature doctor-signature-{{ $copyLabel === 'Original' ? 'original' : 'copy' }}">

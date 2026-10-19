@@ -4,40 +4,55 @@
 @endphp
 
 @if ($exam !== null && ($exam['vitals'] !== [] || $exam['systems'] !== []))
-    <div class="section-title section-title--block">Examen físico</div>
-
-    @if ($exam['vitals'] !== [])
-        @php($vitalWidth = round(100 / count($exam['vitals']), 2))
-        {{-- Tabla y no texto: .prose-box conserva los saltos de línea (pre-wrap). --}}
-        <table class="items" style="table-layout: fixed;">
-            <thead>
+    {{--
+        Una sola tabla con el título en el encabezado: DomPDF repite el <thead> en
+        cada página, así que el título nunca queda solo al pie de una hoja y, si el
+        examen cruza de página, la continuación sigue rotulada.
+        Una fila por bloque: DomPDF no parte una celda entre páginas.
+    --}}
+    <table class="items exam-amd" style="table-layout: fixed; margin-top: 5px;">
+        <thead>
+            {{-- Fila medidora invisible: con layout fijo DomPDF toma los anchos de la primera fila (ignora <colgroup>), y la del título ocupa todo el ancho. --}}
+            <tr>
+                <th style="width: 24%; height: 0; padding: 0; border: 0; background: #ffffff; font-size: 0; line-height: 0;"></th>
+                <th style="width: 76%; height: 0; padding: 0; border: 0; background: #ffffff; font-size: 0; line-height: 0;"></th>
+            </tr>
+            <tr>
+                <th colspan="2" style="background: #f0fdff; color: #0c4a6e; border: 0; border-left: 2.5px solid #00ADEF; font-size: 7.5pt; padding: 2px 5px 2px 6px;">Examen físico · Atención médica domiciliaria (AMD)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if ($exam['vitals'] !== [])
+                @php($vitalWidth = round(100 / count($exam['vitals']), 2))
                 <tr>
-                    @foreach ($exam['vitals'] as $vital)
-                        <th style="width: {{ $vitalWidth }}%">{{ $vital['label'] }}</th>
-                    @endforeach
+                    <td colspan="2" style="padding: 2px 0 0 0; border: 0; background: #ffffff;">
+                        {{-- Tabla y no texto: .prose-box conserva los saltos de línea (pre-wrap). --}}
+                        <table class="items" style="table-layout: fixed; margin-top: 0;">
+                            <thead>
+                                <tr>
+                                    @foreach ($exam['vitals'] as $vital)
+                                        <th style="width: {{ $vitalWidth }}%">{{ $vital['label'] }}</th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    @foreach ($exam['vitals'] as $vital)
+                                        <td class="center">{{ $vital['value'] }}</td>
+                                    @endforeach
+                                </tr>
+                            </tbody>
+                        </table>
+                    </td>
                 </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    @foreach ($exam['vitals'] as $vital)
-                        <td class="center">{{ $vital['value'] }}</td>
-                    @endforeach
-                </tr>
-            </tbody>
-        </table>
-    @endif
+            @endif
 
-    @if ($exam['systems'] !== [])
-        {{-- Una fila por sistema: DomPDF no parte una celda entre páginas. --}}
-        <table class="items" style="table-layout: fixed;">
-            <tbody>
-                @foreach ($exam['systems'] as $system)
-                    <tr>
-                        <td style="width: 24%; font-weight: bold; vertical-align: top;">{{ $system['label'] }}:</td>
-                        <td style="width: 76%; vertical-align: top; word-wrap: break-word;">{{ $system['text'] }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
+            @foreach ($exam['systems'] as $system)
+                <tr>
+                    <td style="width: 24%; font-weight: bold; vertical-align: top;">{{ $system['label'] }}:</td>
+                    <td style="width: 76%; vertical-align: top; word-wrap: break-word;">{{ $system['text'] }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
 @endif

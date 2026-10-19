@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\TelemedicineCase;
 use App\Support\Operations\TelemedicineCaseBitacora;
+use App\Support\Telemedicine\TelemedicinePdfPageNumbers;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 final class TelemedicineCaseBitacoraPdfService
@@ -34,10 +35,13 @@ final class TelemedicineCaseBitacoraPdfService
     {
         ini_set('memory_limit', '1024M');
 
-        $pdf = Pdf::loadView('documents.bitacora-caso', [
+        $dompdf = Pdf::loadView('documents.bitacora-caso', [
             'dossier' => TelemedicineCaseBitacora::dossier($case),
-        ])->setPaper('a4', 'portrait');
+        ])->setPaper('a4', 'portrait')->getDomPDF();
+        $dompdf->render();
 
-        return $pdf->output();
+        TelemedicinePdfPageNumbers::applyToPortrait($dompdf);
+
+        return (string) $dompdf->output();
     }
 }

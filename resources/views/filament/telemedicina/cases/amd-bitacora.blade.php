@@ -2,6 +2,8 @@
     $entries = $entries ?? [];
     $caseCode = (string) ($caseCode ?? '—');
     $total = (int) ($total ?? count($entries));
+    $files = $files ?? [];
+    $filesTotal = (int) ($filesTotal ?? count($files));
     $withDocument = (int) ($withDocument ?? 0);
 
     $vitalSigns = static fn (array $entry): array => [
@@ -28,7 +30,7 @@
 @endphp
 
 <div class="fi-scoped space-y-4">
-    <div class="grid gap-3 sm:grid-cols-3">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-2xl border border-sky-200/80 bg-sky-50/80 px-4 py-3 dark:border-sky-500/25 dark:bg-sky-950/30">
             <p class="text-xs font-medium uppercase tracking-wide text-sky-700/80 dark:text-sky-300/80">Caso</p>
             <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ $caseCode }}</p>
@@ -37,18 +39,24 @@
             <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Informes AMD</p>
             <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ $total }}</p>
         </div>
+        <div class="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-white/5">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Archivos AMD</p>
+            <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ $filesTotal }}</p>
+        </div>
         <div class="rounded-2xl border border-emerald-200/80 bg-emerald-50/80 px-4 py-3 dark:border-emerald-500/25 dark:bg-emerald-950/20">
             <p class="text-xs font-medium uppercase tracking-wide text-emerald-700/80 dark:text-emerald-300/80">Documentos disponibles</p>
             <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{{ $withDocument }}</p>
         </div>
     </div>
 
-    @if ($total === 0)
+    @if ($total === 0 && $filesTotal === 0)
         <div class="rounded-2xl border border-dashed border-slate-300/90 bg-slate-50/70 px-6 py-10 text-center dark:border-white/15 dark:bg-white/[0.03]">
             <p class="text-sm font-medium text-slate-700 dark:text-slate-200">Sin bitácoras AMD registradas</p>
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Los informes generados desde la consulta AMD aparecerán aquí.</p>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Los informes y archivos cargados desde la consulta AMD aparecerán aquí.</p>
         </div>
-    @else
+    @endif
+
+    @if ($total > 0)
         <div class="space-y-4">
             @foreach ($entries as $entry)
                 <article class="overflow-hidden rounded-[1.5rem] border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-950/5 dark:border-white/10 dark:bg-gray-900/80 dark:ring-white/10">
@@ -180,5 +188,53 @@
                 </article>
             @endforeach
         </div>
+    @endif
+
+    @if ($filesTotal > 0)
+        <section class="overflow-hidden rounded-[1.5rem] border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-950/5 dark:border-white/10 dark:bg-gray-900/80 dark:ring-white/10">
+            <div class="border-b border-slate-200/80 px-5 py-4 dark:border-white/10">
+                <p class="text-sm font-semibold text-slate-900 dark:text-white">Archivos AMD</p>
+                <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Imágenes y documentos que el médico cargó con «Cargar Archivo AMD» durante la consulta.</p>
+            </div>
+            <ul class="divide-y divide-slate-200/80 dark:divide-white/10">
+                @foreach ($files as $index => $file)
+                    <li wire:key="amd-file-{{ $index }}-{{ md5($file['name']) }}" class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                        <div class="flex min-w-0 items-center gap-3">
+                            <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-200">
+                                <x-filament::icon :icon="$file['is_image'] ? 'heroicon-o-photo' : 'heroicon-o-document'" class="h-5 w-5" />
+                            </span>
+                            <div class="min-w-0 space-y-0.5">
+                                <p class="truncate text-sm font-semibold text-slate-900 dark:text-white" title="{{ $file['name'] }}">{{ $file['name'] }}</p>
+                                <div class="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600 dark:bg-white/10 dark:text-slate-300">{{ $file['extension'] }}</span>
+                                    @if ($file['document_exists'])
+                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200">Disponible</span>
+                                    @else
+                                        <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 font-semibold text-rose-800 dark:bg-rose-500/20 dark:text-rose-200">No encontrado</span>
+                                    @endif
+                                    <span>Consulta {{ $file['consultation_reference'] }}</span>
+                                    <span aria-hidden="true">·</span>
+                                    <span>{{ $file['uploaded_at_label'] }}@if ($file['uploaded_at_relative'] !== '') ({{ $file['uploaded_at_relative'] }})@endif</span>
+                                </div>
+                            </div>
+                        </div>
+                        @if ($file['document_exists'] && filled($file['download_url']))
+                            <a
+                                href="{{ $file['download_url'] }}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex min-h-[2.5rem] shrink-0 items-center justify-center rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-400"
+                            >
+                                {{ $file['is_image'] ? 'Ver imagen' : 'Abrir archivo' }}
+                            </a>
+                        @else
+                            <span class="inline-flex min-h-[2.5rem] shrink-0 items-center justify-center rounded-xl bg-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 dark:bg-white/10 dark:text-slate-400">
+                                No disponible
+                            </span>
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+        </section>
     @endif
 </div>

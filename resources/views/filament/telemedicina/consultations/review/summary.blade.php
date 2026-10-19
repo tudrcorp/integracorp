@@ -1,5 +1,5 @@
 @php
-    /** @var array{kind: string, tone: string, is_discharge: bool, sections: list<array{title: string, step: string, fields: array<string, string>, lists: list<array{title: string, tone: string, items: list<string>}>, empty: string|null}>, warnings: list<string>, notes: list<string>} $review */
+    /** @var array{kind: string, tone: string, is_discharge: bool, sections: list<array{title: string, step: string, fields: array<string, string>, lists: list<array{title: string, tone: string, items: list<string>}>, empty: string|null}>, warnings: list<string>, notes: list<string>, amd: array<string, mixed>|null} $review */
     $kindClasses = [
         'initial' => 'bg-sky-600',
         'follow_up' => 'bg-amber-500',
@@ -29,6 +29,50 @@
                     <li>• {{ $warning }}</li>
                 @endforeach
             </ul>
+        </div>
+    @endif
+
+    @if (($review['amd'] ?? null) !== null)
+        @php($amd = $review['amd'])
+        {{-- Solo avisa: la consulta se puede registrar aunque falte algo de la AMD. --}}
+        <div @class([
+            'rounded-xl border px-4 py-3',
+            'border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10' => $amd['complete'],
+            'border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10' => ! $amd['complete'],
+        ])>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <p @class([
+                    'flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide',
+                    'text-emerald-800 dark:text-emerald-300' => $amd['complete'],
+                    'text-amber-800 dark:text-amber-300' => ! $amd['complete'],
+                ])>
+                    <x-filament::icon :icon="$amd['complete'] ? 'heroicon-s-check-badge' : 'heroicon-s-exclamation-triangle'" class="size-4" />
+                    Acciones AMD · {{ $amd['completed'] }} de {{ $amd['total'] }} obligatorias
+                </p>
+            </div>
+            <ul class="mt-2 grid gap-1.5 sm:grid-cols-3">
+                @foreach ($amd['steps'] as $step)
+                    <li class="flex items-start gap-1.5 text-sm text-slate-800 dark:text-slate-100">
+                        <x-filament::icon
+                            :icon="$step['done'] ? 'heroicon-s-check-circle' : ($step['optional'] ? 'heroicon-o-minus-circle' : 'heroicon-o-clock')"
+                            @class([
+                                'mt-0.5 size-4 shrink-0',
+                                'text-emerald-600 dark:text-emerald-400' => $step['done'],
+                                'text-amber-500' => ! $step['done'] && ! $step['optional'],
+                                'text-slate-400' => ! $step['done'] && $step['optional'],
+                            ])
+                        />
+                        <span><strong class="font-semibold">{{ $step['label'] }}:</strong> {{ $step['detail'] }}</span>
+                    </li>
+                @endforeach
+            </ul>
+            <p class="mt-2 text-sm text-slate-700 dark:text-slate-200">
+                @if ($amd['complete'])
+                    {{ $amd['message'] }}
+                @else
+                    {{ $amd['message'] }} Puede registrar la consulta igual, pero la visita quedará incompleta: complételo desde la tarjeta «Visita AMD».
+                @endif
+            </p>
         </div>
     @endif
 

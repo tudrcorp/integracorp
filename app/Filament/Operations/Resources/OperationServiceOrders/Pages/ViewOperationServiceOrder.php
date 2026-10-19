@@ -4,18 +4,15 @@ namespace App\Filament\Operations\Resources\OperationServiceOrders\Pages;
 
 use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrderResource;
 use App\Mail\OperationServiceOrderPdfMail;
-use App\Models\OperationDocumentList;
 use App\Models\OperationServiceOrder;
-use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
-use App\Support\Operations\OperationServiceOrderCoordinationSync;
+use App\Models\User;
+use App\Support\Operations\OperationServiceOrderDocuments;
+use App\Support\Operations\OperationServiceOrderFinalizationException;
 use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Operations\OperationServiceOrderViewActions;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
@@ -26,6 +23,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
+use Throwable;
 
 class ViewOperationServiceOrder extends ViewRecord
 {
@@ -188,7 +186,8 @@ class ViewOperationServiceOrder extends ViewRecord
                     ->label('Guardar y Finalizar orden')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
-                    ->visible(fn (): bool => OperationServiceOrderViewActions::canFinalize($this->getRecord())),
+                    ->visible(fn (): bool => OperationServiceOrderViewActions::canFinalize($this->getRecord())
+                        && OperationServiceOrderDocuments::userCanFinalize()),
             ])
             ->action(function (array $data, array $arguments): void {
                 $this->processOrderDocumentsUpload($data, $arguments);
@@ -200,87 +199,60 @@ class ViewOperationServiceOrder extends ViewRecord
      */
     private function orderDocumentsUploadForm(): array
     {
-        return [
-            Repeater::make('documents')
-                ->label('Documentos')
-                ->defaultItems(1)
-                ->addActionLabel('Agregar documento')
-                ->reorderable()
-                ->minItems(1)
-                ->schema([
-                    Select::make('document_type_ids')
-                        ->label('Tipo(s) de documento')
-                        ->helperText('Seleccione uno o varios tipos según la información contenida en el archivo.')
-                        ->options(fn (): array => OperationDocumentList::query()
-                            ->orderBy('name', 'asc')
-                            ->pluck('name', 'id')
-                            ->all())
-                        ->searchable()
-                        ->preload()
-                        ->multiple()
-                        ->required(),
-                    FileUpload::make('document_file')
-                        ->label('Archivo')
-                        ->directory(fn () => 'operation-service-orders/'.$this->getRecord()->id.'/documents')
-                        ->preserveFilenames()
-                        ->required()
-                        ->maxSize(10240),
-                ])
-                ->columns(1)
-                ->required(),
-        ];
+        return OperationServiceOrderDocuments::formSchema(
+            fn (): string => OperationServiceOrderDocuments::directory($this->getRecord()),
+        );
     }
 
     /**
+     * Guarda y, si se pidió, finaliza por {@see OperationServiceOrderDocuments}:
+     * la misma vía que la ficha del proveedor, con bitácora y auditoría.
+     *
      * @param  array<string, mixed>  $data
      * @param  array<string, mixed>  $arguments
      */
     private function processOrderDocumentsUpload(array $data, array $arguments): void
     {
-        $newDocuments = $this->buildUploadedOrderDocumentsFromForm($data);
-
-        if ($newDocuments === []) {
-            Notification::make()
-                ->warning()
-                ->title('Sin documentos válidos')
-                ->body('Debe cargar al menos un documento con archivo y tipos seleccionados.')
-                ->send();
-
-            return;
-        }
-
+        $newDocuments = OperationServiceOrderDocuments::fromForm($data);
         $record = $this->getRecord();
-        $existingDocuments = is_array($record->uploaded_documents)
-            ? $record->uploaded_documents
-            : [];
+        $orderLabel = OperationServiceOrderDocuments::orderLabel($record);
+        $user = Auth::user();
 
-        $record->update([
-            'uploaded_documents' => array_values(array_merge($existingDocuments, $newDocuments)),
-        ]);
+        try {
+            if (filter_var($arguments['finalize'] ?? false, FILTER_VALIDATE_BOOLEAN) && $user instanceof User) {
+                $result = OperationServiceOrderDocuments::finalize($record, $newDocuments, $user, OperationServiceOrderDocuments::ORIGIN_ORDER_VIEW);
+                $this->record = $result['order'];
 
-        $followUpSuffix = LabImagingResultsFollowUpRegistrar::analystMessageSuffix(
-            LabImagingResultsFollowUpRegistrar::registerFromServiceOrder($record, $newDocuments),
-        );
-
-        $shouldFinalize = filter_var($arguments['finalize'] ?? false, FILTER_VALIDATE_BOOLEAN);
-
-        if ($shouldFinalize) {
-            if (! OperationServiceOrderViewActions::canFinalize($record)) {
                 Notification::make()
-                    ->warning()
-                    ->title('No se puede finalizar')
-                    ->body('Los documentos se guardaron, pero la orden ya no admite finalización.'.$followUpSuffix)
+                    ->success()
+                    ->title('Orden finalizada')
+                    ->body('Se guardaron los documentos y la orden '.$orderLabel.' quedó en estatus FINALIZADO.'
+                        .($result['logged_to_case'] ? ' Quedó registrado en la bitácora del caso.' : '')
+                        .$result['follow_up_suffix'])
                     ->send();
 
                 return;
             }
 
-            $this->record = OperationServiceOrderCoordinationSync::finalizeOrder($record->fresh() ?? $record);
+            $result = OperationServiceOrderDocuments::attach($record, $newDocuments);
+            $this->record = $result['order'];
+        } catch (OperationServiceOrderFinalizationException $exception) {
+            Notification::make()
+                ->warning()
+                ->title('No se pudo completar')
+                ->body($exception->getMessage())
+                ->persistent()
+                ->send();
+
+            return;
+        } catch (Throwable $exception) {
+            report($exception);
 
             Notification::make()
-                ->success()
-                ->title('Orden finalizada')
-                ->body('Se guardaron los documentos y la orden #'.($record->order_number ?: $record->getKey()).' quedó en estatus FINALIZADO.'.$followUpSuffix)
+                ->danger()
+                ->title('No se guardaron los documentos')
+                ->body('Ocurrió un error y no se aplicó ningún cambio en la orden. Intente nuevamente; si persiste, avise a soporte.')
+                ->persistent()
                 ->send();
 
             return;
@@ -291,68 +263,8 @@ class ViewOperationServiceOrder extends ViewRecord
             ->title('Documentos cargados')
             ->body((count($newDocuments) > 1
                 ? 'Se cargaron '.count($newDocuments).' documentos en la orden.'
-                : 'Se cargó 1 documento en la orden.').$followUpSuffix)
+                : 'Se cargó 1 documento en la orden.').$result['follow_up_suffix'])
             ->send();
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @return list<array{document_name: string, file_path: string, document_type_ids: list<int>, document_types: list<string>, uploaded_at: string}>
-     */
-    private function buildUploadedOrderDocumentsFromForm(array $data): array
-    {
-        /** @var array<int, string> $documentTypeNames */
-        $documentTypeNames = OperationDocumentList::query()
-            ->pluck('name', 'id')
-            ->mapWithKeys(static fn (mixed $name, mixed $id): array => [(int) $id => (string) $name])
-            ->all();
-
-        return collect($data['documents'] ?? [])
-            ->map(function (mixed $item) use ($documentTypeNames): ?array {
-                if (! is_array($item)) {
-                    return null;
-                }
-
-                $documentFile = trim((string) ($item['document_file'] ?? ''));
-
-                if ($documentFile === '') {
-                    return null;
-                }
-
-                $documentName = trim((string) pathinfo($documentFile, PATHINFO_FILENAME));
-
-                if ($documentName === '') {
-                    $documentName = basename($documentFile);
-                }
-
-                $rawTypeIds = $item['document_type_ids'] ?? [];
-
-                $typeIds = collect(is_array($rawTypeIds) ? $rawTypeIds : [])
-                    ->map(static fn (mixed $value, mixed $key): int => is_numeric($value)
-                        ? (int) $value
-                        : (is_numeric($key) ? (int) $key : 0))
-                    ->filter(static fn (int $id): bool => $id > 0)
-                    ->unique()
-                    ->values()
-                    ->all();
-
-                $typeNames = collect($typeIds)
-                    ->map(static fn (int $id): string => $documentTypeNames[$id] ?? '')
-                    ->filter(static fn (string $value): bool => $value !== '')
-                    ->values()
-                    ->all();
-
-                return [
-                    'document_name' => $documentName,
-                    'file_path' => $documentFile,
-                    'document_type_ids' => $typeIds,
-                    'document_types' => $typeNames,
-                    'uploaded_at' => now()->toDateTimeString(),
-                ];
-            })
-            ->filter()
-            ->values()
-            ->all();
     }
 
     public function cancelServiceOrderAction(): Action
