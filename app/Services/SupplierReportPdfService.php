@@ -6,10 +6,14 @@ namespace App\Services;
 
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as PdfDocument;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class SupplierReportPdfService
 {
@@ -19,31 +23,52 @@ class SupplierReportPdfService
 
     public const FOOTER_BANNER_PATH = 'image/suppliers-report-footer.png';
 
+    /**
+     * Estatus de sistema que entran al reporte: solo proveedores activos en la red.
+     *
+     * @var list<string>
+     */
+    public const ELIGIBLE_SYSTEM_STATUSES = ['AFILIADO', 'ACTIVO AFILIADO'];
+
     private const LOGO_CACHE_PREFIX = 'supplier_report_logo_uri:';
 
     private const IMAGE_CACHE_PREFIX = 'supplier_report_img_uri:';
 
     /**
+     * Versión del diseño/filtro del PDF: forma parte de la versión del archivo, así un cambio de
+     * plantilla o de criterio nunca sirve un PDF guardado con el formato anterior.
+     *
+     * v5: PDF guardado en disco y generado en cola; pie con clave que se ajusta al ancho.
+     * v4: solo generales/preferenciales con carta de aceptación cargada y estatus activo.
      * v3: banners de cabecera/pie y fecha encriptada en el pie.
-     * v2: valor en base64 en caché (tabla `cache` en MySQL es UTF-8; bytes del PDF disparan error 1366).
      */
-    private const PDF_CACHE_KEY_PREFIX = 'supplier_report_pdf:v3:';
+    private const LAYOUT_VERSION = 'v5';
+
+    public const STORAGE_DISK = 'local';
+
+    public const STORAGE_DIRECTORY = 'supplier-report';
+
+    private const GENERATION_LOCK_KEY = 'supplier_report_pdf:generate';
 
     /**
-     * TTL del PDF en caché. Tras muchos proveedores, DomPDF puede superar el max_execution_time del PHP;
-     * servir bytes cacheados evita regenerar en cada vista previa / descarga / correo.
+     * Vida máxima del candado: si el proceso que genera muere, otro puede retomar.
      */
-    private const PDF_CACHE_TTL_SECONDS = 900;
+    private const GENERATION_LOCK_SECONDS = 300;
 
     /**
-     * Versión de los datos del reporte: cambia al crear/editar/borrar proveedores (invalida caché).
+     * Cuánto espera una petición web a que otra termine de generar el mismo PDF.
+     */
+    private const GENERATION_LOCK_WAIT_SECONDS = 120;
+
+    /**
+     * Versión de los datos del reporte: cambia al crear/editar/borrar proveedores o al cambiar el diseño.
      */
     public static function pdfCacheVersion(): string
     {
         $count = (int) DB::table('suppliers')->count();
         $maxUpdated = DB::table('suppliers')->max('updated_at');
 
-        return hash('sha256', $count.'|'.((string) ($maxUpdated ?? '')));
+        return hash('sha256', self::LAYOUT_VERSION.'|'.$count.'|'.((string) ($maxUpdated ?? '')));
     }
 
     public static function outputBinary(): string
@@ -51,19 +76,107 @@ class SupplierReportPdfService
         return self::make()->output();
     }
 
+    /**
+     * PDF vigente para vista previa, descarga, correo y zona de descarga.
+     *
+     * Lo normal es que el job {@see \App\Jobs\RegenerateSupplierReportPdfJob} ya lo haya dejado en disco
+     * y aquí solo se lea. Si no está (primer uso o un cambio que el job aún no procesa), se genera una
+     * sola vez bajo candado: las peticiones simultáneas esperan a la primera en vez de repetir el render.
+     */
     public static function outputBinaryCached(): string
     {
-        $ttl = (int) config('supplier-report.pdf_cache_ttl_seconds', self::PDF_CACHE_TTL_SECONDS);
+        $version = self::pdfCacheVersion();
 
-        $encoded = Cache::remember(
-            self::PDF_CACHE_KEY_PREFIX.self::pdfCacheVersion(),
-            max(60, $ttl),
-            static fn (): string => base64_encode(self::outputBinary()),
-        );
+        $stored = self::readStoredFile($version);
 
-        $binary = base64_decode($encoded, true);
+        if ($stored !== null) {
+            return $stored;
+        }
 
-        return is_string($binary) ? $binary : self::outputBinary();
+        try {
+            return Cache::lock(self::GENERATION_LOCK_KEY, self::GENERATION_LOCK_SECONDS)
+                ->block(self::GENERATION_LOCK_WAIT_SECONDS, static fn (): string => self::readStoredFile($version)
+                    ?? self::generateAndStore($version));
+        } catch (LockTimeoutException) {
+            return self::outputBinary();
+        }
+    }
+
+    /**
+     * Deja en disco el PDF de la versión vigente si aún no existe. Pensado para la cola: si otro
+     * proceso ya lo está generando, no repite el trabajo.
+     *
+     * @return bool true si generó un archivo nuevo
+     */
+    public static function regenerateStoredFile(): bool
+    {
+        $lock = Cache::lock(self::GENERATION_LOCK_KEY, self::GENERATION_LOCK_SECONDS);
+
+        if (! $lock->get()) {
+            return false;
+        }
+
+        try {
+            $version = self::pdfCacheVersion();
+
+            if (self::readStoredFile($version) !== null) {
+                return false;
+            }
+
+            self::generateAndStore($version);
+
+            return true;
+        } finally {
+            $lock->release();
+        }
+    }
+
+    public static function storedFilePath(string $version): string
+    {
+        return self::STORAGE_DIRECTORY.'/reporte-proveedores-'.$version.'.pdf';
+    }
+
+    private static function readStoredFile(string $version): ?string
+    {
+        $disk = Storage::disk(self::STORAGE_DISK);
+        $path = self::storedFilePath($version);
+
+        if (! $disk->exists($path)) {
+            return null;
+        }
+
+        $binary = $disk->get($path);
+
+        return is_string($binary) && str_starts_with($binary, '%PDF') ? $binary : null;
+    }
+
+    /**
+     * Escribe en un temporal y renombra: quien lee nunca ve un PDF a medio escribir.
+     * Después borra las versiones anteriores.
+     */
+    private static function generateAndStore(string $version): string
+    {
+        $binary = self::outputBinary();
+
+        $disk = Storage::disk(self::STORAGE_DISK);
+        $path = self::storedFilePath($version);
+        $temporaryPath = $path.'.'.Str::random(8).'.tmp';
+
+        $disk->put($temporaryPath, $binary);
+
+        if (! @rename($disk->path($temporaryPath), $disk->path($path))) {
+            $disk->delete($temporaryPath);
+
+            return $binary;
+        }
+
+        foreach ($disk->files(self::STORAGE_DIRECTORY) as $file) {
+            if ($file !== $path && ! str_ends_with($file, '.tmp')) {
+                $disk->delete($file);
+            }
+        }
+
+        return $binary;
     }
 
     /**
@@ -77,6 +190,7 @@ class SupplierReportPdfService
             ->leftJoin('states', 'suppliers.state_id', '=', 'states.id')
             ->leftJoin('cities', 'suppliers.city_id', '=', 'cities.id')
             ->leftJoin('supplier_clasificacions', 'suppliers.supplier_clasificacion_id', '=', 'supplier_clasificacions.id')
+            ->tap(static fn (Builder $query): Builder => self::applyEligibilityFilter($query))
             ->orderByRaw('CASE WHEN states.definition IS NULL OR states.definition = \'\' THEN 1 ELSE 0 END')
             ->orderBy('states.definition')
             ->orderByRaw('CASE WHEN cities.definition IS NULL OR cities.definition = \'\' THEN 1 ELSE 0 END')
@@ -102,6 +216,22 @@ class SupplierReportPdfService
         }
 
         return $out;
+    }
+
+    /**
+     * Limita el reporte a proveedores con convenio GENERAL o PREFERENCIAL, carta de aceptación
+     * cargada y estatus de sistema activo (AFILIADO o ACTIVO AFILIADO).
+     */
+    public static function applyEligibilityFilter(Builder $query): Builder
+    {
+        return $query
+            ->where(static function (Builder $convenio): void {
+                $convenio->where('suppliers.status_convenio', 'GENERAL')
+                    ->orWhere('suppliers.status_convenio', 'like', '%PREFERENCIAL%');
+            })
+            ->whereNotNull('suppliers.carta_acceptance')
+            ->where('suppliers.carta_acceptance', '<>', '')
+            ->whereIn('suppliers.status_sistema', self::ELIGIBLE_SYSTEM_STATUSES);
     }
 
     /**

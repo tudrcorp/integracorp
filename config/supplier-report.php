@@ -15,11 +15,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | TTL de caché del binario PDF (segundos)
+    | Retraso de la regeneración en cola (segundos)
     |--------------------------------------------------------------------------
     |
-    | Tras la primera generación, vista previa / descarga / correo reutilizan el PDF hasta que
-    | expire el TTL o cambien los datos (versión por conteo + updated_at de suppliers).
+    | El PDF se guarda en disco (storage/app/private/supplier-report) y lo regenera
+    | RegenerateSupplierReportPdfJob al cambiar un proveedor. El retraso agrupa
+    | varias ediciones seguidas en una sola generación.
+    |
+    */
+
+    'regenerate_delay_seconds' => (int) env('SUPPLIER_REPORT_REGENERATE_DELAY', '60'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | TTL de caché de PDF (segundos)
+    |--------------------------------------------------------------------------
+    |
+    | Ya no lo usa el reporte de proveedores (vive en disco), pero sí las fichas
+    | de afiliación y de médicos/enfermeros (AffiliationFichaPdfService,
+    | DoctorNurseFichaPdfService). No borrar.
     |
     */
 

@@ -11,6 +11,7 @@ use App\Filament\Operations\Resources\Suppliers\Widgets\SupplierStatsOverviewFir
 use App\Mail\SupplierReportMail;
 use App\Models\Supplier;
 use App\Services\SupplierReportDownloadZoneService;
+use App\Services\SupplierReportPdfService;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -143,12 +144,13 @@ class ListSuppliers extends ListRecords
                     'class' => self::TICKET_BUTTON_CLASS,
                 ])
                 ->modalHeading('Reporte de proveedores')
-                ->modalDescription('Listado ordenado por estado y ciudad (A–Z). Vista previa, descarga o envío por correo.')
+                ->modalDescription('Proveedores generales y preferenciales con carta de aceptación cargada y estatus Afiliado o Activo afiliado, ordenados por estado y ciudad (A–Z). Vista previa, descarga o envío por correo.')
                 ->modalWidth(Width::SevenExtraLarge)
                 ->modalIcon('heroicon-o-document-text')
                 ->modalContent(fn (): ViewContract => View::make('filament.operations.suppliers.suppliers-report-modal', [
                     'pdfPreviewUrl' => route('operations.suppliers.report.preview'),
                     'pdfDownloadUrl' => route('operations.suppliers.report.download'),
+                    'pdfFilename' => SupplierReportPdfService::FILENAME,
                 ]))
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Cerrar')

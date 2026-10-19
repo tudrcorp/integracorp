@@ -7,6 +7,7 @@ use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\Supplier;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
 
@@ -54,6 +55,21 @@ class SupplierStatsOverviewFirts extends StatsOverviewWidget
         $valorMes = number_format($monthTotal, 0, ',', '.');
         $monthLabel = ucfirst($now->locale(app()->getLocale())->translatedFormat('F Y'));
 
+        $withAcceptanceLetterTotal = (clone $base)
+            ->where(function (Builder $query) use ($table): void {
+                $query->where("{$table}.status_convenio", 'GENERAL')
+                    ->orWhere("{$table}.status_convenio", 'like', '%PREFERENCIAL%');
+            })
+            ->whereNotNull("{$table}.carta_acceptance")
+            ->where("{$table}.carta_acceptance", '<>', '')
+            ->count();
+        $valorConCarta = number_format($withAcceptanceLetterTotal, 0, ',', '.');
+
+        $notAgreedTotal = (clone $base)
+            ->where("{$table}.status_convenio", 'NO CONVENIDO')
+            ->count();
+        $valorNoConvenidos = number_format($notAgreedTotal, 0, ',', '.');
+
         return [
             Stat::make('PROVEEDORES REGISTRADOS', $valor)
                 ->columnSpan([
@@ -80,15 +96,51 @@ class SupplierStatsOverviewFirts extends StatsOverviewWidget
                 ])
                 ->description(new HtmlString("
                     <div class='flex flex-col mt-1'>
-                        <span class='text-xs font-semibold uppercase tracking-wide text-success-600 dark:text-success-400'>
+                        <span class='text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-400'>
                             MES ACTUAL · {$monthLabel}
                         </span>
                     </div>
                 "))
                 ->descriptionIcon('heroicon-m-calendar-days')
+                ->color('primary')
+                ->extraAttributes([
+                    'class' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-primary-200/60 dark:border-primary-700/50 bg-gradient-to-br from-primary-50/90 via-white to-primary-50/50 dark:from-primary-950/40 dark:via-gray-900/80 dark:to-primary-900/20 hover:shadow-lg hover:shadow-primary-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-primary-400/50 hover:border-primary-300 dark:hover:border-primary-500',
+                    'style' => 'min-height: 130px;',
+                ]),
+            Stat::make('CON CARTA DE ACEPTACIÓN', $valorConCarta)
+                ->columnSpan([
+                    'default' => 1,
+                    'sm' => 1,
+                ])
+                ->description(new HtmlString("
+                    <div class='flex flex-col mt-1'>
+                        <span class='text-xs font-semibold uppercase tracking-wide text-success-600 dark:text-success-400'>
+                            GENERALES + PREFERENCIALES
+                        </span>
+                    </div>
+                "))
+                ->descriptionIcon('heroicon-m-document-check')
                 ->color('success')
                 ->extraAttributes([
                     'class' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-success-200/60 dark:border-success-700/50 bg-gradient-to-br from-success-50/90 via-white to-success-50/50 dark:from-success-950/40 dark:via-gray-900/80 dark:to-success-900/20 hover:shadow-lg hover:shadow-success-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-success-400/50 hover:border-success-300 dark:hover:border-success-500',
+                    'style' => 'min-height: 130px;',
+                ]),
+            Stat::make('PROVEEDORES NO CONVENIDOS', $valorNoConvenidos)
+                ->columnSpan([
+                    'default' => 1,
+                    'sm' => 1,
+                ])
+                ->description(new HtmlString("
+                    <div class='flex flex-col mt-1'>
+                        <span class='text-xs font-semibold uppercase tracking-wide text-warning-600 dark:text-warning-400'>
+                            REGISTRADOS DESDE OPERACIONES
+                        </span>
+                    </div>
+                "))
+                ->descriptionIcon('heroicon-m-exclamation-triangle')
+                ->color('warning')
+                ->extraAttributes([
+                    'class' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-warning-200/60 dark:border-warning-700/50 bg-gradient-to-br from-warning-50/90 via-white to-warning-50/50 dark:from-warning-950/40 dark:via-gray-900/80 dark:to-warning-900/20 hover:shadow-lg hover:shadow-warning-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-warning-400/50 hover:border-warning-300 dark:hover:border-warning-500',
                     'style' => 'min-height: 130px;',
                 ]),
         ];

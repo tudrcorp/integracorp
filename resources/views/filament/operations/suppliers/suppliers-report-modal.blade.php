@@ -1,6 +1,7 @@
 @props([
     'pdfPreviewUrl' => null,
     'pdfDownloadUrl' => null,
+    'pdfFilename' => 'reporte-proveedores.pdf',
 ])
 
 <div class="fi-scoped space-y-5" wire:ignore.self>
@@ -99,12 +100,65 @@
             >
                 Abrir en pestaña
             </a>
-            <a
-                href="{{ $pdfDownloadUrl }}"
-                class="inline-flex items-center rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500"
+            <div
+                class="inline-flex flex-col items-end gap-1"
+                x-data="{
+                    downloading: false,
+                    downloadError: null,
+                    async download() {
+                        if (this.downloading) {
+                            return;
+                        }
+                        this.downloading = true;
+                        this.downloadError = null;
+                        try {
+                            const response = await fetch(@js($pdfDownloadUrl), {
+                                credentials: 'same-origin',
+                                headers: { Accept: 'application/pdf' },
+                            });
+                            const contentType = response.headers.get('Content-Type') || '';
+                            if (!response.ok || !contentType.includes('application/pdf')) {
+                                throw new Error('Respuesta inválida');
+                            }
+                            const blobUrl = URL.createObjectURL(await response.blob());
+                            const link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.download = @js($pdfFilename);
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                            setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+                        } catch (error) {
+                            this.downloadError = 'No se pudo generar el PDF. Intente de nuevo.';
+                        } finally {
+                            this.downloading = false;
+                        }
+                    },
+                }"
             >
-                Descargar PDF
-            </a>
+                <a
+                    href="{{ $pdfDownloadUrl }}"
+                    x-on:click.prevent="download()"
+                    x-bind:aria-disabled="downloading"
+                    x-bind:class="downloading ? 'pointer-events-none opacity-70 cursor-wait' : ''"
+                    class="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500"
+                >
+                    <template x-if="downloading">
+                        <svg class="h-3.5 w-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    </template>
+                    <span x-text="downloading ? 'Generando PDF…' : 'Descargar PDF'">Descargar PDF</span>
+                </a>
+                <p
+                    x-cloak
+                    x-show="downloadError"
+                    x-text="downloadError"
+                    class="text-xs text-danger-600 dark:text-danger-400"
+                    role="alert"
+                ></p>
+            </div>
             <button
                 type="button"
                 wire:click="moveSupplierReportToDownloadZone"
@@ -141,9 +195,18 @@
             </div>
             <button
                 type="submit"
-                class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 sm:mt-6 sm:w-auto sm:self-start dark:focus:ring-offset-gray-900"
+                wire:loading.attr="disabled"
+                wire:target="sendSupplierReportPdf"
+                class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:cursor-wait disabled:opacity-70 sm:mt-6 sm:w-auto sm:self-start dark:focus:ring-offset-gray-900"
             >
-                Enviar PDF
+                <span wire:loading.remove wire:target="sendSupplierReportPdf">Enviar PDF</span>
+                <span wire:loading.flex wire:target="sendSupplierReportPdf" class="items-center gap-2">
+                    <svg class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generando y enviando PDF…
+                </span>
             </button>
         </form>
     </div>

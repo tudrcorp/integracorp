@@ -37,8 +37,10 @@ use App\Listeners\LogFilamentImportActivity;
 use App\Listeners\StampPlanGeneratorPopulationImport;
 use App\Models\ObservationCommercialStructure;
 use App\Models\PlanGenerator;
+use App\Models\Supplier;
 use App\Observers\ObservationCommercialStructureObserver;
 use App\Observers\PlanGeneratorObserver;
+use App\Observers\SupplierReportPdfObserver;
 use App\Support\LivePresence\LivePresenceRecorder;
 use App\Support\LivePresence\QueueActivityRecorder;
 use App\Support\LivePresence\SecurityAuthListener;
@@ -174,6 +176,7 @@ class AppServiceProvider extends ServiceProvider
 
         ObservationCommercialStructure::observe(ObservationCommercialStructureObserver::class);
         PlanGenerator::observe(PlanGeneratorObserver::class);
+        Supplier::observe(SupplierReportPdfObserver::class);
         CoordinationServiceTabCounts::registerCacheInvalidation();
 
         FilamentColor::register([
