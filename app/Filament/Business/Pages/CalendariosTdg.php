@@ -23,7 +23,9 @@ class CalendariosTdg extends Page
         InteractsWithTdgHybridCalendar::getCurrentWeekDaysProperty insteadof InteractsWithCorporateCalendarShell;
     }
 
-    protected static ?string $navigationLabel = 'Calendarios TDG';
+    protected static ?string $navigationLabel = 'Guardia Oficinas';
+
+    protected static ?string $title = 'Guardia Oficinas';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendar;
 
@@ -42,6 +44,14 @@ class CalendariosTdg extends Page
 
     public function corporateCalendarHeading(): string
     {
-        return 'Calendarios TDG';
+        return 'Guardia Oficinas';
+    }
+
+    /**
+     * @return list<'offices'>
+     */
+    public function tdgCalendarWorkspaces(): array
+    {
+        return ['offices'];
     }
 }

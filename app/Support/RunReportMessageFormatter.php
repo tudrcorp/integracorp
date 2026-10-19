@@ -87,6 +87,15 @@ final class RunReportMessageFormatter
             return $text;
         }
 
+        if (preg_match('/(https?:\/\/\S+)\s*$/u', $text, $matches) === 1) {
+            $suffix = "\n".$matches[1];
+            $room = $maxLength - mb_strlen($suffix);
+
+            if ($room > 1) {
+                return rtrim(mb_substr($text, 0, $room - 1)).'…'.$suffix;
+            }
+        }
+
         return mb_substr($text, 0, $maxLength - 1).'…';
     }
 }

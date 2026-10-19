@@ -271,10 +271,10 @@ class NotificationMasiveService
                         if ($rowsNotifications[$i]['data_type'] == 'agents') {
                             BirthdayNotificationRunReport::setCurrentGroup('agentes');
 
-                            $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('name', 'phone', 'birth_date')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('id', 'name', 'phone', 'birth_date', 'ci')
                                 ->get()
-                                ->toArray();
+                                ->toArray());
 
                             BirthdayNotificationRunReport::recordValidationBatch('agentes', count($data), 'whatsapp');
 
@@ -340,7 +340,9 @@ class NotificationMasiveService
                                             $data[$k]->phone,
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
-                                            $rowsNotifications[$i]['type']
+                                            $rowsNotifications[$i]['type'],
+                                            $data[$k]->ci ?? null,
+                                            $data[$k]->birth_date ?? null,
                                         );
 
                                         BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
@@ -366,10 +368,10 @@ class NotificationMasiveService
                         // @version 2.1
                         if ($rowsNotifications[$i]['data_type'] == 'agencies') {
                             BirthdayNotificationRunReport::setCurrentGroup('agencias');
-                            $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('name_corporative', 'phone', 'brithday_date')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('id', 'name_corporative', 'phone', 'brithday_date')
                                 ->get()
-                                ->toArray();
+                                ->toArray());
 
                             BirthdayNotificationRunReport::recordValidationBatch('agencias', count($data), 'whatsapp');
 
@@ -435,7 +437,9 @@ class NotificationMasiveService
                                             $data[$k]->phone,
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
-                                            $rowsNotifications[$i]['type']
+                                            $rowsNotifications[$i]['type'],
+                                            null,
+                                            $data[$k]->brithday_date ?? null,
                                         );
 
                                         BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
@@ -462,16 +466,17 @@ class NotificationMasiveService
                         // @version 2.1
                         if ($rowsNotifications[$i]['data_type'] == 'affiliates') {
                             BirthdayNotificationRunReport::setCurrentGroup('afiliaciones');
-                            $data = DB::table('affiliates')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('affiliates')
                                 ->leftJoin('affiliations', 'affiliates.affiliation_id', '=', 'affiliations.id')
                                 ->select(
+                                    'affiliates.id as id',
                                     'affiliates.full_name',
                                     'affiliates.phone',
                                     'affiliates.birth_date',
                                     'affiliations.agent_id as agent_id',
                                 )
                                 ->get()
-                                ->toArray();
+                                ->toArray());
 
                             BirthdayNotificationRunReport::recordValidationBatch('afiliaciones', count($data), 'whatsapp');
 
@@ -544,7 +549,8 @@ class NotificationMasiveService
                                                         $agent->phone,
                                                         $rowsNotifications[$i]['content'],
                                                         $rowsNotifications[$i]['file'],
-                                                        $rowsNotifications[$i]['type']
+                                                        $rowsNotifications[$i]['type'],
+                                                        attachCelebrationLink: false,
                                                     );
                                                 } elseif ($agent) {
                                                     UtilsController::notificationFailed(
@@ -564,7 +570,9 @@ class NotificationMasiveService
                                                 $data[$k]->phone,
                                                 $rowsNotifications[$i]['content'],
                                                 $rowsNotifications[$i]['file'],
-                                                $rowsNotifications[$i]['type']
+                                                $rowsNotifications[$i]['type'],
+                                                null,
+                                                $data[$k]->birth_date ?? null,
                                             );
 
                                             BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
@@ -592,16 +600,17 @@ class NotificationMasiveService
                         // @version 2.1
                         if ($rowsNotifications[$i]['data_type'] == 'affiliate_corporates') {
                             BirthdayNotificationRunReport::setCurrentGroup('afiliaciones_corporativas');
-                            $data = DB::table('affiliate_corporates')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('affiliate_corporates')
                                 ->leftJoin('affiliation_corporates', 'affiliate_corporates.affiliation_corporate_id', '=', 'affiliation_corporates.id')
                                 ->select(
+                                    'affiliate_corporates.id as id',
                                     'affiliate_corporates.first_name',
                                     'affiliate_corporates.phone',
                                     'affiliate_corporates.birth_date',
                                     'affiliation_corporates.agent_id as agent_id',
                                 )
                                 ->get()
-                                ->toArray();
+                                ->toArray());
 
                             BirthdayNotificationRunReport::recordValidationBatch('afiliaciones_corporativas', count($data), 'whatsapp');
 
@@ -673,7 +682,8 @@ class NotificationMasiveService
                                                     $agent->phone,
                                                     $rowsNotifications[$i]['content'],
                                                     $rowsNotifications[$i]['file'],
-                                                    $rowsNotifications[$i]['type']
+                                                    $rowsNotifications[$i]['type'],
+                                                    attachCelebrationLink: false,
                                                 );
                                             } elseif ($agent) {
                                                 UtilsController::notificationFailed(
@@ -693,7 +703,9 @@ class NotificationMasiveService
                                             $data[$k]->phone,
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
-                                            $rowsNotifications[$i]['type']
+                                            $rowsNotifications[$i]['type'],
+                                            null,
+                                            $data[$k]->birth_date ?? null,
                                         );
 
                                         BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
@@ -719,10 +731,10 @@ class NotificationMasiveService
                         // @version 2.1
                         if ($rowsNotifications[$i]['data_type'] == 'rrhh_colaboradors') {
                             BirthdayNotificationRunReport::setCurrentGroup('colaboradores');
-                            $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('fullName', 'telefono', 'fechaNacimiento')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('id', 'fullName', 'telefono', 'fechaNacimiento')
                                 ->get()
-                                ->toArray();
+                                ->toArray());
 
                             BirthdayNotificationRunReport::recordValidationBatch('colaboradores', count($data), 'whatsapp');
 
@@ -790,7 +802,9 @@ class NotificationMasiveService
                                             $data[$k]->telefono,
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
-                                            $rowsNotifications[$i]['type']
+                                            $rowsNotifications[$i]['type'],
+                                            null,
+                                            $data[$k]->fechaNacimiento ?? null,
                                         );
 
                                         BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
@@ -817,10 +831,10 @@ class NotificationMasiveService
                         // @version 2.1
                         if ($rowsNotifications[$i]['data_type'] == 'suppliers') {
                             BirthdayNotificationRunReport::setCurrentGroup('proveedores');
-                            $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('name', 'personal_phone', 'afiliacion_proveedor')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('id', 'name', 'personal_phone', 'afiliacion_proveedor')
                                 ->get()
-                                ->toArray();
+                                ->toArray());
 
                             BirthdayNotificationRunReport::recordValidationBatch('proveedores', count($data), 'whatsapp');
 
@@ -889,7 +903,9 @@ class NotificationMasiveService
                                             $data[$k]->personal_phone,
                                             $rowsNotifications[$i]['content'],
                                             $rowsNotifications[$i]['file'],
-                                            $rowsNotifications[$i]['type']
+                                            $rowsNotifications[$i]['type'],
+                                            null,
+                                            $data[$k]->afiliacion_proveedor ?? null,
                                         );
 
                                         BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
@@ -927,10 +943,10 @@ class NotificationMasiveService
                         // @version 2.1
                         if ($rowsNotifications[$i]['data_type'] == 'agents') {
                             BirthdayNotificationRunReport::setCurrentGroup('agentes');
-                            $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('name', 'email', 'birth_date')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('id', 'name', 'email', 'phone', 'birth_date', 'ci')
                                 ->get()
-                                ->toArray();
+                                ->toArray());
 
                             BirthdayNotificationRunReport::recordValidationBatch('agentes', count($data), 'email');
 
@@ -996,12 +1012,16 @@ class NotificationMasiveService
                                         BirthdayNotificationRunReport::sendBirthdayEmail(
                                             $data[$k]->email,
                                             $data[$k]->name,
-                                            fn () => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
+                                            fn (?string $animationUrl = null) => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
                                                 ->send(new NotificationMasiveMailBirthday(
                                                     $data[$k]->name,
                                                     $rowsNotifications[$i]['file'],
-                                                    $data[$k]->email
-                                                ))
+                                                    $data[$k]->email,
+                                                    $animationUrl,
+                                                )),
+                                            $data[$k]->phone ?? null,
+                                            $data[$k]->ci ?? null,
+                                            $data[$k]->birth_date ?? null,
                                         );
 
                                         LogController::logSuccess($data[$k]->email);
@@ -1022,10 +1042,10 @@ class NotificationMasiveService
                         // @version 2.1
                         if ($rowsNotifications[$i]['data_type'] == 'agencies') {
                             BirthdayNotificationRunReport::setCurrentGroup('agencias');
-                            $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('name_corporative', 'email', 'brithday_date')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('id', 'name_corporative', 'email', 'brithday_date')
                                 ->get()
-                                ->toArray();
+                                ->toArray());
 
                             BirthdayNotificationRunReport::recordValidationBatch('agencias', count($data), 'email');
 
@@ -1091,12 +1111,16 @@ class NotificationMasiveService
                                         BirthdayNotificationRunReport::sendBirthdayEmail(
                                             $data[$k]->email,
                                             $data[$k]->name_corporative,
-                                            fn () => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
+                                            fn (?string $animationUrl = null) => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
                                                 ->send(new NotificationMasiveMailBirthday(
                                                     $data[$k]->name_corporative,
                                                     $rowsNotifications[$i]['file'],
-                                                    $data[$k]->email
-                                                ))
+                                                    $data[$k]->email,
+                                                    $animationUrl,
+                                                )),
+                                            null,
+                                            null,
+                                            $data[$k]->brithday_date ?? null,
                                         );
 
                                         LogController::logSuccess($data[$k]->email);
@@ -1116,10 +1140,10 @@ class NotificationMasiveService
                         // @version 2.1
                         if ($rowsNotifications[$i]['data_type'] == 'affiliates') {
                             BirthdayNotificationRunReport::setCurrentGroup('afiliaciones');
-                            $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('full_name', 'email', 'birth_date')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('id', 'full_name', 'email', 'birth_date')
                                 ->get()
-                                ->toArray();
+                                ->toArray());
 
                             BirthdayNotificationRunReport::recordValidationBatch('afiliaciones', count($data), 'email');
 
@@ -1185,12 +1209,16 @@ class NotificationMasiveService
                                             BirthdayNotificationRunReport::sendBirthdayEmail(
                                                 $data[$k]->email,
                                                 $data[$k]->full_name,
-                                                fn () => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
+                                                fn (?string $animationUrl = null) => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
                                                     ->send(new NotificationMasiveMailBirthday(
                                                         $data[$k]->full_name,
                                                         $rowsNotifications[$i]['file'],
-                                                        $data[$k]->email
-                                                    ))
+                                                        $data[$k]->email,
+                                                        $animationUrl,
+                                                    )),
+                                                null,
+                                                null,
+                                                $data[$k]->birth_date ?? null,
                                             );
 
                                             LogController::logSuccess($data[$k]->email);
@@ -1212,10 +1240,10 @@ class NotificationMasiveService
                         // @version 2.1
                         if ($rowsNotifications[$i]['data_type'] == 'affiliate_corporates') {
                             BirthdayNotificationRunReport::setCurrentGroup('afiliaciones_corporativas');
-                            $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('first_name', 'email', 'birth_date')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('id', 'first_name', 'email', 'birth_date')
                                 ->get()
-                                ->toArray();
+                                ->toArray());
 
                             BirthdayNotificationRunReport::recordValidationBatch('afiliaciones_corporativas', count($data), 'email');
 
@@ -1281,12 +1309,16 @@ class NotificationMasiveService
                                         BirthdayNotificationRunReport::sendBirthdayEmail(
                                             $data[$k]->email,
                                             $data[$k]->first_name,
-                                            fn () => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
+                                            fn (?string $animationUrl = null) => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
                                                 ->send(new NotificationMasiveMailBirthday(
                                                     $data[$k]->first_name,
                                                     $rowsNotifications[$i]['file'],
-                                                    $data[$k]->email
-                                                ))
+                                                    $data[$k]->email,
+                                                    $animationUrl,
+                                                )),
+                                            $data[$k]->phone ?? null,
+                                            null,
+                                            $data[$k]->birth_date ?? null,
                                         );
 
                                         LogController::logSuccess($data[$k]->email);
@@ -1306,10 +1338,10 @@ class NotificationMasiveService
                         // @version 2.1
                         if ($rowsNotifications[$i]['data_type'] == 'rrhh_colaboradors') {
                             BirthdayNotificationRunReport::setCurrentGroup('colaboradores');
-                            $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('fullName', 'emailCorporativo', 'fechaNacimiento')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('id', 'fullName', 'emailCorporativo', 'fechaNacimiento')
                                 ->get()
-                                ->toArray();
+                                ->toArray());
 
                             BirthdayNotificationRunReport::recordValidationBatch('colaboradores', count($data), 'email');
 
@@ -1375,12 +1407,16 @@ class NotificationMasiveService
                                         BirthdayNotificationRunReport::sendBirthdayEmail(
                                             $data[$k]->emailCorporativo,
                                             $data[$k]->fullName,
-                                            fn () => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->emailCorporativo)
+                                            fn (?string $animationUrl = null) => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->emailCorporativo)
                                                 ->send(new NotificationMasiveMailBirthday(
                                                     $data[$k]->fullName,
                                                     $rowsNotifications[$i]['file'],
-                                                    $data[$k]->emailCorporativo
-                                                ))
+                                                    $data[$k]->emailCorporativo,
+                                                    $animationUrl,
+                                                )),
+                                            $data[$k]->telefono ?? null,
+                                            null,
+                                            $data[$k]->fechaNacimiento ?? null,
                                         );
 
                                         LogController::logSuccess($data[$k]->emailCorporativo);
@@ -1401,10 +1437,10 @@ class NotificationMasiveService
                         // @version 2.1
                         if ($rowsNotifications[$i]['data_type'] == 'suppliers') {
                             BirthdayNotificationRunReport::setCurrentGroup('proveedores');
-                            $data = DB::table($rowsNotifications[$i]['data_type'])
-                                ->select('name', 'correo_principal', 'afiliacion_proveedor')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                                ->select('id', 'name', 'correo_principal', 'afiliacion_proveedor')
                                 ->get()
-                                ->toArray();
+                                ->toArray());
 
                             BirthdayNotificationRunReport::recordValidationBatch('proveedores', count($data), 'email');
 
@@ -1470,12 +1506,16 @@ class NotificationMasiveService
                                         BirthdayNotificationRunReport::sendBirthdayEmail(
                                             $data[$k]->correo_principal,
                                             $data[$k]->name,
-                                            fn () => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->correo_principal)
+                                            fn (?string $animationUrl = null) => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->correo_principal)
                                                 ->send(new NotificationMasiveMailBirthday(
                                                     $data[$k]->name,
                                                     $rowsNotifications[$i]['file'],
-                                                    $data[$k]->correo_principal
-                                                ))
+                                                    $data[$k]->correo_principal,
+                                                    $animationUrl,
+                                                )),
+                                            $data[$k]->personal_phone ?? null,
+                                            null,
+                                            $data[$k]->afiliacion_proveedor ?? null,
                                         );
 
                                         LogController::logSuccess($data[$k]->correo_principal);

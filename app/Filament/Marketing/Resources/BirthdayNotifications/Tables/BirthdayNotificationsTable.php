@@ -3,11 +3,14 @@
 namespace App\Filament\Marketing\Resources\BirthdayNotifications\Tables;
 
 use App\Http\Controllers\NotificationController;
+use App\Models\BirthdayNotification;
+use App\Support\Birthday\BirthdayCelebrationCard;
 use App\Support\BirthdayNotificationAudience;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
@@ -27,7 +30,24 @@ class BirthdayNotificationsTable
                     ImageColumn::make('file')
                         ->imageHeight('auto')
                         ->imageWidth('70%')
-                        ->visibility('public'),
+                        ->visibility('public')
+                        ->state(function (BirthdayNotification $record): ?string {
+                            if ($record->sends_celebration_card) {
+                                return BirthdayCelebrationCard::publicUrl();
+                            }
+
+                            return $record->file;
+                        }),
+
+                    TextColumn::make('title')
+                        ->weight(FontWeight::Bold)
+                        ->placeholder(''),
+
+                    TextColumn::make('celebration_label')
+                        ->badge()
+                        ->color('info')
+                        ->state(fn (BirthdayNotification $record): ?string => $record->sends_celebration_card ? 'Animada' : null)
+                        ->placeholder(''),
 
                     Stack::make([
                         TextColumn::make('data_type')
@@ -54,6 +74,9 @@ class BirthdayNotificationsTable
             ])
             ->recordActions([
                 ActionGroup::make([
+
+                    EditAction::make()
+                        ->label('Editar'),
 
                     Action::make('change_status')
                         ->label('Aprobar Notificación')

@@ -3,12 +3,12 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -17,17 +17,21 @@ class NotificationMasiveMailBirthday extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public $name;
+
     public $file;
+
     public $email; // Añadido para mejor rastreo de errores
 
     /**
      * El número de veces que se reintentará el trabajo si falla.
+     *
      * @var int
      */
     public $tries = 3;
 
     /**
      * El número de segundos que hay que esperar antes de reintentar.
+     *
      * @var int
      */
     public $backoff = [60, 300, 600]; // Reintentos exponenciales: 1m, 5m, 10m
@@ -35,11 +39,14 @@ class NotificationMasiveMailBirthday extends Mailable implements ShouldQueue
     /**
      * Create a new message instance.
      */
-    public function __construct($name, $file, $email = null)
+    public ?string $animationUrl = null;
+
+    public function __construct($name, $file, $email = null, ?string $animationUrl = null)
     {
         $this->name = $name;
         $this->file = $file;
         $this->email = $email;
+        $this->animationUrl = $animationUrl;
     }
 
     /**
@@ -53,7 +60,7 @@ class NotificationMasiveMailBirthday extends Mailable implements ShouldQueue
     {
         return new Envelope(
             from: new Address('tudrgroup.info@gmail.com', 'TU DR. EN CASA'),
-            subject: 'Feliz Cumpleaños Sr(a). ' . $this->name
+            subject: 'Feliz Cumpleaños Sr(a). '.$this->name
         );
     }
 
@@ -73,19 +80,19 @@ class NotificationMasiveMailBirthday extends Mailable implements ShouldQueue
     public function failed(Throwable $exception): void
     {
         // 1. Log estructurado con severidad crítica y contexto completo
-        Log::critical("FALLA DEFINITIVA: Envío de correo de cumpleaños", [
+        Log::critical('FALLA DEFINITIVA: Envío de correo de cumpleaños', [
             'destinatario' => [
                 'nombre' => $this->name,
-                'email'  => $this->email ?? 'No especificado',
+                'email' => $this->email ?? 'No especificado',
             ],
             'archivo_adjunto' => $this->file,
-            'causa_error'     => $exception->getMessage(),
-            'codigo_error'    => $exception->getCode(),
-            'clase_error'     => get_class($exception),
-            'timestamp'       => now()->toDateTimeString(),
+            'causa_error' => $exception->getMessage(),
+            'codigo_error' => $exception->getCode(),
+            'clase_error' => get_class($exception),
+            'timestamp' => now()->toDateTimeString(),
         ]);
 
-        // 2. Lógica de contingencia (Opcional): 
+        // 2. Lógica de contingencia (Opcional):
         // Podrías insertar esto en una tabla de 'envios_fallidos' para un reintento manual posterior
         /*
         DB::table('failed_birthday_emails')->insert([

@@ -11,7 +11,7 @@ final class UserNavigationAccess
 {
     /**
      * Ítems de menú incluidos por defecto por módulo (sin asignación granular).
-     * Vacío a propósito: Agenda Corporativa y Calendarios TDG se asignan desde Permisos.
+     * Vacío a propósito: Agenda Corporativa y Guardia Oficinas se asignan desde Permisos.
      *
      * @var array<string, list<string>>
      */

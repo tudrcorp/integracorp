@@ -44,6 +44,9 @@ trait OptimizesAffiliationCorporateInfolistPerformance
     protected function affiliationCorporateHeavyRelationsByTab(): array
     {
         return [
+            AffiliationCorporateInfolistTab::CONTACTO => [
+                'affiliationCorporateContacts',
+            ],
             AffiliationCorporateInfolistTab::PLANES => [
                 'affiliationCorporatePlans.plan',
                 'affiliationCorporatePlans.coverage',

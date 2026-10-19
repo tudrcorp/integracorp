@@ -18,3 +18,12 @@ it('personaliza el título de edición corporativa sin la palabra Editar', funct
         ->not->toContain("'Editar")
         ->not->toContain('"Editar');
 });
+
+it('vuelve a la ficha de la afiliación corporativa después de guardar', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Pages/EditAffiliationCorporate.php');
+
+    expect($source)
+        ->toContain('protected function getRedirectUrl(): string')
+        ->toContain("getUrl('view', ['record' => \$this->getRecord()])")
+        ->not->toContain("getUrl('index')");
+});

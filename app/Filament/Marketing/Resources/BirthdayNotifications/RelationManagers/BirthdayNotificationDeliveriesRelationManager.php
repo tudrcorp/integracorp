@@ -5,11 +5,13 @@ namespace App\Filament\Marketing\Resources\BirthdayNotifications\RelationManager
 use App\Enums\MassNotificationDeliveryStatus;
 use App\Models\BirthdayNotification;
 use App\Models\BirthdayNotificationDelivery;
+use App\Support\Birthday\BirthdayCelebrationRecipientGate;
 use App\Support\BirthdayNotificationRecipientCatalog;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -38,12 +40,33 @@ class BirthdayNotificationDeliveriesRelationManager extends RelationManager
         $emailColumn = $config['email'];
         $phoneColumn = $config['phone'];
         $birthDateColumn = $config['birth_date'];
+        $excludedRecipientIds = $notification->sends_celebration_card
+            ? BirthdayCelebrationRecipientGate::excludedIdMap($notification->id, (string) $notification->data_type)
+            : [];
 
         return $table
             ->query(fn (): Builder => BirthdayNotificationRecipientCatalog::queryFor($notification))
             ->heading('Destinatarios de la notificación')
-            ->description('Padrón asociado al tipo de destinatario de esta tarjeta. El filtro de fecha muestra quienes cumplen años ese día.')
+            ->description($notification->sends_celebration_card
+                ? 'Todos reciben la tarjeta animada. Apaga «Recibe la animación» a quien no deba recibirla. Las otras notificaciones no cambian.'
+                : 'Padrón asociado al tipo de destinatario de esta tarjeta. El filtro de fecha muestra quienes cumplen años ese día.')
             ->columns([
+                ToggleColumn::make('receives_celebration')
+                    ->label('Recibe la animación')
+                    ->hidden(! $notification->sends_celebration_card)
+                    ->getStateUsing(fn (Model $record): bool => ! isset($excludedRecipientIds[(int) $record->getKey()]))
+                    ->updateStateUsing(function (Model $record, mixed $state) use ($notification): bool {
+                        $receives = $state === true || $state === 1 || $state === '1';
+
+                        BirthdayCelebrationRecipientGate::setReceives(
+                            $notification->id,
+                            (string) $notification->data_type,
+                            (int) $record->getKey(),
+                            $receives,
+                        );
+
+                        return $receives;
+                    }),
                 TextColumn::make($nameColumn)
                     ->label('Full Name')
                     ->searchable()

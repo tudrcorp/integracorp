@@ -38,6 +38,9 @@ trait OptimizesAffiliationInfolistPerformance
     protected function affiliationHeavyRelationsByTab(): array
     {
         return [
+            AffiliationInfolistTab::TITULAR => [
+                'affiliationContacts',
+            ],
             AffiliationInfolistTab::ALIADO_2 => [
                 'affiliates',
             ],

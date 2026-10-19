@@ -180,6 +180,16 @@ class Affiliation extends Model
     }
 
     /**
+     * Teléfonos y correos extra del titular. El contacto principal sigue en phone_ti y email_ti.
+     *
+     * @return HasMany<AffiliationContact, $this>
+     */
+    public function affiliationContacts(): HasMany
+    {
+        return $this->hasMany(AffiliationContact::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /**
      * @return HasMany<\App\Models\AffiliationRenovationHistory, $this>
      */
     public function renovationHistories(): HasMany

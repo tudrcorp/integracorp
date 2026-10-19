@@ -215,6 +215,42 @@ class AffiliationInfolist
                                             ]),
                                     ])
                                     ->columnSpanFull(),
+                                Section::make('Contactos adicionales')
+                                    ->description('Otras personas o números del titular. El teléfono y el correo de arriba siguen siendo el contacto principal.')
+                                    ->icon(Heroicon::OutlinedPhone)
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        RepeatableEntry::make('affiliationContacts')
+                                            ->hiddenLabel()
+                                            ->table([
+                                                TableColumn::make('Nombre')->width('28%'),
+                                                TableColumn::make('Relación')->width('18%'),
+                                                TableColumn::make('Teléfono')->width('22%'),
+                                                TableColumn::make('Correo')->width('32%'),
+                                            ])
+                                            ->schema([
+                                                TextEntry::make('name')
+                                                    ->weight('medium')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('relationship')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('phone')
+                                                    ->icon(Heroicon::OutlinedPhone)
+                                                    ->copyable()
+                                                    ->copyMessage('Teléfono copiado')
+                                                    ->placeholder('—'),
+                                                TextEntry::make('email')
+                                                    ->icon(Heroicon::OutlinedEnvelope)
+                                                    ->copyable()
+                                                    ->copyMessage('Correo copiado')
+                                                    ->placeholder('—'),
+                                            ])
+                                            ->placeholder('Esta afiliación no tiene contactos adicionales.')
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
                             ]),
                         AffiliationInfolistTab::DOCUMENTO => Tab::make('Documento del titular')
                             ->icon(Heroicon::OutlinedDocumentArrowDown)

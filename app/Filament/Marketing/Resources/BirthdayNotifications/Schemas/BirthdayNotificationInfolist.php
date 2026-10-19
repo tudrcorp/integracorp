@@ -3,6 +3,7 @@
 namespace App\Filament\Marketing\Resources\BirthdayNotifications\Schemas;
 
 use App\Models\BirthdayNotification;
+use App\Support\Birthday\BirthdayCelebrationCard;
 use App\Support\BirthdayNotificationAudience;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -28,7 +29,14 @@ class BirthdayNotificationInfolist
                                     ->imageHeight('auto')
                                     ->imageWidth('70%')
                                     ->square()
-                                    ->visibility('public'),
+                                    ->visibility('public')
+                                    ->state(function (BirthdayNotification $record): ?string {
+                                        if ($record->sends_celebration_card) {
+                                            return BirthdayCelebrationCard::publicUrl();
+                                        }
+
+                                        return $record->file;
+                                    }),
                             ])->columnSpanFull()->columns(5),
                         Fieldset::make('Información')
                             ->schema([

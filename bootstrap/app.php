@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'storefront.auth' => \App\Http\Middleware\EnsureStorefrontAuthenticated::class,
             'storefront.guest' => \App\Http\Middleware\RedirectIfStorefrontAuthenticated::class,
+            'birthday.coupon.auth' => \App\Http\Middleware\EnsureAuthenticatedForBirthdayCoupon::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

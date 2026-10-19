@@ -16,7 +16,8 @@ it('registra calendarios tdg en el panel business con el diseño de agenda corpo
 
     expect($pageContents)
         ->toContain('namespace App\\Filament\\Business\\Pages;')
-        ->toContain("protected static ?string \$navigationLabel = 'Calendarios TDG';")
+        ->toContain("protected static ?string \$navigationLabel = 'Guardia Oficinas';")
+        ->toContain("protected static ?string \$title = 'Guardia Oficinas';")
         ->toContain("protected string \$view = 'filament.business.pages.calendarios-tdg';")
         ->toContain('InteractsWithTdgHybridCalendar');
 

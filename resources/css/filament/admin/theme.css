@@ -8049,6 +8049,10 @@
     @apply border-orange-300/90 bg-orange-50/80 dark:border-orange-600/50 dark:bg-orange-950/40;
   }
 
+  .tdg-office-card--home-office {
+    @apply border-violet-300/90 bg-violet-50/80 dark:border-violet-600/50 dark:bg-violet-950/40;
+  }
+
   .tdg-office-card--default {
     @apply border-slate-200/80 bg-slate-50/70 dark:border-white/10 dark:bg-slate-950/40;
   }
@@ -8065,6 +8069,10 @@
     @apply text-orange-700 dark:text-orange-300;
   }
 
+  .tdg-office-card__eyebrow--home-office {
+    @apply text-violet-700 dark:text-violet-300;
+  }
+
   .tdg-office-card__title--central-lido {
     @apply text-cyan-950 dark:text-cyan-50;
   }
@@ -8075,6 +8083,10 @@
 
   .tdg-office-card__title--farmadoc-san-bernardino {
     @apply text-orange-950 dark:text-orange-50;
+  }
+
+  .tdg-office-card__title--home-office {
+    @apply text-violet-950 dark:text-violet-50;
   }
 
   .tdg-office-picker {
@@ -8105,6 +8117,14 @@
     @apply border-orange-400 bg-orange-100 shadow-sm dark:border-orange-500/70 dark:bg-orange-700/40;
   }
 
+  .tdg-office-picker--home-office.is-idle {
+    @apply border-slate-200/80 bg-white hover:border-violet-300 hover:bg-violet-50/70 dark:border-white/10 dark:bg-slate-900/70 dark:hover:border-violet-500/50 dark:hover:bg-violet-500/10;
+  }
+
+  .tdg-office-picker--home-office.is-selected {
+    @apply border-violet-400 bg-violet-100 shadow-sm dark:border-violet-500/70 dark:bg-violet-700/40;
+  }
+
   .tdg-office-selected-row--central-lido {
     @apply rounded-xl border border-cyan-200/90 bg-cyan-50/60 px-2 py-2 dark:border-cyan-500/40 dark:bg-cyan-500/10;
   }
@@ -8115,6 +8135,10 @@
 
   .tdg-office-selected-row--farmadoc-san-bernardino {
     @apply rounded-xl border border-orange-200/90 bg-orange-50/60 px-2 py-2 dark:border-orange-500/40 dark:bg-orange-500/10;
+  }
+
+  .tdg-office-selected-row--home-office {
+    @apply rounded-xl border border-violet-200/90 bg-violet-50/60 px-2 py-2 dark:border-violet-500/40 dark:bg-violet-500/10;
   }
 
   .tdg-office-count-badge--central-lido {
@@ -8129,6 +8153,10 @@
     @apply rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-900 dark:bg-orange-500/30 dark:text-orange-100;
   }
 
+  .tdg-office-count-badge--home-office {
+    @apply rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-900 dark:bg-violet-500/30 dark:text-violet-100;
+  }
+
   .tdg-office-chip--central-lido.is-selected {
     @apply border-cyan-400 bg-cyan-100 text-cyan-950 dark:border-cyan-500/70 dark:bg-cyan-700/50 dark:text-cyan-50;
   }
@@ -8141,6 +8169,10 @@
     @apply border-orange-400 bg-orange-100 text-orange-950 dark:border-orange-500/70 dark:bg-orange-700/50 dark:text-orange-50;
   }
 
+  .tdg-office-chip--home-office.is-selected {
+    @apply border-violet-400 bg-violet-100 text-violet-950 dark:border-violet-500/70 dark:bg-violet-700/50 dark:text-violet-50;
+  }
+
   .tdg-office-chip__dot--central-lido {
     @apply bg-cyan-500;
   }
@@ -8151,6 +8183,10 @@
 
   .tdg-office-chip__dot--farmadoc-san-bernardino {
     @apply bg-orange-500;
+  }
+
+  .tdg-office-chip__dot--home-office {
+    @apply bg-violet-500;
   }
 
   .tdg-office-chip__dot--default {
@@ -8167,6 +8203,10 @@
 
   .tdg-office-picker__check--farmadoc-san-bernardino {
     @apply text-orange-600 dark:text-orange-300;
+  }
+
+  .tdg-office-picker__check--home-office {
+    @apply text-violet-600 dark:text-violet-300;
   }
 
   .fi-ta-cell-activity-identity {

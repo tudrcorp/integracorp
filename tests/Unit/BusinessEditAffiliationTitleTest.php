@@ -19,3 +19,12 @@ it('personaliza el título de edición individual sin la palabra Editar', functi
         ->not->toContain('"Editar')
         ->not->toContain('Editar Afiliación Individual');
 });
+
+it('vuelve a la ficha de la afiliación individual después de guardar', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Pages/EditAffiliation.php');
+
+    expect($source)
+        ->toContain('protected function getRedirectUrl(): string')
+        ->toContain("getUrl('view', ['record' => \$this->getRecord()])")
+        ->not->toContain("getUrl('index')");
+});

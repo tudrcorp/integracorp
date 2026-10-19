@@ -77,6 +77,13 @@ new #[Layout('components.layouts.integracorp-hub')] #[Title('IntegraCorp - Siste
         Auth::login($user, remember: $this->remember);
         request()->session()->regenerate();
 
+        $intendedUrl = session()->pull('url.intended');
+        if (is_string($intendedUrl) && $intendedUrl !== '') {
+            $this->redirect($intendedUrl, navigate: false);
+
+            return;
+        }
+
         $modules = IntegracorpHubAccessibleModules::forUser($user);
         if (count($modules) === 1) {
             $this->redirect($modules[0]['url'], navigate: false);

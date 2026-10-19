@@ -32,6 +32,27 @@ it('registra calendarios tdg en administration, operations y marketing extendien
         ->toContain('InteractsWithTdgHybridCalendar');
 });
 
+it('registra guardias operaciones debajo de guardia oficinas en los paneles internos', function (): void {
+    $businessPage = dirname(__DIR__, 2).'/app/Filament/Business/Pages/GuardiasOperaciones.php';
+
+    expect(file_get_contents($businessPage))
+        ->toContain('extends CalendariosTdg')
+        ->toContain("protected static ?string \$navigationLabel = 'Guardias Operaciones';")
+        ->toContain("return ['guards'];");
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Pages/GuardiasOperaciones.php'))
+        ->toContain('extends BusinessGuardiasOperaciones');
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Pages/GuardiasOperaciones.php'))
+        ->toContain('extends BusinessGuardiasOperaciones');
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Marketing/Pages/GuardiasOperaciones.php'))
+        ->toContain('extends BusinessGuardiasOperaciones');
+
+    expect(route('filament.business.pages.guardias-operaciones'))->toContain('/business/')
+        ->and(route('filament.administration.pages.guardias-operaciones'))->toContain('/administration/')
+        ->and(route('filament.operations.pages.guardias-operaciones'))->toContain('/operations/')
+        ->and(route('filament.marketing.pages.guardias-operaciones'))->toContain('/marketing/');
+});
+
 it('expone rutas de calendarios tdg en cada panel interno', function (): void {
     expect(route('filament.business.pages.calendarios-tdg'))->toContain('/business/')
         ->and(route('filament.administration.pages.calendarios-tdg'))->toContain('/administration/')

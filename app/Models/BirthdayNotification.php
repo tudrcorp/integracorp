@@ -23,15 +23,22 @@ class BirthdayNotification extends Model
         'channels',
         'data_type',
         'type',
+        'sends_celebration_card',
     ];
 
     protected $casts = [
         'channels' => 'array',
+        'sends_celebration_card' => 'boolean',
     ];
 
     public function deliveries(): HasMany
     {
         return $this->hasMany(BirthdayNotificationDelivery::class, 'birthday_notification_id');
+    }
+
+    public function exclusions(): HasMany
+    {
+        return $this->hasMany(BirthdayNotificationExclusion::class, 'birthday_notification_id');
     }
 
     /**
