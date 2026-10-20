@@ -125,7 +125,7 @@ it('resume métricas de correo y whatsapp por notificación', function (): void 
         'content' => 'Feliz cumpleaños',
         'status' => 'APROBADA',
         'channels' => ['email', 'whatsapp'],
-        'data_type' => 'agents',
+        'data_type' => ['agents'],
         'type' => 'image',
     ]);
 
@@ -180,7 +180,7 @@ it('persiste entrega whatsapp al encolar desde el reporte de cumpleaños', funct
         'file' => 'cards/test.jpg',
         'status' => 'APROBADA',
         'channels' => ['whatsapp'],
-        'data_type' => 'agents',
+        'data_type' => ['agents'],
         'type' => 'image',
         'sends_celebration_card' => true,
     ]);
@@ -228,7 +228,7 @@ it('una notificación normal conserva su archivo y no agrega el enlace animado',
         'file' => 'cards/clasica.jpg',
         'status' => 'APROBADA',
         'channels' => ['whatsapp'],
-        'data_type' => 'agents',
+        'data_type' => ['agents'],
         'type' => 'image',
         'sends_celebration_card' => false,
     ]);
@@ -258,7 +258,7 @@ it('omite al destinatario apagado de la notificación animada', function (): voi
         'file' => 'animacion-cumpleanos/assets/tarjeta-cumpleanos.jpg',
         'status' => 'APROBADA',
         'channels' => ['whatsapp'],
-        'data_type' => 'affiliates',
+        'data_type' => ['affiliates'],
         'type' => 'image',
         'sends_celebration_card' => true,
     ]);
@@ -266,6 +266,7 @@ it('omite al destinatario apagado de la notificación animada', function (): voi
     BirthdayCelebrationRecipientGate::setReceives($notification->id, 'affiliates', 15, false);
     BirthdayNotificationRunReport::begin();
     BirthdayNotificationRunReport::setCurrentNotification($notification->id);
+    BirthdayNotificationRunReport::setExcludedForDataType('affiliates');
 
     $rows = BirthdayNotificationRunReport::withoutExcludedRecipients([
         (object) ['id' => 15, 'full_name' => 'Apagado'],
@@ -286,7 +287,7 @@ it('copia en oculto el correo animado y avisa por whatsapp al número fijo', fun
         'file' => 'animacion-cumpleanos/assets/tarjeta-cumpleanos.jpg',
         'status' => 'APROBADA',
         'channels' => ['email', 'whatsapp'],
-        'data_type' => 'affiliates',
+        'data_type' => ['affiliates'],
         'type' => 'image',
         'sends_celebration_card' => true,
     ]);
@@ -315,12 +316,14 @@ it('copia en oculto el correo animado y avisa por whatsapp al número fijo', fun
         'image',
     );
 
-    Bus::assertDispatched(WhatsAppBirthdayNotification::class, function (WhatsAppBirthdayNotification $job): bool {
-        return $job->phone === '+584121931865'
-            && $job->isControlCopy
-            && $job->file === BirthdayCelebrationCard::PUBLIC_RELATIVE_PATH
-            && ! str_contains($job->content, 'feliz-cumpleanos');
-    });
+    foreach (['+584121931865', '+584143027250'] as $fixedPhone) {
+        Bus::assertDispatched(WhatsAppBirthdayNotification::class, function (WhatsAppBirthdayNotification $job) use ($fixedPhone): bool {
+            return $job->phone === $fixedPhone
+                && $job->isControlCopy
+                && $job->file === BirthdayCelebrationCard::PUBLIC_RELATIVE_PATH
+                && ! str_contains($job->content, 'feliz-cumpleanos');
+        });
+    }
 });
 
 it('marca email omitido cuando el correo es inválido', function (): void {
@@ -329,7 +332,7 @@ it('marca email omitido cuando el correo es inválido', function (): void {
         'content' => 'Feliz cumpleaños',
         'status' => 'APROBADA',
         'channels' => ['email'],
-        'data_type' => 'agents',
+        'data_type' => ['agents'],
         'type' => 'image',
     ]);
 

@@ -2,7 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\BirthdayNotifications\Tables;
 
-use App\Http\Controllers\NotificationController;
+use App\Filament\Marketing\Resources\BirthdayNotifications\Actions\BirthdayNotificationTestActions;
 use App\Models\BirthdayNotification;
 use App\Support\Birthday\BirthdayCelebrationCard;
 use App\Support\BirthdayNotificationAudience;
@@ -11,7 +11,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\ImageColumn;
@@ -51,11 +50,10 @@ class BirthdayNotificationsTable
 
                     Stack::make([
                         TextColumn::make('data_type')
-                            ->suffix(fn ($record): string => ($label = BirthdayNotificationAudience::labelForDataType($record->data_type))
-                                ? ' - '.$label
-                                : '')
+                            ->state(fn (BirthdayNotification $record): array => BirthdayNotificationAudience::labelsForDataTypes($record->data_type))
                             ->badge()
-                            ->color('primary')->weight(FontWeight::Bold),
+                            ->color('primary')
+                            ->weight(FontWeight::Bold),
                     ]),
                     Stack::make([
                         TextColumn::make('status')
@@ -97,70 +95,8 @@ class BirthdayNotificationsTable
                                 ->send();
                         }),
 
-                    Action::make('test_notification_wp')
-                        ->label('Test(Via WhatsApp)')
-                        ->icon('heroicon-c-device-phone-mobile')
-                        ->color('info')
-                        ->requiresConfirmation()
-                        ->modalHeading('ENVIAR NOTIFICACIÓN')
-                        ->hidden(function ($record) {
-                            return $record->status == 'POR-APROBAR';
-                        })
-                        ->form([
-                            TextInput::make('phone')
-                                ->label('Número de Teléfono')
-                                ->helperText('Debe agregar los códigos de area. Ejemplo: +56, +57, +58, +1, etc. Si es un numero local: +58412, +58414, +58424, +58426, +58212, etc.')
-                                ->tel()
-                                ->required(),
-                            TextInput::make('name')
-                                ->label('Nombre y Apellido')
-                                ->helperText('Opcional! solo si es personalizada'),
-                        ])
-                        ->action(function ($record, $data) {
-                            try {
-
-                                NotificationController::sendNotificationWpSingle($record, $data);
-
-                                Notification::make()
-                                    ->body('La notificación fue enviada exitosamente.')
-                                    ->success()
-                                    ->send();
-                            } catch (\Throwable $th) {
-                                Log::error($th);
-                            }
-                        }),
-
-                    Action::make('test_notification_email')
-                        ->label('Test(Via Email)')
-                        ->icon('heroicon-c-at-symbol')
-                        ->color('warning')
-                        ->requiresConfirmation()
-                        ->modalHeading('ENVIAR NOTIFICACIÓN')
-                        ->hidden(function ($record) {
-                            return $record->status == 'POR-APROBAR';
-                        })
-                        ->form([
-                            TextInput::make('email')
-                                ->label('Correo Electrónico')
-                                ->required(),
-                            TextInput::make('name')
-                                ->label('Nombre y Apellido')
-                                ->helperText('Opcional! solo si es personalizada'),
-                        ])
-                        ->action(function ($record, $data) {
-
-                            try {
-
-                                NotificationController::sendNotificationEmailSingle($record, $data);
-
-                                Notification::make()
-                                    ->body('La notificación fue enviada exitosamente.')
-                                    ->success()
-                                    ->send();
-                            } catch (\Throwable $th) {
-                                Log::error($th);
-                            }
-                        }),
+                    BirthdayNotificationTestActions::whatsapp(),
+                    BirthdayNotificationTestActions::email(),
 
                 ])
                     ->icon('heroicon-c-ellipsis-vertical')

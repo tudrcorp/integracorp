@@ -103,10 +103,10 @@ final class BirthdayNotificationRecipientCatalog
         };
     }
 
-    public static function queryFor(BirthdayNotification $notification): Builder
+    public static function queryFor(BirthdayNotification $notification, ?string $dataType = null): Builder
     {
-        $dataType = (string) $notification->data_type;
-        $config = self::configFor($dataType);
+        $resolved = self::resolveDataType($notification, $dataType);
+        $config = self::configFor($resolved);
 
         return $config['model']::query()->orderBy($config['name']);
     }
@@ -120,9 +120,26 @@ final class BirthdayNotificationRecipientCatalog
      *     birth_date: string|null
      * }
      */
-    public static function configForNotification(BirthdayNotification $notification): array
+    public static function configForNotification(BirthdayNotification $notification, ?string $dataType = null): array
     {
-        return self::configFor((string) $notification->data_type);
+        return self::configFor(self::resolveDataType($notification, $dataType));
+    }
+
+    public static function resolveDataType(BirthdayNotification $notification, ?string $dataType = null): string
+    {
+        $types = BirthdayNotificationAudience::normalizeDataTypes($notification->data_type);
+
+        if ($dataType !== null && $dataType !== '') {
+            if ($types === [] || in_array($dataType, $types, true)) {
+                return $dataType;
+            }
+        }
+
+        if ($types === []) {
+            throw new InvalidArgumentException('La notificación no tiene destinatarios configurados.');
+        }
+
+        return $types[0];
     }
 
     public static function applyBirthdayDateFilter(Builder $query, string $birthDateColumn, CarbonInterface $date): Builder

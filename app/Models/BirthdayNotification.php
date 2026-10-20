@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\BirthdayNotificationAudience;
 use App\Support\BirthdayNotificationRecipientDelivery;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -28,8 +29,17 @@ class BirthdayNotification extends Model
 
     protected $casts = [
         'channels' => 'array',
+        'data_type' => 'array',
         'sends_celebration_card' => 'boolean',
     ];
+
+    /**
+     * @return list<string>
+     */
+    public function dataTypes(): array
+    {
+        return BirthdayNotificationAudience::normalizeDataTypes($this->data_type);
+    }
 
     public function deliveries(): HasMany
     {

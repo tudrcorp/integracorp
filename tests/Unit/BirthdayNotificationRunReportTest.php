@@ -50,7 +50,7 @@ it('registra validaciones por lote y las refleja en el resumen whatsapp', functi
     BirthdayNotificationRunReport::registerRunConfiguration([
         [
             'title' => 'Tarjeta agentes',
-            'data_type' => 'agents',
+            'data_type' => ['agents'],
             'channels' => ['whatsapp', 'email'],
         ],
     ]);

@@ -159,7 +159,7 @@ it('permite marcar cupón como usado con usuario autenticado', function (): void
         'content' => 'Feliz cumpleaños',
         'status' => 'APROBADA',
         'channels' => ['whatsapp'],
-        'data_type' => 'agents',
+        'data_type' => ['agents'],
         'type' => 'image',
     ]);
 
@@ -284,7 +284,14 @@ it('expone estatus y token en el payload de cupones para la animación', functio
 
     expect($payload)->toHaveCount(4)
         ->and($payload[0])->toHaveKeys(['publicToken', 'status', 'verifyUrl'])
-        ->and($payload[0]['status'])->toBe('pending');
+        ->and($payload[0]['status'])->toBe('pending')
+        ->and(array_column($payload, 'type'))->toBe(['viajes', 'farmadoc', 'casa', 'kit'])
+        ->and(array_column($payload, 'img'))->toBe([
+            'assets/cupon-viajes.jpg',
+            'assets/cupon-farmadoc.jpg',
+            'assets/cupon-casa.jpg',
+            'assets/cupon-kit.jpg',
+        ]);
 });
 
 it('rechaza marcar cupón ya usado', function (): void {

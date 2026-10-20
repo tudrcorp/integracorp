@@ -55,9 +55,7 @@ class BirthdayNotificationInfolist
                                     ->color('success'),
                                 TextEntry::make('data_type')
                                     ->label('Destinatarios:')
-                                    ->suffix(fn ($record): string => ($label = BirthdayNotificationAudience::labelForDataType($record->data_type))
-                                        ? ' - '.$label
-                                        : '')
+                                    ->state(fn (BirthdayNotification $record): array => BirthdayNotificationAudience::labelsForDataTypes($record->data_type))
                                     ->badge()
                                     ->color('success'),
                                 TextEntry::make('status')

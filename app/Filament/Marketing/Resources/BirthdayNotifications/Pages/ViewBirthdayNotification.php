@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\BirthdayNotifications\Pages;
 
+use App\Filament\Marketing\Resources\BirthdayNotifications\Actions\BirthdayNotificationTestActions;
 use App\Filament\Marketing\Resources\BirthdayNotifications\BirthdayNotificationResource;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -14,6 +15,7 @@ class ViewBirthdayNotification extends ViewRecord
     {
         return [
             EditAction::make(),
+            ...BirthdayNotificationTestActions::all(),
         ];
     }
 }

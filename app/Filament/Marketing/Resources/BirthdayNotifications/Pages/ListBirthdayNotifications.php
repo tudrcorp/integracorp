@@ -80,9 +80,9 @@ class ListBirthdayNotifications extends ListRecords
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereIn(
-                    'data_type',
-                    BirthdayNotificationAudience::dataTypesFor(BirthdayNotificationAudience::AFFILIATES),
+                ->modifyQueryUsing(fn (Builder $query): Builder => BirthdayNotificationAudience::applyAudienceConstraint(
+                    $query,
+                    BirthdayNotificationAudience::AFFILIATES,
                 )),
             BirthdayNotificationAudience::COLLABORATORS => Tab::make('Colaboradores')
                 ->badge((string) $this->countForAudience(BirthdayNotificationAudience::COLLABORATORS))
@@ -90,17 +90,18 @@ class ListBirthdayNotifications extends ListRecords
                 ->extraAttributes([
                     'class' => 'fi-supplier-status-tab-pill',
                 ])
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereIn(
-                    'data_type',
-                    BirthdayNotificationAudience::dataTypesFor(BirthdayNotificationAudience::COLLABORATORS),
+                ->modifyQueryUsing(fn (Builder $query): Builder => BirthdayNotificationAudience::applyAudienceConstraint(
+                    $query,
+                    BirthdayNotificationAudience::COLLABORATORS,
                 )),
         ];
     }
 
     protected function countForAudience(string $audience): int
     {
-        return BirthdayNotification::query()
-            ->whereIn('data_type', BirthdayNotificationAudience::dataTypesFor($audience))
-            ->count();
+        return BirthdayNotificationAudience::applyAudienceConstraint(
+            BirthdayNotification::query(),
+            $audience,
+        )->count();
     }
 }

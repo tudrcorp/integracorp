@@ -59,10 +59,11 @@ class BirthdayNotificationForm
                                         ->options(BirthdayNotificationAudience::recipientOptionsFor($audience))
                                         ->required()
                                         ->searchable()
+                                        ->multiple()
                                         ->label('Destinatarios')
                                         ->helperText(fn (?BirthdayNotification $record): string => $record?->sends_celebration_card
-                                            ? 'Grupo que recibe la tarjeta animada. No cambia las otras notificaciones. En la tabla de abajo apagas a quien no deba recibirla.'
-                                            : 'Selecciona los destinatarios de la notificación.'),
+                                            ? 'Grupos que reciben la tarjeta animada. Puedes seleccionar más de uno. En la tabla de abajo eliges el padrón y apagas a quien no deba recibirla.'
+                                            : 'Selecciona uno o más grupos destinatarios. Este campo es de selección múltiple.'),
                                     Fieldset::make()
                                         ->schema([
                                             Radio::make('type')

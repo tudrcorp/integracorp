@@ -12,7 +12,7 @@ uses(Tests\TestCase::class);
 
 it('resuelve el query de destinatarios segun data_type', function (): void {
     $notification = new BirthdayNotification([
-        'data_type' => 'agents',
+        'data_type' => ['agents'],
         'channels' => ['whatsapp'],
     ]);
 
@@ -25,6 +25,18 @@ it('resuelve el query de destinatarios segun data_type', function (): void {
         ->and($config['email'])->toBe('email')
         ->and($config['phone'])->toBe('phone')
         ->and($config['birth_date'])->toBe('birth_date');
+});
+
+it('permite resolver un data_type concreto cuando hay varios destinatarios', function (): void {
+    $notification = new BirthdayNotification([
+        'data_type' => ['affiliates', 'rrhh_colaboradors'],
+        'channels' => ['email'],
+    ]);
+
+    $config = BirthdayNotificationRecipientCatalog::configForNotification($notification, 'rrhh_colaboradors');
+
+    expect($config['name'])->toBe('fullName')
+        ->and(BirthdayNotificationRecipientCatalog::resolveDataType($notification))->toBe('affiliates');
 });
 
 it('filtra destinatarios por dia y mes de cumpleaños', function (): void {
@@ -45,5 +57,8 @@ it('el relation manager usa el padron de destinatarios', function (): void {
     expect($src)->toContain('BirthdayNotificationRecipientCatalog::queryFor')
         ->and($src)->toContain('Destinatarios de la notificación')
         ->and($src)->toContain("Filter::make('birthday_date')")
-        ->and($src)->toContain('Fecha de cumpleaños');
+        ->and($src)->toContain('Fecha de cumpleaños')
+        ->and($src)->toContain('padronSwitcherActions')
+        ->and($src)->toContain('viewerDataType')
+        ->and($src)->toContain('Usa los botones de padrón');
 });
