@@ -4,6 +4,7 @@ namespace App\Filament\Operations\Resources\TelemedicineDoctors\Pages;
 
 use App\Filament\Operations\Resources\TelemedicineDoctors\TelemedicineDoctorResource;
 use App\Models\User;
+use App\Support\Telemedicine\TelemedicineDoctorSupplierAssignment;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +16,15 @@ class CreateTelemedicineDoctor extends CreateRecord
     protected static string $resource = TelemedicineDoctorResource::class;
 
     protected static ?string $title = 'Formulario de Registro de Médicos';
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        return TelemedicineDoctorSupplierAssignment::enforce($data);
+    }
 
     /**
      * Metodo que se ejecuta antes de crear un registro

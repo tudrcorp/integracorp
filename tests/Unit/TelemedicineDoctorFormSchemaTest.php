@@ -19,10 +19,13 @@ it('asocia el médico al proveedor del usuario y managed_by como texto en mayús
 
     expect(file_get_contents($path))
         ->toContain("Select::make('supplier_id')")
-        ->toContain("->relationship('supplier', 'name')")
+        ->toContain("'supplier',\n")
+        ->toContain('TelemedicineDoctorSupplierAssignment::scopeAssignableSuppliers($query, $record)')
+        ->toContain('TelemedicineDoctorSupplierAssignment::isAssignable($value, $record)')
         ->toContain('Auth::user()?->supplier_id')
-        ->toContain('->disabled()')
-        ->toContain("->required(fn (Get \$get): bool => mb_strtoupper(trim((string) \$get('managed_by'))) !== 'TDG')")
+        ->toContain('->disabled(fn (): bool => ! TelemedicineDoctorSupplierAssignment::canChooseSupplier())')
+        ->toContain("->required(fn (Get \$get): bool => ! TelemedicineDoctorSupplierAssignment::isTdg(\$get('managed_by')))")
+        ->toContain('TelemedicineDoctorSupplierAssignment::managedByForSupplier($state)')
         ->toContain("TextInput::make('managed_by')")
         ->toContain('$state.toUpperCase()')
         ->not->toContain("'ATENMEDI' => 'ATENMEDI'");
