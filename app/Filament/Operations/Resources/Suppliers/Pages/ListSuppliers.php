@@ -158,6 +158,25 @@ class ListSuppliers extends ListRecords
         ];
     }
 
+    /**
+     * Solo se pasan a los widgets las propiedades que cambian sus números (pestaña, filtros,
+     * búsqueda). Paginar, ordenar o cambiar filas por página no altera ningún total, y como las
+     * propiedades son reactivas, enviarlas hacía recalcular los cinco widgets en cada clic.
+     *
+     * @return array<string, mixed>
+     */
+    public function getWidgetData(): array
+    {
+        return [
+            'activeTab' => $this->activeTab,
+            'parentRecord' => $this->parentRecord,
+            'tableColumnSearches' => $this->tableColumnSearches,
+            'tableFilters' => $this->tableFilters,
+            'tableGrouping' => $this->tableGrouping,
+            'tableSearch' => $this->tableSearch,
+        ];
+    }
+
     protected function getHeaderWidgets(): array
     {
         return [

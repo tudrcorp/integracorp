@@ -5,9 +5,9 @@ namespace App\Filament\Operations\Resources\Suppliers\Widgets;
 use App\Filament\Operations\Resources\Suppliers\Pages\ListSuppliers;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\Supplier;
+use App\Support\Operations\SupplierListStatCounts;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
 
 class StatsOverviewPreferencialSupplier extends StatsOverviewWidget
@@ -48,9 +48,7 @@ class StatsOverviewPreferencialSupplier extends StatsOverviewWidget
                 'labelClass' => 'text-primary-600 dark:text-primary-400',
                 'badgeClass' => 'bg-primary-100/90 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300',
                 'criterion' => 'PREFERENCIAL',
-                'apply' => static function (Builder $query) use ($table): Builder {
-                    return $query->where("{$table}.status_convenio", 'like', '%PREFERENCIAL%');
-                },
+                'status' => null,
             ],
             [
                 'name' => 'PROVEEDORES PREFERENCIALES AFILIADOS',
@@ -60,9 +58,7 @@ class StatsOverviewPreferencialSupplier extends StatsOverviewWidget
                 'labelClass' => 'text-success-600 dark:text-success-400',
                 'badgeClass' => 'bg-success-100/90 text-success-700 dark:bg-success-900/40 dark:text-success-300',
                 'criterion' => 'PREFERENCIAL · AFILIADO',
-                'apply' => static function (Builder $query) use ($table): Builder {
-                    return $query->where("{$table}.status_sistema", 'AFILIADO');
-                },
+                'status' => 'AFILIADO',
             ],
             [
                 'name' => 'ACTIVO AFILIADO',
@@ -72,9 +68,7 @@ class StatsOverviewPreferencialSupplier extends StatsOverviewWidget
                 'labelClass' => 'text-success-600 dark:text-success-400',
                 'badgeClass' => 'bg-success-100/90 text-success-700 dark:bg-success-900/40 dark:text-success-300',
                 'criterion' => 'PREFERENCIAL · ACTIVO AFILIADO',
-                'apply' => static function (Builder $query) use ($table): Builder {
-                    return $query->where("{$table}.status_sistema", 'ACTIVO AFILIADO');
-                },
+                'status' => 'ACTIVO AFILIADO',
             ],
             [
                 'name' => 'ACTIVO EN PROCESO',
@@ -84,9 +78,7 @@ class StatsOverviewPreferencialSupplier extends StatsOverviewWidget
                 'labelClass' => 'text-primary-600 dark:text-primary-400',
                 'badgeClass' => 'bg-primary-100/90 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300',
                 'criterion' => 'PREFERENCIAL · ACTIVO EN PROCESO',
-                'apply' => static function (Builder $query) use ($table): Builder {
-                    return $query->where("{$table}.status_sistema", 'ACTIVO EN PROCESO');
-                },
+                'status' => 'ACTIVO EN PROCESO',
             ],
             [
                 'name' => 'EN PROCESO',
@@ -96,14 +88,16 @@ class StatsOverviewPreferencialSupplier extends StatsOverviewWidget
                 'labelClass' => 'text-primary-600 dark:text-primary-400',
                 'badgeClass' => 'bg-primary-100/90 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300',
                 'criterion' => 'PREFERENCIAL · EN PROCESO',
-                'apply' => static function (Builder $query) use ($table): Builder {
-                    return $query->where("{$table}.status_sistema", 'EN PROCESO');
-                },
+                'status' => 'EN PROCESO',
             ],
         ];
 
-        return array_map(function (array $row) use ($base): Stat {
-            $total = ($row['apply'])(clone $base)->count();
+        $countsByStatus = SupplierListStatCounts::bySystemStatus($base);
+
+        return array_map(function (array $row) use ($countsByStatus): Stat {
+            $total = $row['status'] === null
+                ? array_sum($countsByStatus)
+                : ($countsByStatus[SupplierListStatCounts::statusKey($row['status'])] ?? 0);
             $valor = number_format($total, 0, ',', '.');
 
             return Stat::make($row['name'], $valor)

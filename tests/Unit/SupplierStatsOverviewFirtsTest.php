@@ -15,34 +15,24 @@ it('muestra total general y registrados del mes actual en dos columnas', functio
     expect($source)
         ->toContain("Stat::make('PROVEEDORES REGISTRADOS'")
         ->toContain("Stat::make('REGISTRADOS EN EL MES'")
-        ->toContain('->whereBetween("{$table}.created_at"')
+        ->toContain('SupplierListStatCounts::summary($base')
         ->toContain('MES ACTUAL ·')
         ->toContain('getColumns()');
 });
 
-it('cuenta proveedores generales y preferenciales con carta de aceptación cargada', function (): void {
+it('cuenta las cuatro tarjetas superiores en una sola consulta', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/Suppliers/Widgets/SupplierStatsOverviewFirts.php');
+    $counter = file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/SupplierListStatCounts.php');
 
     expect($source)
         ->toContain("Stat::make('CON CARTA DE ACEPTACIÓN'")
-        ->toContain('$query->where("{$table}.status_convenio", \'GENERAL\')')
-        ->toContain('->orWhere("{$table}.status_convenio", \'like\', \'%PREFERENCIAL%\')')
-        ->toContain('->whereNotNull("{$table}.carta_acceptance")')
-        ->toContain('->where("{$table}.carta_acceptance", \'<>\', \'\')')
-        ->toContain('GENERALES + PREFERENCIALES');
-});
-
-it('cuenta los proveedores no convenidos registrados desde operaciones', function (): void {
-    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/Suppliers/Widgets/SupplierStatsOverviewFirts.php');
-
-    expect($source)
         ->toContain("Stat::make('PROVEEDORES NO CONVENIDOS'")
-        ->toContain('->where("{$table}.status_convenio", \'NO CONVENIDO\')')
-        ->toContain('REGISTRADOS DESDE OPERACIONES');
-});
-
-it('agrupa el filtro de convenio para que el OR no escape a los filtros del listado', function (): void {
-    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/Suppliers/Widgets/SupplierStatsOverviewFirts.php');
-
-    expect($source)->toContain('->where(function (Builder $query) use ($table): void {');
+        ->toContain('GENERALES + PREFERENCIALES')
+        ->toContain('REGISTRADOS DESDE OPERACIONES')
+        ->not->toContain('->count()')
+        ->and($counter)
+        ->toContain("(suppliers.status_convenio = 'GENERAL' OR suppliers.status_convenio LIKE '%PREFERENCIAL%')")
+        ->toContain("suppliers.carta_acceptance IS NOT NULL AND suppliers.carta_acceptance <> ''")
+        ->toContain("suppliers.status_convenio = 'NO CONVENIDO'")
+        ->toContain('suppliers.created_at BETWEEN ? AND ?');
 });

@@ -6,6 +6,7 @@ namespace App\Support\Filament;
 
 use App\Models\Permission;
 use App\Models\User;
+use Illuminate\Support\Collection;
 
 final class UserNavigationAccess
 {
@@ -155,15 +156,9 @@ final class UserNavigationAccess
     {
         $module = strtoupper($module);
 
-        if ($user->relationLoaded('permissions')) {
-            return $user->permissions->contains(
-                fn (Permission $permission): bool => strtoupper((string) $permission->module) === $module
-            );
-        }
-
-        return $user->permissions()
-            ->where('permissions.module', $module)
-            ->exists();
+        return self::loadedPermissions($user)->contains(
+            fn (Permission $permission): bool => strtoupper((string) $permission->module) === $module
+        );
     }
 
     /**
@@ -189,17 +184,25 @@ final class UserNavigationAccess
         $module = strtoupper($module);
         $expandedSlugs = self::expandPermissionSlugs($permissionSlugs);
 
-        if ($user->relationLoaded('permissions')) {
-            return $user->permissions->contains(
-                fn (Permission $permission): bool => strtoupper((string) $permission->module) === $module
-                    && in_array($permission->slug, $expandedSlugs, true)
-            );
+        return self::loadedPermissions($user)->contains(
+            fn (Permission $permission): bool => strtoupper((string) $permission->module) === $module
+                && in_array($permission->slug, $expandedSlugs, true)
+        );
+    }
+
+    /**
+     * Permisos del usuario cargados una sola vez por instancia. El menú y el `canAccess` de cada
+     * recurso preguntan decenas de veces por petición; antes cada pregunta era un `exists()` aparte.
+     *
+     * @return Collection<int, Permission>
+     */
+    private static function loadedPermissions(User $user): Collection
+    {
+        if (! $user->exists) {
+            return $user->relationLoaded('permissions') ? $user->permissions : new Collection;
         }
 
-        return $user->permissions()
-            ->where('permissions.module', $module)
-            ->whereIn('permissions.slug', $expandedSlugs)
-            ->exists();
+        return $user->loadMissing('permissions')->permissions;
     }
 
     /**
