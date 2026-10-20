@@ -29,8 +29,8 @@ enum BirthdayCouponType: string
         return [
             self::Viajes,
             self::Farmadoc,
-            self::Kit,
             self::Casa,
+            self::Kit,
         ];
     }
 }

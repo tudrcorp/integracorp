@@ -47,8 +47,8 @@ final class BirthdayCouponWhatsAppMessages
             ->sortBy(fn (BirthdayCouponToken $token): int => match ($token->coupon_type) {
                 BirthdayCouponType::Viajes => 0,
                 BirthdayCouponType::Farmadoc => 1,
-                BirthdayCouponType::Kit => 2,
-                BirthdayCouponType::Casa => 3,
+                BirthdayCouponType::Casa => 2,
+                BirthdayCouponType::Kit => 3,
             })
             ->values()
             ->map(function (BirthdayCouponToken $token) use ($imageByType): array {

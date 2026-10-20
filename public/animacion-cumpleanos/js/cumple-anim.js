@@ -26,16 +26,16 @@ const COUPON_DEFAULTS = [
     whatsappMessage: 'Hola, vengo del cupón de cumpleaños Farmadoc (hasta 15% en medicamentos, vitaminas, suplementos y cuidado personal). Quisiera hacer mi pedido o recibir más información.',
   },
   {
-    img: 'assets/cupon-kit.jpg',
-    fullImage: true,
-    phone: '0424-227-1498',
-    whatsappMessage: 'Hola, vengo del cupón de cumpleaños de Tu Doctor Group (sorteo del kit corporativo del cumpleañero del mes). Quisiera inscribirme o saber cómo participar.',
-  },
-  {
     img: 'assets/cupon-casa.jpg',
     fullImage: true,
     phone: '0424-227-1498',
     whatsappMessage: 'Hola, vengo del cupón referidor de Tu Doctor en Casa (10% en planes para familia y amigos). Quisiera regalar salud o recibir más información.',
+  },
+  {
+    img: 'assets/cupon-kit.jpg',
+    fullImage: true,
+    phone: '0424-227-1498',
+    whatsappMessage: 'Hola, vengo del cupón de cumpleaños de Tu Doctor Group (sorteo del kit corporativo del cumpleañero del mes). Quisiera inscribirme o saber cómo participar.',
   },
 ];
 

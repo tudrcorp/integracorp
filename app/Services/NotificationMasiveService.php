@@ -13,6 +13,7 @@ use App\Models\BirthdayNotification;
 use App\Models\DataNotification;
 use App\Models\MassNotification;
 use App\Models\TelemedicinePatientMedications;
+use App\Support\BirthdayNotificationAudience;
 use App\Support\BirthdayNotificationRunReport;
 use App\Support\MassNotificationEmailSubject;
 use Carbon\Carbon;
@@ -253,6 +254,8 @@ class NotificationMasiveService
                     isset($rowsNotifications[$i]['id']) ? (int) $rowsNotifications[$i]['id'] : null
                 );
 
+                $dataTypes = BirthdayNotificationAudience::normalizeDataTypes($rowsNotifications[$i]['data_type'] ?? null);
+
                 // For para recorrer los canales de envio
                 for ($j = 0; $j < count($rowsNotifications[$i]['channels']); $j++) {
 
@@ -268,10 +271,11 @@ class NotificationMasiveService
 
                         // AGENTES -- Logica Actualizada parav envio de tarjeta de cumpleaños
                         // @version 2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'agents') {
+                        if (in_array('agents', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('agentes');
+                            BirthdayNotificationRunReport::setExcludedForDataType('agents');
 
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('agents')
                                 ->select('id', 'name', 'phone', 'birth_date', 'ci')
                                 ->get()
                                 ->toArray());
@@ -366,9 +370,10 @@ class NotificationMasiveService
 
                         // AGENCIAS -- Logica Actualizada parav envio de tarjeta de cumpleaños
                         // @version 2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'agencies') {
+                        if (in_array('agencies', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('agencias');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                            BirthdayNotificationRunReport::setExcludedForDataType('agencies');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('agencies')
                                 ->select('id', 'name_corporative', 'phone', 'brithday_date')
                                 ->get()
                                 ->toArray());
@@ -464,8 +469,9 @@ class NotificationMasiveService
 
                         // AFILIACIONES INDIVIDUALES -- Logica Actualizada parav envio de tarjeta de cumpleaños
                         // @version 2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'affiliates') {
+                        if (in_array('affiliates', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('afiliaciones');
+                            BirthdayNotificationRunReport::setExcludedForDataType('affiliates');
                             $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('affiliates')
                                 ->leftJoin('affiliations', 'affiliates.affiliation_id', '=', 'affiliations.id')
                                 ->select(
@@ -598,8 +604,9 @@ class NotificationMasiveService
 
                         // AFILIACIONES CORPORATIVAS -- Logica Actualizada parav envio de tarjeta de cumpleaños
                         // @version 2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'affiliate_corporates') {
+                        if (in_array('affiliate_corporates', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('afiliaciones_corporativas');
+                            BirthdayNotificationRunReport::setExcludedForDataType('affiliate_corporates');
                             $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('affiliate_corporates')
                                 ->leftJoin('affiliation_corporates', 'affiliate_corporates.affiliation_corporate_id', '=', 'affiliation_corporates.id')
                                 ->select(
@@ -729,9 +736,10 @@ class NotificationMasiveService
 
                         // COLABORADORES -- Logica Actualizada parav envio de tarjeta de cumpleaños
                         // @version 2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'rrhh_colaboradors') {
+                        if (in_array('rrhh_colaboradors', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('colaboradores');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                            BirthdayNotificationRunReport::setExcludedForDataType('rrhh_colaboradors');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('rrhh_colaboradors')
                                 ->select('id', 'fullName', 'telefono', 'fechaNacimiento')
                                 ->get()
                                 ->toArray());
@@ -829,9 +837,10 @@ class NotificationMasiveService
 
                         // PROVEEDORES -- Logica Actualizada parav envio de tarjeta de cumpleaños
                         // @version 2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'suppliers') {
+                        if (in_array('suppliers', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('proveedores');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                            BirthdayNotificationRunReport::setExcludedForDataType('suppliers');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('suppliers')
                                 ->select('id', 'name', 'personal_phone', 'afiliacion_proveedor')
                                 ->get()
                                 ->toArray());
@@ -941,9 +950,10 @@ class NotificationMasiveService
 
                         // AGENTES -- Logica Actualizada parav envio de tarjeta de cumpleaños
                         // @version 2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'agents') {
+                        if (in_array('agents', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('agentes');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                            BirthdayNotificationRunReport::setExcludedForDataType('agents');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('agents')
                                 ->select('id', 'name', 'email', 'phone', 'birth_date', 'ci')
                                 ->get()
                                 ->toArray());
@@ -1040,9 +1050,10 @@ class NotificationMasiveService
 
                         // AGENCIAS -- Logica Actualizada parav envio de tarjeta de cumpleaños
                         // @version 2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'agencies') {
+                        if (in_array('agencies', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('agencias');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                            BirthdayNotificationRunReport::setExcludedForDataType('agencies');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('agencies')
                                 ->select('id', 'name_corporative', 'email', 'brithday_date')
                                 ->get()
                                 ->toArray());
@@ -1138,9 +1149,10 @@ class NotificationMasiveService
 
                         // AFILIACIONES INDIVIDUALES -- Logica Actualizada parav envio de tarjeta de cumpleaños
                         // @version 2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'affiliates') {
+                        if (in_array('affiliates', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('afiliaciones');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                            BirthdayNotificationRunReport::setExcludedForDataType('affiliates');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('affiliates')
                                 ->select('id', 'full_name', 'email', 'birth_date')
                                 ->get()
                                 ->toArray());
@@ -1238,9 +1250,10 @@ class NotificationMasiveService
 
                         // AFILIACIONES CORPORATIVAS -- Logica Actualizada parav envio de tarjeta de cumpleaños
                         // @version 2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'affiliate_corporates') {
+                        if (in_array('affiliate_corporates', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('afiliaciones_corporativas');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                            BirthdayNotificationRunReport::setExcludedForDataType('affiliate_corporates');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('affiliate_corporates')
                                 ->select('id', 'first_name', 'email', 'birth_date')
                                 ->get()
                                 ->toArray());
@@ -1336,9 +1349,10 @@ class NotificationMasiveService
 
                         // COLABORADORES -- Logica Actualizada parav envio de tarjeta de cumpleaños
                         // @version 2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'rrhh_colaboradors') {
+                        if (in_array('rrhh_colaboradors', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('colaboradores');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                            BirthdayNotificationRunReport::setExcludedForDataType('rrhh_colaboradors');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('rrhh_colaboradors')
                                 ->select('id', 'fullName', 'emailCorporativo', 'fechaNacimiento')
                                 ->get()
                                 ->toArray());
@@ -1435,9 +1449,10 @@ class NotificationMasiveService
 
                         // PROVEEDORES -- Logica Actualizada parav envio de tarjeta de cumpleaños
                         // @version 2.1
-                        if ($rowsNotifications[$i]['data_type'] == 'suppliers') {
+                        if (in_array('suppliers', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('proveedores');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table($rowsNotifications[$i]['data_type'])
+                            BirthdayNotificationRunReport::setExcludedForDataType('suppliers');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('suppliers')
                                 ->select('id', 'name', 'correo_principal', 'afiliacion_proveedor')
                                 ->get()
                                 ->toArray());

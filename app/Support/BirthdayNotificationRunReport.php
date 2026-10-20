@@ -32,7 +32,11 @@ final class BirthdayNotificationRunReport
         'aaular@tudrencasa.com',
     ];
 
-    private const CELEBRATION_COPY_WHATSAPP = '+584121931865';
+    /** @var list<string> */
+    private const CELEBRATION_COPY_WHATSAPP_PHONES = [
+        '+584121931865',
+        '+584143027250',
+    ];
 
     /** @var list<string> */
     private const ALL_GROUPS = [
@@ -112,18 +116,31 @@ final class BirthdayNotificationRunReport
         self::$runConfiguration = [];
 
         foreach ($notifications as $notification) {
-            $dataType = (string) ($notification['data_type'] ?? '');
+            $dataTypes = BirthdayNotificationAudience::normalizeDataTypes($notification['data_type'] ?? null);
             $channels = array_values(array_filter(
                 is_array($notification['channels'] ?? null) ? $notification['channels'] : [],
                 static fn (mixed $channel): bool => is_string($channel) && $channel !== '',
             ));
 
-            self::$runConfiguration[] = [
-                'title' => (string) ($notification['title'] ?? 'Sin título'),
-                'data_type' => $dataType,
-                'group' => self::dataTypeToGroup($dataType),
-                'channels' => $channels,
-            ];
+            if ($dataTypes === []) {
+                self::$runConfiguration[] = [
+                    'title' => (string) ($notification['title'] ?? 'Sin título'),
+                    'data_type' => '',
+                    'group' => '',
+                    'channels' => $channels,
+                ];
+
+                continue;
+            }
+
+            foreach ($dataTypes as $dataType) {
+                self::$runConfiguration[] = [
+                    'title' => (string) ($notification['title'] ?? 'Sin título'),
+                    'data_type' => $dataType,
+                    'group' => self::dataTypeToGroup($dataType),
+                    'channels' => $channels,
+                ];
+            }
         }
     }
 
@@ -149,9 +166,20 @@ final class BirthdayNotificationRunReport
         }
 
         self::$currentSendsCelebrationCard = true;
+        self::$excludedRecipientIds = [];
+    }
+
+    public static function setExcludedForDataType(string $dataType): void
+    {
+        if (! self::$currentSendsCelebrationCard || self::$currentNotificationId === null || $dataType === '') {
+            self::$excludedRecipientIds = [];
+
+            return;
+        }
+
         self::$excludedRecipientIds = BirthdayCelebrationRecipientGate::excludedIdMap(
-            $notification->id,
-            (string) $notification->data_type,
+            self::$currentNotificationId,
+            $dataType,
         );
     }
 
@@ -292,15 +320,21 @@ final class BirthdayNotificationRunReport
             return $phones;
         }
 
-        $target = self::normalizePhoneDigits(self::CELEBRATION_COPY_WHATSAPP);
+        foreach (self::CELEBRATION_COPY_WHATSAPP_PHONES as $fixedPhone) {
+            $target = self::normalizePhoneDigits($fixedPhone);
+            $alreadyPresent = false;
 
-        foreach ($phones as $phone) {
-            if (self::phonesMatch($target, self::normalizePhoneDigits($phone))) {
-                return array_values($phones);
+            foreach ($phones as $phone) {
+                if (self::phonesMatch($target, self::normalizePhoneDigits($phone))) {
+                    $alreadyPresent = true;
+                    break;
+                }
+            }
+
+            if (! $alreadyPresent) {
+                $phones[] = $fixedPhone;
             }
         }
-
-        $phones[] = self::CELEBRATION_COPY_WHATSAPP;
 
         return array_values($phones);
     }
@@ -615,11 +649,12 @@ final class BirthdayNotificationRunReport
     {
         $normalized = self::normalizePhoneDigits($phone);
 
-        if (
-            self::$currentSendsCelebrationCard
-            && self::phonesMatch($normalized, self::normalizePhoneDigits(self::CELEBRATION_COPY_WHATSAPP))
-        ) {
-            return true;
+        if (self::$currentSendsCelebrationCard) {
+            foreach (self::CELEBRATION_COPY_WHATSAPP_PHONES as $fixedPhone) {
+                if (self::phonesMatch($normalized, self::normalizePhoneDigits($fixedPhone))) {
+                    return true;
+                }
+            }
         }
 
         if (! Schema::hasTable('system_notification_recipient_settings')) {
