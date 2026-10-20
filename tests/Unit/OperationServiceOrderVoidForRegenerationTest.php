@@ -13,16 +13,31 @@ it('la anulación por error exige motivo restrictivo y queda en bitácora', func
         ->toContain('Anulación de orden de servicio por error.')
         ->toContain("Action::make('voidServiceOrderForRegeneration')")
         ->toContain('Anular por error')
-        ->toContain("Textarea::make('void_reason')")
+        ->toContain("self::reasonField('void_reason'")
         ->toContain('->required()')
-        ->toContain('->minLength(10)')
+        ->toContain('->minLength(self::MIN_REASON_LENGTH)')
+        ->toContain('public const MIN_REASON_LENGTH = 10;')
         ->toContain('ObservationCase::query()->create')
         ->toContain('telemedicine_case_id')
         ->toContain('releaseClinicalItemsForOrder')
         ->toContain('Los ítems cubiertos asociados volvieron a PENDIENTE')
         ->toContain('function voidOrderForRegeneration')
         ->toContain('function buildVoidBitacoraDescription')
-        ->toContain('El motivo de la anulación debe tener al menos 10 caracteres.');
+        ->toContain("Radio::make('quote_decision')")
+        ->toContain('lockForUpdate()');
+});
+
+it('incluye en la bitácora qué pasó con la cotización', function (): void {
+    $order = new OperationServiceOrder(['order_number' => 'ORD-0082', 'service_type' => 'IMAGENOLOGIA']);
+
+    $text = OperationServiceOrderViewActions::buildVoidBitacoraDescription(
+        $order,
+        'Se cargó el proveedor equivocado en la orden.',
+        'Ana Pérez',
+        'La cotización COT-000031 quedó RECHAZADA: registre una nueva cotización para generar la orden.',
+    );
+
+    expect($text)->toContain('COT-000031 quedó RECHAZADA');
 });
 
 it('arma la bitácora con orden, analista y motivo', function (): void {

@@ -103,6 +103,57 @@ final class OperationServiceOrderProviderContacts
         );
     }
 
+    /**
+     * Qué contacto de cita falta en la ficha del proveedor seleccionado en el catálogo y debe pedirse a mano.
+     *
+     * @return array{email: bool, phone: bool}
+     */
+    public static function missingNotifyContacts(Get $get): array
+    {
+        $contacts = self::fromCatalogIds(
+            filled($get('doctor_nurse_id')) ? (int) $get('doctor_nurse_id') : null,
+            filled($get('supplier_id')) ? (int) $get('supplier_id') : null,
+        );
+
+        return [
+            'email' => $contacts['email'] === null,
+            'phone' => $contacts['phone'] === null,
+        ];
+    }
+
+    /**
+     * Contactos con los que se avisa la cita: lo indicado en la orden manda; si no se indicó
+     * (el campo estaba oculto porque la ficha ya lo trae), se toma de la ficha del proveedor.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{email: ?string, phone: ?string}
+     */
+    public static function appointmentNotifyContacts(array $data): array
+    {
+        $catalog = (bool) ($data['register_unregistered_provider'] ?? false)
+            ? self::empty()
+            : self::fromCatalogIds(
+                filled($data['doctor_nurse_id'] ?? null) ? (int) $data['doctor_nurse_id'] : null,
+                filled($data['supplier_id'] ?? null) ? (int) $data['supplier_id'] : null,
+            );
+
+        return [
+            'email' => self::firstFilled($data['supplier_notify_email'] ?? null, $data['unregistered_correo_principal'] ?? null, $catalog['email']),
+            'phone' => self::firstFilled($data['supplier_notify_phone'] ?? null, $data['unregistered_phone'] ?? null, $catalog['phone']),
+        ];
+    }
+
+    private static function firstFilled(mixed ...$values): ?string
+    {
+        foreach ($values as $value) {
+            if (filled($value) && trim((string) $value) !== '') {
+                return trim((string) $value);
+            }
+        }
+
+        return null;
+    }
+
     public static function hasCatalogSelection(Get $get): bool
     {
         return ! (bool) $get('register_unregistered_provider')
@@ -158,8 +209,7 @@ final class OperationServiceOrderProviderContacts
             ->title('Ficha del proveedor incompleta')
             ->body(
                 'La ficha de '.$name.' no tiene '.$missing.'. '
-                .'Comuníquese con el equipo de Proveedores para completar esos datos. '
-                .'No los invente en esta orden.'
+                .'Comuníquese con el equipo de Proveedores para completar la ficha.'
             )
             ->warning()
             ->persistent()

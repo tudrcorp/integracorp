@@ -155,6 +155,7 @@ it('el formulario de orden coloca el proveedor primero, autollena contacto y dej
     expect($contacts)
         ->toContain('Ficha del proveedor incompleta')
         ->toContain('equipo de Proveedores')
-        ->toContain('No los invente en esta orden.')
+        ->toContain('para completar la ficha.')
+        ->not->toContain('No los invente en esta orden.')
         ->toContain('->persistent()');
 });

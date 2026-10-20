@@ -70,7 +70,10 @@ final class CoordinationServiceQuoteManager
     {
         $map = [];
 
+        // Solo las que se pueden aprobar: el enlace lleva a aprobar la cotización, y una
+        // rechazada o ya convertida en orden no tiene nada que aprobar.
         self::coordinationQuotesForDisplay($record)
+            ->filter(fn (OperationQuoteGenerator $quote): bool => self::isQuotePendingForApproval($quote))
             ->each(function (OperationQuoteGenerator $quote) use (&$map, $record): void {
                 $items = is_array($quote->items) ? $quote->items : [];
 
@@ -413,18 +416,9 @@ final class CoordinationServiceQuoteManager
             return $data;
         }
 
-        $itemsCount = count(is_array($quote->items) ? $quote->items : []);
-
         $data['approved_quote_id'] = $quote->id;
         $data['order_number'] = self::nextServiceOrderNumber();
         $data['telemedicine_priority_id'] = $record->telemedicine_priority_id;
-        $data['service_order_description'] = sprintf(
-            'Orden por cotización #%d · %s · %d ítem(s) · Total %s',
-            $quote->id,
-            $quote->type_service,
-            $itemsCount,
-            self::formatManageQuoteAmountPreview((float) $quote->total)
-        );
         $data['service_order_observations'] = sprintf(
             'Generada automáticamente desde cotización #%d (costo base %s, ganancia %s%%).',
             $quote->id,
@@ -753,6 +747,28 @@ final class CoordinationServiceQuoteManager
         return OperationQuoteGenerator::query()->whereKey($quoteId)->value('type_service');
     }
 
+    /**
+     * Qué contacto de cita falta en la ficha del proveedor de la cotización y debe pedirse a mano.
+     * Sin cotización o sin proveedor no hay ficha de la que tomarlos, así que se piden ambos.
+     *
+     * @return array{email: bool, phone: bool}
+     */
+    public static function approvedQuoteMissingSupplierContacts(int $quoteId): array
+    {
+        $quote = $quoteId > 0
+            ? OperationQuoteGenerator::query()
+                ->with('supplier:id,correo_principal,personal_phone,local_phone')
+                ->find($quoteId, ['id', 'supplier_id'])
+            : null;
+
+        $contacts = MedicalAppointmentManager::resolveSupplierNotifyContacts($quote?->supplier);
+
+        return [
+            'email' => $contacts['email'] === null,
+            'phone' => $contacts['phone'] === null,
+        ];
+    }
+
     public static function approvedQuoteOrderNotice(int $quoteId): HtmlString
     {
         $quote = OperationQuoteGenerator::query()->with('supplier')->find($quoteId);
@@ -820,24 +836,31 @@ final class CoordinationServiceQuoteManager
             return;
         }
 
-        $itemsCount = count(is_array($quote->items) ? $quote->items : []);
-
         $set('approved_quote_id', $quote->id);
         $set('order_number', self::nextServiceOrderNumber());
+        $set('supplier_notify_email', null);
+        $set('supplier_notify_phone', null);
         $set('telemedicine_priority_id', $record->telemedicine_priority_id);
-        $set('service_order_description', sprintf(
-            'Orden por cotización #%d · %s · %d ítem(s) · Total %s',
-            $quote->id,
-            $quote->type_service,
-            $itemsCount,
-            self::formatManageQuoteAmountPreview((float) $quote->total)
-        ));
         $set('service_order_observations', sprintf(
             'Generada automáticamente desde cotización #%d (costo base %s, ganancia %s%%).',
             $quote->id,
             self::formatManageQuoteAmountPreview((float) $quote->subtotal),
             number_format((float) $quote->porcentaje_ganancia, 2, '.', '')
         ));
+    }
+
+    /**
+     * Descripción que el sistema guarda en la orden creada desde una cotización.
+     */
+    public static function serviceOrderDescriptionForQuote(OperationQuoteGenerator $quote): string
+    {
+        return sprintf(
+            'Orden por cotización #%d · %s · %d ítem(s) · Total %s',
+            $quote->id,
+            $quote->type_service,
+            count(is_array($quote->items) ? $quote->items : []),
+            self::formatManageQuoteAmountPreview((float) $quote->total)
+        );
     }
 
     /**
@@ -882,70 +905,265 @@ final class CoordinationServiceQuoteManager
         $privateCareItemsFinalized = 0;
         $contadoQuoteIds = [];
 
-        DB::transaction(function () use ($record, $data, $entries, $shouldCreateOrder, $quotesPendingOrder, &$ordersCreated, &$createdOrderId, &$privateCareItemsFinalized, &$contadoQuoteIds): void {
-            foreach ($entries as $entry) {
-                $quoteId = (int) ($entry['quote_id'] ?? 0);
-                $quote = OperationQuoteGenerator::query()->find($quoteId);
+        try {
+            self::assertQuotesCanBecomeOrders($record, $quotesPendingOrder);
+        } catch (ServiceOrderFlowException $exception) {
+            self::notifyApprovalBlocked($record, $quotesPendingOrder, $exception->getMessage());
 
-                if (! $quote instanceof OperationQuoteGenerator) {
+            return null;
+        }
+
+        try {
+            DB::transaction(function () use ($record, $data, $entries, $shouldCreateOrder, $quotesPendingOrder, &$ordersCreated, &$createdOrderId, &$privateCareItemsFinalized, &$contadoQuoteIds): void {
+                // Serializa las aprobaciones de una misma coordinación: dos analistas no
+                // pueden convertir a la vez cotizaciones de los mismos ítems en órdenes.
+                OperationCoordinationService::query()->lockForUpdate()->find($record->getKey());
+
+                if ($shouldCreateOrder) {
+                    self::assertQuotesCanBecomeOrders($record, $quotesPendingOrder);
+                }
+
+                self::persistQuoteStatusesAndOrders($record, $data, $entries, $shouldCreateOrder, $quotesPendingOrder, $ordersCreated, $createdOrderId, $privateCareItemsFinalized, $contadoQuoteIds);
+            });
+        } catch (ServiceOrderFlowException $exception) {
+            self::notifyApprovalBlocked($record, $quotesPendingOrder, $exception->getMessage());
+
+            return null;
+        }
+
+        return self::finishSave($ordersCreated, $createdOrderId, $privateCareItemsFinalized, $contadoQuoteIds);
+    }
+
+    /**
+     * Comprueba que cada cotización aprobada pueda convertirse en orden sin duplicar
+     * servicio: sus ítems existen, no están cerrados y no están en otra orden vigente.
+     *
+     * @param  list<int>  $quoteIds
+     *
+     * @throws ServiceOrderFlowException
+     */
+    public static function assertQuotesCanBecomeOrders(OperationCoordinationService $record, array $quoteIds): void
+    {
+        /** @var array<string, string> $quoteByItemKey */
+        $quoteByItemKey = [];
+
+        foreach ($quoteIds as $quoteId) {
+            $quote = OperationQuoteGenerator::query()->find($quoteId);
+
+            if (! $quote instanceof OperationQuoteGenerator) {
+                throw new ServiceOrderFlowException('La cotización '.ServiceOrderFlowTrace::quoteLabel($quoteId).' ya no existe.');
+            }
+
+            $reason = self::approvalBlockReason($record, $quote);
+
+            if ($reason !== null) {
+                throw new ServiceOrderFlowException($reason);
+            }
+
+            foreach (is_array($quote->items) ? $quote->items : [] as $item) {
+                $key = is_array($item) ? trim((string) ($item['key'] ?? '')) : '';
+
+                if ($key === '') {
                     continue;
                 }
 
-                if (self::quoteStatusUpdateIsLocked($quote)) {
-                    continue;
+                if (isset($quoteByItemKey[$key])) {
+                    throw new ServiceOrderFlowException(sprintf(
+                        'El ítem «%s» está en las cotizaciones %s y %s. Apruebe solo una; si no, el servicio quedaría en dos órdenes.',
+                        trim((string) ($item['label'] ?? $key)),
+                        $quoteByItemKey[$key],
+                        ServiceOrderFlowTrace::quoteLabel($quote),
+                    ));
                 }
 
-                $status = (string) ($entry['status'] ?? OperationQuoteGenerator::STATUS_PENDING);
-                $isCash = $status === OperationQuoteGenerator::STATUS_APPROVED
-                    && (bool) ($entry['is_cash'] ?? false);
+                $quoteByItemKey[$key] = ServiceOrderFlowTrace::quoteLabel($quote);
+            }
+        }
+    }
 
-                $quote->status = $status;
-                $quote->is_cash = $isCash;
+    /**
+     * Por qué la cotización no puede convertirse en orden, o null si puede.
+     */
+    public static function approvalBlockReason(OperationCoordinationService $record, OperationQuoteGenerator $quote): ?string
+    {
+        $label = ServiceOrderFlowTrace::quoteLabel($quote);
+
+        if (in_array(mb_strtoupper(trim((string) $quote->status)), [OperationQuoteGenerator::STATUS_REJECTED, OperationQuoteGenerator::STATUS_PRIVATE_CARE], true)) {
+            return 'La cotización '.$label.' está '.$quote->status.' y no puede generar una orden. Registre una nueva cotización.';
+        }
+
+        if (filled($quote->operation_service_order_id)) {
+            return 'La cotización '.$label.' ya generó la orden '.ServiceOrderFlowTrace::orderLabel((int) $quote->operation_service_order_id).'.';
+        }
+
+        $quoteItems = collect(is_array($quote->items) ? $quote->items : [])
+            ->filter(fn (mixed $item): bool => is_array($item) && is_string($item['key'] ?? null) && $item['key'] !== '')
+            ->values();
+
+        if ($quoteItems->isEmpty()) {
+            return 'La cotización '.$label.' no tiene ítems: no se puede generar una orden con ella.';
+        }
+
+        $records = OperationCoordinationServicesTable::selectedServiceOrderRecordsByType(
+            $record,
+            OperationCoordinationServicesTable::managementKeysToNumericIds($quoteItems->pluck('key')->all()),
+            (string) $quote->type_service
+        );
+
+        if ($records->count() < $quoteItems->count()) {
+            return 'Algunos ítems de la cotización '.$label.' ya no existen en la coordinación. Registre una nueva cotización con los ítems vigentes.';
+        }
+
+        foreach ($records as $item) {
+            $status = mb_strtoupper(trim((string) ($item->status ?? '')));
+
+            if (in_array($status, ['FINALIZADO', 'CANCELADA', 'CANCELADO'], true)) {
+                return 'Un ítem de la cotización '.$label.' ya está '.$status.': no puede generarse una orden con él.';
+            }
+        }
+
+        $activeOrderByItem = OperationServiceOrder::query()
+            ->where('operation_coordination_service_id', $record->getKey())
+            ->whereNotIn('status', OperationServiceOrderValidity::closedStatuses())
+            ->with('operationServiceOrderItems:id,operation_service_order_id,item_name,category')
+            ->get(['id', 'order_number', 'status'])
+            ->flatMap(fn (OperationServiceOrder $order): array => $order->operationServiceOrderItems
+                ->mapWithKeys(fn ($orderItem): array => [
+                    mb_strtoupper(trim((string) $orderItem->category)).'|'.mb_strtoupper(trim((string) $orderItem->item_name)) => $order,
+                ])
+                ->all());
+
+        foreach ($quoteItems as $item) {
+            $key = CoordinationServiceItemsManager::clinicalItemServiceOrderKey((string) ($item['category'] ?? ''), (string) ($item['label'] ?? ''));
+            $order = $activeOrderByItem->get($key);
+
+            if ($order instanceof OperationServiceOrder) {
+                return sprintf(
+                    'El ítem «%s» ya está en la orden %s, que sigue %s. Anúlela por error desde la orden antes de aprobar la cotización %s; si no, el servicio quedaría en dos órdenes.',
+                    trim((string) ($item['label'] ?? '')),
+                    ServiceOrderFlowTrace::orderLabel($order),
+                    (string) $order->status,
+                    $label,
+                );
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<int>  $quoteIds
+     */
+    private static function notifyApprovalBlocked(OperationCoordinationService $record, array $quoteIds, string $message): void
+    {
+        ServiceOrderFlowTrace::record(
+            ServiceOrderFlowTrace::ACTION_BLOCKED,
+            'Se intentó aprobar '.collect($quoteIds)->map(fn (int $id): string => ServiceOrderFlowTrace::quoteLabel($id))->implode(', ').' y el sistema lo impidió: '.$message,
+            ['coordination' => $record, 'quote' => count($quoteIds) === 1 ? $quoteIds[0] : null],
+        );
+
+        Notification::make()
+            ->title('No se generó la orden de servicio')
+            ->body($message.' La cotización sigue pendiente; no se guardó ningún cambio.')
+            ->warning()
+            ->persistent()
+            ->send();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<int, array<string, mixed>>  $entries
+     * @param  list<int>  $quotesPendingOrder
+     * @param  list<int>  $contadoQuoteIds
+     *
+     * @throws ServiceOrderFlowException
+     */
+    private static function persistQuoteStatusesAndOrders(
+        OperationCoordinationService $record,
+        array $data,
+        array $entries,
+        bool $shouldCreateOrder,
+        array $quotesPendingOrder,
+        int &$ordersCreated,
+        int &$createdOrderId,
+        int &$privateCareItemsFinalized,
+        array &$contadoQuoteIds,
+    ): void {
+        foreach ($entries as $entry) {
+            $quoteId = (int) ($entry['quote_id'] ?? 0);
+            $quote = OperationQuoteGenerator::query()->find($quoteId);
+
+            if (! $quote instanceof OperationQuoteGenerator) {
+                continue;
+            }
+
+            if (self::quoteStatusUpdateIsLocked($quote)) {
+                continue;
+            }
+
+            $status = (string) ($entry['status'] ?? OperationQuoteGenerator::STATUS_PENDING);
+            $isCash = $status === OperationQuoteGenerator::STATUS_APPROVED
+                && (bool) ($entry['is_cash'] ?? false);
+
+            $quote->status = $status;
+            $quote->is_cash = $isCash;
+            $quote->updated_by = Auth::user()?->name;
+            $quote->save();
+
+            if ($isCash) {
+                $contadoQuoteIds[] = (int) $quote->id;
+            }
+
+            if ($status === OperationQuoteGenerator::STATUS_PRIVATE_CARE) {
+                $privateCareItemsFinalized += self::finalizeClinicalItemsForPrivateCareQuote($record, $quote);
+            }
+        }
+
+        if ($shouldCreateOrder) {
+            foreach ($quotesPendingOrder as $index => $quoteId) {
+                $quote = OperationQuoteGenerator::query()->lockForUpdate()->find($quoteId);
+
+                if (! $quote instanceof OperationQuoteGenerator || filled($quote->operation_service_order_id)) {
+                    throw new ServiceOrderFlowException('La cotización '.ServiceOrderFlowTrace::quoteLabel($quoteId).' ya no está disponible para generar una orden (otro analista pudo haberla usado).');
+                }
+
+                $orderData = self::mergeOrderDataWithQuoteProvider($data, $quote);
+
+                if ($orderData === null) {
+                    throw new ServiceOrderFlowException('La cotización '.ServiceOrderFlowTrace::quoteLabel($quote).' no tiene proveedor asignado. Edítela y seleccione el proveedor antes de aprobarla.');
+                }
+
+                if ($index > 0) {
+                    $orderData['order_number'] = self::nextServiceOrderNumber();
+                }
+
+                // Sin orden no hay aprobación: si la orden no se crea, se revierte todo y
+                // la cotización queda pendiente, nunca «aprobada» y bloqueada sin orden.
+                $orderId = ServiceOrderFlowTrace::withContext(
+                    ['action' => ServiceOrderFlowTrace::CONTEXT_APPROVE_QUOTE, 'quote_id' => (int) $quote->id],
+                    fn (): int => self::createServiceOrderFromApprovedQuote($record, $orderData, $quote),
+                );
+
+                if ($orderId <= 0) {
+                    throw new ServiceOrderFlowException('No fue posible crear la orden para la cotización '.ServiceOrderFlowTrace::quoteLabel($quote).'. Revise los datos de la orden e intente de nuevo.');
+                }
+
+                $quote->status = OperationQuoteGenerator::STATUS_APPROVED;
+                $quote->operation_service_order_id = $orderId;
                 $quote->updated_by = Auth::user()?->name;
                 $quote->save();
-
-                if ($isCash) {
-                    $contadoQuoteIds[] = (int) $quote->id;
-                }
-
-                if ($status === OperationQuoteGenerator::STATUS_PRIVATE_CARE) {
-                    $privateCareItemsFinalized += self::finalizeClinicalItemsForPrivateCareQuote($record, $quote);
-                }
+                AccountsReceivableManager::syncFromQuote($quote->fresh() ?? $quote);
+                $ordersCreated++;
+                $createdOrderId = $orderId;
             }
+        }
+    }
 
-            if ($shouldCreateOrder) {
-                foreach ($quotesPendingOrder as $index => $quoteId) {
-                    $quote = OperationQuoteGenerator::query()->find($quoteId);
-
-                    if (! $quote instanceof OperationQuoteGenerator || filled($quote->operation_service_order_id)) {
-                        continue;
-                    }
-
-                    $orderData = self::mergeOrderDataWithQuoteProvider($data, $quote);
-
-                    if ($orderData === null) {
-                        continue;
-                    }
-
-                    if ($index > 0) {
-                        $orderData['order_number'] = self::nextServiceOrderNumber();
-                    }
-
-                    $orderId = self::createServiceOrderFromApprovedQuote($record, $orderData, $quote);
-
-                    if ($orderId > 0) {
-                        $quote->status = OperationQuoteGenerator::STATUS_APPROVED;
-                        $quote->operation_service_order_id = $orderId;
-                        $quote->updated_by = Auth::user()?->name;
-                        $quote->save();
-                        AccountsReceivableManager::syncFromQuote($quote->fresh() ?? $quote);
-                        $ordersCreated++;
-                        $createdOrderId = $orderId;
-                    }
-                }
-            }
-        });
-
+    /**
+     * @param  list<int>  $contadoQuoteIds
+     */
+    private static function finishSave(int $ordersCreated, int $createdOrderId, int $privateCareItemsFinalized, array $contadoQuoteIds): int
+    {
         $body = 'Se actualizaron los estatus de las cotizaciones.';
 
         if ($ordersCreated > 0) {
@@ -1063,6 +1281,10 @@ final class CoordinationServiceQuoteManager
 
             return 0;
         }
+
+        // El analista ya no escribe la descripción: se guarda siempre la del sistema,
+        // que identifica la cotización de origen y sale en el PDF de la orden.
+        $data['service_order_description'] = self::serviceOrderDescriptionForQuote($quote);
 
         $payload = OperationCoordinationServicesTable::buildServiceOrderPayload($record, $data, (string) $quote->type_service);
 

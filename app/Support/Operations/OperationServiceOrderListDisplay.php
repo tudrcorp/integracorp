@@ -117,7 +117,10 @@ final class OperationServiceOrderListDisplay
             }
         }
 
-        return self::numericOrNull($record->operationCoordinationService?->quote_price);
+        // Sin cotización propia no hay monto: el `quote_price` de la coordinación es el de
+        // la última cotización registrada, que puede no ser la de esta orden (p. ej. una
+        // orden anulada mostraba el precio de la cotización de su reemplazo).
+        return null;
     }
 
     public static function quoteAmountLabel(OperationServiceOrder $record): string

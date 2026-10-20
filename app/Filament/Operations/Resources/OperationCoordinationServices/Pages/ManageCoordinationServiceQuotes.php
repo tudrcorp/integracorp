@@ -83,7 +83,13 @@ class ManageCoordinationServiceQuotes extends Page
             return;
         }
 
-        $this->data['selected_pending_quote_ids'] = [$quoteId];
+        // Igual que marcar la casilla: la cotización pasa a aprobada en el formulario y la
+        // sección de la orden se carga con sus datos. Sin esto quedaba sin tipo de servicio
+        // y ocultaba la fecha y hora de la cita.
+        $data = $this->data;
+        $data['selected_pending_quote_ids'] = [$quoteId];
+        CoordinationServiceQuoteManager::syncQuoteStatusesFromFormData($data, $this->getRecord());
+        $this->data = $data;
     }
 
     public function getTitle(): string|Htmlable
@@ -125,7 +131,9 @@ class ManageCoordinationServiceQuotes extends Page
             'order_number',
             'telemedicine_priority_id',
             'operation_inventory_ubication_id',
-            'service_order_description',
+            'appointment_at',
+            'supplier_notify_email',
+            'supplier_notify_phone',
             'service_order_observations',
         ];
 

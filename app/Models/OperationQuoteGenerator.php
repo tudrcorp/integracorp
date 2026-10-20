@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Observers\OperationQuoteGeneratorFlowTraceObserver;
 use App\Support\Telemedicine\Concerns\HidesDeletedTelemedicineCaseTraces;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 
+#[ObservedBy([OperationQuoteGeneratorFlowTraceObserver::class])]
 class OperationQuoteGenerator extends Model
 {
     use HidesDeletedTelemedicineCaseTraces;
