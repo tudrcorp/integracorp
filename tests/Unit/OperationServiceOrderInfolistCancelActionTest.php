@@ -32,7 +32,8 @@ it('expone botón de cancelar en el infolist de la orden de servicio', function 
         ->toContain('OperationServiceOrderValidity::closedStatuses()')
         ->toContain('function canCancel')
         ->toContain('function cancelOrder')
-        ->toContain('->action(function (OperationServiceOrder $record, mixed $livewire): void');
+        ->toContain("self::reasonField('cancel_reason'")
+        ->toContain("self::cancelOrder(\$record, (string) (\$data['cancel_reason'] ?? ''), \$livewire)");
 });
 
 it('impide cancelar órdenes finalizadas o ya canceladas', function (): void {

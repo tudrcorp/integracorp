@@ -7,6 +7,7 @@ use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Operations\OperationServiceOrderProviderSummary;
 use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Operations\OperationServiceOrderViewActions;
+use App\Support\Operations\ServiceOrderFlowTrace;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -47,6 +48,12 @@ class OperationServiceOrderInfolist
                                     ->icon(Heroicon::OutlinedClipboardDocumentList)
                                     ->extraAttributes(['class' => self::SECTION_CARD])
                                     ->schema([
+                                        TextEntry::make('closing_notice')
+                                            ->hiddenLabel()
+                                            ->state(fn (OperationServiceOrder $record): string => self::renderClosingNotice($record))
+                                            ->html()
+                                            ->visible(fn (OperationServiceOrder $record): bool => ServiceOrderFlowTrace::closingNoticeForOrder($record) !== null)
+                                            ->columnSpanFull(),
                                         TextEntry::make('validity_highlight')
                                             ->hiddenLabel()
                                             ->state(fn (OperationServiceOrder $record): string => self::renderValidityHighlight($record))
@@ -248,6 +255,21 @@ class OperationServiceOrderInfolist
                                             ->columns(2),
                                     ])
                                     ->columnSpanFull(),
+                                Section::make('Traza de la orden')
+                                    ->description('Camino recorrido por la orden y su cotización, del más reciente al más antiguo: quién hizo qué, cuándo y por qué. Incluye los intentos que el sistema bloqueó.')
+                                    ->icon(Heroicon::OutlinedQueueList)
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        TextEntry::make('flow_trace')
+                                            ->hiddenLabel()
+                                            ->state(fn (OperationServiceOrder $record): string => ServiceOrderFlowTrace::renderTimeline(
+                                                ServiceOrderFlowTrace::eventsForOrder($record),
+                                                'Aún no hay eventos registrados para esta orden. La traza se registra desde el 20/10/2026; los movimientos anteriores están en la bitácora del caso.',
+                                            )->toHtml())
+                                            ->html()
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
                             ]),
                         Tab::make('Documentos')
                             ->icon(Heroicon::OutlinedFolderOpen)
@@ -308,6 +330,21 @@ class OperationServiceOrderInfolist
                             ]),
                     ]),
             ]);
+    }
+
+    private static function renderClosingNotice(OperationServiceOrder $record): string
+    {
+        $notice = ServiceOrderFlowTrace::closingNoticeForOrder($record);
+
+        if ($notice === null) {
+            return '';
+        }
+
+        return '<div class="rounded-2xl border border-rose-300/90 bg-rose-50/90 px-4 py-3 text-sm text-rose-900 dark:border-rose-500/40 dark:bg-rose-950/30 dark:text-rose-100">'
+            .'<p class="font-semibold">'.e($notice['title']).'</p>'
+            .($notice['detail'] !== '' ? '<p class="mt-1 opacity-90">'.e($notice['detail']).'</p>' : '')
+            .'<p class="mt-1 text-xs opacity-80">El detalle completo está en Auditoría → Traza de la orden.</p>'
+            .'</div>';
     }
 
     private static function renderValidityHighlight(OperationServiceOrder $record): string

@@ -10,6 +10,7 @@ use App\Models\OperationQuoteGenerator;
 use App\Models\TelemedicinePriority;
 use App\Support\Operations\CoordinationServiceQuoteManager;
 use App\Support\Operations\MedicalAppointmentManager;
+use App\Support\Operations\ServiceOrderFlowTrace;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
@@ -214,16 +215,16 @@ final class ManageCoordinationServiceQuotesForm
                                     ->maxLength(255)
                                     ->visible(fn (Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
                                         CoordinationServiceQuoteManager::approvedQuoteServiceType((int) $get('approved_quote_id'))
-                                    ))
-                                    ->helperText('Si el proveedor no tiene correo en ficha, indíquelo aquí.'),
+                                    ) && CoordinationServiceQuoteManager::approvedQuoteMissingSupplierContacts((int) $get('approved_quote_id'))['email'])
+                                    ->helperText('La ficha del proveedor no tiene correo; indíquelo aquí para avisarle de la cita.'),
                                 TextInput::make('supplier_notify_phone')
                                     ->label('Teléfono WhatsApp del proveedor (cita)')
                                     ->tel()
                                     ->maxLength(30)
                                     ->visible(fn (Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
                                         CoordinationServiceQuoteManager::approvedQuoteServiceType((int) $get('approved_quote_id'))
-                                    ))
-                                    ->helperText('Si el proveedor no tiene teléfono en ficha, indíquelo aquí.'),
+                                    ) && CoordinationServiceQuoteManager::approvedQuoteMissingSupplierContacts((int) $get('approved_quote_id'))['phone'])
+                                    ->helperText('La ficha del proveedor no tiene teléfono; indíquelo aquí para avisarle de la cita.'),
                                 Select::make('operation_inventory_ubication_id')
                                     ->label('Ubicación inventario (medicamentos)')
                                     ->options(OperationInventoryUbication::query()->where('is_active', true)->orderBy('name', 'asc')->pluck('name', 'id'))
@@ -233,17 +234,26 @@ final class ManageCoordinationServiceQuotesForm
                                     ->visible(fn (Get $get): bool => CoordinationServiceQuoteManager::approvedQuoteServiceType((int) $get('approved_quote_id')) === 'MEDICAMENTOS')
                                     ->native(false)
                                     ->columnSpanFull(),
-                                Textarea::make('service_order_description')
-                                    ->label('Descripción de la orden')
-                                    ->rows(4)
-                                    ->helperText('Opcional. Use este campo para indicar indicaciones o el detalle de la orden.')
-                                    ->columnSpanFull(),
                                 Textarea::make('service_order_observations')
                                     ->label('Observaciones de la orden')
                                     ->rows(3)
                                     ->maxLength(2000)
                                     ->columnSpanFull(),
                             ]),
+                    ])
+                    ->columnSpanFull(),
+                Section::make('Traza de cotizaciones y órdenes')
+                    ->description('Todo lo que pasó en esta coordinación, del más reciente al más antiguo: cotizaciones registradas, aprobadas, liberadas o rechazadas, órdenes creadas, anuladas o canceladas, e intentos bloqueados.')
+                    ->icon(Heroicon::OutlinedQueueList)
+                    ->collapsible()
+                    ->schema([
+                        Placeholder::make('flow_trace')
+                            ->hiddenLabel()
+                            ->content(fn (ManageCoordinationServiceQuotes $livewire): HtmlString => ServiceOrderFlowTrace::renderTimeline(
+                                ServiceOrderFlowTrace::eventsForCoordination((int) $livewire->getRecord()->getKey()),
+                                'Aún no hay eventos registrados en esta coordinación. La traza se registra desde el 20/10/2026; los movimientos anteriores están en la bitácora del caso.',
+                            ))
+                            ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
             ]);

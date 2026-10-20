@@ -94,11 +94,11 @@ it('suma cotizaciones de medicamentos cuando no hay cotización aprobada', funct
         ->and(OperationServiceOrderListDisplay::quoteAmountLabel($order))->toBe('US$ 15,25');
 });
 
-it('usa el precio de cotización de la coordinación como respaldo', function (): void {
-    $order = serviceOrderWithCoordination([], ['quote_price' => 88.9]);
+it('no toma el precio de la coordinación: puede ser de otra cotización y no de esta orden', function (): void {
+    $order = serviceOrderWithCoordination(['status' => 'CANCELADA'], ['quote_price' => 88.9]);
 
-    expect(OperationServiceOrderListDisplay::quoteAmountUsd($order))->toBe(88.9)
-        ->and(OperationServiceOrderListDisplay::quoteAmountLabel($order))->toBe('US$ 88,90');
+    expect(OperationServiceOrderListDisplay::quoteAmountUsd($order))->toBeNull()
+        ->and(OperationServiceOrderListDisplay::quoteAmountLabel($order))->toBe('—');
 });
 
 it('deja el monto en guion cuando no hay cotización', function (): void {

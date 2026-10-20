@@ -263,6 +263,42 @@
             z-index: 1;
             padding: 0 0 26mm 0;
         }
+        /**
+         * Orden anulada, cancelada o caducada: sello diagonal en cada hoja y franja
+         * bajo el encabezado. El documento no debe poder pasar por vigente.
+         */
+        .void-stamp {
+            position: fixed;
+            top: 42%;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 72pt;
+            font-weight: bold;
+            letter-spacing: 6px;
+            color: #dc2626;
+            opacity: 0.16;
+            transform: rotate(-30deg);
+            z-index: 20;
+        }
+        .void-banner {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            margin: 6px 0 10px 0;
+        }
+        .void-banner td {
+            padding: 6px 8px;
+            background: #fef2f2;
+            border: 1.5px solid #dc2626;
+            color: #991b1b;
+            font-size: 8pt;
+            line-height: 1.35;
+        }
+        .void-banner .void-title {
+            font-weight: bold;
+            font-size: 9pt;
+        }
     </style>
 </head>
 <body>
@@ -272,6 +308,9 @@
     <div class="watermark" aria-hidden="true">
         <img src="{{ $logoDataUri }}" alt="">
     </div>
+@endif
+@if(! empty($closingNotice))
+    <div class="void-stamp" aria-hidden="true">{{ $closingNotice['stamp'] }}</div>
 @endif
 <div class="doc-content">
     <table class="header-bar" width="100%">
@@ -292,6 +331,19 @@
             </td>
         </tr>
     </table>
+
+    @if(! empty($closingNotice))
+        <table class="void-banner">
+            <tr>
+                <td>
+                    <span class="void-title">{{ $closingNotice['title'] }}</span>
+                    @if($closingNotice['detail'] !== '')
+                        <br>{{ $closingNotice['detail'] }}
+                    @endif
+                </td>
+            </tr>
+        </table>
+    @endif
 
     @if($coord)
         <div class="two-col-section">

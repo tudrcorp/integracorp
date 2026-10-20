@@ -92,9 +92,23 @@ final class CoordinationServiceItemEdit
      *
      * @param  array<string, array{id: int, order_number: string, status: string, url: string}>  $orderLinks
      */
+    /**
+     * Si el ítem tiene una orden que todavía lo representa. Una orden anulada, cancelada
+     * o caducada no cuenta: al anularla el ítem vuelve a PENDIENTE y debe poder corregirse.
+     */
     public static function itemHasServiceOrder(array $orderLinks, string $category, string $label): bool
     {
-        return isset($orderLinks[CoordinationServiceItemsManager::clinicalItemServiceOrderKey($category, $label)]);
+        $link = $orderLinks[CoordinationServiceItemsManager::clinicalItemServiceOrderKey($category, $label)] ?? null;
+
+        if (! is_array($link)) {
+            return false;
+        }
+
+        return ! in_array(
+            mb_strtoupper(trim((string) ($link['status'] ?? ''))),
+            SupplierServiceOrderBuckets::CLOSED_UNFINISHED_STATUSES,
+            true,
+        );
     }
 
     public static function itemIsEditable(string $status, bool $hasServiceOrder): bool

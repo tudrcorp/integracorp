@@ -256,21 +256,29 @@ final class ManageCoordinationServiceItemsForm
                                                 ])
                                                 ->columnSpanFull(),
                                             TextInput::make('supplier_notify_email')
-                                                ->label('Correo del proveedor')
+                                                ->label('Correo del proveedor (cita)')
                                                 ->email()
                                                 ->maxLength(255)
-                                                ->readOnly()
-                                                ->dehydrated()
-                                                ->visible(fn (Get $get): bool => OperationServiceOrderProviderContacts::hasCatalogSelection($get))
-                                                ->helperText('Se toma de la ficha del proveedor. Si falta, solicítelo al equipo de Proveedores.'),
+                                                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => OperationServiceOrderProviderContacts::hasCatalogSelection($get)
+                                                    && MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                                        CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
+                                                            CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                        )
+                                                    )
+                                                    && OperationServiceOrderProviderContacts::missingNotifyContacts($get)['email'])
+                                                ->helperText('La ficha del proveedor no tiene correo; indíquelo aquí para avisarle de la cita.'),
                                             TextInput::make('supplier_notify_phone')
-                                                ->label('Teléfono del proveedor')
+                                                ->label('Teléfono WhatsApp del proveedor (cita)')
                                                 ->tel()
                                                 ->maxLength(30)
-                                                ->readOnly()
-                                                ->dehydrated()
-                                                ->visible(fn (Get $get): bool => OperationServiceOrderProviderContacts::hasCatalogSelection($get))
-                                                ->helperText('Se toma de la ficha del proveedor. Si falta, solicítelo al equipo de Proveedores.'),
+                                                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => OperationServiceOrderProviderContacts::hasCatalogSelection($get)
+                                                    && MedicalAppointmentManager::serviceTypeRequiresAppointment(
+                                                        CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
+                                                            CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                        )
+                                                    )
+                                                    && OperationServiceOrderProviderContacts::missingNotifyContacts($get)['phone'])
+                                                ->helperText('La ficha del proveedor no tiene teléfono; indíquelo aquí para avisarle de la cita.'),
                                             TextInput::make('supplier_notify_address')
                                                 ->label('Dirección del proveedor')
                                                 ->readOnly()
@@ -289,11 +297,6 @@ final class ManageCoordinationServiceItemsForm
                                                     CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
                                                 ) === 'MEDICAMENTOS')
                                                 ->native(false)
-                                                ->columnSpanFull(),
-                                            Textarea::make('service_order_description')
-                                                ->label('Descripción de la orden')
-                                                ->rows(4)
-                                                ->helperText('Opcional. Use este campo para indicar indicaciones o el detalle de la orden.')
                                                 ->columnSpanFull(),
                                             Textarea::make('service_order_observations')
                                                 ->label('Observaciones de la orden')

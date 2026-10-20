@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\OperationServiceOrder;
 use App\Support\Operations\OperationDocumentSeal;
+use App\Support\Operations\ServiceOrderFlowTrace;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as PdfDocument;
 use Illuminate\Support\Facades\Storage;
@@ -40,6 +41,7 @@ class OperationServiceOrderPdfService
             'order' => $order,
             'logoDataUri' => $logoDataUri,
             'sealDataUri' => OperationDocumentSeal::dataUri(),
+            'closingNotice' => ServiceOrderFlowTrace::closingNoticeForOrder($order),
         ])->setPaper('a4', 'portrait');
     }
 

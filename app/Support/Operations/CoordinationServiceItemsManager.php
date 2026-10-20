@@ -1269,19 +1269,24 @@ final class CoordinationServiceItemsManager
             $orderKey = self::clinicalItemServiceOrderKey($item['category'], $label);
             $orderLink = $orderLinks[$orderKey] ?? null;
             $orderNumber = is_array($orderLink) ? trim((string) ($orderLink['order_number'] ?? '')) : '';
+            $orderStatus = is_array($orderLink) ? mb_strtoupper(trim((string) ($orderLink['status'] ?? ''))) : '';
+            $quoteLink = $quoteLinks[(string) ($item['key'] ?? '')] ?? null;
+            $quoteNumber = is_array($quoteLink) ? trim((string) ($quoteLink['quote_number'] ?? '')) : '';
+
+            // Una orden anulada, cancelada o caducada no tapa la cotización pendiente del
+            // ítem: lo vigente es la cotización, que es por donde sigue el analista.
+            $orderIsClosedUnfinished = in_array($orderStatus, SupplierServiceOrderBuckets::CLOSED_UNFINISHED_STATUSES, true);
+            $showOrderLink = $orderNumber !== '' && is_array($orderLink) && ! ($orderIsClosedUnfinished && $quoteNumber !== '');
 
             $referenceHtml = '';
-            if ($orderNumber !== '' && is_array($orderLink)) {
+            if ($showOrderLink) {
                 $referenceHtml = '<a href="'.e((string) $orderLink['url']).'" '
                     .'class="fi-coordination-clinical-item-order-link" '
-                    .'title="Ver orden '.e($orderNumber).'" '
+                    .'title="Ver orden '.e($orderNumber).($orderIsClosedUnfinished ? ' ('.e($orderStatus).')' : '').'" '
                     .'onclick="event.stopPropagation();">'
                     .e($orderNumber)
                     .'</a>';
             } else {
-                $quoteLink = $quoteLinks[(string) ($item['key'] ?? '')] ?? null;
-                $quoteNumber = is_array($quoteLink) ? trim((string) ($quoteLink['quote_number'] ?? '')) : '';
-
                 if ($quoteNumber !== '' && is_array($quoteLink)) {
                     $referenceHtml = '<a href="'.e((string) $quoteLink['url']).'" '
                         .'class="fi-coordination-clinical-item-quote-link" '
@@ -2074,6 +2079,19 @@ final class CoordinationServiceItemsManager
     }
 
     /**
+     * Descripción que el sistema guarda en una orden creada desde «Gestionar servicio».
+     */
+    public static function serviceOrderDescriptionForItems(string $serviceOrderType, int $itemsCount, bool $isCourtesy = false): string
+    {
+        return sprintf(
+            'Orden por gestión de servicio · %s · %d ítem(s)%s',
+            $serviceOrderType,
+            $itemsCount,
+            $isCourtesy ? ' · Cortesía' : '',
+        );
+    }
+
+    /**
      * @param  array<int, string>  $coveredKeys
      */
     public static function createServiceOrderFromManageModal(
@@ -2110,6 +2128,9 @@ final class CoordinationServiceItemsManager
                 $groupData['order_number'] = rtrim((string) $groupData['order_number']).'-C';
             }
 
+            // El analista ya no escribe la descripción: la arma el sistema y sale en el PDF.
+            $groupData['service_order_description'] = self::serviceOrderDescriptionForItems($serviceOrderType, $records->count(), $isCourtesy);
+
             $payload = OperationCoordinationServicesTable::buildServiceOrderPayload($record, $groupData, $serviceOrderType);
 
             if ($payload === null) {
@@ -2141,10 +2162,10 @@ final class CoordinationServiceItemsManager
             if ($order instanceof OperationServiceOrder) {
                 $createdOrderId ??= (int) $order->id;
                 AccountsReceivableManager::syncFromServiceOrder($order);
-                MedicalAppointmentManager::createFromServiceOrder($order, [
-                    'email' => $data['supplier_notify_email'] ?? $data['unregistered_correo_principal'] ?? null,
-                    'phone' => $data['supplier_notify_phone'] ?? $data['unregistered_phone'] ?? null,
-                ]);
+                MedicalAppointmentManager::createFromServiceOrder(
+                    $order,
+                    OperationServiceOrderProviderContacts::appointmentNotifyContacts($data),
+                );
             }
 
             $created++;
