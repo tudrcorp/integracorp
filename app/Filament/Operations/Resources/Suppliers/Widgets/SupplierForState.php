@@ -5,7 +5,6 @@ namespace App\Filament\Operations\Resources\Suppliers\Widgets;
 use App\Filament\Operations\Resources\Suppliers\Pages\ListSuppliers;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\State;
-use App\Models\Supplier;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Str;
 
@@ -177,15 +176,45 @@ class SupplierForState extends ChartWidget
 
     protected function getData(): array
     {
-        $table = (new Supplier)->getTable();
-        $base = $this->getPageTableQuery();
-
-        $stateRows = State::query()
-            ->whereIn('id', (clone $base)->whereNotNull("{$table}.state_id")->distinct()->pluck("{$table}.state_id"))
-            ->orderBy('definition')
+        $aggregates = (clone $this->getPageTableQuery())
+            ->reorder()
+            ->toBase()
+            ->select([])
+            ->selectRaw('suppliers.state_id as state_id, suppliers.status_sistema as status_sistema, COUNT(*) as cnt')
+            ->groupBy('suppliers.state_id', 'suppliers.status_sistema')
             ->get();
 
-        $hasWithoutState = (clone $base)->whereNull("{$table}.state_id")->exists();
+        /** @var array<string, array<string, int>> $countMap */
+        $countMap = [];
+        $stateIds = [];
+        $distinctStatuses = [];
+        $hasWithoutState = false;
+        $hasNullStatus = false;
+
+        foreach ($aggregates as $row) {
+            $stateKey = $row->state_id === null ? 'null_state' : (string) $row->state_id;
+            $statusKey = $row->status_sistema === null ? '__null__' : (string) $row->status_sistema;
+            $countMap[$stateKey][$statusKey] = ($countMap[$stateKey][$statusKey] ?? 0) + (int) $row->cnt;
+
+            if ($row->state_id === null) {
+                $hasWithoutState = true;
+            } else {
+                $stateIds[(int) $row->state_id] = true;
+            }
+
+            if ($row->status_sistema === null) {
+                $hasNullStatus = true;
+            } else {
+                $distinctStatuses[] = (string) $row->status_sistema;
+            }
+        }
+
+        $stateRows = $stateIds === []
+            ? collect()
+            : State::query()
+                ->whereIn('id', array_keys($stateIds))
+                ->orderBy('definition')
+                ->get(['id', 'definition']);
 
         $labels = $stateRows
             ->map(fn (State $state): string => Str::limit($state->definition, 22))
@@ -213,38 +242,11 @@ class SupplierForState extends ChartWidget
             ];
         }
 
-        $filteredIdsQuery = (clone $base)
-            ->reorder()
-            ->select("{$table}.id")
-            ->distinct();
-
-        $aggregates = Supplier::query()
-            ->whereIn('id', $filteredIdsQuery)
-            ->selectRaw('state_id, status_sistema, COUNT(*) as cnt')
-            ->groupBy('state_id', 'status_sistema')
-            ->get();
-
-        /** @var array<string, array<string, int>> $countMap */
-        $countMap = [];
-        foreach ($aggregates as $row) {
-            $stateKey = $row->state_id === null ? 'null_state' : (string) $row->state_id;
-            $statusKey = $row->status_sistema === null ? '__null__' : (string) $row->status_sistema;
-            $countMap[$stateKey][$statusKey] = (int) $row->cnt;
-        }
-
-        $distinctStatuses = (clone $base)
-            ->whereNotNull("{$table}.status_sistema")
-            ->distinct()
-            ->pluck("{$table}.status_sistema")
-            ->values();
-
         $orderedStatuses = collect(self::STATUS_PRIORITY)
             ->merge($distinctStatuses)
             ->unique()
             ->values()
             ->all();
-
-        $hasNullStatus = (clone $base)->whereNull("{$table}.status_sistema")->exists();
 
         $datasets = [];
 

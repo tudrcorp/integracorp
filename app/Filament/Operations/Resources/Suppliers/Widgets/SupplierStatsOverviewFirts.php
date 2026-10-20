@@ -4,10 +4,9 @@ namespace App\Filament\Operations\Resources\Suppliers\Widgets;
 
 use App\Filament\Operations\Resources\Suppliers\Pages\ListSuppliers;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
-use App\Models\Supplier;
+use App\Support\Operations\SupplierListStatCounts;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
 
@@ -41,34 +40,16 @@ class SupplierStatsOverviewFirts extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $table = (new Supplier)->getTable();
         $base = $this->getPageTableQuery();
-        $total = (clone $base)->count();
-        $valor = number_format($total, 0, ',', '.');
 
         $now = Carbon::now();
-        $monthStart = $now->copy()->startOfMonth();
-        $monthEnd = $now->copy()->endOfMonth();
-        $monthTotal = (clone $base)
-            ->whereBetween("{$table}.created_at", [$monthStart, $monthEnd])
-            ->count();
-        $valorMes = number_format($monthTotal, 0, ',', '.');
+        $counts = SupplierListStatCounts::summary($base, $now->copy()->startOfMonth(), $now->copy()->endOfMonth());
+
+        $valor = number_format($counts['total'], 0, ',', '.');
+        $valorMes = number_format($counts['registered_in_month'], 0, ',', '.');
+        $valorConCarta = number_format($counts['with_acceptance_letter'], 0, ',', '.');
+        $valorNoConvenidos = number_format($counts['not_agreed'], 0, ',', '.');
         $monthLabel = ucfirst($now->locale(app()->getLocale())->translatedFormat('F Y'));
-
-        $withAcceptanceLetterTotal = (clone $base)
-            ->where(function (Builder $query) use ($table): void {
-                $query->where("{$table}.status_convenio", 'GENERAL')
-                    ->orWhere("{$table}.status_convenio", 'like', '%PREFERENCIAL%');
-            })
-            ->whereNotNull("{$table}.carta_acceptance")
-            ->where("{$table}.carta_acceptance", '<>', '')
-            ->count();
-        $valorConCarta = number_format($withAcceptanceLetterTotal, 0, ',', '.');
-
-        $notAgreedTotal = (clone $base)
-            ->where("{$table}.status_convenio", 'NO CONVENIDO')
-            ->count();
-        $valorNoConvenidos = number_format($notAgreedTotal, 0, ',', '.');
 
         return [
             Stat::make('PROVEEDORES REGISTRADOS', $valor)

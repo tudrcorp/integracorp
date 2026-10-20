@@ -37,7 +37,7 @@ class SuppliersTable
     {
         return $table
             ->heading('Proveedores')
-            ->description('Las pestañas superiores filtran por tipo de convenio (GENERAL, PREFERENCIAL, etc.). El listado muestra cobertura, contacto y equipamiento; use «Estados (cobertura)» para ver las entidades federativas.')
+            ->description('Las pestañas superiores filtran por tipo de convenio (GENERAL, PREFERENCIAL, etc.). Para ver razón social, cobertura, teléfono local o equipamiento, actívelos en el botón «Columnas».')
             ->modifyQueryUsing(function (Builder $query, bool $isResolvingRecord): Builder {
                 if ($isResolvingRecord) {
                     return $query;
@@ -94,7 +94,7 @@ class SuppliersTable
                     ->extraCellAttributes(fn (): array => [
                         'class' => 'min-w-52 sm:min-w-64 lg:min-w-72 max-w-[28rem] align-top',
                     ])
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status_convenio')
                     ->label('Convenio')
                     ->icon('heroicon-o-document-check')
@@ -130,7 +130,7 @@ class SuppliersTable
                     ->badge()
                     ->color('success')
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type_service')
                     ->label('Tipo de servicio')
                     ->icon('heroicon-o-wrench-screwdriver')
@@ -141,7 +141,7 @@ class SuppliersTable
                     ->limitList(8)
                     ->expandableLimitedList()
                     ->placeholder('—')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('state.definition')
                     ->label('Estado (sede)')
                     ->icon('heroicon-o-map')
@@ -163,7 +163,8 @@ class SuppliersTable
                         default => 'gray',
                     })
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('state_services')
                     ->label('Estados (cobertura)')
                     ->icon('heroicon-o-map')
@@ -183,7 +184,7 @@ class SuppliersTable
                         return count($items).' estado(s): '.implode(', ', $items);
                     })
                     ->wrap()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('personal_phone')
                     ->label('Teléfono celular')
                     ->icon('heroicon-o-device-phone-mobile')
@@ -193,7 +194,7 @@ class SuppliersTable
                     ->label('Teléfono local')
                     ->icon('heroicon-o-phone')
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('correo_principal')
                     ->label('Correo principal')
                     ->icon('heroicon-o-envelope')
@@ -230,59 +231,73 @@ class SuppliersTable
                 IconColumn::make('densitometria_osea')
                     ->boolean()
                     ->label('Densitómetro')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('dialisis')
                     ->boolean()
                     ->label('Diálisis')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('electrocardiograma_centro')
                     ->boolean()
                     ->label('Electrocardiógrafo')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('equipos_especiales_oftalmologia')
                     ->boolean()
                     ->label('Oftalmología')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('mamografia')
                     ->boolean()
                     ->label('Mamógrafo')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('quirofanos')
                     ->boolean()
                     ->label('Quirófanos')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('radioterapia_intraoperatoria')
                     ->boolean()
                     ->label('Radioterapia')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('resonancia')
                     ->boolean()
                     ->label('Resonancia')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('tomografo')
                     ->boolean()
                     ->label('Tomógrafo')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('uci_pediatrica')
                     ->boolean()
                     ->label('UCI pediátrica')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('uci_adulto')
                     ->boolean()
                     ->label('UCI adulto')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('estacionamiento_propio')
                     ->boolean()
                     ->label('Estacionamiento')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('ascensor')
                     ->boolean()
                     ->label('Ascensor')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('robotica')
                     ->boolean()
                     ->label('Cirugía robótica')
-                    ->alignCenter(),
+                    ->alignCenter()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('created_at')
                     ->label('Creado')
@@ -299,7 +314,7 @@ class SuppliersTable
                 TextColumn::make('created_by')
                     ->label('Creado por')
                     ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
                 TextColumn::make('updated_by')
                     ->label('Actualizado por')
                     ->searchable()
@@ -376,6 +391,7 @@ class SuppliersTable
                     ->options(function (): array {
                         return User::query()
                             ->select(['name', 'departament'])
+                            ->where('departament', 'like', '%OPERACIONES%')
                             ->orderBy('name')
                             ->get()
                             ->filter(function (User $user): bool {

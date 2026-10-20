@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Models\HelpDesk;
-use App\Models\RrhhColaborador;
 use App\Models\User;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
@@ -61,9 +60,7 @@ final class HelpdeskTicketVisibility
      */
     public static function constrainToMine(Builder $query, User $user): Builder
     {
-        $colaborador = RrhhColaborador::query()
-            ->where('user_id', $user->getAuthIdentifier())
-            ->first();
+        $colaborador = HelpdeskBusinessScrumRoles::colaboradorForUser($user);
 
         return $query->where(function (Builder $scoped) use ($user, $colaborador): void {
             if ($user->getAuthIdentifier() !== null) {

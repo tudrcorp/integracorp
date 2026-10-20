@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 
 final class HelpdeskUnreadNoteTracker
@@ -19,6 +20,8 @@ final class HelpdeskUnreadNoteTracker
      * @var array<int, array<int, Carbon|string|null>>
      */
     private static array $readMapCache = [];
+
+    private const TRACKING_AVAILABLE_CACHE_KEY = 'helpdesk:unread-note-tracking-available';
 
     private static ?bool $latestNoteColumnsAvailable = null;
 
@@ -208,9 +211,22 @@ final class HelpdeskUnreadNoteTracker
     public static function trackingIsAvailable(): bool
     {
         if (self::$latestNoteColumnsAvailable === null) {
-            self::$latestNoteColumnsAvailable = Schema::hasTable('help_desk_note_reads')
-                && Schema::hasColumn('help_desks', 'latest_note_at')
-                && Schema::hasColumn('help_desks', 'latest_note_by');
+            /*
+             * information_schema es lento en MySQL y esto corre en cada petición de todos los paneles
+             * (contadores del menú). Solo se recuerda el «sí»: si falta la migración, se vuelve a
+             * comprobar y se detecta en cuanto se aplique.
+             */
+            self::$latestNoteColumnsAvailable = Cache::get(self::TRACKING_AVAILABLE_CACHE_KEY) === true;
+
+            if (! self::$latestNoteColumnsAvailable) {
+                self::$latestNoteColumnsAvailable = Schema::hasTable('help_desk_note_reads')
+                    && Schema::hasColumn('help_desks', 'latest_note_at')
+                    && Schema::hasColumn('help_desks', 'latest_note_by');
+
+                if (self::$latestNoteColumnsAvailable) {
+                    Cache::put(self::TRACKING_AVAILABLE_CACHE_KEY, true, now()->addDay());
+                }
+            }
         }
 
         return self::$latestNoteColumnsAvailable;

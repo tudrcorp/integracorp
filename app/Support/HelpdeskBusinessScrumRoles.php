@@ -9,9 +9,15 @@ use App\Models\User;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use WeakMap;
 
 final class HelpdeskBusinessScrumRoles
 {
+    /**
+     * @var WeakMap<User, array{user_id: mixed, colaborador: ?RrhhColaborador}>|null
+     */
+    private static ?WeakMap $colaboradorByUser = null;
+
     public const PRODUCT_OWNER_NAME = 'Becky Acosta';
 
     /**
@@ -143,6 +149,10 @@ final class HelpdeskBusinessScrumRoles
             ->all();
     }
 
+    /**
+     * Colaborador RRHH del usuario, consultado una sola vez por instancia de usuario: el menú,
+     * los contadores y la visibilidad de tickets lo piden varias veces en la misma petición.
+     */
     public static function colaboradorForUser(User $user): ?RrhhColaborador
     {
         $userId = $user->getAuthIdentifier();
@@ -151,9 +161,20 @@ final class HelpdeskBusinessScrumRoles
             return null;
         }
 
-        return RrhhColaborador::query()
-            ->where('user_id', $userId)
-            ->first();
+        self::$colaboradorByUser ??= new WeakMap;
+
+        $cached = self::$colaboradorByUser[$user] ?? null;
+
+        if ($cached === null || $cached['user_id'] !== $userId) {
+            $cached = [
+                'user_id' => $userId,
+                'colaborador' => RrhhColaborador::query()->where('user_id', $userId)->first(),
+            ];
+
+            self::$colaboradorByUser[$user] = $cached;
+        }
+
+        return $cached['colaborador'];
     }
 
     private static function findColaboradorByExpectedName(string $expected): ?RrhhColaborador
