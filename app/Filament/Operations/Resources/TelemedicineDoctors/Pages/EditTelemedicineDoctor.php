@@ -8,6 +8,7 @@ use App\Filament\Operations\Resources\TelemedicineDoctors\TelemedicineDoctorReso
 use App\Models\TelemedicineDoctor;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\TelemedicineDoctorPageHeader;
+use App\Support\Telemedicine\TelemedicineDoctorSupplierAssignment;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -35,6 +36,26 @@ class EditTelemedicineDoctor extends EditRecord
         return $doctor instanceof TelemedicineDoctor
             ? TelemedicineDoctorPageHeader::forDoctor($doctor, context: 'edit')
             : 'Editar médico';
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $record = $this->getRecord();
+
+        return TelemedicineDoctorSupplierAssignment::enforce($data, $record instanceof TelemedicineDoctor ? $record : null);
+    }
+
+    protected function afterSave(): void
+    {
+        $record = $this->getRecord();
+
+        if ($record instanceof TelemedicineDoctor && $record->wasChanged('supplier_id')) {
+            TelemedicineDoctorSupplierAssignment::syncDoctorUser($record);
+        }
     }
 
     protected function getHeaderActions(): array

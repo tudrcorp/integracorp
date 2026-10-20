@@ -3,8 +3,9 @@
 namespace App\Filament\Operations\Resources\TelemedicineDoctors\Schemas;
 
 use App\Http\Controllers\UtilsController;
-use App\Models\Supplier;
 use App\Models\TelemedicineDoctor;
+use App\Support\Telemedicine\TelemedicineDoctorSupplierAssignment;
+use Closure;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -16,6 +17,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
@@ -182,18 +184,32 @@ class TelemedicineDoctorForm
                                                     ]),
                                                 Select::make('supplier_id')
                                                     ->label('Proveedor')
-                                                    ->relationship('supplier', 'name')
+                                                    ->relationship(
+                                                        'supplier',
+                                                        'name',
+                                                        modifyQueryUsing: fn (Builder $query, ?TelemedicineDoctor $record): Builder => TelemedicineDoctorSupplierAssignment::scopeAssignableSuppliers($query, $record),
+                                                    )
                                                     ->default(fn (): ?int => Auth::user()?->supplier_id)
-                                                    ->disabled()
+                                                    ->disabled(fn (): bool => ! TelemedicineDoctorSupplierAssignment::canChooseSupplier())
                                                     ->dehydrated(true)
-                                                    ->required(fn (Get $get): bool => mb_strtoupper(trim((string) $get('managed_by'))) !== 'TDG')
+                                                    ->required(fn (Get $get): bool => ! TelemedicineDoctorSupplierAssignment::isTdg($get('managed_by')))
                                                     ->searchable()
                                                     ->preload()
                                                     ->native(false)
+                                                    ->live()
+                                                    ->afterStateUpdated(fn (mixed $state, callable $set): mixed => $set('managed_by', TelemedicineDoctorSupplierAssignment::managedByForSupplier($state)))
+                                                    ->placeholder('Sin proveedor (médico de TDG)')
                                                     ->prefixIcon('heroicon-s-building-storefront')
-                                                    ->helperText('Proveedor vinculado al médico según su cuenta de acceso.')
+                                                    ->helperText(fn (): string => TelemedicineDoctorSupplierAssignment::canChooseSupplier()
+                                                        ? 'Solo aparecen los proveedores con gestión activa en IntegraCorp; si falta uno, actívela en su ficha. Déjelo vacío si es médico de TDG.'
+                                                        : 'Proveedor vinculado al médico según su cuenta de acceso.')
+                                                    ->rule(fn (?TelemedicineDoctor $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                                        if (! TelemedicineDoctorSupplierAssignment::isAssignable($value, $record)) {
+                                                            $fail('Este proveedor no tiene la gestión activa en IntegraCorp. Actívela en su ficha o elija otro proveedor.');
+                                                        }
+                                                    })
                                                     ->validationMessages([
-                                                        'required' => 'Campo requerido.',
+                                                        'required' => 'Elija el proveedor, o escriba TDG en «Pertenece a» si el médico es de TDG.',
                                                     ]),
                                                 Select::make('status')
                                                     ->label('Estado')
@@ -211,22 +227,17 @@ class TelemedicineDoctorForm
                                                     ->maxLength(255)
                                                     ->placeholder('Ej: ALIAS DEL PROVEEDOR')
                                                     ->prefixIcon('heroicon-s-building-office-2')
-                                                    ->helperText('Nombre o alias del proveedor (se guardará en mayúsculas).')
-                                                    ->default(function (): ?string {
-                                                        $supplierId = Auth::user()?->supplier_id;
-
-                                                        if ($supplierId === null) {
-                                                            return null;
-                                                        }
-
-                                                        $name = Supplier::query()->whereKey($supplierId)->value('name');
-
-                                                        return filled($name) ? mb_strtoupper((string) $name) : null;
-                                                    })
+                                                    ->helperText('Nombre o alias del proveedor (se guardará en mayúsculas). Se completa al elegir el proveedor.')
+                                                    ->default(fn (): ?string => TelemedicineDoctorSupplierAssignment::defaultManagedBy())
                                                     ->live(onBlur: true)
                                                     ->afterStateUpdatedJs(<<<'JS'
                                                         $set('managed_by', $state.toUpperCase());
                                                     JS)
+                                                    ->rule(fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                                                        if (TelemedicineDoctorSupplierAssignment::isTdg($value) && filled($get('supplier_id'))) {
+                                                            $fail('Un médico con proveedor no puede pertenecer a TDG. Quite el proveedor o escriba su nombre.');
+                                                        }
+                                                    })
                                                     ->validationMessages([
                                                         'required' => 'Campo requerido.',
                                                     ]),
