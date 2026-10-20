@@ -15,6 +15,7 @@ use App\Support\Operations\CoordinationServiceDocumentsAggregator;
 use App\Support\Operations\CoordinationServiceItemCancellation;
 use App\Support\Operations\CoordinationServiceItemEdit;
 use App\Support\Operations\CoordinationServiceItemExternalManagement;
+use App\Support\Operations\CoordinationServiceItemFinalizationReversal;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\OperationServiceOrderProviderSummary;
 use App\Support\Telemedicine\TelemedicineMedicationCoverage;
@@ -845,7 +846,7 @@ class OperationCoordinationServiceInfolist
     }
 
     /**
-     * @return array{id: int, item_type: string, title: string, detail: string, status: string, coverage: bool|null, provider_name: ?string, provider_rif: ?string, quote_id: ?int, order_id: ?int, can_cancel: bool, can_edit: bool, can_external_management: bool}
+     * @return array{id: int, item_type: string, title: string, detail: string, status: string, coverage: bool|null, provider_name: ?string, provider_rif: ?string, quote_id: ?int, order_id: ?int, can_cancel: bool, can_edit: bool, can_external_management: bool, can_reverse: bool}
      */
     private static function associatedItemState(
         int $id,
@@ -874,7 +875,10 @@ class OperationCoordinationServiceInfolist
             'can_cancel' => CoordinationServiceItemCancellation::statusIsCancellable($status),
             'can_edit' => CoordinationServiceItemEdit::itemIsEditable($status, $hasServiceOrder),
             'can_external_management' => CoordinationServiceItemExternalManagement::statusIsManageable($status)
+                && ! $hasServiceOrder
                 && CoordinationServiceItemExternalManagement::coverageAllowsExternalManagement($coverage),
+            'can_reverse' => CoordinationServiceItemFinalizationReversal::statusIsReversible($status)
+                && CoordinationServiceItemFinalizationReversal::userCanReverse(),
         ];
     }
 
@@ -968,6 +972,7 @@ class OperationCoordinationServiceInfolist
         $edit = CoordinationServiceItemEdit::makeEditAction($row);
         $externalManagement = CoordinationServiceItemExternalManagement::makeExternalManagementAction($row);
         $cancel = CoordinationServiceItemCancellation::makeCancelAction($row);
+        $reverse = CoordinationServiceItemFinalizationReversal::makeReverseAction($row);
 
         if ($preview instanceof Action) {
             $actions[] = $preview;
@@ -983,6 +988,10 @@ class OperationCoordinationServiceInfolist
 
         if ($cancel instanceof Action) {
             $actions[] = $cancel;
+        }
+
+        if ($reverse instanceof Action) {
+            $actions[] = $reverse;
         }
 
         return $actions;

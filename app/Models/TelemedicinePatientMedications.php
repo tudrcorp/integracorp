@@ -31,9 +31,22 @@ class TelemedicinePatientMedications extends Model
         'courtesy_updated_at',
         'courtesy_updated_by',
         'operation_inventory_id',
+        'inventory_dispatched_at',
+        'inventory_dispatch_source',
+        'inventory_dispatch_order_id',
         'is_covered',
         'operation_coordination_service_id',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'inventory_dispatched_at' => 'datetime',
+        ];
+    }
 
     public function telemedicinePatient()
     {

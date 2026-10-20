@@ -31,7 +31,6 @@ use App\Models\TelemedicinePatientSpecialty;
 use App\Models\TelemedicinePatientStudy;
 use App\Models\User;
 use App\Services\NotificationTelemedicinaService;
-use App\Services\TelemedicineMedicationInventoryDeductor;
 use App\Services\TelemedicineSupplyConsumptionRecorder;
 use App\Support\ClinicalEntitlements\AffiliateClinicalEntitlementResolver;
 use App\Support\ClinicalEntitlements\ClinicalConsultationConsumption;
@@ -1431,9 +1430,6 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                     // if (! empty($medicationsArr) && $medicationsArr[0]['medicines'] != null || $medicationsArr[0]['operation_inventory_id'] != null) {
                     if (! empty($medicationsArr)) {
                         // dd($medicationsArr);
-                        $caseForInventory = TelemedicineCase::query()
-                            ->with('telemedicineDoctor')
-                            ->find($record['telemedicine_case_id']);
                         $doctorModel = TelemedicineDoctor::query()->find($record['telemedicine_doctor_id']);
 
                         // ...Segunda barrera: el médico de un proveedor no usa el inventario TDC (la validación del formulario ya lo impide).
@@ -1451,9 +1447,6 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                                 $rowNumber++;
                             }
                         }
-                        $patientModel = TelemedicinePatient::query()->find($record['telemedicine_patient_id']);
-                        $consultationModel = TelemedicineConsultationPatient::query()->find($record['id']);
-                        $inventoryDeductor = app(TelemedicineMedicationInventoryDeductor::class);
 
                         for ($i = 0; $i < count($medicationsArr); $i++) {
                             if (! is_array($medicationsArr[$i] ?? null)) {
@@ -1479,18 +1472,8 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             $medications->operation_inventory_id = $inventoryId;
                             $medications->is_covered = $payload['is_covered'];
                             $medications->assigned_by = Auth::user()->id;
+                            // El stock no sale al recetar: Operaciones lo descuenta al entregar (ServiceOrderMedicationInventory).
                             $medications->save();
-
-                            if ($consultationModel !== null && $payload['should_deduct_inventory'] && $inventoryId !== null) {
-                                $inventoryDeductor->deductIfApplicable(
-                                    $inventoryId,
-                                    $consultationModel,
-                                    $caseForInventory,
-                                    $doctorModel,
-                                    $patientModel,
-                                    TelemedicineMedicationsPdfRows::quantityForInventoryDeduction($medicationsArr[$i]),
-                                );
-                            }
                         }
 
                         /**

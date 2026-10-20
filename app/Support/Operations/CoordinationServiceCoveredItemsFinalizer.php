@@ -395,6 +395,21 @@ final class CoordinationServiceCoveredItemsFinalizer
             return;
         }
 
+        $pendingInventory = $itemType === 'medication'
+            ? self::medicationsPendingInventoryDispatch($selectedKeys)
+            : [];
+
+        if ($pendingInventory !== []) {
+            Notification::make()
+                ->warning()
+                ->title('Medicamentos del inventario')
+                ->body('Estos medicamentos salen del inventario propio y se finalizan desde su orden de servicio, donde se elige la ubicación de despacho: '.implode(', ', $pendingInventory).'.')
+                ->persistent()
+                ->send();
+
+            return;
+        }
+
         $documentFile = trim((string) ($data['document_file'] ?? ''));
 
         if ($documentFile === '') {
@@ -543,6 +558,36 @@ final class CoordinationServiceCoveredItemsFinalizer
             ],
             default => throw new \InvalidArgumentException('Tipo de ítem cubierto no soportado: '.$itemType),
         };
+    }
+
+    /**
+     * Medicamentos seleccionados que aún deben salir del inventario: cerrarlos con un
+     * comprobante suelto los daría por entregados sin descontar el stock.
+     *
+     * @param  list<string>  $keys
+     * @return list<string>
+     */
+    public static function medicationsPendingInventoryDispatch(array $keys): array
+    {
+        $ids = collect($keys)
+            ->filter(static fn (string $key): bool => str_starts_with($key, 'medication:'))
+            ->map(static fn (string $key): int => (int) substr($key, strlen('medication:')))
+            ->filter(static fn (int $id): bool => $id > 0)
+            ->values()
+            ->all();
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return TelemedicinePatientMedications::query()
+            ->whereKey($ids)
+            ->whereNotNull('operation_inventory_id')
+            ->whereNull('inventory_dispatched_at')
+            ->orderBy('medicine')
+            ->pluck('medicine')
+            ->map(static fn (mixed $name): string => trim((string) $name))
+            ->all();
     }
 
     /**

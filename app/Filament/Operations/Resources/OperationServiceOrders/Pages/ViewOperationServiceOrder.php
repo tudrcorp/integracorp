@@ -178,7 +178,7 @@ class ViewOperationServiceOrder extends ViewRecord
             ->modalHeading('Cargar documentos de la orden')
             ->modalDescription('Agregue uno o varios documentos. Cada archivo puede incluir uno o varios tipos de documento.')
             ->modalWidth(Width::FourExtraLarge)
-            ->form($this->orderDocumentsUploadForm())
+            ->form(fn (): array => $this->orderDocumentsUploadForm())
             ->modalSubmitActionLabel('Guardar')
             ->modalCancelActionLabel('Cancelar')
             ->extraModalFooterActions(fn (Action $parent): array => [
@@ -199,9 +199,12 @@ class ViewOperationServiceOrder extends ViewRecord
      */
     private function orderDocumentsUploadForm(): array
     {
-        return OperationServiceOrderDocuments::formSchema(
-            fn (): string => OperationServiceOrderDocuments::directory($this->getRecord()),
-        );
+        return [
+            ...OperationServiceOrderDocuments::medicationDeliverySchema($this->getRecord()),
+            ...OperationServiceOrderDocuments::formSchema(
+                fn (): string => OperationServiceOrderDocuments::directory($this->getRecord()),
+            ),
+        ];
     }
 
     /**
@@ -220,7 +223,13 @@ class ViewOperationServiceOrder extends ViewRecord
 
         try {
             if (filter_var($arguments['finalize'] ?? false, FILTER_VALIDATE_BOOLEAN) && $user instanceof User) {
-                $result = OperationServiceOrderDocuments::finalize($record, $newDocuments, $user, OperationServiceOrderDocuments::ORIGIN_ORDER_VIEW);
+                $result = OperationServiceOrderDocuments::finalize(
+                    $record,
+                    $newDocuments,
+                    $user,
+                    OperationServiceOrderDocuments::ORIGIN_ORDER_VIEW,
+                    filled($data[OperationServiceOrderDocuments::INVENTORY_UBICATION_FIELD] ?? null) ? (int) $data[OperationServiceOrderDocuments::INVENTORY_UBICATION_FIELD] : null,
+                );
                 $this->record = $result['order'];
 
                 Notification::make()
