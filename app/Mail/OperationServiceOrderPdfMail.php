@@ -43,7 +43,7 @@ class OperationServiceOrderPdfMail extends Mailable
     {
         return [
             Attachment::fromData(
-                fn (): string => OperationServiceOrderPdfService::make($this->order)->output(),
+                fn (): string => OperationServiceOrderPdfService::document($this->order)['contents'],
                 OperationServiceOrderPdfService::filename($this->order)
             )->withMime('application/pdf'),
         ];

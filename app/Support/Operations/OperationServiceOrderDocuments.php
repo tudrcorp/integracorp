@@ -14,10 +14,12 @@ use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\SecurityAudit;
 use Closure;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 use Throwable;
 
 /**
@@ -48,6 +50,17 @@ final class OperationServiceOrderDocuments
     public const MAX_FILE_KB = 10240;
 
     /**
+     * Tipo de documento que toda orden de medicamentos necesita para finalizarse,
+     * salga del inventario propio o la entregue una farmacia.
+     */
+    public const MEDICATION_DELIVERY_RECEIPT = CoordinationServiceCoveredItemsFinalizer::MEDICATION_DELIVERY_RECEIPT_DOCUMENT_NAME;
+
+    /**
+     * Campo opcional del formulario: ubicación desde la que salen los medicamentos del inventario.
+     */
+    public const INVENTORY_UBICATION_FIELD = 'inventory_ubication_id';
+
+    /**
      * Permiso granular «Finalizar órdenes de servicio» (SUPERADMIN siempre puede).
      */
     public static function userCanFinalize(): bool
@@ -60,6 +73,43 @@ final class OperationServiceOrderDocuments
         $id = $order instanceof OperationServiceOrder ? (int) $order->getKey() : $order;
 
         return 'operation-service-orders/'.$id.'/documents';
+    }
+
+    /**
+     * Ubicación de despacho y aviso de comprobante, solo en órdenes de medicamentos.
+     * Se exige al finalizar (no al solo guardar documentos), por eso la validación
+     * dura vive en {@see finalize()}.
+     *
+     * @return list<Select|Placeholder>
+     */
+    public static function medicationDeliverySchema(OperationServiceOrder $order): array
+    {
+        if (mb_strtoupper(trim((string) $order->service_type)) !== 'MEDICAMENTOS') {
+            return [];
+        }
+
+        $summary = ServiceOrderMedicationInventory::pendingSummary($order);
+
+        return [
+            Placeholder::make('medication_delivery_notice')
+                ->hiddenLabel()
+                ->content(new HtmlString(
+                    '<div class="rounded-xl border border-sky-200/80 bg-sky-50/80 px-4 py-3 text-sm text-sky-950 dark:border-sky-500/25 dark:bg-sky-950/25 dark:text-sky-50">'
+                    .'Para finalizar, incluya un documento de tipo <strong>'.e(self::MEDICATION_DELIVERY_RECEIPT).'</strong>.'
+                    .($summary !== ''
+                        ? '<br>Al finalizar saldrán del inventario: <strong>'.e($summary).'</strong>.'
+                        : '<br>Ningún medicamento de esta orden sale del inventario propio.')
+                    .'</div>'
+                ))
+                ->columnSpanFull(),
+            Select::make(self::INVENTORY_UBICATION_FIELD)
+                ->label('Ubicación de despacho')
+                ->helperText('Almacén desde el que se entregan los medicamentos. Se descuenta al finalizar la orden.')
+                ->options(fn (): array => ServiceOrderMedicationInventory::ubicationOptions())
+                ->default(fn (): ?int => ServiceOrderMedicationInventory::suggestedUbicationId($order))
+                ->native(false)
+                ->visible($summary !== ''),
+        ];
     }
 
     /**
@@ -204,7 +254,7 @@ final class OperationServiceOrderDocuments
      *
      * @throws OperationServiceOrderFinalizationException
      */
-    public static function finalize(OperationServiceOrder $order, array $documents, User $user, string $origin): array
+    public static function finalize(OperationServiceOrder $order, array $documents, User $user, string $origin, ?int $inventoryUbicationId = null): array
     {
         try {
             // El permiso se exige aquí y no solo en el botón: ninguna vía finaliza sin él.
@@ -220,7 +270,7 @@ final class OperationServiceOrderDocuments
                 throw new OperationServiceOrderFinalizationException('La orden superó su vigencia de '.OperationServiceOrderValidity::VALIDITY_DAYS.' días y quedó CADUCADA: ya no puede finalizarse.');
             }
 
-            $result = DB::transaction(function () use ($order, $documents, $user, $origin): array {
+            $result = DB::transaction(function () use ($order, $documents, $user, $origin, $inventoryUbicationId): array {
                 $locked = self::lock($order);
 
                 if (! OperationServiceOrderViewActions::canFinalize($locked)) {
@@ -229,11 +279,17 @@ final class OperationServiceOrderDocuments
                     );
                 }
 
+                $mergedDocuments = self::merge($locked, $documents);
+                self::assertMedicationDeliveryReceipt($locked, $mergedDocuments);
+
                 $previousStatus = (string) $locked->status;
-                $locked->update(['uploaded_documents' => self::merge($locked, $documents)]);
+                $userName = filled($user->name) ? (string) $user->name : 'SISTEMA';
+                // Antes de finalizar: la salida necesita los medicamentos aún en gestión.
+                $dispatched = ServiceOrderMedicationInventory::dispatch($locked, $inventoryUbicationId, $userName);
+                $locked->update(['uploaded_documents' => $mergedDocuments]);
                 $followUpSuffix = self::registerFollowUp($locked, $documents);
                 $finalized = OperationServiceOrderCoordinationSync::finalizeOrder($locked);
-                $loggedToCase = self::writeBitacora($finalized, $documents, $user, $origin);
+                $loggedToCase = self::writeBitacora($finalized, $documents, $user, $origin, $dispatched);
 
                 return [
                     'order' => $finalized,
@@ -260,6 +316,7 @@ final class OperationServiceOrderDocuments
             'telemedicine_case_id' => $finalized->operationCoordinationService?->telemedicine_case_id,
             'previous_status' => $result['previous_status'],
             'origin' => $origin,
+            'inventory_ubication_id' => $finalized->operation_inventory_ubication_id,
             'documents' => array_map(static fn (array $document): string => (string) ($document['document_name'] ?? ''), $documents),
         ], $user);
 
@@ -273,7 +330,10 @@ final class OperationServiceOrderDocuments
     /**
      * @param  list<array<string, mixed>>  $documents
      */
-    public static function buildFinalizeBitacora(OperationServiceOrder $order, array $documents, string $analystName, string $origin): string
+    /**
+     * @param  list<string>  $dispatchedMedications
+     */
+    public static function buildFinalizeBitacora(OperationServiceOrder $order, array $documents, string $analystName, string $origin, array $dispatchedMedications = []): string
     {
         $lines = array_map(static function (array $document): string {
             $types = array_values(array_filter((array) ($document['document_types'] ?? [])));
@@ -288,7 +348,37 @@ final class OperationServiceOrderDocuments
             ."\n".'Analista: '.$analystName
             ."\n".'Desde: '.$origin
             ."\n".'Documentos:'
-            ."\n".implode("\n", $lines);
+            ."\n".implode("\n", $lines)
+            .($dispatchedMedications !== []
+                ? "\n".'Salida de inventario:'."\n".implode("\n", array_map(static fn (string $line): string => '- '.$line, $dispatchedMedications))
+                : '');
+    }
+
+    /**
+     * Toda orden de medicamentos se cierra con el comprobante de entrega, cargado ahora o antes.
+     *
+     * @param  list<array<string, mixed>>  $documents
+     */
+    public static function assertMedicationDeliveryReceipt(OperationServiceOrder $order, array $documents): void
+    {
+        if (mb_strtoupper(trim((string) $order->service_type)) !== 'MEDICAMENTOS') {
+            return;
+        }
+
+        foreach ($documents as $document) {
+            $types = array_map(
+                static fn (mixed $type): string => mb_strtoupper(trim((string) $type)),
+                (array) ($document['document_types'] ?? []),
+            );
+
+            if (in_array(self::MEDICATION_DELIVERY_RECEIPT, $types, true)) {
+                return;
+            }
+        }
+
+        throw new OperationServiceOrderFinalizationException(
+            'Para finalizar una orden de medicamentos cargue el comprobante de entrega: un documento de tipo «'.self::MEDICATION_DELIVERY_RECEIPT.'».'
+        );
     }
 
     public static function orderLabel(OperationServiceOrder $order): string
@@ -343,12 +433,15 @@ final class OperationServiceOrderDocuments
      *
      * @param  list<array<string, mixed>>  $documents
      */
-    private static function writeBitacora(OperationServiceOrder $order, array $documents, User $user, string $origin): bool
+    /**
+     * @param  list<string>  $dispatchedMedications
+     */
+    private static function writeBitacora(OperationServiceOrder $order, array $documents, User $user, string $origin, array $dispatchedMedications = []): bool
     {
         $order->loadMissing(['operationCoordinationService', 'supplier']);
         $coordination = $order->operationCoordinationService;
         $userName = filled($user->name) ? (string) $user->name : 'SISTEMA';
-        $bitacora = self::buildFinalizeBitacora($order, $documents, $userName, $origin);
+        $bitacora = self::buildFinalizeBitacora($order, $documents, $userName, $origin, $dispatchedMedications);
 
         if (! $coordination instanceof OperationCoordinationService) {
             return false;

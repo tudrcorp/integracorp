@@ -102,9 +102,10 @@ it('registra is_covered al crear medicamentos en telemedicina', function (): voi
     $editPath = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Pages/EditTelemedicineConsultationPatient.php');
     $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Schemas/TelemedicineConsultationPatientForm.php');
 
+    // La consulta ya no descuenta: el stock sale al entregar la orden de servicio.
     expect($createPath)
         ->toContain('TelemedicineMedicationCoverage::persistPayloadFromRow')
-        ->toContain('should_deduct_inventory')
+        ->not->toContain('should_deduct_inventory')
         ->toContain('is_covered');
 
     expect($editPath)

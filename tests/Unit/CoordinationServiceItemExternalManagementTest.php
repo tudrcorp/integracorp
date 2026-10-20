@@ -17,10 +17,10 @@ it('normaliza el estatus antes de evaluarlo', function (): void {
         ->and(CoordinationServiceItemExternalManagement::statusIsManageable('en gestion'))->toBeTrue();
 });
 
-it('solo habilita la gestión externa en ítems explícitamente no cubiertos', function (): void {
-    expect(CoordinationServiceItemExternalManagement::coverageAllowsExternalManagement(false))->toBeTrue()
-        ->and(CoordinationServiceItemExternalManagement::coverageAllowsExternalManagement(true))->toBeFalse()
-        ->and(CoordinationServiceItemExternalManagement::coverageAllowsExternalManagement(null))->toBeFalse();
+it('sin el permiso de cubiertos solo habilita la gestión externa en ítems no cubiertos', function (): void {
+    expect(CoordinationServiceItemExternalManagement::coverageAllowsExternalManagement(false, false))->toBeTrue()
+        ->and(CoordinationServiceItemExternalManagement::coverageAllowsExternalManagement(true, false))->toBeFalse()
+        ->and(CoordinationServiceItemExternalManagement::coverageAllowsExternalManagement(null, false))->toBeFalse();
 });
 
 it('resuelve el modelo clínico según el tipo de ítem', function (): void {

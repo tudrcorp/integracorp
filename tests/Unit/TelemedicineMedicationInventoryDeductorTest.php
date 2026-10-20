@@ -30,7 +30,7 @@ it('no descuenta cuando no hay inventario o el doctor no es TDG de almacén cono
         ->and(TelemedicineMedicationInventoryOptions::shouldDeductInventory($provider, $case))->toBeFalse();
 });
 
-it('create y edit de consulta descuentan inventario TDG al guardar medicamentos', function (): void {
+it('create y edit de consulta no descuentan medicamentos: el stock sale al entregar la orden', function (): void {
     $create = file_get_contents(
         dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Pages/CreateTelemedicineConsultationPatient.php'
     );
@@ -39,14 +39,13 @@ it('create y edit de consulta descuentan inventario TDG al guardar medicamentos'
     );
 
     expect($create)
-        ->toContain('TelemedicineMedicationInventoryDeductor')
-        ->toContain('deductIfApplicable')
-        ->toContain('quantityForInventoryDeduction');
+        ->not->toContain('TelemedicineMedicationInventoryDeductor')
+        ->not->toContain('deductIfApplicable')
+        ->toContain('ServiceOrderMedicationInventory');
 
     expect($edit)
-        ->toContain('TelemedicineMedicationInventoryDeductor')
-        ->toContain('deductIfApplicable')
-        ->toContain('quantityForInventoryDeduction');
+        ->not->toContain('TelemedicineMedicationInventoryDeductor')
+        ->not->toContain('deductIfApplicable');
 });
 
 it('el deductor sincroniza existencia, stock, outflow y movimiento', function (): void {

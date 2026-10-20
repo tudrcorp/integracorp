@@ -9,6 +9,7 @@ use App\Services\OperationServiceOrderPdfService;
 use App\Support\Operations\ServiceOrderPdfAccess;
 use App\Support\SecurityAudit;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Response;
 
 class OperationServiceOrderPdfController extends Controller
@@ -17,22 +18,41 @@ class OperationServiceOrderPdfController extends Controller
     {
         $this->authorizeOrder($request, $operationServiceOrder, 'operations.operation-service-orders.pdf');
 
-        OperationServiceOrderPdfService::ensurePersisted($operationServiceOrder);
-
-        $pdf = OperationServiceOrderPdfService::make($operationServiceOrder);
-
-        return $pdf->download(OperationServiceOrderPdfService::filename($operationServiceOrder));
+        return $this->pdfResponse($request, $operationServiceOrder, 'attachment');
     }
 
     public function preview(Request $request, OperationServiceOrder $operationServiceOrder): Response
     {
         $this->authorizeOrder($request, $operationServiceOrder, 'operations.operation-service-orders.pdf.preview');
 
-        OperationServiceOrderPdfService::ensurePersisted($operationServiceOrder);
+        return $this->pdfResponse($request, $operationServiceOrder, 'inline');
+    }
 
-        $pdf = OperationServiceOrderPdfService::make($operationServiceOrder);
+    /**
+     * Entrega la copia vigente (la misma que se guarda y se envía), renderizando solo si cambió.
+     * La huella del contenido viaja como ETag: si el navegador ya tiene esa versión responde 304.
+     */
+    private function pdfResponse(Request $request, OperationServiceOrder $order, string $disposition): Response
+    {
+        $document = OperationServiceOrderPdfService::document($order);
+        $etag = '"'.$document['fingerprint'].'"';
+        $headers = [
+            'Cache-Control' => 'private, no-cache',
+            'ETag' => $etag,
+        ];
 
-        return $pdf->stream(OperationServiceOrderPdfService::filename($operationServiceOrder));
+        if (in_array($etag, $request->getETags(), true)) {
+            return response('', Response::HTTP_NOT_MODIFIED, $headers);
+        }
+
+        return response($document['contents'], Response::HTTP_OK, [
+            ...$headers,
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => HeaderUtils::makeDisposition(
+                $disposition,
+                OperationServiceOrderPdfService::filename($order),
+            ),
+        ]);
     }
 
     /**

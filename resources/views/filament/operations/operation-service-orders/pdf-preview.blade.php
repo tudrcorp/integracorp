@@ -18,12 +18,39 @@
         </div>
 
         @if (filled($pdfPreviewUrl))
-            <div class="bg-gray-50/80 p-3 dark:bg-gray-950/60">
+            {{-- El src se asigna desde Alpine para que el listener de carga exista antes de que empiece la petición. --}}
+            <div
+                class="relative bg-gray-50/80 p-3 dark:bg-gray-950/60"
+                x-data="{ loading: true, slow: false }"
+                x-init="
+                    setTimeout(() => { if (loading) { slow = true } }, 8000);
+                    $refs.pdfFrame.src = @js($pdfPreviewUrl.'#toolbar=1');
+                "
+            >
+                <div
+                    x-show="loading"
+                    x-transition.opacity.duration.200ms
+                    class="absolute inset-3 z-10 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/95 dark:bg-gray-900/95"
+                    role="status"
+                    aria-live="polite"
+                    data-pdf-preview-loading
+                >
+                    <svg class="size-9 animate-spin text-sky-600 dark:text-sky-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+                        <path class="opacity-90" d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                    </svg>
+                    <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">Generando {{ \Illuminate\Support\Str::lower($documentLabel) }}…</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400" x-show="! slow">Esto toma solo unos segundos.</p>
+                    <p class="max-w-sm text-center text-xs text-amber-700 dark:text-amber-300" x-show="slow" x-cloak>
+                        Está tardando más de lo normal. Puede esperar o usar «Abrir en pestaña».
+                    </p>
+                </div>
+
                 <iframe
+                    x-ref="pdfFrame"
+                    x-on:load="loading = false"
                     title="Vista previa PDF {{ $documentLabel }}"
-                    src="{{ $pdfPreviewUrl }}#toolbar=1"
                     class="h-[min(72vh,820px)] w-full rounded-2xl border-0 bg-white dark:bg-gray-900"
-                    loading="lazy"
                 ></iframe>
             </div>
 

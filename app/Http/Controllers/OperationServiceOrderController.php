@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\OperationServiceOrder;
 use App\Models\OperationServiceOrderItem;
 use App\Models\TelemedicinePatient;
+use App\Models\TelemedicinePatientMedications;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\OperationServiceOrderProviderSelection;
 use Filament\Notifications\Notification;
@@ -45,7 +46,7 @@ class OperationServiceOrderController extends Controller
                 foreach ($records as $_record) {
                     if ($serviceType === 'MEDICAMENTOS') {
                         $line = $medicationsList[$indexForSum] ?? [];
-                        $totalItemsUnit += max(1, (int) ($line['quantity'] ?? 1));
+                        $totalItemsUnit += self::medicationLineQuantity($line, $_record);
                     } else {
                         $totalItemsUnit += 1;
                     }
@@ -88,6 +89,8 @@ class OperationServiceOrderController extends Controller
 
                 foreach ($records as $record) {
                     $line = $medicationsList[$index] ?? [];
+                    $medicationId = null;
+                    $inventoryId = null;
 
                     if ($operationServiceOrder['service_type'] == 'MEDICAMENTOS') {
                         $item_name = $record->medicine ?? null;
@@ -95,8 +98,11 @@ class OperationServiceOrderController extends Controller
                         $dosage_instruction = is_string($line['indications'] ?? null)
                             ? $line['indications']
                             : ($record->indications ?? null);
-                        $quantity = max(1, (int) ($line['quantity'] ?? 1));
+                        $quantity = self::medicationLineQuantity($line, $record);
                         $item_unit = $record->operationInventory?->unit;
+                        // El vínculo permite descontar del inventario exactamente este producto al entregarlo.
+                        $medicationId = $record instanceof TelemedicinePatientMedications ? (int) $record->getKey() : null;
+                        $inventoryId = filled($record->operation_inventory_id ?? null) ? (int) $record->operation_inventory_id : null;
                     } elseif ($operationServiceOrder['service_type'] == 'LABORATORIOS') {
                         $item_name = $record->laboratory ?? null;
                         $category = 'LABORATORIOS';
@@ -125,6 +131,8 @@ class OperationServiceOrderController extends Controller
 
                     OperationServiceOrderItem::create([
                         'operation_service_order_id' => $operationServiceOrder['id'],
+                        'telemedicine_patient_medication_id' => $medicationId,
+                        'operation_inventory_id' => $inventoryId,
                         'item_name' => $item_name,
                         'category' => $category,
                         'dosage_instruction' => $dosage_instruction,
@@ -158,6 +166,22 @@ class OperationServiceOrderController extends Controller
         });
 
         return true;
+    }
+
+    /**
+     * Cantidad a entregar: la indicada al crear la orden o, si no se indicó, la recetada.
+     *
+     * @param  array<string, mixed>  $line
+     */
+    public static function medicationLineQuantity(array $line, mixed $record): int
+    {
+        $quantity = (int) ($line['quantity'] ?? 0);
+
+        if ($quantity < 1) {
+            $quantity = (int) ($record->quantity ?? 0);
+        }
+
+        return max(1, $quantity);
     }
 
     public static function createOrderServiceInFramasysDoc(array $data, array $ownerRecord, Collection $records)

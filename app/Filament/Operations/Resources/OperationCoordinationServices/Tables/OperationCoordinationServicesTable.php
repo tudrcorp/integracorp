@@ -2404,9 +2404,7 @@ class OperationCoordinationServicesTable
         $safeOrder = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) $order->order_number) ?: (string) $order->id;
         $baseDirectory = 'operation-service-orders/generated-pdf';
 
-        $serviceOrderPdf = OperationServiceOrderPdfService::make($order)->output();
-        $serviceOrderPath = $baseDirectory.'/service-order-'.$safeOrder.'-'.$timestamp.'.pdf';
-        $disk->put($serviceOrderPath, $serviceOrderPdf);
+        $serviceOrderPath = OperationServiceOrderPdfService::ensurePersisted($order);
 
         $quotePath = null;
         if ($createQuote) {

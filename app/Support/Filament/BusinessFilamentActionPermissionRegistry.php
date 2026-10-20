@@ -34,6 +34,10 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const FINALIZE_OPERATION_SERVICE_ORDER = 'finalizar-ordenes-servicio';
 
+    public const EXTERNAL_MANAGE_COVERED_ITEMS = 'gestion-externa-items-cubiertos';
+
+    public const REVERSE_FINALIZED_ITEMS = 'reversar-items-finalizados';
+
     public const EDIT_INDIVIDUAL_AFFILIATE_PERSONAL_DATA = 'editar-afiliados-individuales';
 
     public const EDIT_CORPORATE_AFFILIATE_PERSONAL_DATA = 'editar-afiliados-corporativos';
@@ -127,6 +131,16 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::FINALIZE_OPERATION_SERVICE_ORDER => [
                 'name' => 'Finalizar órdenes de servicio (cargando el documento)',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::EXTERNAL_MANAGE_COVERED_ITEMS => [
+                'name' => 'Gestión externa de ítems cubiertos',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::REVERSE_FINALIZED_ITEMS => [
+                'name' => 'Reversar ítems finalizados',
                 'group' => 'COORDINACIÓN DE SERVICIOS',
                 'modules' => ['OPERACIONES'],
             ],

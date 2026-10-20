@@ -256,13 +256,16 @@ class SupplierServiceOrders extends ManageRelatedRecords
             ->modalIcon(Heroicon::OutlinedCheckBadge)
             ->modalIconColor('success')
             ->modalHeading(fn (OperationServiceOrder $record): string => 'Finalizar orden '.OperationServiceOrderDocuments::orderLabel($record))
-            ->modalDescription('Cargue el documento que respalda el servicio prestado. Al finalizar no se puede deshacer.')
+            ->modalDescription(fn (OperationServiceOrder $record): string => mb_strtoupper(trim((string) $record->service_type)) === 'MEDICAMENTOS'
+                ? 'Cargue el comprobante de entrega de los medicamentos. Al finalizar no se puede deshacer.'
+                : 'Cargue el documento que respalda el servicio prestado. Al finalizar no se puede deshacer.')
             ->modalSubmitActionLabel('Finalizar orden')
             ->modalCancelActionLabel('Cancelar')
             ->schema(fn (OperationServiceOrder $record): array => [
                 Placeholder::make('finalizeSummary')
                     ->hiddenLabel()
                     ->content(fn (): HtmlString => self::finalizeSummary($record)),
+                ...OperationServiceOrderDocuments::medicationDeliverySchema($record),
                 ...OperationServiceOrderDocuments::formSchema(
                     fn (): string => OperationServiceOrderDocuments::directory($record),
                 ),
@@ -280,6 +283,7 @@ class SupplierServiceOrders extends ManageRelatedRecords
                         OperationServiceOrderDocuments::fromForm($data),
                         $user,
                         OperationServiceOrderDocuments::ORIGIN_SUPPLIER,
+                        filled($data[OperationServiceOrderDocuments::INVENTORY_UBICATION_FIELD] ?? null) ? (int) $data[OperationServiceOrderDocuments::INVENTORY_UBICATION_FIELD] : null,
                     );
                 } catch (OperationServiceOrderFinalizationException $exception) {
                     Notification::make()
