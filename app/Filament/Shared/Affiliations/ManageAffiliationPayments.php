@@ -5,9 +5,15 @@ declare(strict_types=1);
 namespace App\Filament\Shared\Affiliations;
 
 use App\Models\Affiliation;
+use App\Models\PaidMembership;
+use App\Models\PaidMembershipCorporate;
 use App\Models\Sale;
+use App\Models\User;
 use App\Services\SaleInvoicePdfService;
 use App\Support\Affiliations\PaymentVoucherFile;
+use App\Support\Affiliations\PendingPaymentDeletion;
+use App\Support\Filament\BusinessFilamentActionAccess;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\RecordPageHeader;
 use App\Support\Sales\InvoiceVesLineAmounts;
 use App\Support\Sales\PaymentSaleResolver;
@@ -16,8 +22,11 @@ use Carbon\Carbon;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
@@ -39,6 +48,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -299,9 +309,10 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
                     self::downloadVoucherAction(PaymentVoucherFile::CURRENCY_USD),
                     self::viewVoucherAction(PaymentVoucherFile::CURRENCY_VES),
                     self::downloadVoucherAction(PaymentVoucherFile::CURRENCY_VES),
+                    self::deletePendingPaymentAction(),
                 ])
                     ->icon('heroicon-c-ellipsis-vertical')
-                    ->tooltip('Comprobante del pago'),
+                    ->tooltip('Acciones del pago'),
             ], position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([])
             ->headerActions([])
@@ -564,6 +575,96 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
         } finally {
             $lock->release();
         }
+    }
+
+    /**
+     * Elimina un pago PENDIENTE que no dejó rastro (venta, cobranza, comisión ni
+     * conciliación). Con permiso propio y nota obligatoria; las reglas viven en
+     * {@see PendingPaymentDeletion}. Si está bloqueado, el modal explica por qué.
+     */
+    public static function deletePendingPaymentAction(): Action
+    {
+        return Action::make('deletePendingPayment')
+            ->label('Eliminar pago pendiente')
+            ->icon(Heroicon::OutlinedTrash)
+            ->color('danger')
+            ->visible(fn (Model $record): bool => Str::upper(trim((string) $record->getAttribute('status'))) === PendingPaymentDeletion::PENDING_STATUS
+                && BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::DELETE_PENDING_PAYMENT))
+            ->modalIcon(Heroicon::OutlinedTrash)
+            ->modalIconColor('danger')
+            ->modalHeading('Eliminar pago pendiente')
+            ->modalDescription('Revise los datos. Esta acción saca el pago del historial; queda registrada con su nota y el comprobante se resguarda.')
+            ->modalWidth(Width::TwoExtraLarge)
+            ->modalSubmitActionLabel('Sí, eliminar el pago')
+            ->modalSubmitAction(fn (Action $action, Model $record): Action|false => PendingPaymentDeletion::blockers($record) === []
+                ? $action->color('danger')
+                : false)
+            ->modalCancelActionLabel('Cerrar')
+            ->schema(fn (Model $record): array => [
+                Placeholder::make('summary')
+                    ->hiddenLabel()
+                    ->content(fn (): View => view('filament.shared.affiliations.payment-delete-summary', [
+                        'record' => $record,
+                        'blockers' => PendingPaymentDeletion::blockers($record),
+                        'references' => self::references($record),
+                        'voucher' => self::voucherSummary($record),
+                    ])),
+                Textarea::make('note')
+                    ->label('Nota: ¿por qué se elimina?')
+                    ->placeholder('Ej.: Comprobante duplicado; el mismo pago ya fue aprobado el 09/10/2025 con la referencia 211556.')
+                    ->helperText('Obligatoria, mínimo '.PendingPaymentDeletion::NOTE_MIN_LENGTH.' caracteres. Queda en la traza con su nombre y la fecha.')
+                    ->rows(3)
+                    ->required()
+                    ->minLength(PendingPaymentDeletion::NOTE_MIN_LENGTH)
+                    ->maxLength(PendingPaymentDeletion::NOTE_MAX_LENGTH)
+                    ->validationAttribute('nota')
+                    ->visible(PendingPaymentDeletion::blockers($record) === []),
+            ])
+            ->action(function (Model $record, array $data, Action $action): void {
+                $user = Auth::user();
+                abort_unless(
+                    $user instanceof User
+                        && ($record instanceof PaidMembership || $record instanceof PaidMembershipCorporate)
+                        && BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::DELETE_PENDING_PAYMENT),
+                    403,
+                );
+
+                try {
+                    $result = PendingPaymentDeletion::delete($record, (string) ($data['note'] ?? ''), $user, Filament::getCurrentPanel()?->getId());
+                } catch (InvalidArgumentException $exception) {
+                    Notification::make()
+                        ->title('No se eliminó el pago')
+                        ->body($exception->getMessage())
+                        ->danger()
+                        ->persistent()
+                        ->send();
+
+                    $action->halt();
+
+                    return;
+                } catch (Throwable $exception) {
+                    report($exception);
+
+                    Notification::make()
+                        ->title('No se eliminó el pago')
+                        ->body('No se cambió nada. Intente de nuevo; si se repite, avise a soporte con la hora del intento.')
+                        ->danger()
+                        ->send();
+
+                    $action->halt();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Pago pendiente eliminado')
+                    ->body(($result['kept'] !== []
+                        ? 'El comprobante se dejó en su sitio porque otro pago lo usa. '
+                        : ($result['archived'] !== [] ? 'El comprobante quedó resguardado en un archivo privado. ' : ''))
+                        .'Quedó registrado en la traza (#'.$result['trace_id'].').')
+                    ->success()
+                    ->send();
+            });
     }
 
     public static function viewVoucherAction(string $currency): Action
