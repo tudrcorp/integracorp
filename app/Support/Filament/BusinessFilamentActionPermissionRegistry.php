@@ -48,6 +48,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const MANAGE_WORKDAYS = 'gestionar-jornadas-laborales';
 
+    public const DELETE_PENDING_PAYMENT = 'eliminar-pago-pendiente';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -163,6 +165,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Actividad de usuarios: cambiar el tipo de jornada y registrar ausencias (vacaciones, reposos, permisos)',
                 'group' => 'MONITOREO Y SEGURIDAD',
                 'modules' => [self::OWNER_MODULE],
+            ],
+            self::DELETE_PENDING_PAYMENT => [
+                'name' => 'Eliminar pagos pendientes del historial de pagos (con nota obligatoria)',
+                'group' => 'AFILIACIONES',
+                'modules' => [self::OWNER_MODULE, 'ADMINISTRACION'],
             ],
             self::ACCEPT_EARLY_RENOVATION => [
                 'name' => 'Renovar antes del período de renovación (individual y corporativa)',
