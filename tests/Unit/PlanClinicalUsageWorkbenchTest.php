@@ -456,9 +456,16 @@ it('sin la clave otp la página no ofrece copiar ni agregar y no guarda', functi
     expect($page->clinicalUsageIsUnlocked())->toBeFalse();
 
     $actions = (fn (): array => $this->getHeaderActions())->call($page);
-    $names = array_map(fn (Filament\Actions\Action $action): ?string => $action->getName(), $actions);
+    $visible = array_values(array_filter($actions, fn (Filament\Actions\Action|Filament\Actions\ActionGroup $action): bool => $action->isVisible()));
 
-    expect($names)->toBe(['unlockClinicalUsage']);
+    expect($visible)->toHaveCount(1)
+        ->and($visible[0])->toBeInstanceOf(Filament\Actions\Action::class)
+        ->and($visible[0]->getName())->toBe('unlockClinicalUsage');
+
+    $group = collect($actions)->first(fn ($action): bool => $action instanceof Filament\Actions\ActionGroup);
+    foreach ($group->getActions() as $inner) {
+        expect($inner->isVisible())->toBeFalse();
+    }
 
     expect(fn () => $page->save())->toThrow(Symfony\Component\HttpKernel\Exception\HttpException::class);
 });
@@ -547,4 +554,24 @@ it('al guardar rechaza vincular una prestación equivalente a otra que el plan y
         ->toThrow(InvalidArgumentException::class, 'el mismo beneficio dos veces');
 
     expect(BenefitPlan::query()->where('plan_id', $plan->id)->count())->toBe(1);
+});
+
+it('tras confirmar la otp el menú de acciones aparece en la misma petición', function (): void {
+    $page = new App\Filament\Business\Resources\Plans\Pages\ManagePlanClinicalUsage;
+
+    // La petición empieza bloqueada: así arma Filament el encabezado.
+    $actions = (fn (): array => $this->getHeaderActions())->call($page);
+    $group = collect($actions)->first(fn ($action): bool => $action instanceof Filament\Actions\ActionGroup);
+    $unlock = collect($actions)->first(fn ($action): bool => $action instanceof Filament\Actions\Action && $action->getName() === 'unlockClinicalUsage');
+
+    expect($group)->not->toBeNull()
+        ->and($group->isVisible())->toBeFalse();
+
+    // El analista confirma la OTP dentro de esa misma petición.
+    (fn () => $this->clinicalUsageUnlocked = true)->call($page);
+
+    expect($group->isVisible())->toBeTrue()
+        ->and($unlock->isVisible())->toBeFalse()
+        ->and(collect($group->getActions())->map(fn ($action): string => $action->getName())->all())
+        ->toBe(['copyFromPlan', 'addBenefit', 'history']);
 });
