@@ -50,6 +50,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const DELETE_PENDING_PAYMENT = 'eliminar-pago-pendiente';
 
+    public const UPDATE_CORPORATE_POPULATION = 'actualizar-poblacion-corporativa';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -164,6 +166,11 @@ final class BusinessFilamentActionPermissionRegistry
             self::MANAGE_WORKDAYS => [
                 'name' => 'Actividad de usuarios: cambiar el tipo de jornada y registrar ausencias (vacaciones, reposos, permisos)',
                 'group' => 'MONITOREO Y SEGURIDAD',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::UPDATE_CORPORATE_POPULATION => [
+                'name' => 'Actualizar población corporativa desde el archivo del cliente (aplicar y revertir con OTP)',
+                'group' => 'AFILIACIONES',
                 'modules' => [self::OWNER_MODULE],
             ],
             self::DELETE_PENDING_PAYMENT => [

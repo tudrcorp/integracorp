@@ -52,6 +52,16 @@ class ViewAffiliationCorporate extends ViewRecord
                 ->extraAttributes([
                     'class' => FilamentIosButton::extraClassForFilamentColor('success'),
                 ]),
+            Action::make('updatePopulation')
+                ->label('Actualizar población')
+                ->icon(Heroicon::OutlinedUserGroup)
+                ->color('primary')
+                ->tooltip('Subir el archivo de población de la empresa: el sistema propone altas, reactivaciones y bajas, y usted aprueba con OTP.')
+                ->url(fn (AffiliationCorporate $record): string => AffiliationCorporateResource::getUrl('population', ['record' => $record->getKey()]))
+                ->visible(fn (): bool => CorporatePopulationUpdates::canAccess())
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
+                ]),
             FilamentIosActionsMenu::make([
                 Action::make('attachDocuments')
                     ->label('Adjuntar documentos')

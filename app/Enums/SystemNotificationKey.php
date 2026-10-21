@@ -26,6 +26,7 @@ enum SystemNotificationKey: string
     case OperationsAffiliateUpdate = 'operations_affiliate_update';
     case EarlyRenovationAcceptance = 'early_renovation_acceptance';
     case TelemedicineCaseAgentNotice = 'telemedicine_case_agent_notice';
+    case CorporatePopulationUpdate = 'corporate_population_update';
 
     public function label(): string
     {
@@ -49,6 +50,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert => 'Alertas de colas y errores',
             self::OperationsAffiliateUpdate => 'Actualización de afiliados (Operaciones)',
             self::EarlyRenovationAcceptance => 'Renovación anticipada',
+            self::CorporatePopulationUpdate => 'Clave OTP de actualización de población corporativa',
             self::TelemedicineCaseAgentNotice => 'Nuevo caso al agente de la afiliación',
         };
     }
@@ -75,6 +77,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert => 'Destinatarios del aviso por WhatsApp y correo cuando una cola se queda sin worker, se atasca o acumula trabajos colgados, cuando se dispara la cantidad de trabajos fallidos, o cuando aparece un error nuevo o vuelve uno ya resuelto.',
             self::OperationsAffiliateUpdate => 'Equipo de Afiliaciones que recibe, por WhatsApp y correo, el detalle de cada dato personal de un afiliado individual o corporativo que Operaciones actualiza: qué cambió, el valor anterior y el nuevo, quién lo hizo y cuándo.',
             self::EarlyRenovationAcceptance => 'Contactos adicionales que reciben, por WhatsApp y correo, el aviso cada vez que un analista con permiso acepta una renovación (individual o corporativa) antes del período de renovación. Además se avisa siempre a todos los usuarios activos con SUPERADMIN.',
+            self::CorporatePopulationUpdate => 'Quienes reciben la clave OTP de 6 dígitos cuando un analista de Negocios va a aplicar o revertir la actualización de población de una afiliación corporativa (altas, reactivaciones, bajas y corrección de cédulas desde el archivo del cliente).',
             self::TelemedicineCaseAgentNotice => 'Copias por WhatsApp del aviso que recibe el agente (o la agencia) dueño de la afiliación cuando se registra un caso nuevo de telemedicina para uno de sus afiliados.',
         };
     }
@@ -101,6 +104,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert => 'Alertas de colas y errores',
             self::OperationsAffiliateUpdate => 'Aviso de afiliados actualizados por Operaciones',
             self::EarlyRenovationAcceptance => 'Aviso de renovaciones aceptadas antes de tiempo',
+            self::CorporatePopulationUpdate => 'Clave OTP para actualizar población corporativa',
             self::TelemedicineCaseAgentNotice => 'Aviso de caso nuevo al agente',
         };
     }
@@ -127,6 +131,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert => 'Cada minuto un vigilante revisa las colas, los trabajos fallidos y los errores del sistema. Si algo necesita atención avisa a estos contactos y a los usuarios del monitor, sin depender de la cola (funciona aunque los workers estén caídos), una vez por problema cada 30 minutos.',
             self::OperationsAffiliateUpdate => 'Cuando un analista de Operaciones guarda cambios en los datos personales de un afiliado individual o corporativo —desde «Editar» o al fijar la dirección con el mapa—, el sistema encola un correo y un WhatsApp con cada campo modificado (antes → después), el analista, la fecha y si también se actualizó el paciente de telemedicina.',
             self::EarlyRenovationAcceptance => 'El período de renovación se abre a 30 días de la fecha de renovación. Un analista con el permiso «Renovar antes del período de renovación» puede aceptar antes, con un motivo obligatorio. Cada vez que lo hace se encola un WhatsApp y un correo con la afiliación, los días que faltaban, el plan aplicado, quién lo autorizó y el motivo.',
+            self::CorporatePopulationUpdate => 'El analista sube el archivo de población del corporativo, el sistema lo compara con los afiliados y arma un resumen. Al aprobar (o revertir) la actualización, el sistema envía en el acto (WhatsApp y correo) una clave de 6 dígitos con 5 minutos de vida a estos contactos. Sin destinatarios o con la alerta pausada no se puede aplicar ni revertir.',
             self::TelemedicineCaseAgentNotice => 'Cuando se registra un caso nuevo para un paciente —desde Operaciones al asignar médico, por registro directo o RETAIL—, el sistema le envía un WhatsApp al agente dueño de su afiliación (o a la agencia, si la afiliación no tiene agente) con los datos del paciente y el número de caso. Se envía una sola vez por caso: los seguimientos no lo repiten.',
         };
     }
@@ -251,6 +256,12 @@ enum SystemNotificationKey: string
                 '3. Histórico marcado como anticipada',
                 '4. WhatsApp + correo a SUPERADMIN',
             ],
+            self::CorporatePopulationUpdate => [
+                '1. Analista sube el archivo del cliente',
+                '2. El sistema arma el resumen',
+                '3. OTP 6 dígitos / 5 min',
+                '4. Se aplica o se revierte',
+            ],
             self::TelemedicineCaseAgentNotice => [
                 '1. Se registra un caso nuevo',
                 '2. Se busca el agente de la afiliación',
@@ -282,6 +293,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert => 'Acción requerida:',
             self::OperationsAffiliateUpdate => 'Acción requerida para Afiliaciones:',
             self::EarlyRenovationAcceptance => 'Control de excepciones:',
+            self::CorporatePopulationUpdate => 'Cambio masivo de población:',
             self::TelemedicineCaseAgentNotice => 'Privacidad del paciente:',
         };
     }
@@ -308,6 +320,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert => 'abra Negocios → Colas y errores: cada problema trae su diagnóstico, la línea de código donde ocurrió y la acción recomendada (reintentar, eliminar o corregir).',
             self::OperationsAffiliateUpdate => 'revise cada cambio contra el expediente de la afiliación. Si la fecha de nacimiento dejó la edad fuera del rango tarifario, el aviso lo marca: la tarifa no se recalcula sola y debe revisarla con Negocios.',
             self::EarlyRenovationAcceptance => 'revise el motivo y el histórico de la renovación (Negocios → Histórico de renovaciones, filtro «Anticipadas»). La nueva vigencia parte de la fecha de renovación original; renovar antes no adelanta el aniversario. El permiso se asigna por usuario en Negocios y en Administración.',
+            self::CorporatePopulationUpdate => 'dicte la clave solo al analista que está aplicando o revirtiendo la carga. Vence en 5 minutos y es de un solo uso. Sin esta clave no se agregan, reactivan ni dan de baja afiliados.',
             self::TelemedicineCaseAgentNotice => 'el mensaje lleva solo datos de identificación del paciente, de su afiliación y del caso. No incluye motivo de consulta, diagnóstico ni ningún dato clínico.',
         };
     }
@@ -334,6 +347,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert => 'heroicon-o-queue-list',
             self::OperationsAffiliateUpdate => 'heroicon-o-user-circle',
             self::EarlyRenovationAcceptance => 'heroicon-o-forward',
+            self::CorporatePopulationUpdate => 'heroicon-o-user-group',
             self::TelemedicineCaseAgentNotice => 'heroicon-o-user-plus',
         };
     }
@@ -369,6 +383,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert => [],
             self::OperationsAffiliateUpdate => [],
             self::EarlyRenovationAcceptance => [],
+            self::CorporatePopulationUpdate => [],
             self::TelemedicineCaseAgentNotice => [],
         };
     }
@@ -416,6 +431,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert => [],
             self::OperationsAffiliateUpdate => [],
             self::EarlyRenovationAcceptance => [],
+            self::CorporatePopulationUpdate => [],
             self::TelemedicineCaseAgentNotice => [],
         };
     }
@@ -442,6 +458,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert => 'Sin contactos adicionales. Igual se avisará a los usuarios con acceso al monitor en vivo.',
             self::OperationsAffiliateUpdate => 'Aún no hay destinatarios. Operaciones podrá actualizar los datos del afiliado, pero el equipo de Afiliaciones no recibirá el aviso.',
             self::EarlyRenovationAcceptance => 'Sin contactos adicionales. Igual se avisará por correo y WhatsApp a los usuarios activos con SUPERADMIN.',
+            self::CorporatePopulationUpdate => 'Aún no hay destinatarios. El analista podrá analizar archivos, pero no podrá aplicar ni revertir una actualización hasta que agregue al menos un correo o un teléfono.',
             self::TelemedicineCaseAgentNotice => 'Sin copias. El aviso igual le llega al agente o a la agencia dueña de la afiliación.',
         };
     }
@@ -508,6 +525,9 @@ enum SystemNotificationKey: string
             self::EarlyRenovationAcceptance => $empty
                 ? 'Sin contactos adicionales. Se avisará solo a los usuarios activos con SUPERADMIN.'
                 : 'Estos contactos y los usuarios activos con SUPERADMIN recibirán el aviso de cada renovación anticipada.',
+            self::CorporatePopulationUpdate => $empty
+                ? 'No hay destinatarios. Nadie podrá aplicar ni revertir actualizaciones de población.'
+                : 'La clave OTP se enviará por correo y WhatsApp a estos contactos cada vez que se aplique o revierta una actualización de población.',
             self::TelemedicineCaseAgentNotice => $empty
                 ? 'Sin copias. El aviso de cada caso nuevo seguirá llegando al agente o a la agencia de la afiliación.'
                 : 'Estos números recibirán una copia del aviso que llega al agente o a la agencia por cada caso nuevo.',
@@ -530,6 +550,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert,
             self::OperationsAffiliateUpdate,
             self::EarlyRenovationAcceptance,
+            self::CorporatePopulationUpdate,
             self::TelemedicineCaseAgentNotice,
         ], true);
     }
@@ -556,6 +577,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert => 'Si está inactiva, el monitor sigue mostrando colas, fallidos y errores, pero no se envía WhatsApp ni correo.',
             self::OperationsAffiliateUpdate => 'Si está inactiva, Operaciones sigue pudiendo actualizar los datos del afiliado y el cambio queda en la auditoría, pero no se envía correo ni WhatsApp a Afiliaciones.',
             self::EarlyRenovationAcceptance => 'Si está inactiva, el analista con permiso igual puede renovar antes de tiempo y la renovación queda marcada en el histórico y en la auditoría, pero no se envía WhatsApp ni correo a nadie.',
+            self::CorporatePopulationUpdate => 'Si está inactiva, el analista puede subir y revisar archivos, pero no puede aplicar ni revertir la actualización: no se emite la clave OTP.',
             self::TelemedicineCaseAgentNotice => 'Si está inactiva, los casos se registran igual, pero no se envía el WhatsApp al agente ni las copias. Los casos registrados mientras estuvo inactiva no se avisan después.',
         };
     }
@@ -585,6 +607,7 @@ enum SystemNotificationKey: string
             self::LiveSystemAlert,
             self::OperationsAffiliateUpdate,
             self::EarlyRenovationAcceptance,
+            self::CorporatePopulationUpdate,
             self::TelemedicineCaseAgentNotice,
         ];
     }

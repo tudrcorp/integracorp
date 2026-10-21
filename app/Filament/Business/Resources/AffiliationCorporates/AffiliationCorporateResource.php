@@ -3,6 +3,8 @@
 namespace App\Filament\Business\Resources\AffiliationCorporates;
 
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\CorporateCertificateGenerator;
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\CorporatePopulationUpdateDetail;
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\CorporatePopulationUpdates;
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\CreateAffiliationCorporate;
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
@@ -175,6 +177,8 @@ class AffiliationCorporateResource extends Resource
             'index' => ListAffiliationCorporates::route('/'),
             'create' => CreateAffiliationCorporate::route('/create'),
             'certificate-generator' => CorporateCertificateGenerator::route('/generador-certificado'),
+            'population' => CorporatePopulationUpdates::route('/{record}/poblacion'),
+            'population-detail' => CorporatePopulationUpdateDetail::route('/{record}/poblacion/{update}'),
             'view' => ViewAffiliationCorporate::route('/{record}'),
             'edit' => EditAffiliationCorporate::route('/{record}/edit'),
         ];
