@@ -96,11 +96,12 @@ class ManagePlanClinicalUsage extends Page
 
     protected function getHeaderActions(): array
     {
-        if (! $this->clinicalUsageIsUnlocked()) {
-            return $this->clinicalUsageAccessHeaderActions();
-        }
-
+        // Filament arma las acciones del encabezado al inicio de cada petición: el
+        // menú va siempre en la lista y se muestra solo con la visita autorizada.
+        // Si se armara solo al estar desbloqueado, tras confirmar la OTP no
+        // aparecería, porque esa petición empezó bloqueada.
         return [
+            ...$this->clinicalUsageAccessHeaderActions(),
             ActionGroup::make([
                 $this->copyFromPlanAction(),
                 $this->addBenefitAction(),
@@ -109,7 +110,8 @@ class ManagePlanClinicalUsage extends Page
                 ->label('Acciones')
                 ->icon(Heroicon::OutlinedEllipsisVertical)
                 ->button()
-                ->color('gray'),
+                ->color('gray')
+                ->visible(fn (): bool => $this->clinicalUsageIsUnlocked()),
         ];
     }
 
@@ -318,6 +320,7 @@ class ManagePlanClinicalUsage extends Page
     protected function copyFromPlanAction(): Action
     {
         return Action::make('copyFromPlan')
+            ->visible(fn (): bool => $this->clinicalUsageIsUnlocked())
             ->label('Copiar de otro plan')
             ->icon(Heroicon::OutlinedDocumentDuplicate)
             ->color('primary')
@@ -380,6 +383,7 @@ class ManagePlanClinicalUsage extends Page
     protected function addBenefitAction(): Action
     {
         return Action::make('addBenefit')
+            ->visible(fn (): bool => $this->clinicalUsageIsUnlocked())
             ->label('Agregar beneficio')
             ->icon(Heroicon::OutlinedPlusCircle)
             ->color('gray')
@@ -446,6 +450,7 @@ class ManagePlanClinicalUsage extends Page
     protected function historyAction(): Action
     {
         return Action::make('history')
+            ->visible(fn (): bool => $this->clinicalUsageIsUnlocked())
             ->label('Historial')
             ->icon(Heroicon::OutlinedClock)
             ->color('gray')
