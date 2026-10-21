@@ -12,6 +12,7 @@ use App\Models\AgeRange;
 use App\Services\CorporateAffiliatePlanSyncService;
 use App\Services\CorporateAffiliateRemovalService;
 use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
+use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
 use App\Support\SecurityAudit;
 use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -176,6 +177,10 @@ final class CorporateAffiliatePlanSynchronizer
 
     private static function specificBusinessUnitMatches(AffiliationCorporate $owner, AffiliateCorporate $affiliate): bool
     {
+        if (AffiliateSpecificBusinessUnitChanger::isLocked($affiliate)) {
+            return true;
+        }
+
         $ownerValue = AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit(
             $owner->specific_business_unit,
         );
@@ -290,9 +295,9 @@ final class CorporateAffiliatePlanSynchronizer
             'subtotal_payment_frequency' => CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($fee, $frequency),
             'subtotal_daily' => $fee / 30,
             'business_unit_id' => $owner->business_unit_id,
-            'specific_business_unit' => AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit(
-                $owner->specific_business_unit,
-            ),
+            'specific_business_unit' => AffiliateSpecificBusinessUnitChanger::isLocked($affiliate)
+                ? AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit($affiliate->specific_business_unit)
+                : AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit($owner->specific_business_unit),
             'business_line_id' => $owner->business_line_id,
         ];
     }

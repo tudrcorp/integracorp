@@ -66,10 +66,15 @@ it('expone la unidad de negocio especifica en tablas de afiliados y pacientes', 
         ->toContain("->label('Unidad de negocio específica')");
 
     expect(file_get_contents($basePath.'/app/Filament/Business/Resources/Affiliations/RelationManagers/AffiliatesRelationManager.php'))
-        ->toContain("TextColumn::make('specific_business_unit')");
+        ->toContain('$this->specificBusinessUnitColumn()');
 
     expect(file_get_contents($basePath.'/app/Filament/Business/Resources/AffiliationCorporates/RelationManagers/CorporateAffiliatesRelationManager.php'))
-        ->toContain("TextColumn::make('specific_business_unit')");
+        ->toContain('$this->specificBusinessUnitColumn()');
+
+    // Las dos tablas de afiliados de Negocios comparten la columna (editable con traza).
+    expect(file_get_contents($basePath.'/app/Filament/Business/Concerns/ManagesAffiliateSpecificBusinessUnit.php'))
+        ->toContain("TextColumn::make('specific_business_unit')")
+        ->toContain("->label('Unidad de negocio específica')");
 
     expect(file_get_contents($basePath.'/app/Filament/Operations/Resources/TelemedicinePatients/Tables/TelemedicinePatientsTable.php'))
         ->toContain("TextColumn::make('specific_business_unit')")

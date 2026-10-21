@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Affiliate;
-use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
+use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
 use App\Support\Telemedicine\TelemedicinePatientAssociationResolver;
 use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use App\Support\Telemedicine\TelemedicinePatientIdentity;
@@ -68,9 +68,7 @@ final class AssociateAffiliateWithTelemedicinePatientService
                 : null,
             'created_by' => $createdByName,
             'business_unit_id' => $affiliation->business_unit_id == null ? '----' : $affiliation->business_unit_id,
-            'specific_business_unit' => AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit(
-                $affiliate->specific_business_unit ?? $affiliation->specific_business_unit,
-            ),
+            'specific_business_unit' => AffiliateSpecificBusinessUnitChanger::effectiveValueFor($affiliate, $affiliation),
             'business_line_id' => $affiliation->business_line_id == null ? '----' : $affiliation->business_line_id,
             'supplier_id' => Auth::user()?->supplier_id,
         ];

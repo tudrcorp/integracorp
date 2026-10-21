@@ -635,6 +635,44 @@ final class TelemedicinePatientPlanBridge
         });
     }
 
+    /**
+     * Pacientes de telemedicina ligados a este afiliado en su misma afiliación
+     * (misma cédula y la afiliación como su asociación vigente).
+     *
+     * @return Collection<int, TelemedicinePatient>
+     */
+    public static function linkedPatientsFor(Affiliate|AffiliateCorporate $affiliate): Collection
+    {
+        if ($affiliate instanceof AffiliateCorporate) {
+            if ((int) ($affiliate->affiliation_corporate_id ?? 0) < 1) {
+                return new Collection;
+            }
+
+            $code = (string) ($affiliate->affiliationCorporate?->code ?? '');
+
+            return self::matchingCorporatePatients($affiliate)
+                ->filter(static fn (TelemedicinePatient $patient): bool => strtoupper((string) $patient->type_affiliation) === 'CORPORATIVO'
+                    && ($code === '' || (string) $patient->code_affiliation === $code))
+                ->values();
+        }
+
+        if ((int) ($affiliate->affiliation_id ?? 0) < 1) {
+            return new Collection;
+        }
+
+        $code = (string) ($affiliate->affiliation?->code ?? '');
+
+        return self::matchingIndividualPatients($affiliate)
+            ->filter(static fn (TelemedicinePatient $patient): bool => strtoupper((string) $patient->type_affiliation) === 'INDIVIDUAL'
+                && ($code === '' || (string) $patient->code_affiliation === $code))
+            ->values();
+    }
+
+    public static function flushCachesFor(int $patientId): void
+    {
+        self::flushPatientCaches($patientId);
+    }
+
     private static function flushPatientCaches(int $patientId): void
     {
         if ($patientId > 0) {

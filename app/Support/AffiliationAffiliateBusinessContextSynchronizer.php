@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Models\Affiliate;
 use App\Models\Affiliation;
+use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
 use InvalidArgumentException;
 
 final class AffiliationAffiliateBusinessContextSynchronizer
@@ -16,13 +17,23 @@ final class AffiliationAffiliateBusinessContextSynchronizer
             throw new InvalidArgumentException('Debe definir la unidad de negocio y la línea de servicio antes de sincronizar.');
         }
 
-        return Affiliate::query()
+        $updated = Affiliate::query()
             ->where('affiliation_id', $affiliation->id)
             ->update([
                 'business_unit_id' => (int) $businessUnitId,
                 'business_line_id' => (int) $businessLineId,
-                'specific_business_unit' => self::normalizeSpecificBusinessUnit($specificBusinessUnit),
             ]);
+
+        // La unidad específica fijada a mano por un analista no se pisa.
+        $specificUpdated = Affiliate::query()
+            ->where('affiliation_id', $affiliation->id)
+            ->when(
+                AffiliateSpecificBusinessUnitChanger::lockColumnExists('affiliates'),
+                static fn ($query) => $query->whereNull('specific_business_unit_locked_at'),
+            )
+            ->update(['specific_business_unit' => self::normalizeSpecificBusinessUnit($specificBusinessUnit)]);
+
+        return max($updated, $specificUpdated);
     }
 
     public static function normalizeSpecificBusinessUnit(mixed $value): ?string

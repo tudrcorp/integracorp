@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Affiliations\RelationManagers;
 
+use App\Filament\Business\Concerns\ManagesAffiliateSpecificBusinessUnit;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Models\AgeRange;
@@ -12,6 +13,7 @@ use App\Models\BusinessUnit;
 use App\Models\Plan;
 use App\Support\AffiliateVaucherIlsRemainingDays;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
 use App\Support\Filament\PatientAgeDisplay;
 use App\Support\FilamentDateDisplay;
 use App\Support\Plans\PlanInfantEligibility;
@@ -20,6 +22,7 @@ use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -51,6 +54,8 @@ use Illuminate\Support\Facades\Auth;
 
 class AffiliatesRelationManager extends RelationManager
 {
+    use ManagesAffiliateSpecificBusinessUnit;
+
     protected static string $relationship = 'affiliates';
 
     protected static ?string $title = 'Familiares afiliados';
@@ -384,17 +389,7 @@ class AffiliatesRelationManager extends RelationManager
                         return $query->whereHas('businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"));
                     })
                     ->sortable(),
-                TextColumn::make('specific_business_unit')
-                    ->label('Unidad de negocio específica')
-                    ->icon(Heroicon::PencilSquare)
-                    ->wrap()
-                    ->limit(28)
-                    ->tooltip(fn (Affiliate $record): ?string => filled($record->specific_business_unit)
-                        ? (string) $record->specific_business_unit
-                        : null)
-                    ->placeholder('—')
-                    ->searchable()
-                    ->toggleable(),
+                $this->specificBusinessUnitColumn(),
                 TextColumn::make('business_line_id')
                     ->label('Línea de servicio')
                     ->icon(Heroicon::QueueList)
@@ -670,9 +665,10 @@ class AffiliatesRelationManager extends RelationManager
                                     ->send();
                             }
                         })
-                        ->hidden(fn (Affiliate $record): bool => $record->vaucherIls !== null),
+                        ->hidden(fn (Affiliate $record): bool => $record->vaucherIls !== null || ! self::userIsBusinessAdmin()),
 
                     EditAction::make()
+                        ->hidden(fn (): bool => ! self::userIsBusinessAdmin())
                         ->label('Editar')
                         ->icon(Heroicon::PencilSquare)
                         ->color('warning')
@@ -714,6 +710,7 @@ class AffiliatesRelationManager extends RelationManager
                         }),
 
                     Action::make('changet_status')
+                        ->hidden(fn (): bool => ! self::userIsBusinessAdmin())
                         ->label('Dar de baja')
                         ->icon(Heroicon::Trash)
                         ->color('danger')
@@ -817,13 +814,19 @@ class AffiliatesRelationManager extends RelationManager
                                     ->send();
                             }
                         })
-                        ->hidden(fn (): bool => Auth::user()?->is_business_admin != 1),
+                        ->hidden(fn (): bool => ! self::userIsBusinessAdmin()),
 
+                    $this->changeSpecificBusinessUnitAction(),
+                    $this->specificBusinessUnitHistoryAction(),
                 ])
                     ->icon(Heroicon::EllipsisVertical)
-                    ->hidden(fn (): bool => $this->getOwnerRecord()->status === 'EXCLUIDO'
-                        || Auth::user()?->is_business_admin != 1),
+                    ->hidden(fn (): bool => $this->getOwnerRecord()->status === 'EXCLUIDO'),
 
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    $this->changeSpecificBusinessUnitBulkAction(),
+                ]),
             ])
             ->headerActions([
                 CreateAction::make()
@@ -863,6 +866,11 @@ class AffiliatesRelationManager extends RelationManager
             ->recalculateAffiliationTotalsFromAffiliates($owner);
     }
 
+    private static function userIsBusinessAdmin(): bool
+    {
+        return (int) (Auth::user()?->is_business_admin ?? 0) === 1;
+    }
+
     private function affiliateBusinessContextIsSynced(Affiliate $record): bool
     {
         $owner = $this->getOwnerRecord()->fresh();
@@ -871,15 +879,19 @@ class AffiliatesRelationManager extends RelationManager
             return false;
         }
 
+        // Una unidad específica fijada a mano no cuenta como desincronizada.
+        $specificMatches = AffiliateSpecificBusinessUnitChanger::isLocked($record)
+            || (string) ($record->specific_business_unit ?? '') === (string) ($owner->specific_business_unit ?? '');
+
         if (blank($owner->business_unit_id) || blank($owner->business_line_id)) {
             return blank($record->business_unit_id)
                 && blank($record->business_line_id)
-                && (string) ($record->specific_business_unit ?? '') === (string) ($owner->specific_business_unit ?? '');
+                && $specificMatches;
         }
 
         return (int) $record->business_unit_id === (int) $owner->business_unit_id
             && (int) $record->business_line_id === (int) $owner->business_line_id
-            && (string) ($record->specific_business_unit ?? '') === (string) ($owner->specific_business_unit ?? '');
+            && $specificMatches;
     }
 
     private function businessContextBadgeColor(mixed $affiliateValue, mixed $ownerValue): string
