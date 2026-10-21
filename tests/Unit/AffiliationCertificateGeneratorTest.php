@@ -259,13 +259,12 @@ it('la página elige la afiliación, marca todos los carnets y genera la vista p
     $page->assertSee('Vista previa')->assertSee('Descargar PDF');
 });
 
-it('el botón está en el encabezado de la tabla de afiliaciones individuales', function (): void {
+it('la tabla de afiliaciones individuales ya no tiene el botón en el encabezado', function (): void {
     $table = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Tables/AffiliationsTable.php');
 
     expect($table)
-        ->toContain("Action::make('certificateGenerator')")
-        ->toContain("->label('Generador de Certificado')")
-        ->toContain("BusinessAffiliationResource::getUrl('certificate-generator')");
+        ->not->toContain('->headerActions(')
+        ->not->toContain("Action::make('certificateGenerator')");
 
     expect(CertificateGenerator::searchAffiliations('a'))->toBe([]);
 });
@@ -651,9 +650,9 @@ describe('corporativas', function (): void {
             ->assertSeeHtml('vista=previa');
     });
 
-    it('el botón está en el encabezado de la tabla corporativa', function (): void {
+    it('la tabla corporativa ya no tiene el botón en el encabezado', function (): void {
         expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Tables/AffiliationCorporatesTable.php'))
-            ->toContain("Action::make('certificateGenerator')")
-            ->toContain("AffiliationCorporateResource::getUrl('certificate-generator')");
+            ->not->toContain('->headerActions(')
+            ->not->toContain("Action::make('certificateGenerator')");
     });
 });

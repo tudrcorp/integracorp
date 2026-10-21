@@ -2,8 +2,6 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Tables;
 
-use App\Filament\Business\Resources\Affiliations\AffiliationResource as BusinessAffiliationResource;
-use App\Filament\Business\Resources\Affiliations\Pages\CertificateGenerator;
 use App\Filament\Resources\Affiliations\AffiliationResource;
 use App\Filament\Shared\Affiliations\ChangeAffiliationPlanBulkAction;
 use App\Http\Controllers\AffiliateExportCsvController;
@@ -22,7 +20,6 @@ use App\Support\Affiliations\AffiliationsRankingQuery;
 use App\Support\Affiliations\PlanChange\IndividualAffiliationPlanChanger;
 use App\Support\AffiliationWhiteCompany;
 use App\Support\BcvOfficialRate;
-use App\Support\Filament\FilamentIosButton;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -453,15 +450,6 @@ class AffiliationsTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
-            ->headerActions([
-                Action::make('certificateGenerator')
-                    ->label('Generador de Certificado')
-                    ->icon(Heroicon::OutlinedDocumentCheck)
-                    ->color('success')
-                    ->extraAttributes(['class' => FilamentIosButton::extraClassForFilamentColor('success')])
-                    ->visible(fn (): bool => CertificateGenerator::canAccess())
-                    ->url(fn (): string => BusinessAffiliationResource::getUrl('certificate-generator')),
-            ])
             ->recordActions([
                 ActionGroup::make([
 
