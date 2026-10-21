@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers;
 
+use App\Filament\Business\Concerns\ManagesAffiliateSpecificBusinessUnit;
 use App\Filament\Business\Resources\AffiliationCorporates\Support\CorporateAffiliateIlsVoucherForm;
 use App\Http\Controllers\AffiliateCorporateController;
 use App\Models\AffiliateCorporate;
@@ -19,6 +20,7 @@ use App\Support\AffiliationCorporates\CorporateAffiliateIlsVoucherManager;
 use App\Support\AffiliationCorporates\CorporateAffiliatePlanSynchronizer;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\AffiliationCorporates\CorporateAffiliateUpgradeManager;
+use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\PatientAgeDisplay;
@@ -69,6 +71,8 @@ use Illuminate\Support\Facades\Log;
 
 class CorporateAffiliatesRelationManager extends RelationManager
 {
+    use ManagesAffiliateSpecificBusinessUnit;
+
     protected static string $relationship = 'corporateAffiliates';
 
     protected static ?string $title = 'Afiliados';
@@ -409,17 +413,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         return $query->whereHas('businessUnit', fn (Builder $unitQuery): Builder => $unitQuery->where('definition', 'like', "%{$search}%"));
                     })
                     ->sortable(),
-                TextColumn::make('specific_business_unit')
-                    ->label('Unidad de negocio específica')
-                    ->icon(Heroicon::PencilSquare)
-                    ->wrap()
-                    ->limit(28)
-                    ->tooltip(fn (AffiliateCorporate $record): ?string => filled($record->specific_business_unit)
-                        ? (string) $record->specific_business_unit
-                        : null)
-                    ->placeholder('—')
-                    ->searchable()
-                    ->toggleable(),
+                $this->specificBusinessUnitColumn(),
                 TextColumn::make('business_line_id')
                     ->label('Línea de servicio')
                     ->icon(Heroicon::QueueList)
@@ -828,11 +822,14 @@ class CorporateAffiliatesRelationManager extends RelationManager
                             }
                         })
                         ->visible(fn (): bool => self::userIsBusinessAdmin()),
+                    $this->changeSpecificBusinessUnitAction(),
+                    $this->specificBusinessUnitHistoryAction(),
                 ])->hidden(fn ($record) => $record->status == 'INACTIVO' || $record->status == 'EXCLUIDO'),
 
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    $this->changeSpecificBusinessUnitBulkAction(),
                     BulkAction::make('asigned_vaucher_ils')
                         ->label('Asignar vouchers ILS')
                         ->color('info')
@@ -1396,15 +1393,19 @@ class CorporateAffiliatesRelationManager extends RelationManager
             return false;
         }
 
+        // Una unidad específica fijada a mano no cuenta como desincronizada.
+        $specificMatches = AffiliateSpecificBusinessUnitChanger::isLocked($record)
+            || (string) ($record->specific_business_unit ?? '') === (string) ($owner->specific_business_unit ?? '');
+
         if (blank($owner->business_unit_id) || blank($owner->business_line_id)) {
             return blank($record->business_unit_id)
                 && blank($record->business_line_id)
-                && (string) ($record->specific_business_unit ?? '') === (string) ($owner->specific_business_unit ?? '');
+                && $specificMatches;
         }
 
         return (int) $record->business_unit_id === (int) $owner->business_unit_id
             && (int) $record->business_line_id === (int) $owner->business_line_id
-            && (string) ($record->specific_business_unit ?? '') === (string) ($owner->specific_business_unit ?? '');
+            && $specificMatches;
     }
 
     private function businessContextBadgeColor(mixed $affiliateValue, mixed $ownerValue): string
