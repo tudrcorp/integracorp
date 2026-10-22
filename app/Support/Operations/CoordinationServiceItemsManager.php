@@ -241,11 +241,13 @@ final class CoordinationServiceItemsManager
         Collection $specialties,
     ): Collection {
         $items = collect();
+        // Retail se cobra siempre: todos sus ítems van por cotización, aunque digan CUBIERTO.
+        $isRetail = RetailServiceRegistration::isRetailCoordination($record);
 
         $medications
-            ->each(function (TelemedicinePatientMedications $item) use ($items, $record): void {
-                $coverage = self::coverageValue('MEDICAMENTOS', $item);
-                $isCoveredWithoutInventory = TelemedicineMedicationCoverage::isCoveredWithoutInventory($item);
+            ->each(function (TelemedicinePatientMedications $item) use ($items, $record, $isRetail): void {
+                $coverage = $isRetail ? false : self::coverageValue('MEDICAMENTOS', $item);
+                $isCoveredWithoutInventory = ! $isRetail && TelemedicineMedicationCoverage::isCoveredWithoutInventory($item);
                 $items->push([
                     'key' => 'medication:'.$item->id,
                     'category' => 'Medicamento',
@@ -265,8 +267,8 @@ final class CoordinationServiceItemsManager
             });
 
         $labs
-            ->each(function (TelemedicinePatientLab $item) use ($items, $record): void {
-                $coverage = self::coverageValue('LABORATORIOS', $item);
+            ->each(function (TelemedicinePatientLab $item) use ($items, $record, $isRetail): void {
+                $coverage = $isRetail ? false : self::coverageValue('LABORATORIOS', $item);
                 $items->push([
                     'key' => 'lab:'.$item->id,
                     'category' => 'Laboratorio',
@@ -284,8 +286,8 @@ final class CoordinationServiceItemsManager
             });
 
         $studies
-            ->each(function (TelemedicinePatientStudy $item) use ($items, $record): void {
-                $coverage = self::coverageValue('IMAGENOLOGIA', $item);
+            ->each(function (TelemedicinePatientStudy $item) use ($items, $record, $isRetail): void {
+                $coverage = $isRetail ? false : self::coverageValue('IMAGENOLOGIA', $item);
                 $items->push([
                     'key' => 'study:'.$item->id,
                     'category' => 'Estudio',
@@ -303,8 +305,8 @@ final class CoordinationServiceItemsManager
             });
 
         $specialties
-            ->each(function (TelemedicinePatientSpecialty $item) use ($items, $record): void {
-                $coverage = self::coverageValue('ESPECIALISTA', $item);
+            ->each(function (TelemedicinePatientSpecialty $item) use ($items, $record, $isRetail): void {
+                $coverage = $isRetail ? false : self::coverageValue('ESPECIALISTA', $item);
                 $isTpaStandaloneServiceItem = RegisterTpaRetailServicesAction::isTpaRetailStandaloneCoordination($record)
                     && trim((string) ($item->specialty ?? '')) === trim((string) $record->specific_service);
 

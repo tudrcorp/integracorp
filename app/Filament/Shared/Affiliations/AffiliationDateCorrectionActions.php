@@ -2,17 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Filament\Administration\Resources\AffiliationCorporates\Actions;
+namespace App\Filament\Shared\Affiliations;
 
-use App\Models\AffiliationCorporate;
-use App\Models\AffiliationCorporateDateCorrection;
+use App\Models\AffiliationDateCorrection;
 use App\Models\User;
-use App\Support\AffiliationCorporates\DateCorrection\CorporateDateCorrectionPreview;
-use App\Support\AffiliationCorporates\DateCorrection\CorporateDateCorrectionRollback;
-use App\Support\AffiliationCorporates\DateCorrection\CorporateDateCorrector;
+use App\Support\Affiliations\DateCorrection\AffiliationDateCorrectionPreview;
+use App\Support\Affiliations\DateCorrection\AffiliationDateCorrectionRollback;
+use App\Support\Affiliations\DateCorrection\AffiliationDateCorrector;
+use App\Support\Affiliations\DateCorrection\DateCorrectionSubject;
 use App\Support\Collections\CollectionDueDate;
 use App\Support\Filament\BusinessFilamentActionAccess;
-use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
@@ -22,16 +21,18 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use RuntimeException;
 use Throwable;
 
 /**
- * «Corregir emisión y vigencia» y su reversión, en la vista de la afiliación corporativa
- * (Administración). Ambas exigen el permiso propio de la acción.
+ * «Corregir emisión y vigencia» y su reversión, para afiliaciones individuales y corporativas,
+ * en Negocios y Administración. Es la única vía para cambiar esas fechas una vez emitida la
+ * póliza: en las tablas quedan de solo lectura. Ambas exigen el permiso propio de cada tipo.
  */
-final class CorporateEffectiveDateActions
+final class AffiliationDateCorrectionActions
 {
     public static function correct(): Action
     {
@@ -40,23 +41,23 @@ final class CorporateEffectiveDateActions
             ->icon(Heroicon::OutlinedCalendarDays)
             ->color('warning')
             ->modalHeading('Corregir fecha de emisión y vigencia')
-            ->modalDescription('Mueve la vigencia y todo lo que se calculó con ella: avisos POR PAGAR, renovación y fechas informativas del pago. Los avisos pagados y los montos no cambian. Queda un punto de restauración.')
+            ->modalDescription('Mueve la fecha y todo lo que se calculó con ella: avisos POR PAGAR, renovación y fechas informativas del pago. Los avisos pagados y los montos no cambian. Queda un punto de restauración.')
             ->modalIcon(Heroicon::OutlinedCalendarDays)
             ->modalSubmitActionLabel('Corregir ahora')
             ->modalCancelActionLabel('Cancelar')
             ->modalWidth(Width::FourExtraLarge)
-            ->visible(fn (AffiliationCorporate $record): bool => self::allowed()
-                && strtoupper(trim((string) $record->status)) === CorporateDateCorrector::ACTIVE_STATUS)
-            ->authorize(fn (): bool => self::allowed())
-            ->fillForm(fn (AffiliationCorporate $record): array => [
-                'new_date' => CollectionDueDate::parse($record->activated_at)?->format('d/m/Y'),
+            ->visible(fn (Model $record): bool => self::allowed($record)
+                && strtoupper(trim((string) $record->status)) === AffiliationDateCorrector::ACTIVE_STATUS)
+            ->authorize(fn (Model $record): bool => self::allowed($record))
+            ->fillForm(fn (Model $record): array => [
+                'new_date' => AffiliationDateCorrector::plan($record, null)['before']['cycle_start'] ?? CollectionDueDate::parse($record->activated_at)?->format('d/m/Y'),
                 'reason' => '',
                 'confirmed' => false,
             ])
             ->schema([
                 DatePicker::make('new_date')
-                    ->label('Fecha correcta de emisión y vigencia')
-                    ->helperText('Emisión y vigencia quedan iguales; la renovación será un año después.')
+                    ->label('Fecha correcta')
+                    ->helperText('Póliza sin renovaciones: la fecha de emisión (si ya va por el segundo año, la vigencia se calcula sola). Póliza renovada: el inicio del año actual; la emisión original no cambia.')
                     ->required()
                     ->native(false)
                     ->displayFormat('d/m/Y')
@@ -65,13 +66,13 @@ final class CorporateEffectiveDateActions
                     ->live(),
                 Placeholder::make('preview')
                     ->label('Vista previa (sin escribir todavía)')
-                    ->content(function (Get $get, AffiliationCorporate $record): HtmlString {
+                    ->content(function (Get $get, Model $record): HtmlString {
                         if (blank($get('new_date'))) {
                             return new HtmlString('<p class="text-sm text-gray-600 dark:text-gray-400">Elija la fecha correcta para ver qué cambia.</p>');
                         }
 
                         try {
-                            return CorporateDateCorrectionPreview::html(CorporateDateCorrector::plan($record, $get('new_date')));
+                            return AffiliationDateCorrectionPreview::html(AffiliationDateCorrector::plan($record, $get('new_date')));
                         } catch (Throwable $exception) {
                             report($exception);
 
@@ -82,7 +83,7 @@ final class CorporateEffectiveDateActions
                 Textarea::make('reason')
                     ->label('Motivo de la corrección')
                     ->required()
-                    ->minLength(CorporateDateCorrector::REASON_MIN_LENGTH)
+                    ->minLength(AffiliationDateCorrector::REASON_MIN_LENGTH)
                     ->maxLength(2000)
                     ->rows(3)
                     ->placeholder('Ejemplo: la póliza se emitió el 26/08/2026 según contrato; se cargó por error el 20/07/2026.')
@@ -93,22 +94,22 @@ final class CorporateEffectiveDateActions
                     ->required()
                     ->columnSpanFull(),
             ])
-            ->action(function (AffiliationCorporate $record, array $data): void {
+            ->action(function (Model $record, array $data): void {
                 $user = Auth::user();
 
-                if (! $user instanceof User || ! self::allowed()) {
+                if (! $user instanceof User || ! self::allowed($record)) {
                     return;
                 }
 
                 try {
-                    $correction = CorporateDateCorrector::apply($record, $data['new_date'] ?? null, (string) ($data['reason'] ?? ''), $user);
+                    $correction = AffiliationDateCorrector::apply($record, $data['new_date'] ?? null, (string) ($data['reason'] ?? ''), $user);
                 } catch (RuntimeException $exception) {
-                    self::failed('No se corrigió la vigencia', $exception->getMessage());
+                    self::failed('No se corrigió la fecha', $exception->getMessage());
 
                     return;
                 } catch (Throwable $exception) {
                     report($exception);
-                    self::failed('No se corrigió la vigencia', 'Ocurrió un error inesperado y se deshizo todo: no se cambió ningún dato.');
+                    self::failed('No se corrigió la fecha', 'Ocurrió un error inesperado y se deshizo todo.');
 
                     return;
                 }
@@ -116,8 +117,8 @@ final class CorporateEffectiveDateActions
                 $summary = (array) $correction->summary;
 
                 Notification::make()
-                    ->title('Vigencia corregida')
-                    ->body('Emisión y vigencia: '.$correction->new_date.'. Renovación: '.($summary['renewal_after'] ?? '—')
+                    ->title('Fecha corregida')
+                    ->body('Nuevo inicio del ciclo: '.$correction->new_date.'. Renovación: '.($summary['renewal_after'] ?? '—')
                         .'. Avisos reprogramados: '.count((array) ($summary['collections'] ?? []))
                         .'. Si algo no cuadra, use «Revertir corrección de vigencia».')
                     ->success()
@@ -139,18 +140,25 @@ final class CorporateEffectiveDateActions
             ->modalSubmitActionLabel('Revertir ahora')
             ->modalCancelActionLabel('Cancelar')
             ->modalWidth(Width::ThreeExtraLarge)
-            ->visible(fn (AffiliationCorporate $record): bool => self::allowed()
-                && CorporateDateCorrectionRollback::latestAppliedFor($record) instanceof AffiliationCorporateDateCorrection)
-            ->authorize(fn (): bool => self::allowed())
+            ->visible(fn (Model $record): bool => self::allowed($record)
+                && AffiliationDateCorrectionRollback::latestAppliedFor($record) instanceof AffiliationDateCorrection)
+            ->authorize(fn (Model $record): bool => self::allowed($record))
             ->schema([
                 Placeholder::make('rollback_preview')
                     ->hiddenLabel()
-                    ->content(fn (AffiliationCorporate $record): HtmlString => self::rollbackHtml(CorporateDateCorrectionRollback::latestAppliedFor($record)))
+                    ->content(function (Model $record): HtmlString {
+                        $correction = AffiliationDateCorrectionRollback::latestAppliedFor($record);
+
+                        return AffiliationDateCorrectionPreview::rollbackHtml(
+                            $correction,
+                            $correction instanceof AffiliationDateCorrection ? AffiliationDateCorrectionRollback::blockers($correction) : [],
+                        );
+                    })
                     ->columnSpanFull(),
                 Textarea::make('note')
                     ->label('Motivo de la reversión')
                     ->required()
-                    ->minLength(CorporateDateCorrectionRollback::NOTE_MIN_LENGTH)
+                    ->minLength(AffiliationDateCorrectionRollback::NOTE_MIN_LENGTH)
                     ->maxLength(2000)
                     ->rows(3)
                     ->columnSpanFull(),
@@ -160,30 +168,30 @@ final class CorporateEffectiveDateActions
                     ->required()
                     ->columnSpanFull(),
             ])
-            ->action(function (AffiliationCorporate $record, array $data): void {
+            ->action(function (Model $record, array $data): void {
                 $user = Auth::user();
-                $correction = CorporateDateCorrectionRollback::latestAppliedFor($record);
+                $correction = AffiliationDateCorrectionRollback::latestAppliedFor($record);
 
-                if (! $user instanceof User || ! self::allowed() || ! $correction instanceof AffiliationCorporateDateCorrection) {
+                if (! $user instanceof User || ! self::allowed($record) || ! $correction instanceof AffiliationDateCorrection) {
                     return;
                 }
 
                 try {
-                    CorporateDateCorrectionRollback::execute($correction, $user, (string) ($data['note'] ?? ''));
+                    AffiliationDateCorrectionRollback::execute($correction, $user, (string) ($data['note'] ?? ''));
                 } catch (RuntimeException $exception) {
                     self::failed('No se revirtió la corrección', $exception->getMessage());
 
                     return;
                 } catch (Throwable $exception) {
                     report($exception);
-                    self::failed('No se revirtió la corrección', 'Ocurrió un error inesperado y se deshizo todo: no se cambió ningún dato.');
+                    self::failed('No se revirtió la corrección', 'Ocurrió un error inesperado y se deshizo todo.');
 
                     return;
                 }
 
                 Notification::make()
                     ->title('Corrección revertida')
-                    ->body('Las fechas volvieron a '.($correction->activated_at_before ?? 'las anteriores').'.')
+                    ->body('Las fechas volvieron a: emisión '.($correction->activated_at_before ?? '—').', vigencia '.($correction->effective_date_before ?? '—').'.')
                     ->success()
                     ->persistent()
                     ->send();
@@ -192,9 +200,13 @@ final class CorporateEffectiveDateActions
             });
     }
 
-    private static function allowed(): bool
+    private static function allowed(Model $record): bool
     {
-        return BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::CORRECT_CORPORATE_EFFECTIVE_DATE);
+        try {
+            return BusinessFilamentActionAccess::userCan(DateCorrectionSubject::for($record)->permissionSlug);
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     private static function failed(string $title, string $body): void
@@ -205,31 +217,5 @@ final class CorporateEffectiveDateActions
             ->danger()
             ->persistent()
             ->send();
-    }
-
-    private static function rollbackHtml(?AffiliationCorporateDateCorrection $correction): HtmlString
-    {
-        if (! $correction instanceof AffiliationCorporateDateCorrection) {
-            return new HtmlString('<p class="text-sm">No hay una corrección aplicada que revertir.</p>');
-        }
-
-        $blockers = CorporateDateCorrectionRollback::blockers($correction);
-        $html = '<div class="space-y-3 text-sm"><p>Corrección del <strong>'.e($correction->applied_at?->format('d/m/Y H:i') ?? '').'</strong> por '
-            .e($correction->applied_by_name).': <strong>'.e($correction->activated_at_before ?? '—').' → '.e($correction->new_date).'</strong>.</p>'
-            .'<p class="text-gray-600 dark:text-gray-400">Motivo: '.e($correction->reason).'</p>';
-
-        if ($blockers === []) {
-            $html .= '<p class="font-semibold text-green-700 dark:text-green-300">Nada cambió desde la corrección: se puede revertir de forma segura.</p>';
-        } else {
-            $html .= '<div class="text-red-700 dark:text-red-300"><p class="font-semibold">No se puede revertir todavía:</p><ul class="list-disc pl-5">';
-
-            foreach ($blockers as $blocker) {
-                $html .= '<li>'.e($blocker).'</li>';
-            }
-
-            $html .= '</ul></div>';
-        }
-
-        return new HtmlString($html.'</div>');
     }
 }

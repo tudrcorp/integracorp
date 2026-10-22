@@ -40,6 +40,7 @@ use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderProviderSelection;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
 use App\Support\Operations\ReassignAmbulanceCoordinationToTdgDoctor;
+use App\Support\Operations\RetailServiceRegistration;
 use App\Support\Operations\TakeCoordinationServiceManagementByTdg;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
 use App\Support\Telemedicine\TelemedicineDerivedServiceBadge;
@@ -966,7 +967,9 @@ class OperationCoordinationServicesTable
                                     ->helperText('Active este paso solo cuando la cotización ya esté aprobada.')
                                     ->default(false)
                                     ->live()
-                                    ->visible(fn (Get $get): bool => (bool) $get('create_associated_quote')),
+                                    // Retail: la orden solo nace al aprobar la cotización en «Gestionar servicio».
+                                    ->visible(fn (Get $get, ?OperationCoordinationService $record): bool => (bool) $get('create_associated_quote')
+                                        && ! RetailServiceRegistration::isRetailCoordination($record)),
                                 Section::make('Cotización asociada')
                                     ->description('Define el precio en USD y el sistema calculará bolívares con la tasa BCV del día.')
                                     ->icon(Heroicon::OutlinedCurrencyDollar)

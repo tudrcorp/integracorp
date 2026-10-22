@@ -6,13 +6,9 @@ use App\Models\DataNotification;
 use App\Models\MassNotification;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Fieldset;
-use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Table;
@@ -35,9 +31,10 @@ class AffiliationCorporatesTable
                     ->badge()
                     ->color('verde')
                     ->searchable(),
-                TextInputColumn::make('activated_at')
-                    ->label('Fecha de nacimiento')
-                    ->prefixIcon('heroicon-m-calendar')
+                TextColumn::make('activated_at')
+                    ->label('Fecha de emisión')
+                    ->icon('heroicon-m-calendar')
+                    ->placeholder('—')
                     ->searchable(),
                 TextInputColumn::make('email')
                     ->label('Email contratante')
@@ -64,24 +61,24 @@ class AffiliationCorporatesTable
                                         ->label('Asociar Notificación')
                                         ->options(MassNotification::all()->pluck('title', 'id'))
                                         ->required(),
-                                ])
+                                ]),
                         ])
                         ->action(function (Collection $records, $data) {
-                        
+
                             $info = $records->toArray();
 
                             for ($i = 0; $i < count($info); $i++) {
-                                $dataInfo = new DataNotification();
+                                $dataInfo = new DataNotification;
                                 $dataInfo->mass_notification_id = $data['mass_notification_id'];
-                                $dataInfo->fullName             = $info[$i]['name_corporate'];
-                                $dataInfo->email                = $info[$i]['email'];
-                                $dataInfo->phone                = $info[$i]['phone'];
+                                $dataInfo->fullName = $info[$i]['name_corporate'];
+                                $dataInfo->email = $info[$i]['email'];
+                                $dataInfo->phone = $info[$i]['phone'];
                                 $dataInfo->save();
                             }
 
                             Notification::make()
                                 ->title('Información asociada')
-                                ->body(count($info) . ' afiliados corporativos asociados correctamente.')
+                                ->body(count($info).' afiliados corporativos asociados correctamente.')
                                 ->success()
                                 ->send();
 

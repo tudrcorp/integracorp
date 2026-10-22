@@ -5,31 +5,32 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Corrección de fecha de emisión y vigencia de una afiliación corporativa, con su
- * punto de restauración. Ciclo: APPLIED → ROLLED_BACK.
+ * Corrección de la fecha de inicio del ciclo de cobro de una afiliación (individual o
+ * corporativa), con su punto de restauración. Ciclo: APPLIED → ROLLED_BACK.
  *
- * @see \App\Support\AffiliationCorporates\DateCorrection\CorporateDateCorrector
- * @see \App\Support\AffiliationCorporates\DateCorrection\CorporateDateCorrectionRollback
+ * @see \App\Support\Affiliations\DateCorrection\AffiliationDateCorrector
+ * @see \App\Support\Affiliations\DateCorrection\AffiliationDateCorrectionRollback
  */
-class AffiliationCorporateDateCorrection extends Model
+class AffiliationDateCorrection extends Model
 {
     public const STATUS_APPLIED = 'APPLIED';
 
     public const STATUS_ROLLED_BACK = 'ROLLED_BACK';
 
-    protected $table = 'affiliation_corporate_date_corrections';
+    protected $table = 'affiliation_date_corrections';
 
     /**
      * @var list<string>
      */
     protected $fillable = [
         'public_id',
-        'affiliation_corporate_id',
+        'affiliation_type',
+        'affiliation_id',
         'affiliation_code',
         'status',
+        'scope',
         'activated_at_before',
         'effective_date_before',
         'new_date',
@@ -60,13 +61,5 @@ class AffiliationCorporateDateCorrection extends Model
             'applied_at' => 'datetime',
             'rolled_back_at' => 'datetime',
         ];
-    }
-
-    /**
-     * @return BelongsTo<AffiliationCorporate, $this>
-     */
-    public function affiliationCorporate(): BelongsTo
-    {
-        return $this->belongsTo(AffiliationCorporate::class);
     }
 }

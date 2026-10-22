@@ -7,6 +7,7 @@ use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Operations\OperationServiceOrderProviderSummary;
 use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Operations\OperationServiceOrderViewActions;
+use App\Support\Operations\RetailServiceRegistration;
 use App\Support\Operations\ServiceOrderFlowTrace;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -33,6 +34,17 @@ class OperationServiceOrderInfolist
     {
         return $schema
             ->components([
+                Section::make('Servicio RETAIL sin cotización')
+                    ->description('Esta orden se creó directo, sin cotización, antes de que el sistema lo exigiera. El servicio RETAIL lo paga el cliente y quedó sin precio acordado ni cobro.')
+                    ->icon(Heroicon::OutlinedExclamationTriangle)
+                    ->iconColor('warning')
+                    ->columnSpanFull()
+                    ->visible(fn (OperationServiceOrder $record): bool => RetailServiceRegistration::isRetailOrderWithoutQuote($record))
+                    ->schema([
+                        TextEntry::make('retail_without_quote_next_steps')
+                            ->hiddenLabel()
+                            ->state('Revísela con el proveedor. Si el servicio todavía no se prestó o debe cobrarse, use «Anular por error» (libera los ítems y pide motivo) y vuelva a gestionarlo desde la coordinación: «Gestionar servicio» → Cotización → aprobar → orden. Si ya se prestó y se cobró por otra vía, déjela como está y registre la explicación en sus observaciones.'),
+                    ]),
                 Tabs::make('operationServiceOrderInfolistTabs')
                     ->columnSpanFull()
                     ->persistTab()

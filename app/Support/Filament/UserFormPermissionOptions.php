@@ -59,6 +59,7 @@ class UserFormPermissionOptions
         'whitecompanyresource' => ['empresas-aliadas'],
         'creditreconciliationresource' => ['conciliacion-de-credito'],
         'affiliationcorporatepaymentfrequencychangeresource' => ['cambios-de-frecuencia-de-pago'],
+        'affiliationdateinconsistencyresource' => ['inconsistencias-de-fechas'],
         'zoneresource' => ['gestion-de-carpetas'],
         'affiliateresource' => ['afiliados-individuales'],
         'affiliatecorporateresource' => ['afiliados-corporativos'],

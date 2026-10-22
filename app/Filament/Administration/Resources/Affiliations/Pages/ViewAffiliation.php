@@ -7,6 +7,7 @@ namespace App\Filament\Administration\Resources\Affiliations\Pages;
 use App\Filament\Administration\Resources\Affiliations\Actions\AffiliationFichaPdfActions;
 use App\Filament\Administration\Resources\Affiliations\AffiliationResource;
 use App\Filament\Business\Resources\Affiliations\Concerns\OptimizesAffiliationInfolistPerformance;
+use App\Filament\Shared\Affiliations\AffiliationDateCorrectionActions;
 use App\Filament\Shared\Affiliations\MergeFamilyGroupAction;
 use App\Filament\Shared\Affiliations\RevertFamilyMergeAction;
 use App\Models\Affiliation;
@@ -115,6 +116,8 @@ class ViewAffiliation extends ViewRecord
                     }),
                 MergeFamilyGroupAction::make(),
                 RevertFamilyMergeAction::make(),
+                AffiliationDateCorrectionActions::correct(),
+                AffiliationDateCorrectionActions::revert(),
                 EditAction::make()
                     ->label('Compensar Pago')
                     ->icon(Heroicon::OutlinedCreditCard)

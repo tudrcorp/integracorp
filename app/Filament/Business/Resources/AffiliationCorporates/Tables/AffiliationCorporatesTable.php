@@ -46,7 +46,6 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -344,14 +343,19 @@ class AffiliationCorporatesTable
                     ->icon(Heroicon::OutlinedUserPlus)
                     ->searchable(),
 
-                TextInputColumn::make('activated_at')
+                // Solo lectura: se cambian con «Corregir emisión y vigencia», que arrastra avisos y renovación.
+                TextColumn::make('activated_at')
                     ->label('Fecha de emisión')
-                    ->prefixIcon(Heroicon::OutlinedCalendarDays)
+                    ->icon(Heroicon::OutlinedCalendarDays)
+                    ->placeholder('—')
+                    ->tooltip('Para corregirla use «Corregir emisión y vigencia» en la afiliación.')
                     ->searchable(),
 
-                TextInputColumn::make('effective_date')
+                TextColumn::make('effective_date')
                     ->label('Fecha de vigencia')
-                    ->prefixIcon(Heroicon::OutlinedCalendar)
+                    ->icon(Heroicon::OutlinedCalendar)
+                    ->placeholder('—')
+                    ->tooltip('Para corregirla use «Corregir emisión y vigencia» en la afiliación.')
                     ->searchable(),
 
                 TextColumn::make('status')

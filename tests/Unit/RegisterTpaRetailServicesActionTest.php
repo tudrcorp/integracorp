@@ -117,14 +117,12 @@ it('redirige al cuadro de servicios médicos con el grupo del caso desplegado', 
         ->toContain("request()->query('expand_group'");
 });
 
-it('resuelve la cobertura del ítem desde el catálogo al registrar', function (): void {
+it('registra todo ítem RETAIL como NO CUBIERTO: el retail se cobra siempre, no hereda la cobertura del plan', function (): void {
     expect(tpaRetailRegistrationSource())
         ->toContain("public const COVERED = 'CUBIERTO';")
         ->toContain("public const NOT_COVERED = 'NO CUBIERTO';")
-        ->toContain('TelemedicineCoverageCatalog::laboratoryIsCovered')
-        ->toContain('TelemedicineCoverageCatalog::studyIsCovered')
-        ->toContain('TelemedicineCoverageCatalog::specialistIsCovered')
-        ->toContain("'coverage' => self::suggestedCoverage(\$category, \$name)");
+        ->toContain("\$rows[] = ['name' => \$name, 'coverage' => self::NOT_COVERED];")
+        ->not->toContain('TelemedicineCoverageCatalog::laboratoryIsCovered');
 });
 
 it('siembra un ítem gestionable no cubierto para cotizar servicios standalone', function (): void {
