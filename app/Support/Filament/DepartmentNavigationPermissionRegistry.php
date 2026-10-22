@@ -389,6 +389,23 @@ final class DepartmentNavigationPermissionRegistry
     }
 
     /**
+     * Páginas cuyo acceso no se asigna desde el menú de permisos: deciden solas.
+     *
+     * - El organigrama lo ve todo colaborador interno en Negocios, y en los
+     *   paneles de consulta solo si hay una versión publicada.
+     * - El estudio de estructura se abre en Negocios con el permiso de acción
+     *   `editar-estructura-organizacional` o siendo SUPERADMIN.
+     *
+     * `permissions:sync-navigation` las salta para no crear permisos de menú que
+     * no controlarían nada.
+     */
+    public static function isManagedOutsideNavigationPermissions(string $class): bool
+    {
+        return is_a($class, \App\Filament\Shared\OrgStructure\Pages\OrgChartPage::class, true)
+            || is_a($class, \App\Filament\Business\Pages\EstructuraOrganizacional::class, true);
+    }
+
+    /**
      * @return array<class-string, list<string>>
      */
     public static function allMappings(): array

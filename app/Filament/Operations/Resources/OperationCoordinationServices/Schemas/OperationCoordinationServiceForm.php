@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Schemas;
 
 use App\Support\Filament\PatientAgeDisplay;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
@@ -33,8 +34,11 @@ class OperationCoordinationServiceForm
                 TextInput::make('address'),
                 TextInput::make('phone_holder')
                     ->tel(),
-                TextInput::make('symptoms_diagnosis')
-                    ->required(),
+                Textarea::make('symptoms_diagnosis')
+                    ->label('Síntomas y diagnóstico')
+                    ->required()
+                    ->rows(4)
+                    ->columnSpanFull(),
                 TextInput::make('servicie'),
                 TextInput::make('general_service')
                     ->label('Servicio general'),

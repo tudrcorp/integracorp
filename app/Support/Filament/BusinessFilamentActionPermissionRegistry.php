@@ -52,6 +52,12 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const UPDATE_CORPORATE_POPULATION = 'actualizar-poblacion-corporativa';
 
+    public const EDIT_ORG_STRUCTURE = 'editar-estructura-organizacional';
+
+    public const EXPORT_ORG_CHART = 'exportar-organigrama';
+
+    public const EDIT_OFFICE_GUARDS = 'editar-guardia-oficinas';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -178,10 +184,25 @@ final class BusinessFilamentActionPermissionRegistry
                 'group' => 'AFILIACIONES',
                 'modules' => [self::OWNER_MODULE, 'ADMINISTRACION'],
             ],
+            self::EDIT_ORG_STRUCTURE => [
+                'name' => 'Estructura organizacional: crear y editar borradores del organigrama y enviarlos a aprobación',
+                'group' => 'DEL USUARIO',
+                'modules' => ['NEGOCIOS'],
+            ],
+            self::EXPORT_ORG_CHART => [
+                'name' => 'Organigrama: exportar a PDF e imagen',
+                'group' => 'DEL USUARIO',
+                'modules' => ['NEGOCIOS'],
+            ],
             self::ACCEPT_EARLY_RENOVATION => [
                 'name' => 'Renovar antes del período de renovación (individual y corporativa)',
                 'group' => 'AFILIACIONES',
                 'modules' => [self::OWNER_MODULE, 'ADMINISTRACION'],
+            ],
+            self::EDIT_OFFICE_GUARDS => [
+                'name' => 'Guardia Oficinas: crear, actualizar y eliminar',
+                'group' => 'DEL USUARIO',
+                'modules' => ['NEGOCIOS', 'ADMINISTRACION', 'OPERACIONES', 'MARKETING'],
             ],
         ];
     }

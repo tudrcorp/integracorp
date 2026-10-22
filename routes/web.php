@@ -209,6 +209,11 @@ Route::get('operations/reportes/descargar/{file}', App\Http\Controllers\Operatio
     ->where('file', 'reporte-operaciones-[a-z0-9-]+\.(xlsx|csv|pdf)')
     ->name('operations.reports.download');
 
+Route::get('organigrama/exportes/{file}', App\Http\Controllers\OrgChartExportDownloadController::class)
+    ->middleware(['web', 'auth'])
+    ->where('file', App\Support\OrgStructure\OrgChartPdfExporter::FILE_PATTERN)
+    ->name('org-structure.exports.download');
+
 Route::get('administration/reportes/descargar/{file}', App\Http\Controllers\AdministrationReportDownloadController::class)
     ->middleware(['web', 'auth'])
     ->where('file', 'reporte-administracion-[a-z0-9-]+\.(xlsx|csv|pdf)')

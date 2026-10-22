@@ -14,6 +14,7 @@ use App\Models\TdgCalendarDepartmentColaboradorAssignment;
 use App\Models\TdgCalendarGuardAssignment;
 use App\Models\TdgCalendarOfficeAssignment;
 use App\Models\User;
+use App\Support\Filament\InternalPanelDepartmentMap;
 use App\Support\Filament\UserNavigationAccess;
 use App\Support\TdgCalendar\TdgCalendarGuardAttendanceNotifier;
 use App\Support\TdgCalendar\TdgCalendarOfficeAttendanceNotifier;
@@ -21,6 +22,7 @@ use App\Support\TdgCalendarDepartmentCatalog;
 use App\Support\TdgCalendarEditAuthorization;
 use App\Support\TdgCalendarOfficeCatalog;
 use Carbon\Carbon;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -29,6 +31,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Throwable;
 
 trait InteractsWithTdgHybridCalendar
 {
@@ -233,7 +236,25 @@ trait InteractsWithTdgHybridCalendar
     {
         $user = Auth::user();
 
-        return $user instanceof User && TdgCalendarEditAuthorization::allows($user);
+        return $user instanceof User && TdgCalendarEditAuthorization::allows(
+            $user,
+            $this->officeGuardPermissionModule(),
+        );
+    }
+
+    private function officeGuardPermissionModule(): ?string
+    {
+        try {
+            $panelId = Filament::getCurrentPanel()?->getId();
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (! is_string($panelId) || $panelId === '') {
+            return null;
+        }
+
+        return InternalPanelDepartmentMap::moduleForPanel($panelId);
     }
 
     public function canEditGuardiasOperaciones(): bool
@@ -260,7 +281,7 @@ trait InteractsWithTdgHybridCalendar
             return 'Estás consultando la guardia. Solo Becky Acosta y los superadministradores pueden editarla.';
         }
 
-        return 'Estás consultando la guardia. Solo Andreína Reyes, Katty Domingues y los superadministradores pueden editarla.';
+        return 'Estás consultando la guardia. Para modificarla necesitas el permiso «Guardia Oficinas: crear, actualizar y eliminar».';
     }
 
     public function canEditCurrentTdgCalendar(): bool
@@ -299,7 +320,7 @@ trait InteractsWithTdgHybridCalendar
 
         $body = $this->tdgCalendarIsOperationsGuards()
             ? 'Solo Becky Acosta y los superadministradores pueden modificar Guardias Operaciones.'
-            : 'Solo Andreína Reyes, Katty Domingues y los superadministradores pueden modificar Guardia Oficinas.';
+            : 'Solo quien tenga el permiso «Guardia Oficinas: crear, actualizar y eliminar» puede modificar Guardia Oficinas.';
 
         Notification::make()
             ->title('Sin permiso para editar')

@@ -37,8 +37,12 @@ use App\Listeners\LogFilamentImportActivity;
 use App\Listeners\StampPlanGeneratorPopulationImport;
 use App\Models\ObservationCommercialStructure;
 use App\Models\PlanGenerator;
+use App\Models\RrhhCargo;
+use App\Models\RrhhColaborador;
+use App\Models\RrhhDepartamento;
 use App\Models\Supplier;
 use App\Observers\ObservationCommercialStructureObserver;
+use App\Observers\OrgStructureRrhhObserver;
 use App\Observers\PlanGeneratorObserver;
 use App\Observers\SupplierReportPdfObserver;
 use App\Support\LivePresence\LivePresenceRecorder;
@@ -177,6 +181,9 @@ class AppServiceProvider extends ServiceProvider
         ObservationCommercialStructure::observe(ObservationCommercialStructureObserver::class);
         PlanGenerator::observe(PlanGeneratorObserver::class);
         Supplier::observe(SupplierReportPdfObserver::class);
+        RrhhColaborador::observe(OrgStructureRrhhObserver::class);
+        RrhhCargo::observe(OrgStructureRrhhObserver::class);
+        RrhhDepartamento::observe(OrgStructureRrhhObserver::class);
         CoordinationServiceTabCounts::registerCacheInvalidation();
 
         FilamentColor::register([

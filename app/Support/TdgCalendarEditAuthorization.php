@@ -5,22 +5,12 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Models\User;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\UserNavigationAccess;
 use Illuminate\Support\Str;
 
 final class TdgCalendarEditAuthorization
 {
-    /**
-     * Correos de las únicas personas que pueden editar Guardia Oficinas.
-     *
-     * @var list<string>
-     */
-    private const OFFICE_EMAILS = [
-        'areyes@tudrencasa.com',
-        'kdominguez@tudrencasa.com',
-        'kdomingues@tudrencasa.com',
-    ];
-
     /**
      * Correo de la única persona que puede editar Guardias Operaciones.
      *
@@ -30,7 +20,11 @@ final class TdgCalendarEditAuthorization
         'bacosta@tudrencasa.com',
     ];
 
-    public static function allows(?User $user): bool
+    /**
+     * Crear, actualizar y eliminar Guardia Oficinas exige el permiso del módulo
+     * del panel actual. Un superadministrador puede hacerlo siempre.
+     */
+    public static function allows(?User $user, ?string $module = null): bool
     {
         if (! $user instanceof User) {
             return false;
@@ -40,14 +34,15 @@ final class TdgCalendarEditAuthorization
             return true;
         }
 
-        $email = self::normalizedEmail($user);
-
-        if ($email !== '' && in_array($email, self::OFFICE_EMAILS, true)) {
-            return true;
+        if ($module === null || trim($module) === '') {
+            return false;
         }
 
-        return self::nameMatchesAndreinaReyes((string) $user->name)
-            || self::nameMatchesKattyDomingues((string) $user->name);
+        return UserNavigationAccess::canPerformModuleAction(
+            $user,
+            $module,
+            BusinessFilamentActionPermissionRegistry::EDIT_OFFICE_GUARDS,
+        );
     }
 
     public static function allowsOperationsGuards(?User $user): bool
@@ -72,22 +67,6 @@ final class TdgCalendarEditAuthorization
     private static function normalizedEmail(User $user): string
     {
         return Str::lower(trim((string) $user->email));
-    }
-
-    private static function nameMatchesAndreinaReyes(string $name): bool
-    {
-        $tokens = self::nameTokens($name);
-
-        return in_array('andreina', $tokens, true) && in_array('reyes', $tokens, true);
-    }
-
-    private static function nameMatchesKattyDomingues(string $name): bool
-    {
-        $tokens = self::nameTokens($name);
-        $givenNames = array_intersect($tokens, ['katy', 'katty', 'katia']);
-        $familyNames = array_intersect($tokens, ['dominguez', 'domingues']);
-
-        return $givenNames !== [] && $familyNames !== [];
     }
 
     private static function nameMatchesBeckyAcosta(string $name): bool
