@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Support\Filament\InternalPanelDepartmentMap;
 use App\Support\Filament\UserNavigationAccess;
 use App\Support\TdgCalendar\TdgCalendarGuardAttendanceNotifier;
+use App\Support\TdgCalendar\TdgCalendarSchedulePdf;
 use App\Support\TdgCalendar\TdgCalendarOfficeAttendanceNotifier;
 use App\Support\TdgCalendarDepartmentCatalog;
 use App\Support\TdgCalendarEditAuthorization;
@@ -262,6 +263,85 @@ trait InteractsWithTdgHybridCalendar
         $user = Auth::user();
 
         return $user instanceof User && TdgCalendarEditAuthorization::allowsOperationsGuards($user);
+    }
+
+    public function showsTdgSchedulePdfAction(): bool
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User || ! $this->tdgSchedulePdfApplies()) {
+            return false;
+        }
+
+        return TdgCalendarSchedulePdf::canDownload($user, $this->tdgSchedulePdfKind());
+    }
+
+    public function canDownloadEntireTdgSchedule(): bool
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User || ! $this->tdgSchedulePdfApplies()) {
+            return false;
+        }
+
+        return TdgCalendarSchedulePdf::canDownloadEveryone($user, $this->tdgSchedulePdfKind());
+    }
+
+    /**
+     * @return list<array{id: int, name: string}>
+     */
+    public function tdgSchedulePdfPeople(): array
+    {
+        if (! $this->canDownloadEntireTdgSchedule()) {
+            return [];
+        }
+
+        return TdgCalendarSchedulePdf::peopleInMonth($this->tdgSchedulePdfKind(), $this->tdgSchedulePdfMonth());
+    }
+
+    public function tdgOwnSchedulePdfUrl(): ?string
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User || $this->canDownloadEntireTdgSchedule()) {
+            return null;
+        }
+
+        $colaborador = TdgCalendarSchedulePdf::ownColaborador($user);
+
+        if (! $colaborador instanceof RrhhColaborador) {
+            return null;
+        }
+
+        return route('tdg-calendar.schedule-pdf', [
+            'tipo' => $this->tdgSchedulePdfKind(),
+            'mes' => $this->tdgSchedulePdfMonth()->format('Y-m'),
+            'colaborador' => $colaborador->id,
+        ]);
+    }
+
+    public function tdgSchedulePdfKind(): string
+    {
+        return $this->tdgCalendarIsOperationsGuards()
+            ? TdgCalendarSchedulePdf::OPERATIONS
+            : TdgCalendarSchedulePdf::OFFICES;
+    }
+
+    private function tdgSchedulePdfApplies(): bool
+    {
+        return $this->tdgCalendarIsOperationsGuards()
+            || in_array('offices', $this->tdgCalendarWorkspaces(), true);
+    }
+
+    private function tdgSchedulePdfMonth(): Carbon
+    {
+        $cursor = trim($this->cursorMonth);
+
+        if ($cursor === '') {
+            return now()->startOfMonth();
+        }
+
+        return Carbon::parse($cursor)->startOfMonth();
     }
 
     public function canSendGuardAttendanceMail(): bool

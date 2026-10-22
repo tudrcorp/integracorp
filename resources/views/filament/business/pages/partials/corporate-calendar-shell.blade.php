@@ -25,6 +25,9 @@
                             <span>{{ $this->tdgOfficeAttendanceNotifyButtonLabel() }}</span>
                         </button>
                     @endif
+                    @if (method_exists($this, 'showsTdgSchedulePdfAction') && $this->showsTdgSchedulePdfAction())
+                        @include('filament.business.pages.partials.tdg-calendar-schedule-pdf')
+                    @endif
                     @if (method_exists($this, 'shouldShowTdgGuardAttendanceNotifyAction') && $this->shouldShowTdgGuardAttendanceNotifyAction())
                         <button
                             type="button"
