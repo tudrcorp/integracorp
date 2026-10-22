@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Administration\Resources\AffiliationCorporates\Pages;
 
 use App\Filament\Administration\Resources\AffiliationCorporates\Actions\AffiliationCorporateFichaPdfActions;
+use App\Filament\Administration\Resources\AffiliationCorporates\Actions\CorporateEffectiveDateActions;
 use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Business\Resources\AffiliationCorporates\Concerns\OptimizesAffiliationCorporateInfolistPerformance;
 use App\Models\AffiliationCorporate;
@@ -115,6 +116,8 @@ class ViewAffiliationCorporate extends ViewRecord
                     ->extraAttributes([
                         'class' => self::SUCCESS_BUTTON_CLASS,
                     ]),
+                CorporateEffectiveDateActions::correct(),
+                CorporateEffectiveDateActions::revert(),
                 EditAction::make()
                     ->label('Editar')
                     ->icon(Heroicon::OutlinedPencil)

@@ -17,6 +17,9 @@ class CollectionAdjustment extends Model
 
     public const MODE_BULK = 'masivo';
 
+    /** Reprogramado por una corrección de fecha de vigencia (o su reversión). */
+    public const MODE_EFFECTIVE_DATE = 'vigencia';
+
     protected $table = 'collection_adjustments';
 
     protected $fillable = [
