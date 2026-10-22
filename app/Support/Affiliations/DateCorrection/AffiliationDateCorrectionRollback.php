@@ -2,27 +2,26 @@
 
 declare(strict_types=1);
 
-namespace App\Support\AffiliationCorporates\DateCorrection;
+namespace App\Support\Affiliations\DateCorrection;
 
-use App\Models\AffiliationCorporate;
-use App\Models\AffiliationCorporateDateCorrection;
+use App\Models\AffiliationDateCorrection;
 use App\Models\Collection;
-use App\Models\PaidMembershipCorporate;
 use App\Models\User;
 use App\Support\Audit\TableRowSnapshot;
 use App\Support\SecurityAudit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Revierte una corrección de vigencia corporativa desde su punto de restauración.
+ * Revierte una corrección de vigencia (individual o corporativa) desde su punto de restauración.
  *
  * Todo o nada: cada fila vuelve a su foto previa, o no se toca ninguna. Se bloquea si algo
  * cambió después de corregir (un aviso pagado o ajustado, una renovación movida, un pago o un
  * aviso nuevo), porque restituir encima pisaría trabajo legítimo. Nada se borra.
  */
-final class CorporateDateCorrectionRollback
+final class AffiliationDateCorrectionRollback
 {
     public const NOTE_MIN_LENGTH = 15;
 
@@ -30,22 +29,12 @@ final class CorporateDateCorrectionRollback
 
     private const MAX_LISTED_CONFLICTS = 10;
 
-    /**
-     * @var array<string, string>
-     */
-    private const TABLE_LABELS = [
-        'affiliation_corporates' => 'Afiliación',
-        'collections' => 'Aviso',
-        'annual_collections' => 'Planificación anual',
-        'renovation_corporates' => 'Renovación',
-        'paid_membership_corporates' => 'Pago',
-    ];
-
-    public static function latestAppliedFor(AffiliationCorporate $affiliation): ?AffiliationCorporateDateCorrection
+    public static function latestAppliedFor(Model $affiliation): ?AffiliationDateCorrection
     {
-        return AffiliationCorporateDateCorrection::query()
-            ->where('affiliation_corporate_id', $affiliation->id)
-            ->where('status', AffiliationCorporateDateCorrection::STATUS_APPLIED)
+        return AffiliationDateCorrection::query()
+            ->where('affiliation_type', DateCorrectionSubject::for($affiliation)->type)
+            ->where('affiliation_id', $affiliation->getKey())
+            ->where('status', AffiliationDateCorrection::STATUS_APPLIED)
             ->latest('id')
             ->first();
     }
@@ -53,17 +42,20 @@ final class CorporateDateCorrectionRollback
     /**
      * @return list<string>
      */
-    public static function blockers(AffiliationCorporateDateCorrection $correction): array
+    public static function blockers(AffiliationDateCorrection $correction): array
     {
-        if ($correction->status !== AffiliationCorporateDateCorrection::STATUS_APPLIED) {
+        if ($correction->status !== AffiliationDateCorrection::STATUS_APPLIED) {
             return ['Esta corrección ya no está aplicada.'];
         }
 
+        $subject = DateCorrectionSubject::forType($correction->affiliation_type);
+        $columns = $subject->columns();
         $blockers = [];
 
-        $later = AffiliationCorporateDateCorrection::query()
-            ->where('affiliation_corporate_id', $correction->affiliation_corporate_id)
-            ->where('status', AffiliationCorporateDateCorrection::STATUS_APPLIED)
+        $later = AffiliationDateCorrection::query()
+            ->where('affiliation_type', $correction->affiliation_type)
+            ->where('affiliation_id', $correction->affiliation_id)
+            ->where('status', AffiliationDateCorrection::STATUS_APPLIED)
             ->where('id', '>', $correction->id)
             ->exists();
 
@@ -73,14 +65,15 @@ final class CorporateDateCorrectionRollback
 
         $after = (array) $correction->snapshot_after;
         $differences = TableRowSnapshot::differences(
-            CorporateDateCorrector::COLUMNS,
+            $columns,
             $after,
-            TableRowSnapshot::capture(CorporateDateCorrector::COLUMNS, TableRowSnapshot::idsOf(CorporateDateCorrector::COLUMNS, $after)),
+            TableRowSnapshot::capture($columns, TableRowSnapshot::idsOf($columns, $after)),
         );
 
         if ($differences !== []) {
+            $labels = $subject->tableLabels();
             $lines = array_map(
-                static fn (array $difference): string => (self::TABLE_LABELS[$difference['table']] ?? $difference['table']).' #'.$difference['id']
+                static fn (array $difference): string => ($labels[$difference['table']] ?? $difference['table']).' #'.$difference['id']
                     .($difference['column'] === null
                         ? ' ya no existe'
                         : ': '.$difference['column'].' «'.($difference['expected'] ?? 'vacío').'» → «'.($difference['current'] ?? 'vacío').'»'),
@@ -97,8 +90,11 @@ final class CorporateDateCorrectionRollback
         $appliedAt = $correction->applied_at ?? $correction->created_at;
 
         if ($appliedAt !== null) {
+            // Los avisos que movió la propia corrección no son «nuevos», aunque se hayan creado en el mismo segundo.
+            $ownCollections = array_map(intval(...), array_keys((array) ($correction->snapshot_before['collections'] ?? [])));
             $newCollections = Collection::query()
                 ->where('affiliation_code', $correction->affiliation_code)
+                ->whereNotIn('id', $ownCollections !== [] ? $ownCollections : [0])
                 ->where('created_at', '>=', $appliedAt)
                 ->count();
 
@@ -106,8 +102,8 @@ final class CorporateDateCorrectionRollback
                 $blockers[] = 'Se generaron '.$newCollections.' aviso(s) nuevos después de corregir. Revíselos en Gestión de Cobranza antes de revertir.';
             }
 
-            $newPayments = PaidMembershipCorporate::query()
-                ->where('affiliation_corporate_id', $correction->affiliation_corporate_id)
+            $newPayments = DB::table($subject->paymentsTable)
+                ->where($subject->paymentsForeignKey, $correction->affiliation_id)
                 ->where('created_at', '>=', $appliedAt)
                 ->count();
 
@@ -122,18 +118,20 @@ final class CorporateDateCorrectionRollback
     /**
      * Revierte la corrección. Lanza RuntimeException (sin escribir nada) si algo lo impide.
      */
-    public static function execute(AffiliationCorporateDateCorrection $correction, User $actor, string $note): AffiliationCorporateDateCorrection
+    public static function execute(AffiliationDateCorrection $correction, User $actor, string $note): AffiliationDateCorrection
     {
-        CorporateDateCorrector::assertCan($actor);
+        $subject = DateCorrectionSubject::forType($correction->affiliation_type);
+        AffiliationDateCorrector::assertCan($actor, $subject);
         $note = trim((string) preg_replace('/\s+/u', ' ', $note));
 
         if (mb_strlen($note) < self::NOTE_MIN_LENGTH) {
             throw new RuntimeException('Explique por qué se revierte (mínimo '.self::NOTE_MIN_LENGTH.' caracteres).');
         }
 
-        return DB::transaction(function () use ($correction, $actor, $note): AffiliationCorporateDateCorrection {
-            $locked = AffiliationCorporateDateCorrection::query()->whereKey($correction->getKey())->lockForUpdate()->firstOrFail();
-            $affiliation = AffiliationCorporate::query()->whereKey($locked->affiliation_corporate_id)->lockForUpdate()->firstOrFail();
+        return DB::transaction(function () use ($correction, $subject, $actor, $note): AffiliationDateCorrection {
+            $locked = AffiliationDateCorrection::query()->whereKey($correction->getKey())->lockForUpdate()->firstOrFail();
+            /** @var Model $affiliation */
+            $affiliation = $subject->modelClass()::query()->whereKey($locked->affiliation_id)->lockForUpdate()->firstOrFail();
             Collection::query()->where('affiliation_code', $affiliation->code)->orderBy('id')->lockForUpdate()->get(['id']);
 
             $blockers = self::blockers($locked);
@@ -143,42 +141,31 @@ final class CorporateDateCorrectionRollback
             }
 
             $before = (array) $locked->snapshot_before;
-            $restored = TableRowSnapshot::restore(CorporateDateCorrector::COLUMNS, $before);
+            $after = (array) $locked->snapshot_after;
+            $restored = TableRowSnapshot::restore($subject->columns(), $before);
             $batch = (string) Str::uuid();
 
             foreach (array_keys((array) ($before['collections'] ?? [])) as $collectionId) {
                 $collection = Collection::query()->find((int) $collectionId);
 
                 if ($collection instanceof Collection) {
-                    $previous = (string) ($locked->snapshot_after['collections'][$collectionId]['next_payment_date'] ?? '');
-
-                    CorporateDateCorrector::recordAdjustment(
-                        $collection,
-                        $batch,
-                        ['next_payment_date' => ['before' => $previous, 'after' => (string) $collection->next_payment_date]],
-                        'Reversión de corrección de vigencia: '.$note,
-                        $actor,
-                    );
+                    AffiliationDateCorrector::recordAdjustment($collection, $batch, [
+                        'next_payment_date' => [
+                            'before' => $after['collections'][$collectionId]['next_payment_date'] ?? null,
+                            'after' => (string) $collection->next_payment_date,
+                        ],
+                    ], 'Reversión de corrección de vigencia: '.$note, $actor);
                 }
             }
 
             $summary = 'Se revirtió la corrección de vigencia del '.$locked->applied_at?->format('d/m/Y H:i')
-                .' ('.$locked->new_date.' → '.($locked->activated_at_before ?? 'sin fecha').'). Filas restituidas: '.$restored.'. Motivo: '.$note;
+                .' (fecha corregida '.$locked->new_date.'). Volvió a: emisión '.($locked->activated_at_before ?? '—')
+                .', vigencia '.($locked->effective_date_before ?? '—').'. Filas restituidas: '.$restored.'. Motivo: '.$note;
 
-            $affiliation->status_log_corporate_affiliations()->create([
-                'affiliation_corporate_id' => $affiliation->id,
-                'action' => self::LOG_ACTION,
-                'observation' => $summary,
-                'updated_by' => (string) $actor->name,
-            ]);
-
-            $affiliation->affiliationCorporateObservations()->create([
-                'description' => $summary,
-                'created_by' => (string) $actor->getKey(),
-            ]);
+            AffiliationDateCorrector::log($affiliation, $subject, self::LOG_ACTION, $summary, $actor);
 
             $locked->forceFill([
-                'status' => AffiliationCorporateDateCorrection::STATUS_ROLLED_BACK,
+                'status' => AffiliationDateCorrection::STATUS_ROLLED_BACK,
                 'rolled_back_by' => $actor->getKey(),
                 'rolled_back_by_name' => (string) $actor->name,
                 'rolled_back_at' => now(),
@@ -186,8 +173,9 @@ final class CorporateDateCorrectionRollback
                 'rollback_summary' => ['restored_rows' => $restored, 'batch_uuid' => $batch],
             ])->save();
 
-            SecurityAudit::log('AUDIT_CORPORATE_EFFECTIVE_DATE_CORRECTION_ROLLED_BACK', 'administration.affiliation-corporates.correct-effective-date.rollback', [
+            SecurityAudit::log('AUDIT_EFFECTIVE_DATE_CORRECTION_ROLLED_BACK', 'affiliations.correct-effective-date.rollback', [
                 'correction_id' => $locked->id,
+                'type' => $locked->affiliation_type,
                 'affiliation_code' => $locked->affiliation_code,
                 'restored_rows' => $restored,
                 'note' => $note,

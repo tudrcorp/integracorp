@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\Pages;
 
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Business\Resources\AffiliationCorporates\Concerns\OptimizesAffiliationCorporateInfolistPerformance;
+use App\Filament\Shared\Affiliations\AffiliationDateCorrectionActions;
 use App\Models\AffiliationCorporate;
 use App\Support\Filament\FilamentIosActionsMenu;
 use App\Support\Filament\FilamentIosButton;
@@ -217,6 +218,8 @@ class ViewAffiliationCorporate extends ViewRecord
                     ->action(function (array $data): void {
                         $this->registerAudit($data['items'] ?? []);
                     }),
+                AffiliationDateCorrectionActions::correct(),
+                AffiliationDateCorrectionActions::revert(),
                 EditAction::make()
                     ->label('Editar')
                     ->icon(Heroicon::OutlinedPencil)

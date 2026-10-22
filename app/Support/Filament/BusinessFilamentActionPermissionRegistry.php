@@ -16,6 +16,10 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const CORRECT_CORPORATE_EFFECTIVE_DATE = 'corregir-vigencia-afiliacion-corporativa';
 
+    public const CORRECT_INDIVIDUAL_EFFECTIVE_DATE = 'corregir-vigencia-afiliacion-individual';
+
+    public const REPAIR_DATE_INCONSISTENCIES = 'reparar-inconsistencias-de-fechas';
+
     public const MANAGE_WHITE_COMPANY_NEGOTIATED_FEES = 'matriz-negociacion-empresas-aliadas';
 
     public const MANAGE_WHITE_COMPANY_DOCUMENT_BRAND = 'documentos-marca-empresas-aliadas';
@@ -103,6 +107,16 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::CORRECT_CORPORATE_EFFECTIVE_DATE => [
                 'name' => 'Corregir fecha de emisión y vigencia de afiliaciones corporativas (y revertirla)',
+                'group' => 'COBRANZA',
+                'modules' => ['ADMINISTRACION', self::OWNER_MODULE],
+            ],
+            self::CORRECT_INDIVIDUAL_EFFECTIVE_DATE => [
+                'name' => 'Corregir fecha de emisión y vigencia de afiliaciones individuales (y revertirla)',
+                'group' => 'COBRANZA',
+                'modules' => ['ADMINISTRACION', self::OWNER_MODULE],
+            ],
+            self::REPAIR_DATE_INCONSISTENCIES => [
+                'name' => 'Inconsistencias de fechas: reparar, revertir y marcar como no inconsistencia',
                 'group' => 'COBRANZA',
                 'modules' => ['ADMINISTRACION'],
             ],

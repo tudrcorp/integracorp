@@ -1293,6 +1293,7 @@ final class CoordinationServiceQuoteManager
         }
 
         $payload['is_courtesy'] = (bool) $quote->is_courtesy;
+        $payload[OperationServiceOrderController::FROM_APPROVED_QUOTE] = (int) $quote->getKey();
 
         if ($quote->type_service === 'MEDICAMENTOS') {
             $payload['medications_list'] = $records->map(fn (TelemedicinePatientMedications $item): array => [

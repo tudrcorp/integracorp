@@ -8,6 +8,8 @@ use App\Models\TelemedicinePatient;
 use App\Models\TelemedicinePatientMedications;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\OperationServiceOrderProviderSelection;
+use App\Support\Operations\RetailServiceRegistration;
+use App\Support\Operations\ServiceOrderFlowTrace;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -17,8 +19,33 @@ use Illuminate\Support\Facades\Log;
 class OperationServiceOrderController extends Controller
 {
     //
+    /**
+     * Marca que pone {@see \App\Support\Operations\CoordinationServiceQuoteManager::createServiceOrderFromApprovedQuote()}:
+     * la orden nace de una cotización aprobada.
+     */
+    public const FROM_APPROVED_QUOTE = 'from_approved_quote_id';
+
     public static function create(array $data, array $ownerRecord, Collection $records): bool
     {
+        // Retail se cobra siempre: su orden solo nace de una cotización aprobada, nunca directa
+        // (ni desde «Gestionar servicio», ni desde el asistente de la tabla, ni desde los ítems).
+        if (RetailServiceRegistration::isRetailCoordination($ownerRecord) && blank($data[self::FROM_APPROVED_QUOTE] ?? null)) {
+            ServiceOrderFlowTrace::record(
+                ServiceOrderFlowTrace::ACTION_BLOCKED,
+                'Se intentó crear una orden directa en un servicio RETAIL: solo se crea desde una cotización aprobada.',
+                ['coordination' => (int) ($ownerRecord['id'] ?? 0)],
+            );
+
+            Notification::make()
+                ->title('Servicio RETAIL: primero la cotización')
+                ->body('Los servicios RETAIL los paga el cliente: la orden de servicio solo se crea al aprobar su cotización. Use «Gestionar servicio» → Cotización.')
+                ->warning()
+                ->persistent()
+                ->send();
+
+            return false;
+        }
+
         $providerError = OperationServiceOrderProviderSelection::validationMessage($data);
 
         if ($providerError !== null) {

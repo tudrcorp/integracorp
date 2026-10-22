@@ -2,8 +2,8 @@
 
 namespace App\Filament\Marketing\Resources\AffiliationCorporates\Schemas;
 
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
 class AffiliationCorporateForm
@@ -75,7 +75,13 @@ class AffiliationCorporateForm
                     ->numeric(),
                 TextInput::make('poblation')
                     ->numeric(),
-                TextInput::make('activated_at'),
+                TextInput::make('activated_at')
+                    ->label('Fecha de emisión')
+                    ->disabled(fn (string $operation): bool => $operation === 'edit')
+                    ->dehydrated(fn (string $operation): bool => $operation !== 'edit')
+                    ->helperText(fn (string $operation): ?string => $operation === 'edit'
+                        ? 'Se corrige con «Corregir emisión y vigencia» (Negocios o Administración), que arrastra avisos y renovación.'
+                        : null),
             ]);
     }
 }

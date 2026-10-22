@@ -7,6 +7,7 @@ namespace App\Support\Operations;
 use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRetailServicesAction;
 use App\Models\ObservationCase;
 use App\Models\OperationCoordinationService;
+use App\Models\OperationServiceOrder;
 use App\Models\Supplier;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineListLaboratory;
@@ -21,7 +22,7 @@ use App\Models\User;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Telemedicine\TelemedicineCaseFactory;
 use App\Support\Telemedicine\TelemedicineCaseIdentity;
-use App\Support\Telemedicine\TelemedicineCoverageCatalog;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -40,6 +41,9 @@ use Illuminate\Support\Str;
  *
  * Retail no consume cupo clínico: nada pasa por {@see \App\Support\ClinicalEntitlements\ClinicalUsageLedger}.
  *
+ * Retail se cobra siempre: todos sus ítems nacen NO CUBIERTO y se gestionan con cotización y luego
+ * orden de servicio, nunca con orden directa ({@see self::isRetailCoordination()}).
+ *
  * Todo ocurre en una transacción: si un paso falla no queda nada a medias.
  */
 final class RetailServiceRegistration
@@ -55,6 +59,9 @@ final class RetailServiceRegistration
     public const COVERED = 'CUBIERTO';
 
     public const NOT_COVERED = 'NO CUBIERTO';
+
+    /** Órdenes que ya no se gestionan: no piden revisión aunque les falte cotización. */
+    public const CLOSED_ORDER_STATUSES = ['CANCELADA', 'CANCELADO', 'CADUCADA', 'ANULADA', 'ANULADO'];
 
     public const MAX_ITEMS_PER_CATEGORY = 50;
 
@@ -132,16 +139,44 @@ final class RetailServiceRegistration
             ->all();
     }
 
-    public static function suggestedCoverage(string $category, string $name): string
+    /**
+     * Coordinación nacida del registro TPA/RETAIL. Sus ítems se gestionan siempre como NO CUBIERTO
+     * (cotización → orden), aunque el plan del paciente cubra algo parecido: el retail lo paga el
+     * cliente aparte. No incluye el Registro directo de servicios médicos, que tiene su propia cobertura.
+     *
+     * @param  OperationCoordinationService|array<string, mixed>|null  $coordination
+     */
+    public static function isRetailCoordination(OperationCoordinationService|array|null $coordination): bool
     {
-        $covered = match ($category) {
-            'labs' => TelemedicineCoverageCatalog::laboratoryIsCovered($name),
-            'studies' => TelemedicineCoverageCatalog::studyIsCovered($name),
-            'specialists' => TelemedicineCoverageCatalog::specialistIsCovered($name),
-            default => false,
-        };
+        $service = is_array($coordination) ? ($coordination['servicie'] ?? null) : $coordination?->servicie;
 
-        return $covered ? self::COVERED : self::NOT_COVERED;
+        return mb_strtoupper(trim((string) $service)) === self::SERVICIE;
+    }
+
+    /**
+     * Orden RETAIL vigente sin cotización de origen: se creó por el camino directo (antes de exigir
+     * cotización) y el servicio quedó sin cobrar. Operaciones debe revisarla: si corresponde, anularla
+     * por error y rehacerla con cotización. Usa las relaciones ya cargadas (sin consultas extra en tablas).
+     */
+    public static function isRetailOrderWithoutQuote(OperationServiceOrder $order): bool
+    {
+        return self::isRetailCoordination($order->operationCoordinationService)
+            && $order->approvedOperationQuote === null
+            && ! in_array(mb_strtoupper(trim((string) $order->status)), self::CLOSED_ORDER_STATUSES, true);
+    }
+
+    /**
+     * Mismo criterio que {@see isRetailOrderWithoutQuote()} como filtro de consulta.
+     *
+     * @param  Builder<OperationServiceOrder>  $query
+     * @return Builder<OperationServiceOrder>
+     */
+    public static function scopeRetailOrdersWithoutQuote(Builder $query): Builder
+    {
+        return $query
+            ->whereHas('operationCoordinationService', fn (Builder $coordination): Builder => $coordination->where('servicie', self::SERVICIE))
+            ->whereDoesntHave('approvedOperationQuote')
+            ->whereNotIn('status', self::CLOSED_ORDER_STATUSES);
     }
 
     /**
@@ -518,7 +553,8 @@ final class RetailServiceRegistration
                 throw RetailServiceRegistrationException::field($category, "{$config['label']}: «{$name}» no existe en el catálogo.");
             }
 
-            $rows[] = ['name' => $name, 'coverage' => self::suggestedCoverage($category, $name)];
+            // Retail lo paga el cliente aparte: nunca hereda la cobertura del plan (siempre cotización → orden).
+            $rows[] = ['name' => $name, 'coverage' => self::NOT_COVERED];
         }
 
         return $rows;

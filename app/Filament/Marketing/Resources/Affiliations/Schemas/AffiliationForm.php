@@ -71,7 +71,13 @@ class AffiliationForm
                     ->required(),
                 TextInput::make('document')
                     ->default('0'),
-                TextInput::make('activated_at'),
+                TextInput::make('activated_at')
+                    ->label('Fecha de emisión')
+                    ->disabled(fn (string $operation): bool => $operation === 'edit')
+                    ->dehydrated(fn (string $operation): bool => $operation !== 'edit')
+                    ->helperText(fn (string $operation): ?string => $operation === 'edit'
+                        ? 'Se corrige con «Corregir emisión y vigencia» (Negocios o Administración), que arrastra avisos y renovación.'
+                        : null),
                 TextInput::make('family_members'),
                 TextInput::make('vaucher_ils'),
                 TextInput::make('date_payment_initial_ils'),

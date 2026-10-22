@@ -12,6 +12,7 @@ use App\Filament\Administration\Pages\GuardiasOperaciones as AdministrationGuard
 use App\Filament\Administration\Resources\AffiliationCorporatePaymentFrequencyChanges\AffiliationCorporatePaymentFrequencyChangeResource;
 use App\Filament\Administration\Resources\AffiliationCorporateRenovationHistories\AffiliationCorporateRenovationHistoryResource as AdministrationAffiliationCorporateRenovationHistoryResource;
 use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource as AdministrationAffiliationCorporateResource;
+use App\Filament\Administration\Resources\AffiliationDateInconsistencies\AffiliationDateInconsistencyResource;
 use App\Filament\Administration\Resources\AffiliationRenovationHistories\AffiliationRenovationHistoryResource as AdministrationAffiliationRenovationHistoryResource;
 use App\Filament\Administration\Resources\Affiliations\AffiliationResource as AdministrationAffiliationResource;
 use App\Filament\Administration\Resources\Agencies\AgencyResource as AdministrationAgencyResource;
@@ -274,6 +275,7 @@ final class DepartmentNavigationPermissionRegistry
         AdministrationDownloadZoneResource::class => ['zona-de-descarga'],
         AdministrationHelpdeskResource::class => ['helpdesk'],
         AffiliationCorporatePaymentFrequencyChangeResource::class => ['cambios-de-frecuencia-de-pago'],
+        AffiliationDateInconsistencyResource::class => ['inconsistencias-de-fechas'],
 
         // MARKETING
         MarketingAgendaCorporativa::class => ['agenda-corporativa'],

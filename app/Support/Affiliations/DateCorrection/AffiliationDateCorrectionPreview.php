@@ -2,17 +2,18 @@
 
 declare(strict_types=1);
 
-namespace App\Support\AffiliationCorporates\DateCorrection;
+namespace App\Support\Affiliations\DateCorrection;
 
+use App\Models\AffiliationDateCorrection;
 use Illuminate\Support\HtmlString;
 
 /**
- * Vista previa «antes → después» de una corrección de vigencia, para la modal.
+ * Vista previa «antes → después» de una corrección de vigencia y resumen de su reversión.
  */
-final class CorporateDateCorrectionPreview
+final class AffiliationDateCorrectionPreview
 {
     /**
-     * @param  array<string, mixed>  $plan  Resultado de {@see CorporateDateCorrector::plan()}
+     * @param  array<string, mixed>  $plan  Resultado de {@see AffiliationDateCorrector::plan()}
      */
     public static function html(array $plan): HtmlString
     {
@@ -24,8 +25,9 @@ final class CorporateDateCorrectionPreview
 
         $html .= '<div><p class="font-semibold mb-1">Afiliación</p><table class="w-full text-left border-collapse"><thead><tr>'
             .'<th class="px-2 py-1"></th><th class="px-2 py-1">Hoy</th><th class="px-2 py-1">Queda</th></tr></thead><tbody>'
-            .self::row('Fecha de emisión', $before['activated_at'] ?? null, $after['date'] ?? null)
-            .self::row('Fecha de vigencia', $before['effective_date'] ?? null, $after['date'] ?? null)
+            .self::row('Fecha de emisión', $before['activated_at'] ?? null, $after['activated_at'] ?? null)
+            .self::row('Fecha de vigencia', $before['effective_date'] ?? null, $after['effective_date'] ?? null)
+            .self::row('Inicio del ciclo de cobro (según los avisos)', $before['cycle_start'] ?? null, $after['effective_date'] ?? null)
             .self::row('Próxima renovación', $before['renewal'] ?? null, $after['renewal'] ?? null)
             .'</tbody></table></div>';
 
@@ -55,7 +57,11 @@ final class CorporateDateCorrectionPreview
         $other = [];
 
         foreach ($plan['renovations'] ?? [] as $renovation) {
-            $other[] = 'Propuesta de renovación: '.$renovation['old'].' → '.$renovation['new'].' ('.$renovation['remaining_days'].' días).';
+            $other[] = match ($renovation['action']) {
+                'annul' => 'Propuesta de renovación del '.$renovation['old'].': se anula (quedaría duplicada).',
+                'keep' => 'Propuesta de renovación del '.$renovation['new'].': ya está en la fecha correcta.',
+                default => 'Propuesta de renovación: '.$renovation['old'].' → '.$renovation['new'].' ('.$renovation['remaining_days'].' días).',
+            };
         }
 
         foreach ($plan['payments'] ?? [] as $payment) {
@@ -69,6 +75,27 @@ final class CorporateDateCorrectionPreview
 
         $html .= self::list($other, 'También se actualiza:', '');
         $html .= self::list($plan['warnings'] ?? [], 'Advertencias (no bloquean):', 'text-amber-700 dark:text-amber-300');
+
+        return new HtmlString($html.'</div>');
+    }
+
+    /**
+     * @param  list<string>  $blockers
+     */
+    public static function rollbackHtml(?AffiliationDateCorrection $correction, array $blockers): HtmlString
+    {
+        if (! $correction instanceof AffiliationDateCorrection) {
+            return new HtmlString('<p class="text-sm">No hay una corrección aplicada que revertir.</p>');
+        }
+
+        $html = '<div class="space-y-3 text-sm"><p>Corrección del <strong>'.e($correction->applied_at?->format('d/m/Y H:i') ?? '').'</strong> por '
+            .e($correction->applied_by_name).': fecha corregida <strong>'.e($correction->new_date).'</strong>. Vuelve a: emisión <strong>'
+            .e($correction->activated_at_before ?? '—').'</strong>, vigencia <strong>'.e($correction->effective_date_before ?? '—').'</strong>.</p>'
+            .'<p class="text-gray-600 dark:text-gray-400">Motivo: '.e($correction->reason).'</p>';
+
+        $html .= $blockers === []
+            ? '<p class="font-semibold text-green-700 dark:text-green-300">Nada cambió desde la corrección: se puede revertir de forma segura.</p>'
+            : self::list($blockers, 'No se puede revertir todavía:', 'text-red-700 dark:text-red-300');
 
         return new HtmlString($html.'</div>');
     }

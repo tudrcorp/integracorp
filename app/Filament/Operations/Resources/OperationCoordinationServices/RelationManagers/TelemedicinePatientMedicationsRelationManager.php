@@ -8,6 +8,7 @@ use App\Models\OperationServiceOrder;
 use App\Models\Supplier;
 use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicinePriority;
+use App\Support\Operations\RetailServiceRegistration;
 use BackedEnum;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -119,6 +120,8 @@ class TelemedicinePatientMedicationsRelationManager extends RelationManager
                 BulkActionGroup::make([
                     BulkAction::make('create_service_order')
                         ->label('Crear Orden de Servicio')
+                        // Retail: la orden solo nace al aprobar la cotización en «Gestionar servicio».
+                        ->hidden(fn (): bool => RetailServiceRegistration::isRetailCoordination($this->getOwnerRecord()))
                         ->color('success')
                         ->icon('heroicon-s-plus')
                         ->modalHeading('Crear Orden de Servicio')

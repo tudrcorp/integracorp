@@ -18,6 +18,7 @@ use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Filament\Operations\SpecificBusinessUnitTableTools;
 use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Operations\OperationServiceOrderValidity;
+use App\Support\Operations\RetailServiceRegistration;
 use App\Support\Operations\ServiceOrderAccountsPayableRegistrar;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
 use Filament\Actions\Action;
@@ -39,6 +40,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View as ViewContract;
@@ -482,6 +484,9 @@ class OperationServiceOrdersTable
                     ->label('Estatus operativo')
                     ->badge()
                     ->sortable()
+                    ->description(fn (OperationServiceOrder $record): ?string => RetailServiceRegistration::isRetailOrderWithoutQuote($record)
+                        ? '⚠ RETAIL sin cotización: revisar'
+                        : null)
                     ->icon(fn (?string $state): string => self::statusIcon($state))
                     ->color(fn (?string $state): string => match (mb_strtoupper(trim((string) $state))) {
                         'EN GESTION', 'EN GESTIÓN' => 'primary',
@@ -638,6 +643,10 @@ class OperationServiceOrdersTable
             ])
             ->recordClasses(fn (OperationServiceOrder $record): array => self::recordRowClasses($record))
             ->filters([
+                Filter::make('retail_without_quote')
+                    ->label('RETAIL sin cotización (por revisar)')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => RetailServiceRegistration::scopeRetailOrdersWithoutQuote($query)),
                 SelectFilter::make('status')
                     ->label('Estado')
                     ->options([

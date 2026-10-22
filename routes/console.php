@@ -13,6 +13,7 @@ use App\Jobs\PrepareAffiliationCorporateRenovations;
 use App\Jobs\PrepareAffiliationRenovations;
 use App\Jobs\ReconcileOrphanedMassNotificationEmails;
 use App\Jobs\RegenerateSupplierReportPdfJob;
+use App\Jobs\ScanAffiliationDateInconsistenciesJob;
 use App\Jobs\SendCollaboratorAnniversaryNotification;
 use App\Jobs\SendDailyAuditSummary;
 use App\Jobs\SendIndividualQuoteDayFiveFollowUp;
@@ -132,6 +133,12 @@ Schedule::job(new AnulateAgentQuotes, 'system')
  * Caduca órdenes de servicio no finalizadas dentro de los 10 días posteriores a su aprobación.
  */
 Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('7:30');
+
+/**
+ * Revisa inconsistencias de fechas (emisión, vigencia, avisos, renovaciones) en afiliaciones activas.
+ * Después de las renovaciones de las 6:00, para ver los datos del día.
+ */
+Schedule::job(new ScanAffiliationDateInconsistenciesJob, 'system')->dailyAt('6:45');
 
 /**
  * Marca tickets helpdesk con SLA vencido.
