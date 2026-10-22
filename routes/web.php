@@ -36,6 +36,7 @@ use App\Http\Controllers\ScrumPresentationController;
 use App\Http\Controllers\SupplierFichaPdfController;
 use App\Http\Controllers\SupplierReportPdfController;
 use App\Http\Controllers\TarjetaAfiliacionController;
+use App\Http\Controllers\TdgCalendarSchedulePdfController;
 use App\Http\Controllers\TechnologyAdvancesPresentationController;
 use App\Http\Controllers\TelemedicineSchemaDocumentationController;
 use App\Http\Controllers\TelemedicineSchemaDocumentationTemporaryLinkController;
@@ -191,6 +192,10 @@ Route::get('operations/telemedicine-patients/siniestralidad/preview', [App\Http\
 Route::get('operations/telemedicine-patients/siniestralidad/pdf', [App\Http\Controllers\TelemedicinePatientSiniestralidadReportController::class, 'downloadPdf'])
     ->middleware(['web', 'auth'])
     ->name('operations.telemedicine-patients.siniestralidad.pdf');
+
+Route::get('guardias/cronograma/pdf', TdgCalendarSchedulePdfController::class)
+    ->middleware(['web', 'auth'])
+    ->name('tdg-calendar.schedule-pdf');
 
 Route::get('operations/telemedicine-patients/siniestralidad/csv', [App\Http\Controllers\TelemedicinePatientSiniestralidadReportController::class, 'downloadCsv'])
     ->middleware(['web', 'auth'])
