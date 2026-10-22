@@ -14,6 +14,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const REVERSE_CORPORATE_PAYMENT_FREQUENCY_CHANGE = 'reversar-cambio-frecuencia-pago-corporativa';
 
+    public const CORRECT_CORPORATE_EFFECTIVE_DATE = 'corregir-vigencia-afiliacion-corporativa';
+
     public const MANAGE_WHITE_COMPANY_NEGOTIATED_FEES = 'matriz-negociacion-empresas-aliadas';
 
     public const MANAGE_WHITE_COMPANY_DOCUMENT_BRAND = 'documentos-marca-empresas-aliadas';
@@ -96,6 +98,11 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::REVERSE_CORPORATE_PAYMENT_FREQUENCY_CHANGE => [
                 'name' => 'Revertir cambios de frecuencia de pago corporativa',
+                'group' => 'COBRANZA',
+                'modules' => ['ADMINISTRACION'],
+            ],
+            self::CORRECT_CORPORATE_EFFECTIVE_DATE => [
+                'name' => 'Corregir fecha de emisión y vigencia de afiliaciones corporativas (y revertirla)',
                 'group' => 'COBRANZA',
                 'modules' => ['ADMINISTRACION'],
             ],

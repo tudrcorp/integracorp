@@ -16,7 +16,11 @@
                 </span>
                 <span class="text-gray-600 dark:text-gray-300" style="font-size:.8rem;">
                     {{ $adjustment->created_at?->format('d/m/Y h:i A') }}
-                    · {{ $adjustment->mode === \App\Models\CollectionAdjustment::MODE_BULK ? 'Ajuste masivo' : 'Ajuste individual' }}
+                    · {{ match ($adjustment->mode) {
+                        \App\Models\CollectionAdjustment::MODE_BULK => 'Ajuste masivo',
+                        \App\Models\CollectionAdjustment::MODE_EFFECTIVE_DATE => 'Corrección de vigencia',
+                        default => 'Ajuste individual',
+                    } }}
                 </span>
             </div>
 
