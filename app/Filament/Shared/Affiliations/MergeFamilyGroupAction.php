@@ -6,12 +6,17 @@ namespace App\Filament\Shared\Affiliations;
 
 use App\Models\Affiliate;
 use App\Models\Affiliation;
+use App\Support\AffiliationCorporates\CorporatePaymentFrequency;
+use App\Support\AffiliationCorporates\CorporatePaymentFrequencyChanger;
+use App\Support\Affiliations\FamilyMergeBilling;
 use App\Support\Affiliations\MergeIndividualAffiliationsException;
 use App\Support\Affiliations\MergeIndividualAffiliationsRequest;
 use App\Support\Affiliations\MergeIndividualAffiliationsService;
 use App\Support\Filament\UserNavigationAccess;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -19,6 +24,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -62,6 +68,8 @@ final class MergeFamilyGroupAction
                     'source_affiliation_ids' => [],
                     'titular_affiliate_id' => $titularId,
                     'members' => self::withTitularRelationship($members, $titularId),
+                    'effective_date' => self::suggestedEffectiveDate($record, []),
+                    'payment_frequency' => CorporatePaymentFrequency::normalize((string) $record->payment_frequency) ?? CorporatePaymentFrequency::ANUAL,
                     'reason' => '',
                     'confirmed' => false,
                 ];
@@ -137,6 +145,7 @@ final class MergeFamilyGroupAction
 
                                         $set('titular_affiliate_id', $titularId ?: null);
                                         $set('members', self::withTitularRelationship($members, $titularId));
+                                        $set('effective_date', self::suggestedEffectiveDate($record, $sourceIds));
                                     })
                                     ->helperText('Solo aparecen pólizas individuales no excluidas.')
                                     ->columnSpanFull(),
@@ -197,6 +206,51 @@ final class MergeFamilyGroupAction
                             ])
                             ->columnSpanFull(),
                     ]),
+                Step::make('Vigencia y cobro')
+                    ->description('Fecha de vigencia y frecuencia')
+                    ->icon(Heroicon::OutlinedCalendarDays)
+                    ->schema([
+                        Section::make('Vigencia y frecuencia del grupo unificado')
+                            ->description('Se sugiere la fecha hasta la que ya está pagado el grupo. Al cambiar la fecha o la frecuencia, el calendario de cobro se recalcula.')
+                            ->schema([
+                                Grid::make(2)
+                                    ->schema([
+                                        DatePicker::make('effective_date')
+                                            ->label('Fecha de vigencia')
+                                            ->required()
+                                            ->native(false)
+                                            ->displayFormat('d/m/Y')
+                                            ->format('d/m/Y')
+                                            ->closeOnDateSelection()
+                                            ->live()
+                                            ->helperText('La primera cuota cae en esta fecha y la renovación, un año después.'),
+                                        Select::make('payment_frequency')
+                                            ->label('Frecuencia de pago')
+                                            ->options(CorporatePaymentFrequency::options())
+                                            ->required()
+                                            ->native(false)
+                                            ->live(),
+                                    ])
+                                    ->columnSpanFull(),
+                                Placeholder::make('billing_preview')
+                                    ->hiddenLabel()
+                                    ->content(function (Get $get, Affiliation $record): HtmlString {
+                                        try {
+                                            $request = self::requestFromForm($record, $get, forPreview: true);
+
+                                            return app(MergeIndividualAffiliationsService::class)->preview($request)->billingHtml();
+                                        } catch (MergeIndividualAffiliationsException $exception) {
+                                            return new HtmlString('<p class="text-sm text-red-700 dark:text-red-300">'.e($exception->getMessage()).'</p>');
+                                        } catch (\Throwable $exception) {
+                                            report($exception);
+
+                                            return new HtmlString('<p class="text-sm text-red-700 dark:text-red-300">No se pudo calcular el calendario: '.e($exception->getMessage()).'</p>');
+                                        }
+                                    })
+                                    ->columnSpanFull(),
+                            ])
+                            ->columnSpanFull(),
+                    ]),
                 Step::make('Confirmar')
                     ->description('Revisar el impacto y confirmar')
                     ->icon(Heroicon::OutlinedShieldCheck)
@@ -229,7 +283,7 @@ final class MergeFamilyGroupAction
                             ->placeholder('Ejemplo: familia cargada como cuatro pólizas individuales; se consolida el grupo en la póliza del titular.')
                             ->columnSpanFull(),
                         Checkbox::make('confirmed')
-                            ->label('Revisé el preview. Entiendo que las pólizas origen pasarán a EXCLUIDO, no se borrarán, y las cuotas POR PAGAR de esas pólizas se cancelarán.')
+                            ->label('Revisé el preview. Entiendo que las pólizas origen pasarán a EXCLUIDO (no se borran), que los avisos POR PAGAR se anulan y que se crearán en Administración los avisos del calendario nuevo.')
                             ->accepted()
                             ->required()
                             ->columnSpanFull(),
@@ -255,7 +309,7 @@ final class MergeFamilyGroupAction
                     ->body(
                         'La póliza '.$result->targetCode.' quedó con '.$result->newFamilyMembers
                         .' persona(s). Se excluyeron: '.implode(', ', $result->excludedCodes)
-                        .'. El certificado y los carnets se regeneran en cola.'
+                        .'. El certificado y los carnets se regeneran en cola. Si algo no cuadra, use «Revertir unificación» en esta misma póliza.'
                     )
                     ->success()
                     ->persistent()
@@ -264,6 +318,36 @@ final class MergeFamilyGroupAction
                 $record->refresh();
                 $record->load(['affiliates', 'affiliationObservations', 'status_log_affiliations']);
             });
+    }
+
+    /**
+     * Vigencia sugerida: la que ya tiene la póliza destino; si no tiene, la fecha hasta la que el
+     * grupo está pagado (la más tardía, para no cobrar dos veces); si no hay dato, hoy.
+     *
+     * @param  list<int>  $sourceAffiliationIds
+     */
+    public static function suggestedEffectiveDate(Affiliation $target, array $sourceAffiliationIds): string
+    {
+        $current = CorporatePaymentFrequencyChanger::parseDueDate((string) $target->effective_date);
+
+        if ($current !== null) {
+            return $current->format('d/m/Y');
+        }
+
+        $latest = null;
+        $affiliations = Affiliation::query()
+            ->whereIn('id', [(int) $target->id, ...$sourceAffiliationIds])
+            ->get(['id', 'code', 'payment_frequency', 'effective_date', 'activated_at']);
+
+        foreach ($affiliations as $affiliation) {
+            $paidThrough = FamilyMergeBilling::paidThrough($affiliation);
+
+            if ($paidThrough !== null && ($latest === null || $paidThrough->gt($latest))) {
+                $latest = $paidThrough;
+            }
+        }
+
+        return ($latest ?? Carbon::today())->format('d/m/Y');
     }
 
     public static function affiliationOptionLabel(Affiliation $affiliation): string
@@ -427,6 +511,8 @@ final class MergeFamilyGroupAction
             reason: $forPreview ? (string) ($data['reason'] ?? 'Vista previa') : (string) ($data['reason'] ?? ''),
             actorName: (string) ($user?->name ?? 'SISTEMA'),
             actorUserId: $user?->id !== null ? (int) $user->id : null,
+            effectiveDate: filled($data['effective_date'] ?? null) ? (string) $data['effective_date'] : null,
+            paymentFrequency: filled($data['payment_frequency'] ?? null) ? (string) $data['payment_frequency'] : null,
         );
     }
 
@@ -436,6 +522,8 @@ final class MergeFamilyGroupAction
             'source_affiliation_ids' => $get('source_affiliation_ids') ?? [],
             'titular_affiliate_id' => $get('titular_affiliate_id'),
             'members' => $get('members') ?? [],
+            'effective_date' => $get('effective_date'),
+            'payment_frequency' => $get('payment_frequency'),
             'reason' => $get('reason') ?? '',
         ], $forPreview);
     }

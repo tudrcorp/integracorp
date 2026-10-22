@@ -18,6 +18,17 @@ final class MergeIndividualAffiliationsPreview
      * @param  list<array{code: string, invoice: string|null, amount: float}>  $annualCollectionsToCancel
      * @param  list<array{code: string, status: string}>  $renovationsToCancel
      * @param  list<array{identification: string, name: string}>  $telemedicinePatients
+     * @param  array{
+     *     effective_date?: string|null,
+     *     frequency?: string,
+     *     renewal_date?: string|null,
+     *     period_amount?: float,
+     *     creates_collections?: bool,
+     *     installments?: list<array{date: string, due: string, amount: float, overdue: bool}>,
+     *     paid_through?: list<array{code: string, date: string|null}>,
+     *     blockers?: list<string>,
+     *     warnings?: list<string>
+     * }  $billing
      */
     public function __construct(
         public array $blockers,
@@ -33,6 +44,7 @@ final class MergeIndividualAffiliationsPreview
         public float $newTotalAmount,
         public int $newFamilyMembers,
         public int $pendingCollectionsToRecalculate,
+        public array $billing = [],
     ) {}
 
     public function canExecute(): bool
@@ -68,6 +80,7 @@ final class MergeIndividualAffiliationsPreview
         }
 
         $cancelCount = count($this->collectionsToCancel) + count($this->annualCollectionsToCancel);
+        $newCollections = ($this->billing['creates_collections'] ?? false) ? count($this->billing['installments'] ?? []) : 0;
         $renovationCount = count($this->renovationsToCancel);
         $telemedicineCount = count($this->telemedicinePatients);
 
@@ -95,11 +108,12 @@ final class MergeIndividualAffiliationsPreview
             <tbody>{$memberRows}</tbody>
         </table>
     </div>
+    {$this->billingSectionHtml()}
     <div>
         <p class="font-semibold mb-1">Impacto operativo</p>
         <ul class="list-disc pl-5 space-y-1">
-            <li>Cuotas POR PAGAR a cancelar en pólizas origen: {$cancelCount}</li>
-            <li>Cuotas POR PAGAR de la póliza destino a recalcular: {$this->pendingCollectionsToRecalculate}</li>
+            <li>Avisos POR PAGAR que se anulan y reemplazan (no se borran): {$cancelCount}</li>
+            <li>Avisos de cobro nuevos que se crean en Administración: {$newCollections}</li>
             <li>Renovaciones abiertas a anular en origen: {$renovationCount}</li>
             <li>Pacientes de telemedicina a reasignar: {$telemedicineCount}</li>
             <li>Ventas, comisiones y recibos ya emitidos no se modifican.</li>
@@ -109,6 +123,75 @@ final class MergeIndividualAffiliationsPreview
 HTML;
 
         return new HtmlString($html);
+    }
+
+    /**
+     * Solo el bloque de vigencia y cobro, con sus bloqueos y avisos: lo usa el paso «Vigencia y cobro».
+     */
+    public function billingHtml(): HtmlString
+    {
+        $blockers = $this->listHtml($this->billing['blockers'] ?? [], 'Hay que corregir esto antes de continuar:', 'text-red-700 dark:text-red-300');
+        $warnings = $this->listHtml($this->billing['warnings'] ?? [], 'Advertencias (no bloquean):', 'text-amber-700 dark:text-amber-300');
+
+        return new HtmlString('<div class="space-y-4 text-sm">'.$blockers.$warnings.$this->billingSectionHtml().'</div>');
+    }
+
+    private function billingSectionHtml(): string
+    {
+        if ($this->billing === []) {
+            return '';
+        }
+
+        $paidRows = '';
+        foreach ($this->billing['paid_through'] ?? [] as $row) {
+            $paidRows .= '<tr><td class="px-2 py-1">'.e($row['code']).'</td>'
+                .'<td class="px-2 py-1">'.e($row['date'] ?? 'Sin dato: confirmar con Administración').'</td></tr>';
+        }
+
+        $installmentRows = '';
+        $total = 0.0;
+        foreach ($this->billing['installments'] ?? [] as $index => $installment) {
+            $total += (float) $installment['amount'];
+            $state = $installment['overdue']
+                ? '<span class="text-red-700 dark:text-red-300">Fecha pasada: se crea a cobrar</span>'
+                : 'Por cobrar';
+            $installmentRows .= '<tr>'
+                .'<td class="px-2 py-1">'.($index + 1).'</td>'
+                .'<td class="px-2 py-1">'.e($installment['date']).'</td>'
+                .'<td class="px-2 py-1">'.e($installment['due']).'</td>'
+                .'<td class="px-2 py-1 text-right">'.$this->money((float) $installment['amount']).'</td>'
+                .'<td class="px-2 py-1">'.$state.'</td>'
+                .'</tr>';
+        }
+
+        $effective = e($this->billing['effective_date'] ?? 'sin definir');
+        $renewal = e($this->billing['renewal_date'] ?? 'sin definir');
+        $frequency = e((string) ($this->billing['frequency'] ?? ''));
+        $period = $this->money((float) ($this->billing['period_amount'] ?? 0));
+        $totalHtml = $this->money($total);
+
+        $calendar = $installmentRows === ''
+            ? '<p class="text-gray-600 dark:text-gray-400">Elija la fecha de vigencia para ver el calendario de cobro.</p>'
+            : '<table class="w-full text-left border-collapse"><thead><tr><th class="px-2 py-1">#</th><th class="px-2 py-1">Fecha de pago</th><th class="px-2 py-1">Vence</th><th class="px-2 py-1 text-right">Monto</th><th class="px-2 py-1">Estado</th></tr></thead><tbody>'
+                .$installmentRows
+                .'<tr class="font-semibold"><td class="px-2 py-1" colspan="3">Total del año</td><td class="px-2 py-1 text-right">'.$totalHtml.'</td><td></td></tr>'
+                .'</tbody></table>';
+
+        $createNote = ($this->billing['creates_collections'] ?? false)
+            ? 'Al unificar se crean estos avisos POR PAGAR en Administración.'
+            : 'La póliza destino no está ACTIVA: los avisos se generarán al aprobar su primer pago, como hoy.';
+
+        return <<<HTML
+    <div>
+        <p class="font-semibold mb-1">Vigencia y cobro del grupo unificado</p>
+        <p>Vigencia: <strong>{$effective}</strong> · Frecuencia: <strong>{$frequency}</strong> · Monto por cuota: <strong>{$period}</strong> · Próxima renovación: <strong>{$renewal}</strong></p>
+        <p class="font-semibold mt-2 mb-1">Pagado hasta (por póliza)</p>
+        <table class="w-full text-left border-collapse"><thead><tr><th class="px-2 py-1">Póliza</th><th class="px-2 py-1">Cubierto hasta</th></tr></thead><tbody>{$paidRows}</tbody></table>
+        <p class="font-semibold mt-2 mb-1">Próximas fechas de pago</p>
+        {$calendar}
+        <p class="mt-1 text-gray-600 dark:text-gray-400">{$createNote}</p>
+    </div>
+HTML;
     }
 
     /**

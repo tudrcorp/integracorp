@@ -125,6 +125,7 @@ class MergeIndividualAffiliationsCommand extends Command
         $this->info('Unificado en '.$result->targetCode.' con '.$result->newFamilyMembers.' persona(s).');
         $this->info('Excluidas: '.implode(', ', $result->excludedCodes));
         $this->info('Cuotas canceladas: '.$result->cancelledCollections.'. Carnets en cola.');
+        $this->info('Punto de restauración #'.$result->mergeId.': se revierte con «Revertir unificación» en la póliza '.$result->targetCode.'.');
 
         return self::SUCCESS;
     }

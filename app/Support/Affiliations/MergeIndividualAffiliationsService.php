@@ -8,15 +8,20 @@ use App\Jobs\PrepareAffiliationRenovations;
 use App\Jobs\RegenerateMergedAffiliationDocumentsJob;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
+use App\Models\AffiliationFamilyMerge;
 use App\Models\AnnualCollection;
 use App\Models\Collection;
 use App\Models\Renovation;
 use App\Models\TelemedicinePatient;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\AffiliationCorporates\CorporatePaymentFrequency;
+use App\Support\AffiliationCorporates\CorporatePaymentFrequencyChanger;
 use App\Support\SecurityAudit;
+use Carbon\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 final class MergeIndividualAffiliationsService
 {
@@ -193,6 +198,7 @@ final class MergeIndividualAffiliationsService
      *     affiliates: SupportCollection<int, Affiliate>,
      *     pendingCollections: SupportCollection<int, Collection>,
      *     pendingAnnualCollections: SupportCollection<int, AnnualCollection>,
+     *     targetAnnualCollections: SupportCollection<int, AnnualCollection>,
      *     openRenovations: SupportCollection<int, Renovation>,
      *     telemedicinePatients: SupportCollection<int, TelemedicinePatient>
      * }
@@ -214,6 +220,14 @@ final class MergeIndividualAffiliationsService
         }
 
         $affiliations = $query->get()->keyBy('id');
+
+        if ($lock) {
+            Affiliate::query()
+                ->whereIn('affiliation_id', $ids)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get(['id']);
+        }
 
         $target = $affiliations->get($request->targetAffiliationId);
 
@@ -242,25 +256,37 @@ final class MergeIndividualAffiliationsService
             ->values();
 
         $sourceCodes = $sources->pluck('code')->filter()->map(fn (mixed $code): string => (string) $code)->all();
-        $sourceIds = $sources->modelKeys();
+        $sourceIds = $sources->map(static fn (Affiliation $source): int => (int) $source->id)->values()->all();
         $identifications = $affiliates
             ->map(fn (Affiliate $affiliate): string => trim((string) $affiliate->nro_identificacion))
             ->filter()
             ->values()
             ->all();
 
-        $pendingCollections = Collection::query()
-            ->whereIn('affiliation_code', $sourceCodes)
+        // Avisos POR PAGAR de todas las pólizas (destino incluida): el calendario nuevo los reemplaza.
+        $pendingCollectionsQuery = Collection::query()
+            ->whereIn('affiliation_code', [(string) $target->code, ...$sourceCodes])
             ->where('status', self::COLLECTION_PENDING_STATUS)
-            ->get();
+            ->orderBy('id');
+
+        if ($lock) {
+            $pendingCollectionsQuery->lockForUpdate();
+        }
+
+        $pendingCollections = $pendingCollectionsQuery->get();
 
         $pendingAnnualCollections = AnnualCollection::query()
             ->whereIn('affiliation_code', $sourceCodes)
             ->where('status', self::COLLECTION_PENDING_STATUS)
             ->get();
 
+        $targetAnnualCollections = AnnualCollection::query()
+            ->where('affiliation_code', $target->code)
+            ->where('status', self::COLLECTION_PENDING_STATUS)
+            ->get();
+
         $openRenovations = Renovation::query()
-            ->whereIn('affiliation_id', $sourceIds)
+            ->whereIn('affiliation_id', $ids)
             ->whereIn('status', [
                 PrepareAffiliationRenovations::STATUS_VIGENTE,
                 PrepareAffiliationRenovations::STATUS_RENOVATION_PERIOD,
@@ -268,11 +294,19 @@ final class MergeIndividualAffiliationsService
             ->get();
 
         $telemedicinePatients = TelemedicinePatient::query()
-            ->where(function ($query) use ($sourceIds, $identifications): void {
+            ->where(function ($query) use ($sourceIds, $ids, $identifications): void {
                 $query->whereIn('afilliation_id', $sourceIds);
 
                 if ($identifications !== []) {
-                    $query->orWhereIn('nro_identificacion', $identifications);
+                    // Por cédula solo se reasignan pacientes sin afiliación o ya ligados al grupo: un paciente
+                    // de una afiliación corporativa u otra póliza individual no se roba.
+                    $query->orWhere(function ($byIdentification) use ($ids, $identifications): void {
+                        $byIdentification->whereIn('nro_identificacion', $identifications)
+                            ->whereNull('afilliation_corporate_id')
+                            ->where(function ($link) use ($ids): void {
+                                $link->whereNull('afilliation_id')->orWhereIn('afilliation_id', $ids);
+                            });
+                    });
                 }
             })
             ->get();
@@ -283,6 +317,7 @@ final class MergeIndividualAffiliationsService
             'affiliates' => $affiliates,
             'pendingCollections' => $pendingCollections,
             'pendingAnnualCollections' => $pendingAnnualCollections,
+            'targetAnnualCollections' => $targetAnnualCollections,
             'openRenovations' => $openRenovations,
             'telemedicinePatients' => $telemedicinePatients,
         ];
@@ -295,6 +330,7 @@ final class MergeIndividualAffiliationsService
      *     affiliates: SupportCollection<int, Affiliate>,
      *     pendingCollections: SupportCollection<int, Collection>,
      *     pendingAnnualCollections: SupportCollection<int, AnnualCollection>,
+     *     targetAnnualCollections: SupportCollection<int, AnnualCollection>,
      *     openRenovations: SupportCollection<int, Renovation>,
      *     telemedicinePatients: SupportCollection<int, TelemedicinePatient>
      * }  $bundle
@@ -344,7 +380,7 @@ final class MergeIndividualAffiliationsService
         $blockers = [
             ...$blockers,
             ...self::relationshipBlockers(
-                $affiliates->modelKeys(),
+                $affiliates->map(static fn (Affiliate $affiliate): int => (int) $affiliate->id)->values()->all(),
                 $request->titularAffiliateId,
                 $request->relationships,
             ),
@@ -370,10 +406,6 @@ final class MergeIndividualAffiliationsService
                 $blockers[] = 'La agencia de '.$source->code.' no coincide con la de la póliza destino.';
             }
 
-            if (self::normalizeCode((string) $source->payment_frequency) !== self::normalizeCode((string) $target->payment_frequency)) {
-                $blockers[] = 'La frecuencia de pago de '.$source->code.' no coincide con la de la póliza destino.';
-            }
-
             if ((int) ($source->agent_id ?? 0) !== (int) ($target->agent_id ?? 0)) {
                 $warnings[] = 'El agente de '.$source->code.' es distinto. La póliza unificada conservará el agente de '.$target->code.'.';
             }
@@ -389,6 +421,13 @@ final class MergeIndividualAffiliationsService
 
         if ($activeOnSource && strtoupper((string) $target->status) !== PrepareAffiliationRenovations::AFFILIATION_STATUS_ACTIVE) {
             $blockers[] = 'Hay pólizas origen ACTIVA y la destino no lo está. Elija como destino una póliza activa.';
+        }
+
+        // La frecuencia elegida por el analista manda: el monto del período de cada persona se calcula con ella.
+        $chosenFrequency = CorporatePaymentFrequency::normalize($request->paymentFrequency ?: (string) $target->payment_frequency);
+
+        if ($chosenFrequency !== null) {
+            $target->payment_frequency = $chosenFrequency;
         }
 
         $memberRows = [];
@@ -432,24 +471,20 @@ final class MergeIndividualAffiliationsService
         }
 
         $newFeeAnual = round($projectedAnnual, 2);
-        $newTotalAmount = $this->calculator->totalAmountForPaymentFrequency(
+
+        $billing = FamilyMergeBilling::plan(
+            $target,
+            $sources,
+            $bundle['pendingCollections'],
+            $request->effectiveDate,
+            $request->paymentFrequency,
             $newFeeAnual,
-            (string) ($target->payment_frequency ?? 'ANUAL'),
         );
-
-        $targetPendingCollections = Collection::query()
-            ->where('affiliation_code', $target->code)
-            ->where('status', self::COLLECTION_PENDING_STATUS)
-            ->count();
-
-        $targetPendingAnnual = AnnualCollection::query()
-            ->where('affiliation_code', $target->code)
-            ->where('status', self::COLLECTION_PENDING_STATUS)
-            ->count();
-
-        if ($targetPendingCollections + $targetPendingAnnual > 0) {
-            $warnings[] = 'Las cuotas POR PAGAR de '.$target->code.' se recalcularán al nuevo monto familiar. Los recibos ya pagados no cambian.';
-        }
+        $blockers = [...$blockers, ...$billing['blockers']];
+        $warnings = [...$warnings, ...$billing['warnings'], ...$this->renewalWarnings($target, $bundle['openRenovations'], $billing['renewal_date'])];
+        $newTotalAmount = $billing['period_amount'];
+        $createsCollections = strtoupper((string) $target->status) === PrepareAffiliationRenovations::AFFILIATION_STATUS_ACTIVE;
+        $today = Carbon::today();
 
         $warnings[] = 'Las ventas y comisiones ya emitidas de las pólizas origen se conservan para auditoría. A futuro el grupo comisiona como una sola póliza.';
 
@@ -477,7 +512,7 @@ final class MergeIndividualAffiliationsService
                 'family_members' => (int) ($source->family_members ?? 0),
             ])->values()->all(),
             members: $memberRows,
-            collectionsToCancel: $bundle['pendingCollections']->map(static fn (Collection $collection): array => [
+            collectionsToCancel: $bundle['pendingCollections']->whereIn('id', $billing['cancel_ids'])->map(static fn (Collection $collection): array => [
                 'code' => (string) $collection->affiliation_code,
                 'invoice' => $collection->collection_invoice_number !== null ? (string) $collection->collection_invoice_number : null,
                 'amount' => (float) ($collection->total_amount ?? 0),
@@ -498,7 +533,26 @@ final class MergeIndividualAffiliationsService
             newFeeAnual: $newFeeAnual,
             newTotalAmount: $newTotalAmount,
             newFamilyMembers: $projectedActive,
-            pendingCollectionsToRecalculate: $targetPendingCollections + $targetPendingAnnual,
+            pendingCollectionsToRecalculate: $bundle['targetAnnualCollections']->count(),
+            billing: [
+                'effective_date' => $billing['effective_date']?->format('d/m/Y'),
+                'frequency' => $billing['frequency'],
+                'renewal_date' => $billing['renewal_date']?->format('d/m/Y'),
+                'period_amount' => $billing['period_amount'],
+                'creates_collections' => $createsCollections,
+                'installments' => array_map(static fn (array $installment): array => [
+                    'date' => $installment['date']->format('d/m/Y'),
+                    'due' => $installment['due']->format('d/m/Y'),
+                    'amount' => $installment['amount'],
+                    'overdue' => $installment['date']->lt($today),
+                ], $billing['installments']),
+                'paid_through' => array_map(static fn (array $row): array => [
+                    'code' => $row['code'],
+                    'date' => $row['date']?->format('d/m/Y'),
+                ], $billing['paid_through']),
+                'blockers' => $billing['blockers'],
+                'warnings' => $billing['warnings'],
+            ],
         );
     }
 
@@ -509,6 +563,7 @@ final class MergeIndividualAffiliationsService
      *     affiliates: SupportCollection<int, Affiliate>,
      *     pendingCollections: SupportCollection<int, Collection>,
      *     pendingAnnualCollections: SupportCollection<int, AnnualCollection>,
+     *     targetAnnualCollections: SupportCollection<int, AnnualCollection>,
      *     openRenovations: SupportCollection<int, Renovation>,
      *     telemedicinePatients: SupportCollection<int, TelemedicinePatient>
      * }  $bundle
@@ -527,6 +582,20 @@ final class MergeIndividualAffiliationsService
 
         $sourceCodes = $sources->pluck('code')->filter()->map(fn (mixed $code): string => (string) $code)->all();
         $movedAffiliateIds = [];
+
+        $touchedIds = $this->touchedRowIds($target, $sources, $affiliates, $bundle);
+        $snapshotBefore = FamilyMergeSnapshot::capture($touchedIds);
+        $previousEffectiveDate = (string) $target->getRawOriginal('effective_date');
+        $previousFrequency = (string) $target->getRawOriginal('payment_frequency');
+
+        $plan = FamilyMergeBilling::plan($target, $sources, $bundle['pendingCollections'], $request->effectiveDate, $request->paymentFrequency, $preview->newFeeAnual);
+
+        if ($plan['blockers'] !== [] || $plan['effective_date'] === null) {
+            throw MergeIndividualAffiliationsException::fromBlockers($plan['blockers']);
+        }
+
+        $target->effective_date = $plan['effective_date']->format('d/m/Y');
+        $target->payment_frequency = $plan['frequency'];
 
         foreach ($affiliates as $affiliate) {
             $relationship = $request->relationships[(int) $affiliate->id] ?? null;
@@ -572,20 +641,34 @@ final class MergeIndividualAffiliationsService
         $this->calculator->recalculateAffiliationTotalsFromAffiliates($target);
         $target->refresh();
 
-        $cancelledCollections = $this->cancelPendingCollections($sourceCodes);
-        $this->recalculateTargetPendingCollections($target);
+        // El calendario se arma con la tarifa que quedó guardada, no con la proyectada.
+        $plan = FamilyMergeBilling::plan($target, $sources, $bundle['pendingCollections'], $request->effectiveDate, $request->paymentFrequency, (float) $target->fee_anual);
+        $createsCollections = strtoupper((string) $target->status) === PrepareAffiliationRenovations::AFFILIATION_STATUS_ACTIVE;
 
-        $cancelledRenovations = 0;
-        if ($bundle['openRenovations']->isNotEmpty()) {
-            $cancelledRenovations = Renovation::query()
-                ->whereIn('id', $bundle['openRenovations']->modelKeys())
-                ->update([
-                    'status' => self::RENOVATION_CANCELLED_STATUS,
-                    'updated_by' => $request->actorName,
-                ]);
-        }
+        $cancelledAnnual = $this->cancelSourceAnnualCollections($sourceCodes);
+        $billingResult = FamilyMergeBilling::apply(
+            $target,
+            $createsCollections ? $plan : [...$plan, 'installments' => []],
+            $sourceCodes,
+            $request->actorName,
+            self::COLLECTION_CANCELLED_STATUS,
+        );
+        $cancelledCollections = count($billingResult['cancelled_ids']) + $cancelledAnnual;
+
+        $cancelledRenovations = $this->cancelStaleRenovations($target, $bundle['openRenovations'], $plan['renewal_date'], $request->actorName);
 
         $updatedPatients = $this->reassignTelemedicinePatients($target, $bundle['telemedicinePatients']);
+        $renovationRefreshed = PrepareAffiliationRenovations::refreshForAffiliation($target->fresh() ?? $target);
+
+        $createdRenovationIds = Renovation::query()
+            ->where('affiliation_id', $target->id)
+            ->whereNotIn('id', $touchedIds['renovations'] !== [] ? $touchedIds['renovations'] : [0])
+            ->pluck('id')
+            ->map(intval(...))
+            ->all();
+        $touchedIdsAfter = $touchedIds;
+        $touchedIdsAfter['collections'] = [...$touchedIds['collections'], ...$billingResult['created_ids']];
+        $touchedIdsAfter['renovations'] = [...$touchedIds['renovations'], ...$createdRenovationIds];
 
         $mergeNote = $this->mergeObservation($target, $sourceCodes, $request->reason, $preview);
 
@@ -617,7 +700,10 @@ final class MergeIndividualAffiliationsService
         $target->status_log_affiliations()->create([
             'affiliation_id' => $target->id,
             'action' => self::MERGE_ACTION,
-            'observation' => 'Recibió el grupo familiar de: '.implode(', ', $sourceCodes).'. Motivo: '.$request->reason,
+            'observation' => 'Recibió el grupo familiar de: '.implode(', ', $sourceCodes)
+                .'. Vigencia: '.($previousEffectiveDate !== '' ? $previousEffectiveDate : 'sin fecha').' → '.$target->effective_date
+                .'. Frecuencia: '.($previousFrequency !== '' ? $previousFrequency : 'sin frecuencia').' → '.$target->payment_frequency
+                .'. Avisos nuevos: '.count($billingResult['created_ids']).'. Motivo: '.$request->reason,
             'updated_by' => $request->actorName,
         ]);
 
@@ -626,7 +712,41 @@ final class MergeIndividualAffiliationsService
             'created_by' => $request->actorUserId !== null ? (string) $request->actorUserId : $request->actorName,
         ]);
 
+        $merge = AffiliationFamilyMerge::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'target_affiliation_id' => (int) $target->id,
+            'target_code' => (string) $target->code,
+            'source_affiliation_ids' => $sources->map(static fn (Affiliation $source): int => (int) $source->id)->values()->all(),
+            'source_codes' => $sourceCodes,
+            'titular_affiliate_id' => $request->titularAffiliateId,
+            'reason' => $request->reason,
+            'status' => AffiliationFamilyMerge::STATUS_APPLIED,
+            'snapshot_before' => $snapshotBefore,
+            'snapshot_after' => FamilyMergeSnapshot::capture($touchedIdsAfter),
+            'summary' => [
+                'moved_affiliate_ids' => $movedAffiliateIds,
+                'fee_anual_before' => (float) $preview->target['fee_anual'],
+                'fee_anual_after' => (float) $target->fee_anual,
+                'family_members_after' => (int) $target->family_members,
+                'cancelled_collections' => $cancelledCollections,
+                'cancelled_renovations' => (int) $cancelledRenovations,
+                'updated_telemedicine_patients' => $updatedPatients,
+                'renovation_refreshed' => $renovationRefreshed,
+                'effective_date_before' => $previousEffectiveDate,
+                'effective_date_after' => (string) $target->effective_date,
+                'payment_frequency_before' => $previousFrequency,
+                'payment_frequency_after' => (string) $target->payment_frequency,
+                'cancelled_collection_ids' => $billingResult['cancelled_ids'],
+                'created_collection_ids' => $billingResult['created_ids'],
+                'created_renovation_ids' => $createdRenovationIds,
+            ],
+            'merged_by' => $request->actorUserId,
+            'merged_by_name' => $request->actorName,
+            'merged_at' => now(),
+        ]);
+
         SecurityAudit::log('AUDIT_AFFILIATION_FAMILY_MERGE', 'affiliations.merge-family', [
+            'merge_id' => $merge->id,
             'target_id' => $target->id,
             'target_code' => $target->code,
             'source_codes' => $sourceCodes,
@@ -634,6 +754,9 @@ final class MergeIndividualAffiliationsService
             'titular_affiliate_id' => $request->titularAffiliateId,
             'new_fee_anual' => (float) $target->fee_anual,
             'new_family_members' => (int) $target->family_members,
+            'effective_date' => (string) $target->effective_date,
+            'payment_frequency' => (string) $target->payment_frequency,
+            'created_collection_ids' => $billingResult['created_ids'],
             'reason' => $request->reason,
         ]);
 
@@ -650,16 +773,8 @@ final class MergeIndividualAffiliationsService
             RegenerateMergedAffiliationDocumentsJob::dispatch($targetId, $actorUserId);
         });
 
-        $recalculated = Collection::query()
-            ->where('affiliation_code', $target->code)
-            ->where('status', self::COLLECTION_PENDING_STATUS)
-            ->count()
-            + AnnualCollection::query()
-                ->where('affiliation_code', $target->code)
-                ->where('status', self::COLLECTION_PENDING_STATUS)
-                ->count();
-
         return new MergeIndividualAffiliationsResult(
+            mergeId: (int) $merge->id,
             targetAffiliationId: (int) $target->id,
             targetCode: (string) $target->code,
             excludedCodes: $sourceCodes,
@@ -668,10 +783,44 @@ final class MergeIndividualAffiliationsService
             newTotalAmount: (float) $target->total_amount,
             newFamilyMembers: (int) $target->family_members,
             cancelledCollections: $cancelledCollections,
-            recalculatedCollections: $recalculated,
+            recalculatedCollections: count($billingResult['created_ids']),
             cancelledRenovations: (int) $cancelledRenovations,
             updatedTelemedicinePatients: $updatedPatients,
         );
+    }
+
+    /**
+     * Filas que la unificación puede modificar, por tabla: la base de la foto de antes y después.
+     *
+     * @param  SupportCollection<int, Affiliation>  $sources
+     * @param  SupportCollection<int, Affiliate>  $affiliates
+     * @param  array{
+     *     pendingCollections: SupportCollection<int, Collection>,
+     *     pendingAnnualCollections: SupportCollection<int, AnnualCollection>,
+     *     targetAnnualCollections: SupportCollection<int, AnnualCollection>,
+     *     openRenovations: SupportCollection<int, Renovation>,
+     *     telemedicinePatients: SupportCollection<int, TelemedicinePatient>
+     * }  $bundle
+     * @return array<string, list<int>>
+     */
+    private function touchedRowIds(Affiliation $target, SupportCollection $sources, SupportCollection $affiliates, array $bundle): array
+    {
+        $ids = static fn (SupportCollection $models): array => $models
+            ->map(static fn ($model): int => (int) $model->id)
+            ->values()
+            ->all();
+
+        return [
+            'affiliations' => [(int) $target->id, ...$ids($sources)],
+            'affiliates' => $ids($affiliates),
+            'collections' => $ids($bundle['pendingCollections']),
+            'annual_collections' => [
+                ...$ids($bundle['pendingAnnualCollections']),
+                ...$ids($bundle['targetAnnualCollections']),
+            ],
+            'renovations' => $ids($bundle['openRenovations']),
+            'telemedicine_patients' => $ids($bundle['telemedicinePatients']),
+        ];
     }
 
     private function syncTitularColumns(Affiliation $target, Affiliate $titular): void
@@ -694,6 +843,32 @@ final class MergeIndividualAffiliationsService
         }
     }
 
+    /**
+     * Qué pasa con la renovación: todo el grupo renueva en la fecha que sale de la nueva vigencia y
+     * las propuestas abiertas que dejan de valer se anulan.
+     *
+     * @param  SupportCollection<int, Renovation>  $openRenovations
+     * @return list<string>
+     */
+    private function renewalWarnings(Affiliation $target, SupportCollection $openRenovations, ?Carbon $renewalDate): array
+    {
+        $warnings = [];
+
+        foreach ($openRenovations as $renovation) {
+            if ($renovation->status === PrepareAffiliationRenovations::STATUS_RENOVATION_PERIOD) {
+                $warnings[] = 'La póliza '.$renovation->code_affiliation.' está en PERÍODO DE RENOVACIÓN: esa propuesta se anula y el grupo renueva con la nueva vigencia.';
+            }
+        }
+
+        if ($renewalDate !== null && strtoupper((string) $target->status) === PrepareAffiliationRenovations::AFFILIATION_STATUS_ACTIVE) {
+            $warnings[] = 'Todo el grupo renovará el '.$renewalDate->format('d/m/Y').'. La propuesta de renovación de '.$target->code.' se recalcula en el acto (no espera a la corrida de las 6:00).';
+        }
+
+        $warnings[] = 'Los cupos clínicos ya consumidos se conservan por persona, pero su período de conteo pasa a ser el aniversario de la nueva vigencia.';
+
+        return $warnings;
+    }
+
     private function hasFrozenWhiteCompanyPricing(Affiliation $affiliation): bool
     {
         return filled($affiliation->white_company_fee_id)
@@ -702,65 +877,57 @@ final class MergeIndividualAffiliationsService
     }
 
     /**
+     * La planificación anual de las pólizas origen deja de aplicar: se anula (no se borra).
+     *
      * @param  list<string>  $sourceCodes
      */
-    private function cancelPendingCollections(array $sourceCodes): int
+    private function cancelSourceAnnualCollections(array $sourceCodes): int
     {
         if ($sourceCodes === []) {
             return 0;
         }
 
-        $collections = Collection::query()
+        return (int) AnnualCollection::query()
             ->whereIn('affiliation_code', $sourceCodes)
             ->where('status', self::COLLECTION_PENDING_STATUS)
             ->update([
                 'status' => self::COLLECTION_CANCELLED_STATUS,
                 'affiliate_status' => 'EXCLUIDO',
             ]);
-
-        $annual = AnnualCollection::query()
-            ->whereIn('affiliation_code', $sourceCodes)
-            ->where('status', self::COLLECTION_PENDING_STATUS)
-            ->update([
-                'status' => self::COLLECTION_CANCELLED_STATUS,
-                'affiliate_status' => 'EXCLUIDO',
-            ]);
-
-        return (int) $collections + (int) $annual;
     }
 
-    private function recalculateTargetPendingCollections(Affiliation $target): void
+    /**
+     * Anula las propuestas de renovación que dejan de valer: las de las pólizas origen y las de la
+     * destino con otra fecha de renovación (la nueva vigencia la mueve). La vigente se recalcula aparte.
+     *
+     * @param  SupportCollection<int, Renovation>  $openRenovations
+     */
+    private function cancelStaleRenovations(Affiliation $target, SupportCollection $openRenovations, ?Carbon $renewalDate, string $actorName): int
     {
-        $payload = [
-            'persons' => (string) ($target->family_members ?? 0),
-            'total_amount' => $target->total_amount,
-            'affiliate_full_name' => $target->full_name_ti,
-            'affiliate_contact' => $target->full_name_ti,
-            'affiliate_ci_rif' => $target->nro_identificacion_ti,
-            'affiliate_phone' => $target->phone_ti,
-            'affiliate_email' => $target->email_ti,
-            'affiliate_status' => $target->status,
-            'payment_frequency' => $target->payment_frequency,
-            'plan_id' => $target->plan_id,
-            'coverage_id' => $target->coverage_id,
-        ];
+        $staleIds = $openRenovations
+            ->filter(function (Renovation $renovation) use ($target, $renewalDate): bool {
+                if ((int) $renovation->affiliation_id !== (int) $target->id) {
+                    return true;
+                }
 
-        Collection::query()
-            ->where('affiliation_code', $target->code)
-            ->where('status', self::COLLECTION_PENDING_STATUS)
-            ->update($payload);
+                $current = CorporatePaymentFrequencyChanger::parseDueDate((string) $renovation->getRawOriginal('date_renewal'));
 
-        $annualPayload = $payload;
-        unset($annualPayload['coverage_id']);
+                return $renewalDate === null || $current === null || ! $current->isSameDay($renewalDate);
+            })
+            ->map(static fn (Renovation $renovation): int => (int) $renovation->id)
+            ->values()
+            ->all();
 
-        if (isset($target->coverage_id)) {
-            $annualPayload['coverage_id'] = $target->coverage_id;
+        if ($staleIds === []) {
+            return 0;
         }
 
-        AnnualCollection::query()
-            ->where('affiliation_code', $target->code)
-            ->where('status', self::COLLECTION_PENDING_STATUS)
-            ->update($annualPayload);
+        return (int) Renovation::query()
+            ->whereIn('id', $staleIds)
+            ->update([
+                'status' => self::RENOVATION_CANCELLED_STATUS,
+                'updated_by' => $actorName,
+            ]);
     }
 
     /**

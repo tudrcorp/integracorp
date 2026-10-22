@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\Affiliations\Pages;
 use App\Filament\Business\Resources\Affiliations\AffiliationResource;
 use App\Filament\Business\Resources\Affiliations\Concerns\OptimizesAffiliationInfolistPerformance;
 use App\Filament\Shared\Affiliations\MergeFamilyGroupAction;
+use App\Filament\Shared\Affiliations\RevertFamilyMergeAction;
 use App\Models\Affiliation;
 use App\Support\Filament\FilamentIosActionsMenu;
 use App\Support\Filament\FilamentIosButton;
@@ -134,6 +135,7 @@ class ViewAffiliation extends ViewRecord
                             ->send();
                     }),
                 MergeFamilyGroupAction::make(),
+                RevertFamilyMergeAction::make(),
                 Action::make('addObservation')
                     ->label('Agregar observación')
                     ->icon(Heroicon::OutlinedChatBubbleLeftRight)

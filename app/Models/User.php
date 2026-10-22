@@ -92,6 +92,7 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'departament' => 'array',
             'is_proveedor_amd' => 'boolean',
+            'ui_preferences' => 'array',
         ];
     }
 

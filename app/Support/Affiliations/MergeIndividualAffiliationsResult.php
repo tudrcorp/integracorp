@@ -11,6 +11,7 @@ final class MergeIndividualAffiliationsResult
      * @param  list<int>  $movedAffiliateIds
      */
     public function __construct(
+        public int $mergeId,
         public int $targetAffiliationId,
         public string $targetCode,
         public array $excludedCodes,
