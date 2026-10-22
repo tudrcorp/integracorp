@@ -173,7 +173,8 @@ class SyncFilamentNavigationPermissionsCommand extends Command
      */
     private function syncClassPermission(string $class, string $module, string $panelId, string $label): array
     {
-        if (DepartmentNavigationPermissionRegistry::isSuperAdminOnly($class)) {
+        if (DepartmentNavigationPermissionRegistry::isSuperAdminOnly($class)
+            || DepartmentNavigationPermissionRegistry::isManagedOutsideNavigationPermissions($class)) {
             return [0, 0];
         }
 

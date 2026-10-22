@@ -2,42 +2,91 @@
 
 declare(strict_types=1);
 
+use App\Models\Permission;
 use App\Models\User;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
+use App\Support\Filament\PermissionNavigationGroupResolver;
 use App\Support\TdgCalendarEditAuthorization;
+use Illuminate\Support\Collection;
 
-it('autoriza a editar guardia oficinas solo a andreina reyes y katty domingues', function (): void {
+function officeGuardEditor(string $module): User
+{
+    $user = new User([
+        'name' => 'Analista de guardia',
+        'email' => 'guardia@tudrencasa.com',
+        'departament' => [$module],
+    ]);
+
+    $permission = new Permission([
+        'name' => 'Guardia Oficinas: crear, actualizar y eliminar',
+        'slug' => BusinessFilamentActionPermissionRegistry::EDIT_OFFICE_GUARDS,
+        'module' => $module,
+    ]);
+
+    $user->setRelation('permissions', new Collection([$permission]));
+
+    return $user;
+}
+
+it('niega editar guardia oficinas por nombre o correo si no hay permiso asignado', function (): void {
     $andreina = new User([
         'name' => 'Andreina Reyes',
         'email' => 'otro-correo@tudrencasa.com',
+        'departament' => ['NEGOCIOS'],
     ]);
     $andreinaConAcento = new User([
         'name' => 'Andreína del C. Reyes Rodríguez',
         'email' => 'personal@example.com',
+        'departament' => ['ADMINISTRACION'],
     ]);
     $katty = new User([
         'name' => 'Katy Dominguez',
         'email' => 'personal@example.com',
+        'departament' => ['OPERACIONES'],
     ]);
     $kattyPorCorreo = new User([
         'name' => 'Katia Domingues',
         'email' => 'KDOMINGUES@tudrencasa.com',
-    ]);
-    $christopher = new User([
-        'name' => 'Christopher Reyes',
-        'email' => 'chreyes@tudrencasa.com',
-    ]);
-    $andreinaRamos = new User([
-        'name' => 'Andreina Ramos',
-        'email' => 'andreinanramosr@gmail.com',
+        'departament' => ['MARKETING'],
     ]);
 
-    expect(TdgCalendarEditAuthorization::allows($andreina))->toBeTrue()
-        ->and(TdgCalendarEditAuthorization::allows($andreinaConAcento))->toBeTrue()
-        ->and(TdgCalendarEditAuthorization::allows($katty))->toBeTrue()
-        ->and(TdgCalendarEditAuthorization::allows($kattyPorCorreo))->toBeTrue()
-        ->and(TdgCalendarEditAuthorization::allows($christopher))->toBeFalse()
-        ->and(TdgCalendarEditAuthorization::allows($andreinaRamos))->toBeFalse()
-        ->and(TdgCalendarEditAuthorization::allows(null))->toBeFalse();
+    expect(TdgCalendarEditAuthorization::allows($andreina, 'NEGOCIOS'))->toBeFalse()
+        ->and(TdgCalendarEditAuthorization::allows($andreinaConAcento, 'ADMINISTRACION'))->toBeFalse()
+        ->and(TdgCalendarEditAuthorization::allows($katty, 'OPERACIONES'))->toBeFalse()
+        ->and(TdgCalendarEditAuthorization::allows($kattyPorCorreo, 'MARKETING'))->toBeFalse()
+        ->and(TdgCalendarEditAuthorization::allows(null, 'NEGOCIOS'))->toBeFalse()
+        ->and(TdgCalendarEditAuthorization::allows($andreina))->toBeFalse();
+});
+
+it('permite editar guardia oficinas solo con el permiso del modulo del panel', function (): void {
+    $editor = officeGuardEditor('NEGOCIOS');
+    $otroModulo = officeGuardEditor('ADMINISTRACION');
+
+    expect(TdgCalendarEditAuthorization::allows($editor, 'NEGOCIOS'))->toBeTrue()
+        ->and(TdgCalendarEditAuthorization::allows($editor, 'ADMINISTRACION'))->toBeFalse()
+        ->and(TdgCalendarEditAuthorization::allows($editor, 'negocios'))->toBeTrue()
+        ->and(TdgCalendarEditAuthorization::allows($otroModulo, 'ADMINISTRACION'))->toBeTrue()
+        ->and(TdgCalendarEditAuthorization::allows($otroModulo, 'NEGOCIOS'))->toBeFalse()
+        ->and(TdgCalendarEditAuthorization::allows($editor, null))->toBeFalse()
+        ->and(TdgCalendarEditAuthorization::allows($editor, '   '))->toBeFalse();
+});
+
+it('registra el permiso de editar guardia oficinas en los paneles que la muestran', function (): void {
+    $slug = BusinessFilamentActionPermissionRegistry::EDIT_OFFICE_GUARDS;
+    $definition = BusinessFilamentActionPermissionRegistry::all()[$slug];
+
+    $permission = new Permission([
+        'slug' => $slug,
+        'module' => 'OPERACIONES',
+        'name' => $definition['name'],
+    ]);
+
+    expect($slug)->toBe('editar-guardia-oficinas')
+        ->and($definition['name'])->toBe('Guardia Oficinas: crear, actualizar y eliminar')
+        ->and($definition['group'])->toBe('DEL USUARIO')
+        ->and(PermissionNavigationGroupResolver::groupForPermission($permission))->toBe('DEL USUARIO')
+        ->and(BusinessFilamentActionPermissionRegistry::modulesForSlug($slug))
+        ->toBe(['NEGOCIOS', 'ADMINISTRACION', 'OPERACIONES', 'MARKETING']);
 });
 
 it('autoriza a un superadministrador a editar guardia oficinas', function (): void {
@@ -114,9 +163,10 @@ it('protege en el servidor cada acción que modifica la guardia de oficinas', fu
         ->toContain('tdgCalendarReadOnlyNotice()');
     expect($trait)
         ->toContain('allowsOperationsGuards')
+        ->toContain('officeGuardPermissionModule()')
         ->toContain('Solo Becky Acosta y los superadministradores pueden modificar Guardias Operaciones.')
-        ->toContain('Solo Andreína Reyes, Katty Domingues y los superadministradores pueden editarla.')
-        ->toContain('Solo Andreína Reyes, Katty Domingues y los superadministradores pueden modificar Guardia Oficinas.')
+        ->toContain('Estás consultando la guardia. Para modificarla necesitas el permiso «Guardia Oficinas: crear, actualizar y eliminar».')
+        ->toContain('Solo quien tenga el permiso «Guardia Oficinas: crear, actualizar y eliminar» puede modificar Guardia Oficinas.')
         ->toContain('Solo Becky Acosta y los superadministradores pueden editarla.');
 
     $guards = [
