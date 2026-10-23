@@ -13,6 +13,15 @@ class StatsOverviewHelpdesk extends StatsOverviewWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    /**
+     * Se dibuja con la página: en diferido costaba una segunda petición al servidor solo para
+     * cuatro conteos. Los heredan Operaciones, Administración y Marketing.
+     */
+    protected static bool $isLazy = false;
+
+    /** Las cifras siguen a los filtros de la tabla al instante; el sondeo solo trae tickets de otros. */
+    protected ?string $pollingInterval = '60s';
+
     protected function getTablePage(): string
     {
         return ListHelpdesks::class;
