@@ -131,7 +131,7 @@ final class TelemedicineConsultationClinicalUi
             return [];
         }
 
-        return $snapshot->type1Options();
+        return $snapshot->type1Options() + TelemedicineServiceList::standardType1Options();
     }
 
     /**

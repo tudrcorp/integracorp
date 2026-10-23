@@ -1466,7 +1466,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             $medications->telemedicine_doctor_id = $record['telemedicine_doctor_id'];
                             $medications->medicine = $payload['medicine'];
                             $medications->indications = $medicationsArr[$i]['indications'];
-                            $medications->duration = $medicationsArr[$i]['duration'];
+                            $medications->duration = filled($medicationsArr[$i]['duration'] ?? null) ? (int) $medicationsArr[$i]['duration'] : null;
                             $medications->quantity = TelemedicineMedicationsPdfRows::quantityFromRow($medicationsArr[$i]);
                             $medications->telemedicine_priority_id = $record['telemedicine_priority_id'];
                             $medications->operation_inventory_id = $inventoryId;
