@@ -90,11 +90,15 @@ class CentroDeReportes extends Page
 
     public function mount(): void
     {
+        $requested = AdministrationReportType::tryFrom((string) request()->query('reporte', ''));
+
         $this->form->fill([
-            'type' => AdministrationReportType::CollectionsGeneral->value,
+            'type' => ($requested ?? AdministrationReportType::CollectionsGeneral)->value,
             'scope' => CollectionReportFilters::SCOPE_AGENCY,
             'include_subagents' => true,
-            'period' => CollectionReportFilters::PERIOD_THIS_MONTH,
+            'period' => $requested === AdministrationReportType::DroppedAffiliationCollections
+                ? CollectionReportFilters::PERIOD_ALL
+                : CollectionReportFilters::PERIOD_THIS_MONTH,
             'collection_status' => CollectionReportFilters::STATUS_ALL,
             'format' => OperationReportFormat::Excel->value,
         ]);
@@ -102,7 +106,7 @@ class CentroDeReportes extends Page
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'Elija el reporte, el periodo y el formato, y pulse «Generar reporte». Los datos son los mismos de «Cobranza Por Mes»: una fila por afiliación con su próxima cuota pendiente.';
+        return 'Elija el reporte, el periodo y el formato, y pulse «Generar reporte». Los reportes de cobranza traen los mismos datos de «Cuentas por cobrar»; el de afiliaciones dadas de baja, una fila por cuota pendiente.';
     }
 
     public function form(Schema $schema): Schema
@@ -281,7 +285,7 @@ class CentroDeReportes extends Page
         $count = CollectionReportBuilder::count($filters);
 
         if ($count === 0) {
-            $this->notifyError('No hay datos', 'No hay cuentas por cobrar con el periodo y los filtros seleccionados. Pruebe con «Toda la cartera» o cambie el estatus de cobro.', 'warning');
+            $this->notifyError('No hay datos', 'No hay datos con el periodo y los filtros seleccionados. Pruebe con «Toda la cartera» o cambie el estatus de cobro.', 'warning');
 
             return null;
         }
@@ -304,7 +308,7 @@ class CentroDeReportes extends Page
 
             Notification::make()
                 ->title('Estamos generando su reporte')
-                ->body(number_format($count, 0, ',', '.').' afiliaciones. Puede seguir trabajando: le avisaremos en la campana y aparecerá en «Mis reportes recientes».')
+                ->body(number_format($count, 0, ',', '.').' '.$filters->type->rowNoun()[1].'. Puede seguir trabajando: le avisaremos en la campana y aparecerá en «Mis reportes recientes».')
                 ->info()
                 ->send();
 
@@ -460,9 +464,10 @@ class CentroDeReportes extends Page
         ['count' => $count, 'network' => $network] = $this->matchingCount($filters);
         $formatted = number_format($count, 0, ',', '.');
 
+        [$singular, $plural] = $filters->type->rowNoun();
         $headline = $count === 0
-            ? 'No hay cuentas por cobrar con estos criterios.'
-            : 'Se incluirán <strong>'.$formatted.'</strong> '.($count === 1 ? 'afiliación' : 'afiliaciones').'.';
+            ? 'No hay datos con estos criterios.'
+            : 'Se incluirán <strong>'.$formatted.'</strong> '.($count === 1 ? $singular : $plural).'.';
 
         $structure = match (true) {
             $network === null => null,
@@ -472,7 +477,7 @@ class CentroDeReportes extends Page
 
         $hint = match (true) {
             $count === 0 => 'Pruebe con «Toda la cartera» o cambie el estatus de cobro.',
-            $format === OperationReportFormat::Pdf && $count > AdministrationReportGenerator::PDF_ROW_LIMIT => 'El PDF mostrará las primeras '.number_format(AdministrationReportGenerator::PDF_ROW_LIMIT, 0, ',', '.').' afiliaciones y se generará en segundo plano. Para el listado completo use Excel o CSV.',
+            $format === OperationReportFormat::Pdf && $count > AdministrationReportGenerator::PDF_ROW_LIMIT => 'El PDF mostrará las primeras '.number_format(AdministrationReportGenerator::PDF_ROW_LIMIT, 0, ',', '.').' '.$plural.' y se generará en segundo plano. Para el listado completo use Excel o CSV.',
             $format !== null && AdministrationReportGenerator::shouldQueue($format, $count) => 'Es un reporte grande: se generará en segundo plano y le avisaremos en la campana al terminar.',
             $format === OperationReportFormat::Csv => 'La descarga es inmediata. El CSV trae solo las filas de datos, listo para procesar.',
             $format === OperationReportFormat::Pdf => 'La descarga es inmediata. El PDF trae las columnas principales; Excel y CSV traen todas.',

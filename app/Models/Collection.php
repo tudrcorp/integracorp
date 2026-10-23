@@ -6,6 +6,7 @@ use App\Support\Collections\CollectionDueDate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Collection extends Model
 {
@@ -135,5 +136,21 @@ class Collection extends Model
     public function adjustments(): HasMany
     {
         return $this->hasMany(CollectionAdjustment::class)->latest('id');
+    }
+
+    /**
+     * Decisiones sobre la cuota cuando su afiliación fue dada de baja.
+     */
+    public function dropoutReviews(): HasMany
+    {
+        return $this->hasMany(CollectionDropoutReview::class)->latest('id');
+    }
+
+    /**
+     * Decisión vigente (no revertida) sobre la cuota de una afiliación dada de baja.
+     */
+    public function activeDropoutReview(): HasOne
+    {
+        return $this->hasOne(CollectionDropoutReview::class)->whereNull('reverted_at')->latestOfMany();
     }
 }

@@ -187,6 +187,10 @@ final class CollectionReportBuilder
 
     public static function count(CollectionReportFilters $filters, ?CollectionReportNetwork $network = null): int
     {
+        if ($filters->type === AdministrationReportType::DroppedAffiliationCollections) {
+            return DroppedAffiliationCollectionsReport::count($filters);
+        }
+
         return self::query($filters, $network)->reorder()->count();
     }
 
@@ -195,6 +199,10 @@ final class CollectionReportBuilder
      */
     public static function build(CollectionReportFilters $filters, ?int $rowLimit = null): CollectionReportData
     {
+        if ($filters->type === AdministrationReportType::DroppedAffiliationCollections) {
+            return DroppedAffiliationCollectionsReport::build($filters, $rowLimit);
+        }
+
         $network = self::network($filters);
         $query = self::query($filters, $network)->with(self::eagerLoads());
 

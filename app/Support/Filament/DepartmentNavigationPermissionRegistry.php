@@ -24,6 +24,7 @@ use App\Filament\Administration\Resources\Commissions\CommissionResource;
 use App\Filament\Administration\Resources\CompanyPaidMemberships\CompanyPaidMembershipResource;
 use App\Filament\Administration\Resources\CreditReconciliations\CreditReconciliationResource as AdministrationCreditReconciliationResource;
 use App\Filament\Administration\Resources\DownloadZones\DownloadZoneResource as AdministrationDownloadZoneResource;
+use App\Filament\Administration\Resources\DroppedAffiliationCollections\DroppedAffiliationCollectionResource;
 use App\Filament\Administration\Resources\Helpdesks\HelpdeskResource as AdministrationHelpdeskResource;
 use App\Filament\Administration\Resources\RenovationCorporates\RenovationCorporateResource as AdministrationRenovationCorporateResource;
 use App\Filament\Administration\Resources\Renovations\RenovationResource as AdministrationRenovationResource;
@@ -276,6 +277,7 @@ final class DepartmentNavigationPermissionRegistry
         AdministrationHelpdeskResource::class => ['helpdesk'],
         AffiliationCorporatePaymentFrequencyChangeResource::class => ['cambios-de-frecuencia-de-pago'],
         AffiliationDateInconsistencyResource::class => ['inconsistencias-de-fechas'],
+        DroppedAffiliationCollectionResource::class => ['cuotas-de-afiliaciones-dadas-de-baja'],
 
         // MARKETING
         MarketingAgendaCorporativa::class => ['agenda-corporativa'],

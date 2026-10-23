@@ -95,10 +95,10 @@ final class CollectionReportWriter
         $writer->openToFile($path);
 
         $money = (new Style)->setFormat('#,##0.00');
-        $moneyColumns = [
-            CollectionReportBuilder::COL_ANNUAL_FEE => $money,
-            CollectionReportBuilder::COL_INSTALLMENT_AMOUNT => $money,
-        ];
+        $moneyColumns = array_fill_keys(
+            $data->moneyColumns ?? [CollectionReportBuilder::COL_ANNUAL_FEE, CollectionReportBuilder::COL_INSTALLMENT_AMOUNT],
+            $money,
+        );
 
         try {
             $writer->addRow(Row::fromValues(
@@ -169,7 +169,7 @@ final class CollectionReportWriter
 
         $pdf = Pdf::loadView('documents.administration-collection-report', [
             'title' => $data->title,
-            'headings' => array_map(static fn (int $index): string => self::PDF_SHORT_HEADINGS[$index] ?? $data->headings[$index], $keep),
+            'headings' => array_map(static fn (int $index): string => self::pdfHeading($data, $index), $keep),
             'lineChunks' => $hasData ? array_chunk($lines, self::PDF_ROWS_PER_TABLE) : [],
             'numericColumns' => array_values(array_keys(array_intersect($keep, $data->numericColumns))),
             'criteria' => $data->criteria,
@@ -183,6 +183,18 @@ final class CollectionReportWriter
         if (file_put_contents($path, $pdf->output()) === false) {
             throw new RuntimeException('No se pudo guardar el PDF del reporte.');
         }
+    }
+
+    /**
+     * Encabezado corto para el PDF, solo si la columna es la del reporte de cobranza:
+     * otros reportes usan los mismos índices para otras columnas.
+     */
+    private static function pdfHeading(CollectionReportData $data, int $index): string
+    {
+        $heading = $data->headings[$index];
+        $short = self::PDF_SHORT_HEADINGS[$index] ?? null;
+
+        return $short !== null && $heading === (CollectionReportBuilder::headings()[$index] ?? null) ? $short : $heading;
     }
 
     /**

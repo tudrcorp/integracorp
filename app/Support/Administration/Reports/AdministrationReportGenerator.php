@@ -108,7 +108,7 @@ final class AdministrationReportGenerator
         }
 
         return 'El PDF muestra las primeras '.number_format(self::PDF_ROW_LIMIT, 0, ',', '.')
-            .' de '.number_format($total, 0, ',', '.').' afiliaciones y sus totales corresponden solo a esas filas.'
+            .' de '.number_format($total, 0, ',', '.').' '.$filters->type->rowNoun()[1].' y sus totales corresponden solo a esas filas.'
             .' Para el listado completo descargue el reporte en Excel o CSV.';
     }
 
