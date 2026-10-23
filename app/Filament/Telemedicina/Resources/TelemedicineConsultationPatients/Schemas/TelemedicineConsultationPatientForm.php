@@ -1079,9 +1079,8 @@ class TelemedicineConsultationPatientForm
                                     $providerCoverage ? null : TableColumn::make('Inventario TDC')->width('16%'),
                                     TableColumn::make($coveredColumnLabel)->width($providerCoverage ? '22%' : '16%'),
                                     TableColumn::make('No cubierto')->width($providerCoverage ? '22%' : '16%'),
-                                    TableColumn::make('Indicaciones')->width($providerCoverage ? '29%' : '27%'),
+                                    TableColumn::make('Indicaciones y Duración en días')->width($providerCoverage ? '44%' : '40%')->markAsRequired(),
                                     TableColumn::make('Cantidad')->width('12%'),
-                                    TableColumn::make('Duración(en días)')->width($providerCoverage ? '15%' : '13%'),
                                 ])))
                                 ->rules([
                                     function () use ($providerCoverage, $coveredColumnLabel): \Closure {
@@ -1200,7 +1199,10 @@ class TelemedicineConsultationPatientForm
                                         $set('medicines', $state.toUpperCase());
                                     JS),
                                     TextInput::make('indications')
-                                        // ->helperText('Ingrese las indicaciones del medicamento aquí, si no hay indicaciones, ingrese "NINGUNA"')
+                                        ->placeholder('Ej.: 1 TABLETA CADA 8 HORAS POR 5 DÍAS')
+                                        ->required()
+                                        ->maxLength(2000)
+                                        ->validationAttribute('indicaciones y duración')
                                         ->afterStateUpdatedJs(<<<'JS'
                                         $set('indications', $state.toUpperCase());
                                     JS),
@@ -1273,11 +1275,6 @@ class TelemedicineConsultationPatientForm
                                                 }
                                             };
                                         }),
-                                    TextInput::make('duration')
-                                        // ->helperText('Ingrese la duración del medicamento en días')
-                                        ->numeric()
-                                        ->regex('/^[0-9]*$/')
-                                        ->required(),
                                 ]),
                         ]),
 

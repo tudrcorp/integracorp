@@ -8,6 +8,7 @@ use App\Enums\ClinicalServiceChannel;
 use App\Models\ClinicalServiceOverrideChallenge;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicinePatient;
+use App\Models\TelemedicineServiceList;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -44,7 +45,8 @@ final class ClinicalConsultationConsumption
                 : $snapshot->forChannel(ClinicalServiceChannel::from($channel));
 
             if ($entitlement === null) {
-                if (self::unmappedChannelMayProceedWithoutQuota($channel)) {
+                if (self::unmappedChannelMayProceedWithoutQuota($channel)
+                    || ($channel === ClinicalServiceChannel::Type1->value && TelemedicineServiceList::isStandardType1($serviceListId))) {
                     continue;
                 }
 
