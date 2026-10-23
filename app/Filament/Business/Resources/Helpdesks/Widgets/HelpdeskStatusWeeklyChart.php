@@ -23,6 +23,14 @@ class HelpdeskStatusWeeklyChart extends ChartWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    /**
+     * Se dibuja con la página en vez de pedirse aparte al terminar de cargar. Sin sondeo:
+     * por defecto Filament recalculaba el año entero cada 5 s mientras la pestaña estuviera abierta.
+     */
+    protected static bool $isLazy = false;
+
+    protected ?string $pollingInterval = null;
+
     public int $chartKey = 0;
 
     public int $year = 0;

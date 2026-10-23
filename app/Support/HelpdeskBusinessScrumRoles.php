@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Models\RrhhColaborador;
 use App\Models\User;
+use ArrayObject;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +18,9 @@ final class HelpdeskBusinessScrumRoles
      * @var WeakMap<User, array{user_id: mixed, colaborador: ?RrhhColaborador}>|null
      */
     private static ?WeakMap $colaboradorByUser = null;
+
+    /** Clave del contenedor para la memoria de colaboradores por nombre (ver {@see memo()}). */
+    private const MEMO_BINDING = 'helpdesk.scrum-roles.colaboradores-por-nombre';
 
     public const PRODUCT_OWNER_NAME = 'Becky Acosta';
 
@@ -177,7 +181,41 @@ final class HelpdeskBusinessScrumRoles
         return $cached['colaborador'];
     }
 
+    /**
+     * La Product Owner y los desarrolladores se buscan por nombre, y las reglas de visibilidad
+     * de cada fila de Helpdesk los piden decenas de veces por petición (615 consultas iguales
+     * en una carga de 10 tickets). Se resuelven una sola vez por petición o por job.
+     */
     private static function findColaboradorByExpectedName(string $expected): ?RrhhColaborador
+    {
+        $memo = self::memo();
+
+        if (! $memo->offsetExists($expected)) {
+            $memo[$expected] = self::queryColaboradorByExpectedName($expected);
+        }
+
+        return $memo[$expected];
+    }
+
+    /**
+     * Memoria con vida de una petición: un `scoped` del contenedor se descarta al terminar
+     * cada petición y antes de cada job de cola, y cada test arranca con un contenedor nuevo.
+     * Así un worker de larga vida nunca arrastra un colaborador renombrado o dado de baja.
+     *
+     * @return ArrayObject<string, ?RrhhColaborador>
+     */
+    private static function memo(): ArrayObject
+    {
+        $app = app();
+
+        if (! $app->bound(self::MEMO_BINDING)) {
+            $app->scoped(self::MEMO_BINDING, static fn (): ArrayObject => new ArrayObject);
+        }
+
+        return $app->make(self::MEMO_BINDING);
+    }
+
+    private static function queryColaboradorByExpectedName(string $expected): ?RrhhColaborador
     {
         $tokens = array_values(array_filter(preg_split('/\s+/', self::normalizeName($expected)) ?: []));
 
