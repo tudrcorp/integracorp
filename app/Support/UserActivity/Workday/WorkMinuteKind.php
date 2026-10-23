@@ -26,16 +26,16 @@ enum WorkMinuteKind: string
     public function label(): string
     {
         return match ($this) {
-            self::WorkActive => 'Activo en jornada',
+            self::WorkActive => 'Activo en el sistema',
             self::Meeting => 'En reunión',
-            self::WorkIdle => 'Inactivo en jornada',
+            self::WorkIdle => 'Inactivo – En otra pestaña',
             self::WorkAbsent => 'Ausente en jornada',
             self::Lunch => 'Almuerzo',
             self::LunchExcess => 'Exceso de almuerzo',
             self::GuardActive => 'Activo en guardia',
             self::GuardIdle => 'Conectado en guardia',
             self::GuardAbsent => 'Sin conexión en guardia',
-            self::Overtime => 'Horas extra',
+            self::Overtime => 'Activo Plus',
             self::OffHoursIdle => 'Abierto fuera de jornada',
             self::Free => 'Libre',
         };
@@ -53,7 +53,7 @@ enum WorkMinuteKind: string
             self::GuardActive => 'De guardia y usando el sistema.',
             self::GuardIdle => 'De guardia, conectado sin interactuar. No se penaliza.',
             self::GuardAbsent => 'De guardia y sin el sistema abierto.',
-            self::Overtime => 'Trabajó fuera de su horario, en fin de semana o feriado.',
+            self::Overtime => 'Horas extra: trabajó fuera de su horario, en fin de semana o feriado.',
             self::OffHoursIdle => 'Fuera de su horario, con el sistema abierto sin usarlo. No cuenta como extra.',
             self::Free => 'Fuera de jornada y sin actividad.',
         };
@@ -67,12 +67,12 @@ enum WorkMinuteKind: string
             self::WorkIdle => '#facc15',
             self::WorkAbsent => '#ef4444',
             self::Lunch => '#3b82f6',
-            self::LunchExcess => '#f97316',
+            self::LunchExcess => '#f59e0b',
             self::GuardActive => '#4f46e5',
             self::GuardIdle => '#a5b4fc',
-            self::GuardAbsent => '#be123c',
-            self::Overtime => '#d946ef',
-            self::OffHoursIdle => '#cbd5e1',
+            self::GuardAbsent => '#991b1b',
+            self::Overtime => '#166534',
+            self::OffHoursIdle => '#86efac',
             self::Free => 'transparent',
         };
     }

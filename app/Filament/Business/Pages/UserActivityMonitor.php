@@ -11,6 +11,8 @@ use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\SharedNavigationGroups;
 use App\Support\SecurityAudit;
+use App\Support\UserActivity\Pdf\UserActivityPersonPdf;
+use App\Support\UserActivity\Pdf\UserActivityPersonPdfData;
 use App\Support\UserActivity\UserActivityClock;
 use App\Support\UserActivity\UserActivityLiveBoard;
 use App\Support\UserActivity\UserActivityProfile;
@@ -30,16 +32,21 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
+use InvalidArgumentException;
 use Livewire\Attributes\Url;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 use UnitEnum;
 
@@ -55,6 +62,10 @@ use UnitEnum;
  * - Jornada: uso sobre la jornada laboral, almuerzo declarado, horas extra y
  *   guardias. Cambiar el tipo de jornada o registrar ausencias pide el permiso
  *   `gestionar-jornadas-laborales`.
+ *
+ * - PDF de una persona por rango (hasta 31 días): cifras, gráficos y lectura del
+ *   período. Pide el permiso `descargar-pdf-actividad-usuarios`
+ *   y deja traza en SecurityAudit; se genera al instante, sin cola.
  *
  * Acceso por el permiso de menú `actividad-usuarios` (Negocios); SUPERADMIN siempre.
  */
@@ -138,7 +149,7 @@ class UserActivityMonitor extends Page
                 [WorkMinuteKind::Meeting->color(), 'Reunión', 'Declarada con su motivo: cuenta como trabajo', 'Con el botón «Reunión». Puede cerrar sesión mientras dura. Fuera de horario cuenta como horas extra.'],
                 [WorkMinuteKind::LunchExcess->color(), 'Exceso', 'Más de '.$lunch.' min de almuerzo', WorkMinuteKind::LunchExcess->description()],
                 [WorkMinuteKind::WorkAbsent->color(), 'Ausente', 'En su horario sin el sistema abierto', WorkMinuteKind::WorkAbsent->description()],
-                [WorkMinuteKind::Overtime->color(), 'Horas extra', 'Fuera de horario, fin de semana o feriado', WorkMinuteKind::Overtime->description()],
+                [WorkMinuteKind::Overtime->color(), 'Activo Plus', 'Horas extra: fuera de horario, fin de semana o feriado', WorkMinuteKind::Overtime->description()],
                 [WorkMinuteKind::GuardActive->color(), 'Guardia', 'Calendario TDG u Operaciones', 'La guardia mide presencia; la inactividad no se penaliza. El día después de una guardia nocturna es de descanso.'],
             ];
         }
@@ -328,6 +339,162 @@ class UserActivityMonitor extends Page
 
                 Notification::make()->success()->title('Ausencia registrada')->body($absence->type->label().' de '.$user->name.' del '.$absence->starts_on->format('d/m/Y').' al '.$absence->ends_on->format('d/m/Y').'.')->send();
             });
+    }
+
+    public static function canDownloadActivityPdf(): bool
+    {
+        return BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::DOWNLOAD_USER_ACTIVITY_PDF);
+    }
+
+    public function downloadActivityPdfAction(): Action
+    {
+        return Action::make('downloadActivityPdf')
+            ->label('Descargar PDF')
+            ->icon(Heroicon::OutlinedDocumentArrowDown)
+            ->color('primary')
+            ->size('sm')
+            ->visible(fn (): bool => static::canDownloadActivityPdf())
+            ->modalIcon(Heroicon::OutlinedDocumentArrowDown)
+            ->modalHeading(fn (array $arguments): string => 'PDF de actividad de '.(User::query()->whereKey((int) ($arguments['userId'] ?? 0))->value('name') ?? 'esta persona'))
+            ->modalDescription('Elija el período, de hasta '.UserActivityPersonPdfData::MAX_DAYS.' días. El PDF trae las cifras del período, un resumen de la actividad, la barra minuto a minuto de cada día, el mapa de horas y las pantallas y paneles que más usa.')
+            ->modalSubmitActionLabel('Generar y descargar')
+            ->fillForm(fn (): array => $this->defaultPdfRange())
+            ->form([
+                ToggleButtons::make('preset')
+                    ->label('Atajos')
+                    ->options([
+                        'week' => 'Esta semana',
+                        'last_week' => 'Semana pasada',
+                        'month' => 'Este mes',
+                        'last_month' => 'Mes pasado',
+                        'last30' => 'Últimos 30 días',
+                    ])
+                    ->inline()
+                    ->live()
+                    ->dehydrated(false)
+                    ->afterStateUpdated(function (?string $state, Set $set): void {
+                        if ($state === null) {
+                            return;
+                        }
+
+                        [$from, $to] = self::pdfPreset($state);
+                        $set('from', $from);
+                        $set('to', $to);
+                    }),
+                Grid::make(2)->schema([
+                    DatePicker::make('from')
+                        ->label('Desde')
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->maxDate(fn (): CarbonImmutable => UserActivityClock::now()->endOfDay())
+                        ->validationMessages(self::pdfDateMessages())
+                        ->required(),
+                    DatePicker::make('to')
+                        ->label('Hasta (incluido)')
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->maxDate(fn (): CarbonImmutable => UserActivityClock::now()->endOfDay())
+                        ->afterOrEqual('from')
+                        ->validationMessages(self::pdfDateMessages())
+                        ->rule(fn (Get $get): \Closure => function (string $attribute, mixed $value, \Closure $fail) use ($get): void {
+                            try {
+                                $days = (int) CarbonImmutable::parse((string) $get('from'))->diffInDays(CarbonImmutable::parse((string) $value)) + 1;
+                            } catch (Throwable) {
+                                return;
+                            }
+
+                            if ($days > UserActivityPersonPdfData::MAX_DAYS) {
+                                $fail('El período puede ser de hasta '.UserActivityPersonPdfData::MAX_DAYS.' días; eligió '.$days.'. Divídalo en dos PDF.');
+                            }
+                        })
+                        ->required(),
+                ]),
+            ])
+            ->action(function (array $arguments, array $data): ?StreamedResponse {
+                $userId = (int) ($arguments['userId'] ?? 0);
+                $user = User::query()->find($userId, ['id', 'name']);
+
+                if (! static::canDownloadActivityPdf() || $user === null) {
+                    Notification::make()->danger()->title('No se pudo generar el PDF')->body('La persona ya no existe o usted no tiene el permiso «Descargar el PDF de actividad».')->send();
+
+                    return null;
+                }
+
+                $timezone = UserActivityClock::timezone();
+
+                try {
+                    $from = CarbonImmutable::parse((string) $data['from'], $timezone)->startOfDay();
+                    $to = CarbonImmutable::parse((string) $data['to'], $timezone)->startOfDay();
+                    $pdf = UserActivityPersonPdf::render(UserActivityPersonPdfData::build($userId, $from, $to, Auth::user()));
+                } catch (InvalidArgumentException $exception) {
+                    Notification::make()->warning()->title('Revise el período')->body($exception->getMessage())->send();
+
+                    return null;
+                } catch (Throwable $exception) {
+                    report($exception);
+                    Notification::make()->danger()->title('No se pudo generar el PDF')->body('Ocurrió un error al armar el documento. Intente de nuevo; si persiste, avise a soporte.')->persistent()->send();
+
+                    return null;
+                }
+
+                SecurityAudit::log('AUDIT_USER_ACTIVITY_PDF_DOWNLOADED', 'business.user-activity.pdf', ['user_id' => $userId, 'from' => $from->toDateString(), 'to' => $to->toDateString(), 'bytes' => strlen($pdf)]);
+
+                return response()->streamDownload(static function () use ($pdf): void {
+                    echo $pdf;
+                }, UserActivityPersonPdf::filename($user, $from, $to), ['Content-Type' => 'application/pdf']);
+            });
+    }
+
+    /**
+     * Rango inicial del PDF: el del reporte si está abierto (recortado al tope), si no los últimos 7 días.
+     *
+     * @return array{from: string, to: string}
+     */
+    private function defaultPdfRange(): array
+    {
+        $today = UserActivityClock::now()->startOfDay();
+
+        if ($this->tab !== 'report') {
+            return ['from' => $today->subDays(6)->toDateString(), 'to' => $today->toDateString()];
+        }
+
+        [$from, $to] = UserActivityReport::range($this->from, $this->to);
+        $earliest = $to->subDays(UserActivityPersonPdfData::MAX_DAYS - 1);
+
+        return ['from' => ($from->lessThan($earliest) ? $earliest : $from)->toDateString(), 'to' => $to->toDateString()];
+    }
+
+    /**
+     * Mensajes en español: el selector guarda la fecha con hora y el proyecto no trae traducciones de validación.
+     *
+     * @return array<string, string>
+     */
+    private static function pdfDateMessages(): array
+    {
+        return [
+            'required' => 'Elija una fecha.',
+            'date' => 'La fecha no es válida.',
+            'before_or_equal' => 'La fecha no puede ser posterior a hoy.',
+            'after_or_equal' => '«Hasta» no puede ser anterior a «Desde».',
+        ];
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private static function pdfPreset(string $preset): array
+    {
+        $today = UserActivityClock::now()->startOfDay();
+
+        [$from, $to] = match ($preset) {
+            'last_week' => [$today->subWeek()->startOfWeek(), $today->subWeek()->endOfWeek()->startOfDay()],
+            'month' => [$today->startOfMonth(), $today],
+            'last_month' => [$today->subMonthNoOverflow()->startOfMonth(), $today->subMonthNoOverflow()->endOfMonth()->startOfDay()],
+            'last30' => [$today->subDays(UserActivityPersonPdfData::MAX_DAYS - 2), $today],
+            default => [$today->startOfWeek(), $today],
+        };
+
+        return [$from->toDateString(), $to->toDateString()];
     }
 
     public function deleteWorkAbsenceAction(): Action

@@ -56,6 +56,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const MANAGE_WORKDAYS = 'gestionar-jornadas-laborales';
 
+    public const DOWNLOAD_USER_ACTIVITY_PDF = 'descargar-pdf-actividad-usuarios';
+
     public const DELETE_PENDING_PAYMENT = 'eliminar-pago-pendiente';
 
     public const UPDATE_CORPORATE_POPULATION = 'actualizar-poblacion-corporativa';
@@ -199,6 +201,11 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::MANAGE_WORKDAYS => [
                 'name' => 'Actividad de usuarios: cambiar el tipo de jornada y registrar ausencias (vacaciones, reposos, permisos)',
+                'group' => 'MONITOREO Y SEGURIDAD',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::DOWNLOAD_USER_ACTIVITY_PDF => [
+                'name' => 'Actividad de usuarios: descargar el PDF detallado de la actividad de una persona',
                 'group' => 'MONITOREO Y SEGURIDAD',
                 'modules' => [self::OWNER_MODULE],
             ],

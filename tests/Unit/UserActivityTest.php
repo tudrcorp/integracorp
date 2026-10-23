@@ -502,6 +502,10 @@ it('la pantalla muestra el en vivo, el reporte y el detalle de una persona', fun
         ->assertSee('75%')
         ->call('selectUser', 501, '2026-10-07')
         ->assertSee('¿A qué horas usa el sistema?')
+        ->assertSeeHtml('data-tip-label="Miércoles"')
+        ->assertSeeHtml('data-tip-note="Un solo miércoles con registro en el período."')
+        ->assertSeeHtml('data-tip-note="Sin lunes con registro en el período."')
+        ->assertDontSeeHtml('title="Mié ')
         ->call('shiftDay', 1)
         ->assertSet('selectedDate', '2026-10-08')
         ->call('shiftDay', 1)
@@ -649,4 +653,120 @@ it('el encabezado explica el propósito y trae la leyenda de los cuatro estados'
     }
 
     expect($componente->instance()->getSubheading())->toBeNull();
+});
+
+function seedActivityPdfDay(): void
+{
+    /** 8:00–9:59 activo, 10:00–10:29 en otra pestaña, 10:30–11:59 activo. */
+    $states = str_repeat('.', 480).str_repeat('a', 120).str_repeat('b', 30).str_repeat('a', 90).str_repeat('.', 720);
+
+    UserActivityDay::factory()->create([
+        'user_id' => 501, 'activity_date' => '2026-10-07', 'first_minute' => 480, 'last_minute' => 719,
+        'online_minutes' => 240, 'active_minutes' => 210, 'idle_minutes' => 0, 'background_minutes' => 30,
+        'page_views' => 3, 'actions' => 4, 'downloads' => 0, 'minute_states' => $states,
+        'hourly_active' => [0, 0, 0, 0, 0, 0, 0, 0, 60, 60, 30, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    ]);
+
+    $events = [
+        ['08:00:05', 'page', 'Cotizaciones'],
+        ['08:01:00', 'action', 'Buscó «in»'],
+        ['08:01:02', 'action', 'Buscó «inno»'],
+        ['08:01:04', 'action', 'Buscó «innova»'],
+        ['08:02:00', 'action', 'Guardó la cotización'],
+        ['08:03:00', 'visibility', 'Dejó el sistema en otra pestaña'],
+        ['08:04:00', 'visibility', 'Volvió a la pestaña del sistema'],
+        ['08:05:00', 'page', 'Cotizaciones'],
+        ['08:06:00', 'action', 'Guardó la cotización'],
+        ['09:00:00', 'page', 'Afiliaciones · ver #12'],
+        ['10:00:00', 'idle', 'Quedó inactivo: sin teclado ni mouse por 5 min'],
+        ['10:31:00', 'action', 'Pulsó «Exportar»'],
+    ];
+
+    foreach ($events as $index => [$time, $type, $label]) {
+        UserActivityEvent::factory()->create([
+            'user_id' => 501, 'occurred_at' => '2026-10-07 '.$time, 'type' => $type, 'label' => $label,
+            'panel' => 'Negocios', 'page' => $type === 'page' ? $label : 'Afiliaciones · ver #12', 'event_key' => sprintf('00000000-0000-0000-0000-%012d', $index + 1),
+        ]);
+    }
+}
+
+it('el PDF de una persona arma las cifras, la lectura del período y se dibuja', function (): void {
+    seedActivityPdfDay();
+
+    /** Hasta hoy (8 oct): en sqlite la fecha del día se guarda con hora y un rango que termina justo ese día lo dejaría fuera. */
+    $data = App\Support\UserActivity\Pdf\UserActivityPersonPdfData::build(501, CarbonImmutable::parse('2026-10-06'), CarbonImmutable::parse('2026-10-08'));
+    $texts = implode(' ', array_column($data['highlights'], 'text'));
+
+    expect(array_column($data['days'], 'date'))->toBe(['2026-10-06', '2026-10-07', '2026-10-08'])
+        ->and($data['days'][0]['recorded'])->toBeFalse()
+        ->and($data['totals'])->toMatchArray(['active' => 210, 'background' => 30, 'actions' => 4])
+        ->and($texts)->toContain('Se conectó 1 de 3 días')
+        ->and($texts)->toContain('Su tramo más largo usando el sistema sin pausa fue de 2 h')
+        ->and($texts)->toContain('Salió a otra pestaña 1 vez')
+        ->and($texts)->not->toContain('m..');
+
+    $html = view('documents.user-activity-person-report', ['data' => $data])->render();
+
+    expect($html)->toContain('INFORME DE ACTIVIDAD EN EL SISTEMA')
+        ->and($html)->toContain('Ana Pérez')
+        ->and($html)->not->toContain('Detalle día por día')
+        ->and($html)->not->toContain('Guardó la cotización')
+        ->and($html)->toContain('data:image/svg+xml;base64,')
+        ->and(App\Support\UserActivity\Pdf\UserActivityPersonPdf::render($data))->toStartWith('%PDF')
+        ->and(App\Support\UserActivity\Pdf\UserActivityPersonPdf::filename(User::query()->find(501), CarbonImmutable::parse('2026-10-01'), CarbonImmutable::parse('2026-10-07')))->toBe('actividad-ana-perez-20261001-20261007.pdf');
+});
+
+it('el PDF rechaza rangos invertidos, futuros o de más de 31 días', function (string $from, string $to, string $message): void {
+    expect(fn () => App\Support\UserActivity\Pdf\UserActivityPersonPdfData::build(501, CarbonImmutable::parse($from), CarbonImmutable::parse($to)))
+        ->toThrow(InvalidArgumentException::class, $message);
+})->with([
+    'invertido' => ['2026-10-07', '2026-10-01', 'no puede ser anterior'],
+    'futuro' => ['2026-10-01', '2026-10-09', 'después de hoy'],
+    '32 días' => ['2026-09-06', '2026-10-07', 'hasta 31 días'],
+]);
+
+it('descargar el PDF pide su permiso, valida el rango y queda auditado', function (): void {
+    Filament::setCurrentPanel('business');
+    seedActivityPdfDay();
+
+    actingAsActivityUser(['NEGOCIOS'], 904);
+    expect(UserActivityMonitor::canDownloadActivityPdf())->toBeFalse();
+
+    actingAsActivityUser(['SUPERADMIN'], 905);
+    expect(UserActivityMonitor::canDownloadActivityPdf())->toBeTrue();
+
+    $component = Livewire::test(UserActivityMonitor::class)
+        ->call('selectUser', 501, '2026-10-07')
+        ->assertSee('Descargar PDF')
+        ->assertSeeHtml('.fi-modal > .fi-modal-window-ctn { z-index: 45; }')
+        ->call('mountAction', 'downloadActivityPdf', ['userId' => 501])
+        ->assertSet('mountedActions.0.data.from', fn (?string $value): bool => str_starts_with((string) $value, '2026-10-02'))
+        ->assertSet('mountedActions.0.data.to', fn (?string $value): bool => str_starts_with((string) $value, '2026-10-08'))
+        ->set('mountedActions.0.data.from', '2026-09-01')
+        ->set('mountedActions.0.data.to', '2026-10-08')
+        ->call('callMountedAction')
+        ->assertHasErrors(['mountedActions.0.data.to']);
+
+    expect(DB::table('logs')->where('action', 'AUDIT_USER_ACTIVITY_PDF_DOWNLOADED')->count())->toBe(0);
+
+    $component
+        ->set('mountedActions.0.data.from', '2026-10-06')
+        ->set('mountedActions.0.data.to', '2026-10-09 10:00:00')
+        ->call('callMountedAction')
+        ->assertHasErrors(['mountedActions.0.data.to']);
+
+    expect($component->errors()->first('mountedActions.0.data.to'))->toBe('La fecha no puede ser posterior a hoy.');
+
+    /** El selector guarda la fecha con la hora actual: «hoy» a media mañana tiene que pasar. */
+    $component
+        ->set('mountedActions.0.data.to', '2026-10-08 10:00:00')
+        ->call('callMountedAction')
+        ->assertHasNoErrors()
+        ->assertFileDownloaded('actividad-ana-perez-20261006-20261008.pdf');
+
+    $log = DB::table('logs')->where('action', 'AUDIT_USER_ACTIVITY_PDF_DOWNLOADED')->first();
+
+    expect($log)->not->toBeNull()
+        ->and($log->user_id)->toBe(905)
+        ->and($log->response)->toContain('"user_id":501')->toContain('"from":"2026-10-06"');
 });

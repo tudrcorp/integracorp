@@ -50,7 +50,7 @@
 <x-filament-panels::page>
     <style>
         .uam { --uam-bg: #ffffff; --uam-soft: #f8fafc; --uam-border: #e5e7eb; --uam-text: #0f172a; --uam-muted: #64748b; --uam-accent: #0ea5e9; --uam-chip: #f1f5f9;
-               --uam-active: #16a34a; --uam-idle: #f59e0b; --uam-bgtab: #94a3b8; --uam-off: #cbd5e1; --uam-track: #eef2f7;
+               --uam-active: #16a34a; --uam-idle: #facc15; --uam-bgtab: #facc15; --uam-off: #cbd5e1; --uam-track: #eef2f7;
                color: var(--uam-text); display: flex; flex-direction: column; gap: 16px; }
         .dark .uam { --uam-bg: #0b1220; --uam-soft: #111a2e; --uam-border: #1f2a44; --uam-text: #e2e8f0; --uam-muted: #94a3b8; --uam-chip: #16213a; --uam-off: #334155; --uam-track: #16213a; }
         .uam-card { background: var(--uam-bg); border: 1px solid var(--uam-border); border-radius: 16px; }
@@ -69,6 +69,12 @@
         .uam-kpis.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
         @media (max-width: 1100px) { .uam-kpis.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         @media (max-width: 560px) { .uam-kpis.four { grid-template-columns: minmax(0, 1fr); } }
+        /* Reporte con jornada: 5 tarjetas de jornada arriba y 4 de uso abajo, cada fila a todo el ancho (20 = 5×4). */
+        .uam-kpis.split { grid-template-columns: repeat(20, minmax(0, 1fr)); }
+        .uam-kpis.split > .uam-kpi { grid-column: span 4; }
+        .uam-kpis.split > .uam-kpi.wide { grid-column: span 5; }
+        @media (max-width: 1100px) { .uam-kpis.split { grid-template-columns: repeat(2, minmax(0, 1fr)); } .uam-kpis.split > .uam-kpi, .uam-kpis.split > .uam-kpi.wide { grid-column: auto; } }
+        @media (max-width: 560px) { .uam-kpis.split { grid-template-columns: minmax(0, 1fr); } }
         .uam-kpi { padding: 14px 16px; border-radius: 16px; border: 1px solid var(--uam-border); background: var(--uam-bg); text-align: left; cursor: default; }
         button.uam-kpi { cursor: pointer; font: inherit; color: inherit; }
         button.uam-kpi:hover { border-color: var(--uam-accent); }
@@ -103,10 +109,10 @@
         .uam-type { display: inline-flex; border-radius: 999px; padding: 1px 8px; font-size: 10.5px; font-weight: 700; background: var(--uam-chip); color: var(--uam-muted); margin-left: 6px; vertical-align: 1px; }
         .uam-state { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; }
         .uam-state.active { background: rgba(22, 163, 74, .13); color: var(--uam-active); }
-        .uam-state.idle { background: rgba(245, 158, 11, .16); color: #b45309; }
-        .dark .uam-state.idle { color: #fbbf24; }
-        .uam-state.background { background: rgba(148, 163, 184, .2); color: var(--uam-muted); }
-        .uam-state.offline { background: rgba(100, 116, 139, .12); color: var(--uam-muted); }
+        .uam-state.idle, .uam-state.background { background: rgba(250, 204, 21, .2); color: #a16207; }
+        .dark .uam-state.idle, .dark .uam-state.background { color: #fde047; }
+        .uam-state.offline { background: rgba(153, 27, 27, .1); color: #991b1b; }
+        .dark .uam-state.offline { background: rgba(153, 27, 27, .25); color: #fca5a5; }
         .uam-state i { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
         .uam-where { font-size: 12px; color: var(--uam-muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .uam-dayline { width: 100%; min-width: 220px; height: 12px; border-radius: 6px; background: var(--uam-track); display: block; overflow: hidden; }
@@ -128,6 +134,8 @@
         .uam-empty { padding: 48px 16px; text-align: center; color: var(--uam-muted); }
         .uam-notice { padding: 10px 14px; border-radius: 12px; font-size: 12.5px; border: 1px solid rgba(245, 158, 11, .4); background: rgba(245, 158, 11, .08); }
         .uam-drawer-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, .35); z-index: 40; }
+        /* Los modales de las acciones del detalle (PDF, jornada, ausencias) se abren sobre el panel lateral. */
+        .fi-modal > .fi-modal-close-overlay, .fi-modal > .fi-modal-window-ctn { z-index: 45; }
         .uam-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(680px, 100vw); background: var(--uam-bg); border-left: 1px solid var(--uam-border); z-index: 41; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 18px; box-shadow: -20px 0 40px rgba(15, 23, 42, .18); }
         .uam-section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--uam-muted); margin-bottom: 8px; }
         .uam-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
@@ -139,10 +147,11 @@
         .uam-timeline { list-style: none; margin: 0; padding: 0; }
         .uam-timeline li { display: grid; grid-template-columns: 78px 22px 1fr; gap: 6px; padding: 7px 0; border-bottom: 1px dashed var(--uam-border); font-size: 12.5px; align-items: start; }
         .uam-timeline time { color: var(--uam-muted); font-variant-numeric: tabular-nums; font-size: 12px; padding-top: 1px; }
-        .uam-timeline li.idle { background: rgba(245, 158, 11, .07); }
+        .uam-timeline li.idle { background: rgba(250, 204, 21, .1); }
         .uam-timeline li.active { background: rgba(22, 163, 74, .06); }
         .uam-heat { display: grid; grid-template-columns: 34px repeat(24, 1fr); gap: 2px; font-size: 10px; color: var(--uam-muted); }
-        .uam-heat div.c { height: 16px; border-radius: 3px; }
+        .uam-heat div.c { height: 16px; border-radius: 3px; transition: box-shadow .12s; }
+        .uam-heat div.c:hover { box-shadow: 0 0 0 2px var(--uam-text); }
         .uam-rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
         .uam-rank li { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
         .uam-rank .bar { grid-column: 1 / -1; height: 5px; border-radius: 999px; background: var(--uam-track); overflow: hidden; }
@@ -153,34 +162,39 @@
         .uam-badges { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; margin-top: 4px; }
         .uam-badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; white-space: nowrap; }
         .uam-badge.lunch { background: rgba(59, 130, 246, .14); color: #1d4ed8; }
-        .uam-badge.over { background: rgba(249, 115, 22, .16); color: #c2410c; }
+        .uam-badge.over { background: rgba(245, 158, 11, .18); color: #b45309; }
         .uam-badge.absent { background: rgba(239, 68, 68, .14); color: #b91c1c; }
-        .uam-badge.extra { background: rgba(217, 70, 239, .14); color: #a21caf; }
+        .uam-badge.extra { background: rgba(22, 101, 52, .14); color: #166534; }
         .uam-badge.guard { background: rgba(79, 70, 229, .14); color: #4338ca; }
         .uam-badge.kind { background: var(--uam-chip); color: var(--uam-muted); }
-        .dark .uam-badge.lunch { color: #93c5fd; } .dark .uam-badge.over { color: #fdba74; } .dark .uam-badge.absent { color: #fca5a5; }
-        .dark .uam-badge.extra { color: #f0abfc; } .dark .uam-badge.guard { color: #a5b4fc; }
+        .dark .uam-badge.lunch { color: #93c5fd; } .dark .uam-badge.over { color: #fcd34d; } .dark .uam-badge.absent { color: #fca5a5; }
+        .dark .uam-badge.extra { color: #4ade80; } .dark .uam-badge.guard { color: #a5b4fc; }
         .uam-state.lunch { background: rgba(59, 130, 246, .15); color: #1d4ed8; }
-        .uam-state.over { background: rgba(249, 115, 22, .17); color: #c2410c; }
+        .uam-state.over { background: rgba(245, 158, 11, .18); color: #b45309; }
         .uam-state.absent { background: rgba(239, 68, 68, .14); color: #b91c1c; }
         .uam-state.meeting { background: rgba(13, 148, 136, .15); color: #0f766e; }
         .dark .uam-state.meeting { color: #5eead4; }
         .uam-badge.meeting { background: rgba(13, 148, 136, .14); color: #0f766e; }
         .dark .uam-badge.meeting { color: #5eead4; }
         .uam-table tr.row.p-meeting > td:first-child { box-shadow: inset 4px 0 0 #0d9488; }
-        .uam-table tr.row.p-meeting_long > td:first-child { box-shadow: inset 4px 0 0 #f97316; }
+        .uam-table tr.row.p-meeting_long > td:first-child { box-shadow: inset 4px 0 0 #f59e0b; }
         .uam-meetings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
         .uam-meetings li { display: grid; grid-template-columns: 130px 1fr auto; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; background: var(--uam-bg); border: 1px solid var(--uam-border); border-left: 4px solid #0d9488; }
-        .dark .uam-state.lunch { color: #93c5fd; } .dark .uam-state.over { color: #fdba74; } .dark .uam-state.absent { color: #fca5a5; }
+        .dark .uam-state.lunch { color: #93c5fd; } .dark .uam-state.over { color: #fcd34d; } .dark .uam-state.absent { color: #fca5a5; }
         .uam-table tr.row.p-lunch > td:first-child { box-shadow: inset 4px 0 0 #3b82f6; }
-        .uam-table tr.row.p-lunch_over > td:first-child { box-shadow: inset 4px 0 0 #f97316; }
+        .uam-table tr.row.p-lunch_over > td:first-child { box-shadow: inset 4px 0 0 #f59e0b; }
         .uam-table tr.row.p-absent > td:first-child { box-shadow: inset 4px 0 0 #ef4444; }
         .uam-table tr.row.p-absent > td { opacity: 1; }
         .uam-jornada { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; border: 1px solid var(--uam-border); background: var(--uam-soft); }
         .uam-jornada-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
         .uam-absences { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
         .uam-absences li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--uam-bg); border: 1px solid var(--uam-border); }
-        .uam-legend .band { width: 18px; height: 10px; border-radius: 3px; display: inline-block; }
+        .uam-legend .band { width: 18px; height: 10px; border-radius: 0; display: inline-block; background: transparent; border: 2px solid var(--uam-mark); border-bottom: 0; }
+        .uam-legend .band.work { --uam-mark: #475569; } .uam-legend .band.guard { --uam-mark: #6366f1; }
+        .dark .uam-legend .band.work { --uam-mark: #cbd5e1; } .dark .uam-legend .band.guard { --uam-mark: #a5b4fc; }
+        .uam-mark-work { fill: #475569; } .dark .uam-mark-work { fill: #cbd5e1; }
+        .uam-mark-guard { fill: #6366f1; } .dark .uam-mark-guard { fill: #a5b4fc; }
+        .uam-mark-guard-extra { fill: #4338ca; } .dark .uam-mark-guard-extra { fill: #c7d2fe; }
         .uam-tip-target { cursor: help; transition: opacity .12s; }
         .uam-dayline:hover .uam-tip-target:not(:hover) { opacity: .82; }
         .uam-tip { position: fixed; left: -9999px; top: -9999px; z-index: 60; width: max-content; max-width: 300px; pointer-events: none; padding: 11px 13px 11px 15px; border-radius: 12px;
@@ -200,9 +214,9 @@
         .uam-tip-impact::before { content: ''; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
         .uam-tip-impact.is-good { background: rgba(22, 163, 74, .13); color: #15803d; }
         .uam-tip-impact.is-bad { background: rgba(239, 68, 68, .13); color: #b91c1c; }
-        .uam-tip-impact.is-extra { background: rgba(217, 70, 239, .13); color: #a21caf; }
+        .uam-tip-impact.is-extra { background: rgba(22, 101, 52, .13); color: #166534; }
         .uam-tip-impact.is-neutral { background: rgba(100, 116, 139, .13); color: var(--uam-muted); }
-        .dark .uam-tip-impact.is-good { color: #86efac; } .dark .uam-tip-impact.is-bad { color: #fca5a5; } .dark .uam-tip-impact.is-extra { color: #f0abfc; }
+        .dark .uam-tip-impact.is-good { color: #86efac; } .dark .uam-tip-impact.is-bad { color: #fca5a5; } .dark .uam-tip-impact.is-extra { color: #4ade80; }
         .uam-tip-desc { color: var(--uam-muted); font-size: 11.5px; }
         [x-cloak] { display: none !important; }
         @media (max-width: 768px) { .uam-search { margin-left: 0; width: 100%; min-width: 0; } }
@@ -210,41 +224,41 @@
 
     @php
         /**
-         * Barra del día. Con jornada: de fondo la franja laboral (verde tenue) y las
-         * guardias (índigo tenue), y encima cada tramo con el color de su categoría.
-         * Sin jornada (días anteriores, agentes): los estados de conexión de siempre.
-         */
-        /**
          * Datos del tooltip de un tramo: van en atributos `data-tip-*` y los dibuja
          * una sola tarjeta flotante (ver `.uam-tip`), no el `<title>` del navegador.
          */
-        $tip = function (string $label, string $color, int $from, int $to, string $note = '', string $description = '', array $impact = ['', 'neutral']): string {
+        $tip = function (string $label, string $color, int $from, int $to, string $note = '', string $description = '', array $impact = ['', 'neutral'], ?string $duration = null): string {
             $minutes = max(1, $to - $from);
 
             return ' data-tip-label="'.e($label).'" data-tip-color="'.e($color).'"'
                 .' data-tip-range="'.e(Clock::formatMinute($from).' – '.Clock::formatMinute(min(1440, $to))).'"'
-                .' data-tip-duration="'.e(Clock::formatDuration($minutes)).'"'
+                .' data-tip-duration="'.e($duration ?? Clock::formatDuration($minutes)).'"'
                 .' data-tip-note="'.e($note).'" data-tip-desc="'.e($description).'"'
                 .' data-tip-impact="'.e($impact[0]).'" data-tip-tone="'.e($impact[1]).'"';
         };
 
         /**
-         * Barra del día. Con jornada: de fondo la franja laboral (verde tenue) y las
-         * guardias (índigo tenue), y encima cada tramo con el color de su categoría.
+         * Barra del día. Con jornada: cada tramo con el color de su categoría y, encima,
+         * la jornada (gris) y las guardias (índigo) como marcas finas —línea superior e
+         * inicio/fin— para que el color lleno quede solo para los estados.
          * Sin jornada (días anteriores, agentes): los estados de conexión de siempre.
          */
         $dayline = function (array $segments, bool $big = false, bool $showNow = false, array $bands = []) use ($nowMinute, $tip): string {
             $rects = '';
+            $marks = '';
             foreach ($bands as $band) {
-                [$fill, $edge, $bandLabel, $bandDescription] = match ($band['type']) {
-                    'work' => ['rgba(22,163,74,.13)', 'rgba(22,163,74,.55)', 'Franja de jornada', 'Horario en que debe estar trabajando. Lo que aún no pasa se ve vacío.'],
-                    'guard' => ['rgba(79,70,229,.15)', 'rgba(79,70,229,.55)', 'Franja de guardia', 'Guardia asignada: se mide la presencia, no se penaliza la inactividad.'],
-                    default => ['rgba(217,70,239,.12)', 'rgba(217,70,239,.55)', 'Guardia en día libre', 'Guardia en fin de semana o feriado: su uso cuenta como horas extra.'],
+                [$markClass, $tipColor, $bandLabel, $bandDescription] = match ($band['type']) {
+                    'work' => ['uam-mark-work', '#475569', 'Franja de jornada', 'Horario en que debe estar trabajando. Lo que aún no pasa se ve vacío entre las marcas.'],
+                    'guard' => ['uam-mark-guard', '#6366f1', 'Franja de guardia', 'Guardia asignada: se mide la presencia, no se penaliza la inactividad.'],
+                    default => ['uam-mark-guard-extra', '#4338ca', 'Guardia en día libre', 'Guardia en fin de semana o feriado: su uso cuenta como Activo Plus (horas extra).'],
                 };
-                $rects .= '<rect class="uam-tip-target" x="'.$band['from'].'" y="0" width="'.max(1, $band['to'] - $band['from']).'" height="10" fill="'.$fill.'"'
-                    .$tip($bandLabel, $edge, $band['from'], $band['to'], $band['type'] === 'work' ? '' : $band['label'], $bandDescription).'></rect>'
-                    .'<rect x="'.$band['from'].'" y="0" width="2" height="10" fill="'.$edge.'" pointer-events="none"></rect>'
-                    .'<rect x="'.max(0, $band['to'] - 2).'" y="0" width="2" height="10" fill="'.$edge.'" pointer-events="none"></rect>';
+                $width = max(1, $band['to'] - $band['from']);
+                /** Zona invisible del tooltip, debajo de los tramos: se lee donde aún no hay actividad. */
+                $rects .= '<rect class="uam-tip-target" x="'.$band['from'].'" y="0" width="'.$width.'" height="10" fill="transparent"'
+                    .$tip($bandLabel, $tipColor, $band['from'], $band['to'], $band['type'] === 'work' ? '' : $band['label'], $bandDescription).'></rect>';
+                $marks .= '<rect class="'.$markClass.'" x="'.$band['from'].'" y="0" width="'.$width.'" height="1.6" pointer-events="none"></rect>'
+                    .'<rect class="'.$markClass.'" x="'.$band['from'].'" y="0" width="3" height="10" pointer-events="none"></rect>'
+                    .'<rect class="'.$markClass.'" x="'.max(0, $band['to'] - 3).'" y="0" width="3" height="10" pointer-events="none"></rect>';
             }
             foreach ($segments as $segment) {
                 $kind = $segment['kind'] ?? null;
@@ -270,6 +284,7 @@
             foreach ([180, 360, 540, 720, 900, 1080, 1260] as $guide) {
                 $rects .= '<rect x="'.$guide.'" y="0" width="1.5" height="10" pointer-events="none" fill="'.($guide % 360 === 0 ? 'rgba(100,116,139,.35)' : 'rgba(100,116,139,.18)').'"></rect>';
             }
+            $rects .= $marks;
 
             return '<svg class="uam-dayline'.($big ? ' big' : '').'" viewBox="0 0 1440 10" preserveAspectRatio="none" role="img" aria-label="Actividad del día">'.$rects.'</svg>';
         };
@@ -446,9 +461,9 @@
                             <div class="uam-kpi-hint">{{ $fmt($live['kpis']['work_active']) }} trabajados (activo + reuniones) de {{ $fmt($live['kpis']['work_base']) }} de jornada transcurrida</div>
                         </div>
                         <div class="uam-kpi">
-                            <div class="uam-kpi-label"><i style="width: 8px; height: 8px; border-radius: 999px; background: {{ Kind::Overtime->color() }}; display: inline-block;"></i> Horas extra hoy</div>
+                            <div class="uam-kpi-label"><i style="width: 8px; height: 8px; border-radius: 999px; background: {{ Kind::Overtime->color() }}; display: inline-block;"></i> Activo Plus hoy</div>
                             <div class="uam-kpi-value" style="color: {{ Kind::Overtime->color() }};">{{ $fmt($live['kpis']['overtime']) }}</div>
-                            <div class="uam-kpi-hint">Uso fuera de horario, fin de semana o feriado</div>
+                            <div class="uam-kpi-hint">Horas extra: uso fuera de horario, fin de semana o feriado</div>
                         </div>
                     @else
                         <div class="uam-kpi">
@@ -582,18 +597,18 @@
 
             {{-- ===================== REPORTE ===================== --}}
             @if ($tab === 'report' && $report !== null)
-                <div class="uam-kpis">
+                <div class="uam-kpis {{ $workdayEnabled ? 'split' : '' }}">
                     <div class="uam-kpi"><div class="uam-kpi-label">👥 Personas con actividad</div><div class="uam-kpi-value">{{ $report['totals']['users'] }}</div><div class="uam-kpi-hint">{{ $rangeLabel }}</div></div>
                     @if ($workdayEnabled)
                         <div class="uam-kpi"><div class="uam-kpi-label">💼 Uso de jornada @include('filament.business.pages.partials.user-activity-usage-help')</div><div class="uam-kpi-value"><span class="uam-usage {{ $usageClass($report['totals']['work_usage']) }}" style="font-size: 26px;">{{ $report['totals']['work_usage'] !== null ? $report['totals']['work_usage'].'%' : '—' }}</span></div><div class="uam-kpi-hint">{{ $fmt($report['totals']['work_active']) }} activos de {{ $fmt($report['totals']['work_base']) }} de jornada</div></div>
                         <div class="uam-kpi"><div class="uam-kpi-label" style="color: {{ Kind::WorkAbsent->color() }};">Ausente en jornada</div><div class="uam-kpi-value">{{ $fmt($report['totals']['work_absent']) }}</div><div class="uam-kpi-hint">En su horario sin el sistema abierto</div></div>
                         <div class="uam-kpi"><div class="uam-kpi-label" style="color: {{ Kind::LunchExcess->color() }};">Exceso de almuerzo</div><div class="uam-kpi-value">{{ $fmt($report['totals']['lunch_excess']) }}</div><div class="uam-kpi-hint">Por encima de la hora de almuerzo</div></div>
-                        <div class="uam-kpi"><div class="uam-kpi-label" style="color: {{ Kind::Overtime->color() }};">Horas extra</div><div class="uam-kpi-value">{{ $fmt($report['totals']['overtime']) }}</div><div class="uam-kpi-hint">Fuera de horario, fin de semana o feriado</div></div>
+                        <div class="uam-kpi"><div class="uam-kpi-label" style="color: {{ Kind::Overtime->color() }};">Activo Plus</div><div class="uam-kpi-value">{{ $fmt($report['totals']['overtime']) }}</div><div class="uam-kpi-hint">Horas extra: fuera de horario, fin de semana o feriado</div></div>
                     @endif
-                    <div class="uam-kpi"><div class="uam-kpi-label" style="color: var(--uam-active);">Tiempo activo</div><div class="uam-kpi-value">{{ $fmt($report['totals']['active']) }}</div><div class="uam-kpi-hint">Usando el sistema</div></div>
-                    <div class="uam-kpi"><div class="uam-kpi-label" style="color: #d97706;">Abierto sin usar</div><div class="uam-kpi-value">{{ $fmt($report['totals']['idle']) }}</div><div class="uam-kpi-hint">Inactivo con el sistema a la vista</div></div>
-                    <div class="uam-kpi"><div class="uam-kpi-label">En otra pestaña</div><div class="uam-kpi-value">{{ $fmt($report['totals']['background']) }}</div><div class="uam-kpi-hint">Sistema minimizado u oculto</div></div>
-                    <div class="uam-kpi"><div class="uam-kpi-label">⚡ Uso real @include('filament.business.pages.partials.user-activity-usage-help')</div><div class="uam-kpi-value"><span class="uam-usage {{ $usageClass($report['totals']['usage']) }}" style="font-size: 26px;">{{ $report['totals']['usage'] }}%</span></div><div class="uam-kpi-hint">{{ number_format($report['totals']['actions'], 0, ',', '.') }} acciones · {{ number_format($report['totals']['pages'], 0, ',', '.') }} pantallas</div></div>
+                    <div class="uam-kpi wide"><div class="uam-kpi-label" style="color: var(--uam-active);">Tiempo activo</div><div class="uam-kpi-value">{{ $fmt($report['totals']['active']) }}</div><div class="uam-kpi-hint">Usando el sistema</div></div>
+                    <div class="uam-kpi wide"><div class="uam-kpi-label" style="color: #ca8a04;">Abierto sin usar</div><div class="uam-kpi-value">{{ $fmt($report['totals']['idle']) }}</div><div class="uam-kpi-hint">Inactivo con el sistema a la vista</div></div>
+                    <div class="uam-kpi wide"><div class="uam-kpi-label" style="color: #ca8a04;">En otra pestaña</div><div class="uam-kpi-value">{{ $fmt($report['totals']['background']) }}</div><div class="uam-kpi-hint">Sistema minimizado u oculto</div></div>
+                    <div class="uam-kpi wide"><div class="uam-kpi-label">⚡ Uso real @include('filament.business.pages.partials.user-activity-usage-help')</div><div class="uam-kpi-value"><span class="uam-usage {{ $usageClass($report['totals']['usage']) }}" style="font-size: 26px;">{{ $report['totals']['usage'] }}%</span></div><div class="uam-kpi-hint">{{ number_format($report['totals']['actions'], 0, ',', '.') }} acciones · {{ number_format($report['totals']['pages'], 0, ',', '.') }} pantallas</div></div>
                 </div>
 
                 <div class="uam-filters">
@@ -631,7 +646,7 @@
                                         {!! $th('work_absent', 'Ausente') !!}
                                         {!! $th('meeting', 'En reuniones') !!}
                                         {!! $th('lunch_excess', 'Exceso almuerzo') !!}
-                                        {!! $th('overtime', 'Horas extra') !!}
+                                        {!! $th('overtime', 'Activo Plus') !!}
                                         {!! $th('guard', 'Guardia') !!}
                                     @endif
                                     {!! $th('online', 'Conectado') !!}
@@ -725,7 +740,10 @@
                             @endif
                         </div>
                     </div>
-                    <button type="button" class="uam-btn" wire:click="closeDetail" aria-label="Cerrar">✕</button>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        {{ ($this->downloadActivityPdfAction)(['userId' => $detail['user']->id]) }}
+                        <button type="button" class="uam-btn" wire:click="closeDetail" aria-label="Cerrar">✕</button>
+                    </div>
                 </div>
 
                 <div class="uam-daynav">
@@ -746,7 +764,7 @@
                         <div>@include('filament.business.pages.partials.user-activity-workday-cell', ['work' => $dayWork, 'presence' => null, 'nowMinute' => $nowMinute, 'isToday' => $day['is_today']])</div>
                         <dl class="uam-grid">
                             <div class="uam-stat"><dt>Activo en jornada</dt><dd style="color: {{ Kind::WorkActive->color() }};">{{ $fmt((int) $dayWork['work_active']) }}</dd></div>
-                            <div class="uam-stat"><dt>Inactivo en jornada</dt><dd style="color: #ca8a04;">{{ $fmt((int) $dayWork['work_idle']) }}</dd></div>
+                            <div class="uam-stat"><dt>Inactivo en jornada</dt><dd style="color: #a16207;">{{ $fmt((int) $dayWork['work_idle']) }}</dd></div>
                             <div class="uam-stat"><dt>Ausente en jornada</dt><dd style="color: {{ Kind::WorkAbsent->color() }};">{{ $fmt((int) $dayWork['work_absent']) }}</dd></div>
                             <div class="uam-stat">
                                 <dt>Almuerzo</dt>
@@ -760,7 +778,7 @@
                                 </dd>
                             </div>
                             <div class="uam-stat"><dt>En reuniones</dt><dd style="color: {{ Kind::Meeting->color() }};">{{ $fmt((int) $dayWork['meeting']) }} <span class="uam-sub">· {{ count($dayWork['meetings'] ?? []) }}</span></dd></div>
-                            <div class="uam-stat"><dt>Horas extra</dt><dd style="color: {{ Kind::Overtime->color() }};">{{ $fmt((int) $dayWork['overtime']) }}</dd></div>
+                            <div class="uam-stat"><dt>Activo Plus</dt><dd style="color: {{ Kind::Overtime->color() }};">{{ $fmt((int) $dayWork['overtime']) }}</dd></div>
                             @if ($dayWork['guard'] > 0)
                                 <div class="uam-stat"><dt>Guardia</dt><dd style="color: {{ Kind::GuardActive->color() }};">{{ $fmt((int) $dayWork['guard']) }} <span class="uam-sub">· {{ $dayWork['guard_presence'] }}% presente</span></dd></div>
                             @endif
@@ -841,10 +859,29 @@
                         <div class="uam-heat">
                             <span></span>
                             @for ($hour = 0; $hour < 24; $hour++)<span style="text-align: center;">{{ $hour % 3 === 0 ? $hour : '' }}</span>@endfor
-                            @foreach (['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] as $weekday => $weekdayLabel)
+                            @foreach ([['Lun', 'Lunes', 'lunes', 'lunes'], ['Mar', 'Martes', 'martes', 'martes'], ['Mié', 'Miércoles', 'miércoles', 'miércoles'], ['Jue', 'Jueves', 'jueves', 'jueves'], ['Vie', 'Viernes', 'viernes', 'viernes'], ['Sáb', 'Sábado', 'sábado', 'sábados'], ['Dom', 'Domingo', 'domingo', 'domingos']] as $weekday => [$weekdayLabel, $weekdayName, $weekdaySingular, $weekdayPlural])
+                                @php
+                                    $weekdayDays = (int) ($person['heat_days'][$weekday] ?? 0);
+                                @endphp
                                 <span>{{ $weekdayLabel }}</span>
                                 @foreach ($person['heatmap'][$weekday] as $hour => $minutes)
-                                    <div class="c" title="{{ $weekdayLabel }} {{ $hour }}:00 · {{ $fmt($minutes) }} activo" style="background: {{ $minutes > 0 ? 'rgba(22,163,74,'.round(0.15 + 0.85 * $minutes / $person['heat_max'], 2).')' : 'var(--uam-track)' }};"></div>
+                                    @php
+                                        $share = $minutes / $person['heat_max'];
+                                        $cellColor = $minutes > 0 ? 'rgba(22,163,74,'.round(0.15 + 0.85 * $share, 2).')' : 'var(--uam-track)';
+                                        $heatImpact = match (true) {
+                                            $minutes === 0 => ['Sin actividad en esta hora', 'neutral'],
+                                            $share >= 0.66 => ['Uso alto · de sus horas más activas', 'good'],
+                                            $share >= 0.33 => ['Uso medio', 'good'],
+                                            default => ['Uso bajo', 'neutral'],
+                                        };
+                                        $heatNote = match (true) {
+                                            $weekdayDays === 0 => 'Sin '.$weekdayPlural.' con registro en el período.',
+                                            $weekdayDays === 1 => 'Un solo '.$weekdaySingular.' con registro en el período.',
+                                            default => 'Promedio de '.$fmt((int) round($minutes / $weekdayDays)).' por día, en '.$weekdayDays.' '.$weekdayPlural.' con registro.',
+                                        };
+                                    @endphp
+                                    <div class="c uam-tip-target" style="background: {{ $cellColor }};"
+                                        {!! $tip($weekdayName, $minutes > 0 ? '#16a34a' : '#94a3b8', $hour * 60, ($hour + 1) * 60, $heatNote, 'Minutos usando el sistema en esa hora, sumando todos los '.$weekdayPlural.' del período. Más verde = más uso.', $heatImpact, $fmt($minutes).' activo') !!}></div>
                                 @endforeach
                             @endforeach
                         </div>
