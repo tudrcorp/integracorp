@@ -216,9 +216,10 @@ final class UserActivityReport
 
     /**
      * Detalle de una persona en el rango: un renglón por día, mapa de calor
-     * día de la semana × hora y lo que más usó.
+     * día de la semana × hora (con cuántos días con registro cae cada columna,
+     * para el promedio del tooltip) y lo que más usó.
      *
-     * @return array{days: list<array<string, mixed>>, heatmap: array<int, list<int>>, heat_max: int, top_pages: list<array{label: string, total: int}>, top_panels: list<array{label: string, total: int}>}
+     * @return array{days: list<array<string, mixed>>, heatmap: array<int, list<int>>, heat_max: int, heat_days: list<int>, top_pages: list<array{label: string, total: int}>, top_panels: list<array{label: string, total: int}>}
      */
     public static function person(int $userId, CarbonImmutable $from, CarbonImmutable $to): array
     {
@@ -230,11 +231,13 @@ final class UserActivityReport
 
         /** Lunes = 0 … domingo = 6. */
         $heatmap = array_fill(0, 7, array_fill(0, 24, 0));
+        $heatDays = array_fill(0, 7, 0);
         $days = [];
         $workday = self::workdayContext($userId, $from, $to, $records->contains(static fn (UserActivityDay $record): bool => $record->workday_kind !== null));
 
         foreach ($records as $record) {
             $weekday = ((int) $record->activity_date->dayOfWeekIso) - 1;
+            $heatDays[$weekday]++;
 
             foreach (array_values((array) ($record->hourly_active ?? [])) as $hour => $minutes) {
                 if ($hour < 24) {
@@ -289,7 +292,7 @@ final class UserActivityReport
             ->map(static fn (object $row): array => ['label' => (string) $row->panel, 'total' => (int) $row->total])
             ->all();
 
-        return ['days' => $days, 'heatmap' => $heatmap, 'heat_max' => $heatMax, 'top_pages' => $topPages, 'top_panels' => $topPanels];
+        return ['days' => $days, 'heatmap' => $heatmap, 'heat_max' => $heatMax, 'heat_days' => $heatDays, 'top_pages' => $topPages, 'top_panels' => $topPanels];
     }
 
     /**

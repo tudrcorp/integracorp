@@ -16,6 +16,7 @@ use App\Support\UserActivity\UserActivityClock;
 use App\Support\UserActivity\UserActivityFlusher;
 use App\Support\UserActivity\UserActivityLiveBoard;
 use App\Support\UserActivity\UserActivityReport;
+use App\Support\UserActivity\UserActivityState;
 use App\Support\UserActivity\UserActivityTracker;
 use App\Support\UserActivity\Workday\WorkAbsenceType;
 use App\Support\UserActivity\Workday\WorkBreakException;
@@ -738,7 +739,7 @@ it('la pantalla en vivo explica la jornada y marca almuerzos y ausencias', funct
         ->assertOk()
         ->assertSee('Ausentes en jornada')
         ->assertSee('Uso de jornada hoy')
-        ->assertSee('Horas extra hoy')
+        ->assertSee('Activo Plus hoy')
         ->assertSeeHtml('class="uam-tip"')
         ->assertDontSeeHtml('x-bind:style="\'--tip-color')
         ->assertSeeHtml("setProperty('--tip-color'")
@@ -746,6 +747,8 @@ it('la pantalla en vivo explica la jornada y marca almuerzos y ausencias', funct
         ->assertSeeHtml('data-tip-label="Almuerzo"')
         ->assertSeeHtml('data-tip-impact="No cuenta: hora de almuerzo declarada"')
         ->assertSeeHtml('data-tip-label="Franja de jornada"')
+        ->assertSeeHtml('class="uam-mark-work"')
+        ->assertDontSeeHtml('rgba(22,163,74,.13)')
         ->assertDontSeeHtml('<title>')
         ->assertSee('Ana Interna')
         ->assertSee('En almuerzo · 0:20')
@@ -956,4 +959,61 @@ it('el volcado y el reporte guardan y suman el tiempo en reunión', function ():
         ->and($row->work_meeting_minutes)->toBe(120)
         ->and($row->work_absent_minutes)->toBe(420)
         ->and($report[601])->toMatchArray(['meeting' => 120, 'work_meeting' => 120, 'work_usage' => 22]);
+});
+
+it('la barra del día y el en vivo usan la paleta tipo Manchester', function () {
+    expect(WorkMinuteKind::WorkActive->color())->toBe('#16a34a')
+        ->and(WorkMinuteKind::WorkActive->label())->toBe('Activo en el sistema')
+        ->and(WorkMinuteKind::Overtime->color())->toBe('#166534')
+        ->and(WorkMinuteKind::Overtime->label())->toBe('Activo Plus')
+        ->and(WorkMinuteKind::WorkIdle->color())->toBe('#facc15')
+        ->and(WorkMinuteKind::WorkIdle->label())->toBe('Inactivo – En otra pestaña')
+        ->and(WorkMinuteKind::LunchExcess->color())->toBe('#f59e0b')
+        ->and(WorkMinuteKind::WorkAbsent->color())->toBe('#ef4444')
+        ->and(WorkMinuteKind::GuardAbsent->color())->toBe('#991b1b')
+        ->and(WorkMinuteKind::Meeting->color())->toBe('#0d9488')
+        ->and(WorkMinuteKind::Lunch->color())->toBe('#3b82f6')
+        ->and(WorkMinuteKind::OffHoursIdle->color())->toBe('#86efac')
+        ->and(UserActivityState::Active->color())->toBe('#16a34a')
+        ->and(UserActivityState::Idle->color())->toBe('#facc15')
+        ->and(UserActivityState::Background->color())->toBe('#facc15')
+        ->and(UserActivityState::Offline->color())->toBe('#991b1b');
+});
+
+it('el PDF de actividad de una persona con jornada trae sus cifras y los días laborales sin conexión', function (): void {
+    UserActivityDay::factory()->create([
+        'user_id' => 601, 'activity_date' => '2026-10-13', 'online_minutes' => 300, 'active_minutes' => 300, 'first_minute' => 480, 'last_minute' => 779,
+        'minute_states' => str_repeat('.', 480).str_repeat('a', 300).str_repeat('.', 660),
+        'workday_kind' => 'laboral', 'work_base_minutes' => 540, 'work_active_minutes' => 300, 'work_absent_minutes' => 240, 'overtime_minutes' => 0,
+    ]);
+
+    $data = App\Support\UserActivity\Pdf\UserActivityPersonPdfData::build(601, wdAt('2026-10-13'), wdAt('2026-10-15'));
+    $texts = implode(' ', array_column($data['highlights'], 'text'));
+
+    expect($data['subject'])->toBeTrue()
+        ->and($data['totals'])->toMatchArray(['work_base' => 540, 'work_active' => 300, 'work_absent' => 240, 'work_usage' => 56])
+        ->and($data['days'][0]['plan_kind'])->toBe(WorkDayKind::Workday)
+        ->and($texts)->toContain('Uso de jornada de 56 %')
+        ->and($texts)->toContain('No se conectó en 1 día laboral: Mié. 14 oct.')
+        ->and($texts)->not->toContain('Jue. 15 oct.');
+
+    $html = view('documents.user-activity-person-report', ['data' => $data])->render();
+
+    expect($html)->toContain('USO DE JORNADA')
+        ->and($html)->toContain('ACTIVO PLUS')
+        ->and($html)->toContain('Día laboral sin conexión')
+        ->and($html)->not->toContain('Recorrido por el sistema')
+        ->and(App\Support\UserActivity\Pdf\UserActivityPersonPdf::render($data))->toStartWith('%PDF');
+});
+
+it('el PDF no cuenta como día laboral sin conexión lo que es anterior a la medición de jornada', function (): void {
+    config(['live-presence.activity.workday.since' => '2026-10-14']);
+
+    $data = App\Support\UserActivity\Pdf\UserActivityPersonPdfData::build(601, wdAt('2026-10-13'), wdAt('2026-10-15'));
+    $texts = implode(' ', array_column($data['highlights'], 'text'));
+
+    expect($data['days'][0]['plan_kind'])->toBeNull()
+        ->and($data['days'][1]['plan_kind'])->toBe(WorkDayKind::Workday)
+        ->and($texts)->toContain('No se conectó en 1 día laboral: Mié. 14 oct.')
+        ->and($texts)->not->toContain('Mar. 13 oct.');
 });

@@ -39,9 +39,9 @@ enum UserActivityState: string
     {
         return match ($this) {
             self::Active => '#16a34a',
-            self::Idle => '#f59e0b',
-            self::Background => '#94a3b8',
-            self::Offline => '#334155',
+            self::Idle => '#facc15',
+            self::Background => '#facc15',
+            self::Offline => '#991b1b',
         };
     }
 
