@@ -20,6 +20,9 @@ class CollectionAdjustment extends Model
     /** Reprogramado por una corrección de fecha de vigencia (o su reversión). */
     public const MODE_EFFECTIVE_DATE = 'vigencia';
 
+    /** Anulada o restituida por la baja (o la reactivación) de su afiliación, o por la decisión del analista sobre esas cuotas. */
+    public const MODE_DROPOUT = 'baja';
+
     protected $table = 'collection_adjustments';
 
     protected $fillable = [

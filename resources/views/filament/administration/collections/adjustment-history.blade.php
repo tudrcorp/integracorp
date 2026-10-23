@@ -19,6 +19,7 @@
                     · {{ match ($adjustment->mode) {
                         \App\Models\CollectionAdjustment::MODE_BULK => 'Ajuste masivo',
                         \App\Models\CollectionAdjustment::MODE_EFFECTIVE_DATE => 'Corrección de vigencia',
+                        \App\Models\CollectionAdjustment::MODE_DROPOUT => 'Afiliación dada de baja',
                         default => 'Ajuste individual',
                     } }}
                 </span>

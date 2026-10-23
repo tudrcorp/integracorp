@@ -8,6 +8,7 @@ use App\Models\Collection;
 use App\Support\Collections\CollectionAdjuster;
 use App\Support\Collections\CollectionAdjustmentAccess;
 use App\Support\Collections\CollectionDueDate;
+use App\Support\Collections\CollectionReceivableReport;
 use App\Support\Exports\CollectionCsvExportService;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
@@ -54,7 +55,14 @@ class CollectionsTable
         return $table
             ->heading('Cuotas de cobranza')
             ->description('Una fila por cuota. Las cuotas por pagar cuya fecha ya pasó se marcan como vencidas. Use los filtros para acotar por estado, fecha de próximo pago o plan.')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+            /*
+             * Misma regla que Cuentas por cobrar: las cuotas de afiliaciones excluidas, inactivas
+             * o anuladas (según su estatus actual) no se muestran ni suman en el resumen. Al
+             * resolver una fila puntual no se filtra, para no romper una acción ya abierta.
+             */
+            ->modifyQueryUsing(fn (Builder $query, bool $isResolvingRecord): Builder => ($isResolvingRecord
+                ? $query
+                : CollectionReceivableReport::excludeNonCollectableAffiliations($query))
                 ->with([
                     'plan:id,description',
                     'agent:id,name',

@@ -20,6 +20,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const REPAIR_DATE_INCONSISTENCIES = 'reparar-inconsistencias-de-fechas';
 
+    public const MANAGE_DROPPED_AFFILIATION_COLLECTIONS = 'gestionar-cuotas-afiliaciones-dadas-de-baja';
+
     public const MANAGE_WHITE_COMPANY_NEGOTIATED_FEES = 'matriz-negociacion-empresas-aliadas';
 
     public const MANAGE_WHITE_COMPANY_DOCUMENT_BRAND = 'documentos-marca-empresas-aliadas';
@@ -117,6 +119,11 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::REPAIR_DATE_INCONSISTENCIES => [
                 'name' => 'Inconsistencias de fechas: reparar, revertir y marcar como no inconsistencia',
+                'group' => 'COBRANZA',
+                'modules' => ['ADMINISTRACION'],
+            ],
+            self::MANAGE_DROPPED_AFFILIATION_COLLECTIONS => [
+                'name' => 'Cuotas de afiliaciones dadas de baja: anular, mantener como deuda y revertir',
                 'group' => 'COBRANZA',
                 'modules' => ['ADMINISTRACION'],
             ],

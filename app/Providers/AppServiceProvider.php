@@ -184,6 +184,8 @@ class AppServiceProvider extends ServiceProvider
         RrhhColaborador::observe(OrgStructureRrhhObserver::class);
         RrhhCargo::observe(OrgStructureRrhhObserver::class);
         RrhhDepartamento::observe(OrgStructureRrhhObserver::class);
+        \App\Models\Affiliation::observe(\App\Observers\AffiliationDropoutCollectionsObserver::class);
+        \App\Models\AffiliationCorporate::observe(\App\Observers\AffiliationDropoutCollectionsObserver::class);
         CoordinationServiceTabCounts::registerCacheInvalidation();
 
         FilamentColor::register([

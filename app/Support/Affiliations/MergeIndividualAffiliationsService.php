@@ -16,6 +16,7 @@ use App\Models\TelemedicinePatient;
 use App\Support\AffiliationAffiliateFeeCalculator;
 use App\Support\AffiliationCorporates\CorporatePaymentFrequency;
 use App\Support\AffiliationCorporates\CorporatePaymentFrequencyChanger;
+use App\Support\Collections\DroppedAffiliationCollections;
 use App\Support\SecurityAudit;
 use Carbon\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
@@ -682,7 +683,8 @@ final class MergeIndividualAffiliationsService
             $source->total_amount = 0;
             $source->family_members = 0;
             $source->activated_at = null;
-            $source->save();
+            // Sus avisos ya los resolvió el calendario unificado, con su propia foto de restauración.
+            DroppedAffiliationCollections::withoutAutomaticCancellation(fn (): bool => $source->save());
 
             $source->status_log_affiliations()->create([
                 'affiliation_id' => $source->id,
