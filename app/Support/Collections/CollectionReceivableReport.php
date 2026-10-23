@@ -42,6 +42,8 @@ final class CollectionReceivableReport
 
     public const AGING_DUE_SOON = 'vence_7';
 
+    public const AGING_DUE_15 = 'vence_15';
+
     public const AGING_DUE_30 = 'vence_30';
 
     public const AGING_DUE_45 = 'vence_45';
@@ -55,6 +57,7 @@ final class CollectionReceivableReport
      * @var array<int, string> Días => clave del filtro «Vencimiento».
      */
     public const DUE_WINDOWS = [
+        15 => self::AGING_DUE_15,
         30 => self::AGING_DUE_30,
         45 => self::AGING_DUE_45,
         60 => self::AGING_DUE_60,
@@ -81,8 +84,8 @@ final class CollectionReceivableReport
             'plan:id,description',
             'agent:id,name',
             'agencyByCode:id,code,name_corporative',
-            'affiliationByCode:id,code,status,fee_anual,effective_date,payment_frequency,full_name_payer,nro_identificacion_payer',
-            'affiliationCorporateByCode:id,code,status,fee_anual,effective_date,payment_frequency,name_corporate,rif',
+            'affiliationByCode:id,code,status,fee_anual,activated_at,effective_date,payment_frequency,full_name_payer,nro_identificacion_payer',
+            'affiliationCorporateByCode:id,code,status,fee_anual,activated_at,effective_date,payment_frequency,name_corporate,rif',
             'affiliationCorporateByCode.affiliationCorporatePlans:id,affiliation_corporate_id,plan_id',
             'affiliationCorporateByCode.affiliationCorporatePlans.plan:id,description',
         ];
@@ -138,6 +141,7 @@ final class CollectionReceivableReport
     {
         return [
             self::AGING_DUE_SOON => 'Vence en los próximos 7 días',
+            self::AGING_DUE_15 => 'Vence en los próximos 15 días',
             self::AGING_DUE_30 => 'Vence en los próximos 30 días',
             self::AGING_DUE_45 => 'Vence en los próximos 45 días',
             self::AGING_DUE_60 => 'Vence en los próximos 60 días',
@@ -156,6 +160,7 @@ final class CollectionReceivableReport
 
         return match ($bucket) {
             self::AGING_DUE_SOON => $query->whereBetween($column, [$today->toDateString(), $today->addDays(7)->toDateString()]),
+            self::AGING_DUE_15 => $query->whereBetween($column, [$today->toDateString(), $today->addDays(15)->toDateString()]),
             self::AGING_DUE_30 => $query->whereBetween($column, [$today->toDateString(), $today->addDays(30)->toDateString()]),
             self::AGING_DUE_45 => $query->whereBetween($column, [$today->toDateString(), $today->addDays(45)->toDateString()]),
             self::AGING_DUE_60 => $query->whereBetween($column, [$today->toDateString(), $today->addDays(60)->toDateString()]),
@@ -362,6 +367,44 @@ final class CollectionReceivableReport
             : self::individualAffiliation($collection)?->fee_anual;
 
         return is_numeric($fee) ? (float) $fee : null;
+    }
+
+    /**
+     * Tarifa anual repartida según la frecuencia de pago (anual 1, semestral 2, trimestral 4,
+     * mensual 12): el monto teórico de cada cuota. Null si falta la tarifa o la frecuencia.
+     */
+    public static function amountByFrequency(Collection $collection): ?float
+    {
+        $fee = self::annualFee($collection);
+        $installments = self::installmentsPerYear(self::paymentFrequency($collection));
+
+        return $fee === null || $installments === null ? null : round($fee / $installments, 2);
+    }
+
+    /**
+     * Fecha de emisión de la afiliación (individual o corporativa). La de la cuota se reinicia
+     * en cada renovación, así que solo se usa si la afiliación no tiene la suya.
+     */
+    public static function emissionDate(Collection $collection): ?string
+    {
+        $emission = self::isCorporate($collection)
+            ? self::corporateAffiliation($collection)?->activated_at
+            : self::individualAffiliation($collection)?->activated_at;
+
+        return self::clean($emission) ?? self::clean($collection->include_date);
+    }
+
+    /**
+     * Orden SQL por la fecha de emisión con el mismo respaldo que {@see emissionDate()}.
+     */
+    public static function emissionDateOrderSql(string $direction): string
+    {
+        $direction = $direction === 'desc' ? 'desc' : 'asc';
+
+        return 'STR_TO_DATE(COALESCE('
+            ."NULLIF((select emission_individual.activated_at from affiliations as emission_individual where emission_individual.code = collections.affiliation_code limit 1), ''), "
+            ."NULLIF((select emission_corporate.activated_at from affiliation_corporates as emission_corporate where emission_corporate.code = collections.affiliation_code limit 1), ''), "
+            ."collections.include_date), '%d/%m/%Y') {$direction}";
     }
 
     public static function effectiveDate(Collection $collection): ?string

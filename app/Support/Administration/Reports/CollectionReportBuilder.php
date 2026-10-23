@@ -24,7 +24,7 @@ use Illuminate\Support\Str;
  */
 final class CollectionReportBuilder
 {
-    public const COL_INCLUDE_DATE = 0;
+    public const COL_EMISSION_DATE = 0;
 
     public const COL_HOLDER = 1;
 
@@ -50,21 +50,23 @@ final class CollectionReportBuilder
 
     public const COL_ANNUAL_FEE = 12;
 
-    public const COL_EFFECTIVE_DATE = 13;
+    public const COL_AMOUNT_BY_FREQUENCY = 13;
 
-    public const COL_FREQUENCY = 14;
+    public const COL_EFFECTIVE_DATE = 14;
 
-    public const COL_INSTALLMENT = 15;
+    public const COL_FREQUENCY = 15;
 
-    public const COL_DUE_DATE = 16;
+    public const COL_INSTALLMENT = 16;
 
-    public const COL_COLLECTION_STATUS = 17;
+    public const COL_DUE_DATE = 17;
 
-    public const COL_DAYS = 18;
+    public const COL_COLLECTION_STATUS = 18;
 
-    public const COL_AFFILIATE_STATUS = 19;
+    public const COL_DAYS = 19;
 
-    public const COL_INSTALLMENT_AMOUNT = 20;
+    public const COL_AFFILIATE_STATUS = 20;
+
+    public const COL_INSTALLMENT_AMOUNT = 21;
 
     private const CHUNK_SIZE = 200;
 
@@ -76,7 +78,7 @@ final class CollectionReportBuilder
     public static function headings(): array
     {
         return [
-            'FECHA DE INCLUSION O EMISION',
+            'FECHA DE EMISION',
             'AFILIADO O TITULAR',
             'CODIGO DE AFILIACION',
             'C.I./R.I.F.',
@@ -88,7 +90,8 @@ final class CollectionReportBuilder
             'POBLACION',
             'AGENCIA',
             'AGENTE',
-            'TARIFA ANUAL',
+            'TARIFA ANUAL (US$)',
+            'MONTO SEGUN FRECUENCIA (US$)',
             'FECHA DE VIGENCIA',
             'FRACCIONAMIENTO DE CUOTAS PARA PAGO',
             'PERIODOS DE PAGO',
@@ -105,7 +108,7 @@ final class CollectionReportBuilder
      */
     public static function numericColumns(): array
     {
-        return [self::COL_ANNUAL_FEE, self::COL_DAYS, self::COL_INSTALLMENT_AMOUNT];
+        return [self::COL_ANNUAL_FEE, self::COL_AMOUNT_BY_FREQUENCY, self::COL_DAYS, self::COL_INSTALLMENT_AMOUNT];
     }
 
     /**
@@ -123,6 +126,7 @@ final class CollectionReportBuilder
             self::COL_AGENCY,
             self::COL_AGENT,
             self::COL_ANNUAL_FEE,
+            self::COL_AMOUNT_BY_FREQUENCY,
             self::COL_FREQUENCY,
             self::COL_INSTALLMENT,
             self::COL_INSTALLMENT_AMOUNT,
@@ -271,7 +275,7 @@ final class CollectionReportBuilder
     public static function row(Collection $record): array
     {
         return [
-            self::text($record->include_date),
+            CollectionReceivableReport::emissionDate($record),
             self::text($record->affiliate_full_name),
             self::text($record->affiliation_code),
             self::text($record->affiliate_ci_rif),
@@ -284,6 +288,7 @@ final class CollectionReportBuilder
             CollectionReceivableReport::agencyLabel($record),
             self::text($record->agent?->name),
             CollectionReceivableReport::annualFee($record),
+            CollectionReceivableReport::amountByFrequency($record),
             CollectionReceivableReport::effectiveDate($record),
             CollectionReceivableReport::paymentFrequency($record),
             CollectionReceivableReport::installmentLabel($record),
@@ -395,32 +400,34 @@ final class CollectionReportBuilder
     }
 
     /**
-     * @return array{count: int, annual_fee: float, installment_amount: float}
+     * @return array{count: int, annual_fee: float, amount_by_frequency: float, installment_amount: float}
      */
     private static function emptyTotals(): array
     {
-        return ['count' => 0, 'annual_fee' => 0.0, 'installment_amount' => 0.0];
+        return ['count' => 0, 'annual_fee' => 0.0, 'amount_by_frequency' => 0.0, 'installment_amount' => 0.0];
     }
 
     /**
-     * @param  array{count: int, annual_fee: float, installment_amount: float}  $totals
+     * @param  array{count: int, annual_fee: float, amount_by_frequency: float, installment_amount: float}  $totals
      * @param  list<scalar|null>  $values
      */
     private static function accumulate(array &$totals, array $values): void
     {
         $totals['count']++;
         $totals['annual_fee'] += (float) ($values[self::COL_ANNUAL_FEE] ?? 0);
+        $totals['amount_by_frequency'] += (float) ($values[self::COL_AMOUNT_BY_FREQUENCY] ?? 0);
         $totals['installment_amount'] += (float) ($values[self::COL_INSTALLMENT_AMOUNT] ?? 0);
     }
 
     /**
-     * @param  array{count: int, annual_fee: float, installment_amount: float}  $totals
+     * @param  array{count: int, annual_fee: float, amount_by_frequency: float, installment_amount: float}  $totals
      * @return array{kind: string, values: list<scalar|null>, label: string}
      */
     private static function totalsLine(string $kind, string $label, array $totals): array
     {
         $values = array_fill(0, count(self::headings()), null);
         $values[self::COL_ANNUAL_FEE] = round($totals['annual_fee'], 2);
+        $values[self::COL_AMOUNT_BY_FREQUENCY] = round($totals['amount_by_frequency'], 2);
         $values[self::COL_INSTALLMENT_AMOUNT] = round($totals['installment_amount'], 2);
 
         return [

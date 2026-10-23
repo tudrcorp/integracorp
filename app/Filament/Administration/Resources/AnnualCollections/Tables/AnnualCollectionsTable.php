@@ -10,6 +10,7 @@ use App\Models\Collection;
 use App\Support\Collections\CollectionNotice;
 use App\Support\Collections\CollectionReceivableReport;
 use App\Support\Exports\CollectionReceivableCsvExportService;
+use App\Support\Filament\SummaryCards;
 use App\Support\SecurityAudit;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -69,10 +70,11 @@ class AnnualCollectionsTable
     private static function columns(): array
     {
         return [
-            TextColumn::make('include_date')
-                ->label('Fecha de inclusión o emisión')
+            TextColumn::make('emission_date')
+                ->label('Fecha de emisión')
+                ->state(fn (Collection $record): ?string => CollectionReceivableReport::emissionDate($record))
                 ->sortable(query: fn (Builder $query, string $direction): Builder => $query
-                    ->orderByRaw("STR_TO_DATE(collections.include_date, '%d/%m/%Y') ".($direction === 'desc' ? 'desc' : 'asc'))),
+                    ->orderByRaw(CollectionReceivableReport::emissionDateOrderSql($direction))),
             TextColumn::make('affiliate_full_name')
                 ->label('Afiliado o titular')
                 ->weight('semibold')
@@ -121,7 +123,15 @@ class AnnualCollectionsTable
             TextColumn::make('annual_fee')
                 ->label('Tarifa anual')
                 ->state(fn (Collection $record): ?float => CollectionReceivableReport::annualFee($record))
-                ->money('USD')
+                ->formatStateUsing(fn (?float $state): string => SummaryCards::money((float) $state))
+                ->placeholder('—')
+                ->alignEnd(),
+            TextColumn::make('amount_by_frequency')
+                ->label('Monto según frecuencia')
+                ->tooltip('Tarifa anual dividida entre las cuotas de la frecuencia de pago (anual 1, semestral 2, trimestral 4, mensual 12).')
+                ->state(fn (Collection $record): ?float => CollectionReceivableReport::amountByFrequency($record))
+                ->formatStateUsing(fn (?float $state): string => SummaryCards::money((float) $state))
+                ->placeholder('—')
                 ->alignEnd(),
             TextColumn::make('effective_date')
                 ->label('Fecha de vigencia')

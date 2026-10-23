@@ -73,3 +73,13 @@ it('una cuota de afiliación dada de baja sigue resolviéndose por id (no rompe 
     expect($table->getQuery(isResolvingRecord: true)->whereKey($excluded)->exists())->toBeTrue()
         ->and($table->getQuery()->whereKey($excluded)->exists())->toBeFalse();
 });
+
+it('Cuentas por cobrar muestra fecha de emisión, tarifa en US$ y monto según frecuencia, y ordena por emisión', function (): void {
+    Livewire::test(\App\Filament\Administration\Resources\AnnualCollections\Pages\ListAnnualCollections::class)
+        ->sortTable('emission_date', 'desc')
+        ->assertSuccessful()
+        ->assertSee('Fecha de emisión')
+        ->assertSee('Monto según frecuencia')
+        ->assertSee('US$ ')
+        ->assertDontSee('Fecha de inclusión o emisión');
+});

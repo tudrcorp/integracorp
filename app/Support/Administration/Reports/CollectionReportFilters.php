@@ -31,6 +31,9 @@ final readonly class CollectionReportFilters
 
     public const PERIOD_CUSTOM = 'custom';
 
+    /** Prefijo de los plazos «vence en los próximos N días» (los mismos del resumen de Cuentas por cobrar). */
+    public const PERIOD_NEXT_DAYS_PREFIX = 'next_days_';
+
     public const STATUS_ALL = 'all';
 
     public const SCOPE_AGENCY = 'agency';
@@ -73,13 +76,39 @@ final readonly class CollectionReportFilters
      */
     public static function periodOptions(): array
     {
+        $windows = [];
+
+        foreach (array_keys(CollectionReceivableReport::DUE_WINDOWS) as $days) {
+            $windows[self::nextDaysPeriod($days)] = 'Próximos '.$days.' días';
+        }
+
         return [
             self::PERIOD_THIS_MONTH => 'Este mes',
             self::PERIOD_NEXT_MONTH => 'Próximo mes',
             self::PERIOD_LAST_MONTH => 'Mes anterior',
+            ...$windows,
             self::PERIOD_ALL => 'Toda la cartera',
             self::PERIOD_CUSTOM => 'Desde / hasta',
         ];
+    }
+
+    public static function nextDaysPeriod(int $days): string
+    {
+        return self::PERIOD_NEXT_DAYS_PREFIX.$days;
+    }
+
+    /**
+     * Días del plazo «próximos N días», solo si es uno de los del resumen de Cuentas por cobrar.
+     */
+    public static function nextDaysOf(string $period): ?int
+    {
+        if (! str_starts_with($period, self::PERIOD_NEXT_DAYS_PREFIX)) {
+            return null;
+        }
+
+        $days = (int) substr($period, strlen(self::PERIOD_NEXT_DAYS_PREFIX));
+
+        return array_key_exists($days, CollectionReceivableReport::DUE_WINDOWS) ? $days : null;
     }
 
     /**
@@ -143,6 +172,11 @@ final readonly class CollectionReportFilters
      */
     public static function resolvePeriod(string $period, mixed $from, mixed $to, CarbonImmutable $now): array
     {
+        // Mismo rango que el plazo del resumen: de hoy a hoy + N días, ambos incluidos.
+        if (($days = self::nextDaysOf($period)) !== null) {
+            return [$now->startOfDay(), $now->addDays($days)->endOfDay()];
+        }
+
         return match ($period) {
             self::PERIOD_ALL => [null, null],
             self::PERIOD_NEXT_MONTH => [$now->addMonthNoOverflow()->startOfMonth(), $now->addMonthNoOverflow()->endOfMonth()],

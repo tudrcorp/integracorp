@@ -40,8 +40,9 @@ class CollectionReceivableExporter extends Exporter
     public static function getColumns(): array
     {
         return [
-            ExportColumn::make('include_date')
-                ->label('FECHA DE INCLUSION O EMISION'),
+            ExportColumn::make('emission_date')
+                ->label('FECHA DE EMISION')
+                ->state(fn (Collection $record): ?string => CollectionReceivableReport::emissionDate($record)),
             ExportColumn::make('affiliate_full_name')
                 ->label('AFILIADO O TITULAR'),
             ExportColumn::make('affiliate_ci_rif')
@@ -68,8 +69,11 @@ class CollectionReceivableExporter extends Exporter
                 ->label('AGENTE')
                 ->state(fn (Collection $record): ?string => $record->agent?->name),
             ExportColumn::make('annual_fee')
-                ->label('TARIFA ANUAL')
+                ->label('TARIFA ANUAL (US$)')
                 ->state(fn (Collection $record): ?float => CollectionReceivableReport::annualFee($record)),
+            ExportColumn::make('amount_by_frequency')
+                ->label('MONTO SEGUN FRECUENCIA (US$)')
+                ->state(fn (Collection $record): ?float => CollectionReceivableReport::amountByFrequency($record)),
             ExportColumn::make('effective_date')
                 ->label('FECHA DE VIGENCIA')
                 ->state(fn (Collection $record): ?string => CollectionReceivableReport::effectiveDate($record)),
