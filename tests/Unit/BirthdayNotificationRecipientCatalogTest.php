@@ -21,10 +21,24 @@ it('resuelve el query de destinatarios segun data_type', function (): void {
 
     expect($query)->toBeInstanceOf(Builder::class)
         ->and($query->getModel())->toBeInstanceOf(Agent::class)
+        ->and($query->toSql())->toContain('tdec')
         ->and($config['name'])->toBe('name')
         ->and($config['email'])->toBe('email')
         ->and($config['phone'])->toBe('phone')
         ->and($config['birth_date'])->toBe('birth_date');
+});
+
+it('soporta agentes de viajes y clientes tdev en el catalogo', function (): void {
+    $notification = new BirthdayNotification([
+        'data_type' => ['travel_agents', 'tdev_clients'],
+        'channels' => ['whatsapp'],
+    ]);
+
+    $travel = BirthdayNotificationRecipientCatalog::configForNotification($notification, 'travel_agents');
+    $tdev = BirthdayNotificationRecipientCatalog::queryFor($notification, 'tdev_clients');
+
+    expect($travel['birth_date'])->toBe('fechaNacimiento')
+        ->and($tdev->toSql())->toContain('business_unit_id');
 });
 
 it('permite resolver un data_type concreto cuando hay varios destinatarios', function (): void {
@@ -60,5 +74,12 @@ it('el relation manager usa el padron de destinatarios', function (): void {
         ->and($src)->toContain('Fecha de cumpleaños')
         ->and($src)->toContain('padronSwitcherActions')
         ->and($src)->toContain('viewerDataType')
-        ->and($src)->toContain('Usa los botones de padrón');
+        ->and($src)->toContain('toolbarActions')
+        ->and($src)->toContain('ActionGroup::make')
+        ->and($src)->toContain("->label('Padrón')")
+        ->and($src)->toContain('dropdownWidth(Width::ExtraSmall)')
+        ->and($src)->toContain('compactPadronLabel')
+        ->and($src)->toContain('menú «Padrón» junto al buscador')
+        ->and($src)->not->toContain('AboveContentCollapsible')
+        ->and($src)->not->toContain('->headerActions($this->padronSwitcherActions');
 });

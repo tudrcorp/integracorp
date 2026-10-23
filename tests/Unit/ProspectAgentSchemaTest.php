@@ -28,6 +28,7 @@ it('formulario ProspectAgent usa pestañas con estilos del sistema', function ()
         ->toContain("Tab::make('Embudo comercial')")
         ->toContain("Tab::make('Ubicación')")
         ->toContain("Tab::make('Segmentación')")
+        ->toContain('ProspectAgentLabels::defaultStatus()')
         ->toContain("TextInput::make('website')")
         ->toContain("Textarea::make('social_networks')")
         ->toContain("Textarea::make('address')")
@@ -96,17 +97,24 @@ it('el listado de prospectos titula la captación de Tu Doctor Group', function 
         ->not->toContain('Prospectos TuDrGroup');
 });
 
-it('pagina ver prospecto usa botones con estilo iOS', function (): void {
+it('pagina ver prospecto agrupa acciones iOS e incluye ficha técnica', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/ProspectAgents/Pages/ViewProspectAgent.php');
 
     expect($source)
-        ->toContain('IOS_GRAY_BUTTON_CLASS')
-        ->toContain('IOS_PRIMARY_BUTTON_CLASS')
-        ->toContain('IOS_SUCCESS_BUTTON_CLASS')
-        ->toContain('ticket-btn-ios-gray')
-        ->toContain('aviso-btn-ios-primary')
-        ->toContain('aviso-btn-ios-success')
-        ->toContain('modalSubmitAction');
+        ->toContain('FilamentIosActionsMenu::make([')
+        ->toContain("FilamentIosButton::extraClassForFilamentColor('gray')")
+        ->toContain("Action::make('back')")
+        ->toContain("->label('Editar')")
+        ->toContain("->label('Agregar Notas/Observaciones')")
+        ->toContain("->label('Nueva Tarea')")
+        ->toContain("->label('Ficha Técnica del Prospecto')")
+        ->toContain('business.prospect-agents.ficha.preview')
+        ->toContain('business.prospect-agents.ficha.download')
+        ->toContain('modalSubmitAction')
+        ->not->toContain('ActionGroup::make')
+        ->not->toContain('IOS_GRAY_BUTTON_CLASS')
+        ->not->toContain('IOS_PRIMARY_BUTTON_CLASS')
+        ->not->toContain('IOS_SUCCESS_BUTTON_CLASS');
 });
 
 it('pagina editar prospecto usa botones con estilo iOS', function (): void {

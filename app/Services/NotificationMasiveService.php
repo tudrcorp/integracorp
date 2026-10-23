@@ -13,6 +13,7 @@ use App\Models\BirthdayNotification;
 use App\Models\DataNotification;
 use App\Models\MassNotification;
 use App\Models\TelemedicinePatientMedications;
+use App\Support\Birthday\BirthdayRecipientQuery;
 use App\Support\BirthdayNotificationAudience;
 use App\Support\BirthdayNotificationRunReport;
 use App\Support\MassNotificationEmailSubject;
@@ -20,6 +21,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 class NotificationMasiveService
@@ -238,7 +240,13 @@ class NotificationMasiveService
 
             set_time_limit(0);
 
-            $rowsNotifications = BirthdayNotification::where('status', 'APROBADA')->get()->toArray();
+            $approvedQuery = BirthdayNotification::query()->where('status', 'APROBADA');
+
+            if (Schema::hasColumn('birthday_notifications', 'sends_celebration_card')) {
+                $approvedQuery->where('sends_celebration_card', true);
+            }
+
+            $rowsNotifications = $approvedQuery->get()->toArray();
 
             BirthdayNotificationRunReport::registerRunConfiguration($rowsNotifications);
 
@@ -275,7 +283,7 @@ class NotificationMasiveService
                             BirthdayNotificationRunReport::setCurrentGroup('agentes');
                             BirthdayNotificationRunReport::setExcludedForDataType('agents');
 
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('agents')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(BirthdayRecipientQuery::agents()
                                 ->select('id', 'name', 'phone', 'birth_date', 'ci')
                                 ->get()
                                 ->toArray());
@@ -472,8 +480,7 @@ class NotificationMasiveService
                         if (in_array('affiliates', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('afiliaciones');
                             BirthdayNotificationRunReport::setExcludedForDataType('affiliates');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('affiliates')
-                                ->leftJoin('affiliations', 'affiliates.affiliation_id', '=', 'affiliations.id')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(BirthdayRecipientQuery::affiliates()
                                 ->select(
                                     'affiliates.id as id',
                                     'affiliates.full_name',
@@ -607,8 +614,7 @@ class NotificationMasiveService
                         if (in_array('affiliate_corporates', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('afiliaciones_corporativas');
                             BirthdayNotificationRunReport::setExcludedForDataType('affiliate_corporates');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('affiliate_corporates')
-                                ->leftJoin('affiliation_corporates', 'affiliate_corporates.affiliation_corporate_id', '=', 'affiliation_corporates.id')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(BirthdayRecipientQuery::affiliateCorporates()
                                 ->select(
                                     'affiliate_corporates.id as id',
                                     'affiliate_corporates.first_name',
@@ -739,7 +745,7 @@ class NotificationMasiveService
                         if (in_array('rrhh_colaboradors', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('colaboradores');
                             BirthdayNotificationRunReport::setExcludedForDataType('rrhh_colaboradors');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('rrhh_colaboradors')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(BirthdayRecipientQuery::collaborators()
                                 ->select('id', 'fullName', 'telefono', 'fechaNacimiento')
                                 ->get()
                                 ->toArray());
@@ -832,6 +838,157 @@ class NotificationMasiveService
 
                                     continue;
                                 }
+                            }
+                        }
+
+                        // AGENTES DE VIAJES (TDEV)
+                        if (in_array('travel_agents', $dataTypes, true)) {
+                            BirthdayNotificationRunReport::setCurrentGroup('agentes_viajes');
+                            BirthdayNotificationRunReport::setExcludedForDataType('travel_agents');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(BirthdayRecipientQuery::travelAgents()
+                                ->select('id', 'name', 'phone', 'fechaNacimiento')
+                                ->get()
+                                ->toArray());
+
+                            BirthdayNotificationRunReport::recordValidationBatch('agentes_viajes', count($data), 'whatsapp');
+
+                            for ($k = 0; $k < count($data); $k++) {
+                                if ($data[$k]->fechaNacimiento == null || $data[$k]->fechaNacimiento == '') {
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'agentes_viajes'
+                                    );
+
+                                    continue;
+                                }
+
+                                if (! UtilsController::validateDateFormat($data[$k]->fechaNacimiento)) {
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'agentes_viajes'
+                                    );
+
+                                    continue;
+                                }
+
+                                if ($data[$k]->phone == null || $data[$k]->phone == '') {
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Numero de telefono es nulo o vacio',
+                                        'agentes_viajes'
+                                    );
+
+                                    continue;
+                                }
+
+                                if (! UtilsController::isBirthdayToday($data[$k]->fechaNacimiento)) {
+                                    continue;
+                                }
+
+                                set_time_limit(0);
+
+                                BirthdayNotificationRunReport::queueWhatsApp(
+                                    $data[$k]->name,
+                                    $data[$k]->phone,
+                                    $rowsNotifications[$i]['content'],
+                                    $rowsNotifications[$i]['file'],
+                                    $rowsNotifications[$i]['type'],
+                                    null,
+                                    $data[$k]->fechaNacimiento ?? null,
+                                );
+
+                                BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
+                                    $data[$k]->name,
+                                    $rowsNotifications[$i]['content'],
+                                    $rowsNotifications[$i]['file'],
+                                    $rowsNotifications[$i]['type']
+                                );
+                            }
+                        }
+
+                        // CLIENTES TU DR. EN VIAJES (TDEV)
+                        if (in_array('tdev_clients', $dataTypes, true)) {
+                            BirthdayNotificationRunReport::setCurrentGroup('clientes_tdev');
+                            BirthdayNotificationRunReport::setExcludedForDataType('tdev_clients');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(
+                                BirthdayRecipientQuery::tdevClientsRows('whatsapp')
+                            );
+
+                            BirthdayNotificationRunReport::recordValidationBatch('clientes_tdev', count($data), 'whatsapp');
+
+                            for ($k = 0; $k < count($data); $k++) {
+                                if ($data[$k]->birth_date == null || $data[$k]->birth_date == '') {
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'clientes_tdev'
+                                    );
+
+                                    continue;
+                                }
+
+                                if (! UtilsController::validateDateFormat($data[$k]->birth_date)) {
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'clientes_tdev'
+                                    );
+
+                                    continue;
+                                }
+
+                                if ($data[$k]->phone == null || $data[$k]->phone == '') {
+                                    UtilsController::notificationFailed(
+                                        'whatsapp',
+                                        $data[$k]->name,
+                                        null,
+                                        $data[$k]->phone,
+                                        'Numero de telefono es nulo o vacio',
+                                        'clientes_tdev'
+                                    );
+
+                                    continue;
+                                }
+
+                                if (! UtilsController::isBirthdayToday($data[$k]->birth_date)) {
+                                    continue;
+                                }
+
+                                set_time_limit(0);
+
+                                BirthdayNotificationRunReport::queueWhatsApp(
+                                    $data[$k]->name,
+                                    $data[$k]->phone,
+                                    $rowsNotifications[$i]['content'],
+                                    $rowsNotifications[$i]['file'],
+                                    $rowsNotifications[$i]['type'],
+                                    null,
+                                    $data[$k]->birth_date ?? null,
+                                );
+
+                                BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(
+                                    $data[$k]->name,
+                                    $rowsNotifications[$i]['content'],
+                                    $rowsNotifications[$i]['file'],
+                                    $rowsNotifications[$i]['type']
+                                );
                             }
                         }
 
@@ -953,7 +1110,7 @@ class NotificationMasiveService
                         if (in_array('agents', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('agentes');
                             BirthdayNotificationRunReport::setExcludedForDataType('agents');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('agents')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(BirthdayRecipientQuery::agents()
                                 ->select('id', 'name', 'email', 'phone', 'birth_date', 'ci')
                                 ->get()
                                 ->toArray());
@@ -1152,8 +1309,13 @@ class NotificationMasiveService
                         if (in_array('affiliates', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('afiliaciones');
                             BirthdayNotificationRunReport::setExcludedForDataType('affiliates');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('affiliates')
-                                ->select('id', 'full_name', 'email', 'birth_date')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(BirthdayRecipientQuery::affiliates()
+                                ->select(
+                                    'affiliates.id as id',
+                                    'affiliates.full_name',
+                                    'affiliates.email',
+                                    'affiliates.birth_date',
+                                )
                                 ->get()
                                 ->toArray());
 
@@ -1253,8 +1415,13 @@ class NotificationMasiveService
                         if (in_array('affiliate_corporates', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('afiliaciones_corporativas');
                             BirthdayNotificationRunReport::setExcludedForDataType('affiliate_corporates');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('affiliate_corporates')
-                                ->select('id', 'first_name', 'email', 'birth_date')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(BirthdayRecipientQuery::affiliateCorporates()
+                                ->select(
+                                    'affiliate_corporates.id as id',
+                                    'affiliate_corporates.first_name',
+                                    'affiliate_corporates.email',
+                                    'affiliate_corporates.birth_date',
+                                )
                                 ->get()
                                 ->toArray());
 
@@ -1352,7 +1519,7 @@ class NotificationMasiveService
                         if (in_array('rrhh_colaboradors', $dataTypes, true)) {
                             BirthdayNotificationRunReport::setCurrentGroup('colaboradores');
                             BirthdayNotificationRunReport::setExcludedForDataType('rrhh_colaboradors');
-                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('rrhh_colaboradors')
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(BirthdayRecipientQuery::collaborators()
                                 ->select('id', 'fullName', 'emailCorporativo', 'fechaNacimiento')
                                 ->get()
                                 ->toArray());
@@ -1444,6 +1611,157 @@ class NotificationMasiveService
                                     continue;
                                 }
 
+                            }
+                        }
+
+                        // AGENTES DE VIAJES (TDEV)
+                        if (in_array('travel_agents', $dataTypes, true)) {
+                            BirthdayNotificationRunReport::setCurrentGroup('agentes_viajes');
+                            BirthdayNotificationRunReport::setExcludedForDataType('travel_agents');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(BirthdayRecipientQuery::travelAgents()
+                                ->select('id', 'name', 'email', 'phone', 'fechaNacimiento')
+                                ->get()
+                                ->toArray());
+
+                            BirthdayNotificationRunReport::recordValidationBatch('agentes_viajes', count($data), 'email');
+
+                            for ($k = 0; $k < count($data); $k++) {
+                                if ($data[$k]->fechaNacimiento == null || $data[$k]->fechaNacimiento == '') {
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'agentes_viajes'
+                                    );
+
+                                    continue;
+                                }
+
+                                if (! UtilsController::validateDateFormat($data[$k]->fechaNacimiento)) {
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'agentes_viajes'
+                                    );
+
+                                    continue;
+                                }
+
+                                if ($data[$k]->email == null || $data[$k]->email == '') {
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Email es nulo o vacio',
+                                        'agentes_viajes'
+                                    );
+
+                                    continue;
+                                }
+
+                                if (! UtilsController::isBirthdayToday($data[$k]->fechaNacimiento)) {
+                                    continue;
+                                }
+
+                                set_time_limit(0);
+
+                                BirthdayNotificationRunReport::sendBirthdayEmail(
+                                    $data[$k]->email,
+                                    $data[$k]->name,
+                                    fn (?string $animationUrl = null) => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
+                                        ->send(new NotificationMasiveMailBirthday(
+                                            $data[$k]->name,
+                                            $rowsNotifications[$i]['file'],
+                                            $data[$k]->email,
+                                            $animationUrl,
+                                        )),
+                                    $data[$k]->phone ?? null,
+                                    null,
+                                    $data[$k]->fechaNacimiento ?? null,
+                                );
+
+                                LogController::logSuccess($data[$k]->email);
+                            }
+                        }
+
+                        // CLIENTES TU DR. EN VIAJES (TDEV)
+                        if (in_array('tdev_clients', $dataTypes, true)) {
+                            BirthdayNotificationRunReport::setCurrentGroup('clientes_tdev');
+                            BirthdayNotificationRunReport::setExcludedForDataType('tdev_clients');
+                            $data = BirthdayNotificationRunReport::withoutExcludedRecipients(
+                                BirthdayRecipientQuery::tdevClientsRows('email')
+                            );
+
+                            BirthdayNotificationRunReport::recordValidationBatch('clientes_tdev', count($data), 'email');
+
+                            for ($k = 0; $k < count($data); $k++) {
+                                if ($data[$k]->birth_date == null || $data[$k]->birth_date == '') {
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Fecha de cumpleaños es nula o vacia',
+                                        'clientes_tdev'
+                                    );
+
+                                    continue;
+                                }
+
+                                if (! UtilsController::validateDateFormat($data[$k]->birth_date)) {
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Formato de fecha de cumpleaños inválido',
+                                        'clientes_tdev'
+                                    );
+
+                                    continue;
+                                }
+
+                                if ($data[$k]->email == null || $data[$k]->email == '') {
+                                    UtilsController::notificationFailed(
+                                        'email',
+                                        $data[$k]->name,
+                                        $data[$k]->email,
+                                        null,
+                                        'Email es nulo o vacio',
+                                        'clientes_tdev'
+                                    );
+
+                                    continue;
+                                }
+
+                                if (! UtilsController::isBirthdayToday($data[$k]->birth_date)) {
+                                    continue;
+                                }
+
+                                set_time_limit(0);
+
+                                BirthdayNotificationRunReport::sendBirthdayEmail(
+                                    $data[$k]->email,
+                                    $data[$k]->name,
+                                    fn (?string $animationUrl = null) => BirthdayNotificationRunReport::mailerWithWitnessCopies($data[$k]->email)
+                                        ->send(new NotificationMasiveMailBirthday(
+                                            $data[$k]->name,
+                                            $rowsNotifications[$i]['file'],
+                                            $data[$k]->email,
+                                            $animationUrl,
+                                        )),
+                                    $data[$k]->phone ?? null,
+                                    null,
+                                    $data[$k]->birth_date ?? null,
+                                );
+
+                                LogController::logSuccess($data[$k]->email);
                             }
                         }
 

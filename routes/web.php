@@ -31,6 +31,7 @@ use App\Http\Controllers\Operations\SupplierDocumentAuditController;
 use App\Http\Controllers\OperationServiceOrderPdfController;
 use App\Http\Controllers\PdfController;
 use App\Http\Controllers\PresentationHubController;
+use App\Http\Controllers\ProspectAgentFichaPdfController;
 use App\Http\Controllers\PublicChatController;
 use App\Http\Controllers\ScrumPresentationController;
 use App\Http\Controllers\SupplierFichaPdfController;
@@ -496,6 +497,14 @@ Route::get('business/travel-agencies/{travelAgency}/ficha-pdf/preview', [Busines
 Route::get('business/travel-agencies/{travelAgency}/ficha-pdf/download', [BusinessTravelAgencyFichaPdfController::class, 'download'])
     ->middleware(['web', 'auth'])
     ->name('business.travel-agencies.ficha-pdf.download');
+
+Route::get('business/prospect-agents/{prospectAgent}/ficha/preview', [ProspectAgentFichaPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('business.prospect-agents.ficha.preview');
+
+Route::get('business/prospect-agents/{prospectAgent}/ficha/download', [ProspectAgentFichaPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('business.prospect-agents.ficha.download');
 
 Route::get('business/plan-generators/{planGenerator}/pdf/preview', [BusinessPlanGeneratorPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])

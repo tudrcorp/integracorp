@@ -7,7 +7,6 @@ use App\Filament\Business\Resources\ProspectAgents\Widgets\ClassificationProspec
 use App\Filament\Business\Resources\ProspectAgents\Widgets\ProspectAgentTasksByUserChart;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\ReferenceProspect;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\StatsOverviewCapacitacion;
-use App\Filament\Business\Resources\ProspectAgents\Widgets\StatusChangesByMonth;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\TopRegisterProspect;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\TopRegisterProspectForState;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\TypeProspect;
@@ -145,7 +144,6 @@ class ListProspectAgents extends ListRecords
             StatsOverviewCapacitacion::class,
             TopRegisterProspect::class,
             ProspectAgentTasksByUserChart::class,
-            StatusChangesByMonth::class,
             TopRegisterProspectForState::class,
             TypeProspect::class,
             ReferenceProspect::class,

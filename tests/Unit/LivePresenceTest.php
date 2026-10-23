@@ -130,8 +130,8 @@ function livewireCall(array $calls, array $updates = [], array $headers = []): R
 }
 
 it('dice en español lo que hizo el usuario, con el texto del botón que pulsó', function (): void {
-    expect(ActivityContext::livewireAction(livewireCall([['method' => 'mountAction', 'params' => ['report_suppliers']]], headers: ['X-Presence-Click' => rawurlencode('Reporte de Proveedores')])))
-        ->toBe('Abrió «Reporte de Proveedores»')
+    expect(ActivityContext::livewireAction(livewireCall([['method' => 'mountAction', 'params' => ['report_suppliers']]], headers: ['X-Presence-Click' => rawurlencode('Red de proveedores')])))
+        ->toBe('Abrió «Red de proveedores»')
         ->and(ActivityContext::livewireAction(livewireCall([['method' => 'mountAction', 'params' => ['report_suppliers']]])))
         ->toBe('Abrió «Report suppliers»')
         ->and(ActivityContext::livewireAction(livewireCall([['method' => 'callMountedAction']], headers: ['X-Presence-Click' => rawurlencode('Cambiar frecuencia')])))

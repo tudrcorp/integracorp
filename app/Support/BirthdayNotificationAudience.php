@@ -13,6 +13,23 @@ class BirthdayNotificationAudience
     public const COLLABORATORS = 'colaboradores';
 
     /**
+     * Destinatarios de la tarjeta «CUMPLEAÑOS ANIMADO».
+     *
+     * @return list<string>
+     */
+    public static function celebrationRecipientDataTypeKeys(): array
+    {
+        return [
+            'rrhh_colaboradors',
+            'agents',
+            'affiliates',
+            'affiliate_corporates',
+            'tdev_clients',
+            'travel_agents',
+        ];
+    }
+
+    /**
      * @return list<string>
      */
     public static function keys(): array
@@ -41,6 +58,8 @@ class BirthdayNotificationAudience
                 'agents',
                 'affiliations',
                 'rrhh_colaboradors',
+                'travel_agents',
+                'tdev_clients',
             ],
         };
     }
@@ -109,6 +128,8 @@ class BirthdayNotificationAudience
                 'affiliate_corporates',
                 'agents',
                 'affiliations',
+                'travel_agents',
+                'tdev_clients',
             ], true)
         );
 
@@ -141,18 +162,28 @@ class BirthdayNotificationAudience
     }
 
     /**
+     * @return list<string>
+     */
+    public static function allRecipientDataTypeKeys(): array
+    {
+        return array_keys(self::recipientOptions());
+    }
+
+    /**
      * @return array<string, string>
      */
     public static function recipientOptions(): array
     {
         return [
-            'rrhh_colaboradors' => 'COLABORADORES',
+            'rrhh_colaboradors' => 'COLABORADORES TDG',
+            'agents' => 'AGENTES DE CORRETAJE (TDEC/TDEV)',
+            'affiliates' => 'AFILIADOS INDIVIDUALES TDEC',
+            'affiliate_corporates' => 'AFILIADOS CORPORATIVOS TDEC',
+            'tdev_clients' => 'CLIENTES TU DR. EN VIAJES (TDEV)',
+            'travel_agents' => 'AGENTES DE VIAJES (TDEV)',
             'suppliers' => 'PROVEEDORES',
-            'affiliates' => 'AFILIADOS INDIVIDUALES',
-            'affiliate_corporates' => 'AFILIADOS CORPORATIVOS',
             'users' => 'USUARIOS',
             'capemiacs' => 'CAPEMIAC',
-            'agents' => 'AGENTES',
             'affiliations' => 'AFILIADOS/CLIENTES',
         ];
     }

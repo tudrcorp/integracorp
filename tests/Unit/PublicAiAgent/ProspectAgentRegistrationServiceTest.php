@@ -85,7 +85,7 @@ it('crea el preregistro y guarda una observación inicial', function (): void {
         'state_id' => 10,
         'city_id' => 100,
         'type' => 'agente-corretaje',
-        'status' => 'captación',
+        'status' => 'captación-prospección',
         'reference_by' => 'whatsapp-comercial',
         'conversation_summary' => 'Cliente solicita iniciar preregistro como agente.',
     ]);

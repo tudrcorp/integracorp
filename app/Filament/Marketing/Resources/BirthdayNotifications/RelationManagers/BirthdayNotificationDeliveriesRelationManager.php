@@ -13,9 +13,10 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
-use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -71,7 +72,7 @@ class BirthdayNotificationDeliveriesRelationManager extends RelationManager
             ->query(fn (): Builder => BirthdayNotificationRecipientCatalog::queryFor($notification, $activeDataType))
             ->heading('Destinatarios de la notificación')
             ->description($this->tableDescription($notification, $activeLabel, $padronLabels))
-            ->headerActions($this->padronSwitcherActions($notification, $dataTypes, $activeDataType))
+            ->toolbarActions($this->padronSwitcherActions($notification, $dataTypes, $activeDataType, $activeLabel))
             ->columns([
                 ToggleColumn::make('receives_celebration')
                     ->label('Recibe la animación')
@@ -179,11 +180,10 @@ class BirthdayNotificationDeliveriesRelationManager extends RelationManager
                             'fecha' => 'Cumpleaños el '.Carbon::parse($data['fecha'])->format('d/m'),
                         ];
                     }),
-            ], layout: FiltersLayout::AboveContentCollapsible)
-            ->deferFilters(false)
+            ])
             ->emptyStateHeading('Sin destinatarios en este padrón')
             ->emptyStateDescription(count($dataTypes) > 1
-                ? 'Cambia el padrón con los botones de arriba (por ejemplo COLABORADORES) y vuelve a buscar.'
+                ? 'Abre el menú «Padrón» junto al buscador, elige otro grupo y vuelve a buscar.'
                 : 'No hay registros en el padrón asociado a esta notificación.')
             ->paginated([10, 25, 50, 100]);
     }
@@ -205,7 +205,7 @@ class BirthdayNotificationDeliveriesRelationManager extends RelationManager
             return $base;
         }
 
-        return $base.' Usa los botones de padrón para ver: '.implode(', ', $padronLabels).'.';
+        return $base.' Cambia de grupo con el menú «Padrón» junto al buscador.';
     }
 
     /**
@@ -216,19 +216,22 @@ class BirthdayNotificationDeliveriesRelationManager extends RelationManager
         BirthdayNotification $notification,
         array $dataTypes,
         string $activeDataType,
+        string $activeLabel,
     ): array {
         if (count($dataTypes) <= 1) {
             return [];
         }
 
-        return array_map(
+        $items = array_map(
             function (string $type) use ($notification, $activeDataType): Action {
-                $label = BirthdayNotificationAudience::labelForDataType($type) ?? $type;
+                $fullLabel = BirthdayNotificationAudience::labelForDataType($type) ?? $type;
+                $isActive = $activeDataType === $type;
 
                 return Action::make('padron_'.$type)
-                    ->label($label)
-                    ->button()
-                    ->color($activeDataType === $type ? 'primary' : 'gray')
+                    ->label($this->compactPadronLabel($type, $fullLabel))
+                    ->tooltip($fullLabel)
+                    ->icon($isActive ? Heroicon::OutlinedCheckCircle : Heroicon::OutlinedUserGroup)
+                    ->color($isActive ? 'primary' : 'gray')
                     ->badge(fn (): string => (string) BirthdayNotificationRecipientCatalog::queryFor($notification, $type)->count())
                     ->action(function () use ($type): void {
                         $this->viewerDataType = $type;
@@ -238,6 +241,34 @@ class BirthdayNotificationDeliveriesRelationManager extends RelationManager
             },
             $dataTypes,
         );
+
+        return [
+            ActionGroup::make($items)
+                ->label('Padrón')
+                ->icon(Heroicon::OutlinedRectangleStack)
+                ->color('primary')
+                ->button()
+                ->tooltip($activeLabel)
+                ->badge(fn (): string => (string) BirthdayNotificationRecipientCatalog::queryFor($notification, $activeDataType)->count())
+                ->dropdownPlacement('bottom-end')
+                ->dropdownWidth(Width::ExtraSmall)
+                ->extraAttributes([
+                    'class' => 'fi-birthday-padron-switcher max-w-[9.5rem]',
+                ]),
+        ];
+    }
+
+    private function compactPadronLabel(string $type, string $fallback): string
+    {
+        return match ($type) {
+            'rrhh_colaboradors' => 'Colaboradores',
+            'agents' => 'Agentes corretaje',
+            'affiliates' => 'Afiliados ind.',
+            'affiliate_corporates' => 'Afiliados corp.',
+            'tdev_clients' => 'Clientes TDEV',
+            'travel_agents' => 'Agentes viajes',
+            default => $fallback,
+        };
     }
 
     /**

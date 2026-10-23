@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\PublicAiAgent;
 
+use App\Filament\Business\Resources\ProspectAgents\ProspectAgentLabels;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\State;
@@ -461,7 +462,7 @@ TEXT,
         $merged = $payload;
         $normalized = mb_strtolower($message);
 
-        $merged['status'] ??= 'captación';
+        $merged['status'] ??= ProspectAgentLabels::defaultStatus();
         $merged['reference_by'] ??= 'whatsapp-comercial';
 
         if (preg_match('/([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})/i', $message, $match) === 1) {
@@ -537,7 +538,7 @@ TEXT,
     private function mergeSimplifiedAgentRegistrationPayload(array $payload, string $message, ?string $action): array
     {
         $merged = $payload;
-        $merged['status'] ??= 'captación';
+        $merged['status'] ??= ProspectAgentLabels::defaultStatus();
         $merged['reference_by'] ??= 'whatsapp-comercial';
         $merged['type'] ??= 'agente-corretaje';
 
@@ -585,7 +586,7 @@ TEXT,
     private function mergeSimplifiedAgencyMasterRegistrationPayload(array $payload, string $message): array
     {
         $merged = $payload;
-        $merged['status'] ??= 'captación';
+        $merged['status'] ??= ProspectAgentLabels::defaultStatus();
         $merged['reference_by'] ??= 'whatsapp-comercial';
         $merged['type'] ??= 'agencia-corretaje';
         $merged['classification'] ??= 'agency-master';
@@ -630,7 +631,7 @@ TEXT,
     private function mergeSimplifiedAgencyGeneralRegistrationPayload(array $payload, string $message): array
     {
         $merged = $payload;
-        $merged['status'] ??= 'captación';
+        $merged['status'] ??= ProspectAgentLabels::defaultStatus();
         $merged['reference_by'] ??= 'whatsapp-comercial';
         $merged['type'] ??= 'agencia-corretaje';
         $merged['classification'] ??= 'agency-general';
