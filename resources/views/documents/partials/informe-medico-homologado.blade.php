@@ -318,7 +318,8 @@
                 <p class="doc-sub">{{ \App\Support\Telemedicine\TelemedicineDocumentCaseCode::LABEL }}: <strong>{{ $val($caseCode) }}</strong></p>
                 <p class="doc-sub">Clave del servicio: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
                 <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
-                <span class="badge">{{ $isFollowUp ? 'Seguimiento' : 'Consulta inicial' }}</span>
+                <span class="badge">{{ $val($data['service_type_label'] ?? \App\Support\Telemedicine\TelemedicineInformeServiceType::FALLBACK) }}</span>
+                <span class="badge">{{ $isFollowUp ? 'Seguimiento' : 'Inicial' }}</span>
             </td>
         </tr>
         <tr>
@@ -344,10 +345,7 @@
                     <div class="label">Edad</div>
                     <div class="value-muted">{{ \App\Support\PatientAge::forTelemedicinePatientId($data['telemedicine_patient_id'] ?? null, $data['age_patient'] ?? null) }}</div>
                 </td>
-                <td>
-                    <div class="label">Tipo de servicio</div>
-                    <div class="value-muted">Telemedicina</div>
-                </td>
+                <td>&nbsp;</td>
             </tr>
         </table>
     </div>

@@ -28,6 +28,8 @@
     $signatureTopMm = 210 - $footerBandMm - $signatureBandMm;
     $doctorName = trim((string) ($data['doctor_name'] ?? ''));
     $coverageGroup = trim((string) ($data['coverage_group'] ?? ''));
+    /** Servicio principal que eligió el médico en la consulta (mismo badge que el informe). */
+    $serviceTypeLabel = \App\Support\Telemedicine\TelemedicineInformeServiceType::forInformeData(is_array($data ?? null) ? $data : []);
     $caseCode = \App\Support\Telemedicine\TelemedicineDocumentCaseCode::fromData(is_array($data ?? null) ? $data : []);
 @endphp
 <!DOCTYPE html>
@@ -260,7 +262,7 @@
                             <p class="doc-sub">{{ \App\Support\Telemedicine\TelemedicineDocumentCaseCode::LABEL }}: <strong>{{ $val($caseCode) }}</strong></p>
                             <p class="doc-sub">Clave: <strong>{{ $val($data['code_reference'] ?? null) }}</strong></p>
                             <p class="doc-sub">Fecha: <strong>{{ $val($data['fecha'] ?? now()->format('d/m/Y')) }}</strong></p>
-                            <span class="badge">{{ $copyLabel }}</span>
+                            <span class="badge">{{ $serviceTypeLabel }}</span>
                             @if($coverageGroup !== '')
                                 <span class="badge">{{ $coverageGroup }}</span>
                             @endif
@@ -288,10 +290,7 @@
                             <div class="label">Edad</div>
                             <div class="value-muted">{{ \App\Support\PatientAge::forTelemedicinePatientId($data['telemedicine_patient_id'] ?? null, $data['age_patiente'] ?? ($data['age_patient'] ?? null)) }}</div>
                         </td>
-                        <td>
-                            <div class="label">Tipo de servicio</div>
-                            <div class="value-muted">Telemedicina</div>
-                        </td>
+                        <td>&nbsp;</td>
                     </tr>
                 </table>
             </td>

@@ -33,6 +33,7 @@ final class TelemedicineInformePdfRenderer
         // todos los informes: así ningún camino (crear, editar, regenerar,
         // Informe AMD) puede olvidarlo.
         $data['physical_exam'] = TelemedicineAmdPhysicalExamReport::forInformeData($data);
+        $data['service_type_label'] = TelemedicineInformeServiceType::forInformeData($data);
 
         $pdf = Pdf::loadView($view, ['data' => $data])->setPaper('a4', 'portrait');
 
