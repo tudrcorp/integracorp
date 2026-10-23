@@ -213,6 +213,9 @@ it('resuelve los atajos de periodo', function (string $periodo, ?string $desde, 
     'próximo mes sin desbordar' => [CollectionReportFilters::PERIOD_NEXT_MONTH, '2026-02-01', '2026-02-28'],
     'mes anterior' => [CollectionReportFilters::PERIOD_LAST_MONTH, '2025-12-01', '2025-12-31'],
     'toda la cartera' => [CollectionReportFilters::PERIOD_ALL, null, null],
+    'próximos 15 días' => ['next_days_15', '2026-01-31', '2026-02-15'],
+    'próximos 60 días' => ['next_days_60', '2026-01-31', '2026-04-01'],
+    'plazo que no existe cae en este mes' => ['next_days_20', '2026-01-01', '2026-01-31'],
 ]);
 
 it('rechaza datos incompletos o invertidos', function (array $datos, string $mensaje): void {
@@ -260,8 +263,8 @@ it('las filas traen las mismas columnas que la tabla, con agencia y agente', fun
     $lineas = iterator_to_array(CollectionReportBuilder::build(filtrosQa(['scope' => 'agent', 'agent_id' => $this->agenteId, 'include_subagents' => false]))->lines, false);
     $fila = collect($lineas)->firstWhere('kind', CollectionReportData::LINE_ROW)['values'];
 
-    expect(CollectionReportBuilder::headings())->toHaveCount(21)
-        ->and($fila)->toHaveCount(21)
+    expect(CollectionReportBuilder::headings())->toHaveCount(22)
+        ->and($fila)->toHaveCount(22)
         ->and($fila[CollectionReportBuilder::COL_AFFILIATION_CODE])->toBe('QA-RPT-AF-2')
         ->and($fila[CollectionReportBuilder::COL_AGENCY])->toBe('QA-RPT-G1 · QA GENERAL UNO')
         ->and($fila[CollectionReportBuilder::COL_AGENT])->toBe('QA AGENTE UNO')
@@ -506,4 +509,30 @@ it('un invitado es enviado a iniciar sesión', function (): void {
     auth()->logout();
 
     $this->get(route('administration.reports.download', ['file' => 'reporte-administracion-cobranza-general-x.csv']))->assertRedirect();
+});
+
+it('ofrece los mismos plazos del resumen de Cuentas por cobrar y cuadra con ellos', function (): void {
+    $summary = CollectionReceivableReport::summary(\App\Filament\Administration\Resources\AnnualCollections\AnnualCollectionResource::getEloquentQuery());
+
+    foreach (array_keys(CollectionReceivableReport::DUE_WINDOWS) as $days) {
+        $period = CollectionReportFilters::nextDaysPeriod($days);
+
+        expect(CollectionReportFilters::periodOptions())->toHaveKey($period, 'Próximos '.$days.' días');
+
+        $filters = CollectionReportFilters::fromArray([
+            'type' => AdministrationReportType::CollectionsGeneral->value,
+            'period' => $period,
+            'collection_status' => CollectionReportFilters::STATUS_ALL,
+        ]);
+
+        // El reporte es una fila por afiliación (su próxima cuota): nunca más que las cuotas del plazo.
+        expect(CollectionReportBuilder::count($filters))->toBeLessThanOrEqual($summary['due_windows'][$days]['count']);
+    }
+
+    expect(CollectionReportFilters::periodOptions())->toHaveKey('next_days_15');
+
+    Livewire::test(CentroDeReportes::class)
+        ->assertSee('Próximos 15 días')
+        ->set('data.period', 'next_days_15')
+        ->assertSee('Se incluirán');
 });

@@ -27,7 +27,7 @@ class ListAnnualCollections extends ListRecords
     {
         $summary = CollectionReceivableReport::summary($this->getFilteredTableQuery());
 
-        return SummaryCards::collapsible(label: 'Resumen de cuentas por cobrar', description: 'Total, vencido y por vencer. Use 30, 45 o 60 días para filtrar la tabla.', hint: 'Total por cobrar: '.SummaryCards::money($summary['pending_amount']), cards: [
+        return SummaryCards::collapsible(label: 'Resumen de cuentas por cobrar', description: 'Total, vencido y por vencer. Use 15, 30, 45 o 60 días para filtrar la tabla.', hint: 'Total por cobrar: '.SummaryCards::money($summary['pending_amount']), cards: [
             [
                 'label' => 'Total por cobrar',
                 'value' => SummaryCards::money($summary['pending_amount']),

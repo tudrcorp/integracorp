@@ -127,7 +127,9 @@ it('la bitácora se muestra vacía con una guía y con cada nota cuando las hay'
 it('el resumen trae los plazos de 30, 45 y 60 días acumulados', function (): void {
     $summary = CollectionReceivableReport::summary();
 
-    expect(array_keys($summary['due_windows']))->toBe([30, 45, 60])
+    expect(array_keys($summary['due_windows']))->toBe([15, 30, 45, 60])
+        ->and($summary['due_windows'][30]['amount'])->toBeGreaterThanOrEqual($summary['due_windows'][15]['amount'])
+        ->and($summary['due_windows'][15]['count'])->toBeGreaterThanOrEqual($summary['due_soon_count'])
         ->and($summary['due_windows'][45]['amount'])->toBeGreaterThanOrEqual($summary['due_windows'][30]['amount'])
         ->and($summary['due_windows'][60]['amount'])->toBeGreaterThanOrEqual($summary['due_windows'][45]['amount'])
         ->and($summary['due_windows'][60]['count'])->toBeGreaterThanOrEqual($summary['due_windows'][30]['count'])
@@ -160,6 +162,7 @@ it('la página solo acepta los plazos del resumen y la acción queda en la tabla
     $action = file_get_contents($root.'/Actions/CollectionObservationsAction.php');
 
     expect(CollectionReceivableReport::DUE_WINDOWS)->toBe([
+        15 => CollectionReceivableReport::AGING_DUE_15,
         30 => CollectionReceivableReport::AGING_DUE_30,
         45 => CollectionReceivableReport::AGING_DUE_45,
         60 => CollectionReceivableReport::AGING_DUE_60,

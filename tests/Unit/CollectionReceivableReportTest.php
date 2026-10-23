@@ -132,6 +132,7 @@ it('los rangos de vencimiento filtran por la fecha de la cuota', function (strin
         ->and($query->getBindings())->toBe($expectedBindings);
 })->with([
     'próximos 7 días' => [CollectionReceivableReport::AGING_DUE_SOON, ['2026-10-01', '2026-10-08']],
+    'próximos 15 días' => [CollectionReceivableReport::AGING_DUE_15, ['2026-10-01', '2026-10-16']],
     'próximos 30 días' => [CollectionReceivableReport::AGING_DUE_30, ['2026-10-01', '2026-10-31']],
     'próximos 45 días' => [CollectionReceivableReport::AGING_DUE_45, ['2026-10-01', '2026-11-15']],
     'próximos 60 días' => [CollectionReceivableReport::AGING_DUE_60, ['2026-10-01', '2026-11-30']],
@@ -193,8 +194,8 @@ it('la tabla sigue las columnas del reporte CXC y su única acción por fila es 
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/AnnualCollections/Tables/AnnualCollectionsTable.php');
 
     $labels = [
-        'Fecha de inclusión o emisión', 'Afiliado o titular', 'C.I./R.I.F.', 'Tomador', 'C.I./R.I.F. tomador',
-        'Teléfono', 'Email', 'Plan', 'Población', 'Agencia', 'Agente', 'Tarifa anual', 'Fecha de vigencia',
+        'Fecha de emisión', 'Afiliado o titular', 'C.I./R.I.F.', 'Tomador', 'C.I./R.I.F. tomador',
+        'Teléfono', 'Email', 'Plan', 'Población', 'Agencia', 'Agente', 'Tarifa anual', 'Monto según frecuencia', 'Fecha de vigencia',
         'Fraccionamiento de cuotas', 'Periodos de pago', 'Fecha de vencimiento', 'Estatus de cobro', 'Días',
         'Estatus del afiliado o titular',
     ];
@@ -239,16 +240,16 @@ it('el exportador saca las columnas en el orden del Excel con los valores calcul
     $row = (new CollectionReceivableExporter(new Export, $columnMap, []))($collection);
 
     expect(array_values($columnMap))->toBe([
-        'FECHA DE INCLUSION O EMISION', 'AFILIADO O TITULAR', 'C.I./R.I.F.', 'TOMADOR', 'C.I./R.I.F. TOMADOR',
-        'TELEFONO', 'EMAIL', 'PLAN', 'POBLACION', 'AGENCIA', 'AGENTE', 'TARIFA ANUAL', 'FECHA DE VIGENCIA',
+        'FECHA DE EMISION', 'AFILIADO O TITULAR', 'C.I./R.I.F.', 'TOMADOR', 'C.I./R.I.F. TOMADOR',
+        'TELEFONO', 'EMAIL', 'PLAN', 'POBLACION', 'AGENCIA', 'AGENTE', 'TARIFA ANUAL (US$)', 'MONTO SEGUN FRECUENCIA (US$)', 'FECHA DE VIGENCIA',
         'FRACCIONAMIENTO DE CUOTAS PARA PAGO', 'PERIODOS DE PAGO', 'FECHA DE VENCIMIENTO', 'ESTATUS DE COBRO',
         'DIAS', 'ESTATUS DEL AFILIADO O TITULAR',
     ])
         ->and($row[3])->toBe('ROSA PÉREZ')
         ->and($row[7])->toBe('PLAN ESPECIAL')
         ->and($row[9])->toBe('TDG-101')
-        ->and($row[16])->toBe('VENCIDO')
-        ->and($row[17])->toBe('3');
+        ->and($row[17])->toBe('VENCIDO')
+        ->and($row[18])->toBe('3');
 });
 
 it('el CSV directo saca las mismas columnas y valores que el reporte CXC', function (): void {
@@ -275,8 +276,8 @@ it('el CSV directo saca las mismas columnas y valores que el reporte CXC', funct
         ->and($row[3])->toBe('ROSA PÉREZ')
         ->and($row[7])->toBe('PLAN ESPECIAL')
         ->and($row[9])->toBe('TDG-101')
-        ->and($row[16])->toBe('VENCIDO')
-        ->and($row[17])->toBe('3');
+        ->and($row[17])->toBe('VENCIDO')
+        ->and($row[18])->toBe('3');
 });
 
 it('Descargar CSV de Cobranza Por Mes es directo, sin modal ni cola', function (): void {
@@ -288,4 +289,46 @@ it('Descargar CSV de Cobranza Por Mes es directo, sin modal ni cola', function (
         ->toContain('->streamCsv($livewire->getFilteredSortedTableQuery())')
         ->not->toContain('ExportAction')
         ->not->toContain('->exporter(');
+});
+
+it('reparte la tarifa anual según la frecuencia de pago', function (string $frequency, ?float $expected): void {
+    $collection = receivableCollection(['payment_frequency' => $frequency]);
+    $collection->setRelation('affiliationByCode', new Affiliation(['fee_anual' => 960, 'payment_frequency' => $frequency]));
+
+    expect(CollectionReceivableReport::amountByFrequency($collection))->toBe($expected);
+})->with([
+    'anual' => ['ANUAL', 960.0],
+    'semestral' => ['SEMESTRAL', 480.0],
+    'trimestral' => ['TRIMESTRAL', 240.0],
+    'mensual' => ['MENSUAL', 80.0],
+    'sin frecuencia conocida' => ['QUINCENAL', null],
+]);
+
+it('sin tarifa anual no inventa el monto según frecuencia', function (): void {
+    expect(CollectionReceivableReport::amountByFrequency(receivableCollection()))->toBeNull();
+});
+
+it('la fecha de emisión es la de la afiliación, no la de la cuota renovada', function (): void {
+    $renewed = receivableCollection(['include_date' => '09/09/2026']);
+    $renewed->setRelation('affiliationByCode', new Affiliation(['activated_at' => '09/09/2025']));
+
+    $corporate = receivableCollection(['type' => 'AFILIACION CORPORATIVA', 'include_date' => '01/03/2026']);
+    $corporate->setRelation('affiliationCorporateByCode', new AffiliationCorporate(['activated_at' => '01/03/2024']));
+
+    $withoutEmission = receivableCollection(['include_date' => '15/04/2026']);
+    $withoutEmission->setRelation('affiliationByCode', new Affiliation(['activated_at' => '']));
+
+    expect(CollectionReceivableReport::emissionDate($renewed))->toBe('09/09/2025')
+        ->and(CollectionReceivableReport::emissionDate($corporate))->toBe('01/03/2024')
+        ->and(CollectionReceivableReport::emissionDate($withoutEmission))->toBe('15/04/2026');
+});
+
+it('ordena por fecha de emisión con el mismo respaldo que muestra', function (): void {
+    $sql = CollectionReceivableReport::emissionDateOrderSql('desc');
+
+    expect($sql)->toContain('affiliations as emission_individual')
+        ->toContain('affiliation_corporates as emission_corporate')
+        ->toContain('collections.include_date')
+        ->toEndWith(' desc')
+        ->and(CollectionReceivableReport::emissionDateOrderSql('cualquier cosa'))->toEndWith(' asc');
 });

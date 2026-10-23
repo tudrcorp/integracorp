@@ -9,6 +9,7 @@ use App\Filament\Administration\Pages\CalendariosTdg as AdministrationCalendario
 use App\Filament\Administration\Pages\CompensacionVaucher;
 use App\Filament\Administration\Pages\Dashboard as AdministrationEscritorio;
 use App\Filament\Administration\Pages\GuardiasOperaciones as AdministrationGuardiasOperaciones;
+use App\Filament\Administration\Pages\InformeAdministrativo;
 use App\Filament\Administration\Resources\AffiliationCorporatePaymentFrequencyChanges\AffiliationCorporatePaymentFrequencyChangeResource;
 use App\Filament\Administration\Resources\AffiliationCorporateRenovationHistories\AffiliationCorporateRenovationHistoryResource as AdministrationAffiliationCorporateRenovationHistoryResource;
 use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource as AdministrationAffiliationCorporateResource;
@@ -277,6 +278,7 @@ final class DepartmentNavigationPermissionRegistry
         AdministrationHelpdeskResource::class => ['helpdesk'],
         AffiliationCorporatePaymentFrequencyChangeResource::class => ['cambios-de-frecuencia-de-pago'],
         AffiliationDateInconsistencyResource::class => ['inconsistencias-de-fechas'],
+        InformeAdministrativo::class => ['informe-administrativo'],
         DroppedAffiliationCollectionResource::class => ['cuotas-de-afiliaciones-dadas-de-baja'],
 
         // MARKETING

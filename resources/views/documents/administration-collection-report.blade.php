@@ -10,9 +10,11 @@
     $brandBlue = '#052F60';
     $brandCyan = '#00ADEF';
     $columnCount = max(1, count($headings));
-    $widths = $columnCount === 14
-        ? [11, 7, 10, 8, 10, 9, 6, 6, 5, 6, 6, 6, 4, 6]
-        : array_fill(0, $columnCount, round(100 / $columnCount, 3));
+    $widths = match ($columnCount) {
+        15 => [10, 7, 8, 8, 9, 8, 6, 6, 6, 5, 6, 6, 6, 4, 5],
+        14 => [11, 7, 10, 8, 10, 9, 6, 6, 5, 6, 6, 6, 4, 6],
+        default => array_fill(0, $columnCount, round(100 / $columnCount, 3)),
+    };
     $labelSpan = $numericColumns === [] ? $columnCount : max(1, min($numericColumns));
     $format = static function (mixed $value, bool $numeric): string {
         if ($value === null || $value === '') {

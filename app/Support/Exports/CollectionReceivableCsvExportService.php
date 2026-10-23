@@ -26,7 +26,7 @@ final class CollectionReceivableCsvExportService
     public static function headers(): array
     {
         return [
-            'FECHA DE INCLUSION O EMISION',
+            'FECHA DE EMISION',
             'AFILIADO O TITULAR',
             'C.I./R.I.F.',
             'TOMADOR',
@@ -37,7 +37,8 @@ final class CollectionReceivableCsvExportService
             'POBLACION',
             'AGENCIA',
             'AGENTE',
-            'TARIFA ANUAL',
+            'TARIFA ANUAL (US$)',
+            'MONTO SEGUN FRECUENCIA (US$)',
             'FECHA DE VIGENCIA',
             'FRACCIONAMIENTO DE CUOTAS PARA PAGO',
             'PERIODOS DE PAGO',
@@ -80,10 +81,11 @@ final class CollectionReceivableCsvExportService
     public static function row(Collection $record): array
     {
         $annualFee = CollectionReceivableReport::annualFee($record);
+        $amountByFrequency = CollectionReceivableReport::amountByFrequency($record);
         $days = CollectionReceivableReport::daysCount($record);
 
         return [
-            (string) ($record->include_date ?? ''),
+            (string) (CollectionReceivableReport::emissionDate($record) ?? ''),
             (string) ($record->affiliate_full_name ?? ''),
             (string) ($record->affiliate_ci_rif ?? ''),
             (string) (CollectionReceivableReport::payerName($record) ?? ''),
@@ -95,6 +97,7 @@ final class CollectionReceivableCsvExportService
             (string) (CollectionReceivableReport::agencyLabel($record) ?? ''),
             (string) ($record->agent?->name ?? ''),
             $annualFee !== null ? number_format($annualFee, 2, '.', '') : '',
+            $amountByFrequency !== null ? number_format($amountByFrequency, 2, '.', '') : '',
             (string) (CollectionReceivableReport::effectiveDate($record) ?? ''),
             (string) (CollectionReceivableReport::paymentFrequency($record) ?? ''),
             (string) (CollectionReceivableReport::installmentLabel($record) ?? ''),

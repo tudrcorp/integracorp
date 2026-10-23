@@ -155,6 +155,10 @@ final class AdministrationReportGenerator
 
     public static function labelFor(string $filename): string
     {
+        if (str_starts_with($filename, 'reporte-administracion-'.\App\Support\Administration\Insights\AdministrativeReportPdf::FILE_SLUG.'-')) {
+            return \App\Support\Administration\Insights\AdministrativeReportPdf::LABEL;
+        }
+
         foreach (AdministrationReportType::cases() as $type) {
             if (str_starts_with($filename, 'reporte-administracion-'.$type->fileSlug().'-')) {
                 return $type->label();

@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 
 use App\Enums\OperationReportFormat;
 use App\Filament\Administration\Pages\CentroDeReportes;
+use App\Filament\Administration\Pages\InformeAdministrativo;
+use App\Support\Administration\Insights\AdministrativeReportPdf;
 use App\Support\Administration\Reports\AdministrationReportGenerator;
 use Filament\Facades\Filament;
 use Illuminate\Http\Request;
@@ -27,6 +29,12 @@ class AdministrationReportDownloadController extends Controller
         abort_if($user === null, 403);
         abort_unless(
             $user->canAccessPanel(Filament::getPanel('administration')) && CentroDeReportes::canAccess(),
+            403,
+        );
+
+        // El informe administrativo tiene permiso propio: quien lo pierde ya no lo descarga.
+        abort_if(
+            str_starts_with($file, 'reporte-administracion-'.AdministrativeReportPdf::FILE_SLUG.'-') && ! InformeAdministrativo::canAccess(),
             403,
         );
 
