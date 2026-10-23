@@ -83,12 +83,12 @@ it('el periodo anterior tiene la misma cantidad de meses', function (): void {
     expect($from->toDateString())->toBe('2026-01-01')->and($to->toDateString())->toBe('2026-03-31');
 });
 
-it('trae las cuatro secciones y lo cobrado cuadra con las ventas registradas', function (): void {
+it('trae las ocho secciones y lo cobrado cuadra con las ventas registradas', function (): void {
     $report = adminReport();
     $year = CarbonImmutable::today();
     $sales = (float) DB::table('sales')->whereBetween('created_at', [$year->startOfYear(), $year->endOfYear()])->sum('total_amount');
 
-    expect(array_column($report['sections'], 'key'))->toBe(['summary', 'sales', 'receivables', 'dropouts'])
+    expect(array_column($report['sections'], 'key'))->toBe(['summary', 'sales', 'receivables', 'commissions', 'renovations', 'dropouts', 'white_companies', 'tdev'])
         ->and(adminSection($report, 'summary')['kpis'][0]['value'])->toBe(AdministrativeReportBuilder::money($sales))
         ->and(adminSection($report, 'sales')['kpis'][0]['value'])->toBe(AdministrativeReportBuilder::money($sales));
 });
@@ -127,7 +127,7 @@ it('acota por empresa aliada con su descendencia', function (): void {
     $report = adminReport(['scope' => 'white_company', 'white_company_id' => $company->id]);
 
     expect($report['scope'])->toContain('Empresa aliada')
-        ->and(array_column($report['sections'], 'key'))->toHaveCount(4);
+        ->and(array_column($report['sections'], 'key'))->toHaveCount(8);
 });
 
 it('las barras de bajas suman el total del periodo', function (): void {
@@ -229,4 +229,145 @@ it('más de 12 meses se agrupa por trimestre', function (): void {
         ->and($summary['blocks'][0]['table']['headings'])->toContain('T1 24', 'T4 26')
         ->and(count($summary['blocks'][0]['table']['headings']))->toBe(1 + 12 + 1)
         ->and(adminSection(adminReport(), 'summary')['blocks'][0]['title'])->toBe('Cobrado por mes');
+});
+
+it('el analista elige las secciones y salen en el orden del informe', function (): void {
+    $report = adminReport(['sections' => ['tdev', 'summary', 'commissions']]);
+
+    expect(array_column($report['sections'], 'key'))->toBe(['summary', 'commissions', 'tdev'])
+        ->and(array_column(adminReport()['sections'], 'key'))->toBe(array_keys(AdministrativeReportFilters::sectionOptions()))
+        ->and(fn () => AdministrativeReportFilters::fromArray(['period' => 'this_year', 'sections' => []]))->toThrow(InvalidArgumentException::class, 'al menos una sección')
+        ->and(fn () => AdministrativeReportFilters::fromArray(['period' => 'this_year', 'sections' => ['inventada']]))->toThrow(InvalidArgumentException::class, 'no existe');
+});
+
+it('la comisión cuadra con la suma de los niveles registrados', function (): void {
+    $year = CarbonImmutable::today();
+    $expected = (float) DB::table('commissions')
+        ->whereBetween('created_at', [$year->startOfYear(), $year->endOfYear()])
+        ->selectRaw('COALESCE(SUM('.App\Support\Administration\Insights\Sections\CommissionsSection::totalSql('commissions').'), 0) as total')
+        ->value('total');
+
+    expect(adminSection(adminReport(['sections' => ['commissions']]), 'commissions')['kpis'][0]['value'])->toBe(AdministrativeReportBuilder::money($expected));
+});
+
+it('las renovaciones cuentan aceptaciones del historial y la tasa nunca pasa de 100 %', function (): void {
+    $section = adminSection(adminReport(['sections' => ['renovations']]), 'renovations');
+    $year = CarbonImmutable::today();
+    $renewed = DB::table('affiliation_renovation_histories')->whereBetween('accepted_at', [$year->startOfYear(), $year->endOfYear()])->distinct()->count('code_affiliation')
+        + DB::table('affiliation_corporate_renovation_histories')->whereBetween('accepted_at', [$year->startOfYear(), $year->endOfYear()])->distinct()->count('code_affiliation');
+    $rate = $section['kpis'][1]['value'];
+
+    expect($section['kpis'][0]['value'])->toBe(AdministrativeReportBuilder::number($renewed))
+        ->and($rate === '—' || (float) str_replace(',', '.', $rate) <= 100.0)->toBeTrue();
+});
+
+it('TDEV deja fuera el voucher con la comisión mayor que su venta y avisa que no se acota', function (): void {
+    $section = adminSection(adminReport(['period' => 'last_12_months', 'scope' => 'agency', 'agency_code' => 'NO-EXISTE-QA', 'sections' => ['tdev']]), 'tdev');
+    $from = CarbonImmutable::now()->subMonthsNoOverflow(11)->startOfMonth()->toDateString();
+    $to = CarbonImmutable::now()->endOfMonth()->toDateString();
+    $sane = (float) DB::table('tdev_reports')
+        ->whereRaw("STR_TO_DATE(fecha, '%d/%m/%Y') BETWEEN ? AND ?", [$from, $to])
+        ->whereRaw('COALESCE(monto_comision, 0) <= COALESCE(monto_pvp_precio_de_venta, 0)')
+        ->sum('monto_comision');
+
+    expect($section['intro'])->toContain('no se acota por agencia')
+        ->and($section['kpis'][2]['value'])->toBe(AdministrativeReportBuilder::money($sane));
+});
+
+it('las empresas aliadas suman por la pertenencia jerárquica, no por el código plano', function (): void {
+    $company = WhiteCompany::query()->first();
+
+    if (! $company instanceof WhiteCompany) {
+        $this->markTestSkipped('No hay empresas aliadas.');
+    }
+
+    $codes = App\Support\WhiteCompanies\WhiteCompanyOwnership::agencyCodesFor($company);
+    $year = CarbonImmutable::today();
+    $sales = (float) DB::table('sales')->whereIn('code_agency', $codes !== [] ? $codes : ['-'])->whereBetween('created_at', [$year->startOfYear(), $year->endOfYear()])->sum('total_amount');
+    $section = adminSection(adminReport(['scope' => 'white_company', 'white_company_id' => $company->id, 'sections' => ['white_companies']]), 'white_companies');
+
+    expect($section['kpis'][1]['value'])->toBe(AdministrativeReportBuilder::money($sales));
+});
+
+it('la página trae todas las secciones marcadas y exige al menos una', function (): void {
+    Storage::fake(AdministrationReportGenerator::DISK);
+
+    Livewire::test(InformeAdministrativo::class)
+        ->assertSet('data.sections', array_keys(AdministrativeReportFilters::sectionOptions()))
+        ->assertSee('TDEV (viajes)')
+        ->set('data.sections', [])
+        ->call('downloadPdf')
+        ->assertHasErrors(['data.sections'])
+        ->assertNoFileDownloaded();
+});
+
+it('el PDF completo con las ocho secciones sale en pocos segundos', function (): void {
+    $started = microtime(true);
+    $pdf = AdministrativeReportPdf::render(adminReport(['period' => 'last_12_months']));
+
+    expect($pdf)->toStartWith('%PDF')
+        ->and(microtime(true) - $started)->toBeLessThan(10.0);
+});
+
+it('ninguna página intermedia deja más de 16 mm libres al pie', function (array $data): void {
+    $report = adminReport($data);
+    $fixed = AdministrativeReportPdf::fixedUnits($report);
+    $scales = [];
+    [, $layout] = AdministrativeReportPdf::renderMeasured($report);
+
+    for ($pass = 0; $pass < 3; $pass++) {
+        $adjustments = array_diff_key(AdministrativeReportPdf::adjustments($layout, $scales, AdministrativeReportPdf::minimumScales($report)), array_flip($fixed));
+
+        if ($adjustments === []) {
+            break;
+        }
+
+        $scales = array_replace($scales, $adjustments);
+        [, $layout] = AdministrativeReportPdf::renderMeasured($report, $scales);
+    }
+
+    $spacing = AdministrativeReportPdf::spacing($layout);
+
+    if ($spacing !== []) {
+        [, $layout] = AdministrativeReportPdf::renderMeasured($report, $scales, $spacing);
+    }
+
+    $pointsPerMm = 72 / 25.4;
+    $contentBottom = (297 - 14) * $pointsPerMm;
+    $lastPage = max(array_keys($layout['page_bottoms']));
+
+    foreach ($layout['page_bottoms'] as $page => $bottom) {
+        if ($page < $lastPage) {
+            expect(($contentBottom - $bottom) / $pointsPerMm)->toBeLessThan(16.0, "La página {$page} deja demasiado espacio al pie");
+        }
+    }
+
+    expect(array_filter($scales, static fn (float $scale): bool => $scale < AdministrativeReportPdf::MIN_SCALE_FEW_BARS))->toBe([])
+        ->and(array_intersect(array_keys($scales), $fixed))->toBe([]);
+})->with([
+    'este año' => [['period' => 'this_year']],
+    'informe completo' => [['period' => 'last_12_months']],
+    'este mes' => [['period' => 'this_month']],
+    'por trimestre' => [['period' => 'custom', 'from' => '2024-01-01', 'to' => '2026-10-31']],
+]);
+
+it('un gráfico nunca queda separado de su tabla corta: van en el mismo bloque', function (): void {
+    $html = view('documents.administrative-report', ['report' => adminReport(['period' => 'this_year'])])->render();
+    $dom = new DOMDocument;
+    @$dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+    $xpath = new DOMXPath($dom);
+    $short = 0;
+
+    foreach ($xpath->query("//table[contains(concat(' ', @class, ' '), ' adm-table ')]") as $table) {
+        $rows = $xpath->query('.//tbody/tr', $table)->length;
+        $insideBlock = $xpath->query("ancestor::div[contains(concat(' ', @class, ' '), ' adm-keep ')]", $table)->length > 0;
+
+        // Tablas cortas (+ la fila de total): siempre dentro del bloque de su gráfico.
+        if ($rows <= AdministrativeReportPdf::WHOLE_BLOCK_MAX_ROWS + 1) {
+            $short++;
+            expect($insideBlock)->toBeTrue('Una tabla corta quedó fuera del bloque de su gráfico');
+        }
+    }
+
+    expect($short)->toBeGreaterThan(5);
 });

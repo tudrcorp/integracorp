@@ -13,6 +13,7 @@ use App\Support\Filament\FilamentIosButton;
 use App\Support\SecurityAudit;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
@@ -77,6 +78,7 @@ class InformeAdministrativo extends Page
             'period' => AdministrativeReportFilters::PERIOD_THIS_YEAR,
             'scope' => AdministrativeReportFilters::SCOPE_ALL,
             'include_subagents' => true,
+            'sections' => array_keys(AdministrativeReportFilters::sectionOptions()),
         ];
 
         $this->form->fill($defaults);
@@ -161,6 +163,27 @@ class InformeAdministrativo extends Page
                         ->searchable()
                         ->visible(fn (Get $get): bool => $get('scope') === AdministrativeReportFilters::SCOPE_WHITE_COMPANY)
                         ->required(fn (Get $get): bool => $get('scope') === AdministrativeReportFilters::SCOPE_WHITE_COMPANY),
+                ]),
+            Section::make('Secciones')
+                ->description('Qué incluir en el PDF.')
+                ->columnSpanFull()
+                ->schema([
+                    CheckboxList::make('sections')
+                        ->label('Secciones del informe')
+                        ->helperText('Vienen todas marcadas. Desmarque las que no necesite; el PDF las incluye en este orden.')
+                        ->options(AdministrativeReportFilters::sectionOptions())
+                        ->descriptions([
+                            AdministrativeReportFilters::SECTION_TDEV => 'Siempre es el total de TDEV: no se acota por agencia, agente ni empresa aliada.',
+                        ])
+                        ->columns(['default' => 2, 'md' => 4])
+                        ->bulkToggleable()
+                        ->required()
+                        ->minItems(1)
+                        ->validationMessages([
+                            'required' => 'Elija al menos una sección del informe.',
+                            'min' => 'Elija al menos una sección del informe.',
+                        ])
+                        ->columnSpanFull(),
                 ]),
         ]);
     }

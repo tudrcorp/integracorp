@@ -64,6 +64,21 @@ final class AdministrativeReportBuilder
         $this->today = $today ?? CarbonImmutable::today();
     }
 
+    public function filters(): AdministrativeReportFilters
+    {
+        return $this->filters;
+    }
+
+    public function network(): ?CollectionReportNetwork
+    {
+        return $this->network;
+    }
+
+    public function today(): CarbonImmutable
+    {
+        return $this->today;
+    }
+
     /**
      * @return array{title: string, period: string, scope: string, generated_at: string, sections: list<Section>}
      */
@@ -74,12 +89,19 @@ final class AdministrativeReportBuilder
             'period' => $this->filters->periodLabel(),
             'scope' => $this->filters->scopeLabel(),
             'generated_at' => now()->format('d/m/Y h:i A'),
-            'sections' => [
-                $this->summarySection(),
-                $this->salesSection(),
-                $this->receivablesSection(),
-                $this->dropoutsSection(),
-            ],
+            'sections' => array_values(array_map(
+                fn (string $key): array => match ($key) {
+                    AdministrativeReportFilters::SECTION_SUMMARY => $this->summarySection(),
+                    AdministrativeReportFilters::SECTION_SALES => $this->salesSection(),
+                    AdministrativeReportFilters::SECTION_RECEIVABLES => $this->receivablesSection(),
+                    AdministrativeReportFilters::SECTION_COMMISSIONS => (new Sections\CommissionsSection($this))->build(),
+                    AdministrativeReportFilters::SECTION_RENOVATIONS => (new Sections\RenovationsSection($this))->build(),
+                    AdministrativeReportFilters::SECTION_DROPOUTS => $this->dropoutsSection(),
+                    AdministrativeReportFilters::SECTION_WHITE_COMPANIES => (new Sections\WhiteCompaniesSection($this))->build(),
+                    AdministrativeReportFilters::SECTION_TDEV => (new Sections\TdevSection($this))->build(),
+                },
+                $this->filters->orderedSections(),
+            )),
         ];
     }
 
@@ -335,7 +357,7 @@ final class AdministrativeReportBuilder
      *
      * @return array<string, string>
      */
-    private function months(): array
+    public function months(): array
     {
         $buckets = [];
         $cursor = $this->filters->from->startOfMonth();
@@ -367,7 +389,7 @@ final class AdministrativeReportBuilder
         return $year.'-T'.intdiv($number - 1, 3) + 1;
     }
 
-    private function bucketWord(): string
+    public function bucketWord(): string
     {
         return $this->isQuarterly() ? 'trimestre' : 'mes';
     }
@@ -378,7 +400,7 @@ final class AdministrativeReportBuilder
      * @param  array<string, array<string, int|float>|int|float>  $byMonth
      * @return array<string, array<string, int|float>|int|float>
      */
-    private function bucketize(array $byMonth): array
+    public function bucketize(array $byMonth): array
     {
         $buckets = [];
 
@@ -537,7 +559,7 @@ final class AdministrativeReportBuilder
     /**
      * @return \Illuminate\Database\Eloquent\Builder<Collection>
      */
-    private function pendingCollectableQuery(): \Illuminate\Database\Eloquent\Builder
+    public function pendingCollectableQuery(): \Illuminate\Database\Eloquent\Builder
     {
         $query = CollectionReceivableReport::excludeNonCollectableAffiliations(
             Collection::query()->where('collections.status', CollectionAdjuster::STATUS_PENDING),
@@ -650,7 +672,7 @@ final class AdministrativeReportBuilder
      * @param  list<array{label: string, amount: float, count: int}>  $rows
      * @return Block
      */
-    private function shareBlock(string $title, array $rows, string $heading, string $shareOf): array
+    public function shareBlock(string $title, array $rows, string $heading, string $shareOf, string $countHeading = 'Pagos'): array
     {
         $total = array_sum(array_column($rows, 'amount'));
         $slices = array_slice($rows, 0, self::DONUT_SLICES);
@@ -665,7 +687,7 @@ final class AdministrativeReportBuilder
             'chart' => SvgChart::donut(array_column($slices, 'amount'), array_column($slices, 'label')),
             'layout' => self::LAYOUT_SIDE,
             'table' => [
-                'headings' => [$heading, 'Pagos', 'Monto', '%'],
+                'headings' => [$heading, $countHeading, 'Monto', '%'],
                 'rows' => array_map(static fn (array $row, int $index): array => [
                     '<span style="color:'.SvgChart::color($index).';">■</span> '.e($row['label']),
                     self::number($row['count']),
@@ -677,7 +699,7 @@ final class AdministrativeReportBuilder
                 'html' => [0],
             ],
             'note' => $rows === [] || $total <= 0
-                ? 'Sin ventas en el periodo.'
+                ? 'Sin datos en el periodo.'
                 : $rows[0]['label'].' concentra el '.self::percent($rows[0]['amount'] * 100 / $total).' '.$shareOf
                     .(isset($rows[1]) ? ', seguido de '.$rows[1]['label'].' con el '.self::percent($rows[1]['amount'] * 100 / $total) : '').'.',
         ];
@@ -689,7 +711,7 @@ final class AdministrativeReportBuilder
      * @param  list<array{label: string, amount: float, count: int}>  $rows
      * @return Block
      */
-    private function rankingBlock(string $title, array $rows, string $heading, float $total, string $shareOf = 'del monto vendido', string $countHeading = 'Pagos'): array
+    public function rankingBlock(string $title, array $rows, string $heading, float $total, string $shareOf = 'del monto vendido', string $countHeading = 'Pagos'): array
     {
         $top = array_slice($rows, 0, self::TOP);
         $topTotal = array_sum(array_column($top, 'amount'));
@@ -699,6 +721,8 @@ final class AdministrativeReportBuilder
             'title' => $title,
             'chart' => $top === [] ? null : SvgChart::horizontalBars(array_column($top, 'label'), array_column($top, 'amount'), static fn (float $value): string => self::money($value)),
             'layout' => self::LAYOUT_WIDE,
+            // Mucho texto chico: no se achica para acomodar la página (dejaría de leerse).
+            'shrinkable' => false,
             'table' => [
                 'headings' => ['#', $heading, $countHeading, 'Monto', '%'],
                 'rows' => array_map(static fn (array $row, int $index): array => [
@@ -713,7 +737,11 @@ final class AdministrativeReportBuilder
             ],
             'note' => $top === [] || $total <= 0
                 ? 'Sin datos en este alcance.'
-                : 'Los tres primeros concentran el '.self::percent($topThree * 100 / $total).' '.$shareOf.'; '.$top[0]['label'].' encabeza con '.self::money($top[0]['amount']).'.',
+                : match (count($rows)) {
+                    1 => $top[0]['label'].' concentra el '.self::percent($top[0]['amount'] * 100 / $total).' '.$shareOf.' ('.self::money($top[0]['amount']).').',
+                    2 => 'Los dos concentran el '.self::percent($topThree * 100 / $total).' '.$shareOf.'; '.$top[0]['label'].' encabeza con '.self::money($top[0]['amount']).'.',
+                    default => 'Los tres primeros concentran el '.self::percent($topThree * 100 / $total).' '.$shareOf.'; '.$top[0]['label'].' encabeza con '.self::money($top[0]['amount']).'.',
+                },
         ];
     }
 
@@ -724,7 +752,7 @@ final class AdministrativeReportBuilder
      * @param  list<array{0: string, 1: list<float|int>, 2: bool}>  $series  [encabezado, valores, es monto]
      * @return Table
      */
-    private static function monthTable(array $labels, array $series): array
+    public static function monthTable(array $labels, array $series): array
     {
         $rows = [];
 
@@ -752,7 +780,7 @@ final class AdministrativeReportBuilder
      * @param  list<string>  $labels
      * @param  list<float|int>  $values
      */
-    private static function monthlyNote(string $what, array $labels, array $values, float $total, float $previous, bool $isMoney, string $bucket = 'mes'): string
+    public static function monthlyNote(string $what, array $labels, array $values, float $total, float $previous, bool $isMoney, string $bucket = 'mes'): string
     {
         if ($total <= 0) {
             return 'Sin '.$what.' en el periodo.';
