@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Filament\Marketing\Resources\BirthdayNotifications\Pages\CreateBirthdayNotification;
 use App\Filament\Marketing\Resources\BirthdayNotifications\Pages\ListBirthdayNotifications;
 use App\Filament\Marketing\Resources\BirthdayNotifications\Schemas\BirthdayNotificationForm;
 use App\Support\BirthdayNotificationAudience;
@@ -26,17 +25,13 @@ it('resuelve la audiencia a partir del tipo de destinatario', function (): void 
         ->toBe(BirthdayNotificationAudience::COLLABORATORS);
 });
 
-it('limita las opciones del formulario segun la audiencia activa e incluye colaboradores en afiliados', function (): void {
-    $affiliateOptions = BirthdayNotificationAudience::recipientOptionsFor(BirthdayNotificationAudience::AFFILIATES);
-    $collaboratorOptions = BirthdayNotificationAudience::recipientOptionsFor(BirthdayNotificationAudience::COLLABORATORS);
-
-    expect(array_keys($affiliateOptions))
-        ->toContain('affiliates', 'rrhh_colaboradors')
-        ->not->toContain('users')
-        ->and(array_keys($collaboratorOptions))
-        ->toContain('users', 'rrhh_colaboradors')
-        ->not->toContain('affiliates')
-        ->and($affiliateOptions['rrhh_colaboradors'])->toBe('COLABORADORES');
+it('expone todos los destinatarios para la tarjeta animada unificada', function (): void {
+    expect(BirthdayNotificationAudience::allRecipientDataTypeKeys())
+        ->toContain('affiliates', 'affiliate_corporates', 'agents', 'users', 'capemiacs', 'travel_agents', 'tdev_clients')
+        ->and(BirthdayNotificationAudience::recipientOptions())
+        ->toHaveKeys(['affiliates', 'users', 'suppliers', 'travel_agents', 'tdev_clients'])
+        ->and(BirthdayNotificationAudience::celebrationRecipientDataTypeKeys())
+        ->toContain('rrhh_colaboradors', 'agents', 'affiliates', 'affiliate_corporates', 'tdev_clients', 'travel_agents');
 });
 
 it('normaliza data_type legado string o lista a una lista unica', function (): void {
@@ -52,21 +47,29 @@ it('normaliza data_type legado string o lista a una lista unica', function (): v
 
 it('expone etiquetas legibles para varios destinatarios', function (): void {
     expect(BirthdayNotificationAudience::labelsForDataTypes(['affiliates', 'rrhh_colaboradors']))
-        ->toBe(['AFILIADOS INDIVIDUALES', 'COLABORADORES']);
+        ->toBe(['AFILIADOS INDIVIDUALES TDEC', 'COLABORADORES TDG']);
 });
 
 it('el formulario de destinatarios permite seleccion multiple', function (): void {
     $src = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Marketing/Resources/BirthdayNotifications/Schemas/BirthdayNotificationForm.php');
 
     expect($src)->toContain("Select::make('data_type')")
-        ->and($src)->toContain('->multiple()');
+        ->and($src)->toContain('->multiple()')
+        ->and($src)->toContain('recipientOptions()');
 });
 
-it('define pestañas horizontales para separar los listados de cumpleaños', function (): void {
+it('lista todas las notificaciones sin pestañas de audiencia', function (): void {
+    $src = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Marketing/Resources/BirthdayNotifications/Pages/ListBirthdayNotifications.php');
+
     expect(is_subclass_of(ListBirthdayNotifications::class, ListRecords::class))->toBeTrue()
-        ->and(method_exists(ListBirthdayNotifications::class, 'getTabs'))->toBeTrue()
-        ->and(method_exists(ListBirthdayNotifications::class, 'getTabsContentComponent'))->toBeTrue()
-        ->and(method_exists(ListBirthdayNotifications::class, 'getActiveAudience'))->toBeTrue()
-        ->and(property_exists(CreateBirthdayNotification::class, 'audience'))->toBeTrue()
+        ->and($src)->not->toContain("where('sends_celebration_card', true)")
+        ->and($src)->not->toContain('getTabsContentComponent')
+        ->and($src)->not->toContain('activeTab')
         ->and(class_exists(BirthdayNotificationForm::class))->toBeTrue();
+});
+
+it('el envio diario solo considera notificaciones con tarjeta animada', function (): void {
+    $src = file_get_contents(dirname(__DIR__, 2).'/app/Services/NotificationMasiveService.php');
+
+    expect($src)->toContain("where('sends_celebration_card', true)");
 });

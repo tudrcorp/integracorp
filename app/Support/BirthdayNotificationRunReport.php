@@ -46,27 +46,33 @@ final class BirthdayNotificationRunReport
         'afiliaciones_corporativas',
         'colaboradores',
         'proveedores',
+        'agentes_viajes',
+        'clientes_tdev',
     ];
 
     /** @var array<string, string> */
     private const GROUP_LABELS = [
-        'agentes' => 'Agentes',
+        'agentes' => 'Agentes de corretaje',
         'agencias' => 'Agencias',
         'afiliaciones' => 'Afiliaciones individuales',
         'afiliaciones corporativas' => 'Afiliaciones corporativas',
         'afiliaciones_corporativas' => 'Afiliaciones corporativas',
-        'colaboradores' => 'Colaboradores',
+        'colaboradores' => 'Colaboradores TDG',
         'proveedores' => 'Proveedores',
+        'agentes_viajes' => 'Agentes de viajes TDEV',
+        'clientes_tdev' => 'Clientes Tu Dr. en Viajes',
     ];
 
     /** @var array<string, string> */
     private const DATA_TYPE_LABELS = [
-        'agents' => 'Agentes',
+        'agents' => 'Agentes de corretaje',
         'agencies' => 'Agencias',
         'affiliates' => 'Afiliaciones individuales',
         'affiliate_corporates' => 'Afiliaciones corporativas',
-        'rrhh_colaboradors' => 'Colaboradores',
+        'rrhh_colaboradors' => 'Colaboradores TDG',
         'suppliers' => 'Proveedores',
+        'travel_agents' => 'Agentes de viajes TDEV',
+        'tdev_clients' => 'Clientes Tu Dr. en Viajes',
     ];
 
     private static bool $active = false;
@@ -641,6 +647,8 @@ final class BirthdayNotificationRunReport
             'affiliate_corporates' => 'afiliaciones_corporativas',
             'rrhh_colaboradors' => 'colaboradores',
             'suppliers' => 'proveedores',
+            'travel_agents' => 'agentes_viajes',
+            'tdev_clients' => 'clientes_tdev',
             default => $dataType,
         };
     }

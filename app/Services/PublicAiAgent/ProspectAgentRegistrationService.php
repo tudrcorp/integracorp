@@ -54,7 +54,7 @@ class ProspectAgentRegistrationService
             'state_id' => (string) $validated['state_id'],
             'city_id' => (string) $validated['city_id'],
             'type' => (string) $validated['type'],
-            'status' => (string) ($validated['status'] ?? 'captación'),
+            'status' => (string) ($validated['status'] ?? ProspectAgentLabels::defaultStatus()),
             'reference_by' => (string) ($validated['reference_by'] ?? 'whatsapp-comercial'),
             'classification' => $validated['classification'] ?? null,
             'instagram' => $validated['instagram'] ?? null,

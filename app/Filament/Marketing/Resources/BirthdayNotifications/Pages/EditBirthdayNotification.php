@@ -4,7 +4,6 @@ namespace App\Filament\Marketing\Resources\BirthdayNotifications\Pages;
 
 use App\Filament\Marketing\Resources\BirthdayNotifications\BirthdayNotificationResource;
 use App\Filament\Marketing\Resources\BirthdayNotifications\Schemas\BirthdayNotificationForm;
-use App\Support\BirthdayNotificationAudience;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
@@ -24,8 +23,6 @@ class EditBirthdayNotification extends EditRecord
 
     public function form(Schema $schema): Schema
     {
-        $audience = BirthdayNotificationAudience::forDataType($this->record?->data_type);
-
-        return BirthdayNotificationForm::configure($schema, $audience);
+        return BirthdayNotificationForm::configure($schema);
     }
 }

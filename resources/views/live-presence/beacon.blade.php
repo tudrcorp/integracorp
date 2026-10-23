@@ -161,7 +161,7 @@
 
     /**
      * Texto del botón pulsado: viaja en la siguiente petición de Livewire para
-     * que el monitor diga «Abrió "Reporte de Proveedores"» y no el nombre interno.
+     * que el monitor diga «Abrió "Red de proveedores"» y no el nombre interno.
      * Solo el texto visible del botón, nunca lo escrito en formularios.
      */
     let lastClick = null;

@@ -15,7 +15,9 @@ use App\Models\BirthdayNotificationDelivery;
 use App\Models\Capemiac;
 use App\Models\RrhhColaborador;
 use App\Models\Supplier;
+use App\Models\TravelAgent;
 use App\Models\User;
+use App\Support\Birthday\BirthdayRecipientQuery;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -64,6 +66,20 @@ final class BirthdayNotificationRecipientCatalog
                 'phone' => 'phone',
                 'birth_date' => 'birth_date',
             ],
+            'tdev_clients' => [
+                'model' => Affiliate::class,
+                'name' => 'full_name',
+                'email' => 'email',
+                'phone' => 'phone',
+                'birth_date' => 'birth_date',
+            ],
+            'travel_agents' => [
+                'model' => TravelAgent::class,
+                'name' => 'name',
+                'email' => 'email',
+                'phone' => 'phone',
+                'birth_date' => 'fechaNacimiento',
+            ],
             'affiliations' => [
                 'model' => Affiliation::class,
                 'name' => 'full_name_ti',
@@ -108,7 +124,9 @@ final class BirthdayNotificationRecipientCatalog
         $resolved = self::resolveDataType($notification, $dataType);
         $config = self::configFor($resolved);
 
-        return $config['model']::query()->orderBy($config['name']);
+        $query = $config['model']::query()->orderBy($config['name']);
+
+        return BirthdayRecipientQuery::applyEloquentNonPqq($query, $resolved);
     }
 
     /**

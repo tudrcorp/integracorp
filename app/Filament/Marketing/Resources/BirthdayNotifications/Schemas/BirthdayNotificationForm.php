@@ -22,7 +22,7 @@ use Illuminate\Support\HtmlString;
 
 class BirthdayNotificationForm
 {
-    public static function configure(Schema $schema, ?string $audience = null): Schema
+    public static function configure(Schema $schema): Schema
     {
         return $schema
             ->components([
@@ -56,7 +56,7 @@ class BirthdayNotificationForm
                                         ->label('Canal de notificación')
                                         ->multiple(),
                                     Select::make('data_type')
-                                        ->options(BirthdayNotificationAudience::recipientOptionsFor($audience))
+                                        ->options(BirthdayNotificationAudience::recipientOptions())
                                         ->required()
                                         ->searchable()
                                         ->multiple()

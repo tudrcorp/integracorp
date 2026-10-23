@@ -9,6 +9,8 @@ use App\Models\ProspectAgent;
 use App\Models\ProspectAgentObservation;
 use App\Models\ProspectAgentTask;
 use App\Models\RrhhColaborador;
+use App\Support\Filament\FilamentIosActionsMenu;
+use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\RecordPageHeader;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -19,21 +21,16 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
+use Filament\Support\Enums\Width;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Throwable;
 
 class ViewProspectAgent extends ViewRecord
 {
     protected static string $resource = ProspectAgentResource::class;
-
-    private const IOS_BUTTON_BASE = ' shrink-0 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98]';
-
-    private const IOS_GRAY_BUTTON_CLASS = 'ticket-btn-ios-gray'.self::IOS_BUTTON_BASE;
-
-    private const IOS_PRIMARY_BUTTON_CLASS = 'aviso-btn-ios-primary'.self::IOS_BUTTON_BASE;
-
-    private const IOS_SUCCESS_BUTTON_CLASS = 'aviso-btn-ios-success'.self::IOS_BUTTON_BASE;
 
     /**
      * Sobrescribimos los Relation Managers para esta página específica.
@@ -54,180 +51,195 @@ class ViewProspectAgent extends ViewRecord
                 ->color('gray')
                 ->url(ProspectAgentResource::getUrl())
                 ->extraAttributes([
-                    'class' => self::IOS_GRAY_BUTTON_CLASS,
+                    'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
                 ]),
-            EditAction::make()
-                ->label('Editar')
-                ->icon('heroicon-o-pencil')
-                ->color('primary')
-                ->extraAttributes([
-                    'class' => self::IOS_PRIMARY_BUTTON_CLASS,
-                ]),
-            Action::make('notes')
-                ->label('Agregar Notas/Observaciones')
-                ->icon('heroicon-o-document-text')
-                ->color('success')
-                ->extraAttributes([
-                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
-                ])
-                ->modal()
-                ->modalHeading('Agregar Notas/Observaciones')
-                ->modalSubmitActionLabel('Guardar')
-                ->modalCancelActionLabel('Cancelar')
-                ->modalSubmitAction(fn (Action $action): Action => $action->extraAttributes([
-                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
-                ]))
-                ->modalCancelAction(fn (Action $action): Action => $action->extraAttributes([
-                    'class' => self::IOS_GRAY_BUTTON_CLASS,
-                ]))
-                ->form([
-                    Fieldset::make('Formulario de Notas')
-                        ->schema([
-                            Grid::make(2)->schema([
-                                Select::make('prospect_agent_id')
-                                    ->label('Selecciona el Prospecto')
-                                    ->preload()
-                                    ->searchable()
-                                    ->options(ProspectAgent::all()->pluck('name', 'id'))
-                                    ->default($this->record->id)
-                                    ->disabled()
+
+            FilamentIosActionsMenu::make([
+                EditAction::make()
+                    ->label('Editar')
+                    ->icon('heroicon-o-pencil')
+                    ->color('primary'),
+
+                Action::make('notes')
+                    ->label('Agregar Notas/Observaciones')
+                    ->icon('heroicon-o-document-text')
+                    ->color('success')
+                    ->modal()
+                    ->modalHeading('Agregar Notas/Observaciones')
+                    ->modalSubmitActionLabel('Guardar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalSubmitAction(fn (Action $action): Action => $action->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('success'),
+                    ]))
+                    ->modalCancelAction(fn (Action $action): Action => $action->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                    ]))
+                    ->form([
+                        Fieldset::make('Formulario de Notas')
+                            ->schema([
+                                Grid::make(2)->schema([
+                                    Select::make('prospect_agent_id')
+                                        ->label('Selecciona el Prospecto')
+                                        ->preload()
+                                        ->searchable()
+                                        ->options(ProspectAgent::all()->pluck('name', 'id'))
+                                        ->default($this->record->id)
+                                        ->disabled()
+                                        ->required(),
+                                    Select::make('prospect_agent_task_id')
+                                        ->label('Tarea')
+                                        ->placeholder('Sin tarea vinculada')
+                                        ->helperText('Opcional. Puedes vincular cualquier tarea de este prospecto o dejarla en blanco.')
+                                        ->options(fn (): array => $this->prospectTaskOptions())
+                                        ->searchable()
+                                        ->preload()
+                                        ->nullable(),
+                                ])->columnSpanFull(),
+                                Textarea::make('observations')
+                                    ->label('Notas')
+                                    ->rows(8)
+                                    ->autosize()
+                                    ->columnSpanFull()
                                     ->required(),
-                                Select::make('prospect_agent_task_id')
-                                    ->label('Tarea')
-                                    ->placeholder('Sin tarea vinculada')
-                                    ->helperText('Opcional. Puedes vincular cualquier tarea de este prospecto o dejarla en blanco.')
-                                    ->options(fn (): array => $this->prospectTaskOptions())
-                                    ->searchable()
-                                    ->preload()
-                                    ->nullable(),
-                            ])->columnSpanFull(),
-                            Textarea::make('observations')
-                                ->label('Notas')
-                                ->rows(8)
-                                ->autosize()
-                                ->columnSpanFull()
-                                ->required(),
-                        ])->columns(1),
-                ])
-                ->action(function ($data, $record) {
+                            ])->columns(1),
+                    ])
+                    ->action(function ($data, $record) {
 
-                    try {
+                        try {
 
-                        ProspectAgentObservation::create([
-                            'prospect_agent_id' => $record->id,
-                            'observation' => $data['observations'],
-                            'created_by' => auth()->user()->name,
-                            'prospect_agent_task_id' => filled($data['prospect_agent_task_id'] ?? null)
-                                ? $data['prospect_agent_task_id']
-                                : null,
-                        ]);
+                            ProspectAgentObservation::create([
+                                'prospect_agent_id' => $record->id,
+                                'observation' => $data['observations'],
+                                'created_by' => auth()->user()->name,
+                                'prospect_agent_task_id' => filled($data['prospect_agent_task_id'] ?? null)
+                                    ? $data['prospect_agent_task_id']
+                                    : null,
+                            ]);
+
+                            Notification::make()
+                                ->title('Notas agregadas correctamente')
+                                ->success()
+                                ->send();
+
+                            $this->redirectMethod($record->id);
+
+                        } catch (\Exception $e) {
+                            dd($e);
+                            Notification::make()
+                                ->title('Error al agregar notas')
+                                ->danger()
+                                ->send();
+                        }
+
+                    }),
+
+                Action::make('tascks')
+                    ->label('Nueva Tarea')
+                    ->icon('heroicon-o-puzzle-piece')
+                    ->color('success')
+                    ->modal()
+                    ->modalHeading('Formulario de Asigancion de Tarea')
+                    ->modalSubmitActionLabel('Guardar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalSubmitAction(fn (Action $action): Action => $action->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('success'),
+                    ]))
+                    ->modalCancelAction(fn (Action $action): Action => $action->extraAttributes([
+                        'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
+                    ]))
+                    ->form([
+                        Fieldset::make('Formulario de Notas')
+                            ->schema([
+                                Grid::make(2)->schema([
+                                    Select::make('prospect_agent_id')
+                                        ->label('Selecciona el Prospecto')
+                                        ->preload()
+                                        ->searchable()
+                                        ->options(ProspectAgent::all()->pluck('name', 'id'))
+                                        ->default($this->record->id)
+                                        ->disabled()
+                                        ->required(),
+                                    Select::make('rrhh_colaborador_id')
+                                        ->label('Selecciona el Colaborador para la Tarea')
+                                        ->options(RrhhColaborador::all()->pluck('fullName', 'id'))
+                                        ->preload()
+                                        ->searchable()
+                                        ->required(),
+                                ])->columnSpanFull(),
+                                Textarea::make('task')
+                                    ->label('Descripción de la Tarea')
+                                    ->helperText('Describe la tarea que se debe realizar, por ejemplo: Llamar al prospecto para agendar una reunión o enviar un correo electrónico. Debes ser lo mas especifico posible para que el colaborador entienda que debe hacer')
+                                    ->autosize()
+                                    ->required(),
+                                Hidden::make('created_by')->default(auth()->user()->name),
+                            ])->columns(1),
+                    ])
+                    ->action(function (array $data, ProspectAgent $record): void {
+                        try {
+                            $task = ProspectAgentTask::create([
+                                'prospect_agent_id' => $record->getKey(),
+                                'rrhh_colaborador_id' => $data['rrhh_colaborador_id'],
+                                'task' => $data['task'],
+                                'created_by' => $data['created_by'] ?? auth()->user()?->name,
+                            ]);
+                        } catch (Throwable $exception) {
+                            Log::error('ViewProspectAgent: no se pudo crear la tarea', [
+                                'prospect_agent_id' => $record->getKey(),
+                                'error' => $exception->getMessage(),
+                            ]);
+
+                            Notification::make()
+                                ->title('No se pudo asignar la tarea')
+                                ->body('Inténtelo de nuevo. Si el problema continúa, avise a sistemas.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $queued = true;
+
+                        try {
+                            NotifyProspectAgentTaskAssigneeJob::dispatch((int) $task->getKey());
+                        } catch (Throwable $exception) {
+                            $queued = false;
+
+                            Log::error('ViewProspectAgent: la tarea se guardó pero no se encoló el aviso', [
+                                'task_id' => $task->getKey(),
+                                'error' => $exception->getMessage(),
+                            ]);
+                        }
 
                         Notification::make()
-                            ->title('Notas agregadas correctamente')
+                            ->title('Tarea asignada')
+                            ->body($queued
+                                ? 'El colaborador recibirá el aviso por WhatsApp, correo y la campana del panel.'
+                                : 'La tarea quedó guardada, pero no se pudo encolar el aviso. Avise a sistemas.')
                             ->success()
                             ->send();
 
-                        $this->redirectMethod($record->id);
+                        $this->redirectMethod($record->getKey());
+                    }),
 
-                    } catch (\Exception $e) {
-                        dd($e);
-                        Notification::make()
-                            ->title('Error al agregar notas')
-                            ->danger()
-                            ->send();
-                    }
-
-                }),
-            Action::make('tascks')
-                ->label('Nueva Tarea')
-                ->icon('heroicon-o-puzzle-piece')
-                ->color('success')
-                ->extraAttributes([
-                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
-                ])
-                ->modal()
-                ->modalHeading('Formulario de Asigancion de Tarea')
-                ->modalSubmitActionLabel('Guardar')
-                ->modalCancelActionLabel('Cancelar')
-                ->modalSubmitAction(fn (Action $action): Action => $action->extraAttributes([
-                    'class' => self::IOS_SUCCESS_BUTTON_CLASS,
-                ]))
-                ->modalCancelAction(fn (Action $action): Action => $action->extraAttributes([
-                    'class' => self::IOS_GRAY_BUTTON_CLASS,
-                ]))
-                ->form([
-                    Fieldset::make('Formulario de Notas')
-                        ->schema([
-                            Grid::make(2)->schema([
-                                Select::make('prospect_agent_id')
-                                    ->label('Selecciona el Prospecto')
-                                    ->preload()
-                                    ->searchable()
-                                    ->options(ProspectAgent::all()->pluck('name', 'id'))
-                                    ->default($this->record->id)
-                                    ->disabled()
-                                    ->required(),
-                                Select::make('rrhh_colaborador_id')
-                                    ->label('Selecciona el Colaborador para la Tarea')
-                                    ->options(RrhhColaborador::all()->pluck('fullName', 'id'))
-                                    ->preload()
-                                    ->searchable()
-                                    ->required(),
-                            ])->columnSpanFull(),
-                            Textarea::make('task')
-                                ->label('Descripción de la Tarea')
-                                ->helperText('Describe la tarea que se debe realizar, por ejemplo: Llamar al prospecto para agendar una reunión o enviar un correo electrónico. Debes ser lo mas especifico posible para que el colaborador entienda que debe hacer')
-                                ->autosize()
-                                ->required(),
-                            Hidden::make('created_by')->default(auth()->user()->name),
-                        ])->columns(1),
-                ])
-                ->action(function (array $data, ProspectAgent $record): void {
-                    try {
-                        $task = ProspectAgentTask::create([
-                            'prospect_agent_id' => $record->getKey(),
-                            'rrhh_colaborador_id' => $data['rrhh_colaborador_id'],
-                            'task' => $data['task'],
-                            'created_by' => $data['created_by'] ?? auth()->user()?->name,
+                Action::make('print_pdf')
+                    ->label('Ficha Técnica del Prospecto')
+                    ->icon('heroicon-o-printer')
+                    ->color('primary')
+                    ->modalHeading('Ficha del prospecto en PDF')
+                    ->modalDescription('Vista previa de la ficha técnica. La primera generación puede tardar; las siguientes suelen ser más rápidas mientras los datos no cambien (caché por prospecto).')
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->modalIcon('heroicon-o-document-text')
+                    ->modalContent(function (ProspectAgent $record): ViewContract {
+                        return View::make('filament.business.prospect-agents.prospect-agent-ficha-preview-modal', [
+                            'pdfPreviewUrl' => route('business.prospect-agents.ficha.preview', $record),
+                            'pdfDownloadUrl' => route('business.prospect-agents.ficha.download', $record),
+                            'prospectLabel' => filled($record->name) ? $record->name : ('Prospecto #'.$record->id),
                         ]);
-                    } catch (Throwable $exception) {
-                        Log::error('ViewProspectAgent: no se pudo crear la tarea', [
-                            'prospect_agent_id' => $record->getKey(),
-                            'error' => $exception->getMessage(),
-                        ]);
-
-                        Notification::make()
-                            ->title('No se pudo asignar la tarea')
-                            ->body('Inténtelo de nuevo. Si el problema continúa, avise a sistemas.')
-                            ->danger()
-                            ->send();
-
-                        return;
-                    }
-
-                    $queued = true;
-
-                    try {
-                        NotifyProspectAgentTaskAssigneeJob::dispatch((int) $task->getKey());
-                    } catch (Throwable $exception) {
-                        $queued = false;
-
-                        Log::error('ViewProspectAgent: la tarea se guardó pero no se encoló el aviso', [
-                            'task_id' => $task->getKey(),
-                            'error' => $exception->getMessage(),
-                        ]);
-                    }
-
-                    Notification::make()
-                        ->title('Tarea asignada')
-                        ->body($queued
-                            ? 'El colaborador recibirá el aviso por WhatsApp, correo y la campana del panel.'
-                            : 'La tarea quedó guardada, pero no se pudo encolar el aviso. Avise a sistemas.')
-                        ->success()
-                        ->send();
-
-                    $this->redirectMethod($record->getKey());
-                }),
+                    })
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->action(fn () => null),
+            ]),
         ];
     }
 

@@ -186,6 +186,7 @@ class ProspectAgentForm
                                                 Select::make('status')
                                                     ->label('Estatus')
                                                     ->options(ProspectAgentLabels::statusOptions())
+                                                    ->default(ProspectAgentLabels::defaultStatus())
                                                     ->required()
                                                     ->preload()
                                                     ->searchable()

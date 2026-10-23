@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\PublicAiAgent;
 
+use App\Filament\Business\Resources\ProspectAgents\ProspectAgentLabels;
 use App\Models\ChatMessage;
 use App\Models\ChatSession;
 use Illuminate\Validation\ValidationException;
@@ -985,7 +986,7 @@ class AgentOrchestrator
 
         $assistantReply = $this->intentSlotFiller->agencyProspectRegistrationSuccessMessage(
             (int) ($preregistration['prospect_agent_id'] ?? 0),
-            (string) ($preregistration['status'] ?? 'captación'),
+            (string) ($preregistration['status'] ?? ProspectAgentLabels::defaultStatus()),
         );
 
         $this->storeMessage($session, [
