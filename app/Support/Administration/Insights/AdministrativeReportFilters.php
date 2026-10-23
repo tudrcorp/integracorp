@@ -46,6 +46,22 @@ final readonly class AdministrativeReportFilters
 
     public const SCOPE_WHITE_COMPANY = 'white_company';
 
+    public const SECTION_SUMMARY = 'summary';
+
+    public const SECTION_SALES = 'sales';
+
+    public const SECTION_RECEIVABLES = 'receivables';
+
+    public const SECTION_COMMISSIONS = 'commissions';
+
+    public const SECTION_RENOVATIONS = 'renovations';
+
+    public const SECTION_DROPOUTS = 'dropouts';
+
+    public const SECTION_WHITE_COMPANIES = 'white_companies';
+
+    public const SECTION_TDEV = 'tdev';
+
     /** Un informe de más de tres años deja de leerse por mes. */
     public const MAX_MONTHS = 36;
 
@@ -57,7 +73,13 @@ final readonly class AdministrativeReportFilters
         public ?int $agentId = null,
         public bool $includeSubagents = true,
         public ?int $whiteCompanyId = null,
+        /** @var list<string> Vacío = todas. */
+        public array $sections = [],
     ) {
+        if ($sections !== [] && array_diff($sections, array_keys(self::sectionOptions())) !== []) {
+            throw new InvalidArgumentException('Alguna de las secciones elegidas no existe.');
+        }
+
         if ($from->greaterThan($to)) {
             throw new InvalidArgumentException('La fecha «Desde» no puede ser posterior a la fecha «Hasta».');
         }
@@ -91,6 +113,37 @@ final readonly class AdministrativeReportFilters
     }
 
     /**
+     * Secciones del informe, en el orden en que salen en el PDF.
+     *
+     * @return array<string, string>
+     */
+    public static function sectionOptions(): array
+    {
+        return [
+            self::SECTION_SUMMARY => 'Resumen general',
+            self::SECTION_SALES => 'Ventas',
+            self::SECTION_RECEIVABLES => 'Cobranza',
+            self::SECTION_COMMISSIONS => 'Comisiones',
+            self::SECTION_RENOVATIONS => 'Renovaciones',
+            self::SECTION_DROPOUTS => 'Bajas',
+            self::SECTION_WHITE_COMPANIES => 'Empresas aliadas',
+            self::SECTION_TDEV => 'TDEV (viajes)',
+        ];
+    }
+
+    /**
+     * Las secciones elegidas en el orden del informe; sin elección, todas.
+     *
+     * @return list<string>
+     */
+    public function orderedSections(): array
+    {
+        $all = array_keys(self::sectionOptions());
+
+        return $this->sections === [] ? $all : array_values(array_intersect($all, $this->sections));
+    }
+
+    /**
      * @return array<string, string>
      */
     public static function scopeOptions(): array
@@ -116,6 +169,12 @@ final readonly class AdministrativeReportFilters
         );
 
         $scope = (string) ($data['scope'] ?? self::SCOPE_ALL);
+        $sections = array_values(array_filter(array_map('strval', (array) ($data['sections'] ?? []))));
+
+        if (array_key_exists('sections', $data) && $sections === []) {
+            throw new InvalidArgumentException('Elija al menos una sección del informe.');
+        }
+
         $agencyCode = trim((string) ($data['agency_code'] ?? ''));
 
         return new self(
@@ -126,6 +185,7 @@ final readonly class AdministrativeReportFilters
             agentId: $scope === self::SCOPE_AGENT && is_numeric($data['agent_id'] ?? null) ? (int) $data['agent_id'] : null,
             includeSubagents: (bool) ($data['include_subagents'] ?? true),
             whiteCompanyId: $scope === self::SCOPE_WHITE_COMPANY && is_numeric($data['white_company_id'] ?? null) ? (int) $data['white_company_id'] : null,
+            sections: $sections,
         );
     }
 
@@ -174,7 +234,7 @@ final readonly class AdministrativeReportFilters
      * Acota una consulta de una tabla con `code_agency`, `owner_code` y `agent_id`
      * (ventas, cuotas, afiliaciones) al alcance del informe.
      */
-    public static function applyNetwork(EloquentBuilder|QueryBuilder $query, string $table, ?CollectionReportNetwork $network): EloquentBuilder|QueryBuilder
+    public static function applyNetwork(EloquentBuilder|QueryBuilder $query, string $table, ?CollectionReportNetwork $network, bool $hasOwnerCode = true): EloquentBuilder|QueryBuilder
     {
         if ($network === null) {
             return $query;
@@ -184,10 +244,13 @@ final readonly class AdministrativeReportFilters
             return $query->whereRaw('0 = 1');
         }
 
-        return $query->where(function (EloquentBuilder|QueryBuilder $scoped) use ($network, $table): void {
+        return $query->where(function (EloquentBuilder|QueryBuilder $scoped) use ($network, $table, $hasOwnerCode): void {
             if ($network->agencyCodes !== []) {
-                $scoped->whereIn("{$table}.code_agency", $network->agencyCodes)
-                    ->orWhereIn("{$table}.owner_code", $network->agencyCodes);
+                $scoped->whereIn("{$table}.code_agency", $network->agencyCodes);
+
+                if ($hasOwnerCode) {
+                    $scoped->orWhereIn("{$table}.owner_code", $network->agencyCodes);
+                }
             }
 
             if ($network->agentIds !== []) {
@@ -225,6 +288,7 @@ final readonly class AdministrativeReportFilters
             'agent_id' => $this->agentId,
             'include_subagents' => $this->includeSubagents,
             'white_company_id' => $this->whiteCompanyId,
+            'sections' => $this->orderedSections(),
         ];
     }
 

@@ -5,10 +5,22 @@
      *
      * @var array{title: string, period: string, scope: string, generated_at: string, sections: list<array<string, mixed>>} $report
      * @var string $logoSrc
+     * @var array<int, float> $chartScales  Escala por bloque que fija el acomodo en dos pasadas ({@see \App\Support\Administration\Insights\AdministrativeReportPdf}).
+     * @var array<string, float> $blockSpacing  Espacio extra (mm) sobre un bloque, para que su página llegue al pie.
      */
-    $chart = static fn (?string $svg, string $width = '100%'): string => $svg === null || $svg === ''
-        ? ''
-        : '<img src="'.\App\Support\Administration\Insights\SvgChart::dataUri($svg).'" style="width:'.$width.';">';
+    $chartScales = $chartScales ?? [];
+    $blockSpacing = $blockSpacing ?? [];
+    $spacing = static fn (string $id): string => isset($blockSpacing[$id]) ? ' style="margin-top:'.round($blockSpacing[$id], 2).'mm;"' : '';
+    $unit = 0;
+    $chart = static function (?string $svg, float $widthMm, int $unit) use ($chartScales): string {
+        if ($svg === null || $svg === '') {
+            return '';
+        }
+
+        $width = round($widthMm * ($chartScales[$unit] ?? 1.0), 2);
+
+        return '<img id="adm-chart-'.$unit.'" src="'.\App\Support\Administration\Insights\SvgChart::dataUri($svg).'" style="width:'.$width.'mm;">';
+    };
 @endphp
 <div class="adm-report">
     <table class="adm-header">
@@ -32,8 +44,10 @@
     </table>
 
     <div class="adm-card adm-intro">
-        A continuación se presenta el informe administrativo del periodo: lo cobrado, las afiliaciones nuevas, las ventas por tipo,
-        plan, agencia y agente, la cartera por cobrar y las bajas. Generado el {{ $report['generated_at'] }}.
+        @php($titles = array_map(static fn (array $section): string => \Illuminate\Support\Str::lower($section['title']), $report['sections']))
+        A continuación se presenta el informe administrativo del periodo con {{ count($titles) === 1 ? 'la sección' : 'las secciones' }}:
+        {{ count($titles) > 1 ? implode(', ', array_slice($titles, 0, -1)).' y '.end($titles) : ($titles[0] ?? '') }}.
+        Generado el {{ $report['generated_at'] }}.
     </div>
 
     @foreach ($report['sections'] as $section)
@@ -44,7 +58,7 @@
         --}}
         <div class="adm-section">
             {{-- El encabezado y sus cifras van juntos: pueden aprovechar el espacio al pie de una página. --}}
-            <div class="adm-keep">
+            <div class="adm-keep" id="adm-head-{{ $loop->index }}"{!! $spacing('adm-head-'.$loop->index) !!}>
                 <div class="adm-ribbon">{{ mb_strtoupper($section['title']) }}</div>
                 <p class="adm-section-intro">{{ $section['intro'] }}</p>
                 <table class="adm-kpis">
@@ -64,30 +78,45 @@
 
             @foreach ($section['blocks'] as $block)
                 @php($side = $block['layout'] === \App\Support\Administration\Insights\AdministrativeReportBuilder::LAYOUT_SIDE)
-                <div class="adm-keep">
-                    <div class="adm-card adm-card-top">
+                {{--
+                    Un bloque con tabla corta (dona con su tabla, o tablas por mes de hasta 4 filas)
+                    viaja entero: título, gráfico, tabla y lectura. Así el gráfico nunca queda solo al
+                    pie con su tabla en la página siguiente. Solo las tablas largas (rankings) siguen
+                    en la otra página, con su encabezado repetido.
+                --}}
+                @php($whole = $side || count($block['table']['rows'] ?? []) <= \App\Support\Administration\Insights\AdministrativeReportPdf::WHOLE_BLOCK_MAX_ROWS)
+                @php($unit++)
+                <div class="adm-keep" id="adm-keep-{{ $unit }}"{!! $spacing('adm-keep-'.$unit) !!}>
+                    <div @class(['adm-card', 'adm-card-top' => ! $whole])>
                         <div class="adm-block-title">{{ mb_strtoupper($block['title']) }}</div>
                         @if ($side)
-                            {{-- Dona y su tabla son cortas: van juntas. --}}
                             <table class="adm-side">
                                 <tr>
-                                    <td class="adm-side-chart">{!! $chart($block['chart'], '46mm') !!}</td>
+                                    <td class="adm-side-chart">{!! $chart($block['chart'], \App\Support\Administration\Insights\AdministrativeReportPdf::DONUT_WIDTH_MM, $unit) !!}</td>
                                     <td class="adm-side-table">@include('documents.partials.administrative-report-table', ['table' => $block['table']])</td>
                                 </tr>
                             </table>
                         @elseif (filled($block['chart']))
-                            <div class="adm-chart">{!! $chart($block['chart']) !!}</div>
+                            <div class="adm-chart">{!! $chart($block['chart'], \App\Support\Administration\Insights\AdministrativeReportPdf::CHART_WIDTH_MM, $unit) !!}</div>
+                        @endif
+                        @if ($whole)
+                            @unless ($side)
+                                @include('documents.partials.administrative-report-table', ['table' => $block['table']])
+                            @endunless
+                            @if (filled($block['note']))
+                                <p class="adm-note">{{ $block['note'] }}</p>
+                            @endif
                         @endif
                     </div>
                 </div>
-                <div class="adm-card adm-card-bottom">
-                    @unless ($side)
+                @unless ($whole)
+                    <div class="adm-card adm-card-bottom">
                         @include('documents.partials.administrative-report-table', ['table' => $block['table']])
-                    @endunless
-                    @if (filled($block['note']))
-                        <p class="adm-note">{{ $block['note'] }}</p>
-                    @endif
-                </div>
+                        @if (filled($block['note']))
+                            <p class="adm-note">{{ $block['note'] }}</p>
+                        @endif
+                    </div>
+                @endunless
             @endforeach
         </div>
     @endforeach

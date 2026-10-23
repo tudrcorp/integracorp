@@ -14,6 +14,6 @@
     @include('documents.partials.administrative-report-styles')
 </head>
 <body>
-    @include('documents.partials.administrative-report-body', ['report' => $report, 'logoSrc' => $logoSrc])
+    @include('documents.partials.administrative-report-body', ['report' => $report, 'logoSrc' => $logoSrc, 'chartScales' => $chartScales ?? [], 'blockSpacing' => $blockSpacing ?? []])
 </body>
 </html>
