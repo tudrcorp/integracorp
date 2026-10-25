@@ -151,7 +151,7 @@ final class OperationsDashboardAnalytics
 
             $counts = self::inPeriod($period->from, $period->to)
                 ->selectRaw($label.' as grouping_key, COUNT(*) as total')
-                ->groupByRaw($label)
+                ->groupBy('grouping_key')
                 ->orderByDesc('total')
                 ->pluck('total', 'grouping_key')
                 ->map(static fn (mixed $total): int => (int) $total)
@@ -176,7 +176,7 @@ final class OperationsDashboardAnalytics
                 ->selectRaw('MAX(patient_name) as full_name')
                 ->selectRaw('COUNT(*) as total')
                 ->selectRaw('COUNT(DISTINCT telemedicine_case_id) as cases')
-                ->groupByRaw($key)
+                ->groupBy('patient_key')
                 ->orderByDesc('total')
                 ->limit($limit)
                 ->get()
@@ -202,10 +202,10 @@ final class OperationsDashboardAnalytics
             $case = self::ageBandSql();
             $rows = self::inPeriod($period->from, $period->to)
                 ->whereNotNull('patient_age')
-                ->selectRaw($case.' as band')
+                ->selectRaw($case.' as grp_band')
                 ->selectRaw('COUNT(DISTINCT '.OperationsDashboardMetrics::patientKeySql().') as total')
-                ->groupByRaw($case)
-                ->pluck('total', 'band');
+                ->groupBy('grp_band')
+                ->pluck('total', 'grp_band');
 
             $bands = [];
 
@@ -227,17 +227,17 @@ final class OperationsDashboardAnalytics
         return self::remember('heatmap', $period, static function () use ($period): array {
             $rows = self::inPeriod($period->from, $period->to)
                 ->whereNotNull('started_at_time')
-                ->selectRaw('WEEKDAY('.self::DATE_SQL.') as weekday')
-                ->selectRaw('HOUR(started_at_time) as hour')
+                ->selectRaw('WEEKDAY('.self::DATE_SQL.') as grp_weekday')
+                ->selectRaw('HOUR(started_at_time) as grp_hour')
                 ->selectRaw('COUNT(*) as total')
-                ->groupByRaw('WEEKDAY('.self::DATE_SQL.'), HOUR(started_at_time)')
+                ->groupBy('grp_weekday', 'grp_hour')
                 ->get();
 
             $matrix = array_fill(0, 7, array_fill(0, 24, 0));
 
             foreach ($rows as $row) {
-                $weekday = (int) $row->weekday;
-                $hour = (int) $row->hour;
+                $weekday = (int) $row->grp_weekday;
+                $hour = (int) $row->grp_hour;
 
                 if ($weekday >= 0 && $weekday < 7 && $hour >= 0 && $hour < 24) {
                     $matrix[$weekday][$hour] = (int) $row->total;
@@ -370,15 +370,15 @@ final class OperationsDashboardAnalytics
     private static function dailySeries(CarbonImmutable $from, CarbonImmutable $to, ?string $status, ?string $distinct = null): array
     {
         $query = self::inPeriod($from, $to)
-            ->selectRaw('DATE('.self::DATE_SQL.') as day')
+            ->selectRaw('DATE('.self::DATE_SQL.') as grp_day')
             ->selectRaw($distinct === null ? 'COUNT(*) as total' : 'COUNT(DISTINCT '.$distinct.') as total')
-            ->groupByRaw('DATE('.self::DATE_SQL.')');
+            ->groupBy('grp_day');
 
         if ($status !== null) {
             $query->whereRaw('UPPER(TRIM(service_status)) = ?', [$status]);
         }
 
-        $rows = $query->pluck('total', 'day');
+        $rows = $query->pluck('total', 'grp_day');
         $series = [];
 
         for ($day = $from; $day->lessThanOrEqualTo($to); $day = $day->addDay()) {
@@ -426,7 +426,7 @@ final class OperationsDashboardAnalytics
 
         $counts = self::inPeriod($period->from, $period->to)
             ->selectRaw($expression.' as grouping_key, COUNT(*) as total')
-            ->groupByRaw($expression)
+            ->groupBy('grouping_key')
             ->pluck('total', 'grouping_key')
             ->mapWithKeys(static fn (mixed $total, mixed $key): array => [
                 ((string) $key === strtoupper($emptyLabel) ? $emptyLabel : (string) $key) => (int) $total,

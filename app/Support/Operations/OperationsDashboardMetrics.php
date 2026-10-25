@@ -212,7 +212,7 @@ final class OperationsDashboardMetrics
             ->selectRaw($patientKeySql.' as patient_key')
             ->selectRaw('MAX(patient_name) as full_name')
             ->selectRaw('COUNT(DISTINCT telemedicine_case_id) as total')
-            ->groupByRaw($patientKeySql)
+            ->groupBy('patient_key')
             ->orderByDesc('total')
             ->limit($limit)
             ->get()
@@ -407,7 +407,7 @@ final class OperationsDashboardMetrics
             ->whereRaw('YEAR('.$dateExpression.') = ?', [$year])
             ->selectRaw('MONTH('.$dateExpression.') as month_number')
             ->selectRaw('COUNT(*) as total')
-            ->groupByRaw('MONTH('.$dateExpression.')')
+            ->groupBy('month_number')
             ->pluck('total', 'month_number');
 
         $counts = [];

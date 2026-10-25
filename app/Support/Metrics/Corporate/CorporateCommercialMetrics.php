@@ -121,15 +121,15 @@ final class CorporateCommercialMetrics
         return CorporateMetrics::remember('commercial_sales_agent_'.$limit, $period, static function () use ($period, $limit): array {
             $rows = CorporateFinanceMetrics::salesBetween($period->from, $period->to)
                 ->leftJoin('agents', 'agents.id', '=', 'sales.agent_id')
-                ->selectRaw('COALESCE(sales.agent_id, 0) as id, MAX(agents.name) as name, COALESCE(SUM(sales.total_amount), 0) as amount')
-                ->groupByRaw('COALESCE(sales.agent_id, 0)')
+                ->selectRaw('COALESCE(sales.agent_id, 0) as grp_id, MAX(agents.name) as name, COALESCE(SUM(sales.total_amount), 0) as amount')
+                ->groupBy('grp_id')
                 ->orderByDesc('amount')
                 ->get();
 
             $mapped = $rows->map(static fn (object $row): array => [
                 'label' => filled($row->name) ? (string) $row->name : 'Venta directa (sin agente)',
                 'value' => round((float) $row->amount, 2),
-                'key' => (string) $row->id,
+                'key' => (string) $row->grp_id,
             ]);
 
             return [
@@ -151,9 +151,9 @@ final class CorporateCommercialMetrics
             $rows = CorporateFinanceMetrics::salesBetween($period->from, $period->to)
                 ->leftJoin('plans', 'plans.id', '=', 'sales.plan_id')
                 ->whereRaw("UPPER(sales.type) NOT LIKE '%CORPORATIV%'")
-                ->selectRaw("UPPER(COALESCE(NULLIF(TRIM(plans.description), ''), 'SIN PLAN')) as label, COUNT(DISTINCT sales.affiliation_code) as total")
-                ->groupByRaw("UPPER(COALESCE(NULLIF(TRIM(plans.description), ''), 'SIN PLAN'))")
-                ->pluck('total', 'label')
+                ->selectRaw("UPPER(COALESCE(NULLIF(TRIM(plans.description), ''), 'SIN PLAN')) as grp_label, COUNT(DISTINCT sales.affiliation_code) as total")
+                ->groupBy('grp_label')
+                ->pluck('total', 'grp_label')
                 ->map(static fn (mixed $total): int => (int) $total)
                 ->all();
 

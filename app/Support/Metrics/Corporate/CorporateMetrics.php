@@ -68,9 +68,9 @@ final class CorporateMetrics
     public static function daily(Builder $query, string $dateSql, CarbonImmutable $from, CarbonImmutable $to, string $valueSql = 'COUNT(*)'): array
     {
         $rows = (clone $query)
-            ->selectRaw('DATE('.$dateSql.') as day, '.$valueSql.' as total')
-            ->groupByRaw('DATE('.$dateSql.')')
-            ->pluck('total', 'day');
+            ->selectRaw('DATE('.$dateSql.') as grp_day, '.$valueSql.' as total')
+            ->groupBy('grp_day')
+            ->pluck('total', 'grp_day');
 
         $series = [];
 

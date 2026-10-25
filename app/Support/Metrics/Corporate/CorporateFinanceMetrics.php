@@ -134,10 +134,10 @@ final class CorporateFinanceMetrics
             $label = self::saleTypeSql();
 
             return self::salesBetween($period->from, $period->to)
-                ->selectRaw($label.' as label, COALESCE(SUM(sales.total_amount), 0) as amount')
-                ->groupByRaw($label)
+                ->selectRaw($label.' as grp_label, COALESCE(SUM(sales.total_amount), 0) as amount')
+                ->groupBy('grp_label')
                 ->orderByDesc('amount')
-                ->pluck('amount', 'label')
+                ->pluck('amount', 'grp_label')
                 ->map(static fn (mixed $amount): float => round((float) $amount, 2))
                 ->all();
         });
@@ -153,9 +153,9 @@ final class CorporateFinanceMetrics
 
             $rows = self::salesBetween($period->from, $period->to)
                 ->leftJoin('plans', 'plans.id', '=', 'sales.plan_id')
-                ->selectRaw('UPPER('.$label.') as label, COALESCE(SUM(sales.total_amount), 0) as amount')
-                ->groupByRaw('UPPER('.$label.')')
-                ->pluck('amount', 'label')
+                ->selectRaw('UPPER('.$label.') as grp_label, COALESCE(SUM(sales.total_amount), 0) as amount')
+                ->groupBy('grp_label')
+                ->pluck('amount', 'grp_label')
                 ->map(static fn (mixed $amount): float => round((float) $amount, 2))
                 ->all();
 
@@ -175,17 +175,17 @@ final class CorporateFinanceMetrics
         return CorporateMetrics::remember('finance_income_by_agency_'.$limit, $period, static function () use ($period, $limit): array {
             $rows = self::salesBetween($period->from, $period->to)
                 ->leftJoin('agencies', 'agencies.code', '=', 'sales.code_agency')
-                ->selectRaw("COALESCE(NULLIF(TRIM(sales.code_agency), ''), 'SIN AGENCIA') as code")
+                ->selectRaw("COALESCE(NULLIF(TRIM(sales.code_agency), ''), 'SIN AGENCIA') as grp_code")
                 ->selectRaw('MAX(agencies.name_corporative) as name')
                 ->selectRaw('COALESCE(SUM(sales.total_amount), 0) as amount')
-                ->groupByRaw("COALESCE(NULLIF(TRIM(sales.code_agency), ''), 'SIN AGENCIA')")
+                ->groupBy('grp_code')
                 ->orderByDesc('amount')
                 ->get();
 
             $mapped = $rows->map(static fn (object $row): array => [
-                'label' => trim((string) $row->code.(filled($row->name) ? ' · '.$row->name : '')),
+                'label' => trim((string) $row->grp_code.(filled($row->name) ? ' · '.$row->name : '')),
                 'value' => round((float) $row->amount, 2),
-                'key' => (string) $row->code,
+                'key' => (string) $row->grp_code,
             ]);
 
             return [
@@ -214,7 +214,7 @@ final class CorporateFinanceMetrics
             $mapped = $rows->map(static fn (object $row): array => [
                 'label' => (string) $row->name,
                 'value' => round((float) $row->amount, 2),
-                'key' => (string) $row->id,
+                'key' => (string) $row->grp_id,
             ]);
 
             return [
@@ -277,18 +277,18 @@ final class CorporateFinanceMetrics
         return CorporateMetrics::remember('finance_receivables_agency_'.$limit.'_'.CarbonImmutable::today()->toDateString(), null, static function () use ($limit): array {
             $rows = self::pendingCollectableQuery()
                 ->leftJoin('agencies', 'agencies.code', '=', 'collections.code_agency')
-                ->selectRaw("COALESCE(NULLIF(TRIM(collections.code_agency), ''), 'SIN AGENCIA') as code")
+                ->selectRaw("COALESCE(NULLIF(TRIM(collections.code_agency), ''), 'SIN AGENCIA') as grp_code")
                 ->selectRaw('MAX(agencies.name_corporative) as name')
                 ->selectRaw('COALESCE(SUM(collections.total_amount), 0) as amount')
-                ->groupByRaw("COALESCE(NULLIF(TRIM(collections.code_agency), ''), 'SIN AGENCIA')")
+                ->groupBy('grp_code')
                 ->orderByDesc('amount')
                 ->toBase()
                 ->get();
 
             $mapped = $rows->map(static fn (object $row): array => [
-                'label' => trim((string) $row->code.(filled($row->name) ? ' · '.$row->name : '')),
+                'label' => trim((string) $row->grp_code.(filled($row->name) ? ' · '.$row->name : '')),
                 'value' => round((float) $row->amount, 2),
-                'key' => (string) $row->code,
+                'key' => (string) $row->grp_code,
             ]);
 
             return [
@@ -335,16 +335,16 @@ final class CorporateFinanceMetrics
             $rows = self::costOrdersBetween($period->from, $period->to)
                 ->leftJoin('suppliers', 'suppliers.id', '=', 'operation_service_orders.supplier_id')
                 ->selectRaw("COALESCE(MAX(suppliers.name), NULLIF(TRIM(MAX(operation_service_orders.supplier_external)), ''), 'Sin proveedor') as name")
-                ->selectRaw('COALESCE(operation_service_orders.supplier_id, 0) as id')
+                ->selectRaw('COALESCE(operation_service_orders.supplier_id, 0) as grp_id')
                 ->selectRaw('COALESCE(SUM('.self::COST_SQL.'), 0) as amount')
-                ->groupByRaw('COALESCE(operation_service_orders.supplier_id, 0)')
+                ->groupBy('grp_id')
                 ->orderByDesc('amount')
                 ->get();
 
             $mapped = $rows->map(static fn (object $row): array => [
                 'label' => (string) $row->name,
                 'value' => round((float) $row->amount, 2),
-                'key' => (string) $row->id,
+                'key' => (string) $row->grp_id,
             ]);
 
             return [
