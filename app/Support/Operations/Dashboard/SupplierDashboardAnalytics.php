@@ -78,9 +78,8 @@ final class SupplierDashboardAnalytics
     public static function caseStatus(OperationsDashboardPeriod $period): array
     {
         return self::remember('case_status', $period, static function () use ($period): array {
-            $counts = self::casesBetween($period->from, $period->to)
-                ->selectRaw("COALESCE(NULLIF(UPPER(TRIM(status)), ''), 'SIN ESTADO') as grouping_key, COUNT(*) as total")
-                ->groupBy('grouping_key')
+            $counts = DashboardGrouping::by(self::casesBetween($period->from, $period->to), ['grouping_key' => "COALESCE(NULLIF(UPPER(TRIM(status)), ''), 'SIN ESTADO')"])
+                ->selectRaw('COUNT(*) as total')
                 ->pluck('total', 'grouping_key')
                 ->map(static fn (mixed $total): int => (int) $total)
                 ->all();
@@ -145,10 +144,12 @@ final class SupplierDashboardAnalytics
     public static function priorities(OperationsDashboardPeriod $period): array
     {
         return self::remember('priorities', $period, static function () use ($period): array {
-            $counts = self::casesBetween($period->from, $period->to)
-                ->leftJoin('telemedicine_priorities', 'telemedicine_priorities.id', '=', 'telemedicine_cases.telemedicine_priority_id')
-                ->selectRaw("COALESCE(NULLIF(TRIM(telemedicine_priorities.name), ''), 'Sin prioridad') as grouping_key, COUNT(*) as total")
-                ->groupBy('grouping_key')
+            $counts = DashboardGrouping::by(
+                self::casesBetween($period->from, $period->to)
+                    ->leftJoin('telemedicine_priorities', 'telemedicine_priorities.id', '=', 'telemedicine_cases.telemedicine_priority_id'),
+                ['grouping_key' => "COALESCE(NULLIF(TRIM(telemedicine_priorities.name), ''), 'Sin prioridad')"],
+            )
+                ->selectRaw('COUNT(*) as total')
                 ->orderByDesc('total')
                 ->pluck('total', 'grouping_key')
                 ->map(static fn (mixed $total): int => (int) $total)
@@ -172,11 +173,11 @@ final class SupplierDashboardAnalytics
     public static function heatmap(OperationsDashboardPeriod $period): array
     {
         return self::remember('heatmap', $period, static function () use ($period): array {
-            $rows = self::consultationsBetween($period->from, $period->to)
-                ->selectRaw('WEEKDAY(telemedicine_consultation_patients.created_at) as grp_weekday')
-                ->selectRaw('HOUR(telemedicine_consultation_patients.created_at) as grp_hour')
+            $rows = DashboardGrouping::by(self::consultationsBetween($period->from, $period->to), [
+                'grp_weekday' => 'WEEKDAY(telemedicine_consultation_patients.created_at)',
+                'grp_hour' => 'HOUR(telemedicine_consultation_patients.created_at)',
+            ])
                 ->selectRaw('COUNT(*) as total')
-                ->groupBy('grp_weekday', 'grp_hour')
                 ->get();
 
             $matrix = array_fill(0, 7, array_fill(0, 24, 0));
@@ -201,10 +202,12 @@ final class SupplierDashboardAnalytics
         return self::remember('patients', $period, static function () use ($period): array {
             $ages = [];
             $ageSql = self::ageBandSql();
-            $ageRows = self::casesBetween($period->from, $period->to)
-                ->whereNotNull('patient_age')
-                ->selectRaw($ageSql.' as grp_band, COUNT(DISTINCT telemedicine_patient_id) as total')
-                ->groupBy('grp_band')
+            $ageRows = DashboardGrouping::by(
+                self::casesBetween($period->from, $period->to)->whereNotNull('patient_age'),
+                ['grp_band' => $ageSql],
+                ['patient_id' => 'telemedicine_patient_id'],
+            )
+                ->selectRaw('COUNT(DISTINCT g.patient_id) as total')
                 ->pluck('total', 'grp_band');
 
             foreach (array_keys(OperationsDashboardAnalytics::AGE_BANDS) as $label) {
@@ -212,9 +215,8 @@ final class SupplierDashboardAnalytics
             }
 
             $sexSql = self::sexSql();
-            $sexRows = self::casesBetween($period->from, $period->to)
-                ->selectRaw($sexSql.' as grp_sex, COUNT(DISTINCT telemedicine_patient_id) as total')
-                ->groupBy('grp_sex')
+            $sexRows = DashboardGrouping::by(self::casesBetween($period->from, $period->to), ['grp_sex' => $sexSql], ['patient_id' => 'telemedicine_patient_id'])
+                ->selectRaw('COUNT(DISTINCT g.patient_id) as total')
                 ->pluck('total', 'grp_sex');
 
             $sexes = [];
@@ -367,10 +369,8 @@ final class SupplierDashboardAnalytics
         $table = $query->getModel()->getTable();
         $date = 'DATE('.$table.'.created_at)';
 
-        $rows = $query
-            ->selectRaw($date.' as grp_day')
-            ->selectRaw($distinct === null ? 'COUNT(*) as total' : 'COUNT(DISTINCT '.$table.'.'.$distinct.') as total')
-            ->groupBy('grp_day')
+        $rows = DashboardGrouping::by($query, ['grp_day' => $date], $distinct === null ? [] : ['distinct_key' => $table.'.'.$distinct])
+            ->selectRaw($distinct === null ? 'COUNT(*) as total' : 'COUNT(DISTINCT g.distinct_key) as total')
             ->pluck('total', 'grp_day');
 
         $series = [];

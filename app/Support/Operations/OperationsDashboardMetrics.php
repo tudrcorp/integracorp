@@ -11,6 +11,7 @@ use App\Models\TelemedicineCase;
 use App\Models\TelemedicinePatient;
 use App\Models\User;
 use App\Support\Filament\Operations\OperationsSupplierScope;
+use App\Support\Operations\Dashboard\DashboardGrouping;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -206,13 +207,13 @@ final class OperationsDashboardMetrics
     {
         $patientKeySql = self::patientKeySql();
 
-        return self::statisticsQuery()
-            ->where('case_status', 'ALTA MEDICA')
-            ->whereNotNull('telemedicine_case_id')
-            ->selectRaw($patientKeySql.' as patient_key')
-            ->selectRaw('MAX(patient_name) as full_name')
-            ->selectRaw('COUNT(DISTINCT telemedicine_case_id) as total')
-            ->groupBy('patient_key')
+        return DashboardGrouping::by(
+            self::statisticsQuery()->where('case_status', 'ALTA MEDICA')->whereNotNull('telemedicine_case_id'),
+            ['patient_key' => $patientKeySql],
+            ['patient_name' => 'patient_name', 'case_id' => 'telemedicine_case_id'],
+        )
+            ->selectRaw('MAX(g.patient_name) as full_name')
+            ->selectRaw('COUNT(DISTINCT g.case_id) as total')
             ->orderByDesc('total')
             ->limit($limit)
             ->get()
@@ -401,13 +402,14 @@ final class OperationsDashboardMetrics
     {
         $dateExpression = 'COALESCE(service_on, started_on)';
 
-        $rows = self::statisticsQuery()
-            ->where('service_status', 'FINALIZADO')
-            ->whereRaw($dateExpression.' IS NOT NULL')
-            ->whereRaw('YEAR('.$dateExpression.') = ?', [$year])
-            ->selectRaw('MONTH('.$dateExpression.') as month_number')
+        $rows = DashboardGrouping::by(
+            self::statisticsQuery()
+                ->where('service_status', 'FINALIZADO')
+                ->whereRaw($dateExpression.' IS NOT NULL')
+                ->whereRaw('YEAR('.$dateExpression.') = ?', [$year]),
+            ['month_number' => 'MONTH('.$dateExpression.')'],
+        )
             ->selectRaw('COUNT(*) as total')
-            ->groupBy('month_number')
             ->pluck('total', 'month_number');
 
         $counts = [];

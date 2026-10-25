@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Metrics\Corporate;
 
+use App\Support\Operations\Dashboard\DashboardGrouping;
 use App\Support\Operations\Dashboard\OperationsDashboardPeriod as Period;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
@@ -149,15 +150,17 @@ final class CorporateOrganizationMetrics
     public static function byArea(Period $period): array
     {
         return CorporateMetrics::remember('organization_by_area', $period, static function () use ($period): array {
-            $rows = self::createdBetween($period->from, $period->to)
-                ->leftJoin('users as by_id', 'by_id.id', '=', 'help_desks.created_by_user_id')
-                ->leftJoinSub(
-                    DB::table('users')->selectRaw('name, MAX(departament) as departament')->groupBy('name'),
-                    'by_name',
-                    static fn ($join) => $join->on('by_name.name', '=', 'help_desks.created_by')->whereNull('help_desks.created_by_user_id'),
-                )
-                ->selectRaw('COALESCE(by_id.departament, by_name.departament) as grp_departament, COUNT(*) as total')
-                ->groupBy('grp_departament')
+            $rows = DashboardGrouping::by(
+                self::createdBetween($period->from, $period->to)
+                    ->leftJoin('users as by_id', 'by_id.id', '=', 'help_desks.created_by_user_id')
+                    ->leftJoinSub(
+                        DB::table('users')->selectRaw('name, MAX(departament) as departament')->groupBy('name'),
+                        'by_name',
+                        static fn ($join) => $join->on('by_name.name', '=', 'help_desks.created_by')->whereNull('help_desks.created_by_user_id'),
+                    ),
+                ['grp_departament' => 'COALESCE(by_id.departament, by_name.departament)'],
+            )
+                ->selectRaw('COUNT(*) as total')
                 ->get();
 
             $out = [];
@@ -190,9 +193,8 @@ final class CorporateOrganizationMetrics
      */
     private static function grouped(Period $period, string $expression): array
     {
-        $counts = self::createdBetween($period->from, $period->to)
-            ->selectRaw($expression.' as grp_label, COUNT(*) as total')
-            ->groupBy('grp_label')
+        $counts = DashboardGrouping::by(self::createdBetween($period->from, $period->to), ['grp_label' => $expression])
+            ->selectRaw('COUNT(*) as total')
             ->pluck('total', 'grp_label')
             ->map(static fn (mixed $total): int => (int) $total)
             ->all();
