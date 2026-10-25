@@ -5,9 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CorporateAlly extends Model
 {
+    /**
+     * Eliminación reversible: oculto en todo el sistema y restaurable. Ver
+     * {@see \App\Support\Operations\ProviderDeletion}.
+     */
+    use SoftDeletes;
+
     protected $fillable = [
         'country_id',
         'country_code',

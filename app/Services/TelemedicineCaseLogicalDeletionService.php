@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\AffiliateClinicalServiceUsage;
 use App\Models\ObservationCase;
 use App\Models\OperationCoordinationService;
 use App\Models\OperationInventoryMovement;
@@ -11,6 +12,9 @@ use App\Models\OperationServiceOrder;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicineDocument;
+use App\Models\TelemedicinePatient;
+use App\Support\ClinicalEntitlements\AffiliateClinicalEntitlementResolver;
+use App\Support\ClinicalEntitlements\ClinicalEntitlementSnapshot;
 use App\Support\ClinicalEntitlements\ClinicalUsageLedger;
 use App\Support\SecurityAudit;
 use App\Support\Telemedicine\Scopes\HideDeletedTelemedicineCaseServiceOrdersScope;
@@ -83,10 +87,14 @@ final class TelemedicineCaseLogicalDeletionService
                 'created_by' => self::bitacoraAuthor($user?->id),
             ]);
 
-            /** El caso deja de existir para el sistema: su consumo de cupos se devuelve al afiliado. */
-            ClinicalUsageLedger::reverseForCase((int) $case->id);
+            /**
+             * El caso deja de existir para el sistema: su consumo de cupos se devuelve
+             * al afiliado. Los ids quedan en el caso: son el punto de restauración.
+             */
+            $reversedUsageIds = ClinicalUsageLedger::reverseForCaseReturningIds((int) $case->id);
 
             $case->forceFill([
+                'deletion_reversed_usage_ids' => $reversedUsageIds,
                 'deletion_status_before' => $previousStatus,
                 'status' => TelemedicineCaseDeletion::STATUS,
                 'deletion_reason' => $reason,
@@ -133,7 +141,13 @@ final class TelemedicineCaseLogicalDeletionService
             'restored_by_user_id' => $user?->id,
         ];
 
-        DB::transaction(function () use ($case, $restoredStatus, $reason, $user, $payload): void {
+        /** null = eliminado antes de guardar el punto de restauración de cupos (24/10/2026). */
+        $usageIds = is_array($case->deletion_reversed_usage_ids) ? $case->deletion_reversed_usage_ids : null;
+
+        $payload['reconsumed_usages'] = DB::transaction(function () use ($case, $restoredStatus, $reason, $user, &$payload, $usageIds): int {
+            $reconsumed = ClinicalUsageLedger::reconsumeUsages($usageIds ?? []);
+            $payload['reconsumed_usages'] = $reconsumed;
+
             $case->forceFill([
                 'status' => $restoredStatus,
                 'deletion_status_before' => null,
@@ -141,6 +155,7 @@ final class TelemedicineCaseLogicalDeletionService
                 'deleted_by_user_id' => null,
                 'deleted_by_name' => null,
                 'logically_deleted_at' => null,
+                'deletion_reversed_usage_ids' => null,
             ])->save();
 
             ObservationCase::query()->create([
@@ -154,9 +169,53 @@ final class TelemedicineCaseLogicalDeletionService
                 'operations.coordination-services.restore-case',
                 $payload,
             );
+
+            return $reconsumed;
         });
 
+        $payload['quota_warnings'] = $usageIds === null
+            ? ['El caso '.$case->code.' se eliminó antes de que el sistema guardara qué cupos devolvió: sus cupos clínicos no se volvieron a descontar. Verifíquelos con el equipo clínico.']
+            : $this->exceededQuotaWarnings($case, $usageIds);
+
         return $payload;
+    }
+
+    /**
+     * Beneficios que quedan por encima de su tope tras volver a descontar los cupos
+     * del caso: el afiliado usó en otro caso lo que se le había devuelto. Se
+     * restaura igual (el caso es real) y se avisa.
+     *
+     * @param  list<int>  $usageIds
+     * @return list<string>
+     */
+    private function exceededQuotaWarnings(TelemedicineCase $case, array $usageIds): array
+    {
+        if ($usageIds === []) {
+            return [];
+        }
+
+        try {
+            $patient = TelemedicinePatient::query()->find($case->telemedicine_patient_id);
+
+            if (! $patient instanceof TelemedicinePatient) {
+                return [];
+            }
+
+            AffiliateClinicalEntitlementResolver::flush();
+            $snapshot = AffiliateClinicalEntitlementResolver::forPatient($patient);
+
+            $benefitIds = AffiliateClinicalServiceUsage::query()
+                ->whereKey($usageIds)
+                ->where('status', AffiliateClinicalServiceUsage::STATUS_CONSUMED)
+                ->distinct()
+                ->pluck('benefit_id')
+                ->filter()
+                ->map(static fn (mixed $id): int => (int) $id);
+
+            return self::exceededQuotaMessages($snapshot, $benefitIds->all(), (string) $case->code);
+        } catch (Throwable) {
+            return ['No se pudo verificar el cupo clínico del caso '.$case->code.' después de restaurarlo. Revíselo en la ficha del afiliado.'];
+        }
     }
 
     /**
@@ -217,6 +276,36 @@ final class TelemedicineCaseLogicalDeletionService
     private static function bitacoraAuthor(int|string|null $userId): string
     {
         return $userId !== null ? (string) $userId : 'SISTEMA';
+    }
+
+    /**
+     * Mensajes de los beneficios que quedaron por encima de su tope.
+     *
+     * @param  list<int>  $benefitIds
+     * @return list<string>
+     */
+    public static function exceededQuotaMessages(ClinicalEntitlementSnapshot $snapshot, array $benefitIds, string $caseCode): array
+    {
+        $warnings = [];
+
+        foreach (array_unique($benefitIds) as $benefitId) {
+            $entitlement = $snapshot->forBenefit((int) $benefitId);
+
+            if ($entitlement === null || $entitlement->quota === null || $entitlement->used <= $entitlement->quota) {
+                continue;
+            }
+
+            $warnings[] = sprintf(
+                'Caso %s · %s: quedó con %d de %d usos (%d por encima del tope).',
+                $caseCode,
+                $entitlement->displayName(),
+                $entitlement->used,
+                $entitlement->quota,
+                $entitlement->used - $entitlement->quota,
+            );
+        }
+
+        return $warnings;
     }
 
     private function statusToRestore(TelemedicineCase $case): string

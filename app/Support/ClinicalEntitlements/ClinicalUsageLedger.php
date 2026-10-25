@@ -137,12 +137,59 @@ final class ClinicalUsageLedger
 
     public static function reverseForCase(int $caseId): void
     {
-        AffiliateClinicalServiceUsage::query()
+        self::reverseForCaseReturningIds($caseId);
+    }
+
+    /**
+     * Devuelve los cupos consumidos por el caso e informa exactamente cuáles, para
+     * poder volver a descontarlos con {@see self::reconsumeUsages()}.
+     *
+     * @return list<int>
+     */
+    public static function reverseForCaseReturningIds(int $caseId): array
+    {
+        $ids = AffiliateClinicalServiceUsage::query()
             ->where('telemedicine_case_id', $caseId)
             ->where('status', AffiliateClinicalServiceUsage::STATUS_CONSUMED)
-            ->update(['status' => AffiliateClinicalServiceUsage::STATUS_REVERSED]);
+            ->lockForUpdate()
+            ->pluck('id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
+
+        if ($ids !== []) {
+            AffiliateClinicalServiceUsage::query()
+                ->whereKey($ids)
+                ->update(['status' => AffiliateClinicalServiceUsage::STATUS_REVERSED]);
+        }
 
         AffiliateClinicalEntitlementResolver::flush();
+
+        return $ids;
+    }
+
+    /**
+     * Vuelve a descontar consumos devueltos. Solo toca los que siguen revertidos:
+     * si alguno se re-consumió por otra vía, no se cuenta dos veces.
+     *
+     * @param  list<int>  $usageIds
+     */
+    public static function reconsumeUsages(array $usageIds): int
+    {
+        $usageIds = array_values(array_unique(array_filter(array_map('intval', $usageIds), static fn (int $id): bool => $id > 0)));
+
+        if ($usageIds === []) {
+            return 0;
+        }
+
+        $updated = AffiliateClinicalServiceUsage::query()
+            ->whereKey($usageIds)
+            ->where('status', AffiliateClinicalServiceUsage::STATUS_REVERSED)
+            ->update(['status' => AffiliateClinicalServiceUsage::STATUS_CONSUMED]);
+
+        AffiliateClinicalEntitlementResolver::flush();
+
+        return $updated;
     }
 
     /**

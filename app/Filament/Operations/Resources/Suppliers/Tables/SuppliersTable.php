@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\Suppliers\Tables;
 
+use App\Filament\Operations\Resources\Suppliers\SupplierResource;
 use App\Http\Controllers\SupplierExportCsvController;
 use App\Models\City;
 use App\Models\State;
@@ -9,11 +10,11 @@ use App\Models\Supplier;
 use App\Models\SupplierClasificacion;
 use App\Models\User;
 use App\Support\Filament\Operations\OutsourcingMedicalDepartmentFields;
+use App\Support\Operations\ProviderDeletion;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -29,6 +30,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 class SuppliersTable
@@ -321,6 +323,7 @@ class SuppliersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                ProviderDeletion::makeDeletedFilter(),
                 Filter::make('state_city')
                     ->label('Estado / Ciudad (sede)')
                     ->form([
@@ -445,13 +448,21 @@ class SuppliersTable
                     ->label('Filtros')
                     ->icon('heroicon-o-funnel'),
             )
+            /** Un proveedor eliminado no tiene ficha: en esa vista la fila no navega. */
+            ->recordUrl(fn (Model $record, mixed $livewire): ?string => ProviderDeletion::viewingDeleted($livewire)
+                ? null
+                : SupplierResource::getUrl('view', ['record' => $record]))
             ->recordActions([
                 ViewAction::make()
                     ->label('Ver')
-                    ->icon('heroicon-o-eye'),
+                    ->icon('heroicon-o-eye')
+                    ->hidden(fn (mixed $livewire): bool => ProviderDeletion::viewingDeleted($livewire)),
                 EditAction::make()
                     ->label('Editar')
-                    ->icon('heroicon-o-pencil-square'),
+                    ->icon('heroicon-o-pencil-square')
+                    ->hidden(fn (mixed $livewire): bool => ProviderDeletion::viewingDeleted($livewire)),
+                ProviderDeletion::makeDeleteAction(ProviderDeletion::TYPE_SUPPLIER),
+                ProviderDeletion::makeRestoreAction(ProviderDeletion::TYPE_SUPPLIER),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -475,14 +486,8 @@ class SuppliersTable
 
                             return redirect()->route('operations.suppliers.export-csv', ['token' => $token]);
                         }),
-                    DeleteBulkAction::make()
-                        ->requiresConfirmation()
-                        ->modalHeading('Eliminar proveedores')
-                        ->modalDescription('¿Confirma eliminar los proveedores seleccionados? Esta acción no se puede deshacer.')
-                        ->modalSubmitActionLabel('Eliminar')
-                        ->label('Eliminar')
-                        ->icon('heroicon-s-trash')
-                        ->color('danger'),
+                    ProviderDeletion::makeDeleteBulkAction(ProviderDeletion::TYPE_SUPPLIER),
+                    ProviderDeletion::makeRestoreBulkAction(ProviderDeletion::TYPE_SUPPLIER),
                 ]),
             ])
             ->emptyStateHeading('No hay proveedores')

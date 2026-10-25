@@ -46,6 +46,7 @@ class TelemedicineCase extends Model
         'deleted_by_user_id',
         'deleted_by_name',
         'logically_deleted_at',
+        'deletion_reversed_usage_ids',
     ];
 
     /**
@@ -55,6 +56,7 @@ class TelemedicineCase extends Model
     {
         return [
             'logically_deleted_at' => 'datetime',
+            'deletion_reversed_usage_ids' => 'array',
             'agent_notice_sent_at' => 'datetime',
             'assigned_to_medical_team' => 'boolean',
             'medical_team_supplier_id' => 'integer',

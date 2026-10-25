@@ -120,7 +120,9 @@ it('devuelve los cupos clínicos y escribe bitácora y auditoría al eliminar', 
     $service = telemedicineCaseDeletionSource('app/Services/TelemedicineCaseLogicalDeletionService.php');
 
     expect($service)
-        ->toContain('ClinicalUsageLedger::reverseForCase((int) $case->id)')
+        ->toContain('$reversedUsageIds = ClinicalUsageLedger::reverseForCaseReturningIds((int) $case->id);')
+        ->toContain("'deletion_reversed_usage_ids' => \$reversedUsageIds,")
+        ->toContain('ClinicalUsageLedger::reconsumeUsages($usageIds ?? [])')
         ->toContain('DB::transaction(')
         ->toContain("SecurityAudit::log(\n                'AUDIT_TELEMEDICINE_CASE_LOGICALLY_DELETED'")
         ->toContain("'AUDIT_TELEMEDICINE_CASE_LOGICALLY_RESTORED'")

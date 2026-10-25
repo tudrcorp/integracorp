@@ -9,7 +9,6 @@ use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Validation\ValidationException;
 
 uses(Tests\TestCase::class);
 
@@ -45,93 +44,78 @@ beforeEach(function (): void {
     }
 });
 
-it('permite alta medica cuando no hay servicios asociados', function (): void {
-    expect(TelemedicineCaseDischargeGuard::caseCanBeDischarged(99))->toBeTrue()
-        ->and(TelemedicineCaseDischargeGuard::caseHasOpenAssociatedServices(99))->toBeFalse();
+it('sin servicios abiertos no hay aviso', function (): void {
+    expect(TelemedicineCaseDischargeGuard::caseHasOpenAssociatedServices(99))->toBeFalse()
+        ->and(TelemedicineCaseDischargeGuard::openServicesNotice(99))->toBeNull();
 });
 
-it('bloquea alta medica con coordinacion pendiente o en gestion', function (): void {
+it('con una coordinación pendiente avisa, pero el alta sigue disponible', function (): void {
     OperationCoordinationService::query()->create([
         'telemedicine_case_id' => 10,
         'status' => 'PENDIENTE',
     ]);
 
-    expect(TelemedicineCaseDischargeGuard::caseCanBeDischarged(10))->toBeFalse()
-        ->and(TelemedicineCaseDischargeGuard::blockingMessage(10))
-        ->toContain('PENDIENTE o EN GESTIÓN')
-        ->toContain('finalizados o caducados');
+    expect(TelemedicineCaseDischargeGuard::openAssociatedServicesCount(10))->toBe(1)
+        ->and(TelemedicineCaseDischargeGuard::openServicesNotice(10))
+        ->toContain('1 servicio/ítem asociado en PENDIENTE o EN GESTIÓN')
+        ->toContain('Puede dar el alta igual')
+        ->toContain('no los cancela');
 });
 
-it('permite alta medica cuando los servicios estan finalizados o caducados', function (): void {
-    OperationCoordinationService::query()->create([
-        'telemedicine_case_id' => 11,
-        'status' => 'FINALIZADO',
-    ]);
-    OperationCoordinationService::query()->create([
-        'telemedicine_case_id' => 11,
-        'status' => 'CADUCADA',
-    ]);
+it('no cuenta servicios finalizados, caducados, cancelados ni reasignados', function (): void {
+    foreach (['FINALIZADO', 'CADUCADA', 'REASIGNADO A TDG', 'CANCELADA'] as $status) {
+        OperationCoordinationService::query()->create([
+            'telemedicine_case_id' => 11,
+            'status' => $status,
+        ]);
+    }
 
-    expect(TelemedicineCaseDischargeGuard::caseCanBeDischarged(11))->toBeTrue();
+    expect(TelemedicineCaseDischargeGuard::openAssociatedServicesCount(11))->toBe(0)
+        ->and(TelemedicineCaseDischargeGuard::openServicesNotice(11))->toBeNull();
 });
 
-it('permite alta medica con coordinacion reasignada a TDG o cancelada', function (): void {
-    OperationCoordinationService::query()->create([
-        'telemedicine_case_id' => 12,
-        'status' => 'REASIGNADO A TDG',
-    ]);
-    OperationCoordinationService::query()->create([
-        'telemedicine_case_id' => 12,
-        'status' => 'CANCELADA',
-    ]);
-
-    expect(TelemedicineCaseDischargeGuard::caseCanBeDischarged(12))->toBeTrue();
-});
-
-it('bloquea alta medica con item clinico en gestion', function (): void {
-    TelemedicinePatientLab::query()->create([
-        'telemedicine_case_id' => 13,
-        'status' => 'EN GESTION',
-    ]);
-
-    expect(TelemedicineCaseDischargeGuard::caseCanBeDischarged(13))->toBeFalse()
-        ->and(TelemedicineCaseDischargeGuard::openAssociatedServicesCount(13))->toBe(1);
-});
-
-it('bloquea alta medica con medicamento pendiente aunque la coordinacion este finalizada', function (): void {
+it('cuenta coordinaciones e ítems clínicos abiertos juntos', function (): void {
     OperationCoordinationService::query()->create([
         'telemedicine_case_id' => 14,
-        'status' => 'FINALIZADO',
+        'status' => 'EN GESTION',
+    ]);
+    TelemedicinePatientLab::query()->create([
+        'telemedicine_case_id' => 14,
+        'status' => 'EN GESTION',
     ]);
     TelemedicinePatientMedications::query()->create([
         'telemedicine_case_id' => 14,
         'status' => 'PENDIENTE',
     ]);
 
-    expect(TelemedicineCaseDischargeGuard::caseCanBeDischarged(14))->toBeFalse();
+    expect(TelemedicineCaseDischargeGuard::openAssociatedServicesCount(14))->toBe(3)
+        ->and(TelemedicineCaseDischargeGuard::openServicesNotice(14))->toContain('3 servicios/ítems asociados');
 });
 
-it('assertCanBeDischarged lanza ValidationException cuando hay servicios abiertos', function (): void {
-    OperationCoordinationService::query()->create([
-        'telemedicine_case_id' => 15,
-        'status' => 'EN GESTION',
-    ]);
-
-    expect(fn () => TelemedicineCaseDischargeGuard::assertCanBeDischarged(15))
-        ->toThrow(ValidationException::class);
+it('la nota de bitácora deja constancia de los servicios que quedaron abiertos', function (): void {
+    expect(TelemedicineCaseDischargeGuard::dischargeBitacoraNote(2, 'DRA. QA'))
+        ->toBe('ALTA MÉDICA CON SERVICIOS ABIERTOS · 2 servicios/ítems asociados quedaron en PENDIENTE o EN GESTIÓN; el alta no los canceló y Operaciones los seguirá gestionando. Alta dada por: DRA. QA.');
 });
 
-it('CreateTelemedicineConsultationPatient valida alta medica con el guard', function (): void {
+it('el alta ya no se bloquea: avisa en el formulario y anota en la bitácora al guardar', function (): void {
     $createPage = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Pages/CreateTelemedicineConsultationPatient.php');
     $form = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Schemas/TelemedicineConsultationPatientForm.php');
+    $guard = file_get_contents(dirname(__DIR__, 2).'/app/Support/Telemedicine/TelemedicineCaseDischargeGuard.php');
 
     expect($createPage)
-        ->toContain('TelemedicineCaseDischargeGuard::assertCanBeDischarged')
-        ->toContain('TelemedicineCaseDischargeGuard::caseCanBeDischarged')
-        ->toContain('Alta médica bloqueada');
+        ->not->toContain('assertCanBeDischarged')
+        ->not->toContain('caseCanBeDischarged')
+        ->not->toContain('Alta médica bloqueada')
+        ->toContain('$openServicesCount = TelemedicineCaseDischargeGuard::openAssociatedServicesCount($caseId);')
+        ->toContain('TelemedicineCaseDischargeGuard::dischargeBitacoraNote(')
+        ->toContain("\$case->status = 'ALTA MEDICA';");
 
     expect($form)
-        ->toContain('TelemedicineCaseDischargeGuard')
-        ->toContain('Alta médica no disponible')
-        ->toContain('finalizados o caducados');
+        ->toContain('TelemedicineCaseDischargeGuard::openServicesNotice((int) $caseId)')
+        ->not->toContain("\$set('feedbackOne', false)")
+        ->not->toContain('Alta médica no disponible');
+
+    expect($guard)
+        ->not->toContain('function assertCanBeDischarged')
+        ->not->toContain('function caseCanBeDischarged');
 });

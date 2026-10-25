@@ -36,6 +36,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const DELETE_TELEMEDICINE_CASE = 'eliminar-caso-servicios-medicos';
 
+    public const DELETE_PROVIDERS = 'eliminar-proveedores';
+
     public const REGISTER_DIRECT_MEDICAL_SERVICE = 'registrar-servicio-medico-directo';
 
     public const MANAGE_SUPPLIER_INTEGRACORP_PROCESSES = 'gestionar-procesos-integracorp-proveedores';
@@ -162,6 +164,11 @@ final class BusinessFilamentActionPermissionRegistry
             self::DELETE_TELEMEDICINE_CASE => [
                 'name' => 'Eliminar caso de servicios médicos',
                 'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::DELETE_PROVIDERS => [
+                'name' => 'Eliminar y restaurar proveedores (jurídicos, naturales y aliados corporativos)',
+                'group' => 'PROVEEDORES',
                 'modules' => ['OPERACIONES'],
             ],
             self::REGISTER_DIRECT_MEDICAL_SERVICE => [

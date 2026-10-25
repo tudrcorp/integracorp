@@ -249,8 +249,9 @@ it('la modal de asignación oculta doctor y «Pertenece a?» con el check y no n
         ->and(substr_count($source, "if (\$doctor !== null) {\n                                AssignedCase::dispatch("))->toBe(3);
 });
 
-it('la consulta asigna el caso de equipo al médico que la registra en los tres caminos', function (): void {
+it('la consulta asigna el caso de equipo al médico que la registra en los dos caminos', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Pages/CreateTelemedicineConsultationPatient.php');
 
-    expect(substr_count($source, "TelemedicineMedicalTeam::applyUpdatingDoctor(\$case, (int) \$record['telemedicine_doctor_id']);"))->toBe(3);
+    // Alta médica y seguimiento. El tercero («alta bloqueada») desapareció el 24/10/2026: el alta ya no se bloquea.
+    expect(substr_count($source, "TelemedicineMedicalTeam::applyUpdatingDoctor(\$case, (int) \$record['telemedicine_doctor_id']);"))->toBe(2);
 });

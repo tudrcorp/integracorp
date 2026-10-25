@@ -6,9 +6,16 @@ use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Operations\OutsourcingMedicalDepartment;
 use App\Support\Operations\SupplierServiceOrderBuckets;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Supplier extends Model
 {
+    /**
+     * Eliminación reversible: oculto en todo el sistema y restaurable. Ver
+     * {@see \App\Support\Operations\ProviderDeletion}.
+     */
+    use SoftDeletes;
+
     protected $table = 'suppliers';
 
     protected $fillable = [

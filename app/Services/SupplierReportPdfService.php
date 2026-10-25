@@ -65,7 +65,7 @@ class SupplierReportPdfService
      */
     public static function pdfCacheVersion(): string
     {
-        $count = (int) DB::table('suppliers')->count();
+        $count = (int) DB::table('suppliers')->whereNull('deleted_at')->count();
         $maxUpdated = DB::table('suppliers')->max('updated_at');
 
         return hash('sha256', self::LAYOUT_VERSION.'|'.$count.'|'.((string) ($maxUpdated ?? '')));
@@ -187,6 +187,7 @@ class SupplierReportPdfService
     public static function reportRows(): array
     {
         $rows = DB::table('suppliers')
+            ->whereNull('suppliers.deleted_at')
             ->leftJoin('states', 'suppliers.state_id', '=', 'states.id')
             ->leftJoin('cities', 'suppliers.city_id', '=', 'cities.id')
             ->leftJoin('supplier_clasificacions', 'suppliers.supplier_clasificacion_id', '=', 'supplier_clasificacions.id')
