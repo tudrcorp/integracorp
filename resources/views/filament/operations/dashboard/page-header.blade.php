@@ -1,6 +1,6 @@
 @php
     /**
-     * Encabezado de las páginas del panel corporativo: contexto y período a la
+     * Encabezado compacto de los dashboards (Operaciones y Métricas): contexto y período a la
      * izquierda; filtros compactos y acciones a la derecha, en una sola barra.
      *
      * @var \App\Support\Operations\Dashboard\OperationsDashboardPeriod $period
@@ -10,8 +10,8 @@
 <header class="corp-page-header flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
     <div class="min-w-0">
         <p class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-primary-400">
-            <x-filament::icon icon="heroicon-m-presentation-chart-bar" class="size-4" />
-            Panel corporativo
+            <x-filament::icon :icon="$eyebrowIcon" class="size-4" />
+            {{ $eyebrow }}
         </p>
 
         <h1 class="fi-header-heading mt-1 text-2xl font-bold tracking-tight text-gray-950 sm:text-3xl dark:text-white">

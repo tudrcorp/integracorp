@@ -385,3 +385,16 @@ it('el tooltip se posiciona respecto de su contenedor, no de la celda que lo dis
             ->not->toContain('this.$el.getBoundingClientRect()');
     }
 });
+
+it('el encabezado del Dashboard de Operaciones es el compacto: contexto, período, filtro y acciones en una barra', function (): void {
+    Livewire::test(DashboardOperaciones::class)
+        ->assertSuccessful()
+        ->assertSee('corp-header-filters', false)
+        ->assertSee('Operaciones')
+        ->assertSee('Comparar')
+        ->assertSee('Modo presentación')
+        ->assertDontSee('Haga clic en cualquier gráfico')
+        ->set('filters.period', Period::CUSTOM)
+        ->assertSee('Desde')
+        ->assertSee('Hasta');
+});
