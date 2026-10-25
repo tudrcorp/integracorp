@@ -13,7 +13,7 @@ it('registra la página Dashboard Operaciones con sus widgets', function (): voi
         ->and($page)->toContain("protected static ?string \$navigationLabel = 'Dashboard Operaciones'")
         ->and($page)->toContain("protected static string \$routePath = 'dashboard-operaciones'")
         // Rediseño del 24/10/2026: período común, comparación y modo presentación.
-        ->and($page)->toContain('use HasOperationsDashboardFilters;')
+        ->and($page)->toContain('use HasCompactDashboardHeader;')
         ->and($page)->toContain('OperationsKpiTiles::class')
         ->and($page)->toContain('OperationsServicesTrendChart::class')
         ->and($page)->toContain('OperationsServicesStatusChart::class')

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Pages;
 
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
-use App\Filament\Operations\Pages\Concerns\HasOperationsDashboardFilters;
+use App\Filament\Operations\Pages\Concerns\HasCompactDashboardHeader;
 use App\Filament\Operations\Widgets\Dashboard\OperationsAgeChart;
 use App\Filament\Operations\Widgets\Dashboard\OperationsBusinessLineSplit;
 use App\Filament\Operations\Widgets\Dashboard\OperationsDashboardDetail;
@@ -33,7 +33,7 @@ use Illuminate\Contracts\Support\Htmlable;
 class DashboardOperaciones extends Dashboard
 {
     use AuthorizesDepartmentNavigation;
-    use HasOperationsDashboardFilters;
+    use HasCompactDashboardHeader;
 
     protected static ?string $navigationLabel = 'Dashboard Operaciones';
 
@@ -48,6 +48,16 @@ class DashboardOperaciones extends Dashboard
     public function getSubheading(): string|Htmlable|null
     {
         return $this->periodSubheading();
+    }
+
+    protected function headerEyebrow(): string
+    {
+        return 'Operaciones';
+    }
+
+    protected function headerEyebrowIcon(): string
+    {
+        return 'heroicon-m-heart';
     }
 
     /**
