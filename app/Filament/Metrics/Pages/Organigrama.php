@@ -14,4 +14,7 @@ class Organigrama extends OrgChartPage
 
     /** En este panel no existe el grupo «DEL USUARIO»: va suelto en el menú. */
     protected static string|UnitEnum|null $navigationGroup = null;
+
+    /** Primero en la barra superior, antes de las páginas del panel corporativo (1–6). */
+    protected static ?int $navigationSort = 0;
 }

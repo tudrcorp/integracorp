@@ -8,6 +8,8 @@ use App\Support\Metrics\Corporate\CorporateFinanceMetrics;
 
 class ReceivablesByAgencyRanking extends CorporateRanking
 {
+    protected int|string|array $columnSpan = ['default' => 'full', 'xl' => 6];
+
     public function getHeading(): string
     {
         return 'Por cobrar por agencia';

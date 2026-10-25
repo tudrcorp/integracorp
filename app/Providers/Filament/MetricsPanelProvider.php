@@ -12,10 +12,12 @@ use App\Filament\Metrics\Pages\Organizacion;
 use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Support\Filament\MetricsPanelNavigationGroups;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -26,6 +28,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Swis\Filament\Backgrounds\FilamentBackgroundsPlugin;
 use Swis\Filament\Backgrounds\ImageProviders\MyImages;
@@ -46,7 +49,17 @@ class MetricsPanelProvider extends PanelProvider
                 'primary' => Color::Teal,
             ])
             ->navigationGroups(MetricsPanelNavigationGroups::definitions())
-            ->sidebarCollapsibleOnDesktop()
+            /** Sin barra de módulos: el regreso a Negocios va como primer elemento del menú, en ámbar. */
+            ->navigationItems([
+                NavigationItem::make('Volver a Negocios')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->url(fn (): string => route('filament.business.pages.dashboard'))
+                    ->visible(fn (): bool => (bool) Auth::user()?->canAccessPanel(Filament::getPanel('business')))
+                    ->sort(-10)
+                    ->extraAttributes(['class' => 'corp-nav-back']),
+            ])
+            /** Navegación arriba: el panel corporativo se usa a pantalla completa y en presentaciones. */
+            ->topNavigation()
             ->brandLogo(asset('image/logoNewTDG.png'))
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
@@ -58,7 +71,7 @@ class MetricsPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Metrics/Widgets'), for: 'App\Filament\Metrics\Widgets')
-            ->databaseNotifications()
+            /** Sin campana de notificaciones: el panel es de consulta y las notificaciones se atienden en los paneles operativos. */
             ->databaseTransactions()
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
@@ -93,8 +106,8 @@ class MetricsPanelProvider extends PanelProvider
                     ->url(route('internal')),
             ])
             ->renderHook(
-                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-                fn () => view('filament.panels.internal-quick-nav')
+                PanelsRenderHook::HEAD_END,
+                fn () => view('filament.metrics.corporate.topbar-styles')
             )
             /** Panel corporativo: tokens de color, transiciones y modo presentación del Dashboard de Operaciones. */
             ->renderHook(
