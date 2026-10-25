@@ -26,4 +26,13 @@ class ViajesCluster extends Cluster
     protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
     protected static ?string $clusterBreadcrumb = 'Viajes';
+
+    /**
+     * Página antigua (integracorp-api): oculta del menú mientras se valida el
+     * panel corporativo, que lee la base de datos. Sigue abriendo por URL.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 }

@@ -4,6 +4,8 @@ namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Filament\Operations\Pages\Dashboard;
+use App\Filament\Operations\Pages\DashboardOperaciones;
+use App\Filament\Operations\Pages\DashboardProveedor;
 use App\Filament\Operations\Widgets\AffiliationChart;
 use App\Filament\Operations\Widgets\StatsOverview;
 use App\Filament\Operations\Widgets\StatsOverviewPlan;
@@ -138,6 +140,18 @@ class OperationsPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn () => view('filament.operations.hooks.case-follow-up-chat-panel')
+            )
+            /** Dashboard de Operaciones: tokens de color, animaciones y modo presentación. */
+            ->renderHook(
+                PanelsRenderHook::PAGE_START,
+                fn () => view('filament.operations.dashboard.page-start', ['branding' => true]),
+                scopes: DashboardOperaciones::class,
+            )
+            /** Dashboard del Proveedor: mismo concepto, sin la barra de TDG en presentación. */
+            ->renderHook(
+                PanelsRenderHook::PAGE_START,
+                fn () => view('filament.operations.dashboard.page-start', ['branding' => false]),
+                scopes: DashboardProveedor::class,
             )
             ->defaultThemeMode(ThemeMode::Light)
             ->viteTheme('resources/css/filament/admin/theme.css');

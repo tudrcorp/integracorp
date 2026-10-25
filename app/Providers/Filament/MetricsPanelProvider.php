@@ -3,8 +3,12 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Filament\Metrics\Pages\Cartera;
+use App\Filament\Metrics\Pages\Comercial;
 use App\Filament\Metrics\Pages\Dashboard;
-use App\Filament\Metrics\Widgets\VenezuelaActivityMapWidget;
+use App\Filament\Metrics\Pages\Finanzas;
+use App\Filament\Metrics\Pages\OperacionesYSalud;
+use App\Filament\Metrics\Pages\Organizacion;
 use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Support\Filament\MetricsPanelNavigationGroups;
 use Filament\Actions\Action;
@@ -54,9 +58,6 @@ class MetricsPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Metrics/Widgets'), for: 'App\Filament\Metrics\Widgets')
-            ->widgets([
-                VenezuelaActivityMapWidget::class,
-            ])
             ->databaseNotifications()
             ->databaseTransactions()
             ->breadcrumbs(false)
@@ -94,6 +95,12 @@ class MetricsPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn () => view('filament.panels.internal-quick-nav')
+            )
+            /** Panel corporativo: tokens de color, transiciones y modo presentación del Dashboard de Operaciones. */
+            ->renderHook(
+                PanelsRenderHook::PAGE_START,
+                fn () => view('filament.operations.dashboard.page-start', ['branding' => true, 'brandingLabel' => 'Panel corporativo · Toma de decisiones']),
+                scopes: [Dashboard::class, Finanzas::class, Comercial::class, Cartera::class, OperacionesYSalud::class, Organizacion::class],
             );
     }
 }

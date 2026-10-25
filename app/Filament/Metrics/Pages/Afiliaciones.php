@@ -87,4 +87,13 @@ class Afiliaciones extends Page
     {
         return 'Cuántos afiliados individuales y corporativos se registran cada mes, y cómo va el año.';
     }
+
+    /**
+     * Página antigua (integracorp-api): oculta del menú mientras se valida el
+     * panel corporativo, que lee la base de datos. Sigue abriendo por URL.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 }

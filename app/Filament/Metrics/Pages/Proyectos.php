@@ -42,4 +42,13 @@ class Proyectos extends Page
     {
         return 'Avance, burndown, carga de equipos y salud del portafolio.';
     }
+
+    /**
+     * Página antigua (integracorp-api): oculta del menú mientras se valida el
+     * panel corporativo, que lee la base de datos. Sigue abriendo por URL.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 }

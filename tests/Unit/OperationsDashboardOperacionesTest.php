@@ -12,13 +12,20 @@ it('registra la página Dashboard Operaciones con sus widgets', function (): voi
         ->and(is_subclass_of(DashboardOperaciones::class, Dashboard::class))->toBeTrue()
         ->and($page)->toContain("protected static ?string \$navigationLabel = 'Dashboard Operaciones'")
         ->and($page)->toContain("protected static string \$routePath = 'dashboard-operaciones'")
-        ->and($page)->toContain('OperationsDashboardStatsOverview::class')
-        ->and($page)->toContain('TopPatientsMedicalDischargeChart::class')
-        ->and($page)->toContain('FinishedServicesMonthlyChart::class')
-        ->and($page)->toContain('ServicesByStatusChart::class')
-        ->and($page)->toContain('ServicesByBusinessLineChart::class')
-        ->and($page)->toContain('ServicesByServiceTypeChart::class')
-        ->and($page)->toContain("'lg' => 3");
+        // Rediseño del 24/10/2026: período común, comparación y modo presentación.
+        ->and($page)->toContain('use HasOperationsDashboardFilters;')
+        ->and($page)->toContain('OperationsKpiTiles::class')
+        ->and($page)->toContain('OperationsServicesTrendChart::class')
+        ->and($page)->toContain('OperationsServicesStatusChart::class')
+        ->and($page)->toContain('OperationsServiceTypeChart::class')
+        ->and($page)->toContain('OperationsBusinessLineSplit::class')
+        ->and($page)->toContain('OperationsStateRanking::class')
+        ->and($page)->toContain('OperationsWorkloadHeatmap::class')
+        ->and($page)->toContain('OperationsAgeChart::class')
+        ->and($page)->toContain('OperationsTopServicesRanking::class')
+        ->and($page)->toContain('OperationsTopPatientsRanking::class')
+        ->and($page)->toContain('OperationsDashboardDetail::class')
+        ->and($page)->toContain("'xl' => 12");
 });
 
 it('widget de pacientes atendidos soporta drill-down por paciente', function (): void {

@@ -123,7 +123,8 @@ it('registra el widget del mapa en el panel Metrics y expone la UI clave', funct
     $apiRoutes = file_get_contents(dirname(__DIR__, 2).'/../../integracorp-api/src/routes/metrics.routes.js');
 
     expect(VenezuelaActivityMapWidget::class)->toBeString()
-        ->and($provider)->toContain('VenezuelaActivityMapWidget::class')
+        /** El inicio ahora es el panel corporativo (lee la base de datos): el widget de la API queda fuera del panel. */
+        ->and($provider)->not->toContain('VenezuelaActivityMapWidget::class')
         ->and($provider)->not->toContain('WelcomeUserLiquidGlassWidget::class')
         ->and($widget)->toContain("protected string \$view = 'filament.metrics.widgets.venezuela-activity-map'")
         ->and($widget)->toContain("columnSpan = 'full'")

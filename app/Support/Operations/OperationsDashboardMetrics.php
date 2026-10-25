@@ -419,7 +419,7 @@ final class OperationsDashboardMetrics
         return $counts;
     }
 
-    private static function patientKeySql(): string
+    public static function patientKeySql(): string
     {
         return "CASE
             WHEN TRIM(COALESCE(patient_document, '')) <> '' THEN TRIM(patient_document)

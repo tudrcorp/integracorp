@@ -112,12 +112,17 @@ use App\Filament\Metrics\Clusters\Negocios\CorretajeCluster;
 use App\Filament\Metrics\Clusters\Negocios\ViajesCluster;
 use App\Filament\Metrics\Pages\Administracion as MetricsAdministracion;
 use App\Filament\Metrics\Pages\Afiliaciones as MetricsAfiliaciones;
+use App\Filament\Metrics\Pages\Cartera as MetricsCartera;
+use App\Filament\Metrics\Pages\Comercial as MetricsComercial;
 use App\Filament\Metrics\Pages\Cotizaciones as MetricsCotizaciones;
+use App\Filament\Metrics\Pages\Finanzas as MetricsFinanzas;
 use App\Filament\Metrics\Pages\Negocios\Corretaje\CorretajeAgencies;
 use App\Filament\Metrics\Pages\Negocios\Corretaje\CorretajeAgents;
 use App\Filament\Metrics\Pages\Negocios\Viajes\ViajesAgencies;
 use App\Filament\Metrics\Pages\Negocios\Viajes\ViajesAgents;
 use App\Filament\Metrics\Pages\Operaciones as MetricsOperaciones;
+use App\Filament\Metrics\Pages\OperacionesYSalud as MetricsOperacionesYSalud;
+use App\Filament\Metrics\Pages\Organizacion as MetricsOrganizacion;
 use App\Filament\Metrics\Pages\Proveedores as MetricsProveedores;
 use App\Filament\Metrics\Pages\Proyectos as MetricsProyectos;
 use App\Filament\Operations\Pages\AgendaCorporativa as OperationsAgendaCorporativa;
@@ -376,6 +381,11 @@ final class DepartmentNavigationPermissionRegistry
         MetricsProveedores::class => ['metricas-proveedores'],
         MetricsOperaciones::class => ['metricas-operaciones'],
         MetricsProyectos::class => ['metricas-proyectos'],
+        MetricsFinanzas::class => ['metricas-finanzas'],
+        MetricsComercial::class => ['metricas-comercial'],
+        MetricsCartera::class => ['metricas-cartera'],
+        MetricsOperacionesYSalud::class => ['metricas-operaciones-y-salud'],
+        MetricsOrganizacion::class => ['metricas-organizacion'],
     ];
 
     /**
