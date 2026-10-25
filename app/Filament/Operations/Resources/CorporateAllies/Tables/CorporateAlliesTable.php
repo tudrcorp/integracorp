@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\CorporateAllies\Tables;
 
+use App\Filament\Operations\Resources\CorporateAllies\CorporateAllyResource;
 use App\Models\City;
 use App\Models\CorporateAlly;
 use App\Models\State;
+use App\Support\Operations\ProviderDeletion;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -21,6 +24,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 
 class CorporateAlliesTable
@@ -218,6 +222,7 @@ class CorporateAlliesTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                ProviderDeletion::makeDeletedFilter(),
                 SelectFilter::make('supplier_category')
                     ->label('Categoría proveedor')
                     ->options(fn (): array => CorporateAlly::query()
@@ -318,19 +323,33 @@ class CorporateAlliesTable
                     ->label('Filtros')
                     ->icon('heroicon-o-funnel'),
             )
+            /** Un aliado eliminado no tiene ficha: en esa vista la fila no navega. */
+            ->recordUrl(fn (Model $record, mixed $livewire): ?string => ProviderDeletion::viewingDeleted($livewire)
+                ? null
+                : CorporateAllyResource::getUrl('view', ['record' => $record]))
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make()
                         ->label('Ver')
-                        ->icon('heroicon-o-eye'),
+                        ->icon('heroicon-o-eye')
+                        ->hidden(fn (mixed $livewire): bool => ProviderDeletion::viewingDeleted($livewire)),
                     EditAction::make()
                         ->label('Editar')
-                        ->icon('heroicon-o-pencil-square'),
+                        ->icon('heroicon-o-pencil-square')
+                        ->hidden(fn (mixed $livewire): bool => ProviderDeletion::viewingDeleted($livewire)),
+                    ProviderDeletion::makeDeleteAction(ProviderDeletion::TYPE_CORPORATE_ALLY),
+                    ProviderDeletion::makeRestoreAction(ProviderDeletion::TYPE_CORPORATE_ALLY),
                 ])
                     ->label('Acciones')
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->button()
                     ->color('gray'),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    ProviderDeletion::makeDeleteBulkAction(ProviderDeletion::TYPE_CORPORATE_ALLY),
+                    ProviderDeletion::makeRestoreBulkAction(ProviderDeletion::TYPE_CORPORATE_ALLY),
+                ]),
             ])
             ->emptyStateHeading('Sin aliados corporativos')
             ->emptyStateDescription('Cree un aliado o relaje los filtros y la búsqueda para ver resultados.')

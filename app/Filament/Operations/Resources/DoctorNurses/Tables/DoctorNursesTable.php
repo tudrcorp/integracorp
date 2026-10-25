@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\DoctorNurses\Tables;
 
+use App\Filament\Operations\Resources\DoctorNurses\DoctorNurseResource;
 use App\Http\Controllers\DoctorNurseExportCsvController;
 use App\Models\DoctorNurse;
 use App\Models\User;
 use App\Support\Filament\Operations\OutsourcingMedicalDepartmentFields;
+use App\Support\Operations\ProviderDeletion;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -24,6 +25,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 class DoctorNursesTable
@@ -230,6 +232,7 @@ class DoctorNursesTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                ProviderDeletion::makeDeletedFilter(),
                 SelectFilter::make('supplier_clasificacion_id')
                     ->label('Clasificación')
                     ->relationship('supplierClasificacion', 'description')
@@ -348,13 +351,21 @@ class DoctorNursesTable
                     ->label('Filtros')
                     ->icon('heroicon-o-funnel'),
             )
+            /** Un proveedor eliminado no tiene ficha: en esa vista la fila no navega. */
+            ->recordUrl(fn (Model $record, mixed $livewire): ?string => ProviderDeletion::viewingDeleted($livewire)
+                ? null
+                : DoctorNurseResource::getUrl('view', ['record' => $record]))
             ->recordActions([
                 ViewAction::make()
                     ->label('Ver')
-                    ->icon('heroicon-o-eye'),
+                    ->icon('heroicon-o-eye')
+                    ->hidden(fn (mixed $livewire): bool => ProviderDeletion::viewingDeleted($livewire)),
                 EditAction::make()
                     ->label('Editar')
-                    ->icon('heroicon-o-pencil-square'),
+                    ->icon('heroicon-o-pencil-square')
+                    ->hidden(fn (mixed $livewire): bool => ProviderDeletion::viewingDeleted($livewire)),
+                ProviderDeletion::makeDeleteAction(ProviderDeletion::TYPE_DOCTOR_NURSE),
+                ProviderDeletion::makeRestoreAction(ProviderDeletion::TYPE_DOCTOR_NURSE),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -378,14 +389,8 @@ class DoctorNursesTable
 
                             return redirect()->route('operations.doctor-nurses.export-csv', ['token' => $token]);
                         }),
-                    DeleteBulkAction::make()
-                        ->label('Eliminar')
-                        ->icon('heroicon-s-trash')
-                        ->requiresConfirmation()
-                        ->modalHeading('Eliminar proveedores naturales')
-                        ->modalDescription('¿Confirma eliminar los registros seleccionados? Esta acción no se puede deshacer.')
-                        ->modalSubmitActionLabel('Eliminar')
-                        ->color('danger'),
+                    ProviderDeletion::makeDeleteBulkAction(ProviderDeletion::TYPE_DOCTOR_NURSE),
+                    ProviderDeletion::makeRestoreBulkAction(ProviderDeletion::TYPE_DOCTOR_NURSE),
                 ]),
             ])
             ->emptyStateHeading('Sin proveedores naturales')

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\TelemedicineCases\Tables;
 
+use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Models\ObservationCase;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicineCase;
@@ -10,6 +11,7 @@ use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\CaseFollowUpChatManager;
+use App\Support\Operations\CoordinationServiceCaseDeletion;
 use App\Support\Telemedicine\TelemedicineCaseCreatedAtChangeAction;
 use App\Support\Telemedicine\TelemedicineCaseIdentity;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
@@ -153,8 +155,12 @@ class TelemedicineCasesTable
             ])
             ->recordClasses(fn ($record): array => [TelemedicinePriorityFilamentBadge::recordRowClasses($record->priority?->name)])
             ->filters([
-                //
+                CoordinationServiceCaseDeletion::makeDeletedCasesFilter(),
             ])
+            /** Un caso eliminado no tiene ficha: en esa vista la fila no navega. */
+            ->recordUrl(fn (TelemedicineCase $record, mixed $livewire): ?string => CoordinationServiceCaseDeletion::viewingDeletedTab($livewire)
+                ? null
+                : TelemedicineCaseResource::getUrl('view', ['record' => $record]))
             ->recordActions([
                 Action::make('openCaseFollowUpChat')
                     ->label('Chat')
@@ -175,7 +181,8 @@ class TelemedicineCasesTable
                     ViewAction::make()
                         ->label('Ver detalle')
                         ->icon(Heroicon::OutlinedEye)
-                        ->color('primary'),
+                        ->color('primary')
+                        ->hidden(fn (mixed $livewire): bool => CoordinationServiceCaseDeletion::viewingDeletedTab($livewire)),
                     Action::make('openCaseFollowUpChatFromMenu')
                         ->label('Chat de seguimiento')
                         ->icon(Heroicon::OutlinedChatBubbleLeftRight)
@@ -185,7 +192,10 @@ class TelemedicineCasesTable
                         ->action(function (TelemedicineCase $record, $livewire): void {
                             $livewire->dispatch('operations-case-chat-open', caseId: $record->id);
                         }),
-                    TelemedicineCaseCreatedAtChangeAction::make(),
+                    TelemedicineCaseCreatedAtChangeAction::make()
+                        ->hidden(fn (mixed $livewire): bool => CoordinationServiceCaseDeletion::viewingDeletedTab($livewire)),
+                    CoordinationServiceCaseDeletion::makeDeleteRecordAction(),
+                    CoordinationServiceCaseDeletion::makeRestoreRecordAction(),
                 ])
                     ->icon(Heroicon::EllipsisHorizontal)
                     ->tooltip('Acciones del caso')
@@ -319,7 +329,8 @@ class TelemedicineCasesTable
 
                                 throw $th;
                             }
-                        })->hidden(fn (): bool => ! in_array('ATENMEDI', Auth::user()?->departament ?? [], true)),
+                        })->hidden(fn (mixed $livewire): bool => ! in_array('ATENMEDI', Auth::user()?->departament ?? [], true)
+                            || CoordinationServiceCaseDeletion::viewingDeletedTab($livewire)),
                     BulkAction::make('reasignar_doctor')
                         ->label('Reasignar Doctor')
                         ->color('success')
@@ -374,7 +385,10 @@ class TelemedicineCasesTable
                                 throw $th;
                             }
                         })
-                        ->hidden(fn (): bool => in_array('ATENMEDI', Auth::user()?->departament ?? [], true)),
+                        ->hidden(fn (mixed $livewire): bool => in_array('ATENMEDI', Auth::user()?->departament ?? [], true)
+                            || CoordinationServiceCaseDeletion::viewingDeletedTab($livewire)),
+                    CoordinationServiceCaseDeletion::makeDeleteBulkAction(),
+                    CoordinationServiceCaseDeletion::makeRestoreBulkAction(),
                 ]),
             ]);
     }

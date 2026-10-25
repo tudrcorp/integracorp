@@ -20,6 +20,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Filters\Filter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -31,7 +32,8 @@ use InvalidArgumentException;
 use Throwable;
 
 /**
- * Eliminación y restauración de casos desde el cuadro de control de servicios médicos.
+ * Eliminación y restauración de casos desde el cuadro de control de servicios
+ * médicos y desde Gestión de casos (Operaciones).
  *
  * Reemplaza al borrado físico de Filament: el caso pasa a ELIMINADO, se oculta
  * con todas sus trazas y nada se borra de la base de datos. Solo la ve quien
@@ -58,7 +60,7 @@ final class CoordinationServiceCaseDeletion
             ->icon(Heroicon::OutlinedTrash)
             ->color('danger')
             ->visible(fn (mixed $livewire): bool => self::userCanDeleteCases() && ! self::viewingDeletedTab($livewire))
-            ->modalHeading('Eliminar caso de servicios médicos')
+            ->modalHeading('Eliminar caso')
             ->modalDescription(fn (EloquentCollection|Collection $records): HtmlString => self::deletionModalDescription($records))
             ->modalIcon(Heroicon::OutlinedTrash)
             ->modalIconColor('danger')
@@ -91,6 +93,113 @@ final class CoordinationServiceCaseDeletion
                     deleting: true,
                 );
             });
+    }
+
+    /**
+     * «Eliminar caso» de una sola fila en Gestión de casos.
+     */
+    public static function makeDeleteRecordAction(): Action
+    {
+        return Action::make('delete_telemedicine_case_record')
+            ->label('Eliminar caso')
+            ->icon(Heroicon::OutlinedTrash)
+            ->color('danger')
+            ->visible(fn (mixed $livewire, mixed $record): bool => self::userCanDeleteCases()
+                && ! self::viewingDeletedTab($livewire)
+                && $record instanceof TelemedicineCase
+                && ! TelemedicineCaseDeletion::isDeleted($record))
+            ->modalHeading(fn (TelemedicineCase $record): string => 'Eliminar el caso '.$record->code)
+            ->modalDescription(fn (TelemedicineCase $record): HtmlString => self::deletionModalDescription(Collection::make([$record])))
+            ->modalIcon(Heroicon::OutlinedTrash)
+            ->modalIconColor('danger')
+            ->modalWidth(Width::Large)
+            ->modalSubmitActionLabel('Sí, eliminar el caso')
+            ->modalCancelActionLabel('Cancelar')
+            ->closeModalByClickingAway(false)
+            ->modalSubmitAction(fn (Action $action): Action => self::styleButton($action, 'danger'))
+            ->modalCancelAction(fn (Action $action): Action => self::styleButton($action, 'gray'))
+            ->form([self::reasonField('deletion_reason', deleting: true)])
+            ->action(function (TelemedicineCase $record, array $data): void {
+                self::runOverCases(Collection::make([$record]), (string) ($data['deletion_reason'] ?? ''), deleting: true);
+            });
+    }
+
+    /**
+     * «Restaurar caso» de una sola fila, en la vista de eliminados de Gestión de casos.
+     */
+    public static function makeRestoreRecordAction(): Action
+    {
+        return Action::make('restore_telemedicine_case_record')
+            ->label('Restaurar caso')
+            ->icon(Heroicon::OutlinedArrowUturnLeft)
+            ->color('success')
+            ->visible(fn (mixed $record): bool => self::userCanDeleteCases()
+                && $record instanceof TelemedicineCase
+                && TelemedicineCaseDeletion::isDeleted($record))
+            ->modalHeading(fn (TelemedicineCase $record): string => 'Restaurar el caso '.$record->code)
+            ->modalDescription(fn (TelemedicineCase $record): HtmlString => self::restorationModalDescription(Collection::make([$record])))
+            ->modalIcon(Heroicon::OutlinedArrowUturnLeft)
+            ->modalIconColor('success')
+            ->modalWidth(Width::Large)
+            ->modalSubmitActionLabel('Sí, restaurar el caso')
+            ->modalCancelActionLabel('Cancelar')
+            ->closeModalByClickingAway(false)
+            ->modalSubmitAction(fn (Action $action): Action => self::styleButton($action, 'success'))
+            ->modalCancelAction(fn (Action $action): Action => self::styleButton($action, 'gray'))
+            ->form([self::reasonField('restoration_reason', deleting: false)])
+            ->action(function (TelemedicineCase $record, array $data): void {
+                self::runOverCases(Collection::make([$record]), (string) ($data['restoration_reason'] ?? ''), deleting: false);
+            });
+    }
+
+    /**
+     * Interruptor «Ver solo casos eliminados» para la tabla de casos. Comparte la
+     * clave {@see DELETED_TAB} con el cuadro de control, así las acciones saben
+     * en qué vista están.
+     */
+    public static function makeDeletedCasesFilter(): Filter
+    {
+        return Filter::make(self::DELETED_TAB)
+            ->label('Ver solo casos eliminados')
+            ->toggle()
+            ->columnSpanFull()
+            ->visible(fn (): bool => self::userCanDeleteCases())
+            ->baseQuery(fn (Builder $query, array $data): Builder => ($data['isActive'] ?? false) === true
+                ? self::applyDeletedCaseRowsScope($query)
+                : $query);
+    }
+
+    /**
+     * Casos eliminados para la tabla de casos: retira el scope que los oculta y
+     * deja solo esos.
+     *
+     * @param  Builder<TelemedicineCase>  $query
+     * @return Builder<TelemedicineCase>
+     */
+    public static function applyDeletedCaseRowsScope(Builder $query): Builder
+    {
+        return $query
+            ->withoutGlobalScope(HideDeletedTelemedicineCasesScope::class)
+            ->where('telemedicine_cases.status', TelemedicineCaseDeletion::STATUS);
+    }
+
+    private static function reasonField(string $name, bool $deleting): Textarea
+    {
+        return Textarea::make($name)
+            ->label($deleting ? 'Motivo de la eliminación' : 'Motivo de la restauración')
+            ->placeholder($deleting
+                ? 'Explique por qué se elimina el caso (ej.: caso duplicado, registrado por error, paciente equivocado…)'
+                : 'Explique por qué se restaura el caso (ej.: eliminado por error, el paciente sí corresponde…)')
+            ->helperText('Campo obligatorio. Mínimo 10 caracteres. Queda en la bitácora del caso y en el log de seguridad.')
+            ->required()
+            ->minLength(10)
+            ->maxLength(5000)
+            ->rows(5)
+            ->columnSpanFull()
+            ->validationMessages([
+                'required' => $deleting ? 'Debe indicar el motivo de la eliminación.' : 'Debe indicar el motivo de la restauración.',
+                'minLength' => 'El motivo debe tener al menos 10 caracteres.',
+            ]);
     }
 
     public static function makeRestoreBulkAction(): BulkAction
@@ -138,9 +247,11 @@ final class CoordinationServiceCaseDeletion
     /**
      * Casos distintos detrás de los servicios seleccionados.
      *
-     * La tabla lista servicios, no casos: seleccionar dos filas del mismo caso
-     * debe eliminarlo una sola vez. El scope que oculta los eliminados se retira
-     * aquí a propósito, porque la restauración trabaja justamente sobre ellos.
+     * El cuadro de control lista servicios, no casos: seleccionar dos filas del
+     * mismo caso debe eliminarlo una sola vez. Gestión de casos entrega casos
+     * directamente. El scope que oculta los eliminados se retira aquí a
+     * propósito, porque la restauración trabaja justamente sobre ellos; y se
+     * relee de la base para no actuar sobre un estatus desactualizado.
      *
      * @param  EloquentCollection<int, mixed>|Collection<int, mixed>  $records
      * @return Collection<int, TelemedicineCase>
@@ -148,10 +259,11 @@ final class CoordinationServiceCaseDeletion
     public static function casesFromRecords(EloquentCollection|Collection $records): Collection
     {
         $caseIds = Collection::make($records)
-            ->filter(fn (mixed $record): bool => $record instanceof OperationCoordinationService)
-            ->map(fn (OperationCoordinationService $service): ?int => filled($service->telemedicine_case_id)
-                ? (int) $service->telemedicine_case_id
-                : null)
+            ->map(fn (mixed $record): ?int => match (true) {
+                $record instanceof TelemedicineCase => (int) $record->getKey(),
+                $record instanceof OperationCoordinationService && filled($record->telemedicine_case_id) => (int) $record->telemedicine_case_id,
+                default => null,
+            })
             ->filter()
             ->unique()
             ->values();
@@ -199,12 +311,18 @@ final class CoordinationServiceCaseDeletion
         $processed = 0;
         /** @var list<string> $skipped */
         $skipped = [];
+        /** @var list<string> $quotaWarnings */
+        $quotaWarnings = [];
 
         foreach ($cases as $case) {
             try {
-                $deleting
+                $result = $deleting
                     ? $service->delete($case, $reason)
                     : $service->restore($case, $reason);
+
+                foreach ((array) ($result['quota_warnings'] ?? []) as $warning) {
+                    $quotaWarnings[] = (string) $warning;
+                }
 
                 $processed++;
             } catch (InvalidArgumentException $exception) {
@@ -235,6 +353,15 @@ final class CoordinationServiceCaseDeletion
         }
 
         self::notifyResult($processed, $skipped, $deleting);
+
+        if ($quotaWarnings !== []) {
+            Notification::make()
+                ->title('Revise el cupo clínico')
+                ->body('El caso se restauró y sus cupos se volvieron a descontar, pero: '.implode(' ', $quotaWarnings))
+                ->warning()
+                ->persistent()
+                ->send();
+        }
     }
 
     /**
@@ -261,8 +388,8 @@ final class CoordinationServiceCaseDeletion
                 ? 'El caso quedó en estatus ELIMINADO y sus trazas ya no se muestran. Nada se borró de la base de datos.'
                 : "Se eliminaron {$processed} casos. Quedaron en estatus ELIMINADO y sus trazas ya no se muestran.")
             : ($processed === 1
-                ? 'El caso volvió a su estatus anterior y sus trazas son visibles de nuevo.'
-                : "Se restauraron {$processed} casos con su estatus anterior.");
+                ? 'El caso volvió a su estatus anterior, sus trazas son visibles de nuevo y sus cupos clínicos se volvieron a descontar.'
+                : "Se restauraron {$processed} casos con su estatus anterior y sus cupos clínicos.");
 
         if ($skipped !== []) {
             $body .= ' No se procesaron: '.implode(' ', $skipped);
@@ -331,7 +458,7 @@ final class CoordinationServiceCaseDeletion
         return new HtmlString(
             '<div class="space-y-3 text-sm text-gray-600 dark:text-gray-300">'
             .'<p>El caso pasará a estatus <span class="font-semibold text-gray-900 dark:text-white">ELIMINADO</span> y dejará de verse en todo el sistema junto con sus servicios, órdenes, consultas, documentos y bitácora. '
-            .'<span class="font-semibold text-gray-900 dark:text-white">Ningún registro se borra de la base de datos</span>: el caso puede restaurarse desde la pestaña ELIMINADOS.</p>'
+            .'<span class="font-semibold text-gray-900 dark:text-white">Ningún registro se borra de la base de datos</span>: el caso puede restaurarse activando «Ver solo casos eliminados».</p>'
             .'<p>Los cupos clínicos consumidos por este caso se devuelven al afiliado. Los movimientos de inventario no se revierten: la salida física ya ocurrió.</p>'
             .'<ul class="list-disc space-y-2 ps-5">'.implode('', $rows).'</ul>'
             .'</div>'
@@ -371,7 +498,7 @@ final class CoordinationServiceCaseDeletion
         return new HtmlString(
             '<div class="space-y-3 text-sm text-gray-600 dark:text-gray-300">'
             .'<p>El caso volverá a su estatus anterior y sus trazas serán visibles de nuevo en todos los paneles.</p>'
-            .'<p>Los cupos clínicos que se devolvieron al eliminar <span class="font-semibold text-gray-900 dark:text-white">no se vuelven a descontar</span> automáticamente: si corresponde, verifíquelos con el equipo clínico.</p>'
+            .'<p>Los cupos clínicos que se devolvieron al eliminar <span class="font-semibold text-gray-900 dark:text-white">se vuelven a descontar</span>. Si el afiliado ya usó ese cupo en otro caso, el caso se restaura igual y se le avisa que el beneficio quedó por encima del tope.</p>'
             .'<ul class="list-disc space-y-2 ps-5">'.implode('', $rows).'</ul>'
             .'</div>'
         );

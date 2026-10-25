@@ -4,8 +4,8 @@ namespace App\Filament\Operations\Resources\DoctorNurses\Pages;
 
 use App\Filament\Operations\Resources\DoctorNurses\DoctorNurseResource;
 use App\Models\DoctorNurse;
+use App\Support\Operations\ProviderDeletion;
 use App\Support\SecurityAudit;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -72,18 +72,17 @@ class EditDoctorNurse extends EditRecord
                 ->extraAttributes([
                     'class' => self::TICKET_BUTTON_GRAY_CLASS,
                 ]),
-            DeleteAction::make()
+            /** Eliminación reversible, con la misma validación de servicios que la tabla. */
+            ProviderDeletion::makeDeleteAction(ProviderDeletion::TYPE_DOCTOR_NURSE)
                 ->label('Eliminar Proveedor Natural')
-                ->requiresConfirmation()
-                ->modalHeading('Eliminar Proveedor Natural')
-                ->modalDescription('¿Está seguro de que desea eliminar este proveedor natural?')
-                ->modalSubmitActionLabel('Eliminar')
-                ->modalCancelActionLabel('Cancelar')
-                ->color('danger')
-                ->icon('heroicon-o-trash')
                 ->extraAttributes([
                     'class' => self::TICKET_BUTTON_DANGER_CLASS,
-                ]),
+                ])
+                ->after(function (DoctorNurse $record): void {
+                    if (DoctorNurse::query()->whereKey($record->getKey())->doesntExist()) {
+                        $this->redirect(DoctorNurseResource::getUrl('index'));
+                    }
+                }),
         ];
     }
 

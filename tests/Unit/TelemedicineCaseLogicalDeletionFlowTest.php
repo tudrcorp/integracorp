@@ -168,3 +168,131 @@ it('agrupa por caso los servicios seleccionados y encuentra los eliminados', fun
         ->toContain($service->id)
         ->toContain($segundoServicio->id);
 });
+
+/**
+ * Consumo de cupo clínico de prueba para el caso.
+ */
+function crearConsumoDeCupo(TelemedicineCase $case, string $status = 'CONSUMED'): App\Models\AffiliateClinicalServiceUsage
+{
+    return App\Models\AffiliateClinicalServiceUsage::query()->create([
+        'telemedicine_patient_id' => $case->telemedicine_patient_id,
+        'nro_identificacion' => 'V-00000000',
+        'benefit_id' => 1,
+        'channel' => 'MEDICATION',
+        'telemedicine_case_id' => $case->id,
+        'status' => $status,
+        'is_override' => false,
+        'window_starts_at' => now()->subMonth(),
+        'window_ends_at' => now()->addMonths(11),
+    ]);
+}
+
+it('al restaurar vuelve a descontar exactamente los cupos que devolvió la eliminación', function (): void {
+    ['case' => $case] = crearCasoConServicio();
+    $consumo1 = crearConsumoDeCupo($case);
+    $consumo2 = crearConsumoDeCupo($case);
+    $revertidoAntes = crearConsumoDeCupo($case, 'REVERSED');
+
+    $deletion = app(TelemedicineCaseLogicalDeletionService::class);
+    $deletion->delete($case, 'Caso duplicado para probar el punto de restauración de cupos');
+
+    $eliminado = TelemedicineCaseLogicalDeletionService::findIncludingDeleted((int) $case->id);
+
+    expect($eliminado->deletion_reversed_usage_ids)->toEqualCanonicalizing([$consumo1->id, $consumo2->id])
+        ->and($consumo1->fresh()->status)->toBe('REVERSED')
+        ->and($consumo2->fresh()->status)->toBe('REVERSED');
+
+    $resultado = $deletion->restore($eliminado, 'La eliminación fue un error, el caso es real');
+
+    expect($resultado['reconsumed_usages'])->toBe(2)
+        ->and($resultado['quota_warnings'])->toBe([])
+        ->and($consumo1->fresh()->status)->toBe('CONSUMED')
+        ->and($consumo2->fresh()->status)->toBe('CONSUMED')
+        ->and($revertidoAntes->fresh()->status)->toBe('REVERSED')
+        ->and(TelemedicineCase::query()->find($case->id)->deletion_reversed_usage_ids)->toBeNull();
+});
+
+it('no descuenta dos veces un cupo que ya se volvió a consumir por otra vía', function (): void {
+    ['case' => $case] = crearCasoConServicio();
+    $consumo1 = crearConsumoDeCupo($case);
+    $consumo2 = crearConsumoDeCupo($case);
+
+    $deletion = app(TelemedicineCaseLogicalDeletionService::class);
+    $deletion->delete($case, 'Eliminado para probar la doble restauración');
+    App\Models\AffiliateClinicalServiceUsage::query()->whereKey($consumo1->id)->update(['status' => 'CONSUMED']);
+
+    $resultado = $deletion->restore(
+        TelemedicineCaseLogicalDeletionService::findIncludingDeleted((int) $case->id),
+        'Restaurado para comprobar que no se duplica',
+    );
+
+    expect($resultado['reconsumed_usages'])->toBe(1)
+        ->and($consumo2->fresh()->status)->toBe('CONSUMED');
+});
+
+it('un caso eliminado antes del punto de restauración de cupos se restaura con aviso', function (): void {
+    ['case' => $case] = crearCasoConServicio();
+    $consumo = crearConsumoDeCupo($case, 'REVERSED');
+
+    $case->forceFill([
+        'deletion_status_before' => 'EN SEGUIMIENTO',
+        'status' => TelemedicineCaseDeletion::STATUS,
+        'deletion_reason' => 'Eliminado con la versión anterior',
+        'deleted_by_name' => 'QA',
+        'logically_deleted_at' => now(),
+        'deletion_reversed_usage_ids' => null,
+    ])->save();
+
+    $resultado = app(TelemedicineCaseLogicalDeletionService::class)->restore(
+        TelemedicineCaseLogicalDeletionService::findIncludingDeleted((int) $case->id),
+        'Restaurado desde la versión anterior',
+    );
+
+    expect($resultado['reconsumed_usages'])->toBe(0)
+        ->and($resultado['quota_warnings'][0])->toContain('no se volvieron a descontar')
+        ->and($consumo->fresh()->status)->toBe('REVERSED')
+        ->and(TelemedicineCase::query()->find($case->id)?->status)->toBe('EN SEGUIMIENTO');
+});
+
+it('Gestión de casos entrega casos directamente y su vista de eliminados los encuentra', function (): void {
+    ['case' => $case] = crearCasoConServicio();
+    ['case' => $otro] = crearCasoConServicio();
+
+    $casos = CoordinationServiceCaseDeletion::casesFromRecords(collect([$case, $otro, $case, 'basura']));
+
+    expect($casos->pluck('id')->map(fn ($id) => (int) $id)->all())->toEqualCanonicalizing([(int) $case->id, (int) $otro->id]);
+
+    app(TelemedicineCaseLogicalDeletionService::class)->delete($case, 'Eliminado para la vista de casos eliminados');
+
+    $eliminados = CoordinationServiceCaseDeletion::applyDeletedCaseRowsScope(TelemedicineCase::query())->pluck('id')->all();
+
+    expect($eliminados)->toContain($case->id)
+        ->not->toContain($otro->id)
+        ->and(CoordinationServiceCaseDeletion::casesFromRecords(collect([$case]))->first()?->status)->toBe(TelemedicineCaseDeletion::STATUS);
+});
+
+it('avisa qué beneficio quedó por encima del tope al restaurar', function (): void {
+    $entitlement = fn (int $benefitId, ?int $quota, int $used): App\Support\ClinicalEntitlements\ClinicalEntitlement => new App\Support\ClinicalEntitlements\ClinicalEntitlement(
+        benefitId: $benefitId,
+        benefitLabel: 'BENEFICIO '.$benefitId,
+        channel: App\Enums\ClinicalServiceChannel::Medication,
+        telemedicineServiceListId: null,
+        telemedicineServiceListName: null,
+        quotaScope: $quota === null ? App\Enums\ClinicalQuotaScope::Unlimited : App\Enums\ClinicalQuotaScope::PerAffiliationYear,
+        quota: $quota,
+        used: $used,
+        remaining: $quota === null ? null : max(0, $quota - $used),
+        exhausted: $quota !== null && $used >= $quota,
+    );
+
+    $snapshot = new App\Support\ClinicalEntitlements\ClinicalEntitlementSnapshot(
+        hasPlan: true,
+        isComplete: true,
+        missingBenefitLabels: [],
+        entitlements: [$entitlement(1, 4, 5), $entitlement(2, 4, 4), $entitlement(3, null, 9)],
+        blockingMessage: '',
+    );
+
+    expect(TelemedicineCaseLogicalDeletionService::exceededQuotaMessages($snapshot, [1, 2, 3, 99, 1], 'QA-1'))
+        ->toBe(['Caso QA-1 · BENEFICIO 1: quedó con 5 de 4 usos (1 por encima del tope).']);
+});

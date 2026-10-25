@@ -19,6 +19,7 @@ use App\Jobs\GeneratePdfLaboratorio;
 use App\Jobs\GeneratePdfMedicamentos;
 use App\Jobs\SendTelemedicineConsultationDocuments;
 use App\Models\ClinicalServiceOverrideChallenge;
+use App\Models\ObservationCase;
 use App\Models\OperationCoordinationService;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicineConsultationPatient;
@@ -54,6 +55,7 @@ use App\Support\Telemedicine\TelemedicineCaseAttachmentRegistrar;
 use App\Support\Telemedicine\TelemedicineCaseDischargeGuard;
 use App\Support\Telemedicine\TelemedicineCaseDocumentRegenerationService;
 use App\Support\Telemedicine\TelemedicineCaseTdgReassignmentCoordination;
+use App\Support\Telemedicine\TelemedicineConsultationFormErrors;
 use App\Support\Telemedicine\TelemedicineConsultationReference;
 use App\Support\Telemedicine\TelemedicineConsultationSigningDoctor;
 use App\Support\Telemedicine\TelemedicineFollowUpReportDocument;
@@ -978,9 +980,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
         $data = TelemedicinePatientIdentity::enforceConsultationIdentity($data, $patient);
 
         if (isset($data['feedbackOne']) && $data['feedbackOne'] == true) {
-            $caseId = (int) ($data['telemedicine_case_id'] ?? 0);
-            TelemedicineCaseDischargeGuard::assertCanBeDischarged($caseId);
-
+            /** El alta ya no se bloquea por servicios abiertos: quedan como están (ver afterCreate). */
             $consult = TelemedicineConsultationPatient::where('telemedicine_case_id', $data['telemedicine_case_id'])->latest()->first();
             $data['telemedicine_service_list_id'] = $consult->telemedicine_service_list_drift_id;
         }
@@ -1002,17 +1002,44 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
         ]);
 
         if (! ($data['feedbackOne'] ?? false)) {
-            ClinicalConsultationConsumption::assertCanSave(
+            $overrides = $this->resolvedClinicalOverrides();
+            $caseId = $this->case?->id;
+
+            $this->runBusinessCheckVisibly(static fn () => ClinicalConsultationConsumption::assertCanSave(
                 $patient,
                 $data,
-                $this->case?->id,
-                $this->resolvedClinicalOverrides(),
-            );
+                $caseId,
+                $overrides,
+            ));
         }
 
         $data = $this->attachLabImagingResultDocuments($data);
 
         return TelemedicineInitialDiagnosisUpdater::mergeIntoConsultationFormData($data);
+    }
+
+    /**
+     * Corre una regla de negocio del guardado y, si la frena, se asegura de que
+     * el médico lo vea: el error va al campo del formulario (`data.…`) y además
+     * como aviso, porque el campo puede estar en otro paso del asistente. Ver
+     * {@see TelemedicineConsultationFormErrors}.
+     *
+     * @param  callable(): mixed  $check
+     */
+    private function runBusinessCheckVisibly(callable $check): void
+    {
+        try {
+            $check();
+        } catch (ValidationException $exception) {
+            Notification::make()
+                ->title('No se pudo registrar la consulta')
+                ->body(TelemedicineConsultationFormErrors::summary($exception))
+                ->danger()
+                ->persistent()
+                ->send();
+
+            throw TelemedicineConsultationFormErrors::visible($exception);
+        }
     }
 
     /**
@@ -1696,38 +1723,39 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                     if (isset($feedbackOne) && $feedbackOne == true) {
                         $caseId = (int) $record['telemedicine_case_id'];
 
-                        if (! TelemedicineCaseDischargeGuard::caseCanBeDischarged($caseId)) {
-                            Notification::make()
-                                ->title('Alta médica bloqueada')
-                                ->body(TelemedicineCaseDischargeGuard::blockingMessage($caseId))
-                                ->danger()
-                                ->send();
+                        /**
+                         * El alta se da aunque haya servicios en PENDIENTE o EN GESTIÓN:
+                         * quedan como están y Operaciones los sigue gestionando. Solo se
+                         * deja constancia en la bitácora del caso.
+                         */
+                        $openServicesCount = TelemedicineCaseDischargeGuard::openAssociatedServicesCount($caseId);
 
-                            $case = TelemedicineCase::where('id', $caseId)->first();
-                            $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
-                            $case->updated_at = now();
-                            TelemedicineMedicalTeam::applyUpdatingDoctor($case, (int) $record['telemedicine_doctor_id']);
-                            $case->status = 'EN SEGUIMIENTO';
-                            $case->save();
+                        // Actualizamos la informacion en la tabla de casos
+                        $case = TelemedicineCase::where('id', $caseId)->first();
+                        $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
+                        $case->updated_at = now();
+                        TelemedicineMedicalTeam::applyUpdatingDoctor($case, (int) $record['telemedicine_doctor_id']);
+                        $case->status = 'ALTA MEDICA';
+                        $case->save();
 
-                            session()->forget('feedbackOne');
-                        } else {
-                            // Actualizamos la informacion en la tabla de casos
-                            $case = TelemedicineCase::where('id', $caseId)->first();
-                            $case->telemedicine_priority_id = isset($record['telemedicine_priority_id']) ? $record['telemedicine_priority_id'] : null;
-                            $case->updated_at = now();
-                            TelemedicineMedicalTeam::applyUpdatingDoctor($case, (int) $record['telemedicine_doctor_id']);
-                            $case->status = 'ALTA MEDICA';
-                            $case->save();
+                        // Actualizamos la informacion en la tabla de consultas
+                        $consult = TelemedicineConsultationPatient::where('telemedicine_case_id', $caseId)->latest()->first();
+                        $consult->updated_at = now();
+                        $consult->status = 'ALTA MEDICA';
+                        $consult->save();
 
-                            // Actualizamos la informacion en la tabla de consultas
-                            $consult = TelemedicineConsultationPatient::where('telemedicine_case_id', $caseId)->latest()->first();
-                            $consult->updated_at = now();
-                            $consult->status = 'ALTA MEDICA';
-                            $consult->save();
-
-                            session()->forget('feedbackOne');
+                        if ($openServicesCount > 0) {
+                            ObservationCase::query()->create([
+                                'telemedicine_case_id' => $caseId,
+                                'description' => TelemedicineCaseDischargeGuard::dischargeBitacoraNote(
+                                    $openServicesCount,
+                                    (string) ($doctor['full_name'] ?? Auth::user()?->name ?? 'SISTEMA'),
+                                ),
+                                'created_by' => Auth::id() !== null ? (string) Auth::id() : 'SISTEMA',
+                            ]);
                         }
+
+                        session()->forget('feedbackOne');
 
                     } else {
                         $case = TelemedicineCase::where('id', $record['telemedicine_case_id'])->first();

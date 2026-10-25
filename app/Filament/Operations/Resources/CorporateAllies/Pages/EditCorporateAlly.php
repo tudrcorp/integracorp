@@ -5,7 +5,7 @@ namespace App\Filament\Operations\Resources\CorporateAllies\Pages;
 use App\Filament\Operations\Resources\CorporateAllies\CorporateAllyResource;
 use App\Models\CorporateAlly;
 use App\Models\Country;
-use Filament\Actions\DeleteAction;
+use App\Support\Operations\ProviderDeletion;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -58,18 +58,17 @@ class EditCorporateAlly extends EditRecord
                 ->extraAttributes([
                     'class' => self::TICKET_BUTTON_GRAY_CLASS,
                 ]),
-            DeleteAction::make()
+            /** Eliminación reversible, con la misma validación de servicios que la tabla. */
+            ProviderDeletion::makeDeleteAction(ProviderDeletion::TYPE_CORPORATE_ALLY)
                 ->label('Eliminar aliado')
-                ->requiresConfirmation()
-                ->modalHeading('Eliminar aliado corporativo')
-                ->modalDescription('¿Está seguro de que desea eliminar este aliado corporativo?')
-                ->modalSubmitActionLabel('Eliminar')
-                ->modalCancelActionLabel('Cancelar')
-                ->color('danger')
-                ->icon('heroicon-o-trash')
                 ->extraAttributes([
                     'class' => self::TICKET_BUTTON_DANGER_CLASS,
-                ]),
+                ])
+                ->after(function (CorporateAlly $record): void {
+                    if (CorporateAlly::query()->whereKey($record->getKey())->doesntExist()) {
+                        $this->redirect(CorporateAllyResource::getUrl('index'));
+                    }
+                }),
         ];
     }
 }

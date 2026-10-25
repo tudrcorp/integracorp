@@ -998,6 +998,7 @@ class NotificationMasiveService
                             BirthdayNotificationRunReport::setCurrentGroup('proveedores');
                             BirthdayNotificationRunReport::setExcludedForDataType('suppliers');
                             $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('suppliers')
+                                ->whereNull('deleted_at')
                                 ->select('id', 'name', 'personal_phone', 'afiliacion_proveedor')
                                 ->get()
                                 ->toArray());
@@ -1771,6 +1772,7 @@ class NotificationMasiveService
                             BirthdayNotificationRunReport::setCurrentGroup('proveedores');
                             BirthdayNotificationRunReport::setExcludedForDataType('suppliers');
                             $data = BirthdayNotificationRunReport::withoutExcludedRecipients(DB::table('suppliers')
+                                ->whereNull('deleted_at')
                                 ->select('id', 'name', 'correo_principal', 'afiliacion_proveedor')
                                 ->get()
                                 ->toArray());

@@ -4,9 +4,16 @@ namespace App\Models;
 
 use App\Support\Operations\OutsourcingMedicalDepartment;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DoctorNurse extends Model
 {
+    /**
+     * Eliminación reversible: oculto en todo el sistema y restaurable. Ver
+     * {@see \App\Support\Operations\ProviderDeletion}.
+     */
+    use SoftDeletes;
+
     // campos fillable state,city,coverage_zone,supplier_clasificacion_id,tipo_clinica,horario,status_convenio,status_sistena,name,rif,razon_social,personal_phone,local_phone,correo_principal,afiliacion_proveedor,ubicacion_principal,convenio_pago,tiempo_credito,created_by,updated_by,speciality
     protected $fillable = [
         'state',

@@ -371,11 +371,9 @@ class TelemedicineConsultationPatientForm
         if ($context->isEditingInitialConsultation()) {
             $countCase = 0;
         }
-        $caseCanBeDischarged = filled($caseId)
-            ? TelemedicineCaseDischargeGuard::caseCanBeDischarged((int) $caseId)
-            : true;
-        $dischargeBlockedMessage = filled($caseId) && ! $caseCanBeDischarged
-            ? TelemedicineCaseDischargeGuard::blockingMessage((int) $caseId)
+        /** El alta no se bloquea por servicios abiertos: solo se avisa (ver TelemedicineCaseDischargeGuard). */
+        $openServicesNotice = filled($caseId)
+            ? TelemedicineCaseDischargeGuard::openServicesNotice((int) $caseId)
             : null;
         $labImagingResultDocuments = filled($caseId)
             ? LabImagingResultsFollowUpRegistrar::previewDocumentsForCase((int) $caseId)
@@ -918,8 +916,8 @@ class TelemedicineConsultationPatientForm
                                     ToggleButtons::make('feedbackOne')
                                         ->label('¿Dar de alta al paciente en esta sesión?')
                                         ->helperText(
-                                            $dischargeBlockedMessage
-                                                ?? 'Alta médica: solo si todos los servicios asociados están finalizados o caducados (sin pendientes ni en gestión). Continuar: podrás definir el siguiente paso asistencial.'
+                                            $openServicesNotice
+                                                ?? 'Alta médica: cierra el seguimiento del caso. Continuar: podrás definir el siguiente paso asistencial.'
                                         )
                                         ->boolean(
                                             trueLabel: 'Sí — alta médica',
@@ -929,14 +927,12 @@ class TelemedicineConsultationPatientForm
                                         ->grouped()
                                         ->inline(true)
                                         ->live()
-                                        ->afterStateUpdated(function (mixed $state, Set $set) use ($caseCanBeDischarged, $dischargeBlockedMessage): void {
-                                            if ($state == true && ! $caseCanBeDischarged) {
-                                                $set('feedbackOne', false);
-
+                                        ->afterStateUpdated(function (mixed $state) use ($openServicesNotice): void {
+                                            if ($state == true && $openServicesNotice !== null) {
                                                 Notification::make()
-                                                    ->title('Alta médica no disponible')
-                                                    ->body($dischargeBlockedMessage ?? 'Hay servicios asociados pendientes o en gestión.')
-                                                    ->warning()
+                                                    ->title('El caso tiene servicios abiertos')
+                                                    ->body($openServicesNotice)
+                                                    ->info()
                                                     ->send();
                                             }
                                         })
