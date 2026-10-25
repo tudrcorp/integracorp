@@ -134,6 +134,11 @@ class TelemedicinaPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn () => view('filament.telemedicina.hooks.case-follow-up-chat-panel')
+            )
+            /** Bitácora del panel: fallos que solo ve el navegador (Operaciones → Bitácora del panel). */
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.telemedicina.hooks.panel-log')
             );
     }
 

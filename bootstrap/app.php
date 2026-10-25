@@ -30,5 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         /** Registro de errores del monitor (Negocios → Colas y errores). No detiene el reporte normal al log. */
         $exceptions->report(static function (Throwable $exception): void {
             \App\Support\LivePresence\ErrorTracker::capture($exception);
+            /** Bitácora del panel de Telemedicina: errores que no pasaron por Livewire. */
+            \App\Support\Telemedicine\PanelLog\TelemedicinePanelLog::captureReportedException($exception);
         });
     })->create();

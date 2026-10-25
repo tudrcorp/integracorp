@@ -163,6 +163,7 @@ use App\Filament\Operations\Resources\TelemedicineHistoryPatients\TelemedicineHi
 use App\Filament\Operations\Resources\TelemedicineListLaboratories\TelemedicineListLaboratoryResource;
 use App\Filament\Operations\Resources\TelemedicineListSpecialists\TelemedicineListSpecialistResource;
 use App\Filament\Operations\Resources\TelemedicineListStudies\TelemedicineListStudyResource;
+use App\Filament\Operations\Resources\TelemedicinePanelEvents\TelemedicinePanelEventResource;
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Filament\Projects\Pages\Backlog;
 use App\Filament\Projects\Pages\Help;
@@ -322,6 +323,7 @@ final class DepartmentNavigationPermissionRegistry
         TelemedicinePatientResource::class => ['pacientes'],
         TelemedicineCaseResource::class => ['gestion-casos'],
         BitacoraDeCaso::class => ['bitacora-de-caso'],
+        TelemedicinePanelEventResource::class => ['bitacora-panel-telemedicina'],
         TelemedicineHistoryPatientResource::class => ['historia-clinica'],
         OperationCoordinationServiceResource::class => ['servicios-medicos'],
         OperationServiceOrderResource::class => ['ordenes-servicios'],

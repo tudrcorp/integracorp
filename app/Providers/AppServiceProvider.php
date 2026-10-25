@@ -49,6 +49,8 @@ use App\Support\LivePresence\LivePresenceRecorder;
 use App\Support\LivePresence\QueueActivityRecorder;
 use App\Support\LivePresence\SecurityAuthListener;
 use App\Support\Operations\CoordinationServiceTabCounts;
+use App\Support\Telemedicine\PanelLog\TelemedicinePanelLivewireMonitor;
+use App\Support\Telemedicine\PanelLog\TelemedicinePanelLog;
 use App\Support\UserSessionAuditTracker;
 use Filament\Actions\Imports\Events\ImportChunkProcessed;
 use Filament\Actions\Imports\Events\ImportCompleted;
@@ -81,6 +83,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        /** Bitácora del panel de Telemedicina: una instancia por petición. */
+        $this->app->scoped(TelemedicinePanelLog::class);
+
         foreach (['backup', 'scheduled-exports', 'scheduled-notifications'] as $configName) {
             $path = config_path("{$configName}.php");
 
@@ -97,6 +102,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        /** Bitácora del panel de Telemedicina (Operaciones → Bitácora del panel). */
+        TelemedicinePanelLivewireMonitor::register();
+
         if (config('live-presence.enabled', true)) {
             /** Contador de consultas por petición para el monitor en vivo. */
             DB::listen(static function (): void {

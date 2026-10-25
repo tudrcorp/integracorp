@@ -60,6 +60,26 @@ enum ClinicalServiceChannel: string
         return $this === self::Type1;
     }
 
+    /**
+     * Solo Servicios Macro se libera con una autorización OTP al agotarse el cupo.
+     * En el resto, la consulta sigue pero solo con lo no cubierto por el plan.
+     */
+    public function requiresOverrideWhenExhausted(): bool
+    {
+        return $this === self::Type1;
+    }
+
+    public function uncoveredNoun(): string
+    {
+        return match ($this) {
+            self::Type1 => 'servicios',
+            self::Medication => 'medicamentos',
+            self::Laboratory => 'laboratorios',
+            self::Imaging => 'estudios de imagenología',
+            self::Specialist => 'especialistas',
+        };
+    }
+
     public function filamentColor(): string
     {
         return match ($this) {

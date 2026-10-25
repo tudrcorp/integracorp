@@ -27,7 +27,7 @@ class ListCollections extends ListRecords
 
         return SummaryCards::collapsible(
             label: 'Resumen de cobranza',
-            description: 'Por cobrar, lo que vence en 7 días, lo vencido y lo cobrado, según los filtros de la tabla.',
+            description: 'Por cobrar, lo que vence en 7 días y lo vencido, según los filtros de la tabla.',
             hint: 'Por cobrar: '.SummaryCards::money($summary['pending_amount']),
             cards: [
                 [
@@ -48,18 +48,12 @@ class ListCollections extends ListRecords
                     'detail' => SummaryCards::count($summary['overdue_count'], 'cuota por pagar con fecha pasada', 'cuotas por pagar con fecha pasada'),
                     'color' => SummaryCards::RED,
                 ],
-                [
-                    'label' => 'Cobrado',
-                    'value' => SummaryCards::money($summary['paid_amount']),
-                    'detail' => SummaryCards::count($summary['paid_count'], 'cuota pagada', 'cuotas pagadas'),
-                    'color' => SummaryCards::GREEN,
-                ],
             ],
         );
     }
 
     /**
-     * @return array{pending_count: int, pending_amount: float, due_soon_count: int, due_soon_amount: float, overdue_count: int, overdue_amount: float, paid_count: int, paid_amount: float}
+     * @return array{pending_count: int, pending_amount: float, due_soon_count: int, due_soon_amount: float, overdue_count: int, overdue_amount: float}
      */
     private function summary(): array
     {
@@ -80,8 +74,6 @@ class ListCollections extends ListRecords
             ->selectRaw("COALESCE(SUM(CASE WHEN status = 'POR PAGAR' AND filter_next_payment_date BETWEEN ? AND ? THEN total_amount ELSE 0 END), 0) as due_soon_amount", [$today, $soon])
             ->selectRaw("SUM(CASE WHEN status = 'POR PAGAR' AND filter_next_payment_date < ? THEN 1 ELSE 0 END) as overdue_count", [$today])
             ->selectRaw("COALESCE(SUM(CASE WHEN status = 'POR PAGAR' AND filter_next_payment_date < ? THEN total_amount ELSE 0 END), 0) as overdue_amount", [$today])
-            ->selectRaw("SUM(CASE WHEN status = 'PAGADO' THEN 1 ELSE 0 END) as paid_count")
-            ->selectRaw("COALESCE(SUM(CASE WHEN status = 'PAGADO' THEN total_amount ELSE 0 END), 0) as paid_amount")
             ->toBase()
             ->first();
 
@@ -92,8 +84,6 @@ class ListCollections extends ListRecords
             'due_soon_amount' => (float) ($row->due_soon_amount ?? 0),
             'overdue_count' => (int) ($row->overdue_count ?? 0),
             'overdue_amount' => (float) ($row->overdue_amount ?? 0),
-            'paid_count' => (int) ($row->paid_count ?? 0),
-            'paid_amount' => (float) ($row->paid_amount ?? 0),
         ];
     }
 

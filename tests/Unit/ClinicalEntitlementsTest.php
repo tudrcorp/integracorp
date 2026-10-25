@@ -161,11 +161,30 @@ it('parsea la vigencia en d/m/Y de afiliaciones corporativas', function (): void
     CarbonImmutable::setTestNow();
 });
 
-it('el helper de cupo agotado pide otp', function (): void {
+it('el helper de cupo agotado pide otp solo en servicios macro', function (): void {
+    $macro = new ClinicalEntitlement(
+        benefitId: 1,
+        benefitLabel: 'TELEMEDICINA',
+        channel: ClinicalServiceChannel::Type1,
+        telemedicineServiceListId: 10,
+        telemedicineServiceListName: 'TELEMEDICINA',
+        quotaScope: ClinicalQuotaScope::PerAffiliationYear,
+        quota: 4,
+        used: 4,
+        remaining: 0,
+        exhausted: true,
+    );
+
+    expect($macro->helperText())
+        ->toContain('Límite cubierto')
+        ->toContain('autorización OTP');
+});
+
+it('el helper de cupo agotado indica solo no cubiertos fuera de servicios macro', function (ClinicalServiceChannel $channel, string $noun): void {
     $entitlement = new ClinicalEntitlement(
         benefitId: 1,
-        benefitLabel: 'LABORATORIOS A DOMICILIO CON FINES DIAGNÓSTICOS',
-        channel: ClinicalServiceChannel::Laboratory,
+        benefitLabel: 'BENEFICIO',
+        channel: $channel,
         telemedicineServiceListId: null,
         telemedicineServiceListName: null,
         quotaScope: ClinicalQuotaScope::DistinctCases,
@@ -176,8 +195,22 @@ it('el helper de cupo agotado pide otp', function (): void {
     );
 
     expect($entitlement->helperText())
-        ->toContain('Límite cubierto')
-        ->toContain('autorización OTP');
+        ->toContain('Límite cubierto: 2 de 2 casos')
+        ->toContain("Solo puede indicar {$noun} no cubiertos por el plan.")
+        ->not->toContain('OTP');
+})->with([
+    'medicamentos' => [ClinicalServiceChannel::Medication, 'medicamentos'],
+    'laboratorio' => [ClinicalServiceChannel::Laboratory, 'laboratorios'],
+    'imagenología' => [ClinicalServiceChannel::Imaging, 'estudios de imagenología'],
+    'especialista' => [ClinicalServiceChannel::Specialist, 'especialistas'],
+]);
+
+it('solo servicios macro se libera con otp al agotarse el cupo', function (): void {
+    expect(ClinicalServiceChannel::Type1->requiresOverrideWhenExhausted())->toBeTrue()
+        ->and(ClinicalServiceChannel::Medication->requiresOverrideWhenExhausted())->toBeFalse()
+        ->and(ClinicalServiceChannel::Laboratory->requiresOverrideWhenExhausted())->toBeFalse()
+        ->and(ClinicalServiceChannel::Imaging->requiresOverrideWhenExhausted())->toBeFalse()
+        ->and(ClinicalServiceChannel::Specialist->requiresOverrideWhenExhausted())->toBeFalse();
 });
 
 it('resume el saldo en etiquetas cortas para la ficha de operaciones', function (): void {
