@@ -70,6 +70,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const EDIT_OFFICE_GUARDS = 'editar-guardia-oficinas';
 
+    public const VIEW_HR_AMOUNTS = 'ver-montos-rrhh';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -220,6 +222,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Actualizar población corporativa desde el archivo del cliente (aplicar y revertir con OTP)',
                 'group' => 'AFILIACIONES',
                 'modules' => [self::OWNER_MODULE],
+            ],
+            self::VIEW_HR_AMOUNTS => [
+                'name' => 'Ver sueldos y costo de nómina en el Escritorio',
+                'group' => 'RRHH',
+                'modules' => ['ADMINISTRACION'],
             ],
             self::DELETE_PENDING_PAYMENT => [
                 'name' => 'Eliminar pagos pendientes del historial de pagos (con nota obligatoria)',

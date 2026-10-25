@@ -10,7 +10,7 @@
             @foreach ($team as $member)
                 <span class="inline-flex items-center gap-1.5">
                     <x-filament::icon :icon="$member['icon']" class="size-4 text-gray-400 dark:text-gray-500" />
-                    <span class="font-semibold tabular-nums text-gray-950 dark:text-white">{{ $member['prefix'] ?? '' }}{{ number_format($member['value'], 0, ',', '.') }}</span>
+                    <span class="font-semibold tabular-nums text-gray-950 dark:text-white">{{ $member['prefix'] ?? '' }}{{ number_format((float) $member['value'], $member['decimals'] ?? 0, ',', '.') }}</span>
                     {{ $member['label'] }}
                 </span>
             @endforeach
