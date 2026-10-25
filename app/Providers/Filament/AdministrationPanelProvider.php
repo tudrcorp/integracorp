@@ -112,6 +112,12 @@ class AdministrationPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('filament.hooks.quick-view-head')->render(),
             )
+            /** Escritorio: tokens de color, transiciones y modo presentación de los dashboards. */
+            ->renderHook(
+                PanelsRenderHook::PAGE_START,
+                fn () => view('filament.operations.dashboard.page-start', ['branding' => true, 'brandingLabel' => 'Administración · Finanzas de la empresa']),
+                scopes: Dashboard::class,
+            )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn (): string => view('filament.hooks.quick-view')->render(),
