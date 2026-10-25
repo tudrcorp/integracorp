@@ -4,41 +4,46 @@ declare(strict_types=1);
 
 namespace App\Filament\Metrics\Pages;
 
+use App\Filament\Metrics\Pages\Concerns\IsCorporateMetricsPage;
+use App\Filament\Metrics\Widgets\Corporate\CorporateAreaPulse;
+use App\Filament\Metrics\Widgets\Corporate\CorporateDetailWidget;
+use App\Filament\Metrics\Widgets\Corporate\CorporateInsightsWidget;
+use App\Filament\Metrics\Widgets\Corporate\CorporateVenezuelaMap;
+use App\Filament\Metrics\Widgets\Corporate\ExecutiveKpiTiles;
+use App\Filament\Metrics\Widgets\Corporate\IncomeTrendChart;
+use BackedEnum;
 use Filament\Pages\Dashboard as BaseDashboard;
-use Filament\Schemas\Components\View;
-use Filament\Schemas\Schema;
-use Illuminate\Contracts\Support\Htmlable;
+use Filament\Support\Icons\Heroicon;
 
+/**
+ * Resumen ejecutivo: la empresa completa en una pantalla. Una cifra clave por
+ * área, la lectura automática del período, el mapa y el pulso de cada área.
+ * Todo sale de la base de datos (ya no de integracorp-api).
+ */
 class Dashboard extends BaseDashboard
 {
-    protected static ?string $navigationLabel = 'Inicio';
+    use IsCorporateMetricsPage;
 
-    protected static ?string $title = 'Métricas/KPI';
+    protected static ?string $navigationLabel = 'Resumen ejecutivo';
 
-    public function getHeading(): string|Htmlable|null
-    {
-        return null;
-    }
+    protected static ?string $title = 'Resumen ejecutivo';
 
-    public function getSubheading(): string|Htmlable|null
-    {
-        return null;
-    }
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPresentationChartBar;
 
-    public function content(Schema $schema): Schema
-    {
-        return $schema
-            ->components([
-                View::make('filament.metrics.pages.dashboard-hero'),
-                $this->getWidgetsContentComponent(),
-            ]);
-    }
+    protected static ?int $navigationSort = 1;
 
     /**
-     * @return int|array<string, ?int>
+     * @return array<class-string>
      */
-    public function getColumns(): int|array
+    public function getWidgets(): array
     {
-        return 1;
+        return [
+            ExecutiveKpiTiles::class,
+            IncomeTrendChart::class,
+            CorporateInsightsWidget::class,
+            CorporateVenezuelaMap::class,
+            CorporateAreaPulse::class,
+            CorporateDetailWidget::class,
+        ];
     }
 }

@@ -129,14 +129,14 @@ it('define las cuatro barras del gráfico en el orden pedido, sin estudios/imág
     ])->not->toContain('Estudios/Imágenes')->not->toContain('Especialistas');
 });
 
-it('arma la página con la cabecera, los stats y el gráfico', function (): void {
+it('arma la página con la cabecera primero y la grilla del rediseño', function (): void {
     $page = new DashboardProveedor;
 
-    expect($page->getWidgets())->toBe([
-        SupplierIdentityHeader::class,
-        SupplierDashboardStatsOverview::class,
-        SupplierCasesByServiceTypeChart::class,
-    ])->and($page->getColumns())->toBe(1);
+    // Rediseño del 24/10/2026: la composición completa está en SupplierDashboardRedesignTest.
+    expect($page->getWidgets()[0])->toBe(SupplierIdentityHeader::class)
+        ->and($page->getWidgets())->not->toContain(SupplierDashboardStatsOverview::class)
+        ->and($page->getWidgets())->not->toContain(SupplierCasesByServiceTypeChart::class)
+        ->and($page->getColumns())->toBe(['default' => 1, 'xl' => 12]);
 });
 
 it('mantiene los widgets del proveedor fuera del descubrimiento automático', function (): void {
@@ -214,5 +214,7 @@ it('cuenta un caso en cada tipo de servicio que consumió', function (): void {
     expect($source)
         ->toContain('->distinct()')
         ->toContain("->count('telemedicine_case_id')")
-        ->toContain("where('supplier_id', self::supplierId())");
+        // Blindado el 24/10/2026: sin proveedor no devuelve nada (antes era IS NULL → casos de TDG).
+        ->toContain("->where('supplier_id', \$supplierId)")
+        ->toContain("return TelemedicineCase::query()->whereRaw('1 = 0')->select('id');");
 });

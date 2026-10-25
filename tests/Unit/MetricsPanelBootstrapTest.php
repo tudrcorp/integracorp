@@ -16,8 +16,6 @@ it('registra el panel metrics con marca Metricas/KPI', function (): void {
     $provider = file_get_contents(dirname(__DIR__, 2).'/app/Providers/Filament/MetricsPanelProvider.php');
     $providers = file_get_contents(dirname(__DIR__, 2).'/bootstrap/providers.php');
     $dashboard = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Metrics/Pages/Dashboard.php');
-    $hero = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/metrics/pages/dashboard-hero.blade.php');
-    $theme = file_get_contents(dirname(__DIR__, 2).'/resources/css/filament/admin/theme.css');
 
     expect($providers)->toContain('MetricsPanelProvider::class')
         ->and($provider)->toContain("->id('metrics')")
@@ -27,15 +25,10 @@ it('registra el panel metrics con marca Metricas/KPI', function (): void {
         ->and($provider)->not->toContain('Filament\\Pages\\Dashboard')
         ->and($provider)->toContain("app_path('Filament/Metrics/Resources')")
         ->and($provider)->toContain("view('filament.panels.internal-quick-nav')")
-        ->and($dashboard)->toContain('return null')
-        ->and($dashboard)->toContain("View::make('filament.metrics.pages.dashboard-hero')")
-        ->and($dashboard)->toContain("navigationLabel = 'Inicio'")
-        ->and($hero)->toContain('fi-metrics-dashboard-hero')
-        ->and($hero)->toContain('Mide con precisión.')
-        ->and($hero)->toContain('Decide con claridad.')
-        ->and($hero)->not->toContain('Escritorio')
-        ->and($theme)->toContain('.fi-metrics-dashboard-hero')
-        ->and($theme)->toContain('.fi-metrics-dashboard-hero__title-accent');
+        ->and($dashboard)->toContain("navigationLabel = 'Resumen ejecutivo'")
+        ->and($dashboard)->toContain('ExecutiveKpiTiles::class')
+        ->and($dashboard)->toContain('CorporateVenezuelaMap::class')
+        ->and($provider)->toContain("view('filament.operations.dashboard.page-start'");
 });
 
 it('mapea el panel metrics al modulo METRICAS', function (): void {

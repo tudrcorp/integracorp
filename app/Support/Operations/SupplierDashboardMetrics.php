@@ -11,6 +11,7 @@ use App\Models\TelemedicineDoctor;
 use App\Models\TelemedicinePatientMedications;
 use App\Models\TelemedicineServiceList;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
@@ -157,17 +158,33 @@ final class SupplierDashboardMetrics
      */
     public static function casesByServiceType(): array
     {
+        return self::casesByServiceTypeBetween(null, null);
+    }
+
+    /**
+     * Igual que {@see self::casesByServiceType()}, contando solo lo registrado en
+     * el rango (consultas y medicamentos por su fecha de creación). Sin rango,
+     * todo el historial.
+     *
+     * @return array<string, int>
+     */
+    public static function casesByServiceTypeBetween(?CarbonInterface $from, ?CarbonInterface $to): array
+    {
         if (self::supplierId() === null) {
             return [];
         }
+
+        $range = $from !== null && $to !== null
+            ? [$from->copy()->startOfDay(), $to->copy()->endOfDay()]
+            : null;
 
         $counts = [];
 
         foreach (self::SERVICE_TYPE_LABELS as $label) {
             $counts[$label] = match ($label) {
-                'Medicamentos' => self::medicationCaseCount(),
-                'Laboratorios' => self::consultationSelectionCaseCount('labs'),
-                default => self::macroServiceCaseCount($label),
+                'Medicamentos' => self::medicationCaseCount($range),
+                'Laboratorios' => self::consultationSelectionCaseCount('labs', $range),
+                default => self::macroServiceCaseCount($label, $range),
             };
         }
 
@@ -175,9 +192,54 @@ final class SupplierDashboardMetrics
     }
 
     /**
+     * Ids de los servicios (lista de telemedicina) de una barra macro.
+     *
+     * @return list<int>
+     */
+    public static function macroServiceListIds(string $macroKey): array
+    {
+        $patterns = self::MACRO_SERVICE_PATTERNS[$macroKey] ?? [];
+
+        if ($patterns === []) {
+            return [];
+        }
+
+        return TelemedicineServiceList::query()
+            ->where(function (Builder $query) use ($patterns): void {
+                foreach ($patterns as $pattern) {
+                    $query->orWhere('name', 'like', $pattern);
+                }
+            })
+            ->pluck('id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
+    }
+
+    /**
+     * Ids de los casos del proveedor que consumieron un tipo de servicio en el rango.
+     *
+     * @param  array{0: CarbonInterface, 1: CarbonInterface}|null  $range
+     * @return \Illuminate\Database\Query\Builder|Builder<\Illuminate\Database\Eloquent\Model>
+     */
+    public static function caseIdsForServiceType(string $label, ?array $range = null): Builder
+    {
+        return match ($label) {
+            'Medicamentos' => TelemedicinePatientMedications::query()
+                ->whereIn('telemedicine_case_id', self::caseIdsQuery())
+                ->when($range !== null, fn (Builder $query) => $query->whereBetween('created_at', $range))
+                ->select('telemedicine_case_id'),
+            'Laboratorios' => self::selectionQuery('labs', $range)->select('telemedicine_case_id'),
+            default => self::consultationsQuery()
+                ->whereIn('telemedicine_service_list_id', self::macroServiceListIds($label) ?: [0])
+                ->when($range !== null, fn (Builder $query) => $query->whereBetween('created_at', $range))
+                ->select('telemedicine_case_id'),
+        };
+    }
+
+    /**
      * @return Builder<TelemedicineCase>|null
      */
-    private static function casesQuery(): ?Builder
+    public static function casesQuery(): ?Builder
     {
         $supplierId = self::supplierId();
 
@@ -188,60 +250,71 @@ final class SupplierDashboardMetrics
         return TelemedicineCase::query()->where('supplier_id', $supplierId);
     }
 
-    private static function macroServiceCaseCount(string $macroKey): int
+    /**
+     * @param  array{0: CarbonInterface, 1: CarbonInterface}|null  $range
+     */
+    private static function macroServiceCaseCount(string $macroKey, ?array $range = null): int
     {
-        $patterns = self::MACRO_SERVICE_PATTERNS[$macroKey] ?? [];
+        $serviceListIds = self::macroServiceListIds($macroKey);
 
-        if ($patterns === []) {
-            return 0;
-        }
-
-        $serviceListIds = TelemedicineServiceList::query()
-            ->where(function (Builder $query) use ($patterns): void {
-                foreach ($patterns as $pattern) {
-                    $query->orWhere('name', 'like', $pattern);
-                }
-            })
-            ->pluck('id');
-
-        if ($serviceListIds->isEmpty()) {
+        if ($serviceListIds === []) {
             return 0;
         }
 
         return self::consultationsQuery()
             ->whereIn('telemedicine_service_list_id', $serviceListIds)
+            ->when($range !== null, fn (Builder $query) => $query->whereBetween('created_at', $range))
             ->distinct()
             ->count('telemedicine_case_id');
     }
 
-    private static function medicationCaseCount(): int
+    /**
+     * @param  array{0: CarbonInterface, 1: CarbonInterface}|null  $range
+     */
+    private static function medicationCaseCount(?array $range = null): int
     {
         return TelemedicinePatientMedications::query()
             ->whereIn('telemedicine_case_id', self::caseIdsQuery())
+            ->when($range !== null, fn (Builder $query) => $query->whereBetween('created_at', $range))
             ->distinct()
             ->count('telemedicine_case_id');
     }
 
-    private static function consultationSelectionCaseCount(string $column): int
+    /**
+     * @param  array{0: CarbonInterface, 1: CarbonInterface}|null  $range
+     */
+    private static function consultationSelectionCaseCount(string $column, ?array $range = null): int
+    {
+        return self::selectionQuery($column, $range)
+            ->distinct()
+            ->count('telemedicine_case_id');
+    }
+
+    /**
+     * Consultas del proveedor que indicaron algo en la tilde (`labs`, `studies`…).
+     *
+     * @param  array{0: CarbonInterface, 1: CarbonInterface}|null  $range
+     * @return Builder<TelemedicineConsultationPatient>
+     */
+    private static function selectionQuery(string $column, ?array $range = null): Builder
     {
         $allowed = ['labs', 'studies', 'consult_specialist'];
 
         if (! in_array($column, $allowed, true)) {
-            return 0;
+            return self::consultationsQuery()->whereRaw('1 = 0');
         }
 
         $placeholders = implode(', ', array_fill(0, count(self::EMPTY_SELECTION_VALUES), '?'));
 
         return self::consultationsQuery()
             ->whereRaw("TRIM(COALESCE({$column}, '')) NOT IN ({$placeholders})", self::EMPTY_SELECTION_VALUES)
-            ->distinct()
-            ->count('telemedicine_case_id');
+            ->when($range !== null, fn (Builder $query) => $query->whereBetween('created_at', $range));
     }
 
     /**
      * @return Builder<TelemedicineConsultationPatient>
      */
-    private static function consultationsQuery(): Builder
+    public static function consultationsQuery(): Builder
     {
         return TelemedicineConsultationPatient::query()
             ->whereIn('telemedicine_case_id', self::caseIdsQuery());
@@ -250,10 +323,17 @@ final class SupplierDashboardMetrics
     /**
      * @return \Illuminate\Database\Query\Builder|Builder<TelemedicineCase>
      */
-    private static function caseIdsQuery(): Builder
+    public static function caseIdsQuery(): Builder
     {
+        $supplierId = self::supplierId();
+
+        /** Sin proveedor no hay casos: `where('supplier_id', null)` traería los de TDG (IS NULL). */
+        if ($supplierId === null) {
+            return TelemedicineCase::query()->whereRaw('1 = 0')->select('id');
+        }
+
         return TelemedicineCase::query()
-            ->where('supplier_id', self::supplierId())
+            ->where('supplier_id', $supplierId)
             ->select('id');
     }
 }

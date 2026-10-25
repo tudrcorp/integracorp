@@ -42,4 +42,13 @@ class Operaciones extends Page
     {
         return 'Servicios, inventario, telemedicina y coordinación operativa.';
     }
+
+    /**
+     * Página antigua (integracorp-api): oculta del menú mientras se valida el
+     * panel corporativo, que lee la base de datos. Sigue abriendo por URL.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 }

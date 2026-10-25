@@ -5,11 +5,20 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Pages;
 
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
-use App\Filament\Operations\Widgets\SupplierDashboard\SupplierCasesByServiceTypeChart;
-use App\Filament\Operations\Widgets\SupplierDashboard\SupplierDashboardStatsOverview;
+use App\Filament\Operations\Pages\Concerns\HasOperationsDashboardFilters;
+use App\Filament\Operations\Widgets\SupplierDashboard\SupplierCaseStatusChart;
+use App\Filament\Operations\Widgets\SupplierDashboard\SupplierConsultationsTrendChart;
+use App\Filament\Operations\Widgets\SupplierDashboard\SupplierDashboardDetail;
+use App\Filament\Operations\Widgets\SupplierDashboard\SupplierDoctorsRanking;
 use App\Filament\Operations\Widgets\SupplierDashboard\SupplierIdentityHeader;
+use App\Filament\Operations\Widgets\SupplierDashboard\SupplierKpiTiles;
+use App\Filament\Operations\Widgets\SupplierDashboard\SupplierPatientsProfile;
+use App\Filament\Operations\Widgets\SupplierDashboard\SupplierPriorityRanking;
+use App\Filament\Operations\Widgets\SupplierDashboard\SupplierServiceTypeChart;
+use App\Filament\Operations\Widgets\SupplierDashboard\SupplierWorkloadHeatmap;
 use App\Support\Operations\SupplierDashboardMetrics;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Pages\Dashboard;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +34,7 @@ class DashboardProveedor extends Dashboard
     use AuthorizesDepartmentNavigation {
         canAccess as protected canAccessByDepartmentPermission;
     }
+    use HasOperationsDashboardFilters;
 
     protected static ?string $navigationLabel = 'DASHBOARD PROVEEDOR';
 
@@ -51,8 +61,15 @@ class DashboardProveedor extends Dashboard
 
         return $supplierName === null
             ? null
-            // : 'Indicadores operativos de '.$supplierName.'.'
-            : 'INDICADORES OPERATIVOS';
+            : 'INDICADORES OPERATIVOS · '.$this->periodSubheading();
+    }
+
+    /**
+     * @return array<Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [$this->presentationAction()];
     }
 
     /**
@@ -61,9 +78,17 @@ class DashboardProveedor extends Dashboard
     public function getWidgets(): array
     {
         return [
+            /** Encabezado del proveedor: se mantiene igual, arriba de todo. */
             SupplierIdentityHeader::class,
-            SupplierDashboardStatsOverview::class,
-            SupplierCasesByServiceTypeChart::class,
+            SupplierKpiTiles::class,
+            SupplierConsultationsTrendChart::class,
+            SupplierCaseStatusChart::class,
+            SupplierServiceTypeChart::class,
+            SupplierDoctorsRanking::class,
+            SupplierPriorityRanking::class,
+            SupplierWorkloadHeatmap::class,
+            SupplierPatientsProfile::class,
+            SupplierDashboardDetail::class,
         ];
     }
 
@@ -72,6 +97,9 @@ class DashboardProveedor extends Dashboard
      */
     public function getColumns(): int|array
     {
-        return 1;
+        return [
+            'default' => 1,
+            'xl' => 12,
+        ];
     }
 }

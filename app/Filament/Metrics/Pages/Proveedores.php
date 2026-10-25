@@ -42,4 +42,13 @@ class Proveedores extends Page
     {
         return 'Desempeño, disponibilidad y clasificación de la red de proveedores.';
     }
+
+    /**
+     * Página antigua (integracorp-api): oculta del menú mientras se valida el
+     * panel corporativo, que lee la base de datos. Sigue abriendo por URL.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 }
