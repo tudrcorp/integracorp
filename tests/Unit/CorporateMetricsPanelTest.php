@@ -298,27 +298,19 @@ it('cada página y cada widget se renderizan con datos', function (): void {
     }
 });
 
-it('cada página trae pestañas a todas las áreas y las de área un botón para volver al resumen', function (): void {
+it('el panel usa navegación superior y las páginas de área traen un botón para volver al resumen', function (): void {
+    $provider = file_get_contents(dirname(__DIR__, 2).'/app/Providers/Filament/MetricsPanelProvider.php');
+
+    expect($provider)->toContain('->topNavigation()')
+        ->not->toContain('->sidebarCollapsibleOnDesktop()')
+        ->and(Finanzas::getNavigationGroup())->toBeNull()
+        ->and((new Finanzas)->getSubNavigation())->toBe([]);
+
     foreach ([Finanzas::class, Comercial::class, Cartera::class, OperacionesYSalud::class, Organizacion::class] as $page) {
-        Livewire::test($page)
-            ->assertSee('Volver al resumen')
-            ->assertSee('Resumen ejecutivo')
-            ->assertSee('Organización')
-            ->assertSee(Dashboard::getUrl());
+        Livewire::test($page)->assertSee('Volver al resumen')->assertSee(Dashboard::getUrl());
     }
 
-    Livewire::test(Dashboard::class)
-        ->assertDontSee('Volver al resumen')
-        ->assertSee(Finanzas::getUrl());
-
-    $tabs = (new Finanzas)->getCachedSubNavigation();
-    $items = $tabs[0]->getItems();
-
-    expect(Finanzas::getSubNavigationPosition())->toBe(\Filament\Pages\Enums\SubNavigationPosition::Top)
-        ->and(array_map(fn ($item): string => $item->getLabel(), $items))
-        ->toBe(['Resumen ejecutivo', 'Finanzas', 'Comercial', 'Cartera', 'Operaciones y salud', 'Organización'])
-        ->and(collect($items)->filter(fn ($item): bool => $item->isActive())->map(fn ($item): string => $item->getLabel())->values()->all())
-        ->toBe(['Finanzas']);
+    Livewire::test(Dashboard::class)->assertDontSee('Volver al resumen');
 });
 
 it('los widgets vacíos muestran un estado claro', function (): void {
@@ -355,7 +347,6 @@ it('el panel registra el grupo corporativo, sus permisos y el estilo del dashboa
         ->toContain('OperacionesYSalud::class')
         ->and($registry)->toContain("'metricas-finanzas'")
         ->toContain("'metricas-organizacion'")
-        ->and(Finanzas::getNavigationGroup())->toBe('PANEL CORPORATIVO')
         ->and(Finanzas::canAccess())->toBeTrue()
         ->and(\App\Filament\Metrics\Pages\Administracion::shouldRegisterNavigation())->toBeFalse()
         ->and(\App\Filament\Metrics\Clusters\Negocios\CorretajeCluster::shouldRegisterNavigation())->toBeFalse();
@@ -375,4 +366,135 @@ it('los tableros agrupan con DashboardGrouping (subconsulta), la única forma qu
         expect($source)->not->toContain('groupByRaw(', basename($file).' agrupa por expresión: producción lo rechaza')
             ->and(preg_match("/->groupBy\\('(grp_|grouping_key|patient_key|month_number)/", $source))->toBe(0, basename($file).' agrupa por alias: producción también lo rechaza; usar DashboardGrouping::by()');
     }
+});
+
+it('en pantalla grande cada fila de cada página llena las 12 columnas, sin huecos', function (): void {
+    $pages = [Dashboard::class, Finanzas::class, Comercial::class, Cartera::class, OperacionesYSalud::class, Organizacion::class];
+
+    foreach ($pages as $page) {
+        $used = 0;
+
+        foreach ((new $page)->getWidgets() as $widget) {
+            if (in_array($widget, [CorporateDetailWidget::class, OperationsDashboardDetail::class], true)) {
+                continue;
+            }
+
+            $span = (fn (): int|string|array => $this->columnSpan)->call(new $widget);
+            $xl = is_array($span) ? ($span['xl'] ?? $span['default'] ?? 12) : $span;
+            $xl = $xl === 'full' ? 12 : (int) $xl;
+
+            if ($used + $xl > 12) {
+                expect($used)->toBe(12, class_basename($page).': fila incompleta antes de '.class_basename($widget));
+                $used = 0;
+            }
+
+            $used += $xl;
+            $used = $used === 12 ? 0 : $used;
+        }
+
+        expect($used)->toBe(0, class_basename($page).': la última fila queda incompleta');
+    }
+});
+
+it('el organigrama va primero en la barra superior', function (): void {
+    $sorts = collect([\App\Filament\Metrics\Pages\Organigrama::class, Dashboard::class, Finanzas::class, Comercial::class, Cartera::class, OperacionesYSalud::class, Organizacion::class])
+        ->mapWithKeys(fn (string $page): array => [class_basename($page) => $page::getNavigationSort()])
+        ->sort();
+
+    expect($sorts->keys()->first())->toBe('Organigrama')
+        ->and($sorts->keys()->all())->toBe(['Organigrama', 'Dashboard', 'Finanzas', 'Comercial', 'Cartera', 'OperacionesYSalud', 'Organizacion']);
+});
+
+it('los ingresos de una empresa aliada se heredan por la jerarquía de agencias, no por la venta', function (): void {
+    $companyId = DB::table('white_companies')->insertGetId(['name' => 'ALIADA QA', 'created_at' => now(), 'updated_at' => now()]);
+    $agencyType = (int) DB::table('agencies')->value('agency_type_id');
+
+    DB::table('agencies')->insert([
+        ['code' => 'QA-MASTER', 'owner_code' => 'TDG-100', 'white_company_id' => $companyId, 'agency_type_id' => $agencyType, 'email' => 'qa-master@tudrencasa.com', 'created_at' => now(), 'updated_at' => now()],
+        ['code' => 'QA-HIJA', 'owner_code' => 'QA-MASTER', 'white_company_id' => null, 'agency_type_id' => $agencyType, 'email' => 'qa-hija@tudrencasa.com', 'created_at' => now(), 'updated_at' => now()],
+    ]);
+    \App\Support\WhiteCompanies\WhiteCompanyOwnership::flush();
+
+    ventaQa('2031-03-03', 120, ['code_agency' => 'qa-hija ']);
+    ventaQa('2031-03-04', 80, ['code_agency' => 'QA-MASTER']);
+    ventaQa('2031-03-05', 999, ['code_agency' => 'QA-OTRA']);
+
+    $period = periodoCorporativoMarzo2031();
+    $ranking = CorporateFinanceMetrics::incomeByWhiteCompany($period);
+
+    expect($ranking['rows'])->toBe([['label' => 'ALIADA QA', 'value' => 200.0, 'key' => (string) $companyId]])
+        ->and(CorporateDetail::fetch($period, 'sale_white_company', (string) $companyId)['total'])->toBe(2);
+
+    \App\Support\WhiteCompanies\WhiteCompanyOwnership::flush();
+});
+
+it('el encabezado reúne contexto, período, filtros compactos y acciones en una sola barra', function (): void {
+    Livewire::test(Comercial::class)
+        ->assertSuccessful()
+        ->assertSee('Panel corporativo')
+        ->assertSee('corp-header-filters', false)
+        ->assertSee('Comparar')
+        ->assertSee('Volver al resumen')
+        ->assertSee('Modo presentación')
+        ->assertDontSee('Haga clic en cualquier gráfico');
+
+    Livewire::test(Comercial::class)
+        ->set('filters.period', Period::CUSTOM)
+        ->assertSee('Desde')
+        ->assertSee('Hasta')
+        ->set('filters.period', Period::LAST_MONTH)
+        ->set('filters.compare', false)
+        ->assertDontSee('vs 1');
+});
+
+it('en Métricas la barra de módulos se reemplaza por «Volver a Negocios» como primer elemento del menú, en ámbar', function (): void {
+    test()->actingAs(User::factory()->make([
+        'id' => 999_999_075,
+        'email' => 'qa.negocios@tudrencasa.com',
+        'status' => 'ACTIVO',
+        'departament' => ['SUPERADMIN', 'METRICAS', 'NEGOCIOS'],
+    ]));
+
+    $item = collect(Filament::getPanel('metrics')->getNavigationItems())
+        ->first(fn ($item): bool => $item->getLabel() === 'Volver a Negocios');
+    $styles = view('filament.metrics.corporate.topbar-styles')->render();
+
+    expect($item)->not->toBeNull()
+        ->and($item->getUrl())->toBe(route('filament.business.pages.dashboard'))
+        ->and($item->getSort())->toBeLessThan(\App\Filament\Metrics\Pages\Organigrama::getNavigationSort())
+        ->and($item->getExtraAttributes()['class'] ?? '')->toContain('corp-nav-back')
+        ->and($item->isVisible())->toBeTrue()
+        ->and($styles)->toContain('.corp-nav-back')
+        ->toContain('rgb(245 158 11')
+        ->toContain('flex-wrap: nowrap')
+        ->toContain('margin-inline-start: auto')
+        ->and(Filament::getPanel('metrics')->hasDatabaseNotifications())->toBeFalse();
+
+    test()->actingAs(User::factory()->make([
+        'id' => 999_999_076,
+        'email' => 'externo@gmail.com',
+        'status' => 'ACTIVO',
+        'departament' => [],
+    ]));
+
+    expect($item->isVisible())->toBeFalse()
+        ->and(file_get_contents(dirname(__DIR__, 2).'/app/Providers/Filament/MetricsPanelProvider.php'))->not->toContain('internal-quick-nav');
+});
+
+it('los estilos del menú de Métricas no se filtran a otros paneles con la navegación SPA', function (): void {
+    $css = view('filament.metrics.corporate.topbar-styles')->render();
+    preg_match_all('/^\s*([^@\s{}][^{}]*)\{/m', (string) preg_replace('/\/\*.*?\*\//s', '', $css), $matches);
+
+    expect($matches[1])->not->toBeEmpty();
+
+    foreach ($matches[1] as $selectorList) {
+        foreach (explode(',', $selectorList) as $selector) {
+            expect(trim($selector))->toContain('.fi-panel-metrics ');
+        }
+    }
+
+    $pageStart = file_get_contents(dirname(__DIR__, 2).'/resources/views/filament/operations/dashboard/page-start.blade.php');
+
+    expect($pageStart)->toContain('.fi-page:has(.ops-dash) .fi-wi-widget > .fi-section')
+        ->not->toMatch('/^\s*\.fi-wi-widget\s*\{/m');
 });

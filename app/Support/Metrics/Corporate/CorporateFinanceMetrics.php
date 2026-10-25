@@ -9,6 +9,7 @@ use App\Support\Collections\CollectionAdjuster;
 use App\Support\Collections\CollectionReceivableReport;
 use App\Support\Operations\Dashboard\DashboardGrouping;
 use App\Support\Operations\Dashboard\OperationsDashboardPeriod as Period;
+use App\Support\WhiteCompanies\WhiteCompanyOwnership;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -202,23 +203,35 @@ final class CorporateFinanceMetrics
     /**
      * Ingresos de ventas hechas con empresas aliadas (marca blanca).
      *
+     * La venta no guarda la aliada (`sales.white_company_id` nunca se llena): la
+     * pertenencia se hereda por la jerarquía de agencias desde la MASTER que la
+     * declara, y la resuelve {@see WhiteCompanyOwnership}.
+     *
      * @return array{rows: list<array{label: string, value: float, key: string}>, others: float, total: float}
      */
     public static function incomeByWhiteCompany(Period $period, int $limit = 8): array
     {
         return CorporateMetrics::remember('finance_white_companies_'.$limit, $period, static function () use ($period, $limit): array {
-            $rows = self::salesBetween($period->from, $period->to)
-                ->join('white_companies', 'white_companies.id', '=', 'sales.white_company_id')
-                ->selectRaw('white_companies.id as id, MAX(white_companies.name) as name, COALESCE(SUM(sales.total_amount), 0) as amount')
-                ->groupBy('white_companies.id')
-                ->orderByDesc('amount')
-                ->get();
+            $rows = [];
 
-            $mapped = $rows->map(static fn (object $row): array => [
-                'label' => (string) $row->name,
-                'value' => round((float) $row->amount, 2),
-                'key' => (string) $row->grp_id,
-            ]);
+            foreach (DB::table('white_companies')->orderBy('name')->get(['id', 'name']) as $company) {
+                $codes = self::whiteCompanyAgencyCodes((int) $company->id);
+
+                if ($codes === []) {
+                    continue;
+                }
+
+                $amount = (float) self::salesBetween($period->from, $period->to)
+                    ->whereIn(DB::raw('UPPER(TRIM(sales.code_agency))'), $codes)
+                    ->sum('sales.total_amount');
+
+                if ($amount > 0) {
+                    $rows[] = ['label' => (string) $company->name, 'value' => round($amount, 2), 'key' => (string) $company->id];
+                }
+            }
+
+            usort($rows, static fn (array $a, array $b): int => $b['value'] <=> $a['value']);
+            $mapped = collect($rows);
 
             return [
                 'rows' => $mapped->take($limit)->values()->all(),
@@ -226,6 +239,19 @@ final class CorporateFinanceMetrics
                 'total' => round((float) $mapped->sum('value'), 2),
             ];
         });
+    }
+
+    /**
+     * Códigos de agencia (en mayúsculas) de toda la red de una empresa aliada.
+     *
+     * @return list<string>
+     */
+    public static function whiteCompanyAgencyCodes(int $companyId): array
+    {
+        return array_values(array_unique(array_map(
+            static fn (string $code): string => mb_strtoupper(trim($code)),
+            WhiteCompanyOwnership::agencyCodesFor($companyId),
+        )));
     }
 
     /**

@@ -189,7 +189,7 @@ final class CorporateDetail
                 ? $query->where(static fn (Builder $q) => $q->whereNull('sales.code_agency')->orWhereRaw("TRIM(sales.code_agency) = ''"))
                 : $query->whereRaw('TRIM(sales.code_agency) = ?', [$value]),
             'sale_agent' => (int) $value === 0 ? $query->whereNull('sales.agent_id') : $query->where('sales.agent_id', (int) $value),
-            'sale_white_company' => $query->where('sales.white_company_id', (int) $value),
+            'sale_white_company' => $query->whereIn(DB::raw('UPPER(TRIM(sales.code_agency))'), CorporateFinanceMetrics::whiteCompanyAgencyCodes((int) $value) ?: ['__ninguna__']),
             'sale_state' => self::filterSaleState($query, $value),
             default => null,
         };

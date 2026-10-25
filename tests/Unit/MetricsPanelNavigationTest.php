@@ -19,7 +19,6 @@ use App\Support\Filament\MetricsPanelNavigationGroups;
 
 it('define los grupos del menu lateral de Metricas/KPI', function (): void {
     expect(MetricsPanelNavigationGroups::labels())->toBe([
-        'PANEL CORPORATIVO',
         'NEGOCIOS',
         'COTIZACIONES',
         'AFILIACIONES',

@@ -12,6 +12,8 @@ use Illuminate\Contracts\Support\Htmlable;
  */
 class ReceivablesAgingChart extends CorporateBarChart
 {
+    protected int|string|array $columnSpan = ['default' => 'full', 'xl' => 6];
+
     public function getHeading(): string|Htmlable|null
     {
         return 'Antigüedad de lo vencido';

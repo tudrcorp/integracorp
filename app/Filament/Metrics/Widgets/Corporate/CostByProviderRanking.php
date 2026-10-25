@@ -8,6 +8,8 @@ use App\Support\Metrics\Corporate\CorporateFinanceMetrics;
 
 class CostByProviderRanking extends CorporateRanking
 {
+    protected int|string|array $columnSpan = ['default' => 'full', 'xl' => 6];
+
     public function getHeading(): string
     {
         return 'Costo médico por proveedor';

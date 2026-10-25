@@ -40,8 +40,13 @@
         --ops-heat-7: #cde2fb;
     }
 
+    /*
+     * Solo en páginas con este dashboard (`:has(.ops-dash)`): con la navegación SPA
+     * estos estilos siguen cargados al ir a otra página o panel y no deben tocarlos.
+     */
+
     /* Cada tarjeta ocupa toda la altura de su fila: sin huecos debajo de las más bajas. */
-    .fi-wi-widget > .fi-section {
+    .fi-page:has(.ops-dash) .fi-wi-widget > .fi-section {
         height: 100%;
     }
 
@@ -64,7 +69,7 @@
     }
 
     /* Al llegar, el widget aparece con un fundido corto en lugar de un salto. */
-    .fi-wi-widget {
+    .fi-page:has(.ops-dash) .fi-wi-widget {
         animation: ops-fade-in 420ms cubic-bezier(.22, 1, .36, 1) both;
     }
 
@@ -93,7 +98,7 @@
 
     @media (prefers-reduced-motion: reduce) {
         .ops-reveal, .ops-bar-fill, .ops-heat-cell { transition: none !important; }
-        .ops-skeleton::after, .fi-wi-widget { animation: none !important; }
+        .ops-skeleton::after, .fi-page:has(.ops-dash) .fi-wi-widget { animation: none !important; }
     }
 
     /* Modo presentación: pantalla completa, sin menú, tipografía mayor. */
@@ -103,7 +108,8 @@
     html.ops-presenting .fi-page-header-main-ctn .fi-ac,
     html.ops-presenting .fi-page > .fi-page-header-widgets,
     html.ops-presenting [wire\:key="business-helpdesk-tickets-ticker-root"],
-    html.ops-presenting .tickets-ticker-wrap {
+    html.ops-presenting .tickets-ticker-wrap,
+    html.ops-presenting .ops-hide-in-presentation {
         display: none !important;
     }
 

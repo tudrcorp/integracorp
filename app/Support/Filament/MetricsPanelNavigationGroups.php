@@ -25,11 +25,6 @@ final class MetricsPanelNavigationGroups
     public static function definitions(): array
     {
         return [
-            /** Panel corporativo (lee la base de datos). Los grupos de abajo son las páginas antiguas de integracorp-api, ocultas hasta validar el nuevo panel. */
-            NavigationGroup::make()
-                ->label('PANEL CORPORATIVO')
-                ->icon('heroicon-o-presentation-chart-bar')
-                ->collapsed(false),
             NavigationGroup::make()
                 ->label('NEGOCIOS')
                 ->icon('heroicon-o-briefcase')
