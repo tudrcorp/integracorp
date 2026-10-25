@@ -46,9 +46,9 @@ final class CorporateMapMetrics
         $rows = CorporateFinanceMetrics::salesBetween($from, $to)
             ->leftJoin('affiliations', 'affiliations.code', '=', 'sales.affiliation_code')
             ->leftJoin('affiliation_corporates', 'affiliation_corporates.code', '=', 'sales.affiliation_code')
-            ->selectRaw('COALESCE(affiliations.state_id_ti, affiliation_corporates.state_id, 0) as state_id, COALESCE(SUM(sales.total_amount), 0) as amount')
-            ->groupByRaw('COALESCE(affiliations.state_id_ti, affiliation_corporates.state_id, 0)')
-            ->pluck('amount', 'state_id');
+            ->selectRaw('COALESCE(affiliations.state_id_ti, affiliation_corporates.state_id, 0) as grp_state, COALESCE(SUM(sales.total_amount), 0) as amount')
+            ->groupBy('grp_state')
+            ->pluck('amount', 'grp_state');
 
         return CorporateGeography::byGeoKeyFromIds($rows);
     }
@@ -59,9 +59,9 @@ final class CorporateMapMetrics
     public static function servicesByState(CarbonImmutable $from, CarbonImmutable $to): array
     {
         $byName = OperationsDashboardAnalytics::inPeriod($from, $to)
-            ->selectRaw("COALESCE(NULLIF(TRIM(state), ''), '') as state_name, COUNT(*) as total")
-            ->groupByRaw("COALESCE(NULLIF(TRIM(state), ''), '')")
-            ->pluck('total', 'state_name');
+            ->selectRaw("COALESCE(NULLIF(TRIM(state), ''), '') as grp_state, COUNT(*) as total")
+            ->groupBy('grp_state')
+            ->pluck('total', 'grp_state');
 
         return CorporateGeography::byGeoKeyFromNames($byName);
     }

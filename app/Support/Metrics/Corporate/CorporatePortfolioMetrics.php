@@ -118,8 +118,8 @@ final class CorporatePortfolioMetrics
             $counts = [];
 
             foreach (self::SOURCES as [$table]) {
-                foreach (DB::table($table)->selectRaw("COALESCE(NULLIF(UPPER(TRIM(status)), ''), 'SIN ESTATUS') as status, COUNT(*) as total")->groupByRaw("COALESCE(NULLIF(UPPER(TRIM(status)), ''), 'SIN ESTATUS')")->get() as $row) {
-                    $counts[(string) $row->status] = ($counts[(string) $row->status] ?? 0) + (int) $row->total;
+                foreach (DB::table($table)->selectRaw("COALESCE(NULLIF(UPPER(TRIM(status)), ''), 'SIN ESTATUS') as grp_status, COUNT(*) as total")->groupBy('grp_status')->get() as $row) {
+                    $counts[(string) $row->grp_status] = ($counts[(string) $row->grp_status] ?? 0) + (int) $row->total;
                 }
             }
 
@@ -152,12 +152,12 @@ final class CorporatePortfolioMetrics
                 $rows = DB::table($table)
                     ->leftJoin('plans', 'plans.id', '=', $planColumn)
                     ->where("{$table}.status", 'ACTIVO')
-                    ->selectRaw("UPPER(COALESCE(NULLIF(TRIM(plans.description), ''), 'SIN PLAN')) as label, COUNT(*) as total")
-                    ->groupByRaw("UPPER(COALESCE(NULLIF(TRIM(plans.description), ''), 'SIN PLAN'))")
+                    ->selectRaw("UPPER(COALESCE(NULLIF(TRIM(plans.description), ''), 'SIN PLAN')) as grp_label, COUNT(*) as total")
+                    ->groupBy('grp_label')
                     ->get();
 
                 foreach ($rows as $row) {
-                    $counts[(string) $row->label] = ($counts[(string) $row->label] ?? 0) + (int) $row->total;
+                    $counts[(string) $row->grp_label] = ($counts[(string) $row->grp_label] ?? 0) + (int) $row->total;
                 }
             }
 
@@ -185,9 +185,9 @@ final class CorporatePortfolioMetrics
             $case .= ' END';
 
             foreach (['affiliates', 'affiliate_corporates'] as $table) {
-                foreach (DB::table($table)->where('status', 'ACTIVO')->whereNotNull('age')->selectRaw($case.' as band, COUNT(*) as total')->groupByRaw($case)->get() as $row) {
-                    if ($row->band !== null) {
-                        $bands[(string) $row->band] += (int) $row->total;
+                foreach (DB::table($table)->where('status', 'ACTIVO')->whereNotNull('age')->selectRaw($case.' as grp_band, COUNT(*) as total')->groupBy('grp_band')->get() as $row) {
+                    if ($row->grp_band !== null) {
+                        $bands[(string) $row->grp_band] += (int) $row->total;
                     }
                 }
             }

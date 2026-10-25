@@ -156,14 +156,14 @@ final class CorporateOrganizationMetrics
                     'by_name',
                     static fn ($join) => $join->on('by_name.name', '=', 'help_desks.created_by')->whereNull('help_desks.created_by_user_id'),
                 )
-                ->selectRaw('COALESCE(by_id.departament, by_name.departament) as departament, COUNT(*) as total')
-                ->groupByRaw('COALESCE(by_id.departament, by_name.departament)')
+                ->selectRaw('COALESCE(by_id.departament, by_name.departament) as grp_departament, COUNT(*) as total')
+                ->groupBy('grp_departament')
                 ->get();
 
             $out = [];
 
             foreach ($rows as $row) {
-                $departments = json_decode((string) $row->departament, true);
+                $departments = json_decode((string) $row->grp_departament, true);
                 $department = is_array($departments) ? collect($departments)->reject(fn ($value): bool => $value === 'SUPERADMIN')->first() : null;
                 $label = filled($department) ? ucfirst(mb_strtolower((string) $department)) : 'Sin área';
                 $out[$label] = ($out[$label] ?? 0) + (int) $row->total;
@@ -191,9 +191,9 @@ final class CorporateOrganizationMetrics
     private static function grouped(Period $period, string $expression): array
     {
         $counts = self::createdBetween($period->from, $period->to)
-            ->selectRaw($expression.' as label, COUNT(*) as total')
-            ->groupByRaw($expression)
-            ->pluck('total', 'label')
+            ->selectRaw($expression.' as grp_label, COUNT(*) as total')
+            ->groupBy('grp_label')
+            ->pluck('total', 'grp_label')
             ->map(static fn (mixed $total): int => (int) $total)
             ->all();
 

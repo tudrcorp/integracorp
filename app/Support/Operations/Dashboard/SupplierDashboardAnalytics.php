@@ -80,7 +80,7 @@ final class SupplierDashboardAnalytics
         return self::remember('case_status', $period, static function () use ($period): array {
             $counts = self::casesBetween($period->from, $period->to)
                 ->selectRaw("COALESCE(NULLIF(UPPER(TRIM(status)), ''), 'SIN ESTADO') as grouping_key, COUNT(*) as total")
-                ->groupByRaw("COALESCE(NULLIF(UPPER(TRIM(status)), ''), 'SIN ESTADO')")
+                ->groupBy('grouping_key')
                 ->pluck('total', 'grouping_key')
                 ->map(static fn (mixed $total): int => (int) $total)
                 ->all();
@@ -148,7 +148,7 @@ final class SupplierDashboardAnalytics
             $counts = self::casesBetween($period->from, $period->to)
                 ->leftJoin('telemedicine_priorities', 'telemedicine_priorities.id', '=', 'telemedicine_cases.telemedicine_priority_id')
                 ->selectRaw("COALESCE(NULLIF(TRIM(telemedicine_priorities.name), ''), 'Sin prioridad') as grouping_key, COUNT(*) as total")
-                ->groupByRaw("COALESCE(NULLIF(TRIM(telemedicine_priorities.name), ''), 'Sin prioridad')")
+                ->groupBy('grouping_key')
                 ->orderByDesc('total')
                 ->pluck('total', 'grouping_key')
                 ->map(static fn (mixed $total): int => (int) $total)
@@ -173,16 +173,16 @@ final class SupplierDashboardAnalytics
     {
         return self::remember('heatmap', $period, static function () use ($period): array {
             $rows = self::consultationsBetween($period->from, $period->to)
-                ->selectRaw('WEEKDAY(telemedicine_consultation_patients.created_at) as weekday')
-                ->selectRaw('HOUR(telemedicine_consultation_patients.created_at) as hour')
+                ->selectRaw('WEEKDAY(telemedicine_consultation_patients.created_at) as grp_weekday')
+                ->selectRaw('HOUR(telemedicine_consultation_patients.created_at) as grp_hour')
                 ->selectRaw('COUNT(*) as total')
-                ->groupByRaw('WEEKDAY(telemedicine_consultation_patients.created_at), HOUR(telemedicine_consultation_patients.created_at)')
+                ->groupBy('grp_weekday', 'grp_hour')
                 ->get();
 
             $matrix = array_fill(0, 7, array_fill(0, 24, 0));
 
             foreach ($rows as $row) {
-                $matrix[(int) $row->weekday][(int) $row->hour] = (int) $row->total;
+                $matrix[(int) $row->grp_weekday][(int) $row->grp_hour] = (int) $row->total;
             }
 
             $flat = array_merge(...$matrix);
@@ -203,9 +203,9 @@ final class SupplierDashboardAnalytics
             $ageSql = self::ageBandSql();
             $ageRows = self::casesBetween($period->from, $period->to)
                 ->whereNotNull('patient_age')
-                ->selectRaw($ageSql.' as band, COUNT(DISTINCT telemedicine_patient_id) as total')
-                ->groupByRaw($ageSql)
-                ->pluck('total', 'band');
+                ->selectRaw($ageSql.' as grp_band, COUNT(DISTINCT telemedicine_patient_id) as total')
+                ->groupBy('grp_band')
+                ->pluck('total', 'grp_band');
 
             foreach (array_keys(OperationsDashboardAnalytics::AGE_BANDS) as $label) {
                 $ages[$label] = (int) ($ageRows[$label] ?? 0);
@@ -213,9 +213,9 @@ final class SupplierDashboardAnalytics
 
             $sexSql = self::sexSql();
             $sexRows = self::casesBetween($period->from, $period->to)
-                ->selectRaw($sexSql.' as sex, COUNT(DISTINCT telemedicine_patient_id) as total')
-                ->groupByRaw($sexSql)
-                ->pluck('total', 'sex');
+                ->selectRaw($sexSql.' as grp_sex, COUNT(DISTINCT telemedicine_patient_id) as total')
+                ->groupBy('grp_sex')
+                ->pluck('total', 'grp_sex');
 
             $sexes = [];
 
@@ -368,10 +368,10 @@ final class SupplierDashboardAnalytics
         $date = 'DATE('.$table.'.created_at)';
 
         $rows = $query
-            ->selectRaw($date.' as day')
+            ->selectRaw($date.' as grp_day')
             ->selectRaw($distinct === null ? 'COUNT(*) as total' : 'COUNT(DISTINCT '.$table.'.'.$distinct.') as total')
-            ->groupByRaw($date)
-            ->pluck('total', 'day');
+            ->groupBy('grp_day')
+            ->pluck('total', 'grp_day');
 
         $series = [];
 

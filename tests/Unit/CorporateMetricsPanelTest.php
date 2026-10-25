@@ -360,3 +360,16 @@ it('el panel registra el grupo corporativo, sus permisos y el estilo del dashboa
         ->and(\App\Filament\Metrics\Pages\Administracion::shouldRegisterNavigation())->toBeFalse()
         ->and(\App\Filament\Metrics\Clusters\Negocios\CorretajeCluster::shouldRegisterNavigation())->toBeFalse();
 });
+
+it('los tableros agrupan por alias y no por expresión, para que MariaDB en producción acepte las consultas', function (): void {
+    $root = dirname(__DIR__, 2);
+    $files = [
+        ...glob($root.'/app/Support/Metrics/Corporate/*.php'),
+        ...glob($root.'/app/Support/Operations/Dashboard/*.php'),
+        $root.'/app/Support/Operations/OperationsDashboardMetrics.php',
+    ];
+
+    foreach ($files as $file) {
+        expect(file_get_contents($file))->not->toContain('groupByRaw(', basename($file).' agrupa por expresión: MariaDB con ONLY_FULL_GROUP_BY lo rechaza');
+    }
+});
