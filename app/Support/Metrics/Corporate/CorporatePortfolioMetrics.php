@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Metrics\Corporate;
 
+use App\Support\Operations\Dashboard\DashboardGrouping;
 use App\Support\Operations\Dashboard\OperationsDashboardAnalytics;
 use App\Support\Operations\Dashboard\OperationsDashboardPeriod as Period;
 use Carbon\CarbonImmutable;
@@ -118,7 +119,7 @@ final class CorporatePortfolioMetrics
             $counts = [];
 
             foreach (self::SOURCES as [$table]) {
-                foreach (DB::table($table)->selectRaw("COALESCE(NULLIF(UPPER(TRIM(status)), ''), 'SIN ESTATUS') as grp_status, COUNT(*) as total")->groupBy('grp_status')->get() as $row) {
+                foreach (DashboardGrouping::by(DB::table($table), ['grp_status' => "COALESCE(NULLIF(UPPER(TRIM(status)), ''), 'SIN ESTATUS')"])->selectRaw('COUNT(*) as total')->get() as $row) {
                     $counts[(string) $row->grp_status] = ($counts[(string) $row->grp_status] ?? 0) + (int) $row->total;
                 }
             }
@@ -149,11 +150,11 @@ final class CorporatePortfolioMetrics
             $counts = [];
 
             foreach ([['affiliates', 'affiliates.plan_id'], ['affiliate_corporates', 'affiliate_corporates.plan_id']] as [$table, $planColumn]) {
-                $rows = DB::table($table)
-                    ->leftJoin('plans', 'plans.id', '=', $planColumn)
-                    ->where("{$table}.status", 'ACTIVO')
-                    ->selectRaw("UPPER(COALESCE(NULLIF(TRIM(plans.description), ''), 'SIN PLAN')) as grp_label, COUNT(*) as total")
-                    ->groupBy('grp_label')
+                $rows = DashboardGrouping::by(
+                    DB::table($table)->leftJoin('plans', 'plans.id', '=', $planColumn)->where("{$table}.status", 'ACTIVO'),
+                    ['grp_label' => "UPPER(COALESCE(NULLIF(TRIM(plans.description), ''), 'SIN PLAN'))"],
+                )
+                    ->selectRaw('COUNT(*) as total')
                     ->get();
 
                 foreach ($rows as $row) {
@@ -185,7 +186,7 @@ final class CorporatePortfolioMetrics
             $case .= ' END';
 
             foreach (['affiliates', 'affiliate_corporates'] as $table) {
-                foreach (DB::table($table)->where('status', 'ACTIVO')->whereNotNull('age')->selectRaw($case.' as grp_band, COUNT(*) as total')->groupBy('grp_band')->get() as $row) {
+                foreach (DashboardGrouping::by(DB::table($table)->where('status', 'ACTIVO')->whereNotNull('age'), ['grp_band' => $case])->selectRaw('COUNT(*) as total')->get() as $row) {
                     if ($row->grp_band !== null) {
                         $bands[(string) $row->grp_band] += (int) $row->total;
                     }

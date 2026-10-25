@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Metrics\Corporate;
 
+use App\Support\Operations\Dashboard\DashboardGrouping;
 use App\Support\Operations\Dashboard\OperationsDashboardAnalytics;
 use App\Support\Operations\Dashboard\OperationsDashboardPeriod as Period;
 use Carbon\CarbonImmutable;
@@ -43,11 +44,14 @@ final class CorporateMapMetrics
      */
     public static function incomeByState(CarbonImmutable $from, CarbonImmutable $to): array
     {
-        $rows = CorporateFinanceMetrics::salesBetween($from, $to)
-            ->leftJoin('affiliations', 'affiliations.code', '=', 'sales.affiliation_code')
-            ->leftJoin('affiliation_corporates', 'affiliation_corporates.code', '=', 'sales.affiliation_code')
-            ->selectRaw('COALESCE(affiliations.state_id_ti, affiliation_corporates.state_id, 0) as grp_state, COALESCE(SUM(sales.total_amount), 0) as amount')
-            ->groupBy('grp_state')
+        $rows = DashboardGrouping::by(
+            CorporateFinanceMetrics::salesBetween($from, $to)
+                ->leftJoin('affiliations', 'affiliations.code', '=', 'sales.affiliation_code')
+                ->leftJoin('affiliation_corporates', 'affiliation_corporates.code', '=', 'sales.affiliation_code'),
+            ['grp_state' => 'COALESCE(affiliations.state_id_ti, affiliation_corporates.state_id, 0)'],
+            ['amount' => 'sales.total_amount'],
+        )
+            ->selectRaw('COALESCE(SUM(g.amount), 0) as amount')
             ->pluck('amount', 'grp_state');
 
         return CorporateGeography::byGeoKeyFromIds($rows);
@@ -58,9 +62,8 @@ final class CorporateMapMetrics
      */
     public static function servicesByState(CarbonImmutable $from, CarbonImmutable $to): array
     {
-        $byName = OperationsDashboardAnalytics::inPeriod($from, $to)
-            ->selectRaw("COALESCE(NULLIF(TRIM(state), ''), '') as grp_state, COUNT(*) as total")
-            ->groupBy('grp_state')
+        $byName = DashboardGrouping::by(OperationsDashboardAnalytics::inPeriod($from, $to), ['grp_state' => "COALESCE(NULLIF(TRIM(state), ''), '')"])
+            ->selectRaw('COUNT(*) as total')
             ->pluck('total', 'grp_state');
 
         return CorporateGeography::byGeoKeyFromNames($byName);

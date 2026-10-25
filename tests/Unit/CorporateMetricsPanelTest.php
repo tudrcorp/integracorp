@@ -361,7 +361,7 @@ it('el panel registra el grupo corporativo, sus permisos y el estilo del dashboa
         ->and(\App\Filament\Metrics\Clusters\Negocios\CorretajeCluster::shouldRegisterNavigation())->toBeFalse();
 });
 
-it('los tableros agrupan por alias y no por expresión, para que MariaDB en producción acepte las consultas', function (): void {
+it('los tableros agrupan con DashboardGrouping (subconsulta), la única forma que producción acepta', function (): void {
     $root = dirname(__DIR__, 2);
     $files = [
         ...glob($root.'/app/Support/Metrics/Corporate/*.php'),
@@ -370,6 +370,9 @@ it('los tableros agrupan por alias y no por expresión, para que MariaDB en prod
     ];
 
     foreach ($files as $file) {
-        expect(file_get_contents($file))->not->toContain('groupByRaw(', basename($file).' agrupa por expresión: MariaDB con ONLY_FULL_GROUP_BY lo rechaza');
+        $source = file_get_contents($file);
+
+        expect($source)->not->toContain('groupByRaw(', basename($file).' agrupa por expresión: producción lo rechaza')
+            ->and(preg_match("/->groupBy\\('(grp_|grouping_key|patient_key|month_number)/", $source))->toBe(0, basename($file).' agrupa por alias: producción también lo rechaza; usar DashboardGrouping::by()');
     }
 });

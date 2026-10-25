@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Metrics\Corporate;
 
+use App\Support\Operations\Dashboard\DashboardGrouping;
 use App\Support\Operations\Dashboard\OperationsDashboardPeriod as Period;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -61,15 +62,15 @@ final class CorporateMetrics
 
     /**
      * Serie diaria del rango a partir de una consulta: `$dateSql` es la fecha de
-     * cada fila y `$valueSql` lo que se suma por día (COUNT(*) por defecto).
+     * cada fila y `$sumSql` el valor de la fila que se suma por día (sin él,
+     * se cuentan filas).
      *
      * @return list<float>
      */
-    public static function daily(Builder $query, string $dateSql, CarbonImmutable $from, CarbonImmutable $to, string $valueSql = 'COUNT(*)'): array
+    public static function daily(Builder $query, string $dateSql, CarbonImmutable $from, CarbonImmutable $to, ?string $sumSql = null): array
     {
-        $rows = (clone $query)
-            ->selectRaw('DATE('.$dateSql.') as grp_day, '.$valueSql.' as total')
-            ->groupBy('grp_day')
+        $rows = DashboardGrouping::by($query, ['grp_day' => 'DATE('.$dateSql.')'], $sumSql === null ? [] : ['row_value' => $sumSql])
+            ->selectRaw($sumSql === null ? 'COUNT(*) as total' : 'COALESCE(SUM(g.row_value), 0) as total')
             ->pluck('total', 'grp_day');
 
         $series = [];

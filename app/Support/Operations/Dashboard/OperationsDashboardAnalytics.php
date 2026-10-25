@@ -149,9 +149,8 @@ final class OperationsDashboardAnalytics
         return self::remember('top_services_'.$limit, $period, static function () use ($period, $limit): array {
             $label = "COALESCE(NULLIF(TRIM(specific_service), ''), NULLIF(TRIM(service), ''), 'Sin servicio')";
 
-            $counts = self::inPeriod($period->from, $period->to)
-                ->selectRaw($label.' as grouping_key, COUNT(*) as total')
-                ->groupBy('grouping_key')
+            $counts = DashboardGrouping::by(self::inPeriod($period->from, $period->to), ['grouping_key' => $label])
+                ->selectRaw('COUNT(*) as total')
                 ->orderByDesc('total')
                 ->pluck('total', 'grouping_key')
                 ->map(static fn (mixed $total): int => (int) $total)
@@ -171,12 +170,10 @@ final class OperationsDashboardAnalytics
         return self::remember('top_patients_'.$limit, $period, static function () use ($period, $limit): array {
             $key = OperationsDashboardMetrics::patientKeySql();
 
-            return self::inPeriod($period->from, $period->to)
-                ->selectRaw($key.' as patient_key')
-                ->selectRaw('MAX(patient_name) as full_name')
+            return DashboardGrouping::by(self::inPeriod($period->from, $period->to), ['patient_key' => $key], ['patient_name' => 'patient_name', 'case_id' => 'telemedicine_case_id'])
+                ->selectRaw('MAX(g.patient_name) as full_name')
                 ->selectRaw('COUNT(*) as total')
-                ->selectRaw('COUNT(DISTINCT telemedicine_case_id) as cases')
-                ->groupBy('patient_key')
+                ->selectRaw('COUNT(DISTINCT g.case_id) as cases')
                 ->orderByDesc('total')
                 ->limit($limit)
                 ->get()
@@ -200,11 +197,12 @@ final class OperationsDashboardAnalytics
     {
         return self::remember('age_bands', $period, static function () use ($period): array {
             $case = self::ageBandSql();
-            $rows = self::inPeriod($period->from, $period->to)
-                ->whereNotNull('patient_age')
-                ->selectRaw($case.' as grp_band')
-                ->selectRaw('COUNT(DISTINCT '.OperationsDashboardMetrics::patientKeySql().') as total')
-                ->groupBy('grp_band')
+            $rows = DashboardGrouping::by(
+                self::inPeriod($period->from, $period->to)->whereNotNull('patient_age'),
+                ['grp_band' => $case],
+                ['patient_key' => OperationsDashboardMetrics::patientKeySql()],
+            )
+                ->selectRaw('COUNT(DISTINCT g.patient_key) as total')
                 ->pluck('total', 'grp_band');
 
             $bands = [];
@@ -225,12 +223,11 @@ final class OperationsDashboardAnalytics
     public static function heatmap(OperationsDashboardPeriod $period): array
     {
         return self::remember('heatmap', $period, static function () use ($period): array {
-            $rows = self::inPeriod($period->from, $period->to)
-                ->whereNotNull('started_at_time')
-                ->selectRaw('WEEKDAY('.self::DATE_SQL.') as grp_weekday')
-                ->selectRaw('HOUR(started_at_time) as grp_hour')
+            $rows = DashboardGrouping::by(
+                self::inPeriod($period->from, $period->to)->whereNotNull('started_at_time'),
+                ['grp_weekday' => 'WEEKDAY('.self::DATE_SQL.')', 'grp_hour' => 'HOUR(started_at_time)'],
+            )
                 ->selectRaw('COUNT(*) as total')
-                ->groupBy('grp_weekday', 'grp_hour')
                 ->get();
 
             $matrix = array_fill(0, 7, array_fill(0, 24, 0));
@@ -369,16 +366,15 @@ final class OperationsDashboardAnalytics
      */
     private static function dailySeries(CarbonImmutable $from, CarbonImmutable $to, ?string $status, ?string $distinct = null): array
     {
-        $query = self::inPeriod($from, $to)
-            ->selectRaw('DATE('.self::DATE_SQL.') as grp_day')
-            ->selectRaw($distinct === null ? 'COUNT(*) as total' : 'COUNT(DISTINCT '.$distinct.') as total')
-            ->groupBy('grp_day');
+        $query = self::inPeriod($from, $to);
 
         if ($status !== null) {
             $query->whereRaw('UPPER(TRIM(service_status)) = ?', [$status]);
         }
 
-        $rows = $query->pluck('total', 'grp_day');
+        $rows = DashboardGrouping::by($query, ['grp_day' => 'DATE('.self::DATE_SQL.')'], $distinct === null ? [] : ['distinct_key' => $distinct])
+            ->selectRaw($distinct === null ? 'COUNT(*) as total' : 'COUNT(DISTINCT g.distinct_key) as total')
+            ->pluck('total', 'grp_day');
         $series = [];
 
         for ($day = $from; $day->lessThanOrEqualTo($to); $day = $day->addDay()) {
@@ -424,9 +420,8 @@ final class OperationsDashboardAnalytics
     {
         $expression = "COALESCE(NULLIF(UPPER(TRIM({$column})), ''), '".strtoupper($emptyLabel)."')";
 
-        $counts = self::inPeriod($period->from, $period->to)
-            ->selectRaw($expression.' as grouping_key, COUNT(*) as total')
-            ->groupBy('grouping_key')
+        $counts = DashboardGrouping::by(self::inPeriod($period->from, $period->to), ['grouping_key' => $expression])
+            ->selectRaw('COUNT(*) as total')
             ->pluck('total', 'grouping_key')
             ->mapWithKeys(static fn (mixed $total, mixed $key): array => [
                 ((string) $key === strtoupper($emptyLabel) ? $emptyLabel : (string) $key) => (int) $total,

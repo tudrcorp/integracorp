@@ -7,6 +7,7 @@ namespace App\Support\Metrics\Corporate;
 use App\Models\Collection;
 use App\Support\Collections\CollectionAdjuster;
 use App\Support\Collections\CollectionReceivableReport;
+use App\Support\Operations\Dashboard\DashboardGrouping;
 use App\Support\Operations\Dashboard\OperationsDashboardPeriod as Period;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
@@ -117,7 +118,7 @@ final class CorporateFinanceMetrics
         return CorporateMetrics::remember('finance_income_vs_costs', $period, static function () use ($period): array {
             $granularity = $period->granularity();
             $income = CorporateMetrics::bucket(self::incomeDaily($period->from, $period->to), $period->from, $granularity);
-            $commissions = CorporateMetrics::daily(self::commissionsBetween($period->from, $period->to), 'commissions.created_at', $period->from, $period->to, 'COALESCE(SUM('.self::commissionSumSql().'), 0)');
+            $commissions = CorporateMetrics::daily(self::commissionsBetween($period->from, $period->to), 'commissions.created_at', $period->from, $period->to, self::commissionSumSql());
             $costDaily = self::costDaily($period->from, $period->to);
             $costs = CorporateMetrics::bucket(array_map(static fn (float $a, float $b): float => round($a + $b, 2), $commissions, $costDaily), $period->from, $granularity);
 
@@ -133,9 +134,8 @@ final class CorporateFinanceMetrics
         return CorporateMetrics::remember('finance_income_by_type', $period, static function () use ($period): array {
             $label = self::saleTypeSql();
 
-            return self::salesBetween($period->from, $period->to)
-                ->selectRaw($label.' as grp_label, COALESCE(SUM(sales.total_amount), 0) as amount')
-                ->groupBy('grp_label')
+            return DashboardGrouping::by(self::salesBetween($period->from, $period->to), ['grp_label' => $label], ['amount' => 'sales.total_amount'])
+                ->selectRaw('COALESCE(SUM(g.amount), 0) as amount')
                 ->orderByDesc('amount')
                 ->pluck('amount', 'grp_label')
                 ->map(static fn (mixed $amount): float => round((float) $amount, 2))
@@ -151,10 +151,12 @@ final class CorporateFinanceMetrics
         return CorporateMetrics::remember('finance_income_by_plan', $period, static function () use ($period): array {
             $label = "CASE WHEN UPPER(sales.type) LIKE '%CORPORATIV%' THEN '".self::CORPORATE_PLAN_LABEL."' ELSE COALESCE(NULLIF(TRIM(plans.description), ''), 'SIN PLAN') END";
 
-            $rows = self::salesBetween($period->from, $period->to)
-                ->leftJoin('plans', 'plans.id', '=', 'sales.plan_id')
-                ->selectRaw('UPPER('.$label.') as grp_label, COALESCE(SUM(sales.total_amount), 0) as amount')
-                ->groupBy('grp_label')
+            $rows = DashboardGrouping::by(
+                self::salesBetween($period->from, $period->to)->leftJoin('plans', 'plans.id', '=', 'sales.plan_id'),
+                ['grp_label' => 'UPPER('.$label.')'],
+                ['amount' => 'sales.total_amount'],
+            )
+                ->selectRaw('COALESCE(SUM(g.amount), 0) as amount')
                 ->pluck('amount', 'grp_label')
                 ->map(static fn (mixed $amount): float => round((float) $amount, 2))
                 ->all();
@@ -173,12 +175,13 @@ final class CorporateFinanceMetrics
     public static function incomeByAgency(Period $period, int $limit = 10): array
     {
         return CorporateMetrics::remember('finance_income_by_agency_'.$limit, $period, static function () use ($period, $limit): array {
-            $rows = self::salesBetween($period->from, $period->to)
-                ->leftJoin('agencies', 'agencies.code', '=', 'sales.code_agency')
-                ->selectRaw("COALESCE(NULLIF(TRIM(sales.code_agency), ''), 'SIN AGENCIA') as grp_code")
-                ->selectRaw('MAX(agencies.name_corporative) as name')
-                ->selectRaw('COALESCE(SUM(sales.total_amount), 0) as amount')
-                ->groupBy('grp_code')
+            $rows = DashboardGrouping::by(
+                self::salesBetween($period->from, $period->to)->leftJoin('agencies', 'agencies.code', '=', 'sales.code_agency'),
+                ['grp_code' => "COALESCE(NULLIF(TRIM(sales.code_agency), ''), 'SIN AGENCIA')"],
+                ['agency_name' => 'agencies.name_corporative', 'amount' => 'sales.total_amount'],
+            )
+                ->selectRaw('MAX(g.agency_name) as name')
+                ->selectRaw('COALESCE(SUM(g.amount), 0) as amount')
                 ->orderByDesc('amount')
                 ->get();
 
@@ -275,14 +278,14 @@ final class CorporateFinanceMetrics
     public static function receivablesByAgency(int $limit = 8): array
     {
         return CorporateMetrics::remember('finance_receivables_agency_'.$limit.'_'.CarbonImmutable::today()->toDateString(), null, static function () use ($limit): array {
-            $rows = self::pendingCollectableQuery()
-                ->leftJoin('agencies', 'agencies.code', '=', 'collections.code_agency')
-                ->selectRaw("COALESCE(NULLIF(TRIM(collections.code_agency), ''), 'SIN AGENCIA') as grp_code")
-                ->selectRaw('MAX(agencies.name_corporative) as name')
-                ->selectRaw('COALESCE(SUM(collections.total_amount), 0) as amount')
-                ->groupBy('grp_code')
+            $rows = DashboardGrouping::by(
+                self::pendingCollectableQuery()->leftJoin('agencies', 'agencies.code', '=', 'collections.code_agency'),
+                ['grp_code' => "COALESCE(NULLIF(TRIM(collections.code_agency), ''), 'SIN AGENCIA')"],
+                ['agency_name' => 'agencies.name_corporative', 'amount' => 'collections.total_amount'],
+            )
+                ->selectRaw('MAX(g.agency_name) as name')
+                ->selectRaw('COALESCE(SUM(g.amount), 0) as amount')
                 ->orderByDesc('amount')
-                ->toBase()
                 ->get();
 
             $mapped = $rows->map(static fn (object $row): array => [
@@ -332,12 +335,13 @@ final class CorporateFinanceMetrics
     public static function costByProvider(Period $period, int $limit = 8): array
     {
         return CorporateMetrics::remember('finance_cost_provider_'.$limit, $period, static function () use ($period, $limit): array {
-            $rows = self::costOrdersBetween($period->from, $period->to)
-                ->leftJoin('suppliers', 'suppliers.id', '=', 'operation_service_orders.supplier_id')
-                ->selectRaw("COALESCE(MAX(suppliers.name), NULLIF(TRIM(MAX(operation_service_orders.supplier_external)), ''), 'Sin proveedor') as name")
-                ->selectRaw('COALESCE(operation_service_orders.supplier_id, 0) as grp_id')
-                ->selectRaw('COALESCE(SUM('.self::COST_SQL.'), 0) as amount')
-                ->groupBy('grp_id')
+            $rows = DashboardGrouping::by(
+                self::costOrdersBetween($period->from, $period->to)->leftJoin('suppliers', 'suppliers.id', '=', 'operation_service_orders.supplier_id'),
+                ['grp_id' => 'COALESCE(operation_service_orders.supplier_id, 0)'],
+                ['supplier_name' => 'suppliers.name', 'supplier_external' => 'operation_service_orders.supplier_external', 'cost' => self::COST_SQL],
+            )
+                ->selectRaw("COALESCE(MAX(g.supplier_name), NULLIF(TRIM(MAX(g.supplier_external)), ''), 'Sin proveedor') as name")
+                ->selectRaw('COALESCE(SUM(g.cost), 0) as amount')
                 ->orderByDesc('amount')
                 ->get();
 
@@ -406,7 +410,7 @@ final class CorporateFinanceMetrics
      */
     public static function incomeDaily(CarbonImmutable $from, CarbonImmutable $to): array
     {
-        return CorporateMetrics::daily(self::salesBetween($from, $to), 'sales.created_at', $from, $to, 'COALESCE(SUM(sales.total_amount), 0)');
+        return CorporateMetrics::daily(self::salesBetween($from, $to), 'sales.created_at', $from, $to, 'sales.total_amount');
     }
 
     /**
@@ -414,7 +418,7 @@ final class CorporateFinanceMetrics
      */
     public static function costDaily(CarbonImmutable $from, CarbonImmutable $to): array
     {
-        return CorporateMetrics::daily(self::costOrdersBetween($from, $to), 'operation_service_orders.created_at', $from, $to, 'COALESCE(SUM('.self::COST_SQL.'), 0)');
+        return CorporateMetrics::daily(self::costOrdersBetween($from, $to), 'operation_service_orders.created_at', $from, $to, self::COST_SQL);
     }
 
     public static function saleTypeSql(): string

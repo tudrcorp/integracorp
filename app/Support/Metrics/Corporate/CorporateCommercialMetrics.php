@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Metrics\Corporate;
 
+use App\Support\Operations\Dashboard\DashboardGrouping;
 use App\Support\Operations\Dashboard\OperationsDashboardPeriod as Period;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
@@ -119,10 +120,12 @@ final class CorporateCommercialMetrics
     public static function salesByAgent(Period $period, int $limit = 10): array
     {
         return CorporateMetrics::remember('commercial_sales_agent_'.$limit, $period, static function () use ($period, $limit): array {
-            $rows = CorporateFinanceMetrics::salesBetween($period->from, $period->to)
-                ->leftJoin('agents', 'agents.id', '=', 'sales.agent_id')
-                ->selectRaw('COALESCE(sales.agent_id, 0) as grp_id, MAX(agents.name) as name, COALESCE(SUM(sales.total_amount), 0) as amount')
-                ->groupBy('grp_id')
+            $rows = DashboardGrouping::by(
+                CorporateFinanceMetrics::salesBetween($period->from, $period->to)->leftJoin('agents', 'agents.id', '=', 'sales.agent_id'),
+                ['grp_id' => 'COALESCE(sales.agent_id, 0)'],
+                ['agent_name' => 'agents.name', 'amount' => 'sales.total_amount'],
+            )
+                ->selectRaw('MAX(g.agent_name) as name, COALESCE(SUM(g.amount), 0) as amount')
                 ->orderByDesc('amount')
                 ->get();
 
@@ -148,11 +151,14 @@ final class CorporateCommercialMetrics
     public static function plansSold(Period $period): array
     {
         return CorporateMetrics::remember('commercial_plans_sold', $period, static function () use ($period): array {
-            $rows = CorporateFinanceMetrics::salesBetween($period->from, $period->to)
-                ->leftJoin('plans', 'plans.id', '=', 'sales.plan_id')
-                ->whereRaw("UPPER(sales.type) NOT LIKE '%CORPORATIV%'")
-                ->selectRaw("UPPER(COALESCE(NULLIF(TRIM(plans.description), ''), 'SIN PLAN')) as grp_label, COUNT(DISTINCT sales.affiliation_code) as total")
-                ->groupBy('grp_label')
+            $rows = DashboardGrouping::by(
+                CorporateFinanceMetrics::salesBetween($period->from, $period->to)
+                    ->leftJoin('plans', 'plans.id', '=', 'sales.plan_id')
+                    ->whereRaw("UPPER(sales.type) NOT LIKE '%CORPORATIV%'"),
+                ['grp_label' => "UPPER(COALESCE(NULLIF(TRIM(plans.description), ''), 'SIN PLAN'))"],
+                ['affiliation_code' => 'sales.affiliation_code'],
+            )
+                ->selectRaw('COUNT(DISTINCT g.affiliation_code) as total')
                 ->pluck('total', 'grp_label')
                 ->map(static fn (mixed $total): int => (int) $total)
                 ->all();
