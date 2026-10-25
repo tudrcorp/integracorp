@@ -149,8 +149,50 @@ it('los campos «otros» del formulario no tienen bloqueo por cupo', function ()
         $fin = $siguiente === false ? strpos($form, '])', $inicio) : min($siguiente, strpos($form, '])', $inicio));
         $bloque = substr($form, $inicio, $fin - $inicio);
 
+        // Solo muestran el aviso de cupo cubierto: nunca bloquean ni piden OTP.
         expect($bloque)
-            ->not->toContain('ClinicalQuotaFormGuard')
+            ->not->toContain('ClinicalQuotaFormGuard::rule')
+            ->not->toContain('notifyIfBlocked')
+            ->not->toContain('coveredIsHidden')
+            ->toContain('ClinicalQuotaFormGuard::uncoveredOnlyNotice')
             ->toContain('no consumen cupo');
     }
+});
+
+it('un medicamento no cubierto no pide cupo de medicamentos', function (): void {
+    $canales = ClinicalConsultationConsumption::requestedChannels([
+        'complements' => [1],
+        'medications' => [
+            ['operation_inventory_id' => null, 'covered_medicines' => null, 'medicines' => 'IBUPROFENO', 'indications' => 'CADA 8 HORAS'],
+        ],
+    ]);
+
+    expect($canales)->not->toHaveKey(ClinicalServiceChannel::Medication->value);
+});
+
+it('un medicamento cubierto sigue pidiendo cupo aunque venga junto a uno no cubierto', function (array $cubierto): void {
+    $canales = ClinicalConsultationConsumption::requestedChannels([
+        'complements' => [1],
+        'medications' => [
+            ['medicines' => 'IBUPROFENO', 'indications' => 'CADA 8 HORAS'],
+            $cubierto + ['indications' => 'CADA 12 HORAS'],
+        ],
+    ]);
+
+    expect($canales)->toHaveKey(ClinicalServiceChannel::Medication->value);
+})->with([
+    'inventario TDC' => [['operation_inventory_id' => 15]],
+    'cubierto sin inventario' => [['covered_medicines' => 'LOSARTAN']],
+]);
+
+it('sin la tilde de medicamentos no pide cupo aunque haya filas cubiertas', function (): void {
+    $canales = ClinicalConsultationConsumption::requestedChannels([
+        'complements' => [2],
+        'medications' => [['operation_inventory_id' => 15]],
+    ]);
+
+    expect($canales)->not->toHaveKey(ClinicalServiceChannel::Medication->value)
+        ->and(ClinicalConsultationConsumption::hasCoveredMedication(null))->toBeFalse()
+        ->and(ClinicalConsultationConsumption::hasCoveredMedication('basura'))->toBeFalse()
+        ->and(ClinicalConsultationConsumption::hasCoveredMedication([['medicines' => 'X'], 'basura']))->toBeFalse();
 });

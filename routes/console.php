@@ -266,6 +266,15 @@ Schedule::command('queue:prune-failed', ['--hours' => max(1, (int) config('live-
     ->when(static fn (): bool => (int) config('live-presence.queues.prune_failed_days', 30) > 0);
 
 /**
+ * Bitácora del panel de Telemedicina (Operaciones → Bitácora del panel): borra lo
+ * que tiene más de 90 días (TelemedicinePanelEvent::RETENTION_DAYS).
+ */
+Schedule::command('model:prune', ['--model' => [\App\Models\TelemedicinePanelEvent::class]])
+    ->dailyAt('3:30')
+    ->name('telemedicine-panel-events-prune')
+    ->withoutOverlapping(30);
+
+/**
  * Actividad de usuarios: cada minuto pasa a MySQL el recorrido y el resumen del
  * día acumulados en Redis/caché. En el scheduler (no en la cola) para seguir
  * registrando aunque los workers estén caídos.

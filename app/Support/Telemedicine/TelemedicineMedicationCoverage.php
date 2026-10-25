@@ -173,6 +173,16 @@ final class TelemedicineMedicationCoverage
     }
 
     /**
+     * Fila que consume cupo de medicamentos: inventario TDC o cubierto sin inventario.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public static function rowIsCovered(array $row): bool
+    {
+        return self::rowHasInventory($row) || self::rowHasCoveredWithoutInventory($row);
+    }
+
+    /**
      * @param  array<string, mixed>  $row
      */
     public static function rowHasUncoveredManual(array $row): bool

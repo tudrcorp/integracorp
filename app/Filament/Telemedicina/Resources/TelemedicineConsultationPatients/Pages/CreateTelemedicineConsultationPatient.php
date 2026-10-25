@@ -1050,6 +1050,9 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
     }
 
     /**
+     * Solo Servicios Macro se autoriza con OTP: en los demás canales la consulta
+     * sigue con lo no cubierto.
+     *
      * @return array<string, string>
      */
     private function exhaustedChannelOptions(): array
@@ -1062,7 +1065,7 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
         $snapshot = AffiliateClinicalEntitlementResolver::forPatient($patient);
         $out = [];
         foreach ($snapshot->entitlements as $entitlement) {
-            if (! $entitlement->exhausted) {
+            if (! $entitlement->exhausted || ! $entitlement->channel->requiresOverrideWhenExhausted()) {
                 continue;
             }
             $out[(string) $entitlement->benefitId] = $entitlement->benefitLabel.' · '.$entitlement->channel->shortLabel().' · agotado';
@@ -1218,11 +1221,13 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
         $snapshot = AffiliateClinicalEntitlementResolver::forPatient($patient);
         $benefitId = (int) ($data['benefit_id'] ?? 0);
         if ($benefitId > 0) {
-            return $snapshot->forBenefit($benefitId);
+            $entitlement = $snapshot->forBenefit($benefitId);
+
+            return $entitlement?->channel->requiresOverrideWhenExhausted() ? $entitlement : null;
         }
 
         $channel = ClinicalServiceChannel::fromStored($data['channel'] ?? null);
-        if ($channel === null) {
+        if ($channel === null || ! $channel->requiresOverrideWhenExhausted()) {
             return null;
         }
 

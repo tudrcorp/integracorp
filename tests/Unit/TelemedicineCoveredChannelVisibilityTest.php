@@ -126,9 +126,9 @@ it('el formulario oculta los selects de cubiertos segun el uso clinico del plan'
     $form = file_get_contents($basePath.'/app/Filament/Telemedicina/Resources/TelemedicineConsultationPatients/Schemas/TelemedicineConsultationPatientForm.php');
 
     expect($form)
-        ->toContain('->visible(fn (): bool => TelemedicineConsultationClinicalUi::channelIsContemplated(ClinicalServiceChannel::Laboratory))')
-        ->toContain('->visible(fn (): bool => TelemedicineConsultationClinicalUi::channelIsContemplated(ClinicalServiceChannel::Imaging))')
-        ->toContain('->visible(fn (): bool => TelemedicineConsultationClinicalUi::specialistIsContemplated())')
+        ->toContain("->visible(fn (Component \$livewire): bool => TelemedicineConsultationClinicalUi::channelIsContemplated(ClinicalServiceChannel::Laboratory)\n                                                    && ! ClinicalQuotaFormGuard::coveredIsHidden(\$livewire, ClinicalServiceChannel::Laboratory))")
+        ->toContain("->visible(fn (Component \$livewire): bool => TelemedicineConsultationClinicalUi::channelIsContemplated(ClinicalServiceChannel::Imaging)\n                                                    && ! ClinicalQuotaFormGuard::coveredIsHidden(\$livewire, ClinicalServiceChannel::Imaging))")
+        ->toContain("->visible(fn (Component \$livewire): bool => TelemedicineConsultationClinicalUi::specialistIsContemplated()\n                                            && ! ClinicalQuotaFormGuard::coveredIsHidden(\$livewire, ClinicalServiceChannel::Specialist))")
         ->toContain("->label('Otros Especialistas')");
 });
 

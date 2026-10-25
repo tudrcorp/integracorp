@@ -56,14 +56,15 @@ it('conserva las acciones de la tabla y carga las relaciones de una vez', functi
         ->not->toContain("->label('Número de teléfono')");
 });
 
-it('el encabezado resume por cobrar, vencido y cobrado', function (): void {
+it('el encabezado resume por cobrar y vencido, sin la tarjeta de cobrado', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Collections/Pages/ListCollections.php');
 
     expect($source)
         ->toContain("protected static ?string \$title = 'Gestión de Cobranza';")
         ->toContain("'label' => 'Por cobrar'")
-        ->toContain("'label' => 'Vencido'")
-        ->toContain("'label' => 'Cobrado'")
+        ->toContain("'label' => 'Vencidos'")
+        ->not->toContain("'label' => 'Cobrado'")
+        ->not->toContain('paid_amount')
         ->toContain('getFilteredTableQuery()');
 });
 

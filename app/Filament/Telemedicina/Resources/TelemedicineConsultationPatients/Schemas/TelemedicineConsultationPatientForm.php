@@ -312,14 +312,11 @@ class TelemedicineConsultationPatientForm
             ->gridDirection(GridDirection::Row)
             ->options(fn (): array => TelemedicineConsultationClinicalUi::complementOptions())
             ->descriptions(fn (): array => TelemedicineConsultationClinicalUi::complementOptionDescriptions())
-            ->rules([
-                fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::complementsRule($livewire),
-            ])
             ->helperText(function (Get $get, Component $livewire): ?string {
-                $blocked = ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Medication);
+                $notices = ClinicalQuotaFormGuard::uncoveredOnlyComplementNotices($livewire, $get('complements'));
 
-                if ($blocked !== null && in_array(1, array_map('intval', (array) $get('complements')), true)) {
-                    return $blocked;
+                if ($notices !== []) {
+                    return implode(' ', $notices);
                 }
 
                 return TelemedicineConsultationClinicalUi::complementsHelperText($get('complements'));
@@ -330,11 +327,7 @@ class TelemedicineConsultationPatientForm
                 ? Heroicon::OutlinedExclamationTriangle
                 : null)
             ->afterStateUpdated(function (mixed $state, mixed $old, Component $livewire): void {
-                $blocked = ClinicalQuotaFormGuard::blockedComplementChannel($livewire, $state);
-
-                if ($blocked !== null && ! in_array(1, array_map('intval', (array) $old), true)) {
-                    ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Medication);
-                }
+                ClinicalQuotaFormGuard::notifyUncoveredOnlyComplements($livewire, $state, $old);
 
                 if (! TelemedicineConsultationClinicalUi::shouldNotifySpecialistNotContemplated($state, $old)) {
                     return;
@@ -397,6 +390,17 @@ class TelemedicineConsultationPatientForm
         $coveredColumnLabel = $providerCoverage
             ? TelemedicineMedicationInventoryOptions::providerCoverageLabel($prescriber)
             : 'Cubierto (Operaciones)';
+        /*
+         * Con el cupo de medicamentos cubierto no hay OTP: el listado pierde las
+         * columnas de inventario y cubierto y solo admite medicamentos no cubiertos.
+         * Se decide al armar el esquema porque el repeater en tabla empareja
+         * encabezados y campos por posición: ocultar un campo dejaría la cabecera.
+         */
+        $medicationUncoveredOnly = ClinicalQuotaFormGuard::coveredIsHidden($schema->getLivewire(), ClinicalServiceChannel::Medication);
+        $medicationUncoveredNotice = $medicationUncoveredOnly
+            ? ClinicalQuotaFormGuard::uncoveredOnlyNotice($schema->getLivewire(), ClinicalServiceChannel::Medication)
+            : null;
+        $showMedicationInventory = ! $providerCoverage && ! $medicationUncoveredOnly;
 
         return $schema
             ->components([
@@ -1062,9 +1066,11 @@ class TelemedicineConsultationPatientForm
 
                     Step::make('Medicamentos e Indicaciones')
                         ->key(TelemedicineConsultationWizardSteps::MEDICATIONS, isInheritable: false)
-                        ->description($providerCoverage
-                            ? $coveredColumnLabel.' o no cubierto.'
-                            : 'Inventario TDC, cubierto sin inventario (Operaciones) o no cubierto.')
+                        ->description(match (true) {
+                            $medicationUncoveredOnly => 'Cupo cubierto: solo medicamentos no cubiertos.',
+                            $providerCoverage => $coveredColumnLabel.' o no cubierto.',
+                            default => 'Inventario TDC, cubierto sin inventario (Operaciones) o no cubierto.',
+                        })
                         ->icon(Heroicon::OutlinedBeaker)
                         ->hidden(fn (Get $get) => $get('feedbackOne') == true || ! in_array(1, $get('complements')))
                         ->schema([
@@ -1074,23 +1080,44 @@ class TelemedicineConsultationPatientForm
                                 ->dehydrated(false)
                                 ->hiddenLabel()
                                 ->columnSpanFull(),
+                            Placeholder::make('medication_uncovered_only_notice')
+                                ->hiddenLabel()
+                                ->content($medicationUncoveredNotice)
+                                ->visible($medicationUncoveredOnly)
+                                ->columnSpanFull(),
                             Repeater::make('medications')
                                 ->table(array_values(array_filter([
-                                    $providerCoverage ? null : TableColumn::make('Inventario TDC')->width('16%'),
-                                    TableColumn::make($coveredColumnLabel)->width($providerCoverage ? '22%' : '16%'),
-                                    TableColumn::make('No cubierto')->width($providerCoverage ? '22%' : '16%'),
-                                    TableColumn::make('Indicaciones y Duración en días')->width($providerCoverage ? '44%' : '40%')->markAsRequired(),
+                                    $showMedicationInventory ? TableColumn::make('Inventario TDC')->width('16%') : null,
+                                    $medicationUncoveredOnly ? null : TableColumn::make($coveredColumnLabel)->width($providerCoverage ? '22%' : '16%'),
+                                    TableColumn::make('No cubierto')
+                                        ->width(match (true) {
+                                            $medicationUncoveredOnly => '40%',
+                                            $providerCoverage => '22%',
+                                            default => '16%',
+                                        })
+                                        ->markAsRequired($medicationUncoveredOnly),
+                                    TableColumn::make('Indicaciones y Duración en días')
+                                        ->width(match (true) {
+                                            $medicationUncoveredOnly => '48%',
+                                            $providerCoverage => '44%',
+                                            default => '40%',
+                                        })
+                                        ->markAsRequired(),
                                     TableColumn::make('Cantidad')->width('12%'),
                                 ])))
                                 ->rules([
-                                    function () use ($providerCoverage, $coveredColumnLabel): \Closure {
-                                        return function (string $attribute, mixed $value, \Closure $fail) use ($providerCoverage, $coveredColumnLabel): void {
+                                    function () use ($providerCoverage, $coveredColumnLabel, $medicationUncoveredOnly): \Closure {
+                                        return function (string $attribute, mixed $value, \Closure $fail) use ($providerCoverage, $coveredColumnLabel, $medicationUncoveredOnly): void {
                                             if (! is_array($value)) {
                                                 return;
                                             }
                                             $rowNumber = 1;
                                             foreach ($value as $row) {
                                                 if (is_array($row)) {
+                                                    if ($medicationUncoveredOnly && TelemedicineMedicationCoverage::rowIsCovered($row)) {
+                                                        $fail("En la fila {$rowNumber}: el cupo de medicamentos del plan está cubierto, solo puede indicar medicamentos no cubiertos.");
+                                                    }
+
                                                     $exclusiveError = TelemedicineMedicationCoverage::exclusiveSourceError($row, $rowNumber);
                                                     if ($exclusiveError !== null) {
                                                         $fail($exclusiveError);
@@ -1111,7 +1138,7 @@ class TelemedicineConsultationPatientForm
                                     },
                                 ])
                                 ->schema([
-                                    ...($providerCoverage ? [] : [
+                                    ...(! $showMedicationInventory ? [] : [
                                         Select::make('operation_inventory_id')
                                             ->options(function () use ($case): array {
                                                 $caseModel = self::caseWithDoctor($case);
@@ -1174,20 +1201,24 @@ class TelemedicineConsultationPatientForm
                                                 }
                                             }),
                                     ]),
-                                    TextInput::make('covered_medicines')
-                                        ->placeholder($providerCoverage ? $coveredColumnLabel : 'Cubierto, sin inventario')
-                                        ->live(onBlur: false)
-                                        ->afterStateUpdated(function ($state, Set $set): void {
-                                            if (filled($state)) {
-                                                $set('operation_inventory_id', null);
-                                                $set('medicines', null);
-                                            }
-                                        })
-                                        ->afterStateUpdatedJs(<<<'JS'
-                                        $set('covered_medicines', $state.toUpperCase());
-                                    JS),
+                                    ...($medicationUncoveredOnly ? [] : [
+                                        TextInput::make('covered_medicines')
+                                            ->placeholder($providerCoverage ? $coveredColumnLabel : 'Cubierto, sin inventario')
+                                            ->live(onBlur: false)
+                                            ->afterStateUpdated(function ($state, Set $set): void {
+                                                if (filled($state)) {
+                                                    $set('operation_inventory_id', null);
+                                                    $set('medicines', null);
+                                                }
+                                            })
+                                            ->afterStateUpdatedJs(<<<'JS'
+                                            $set('covered_medicines', $state.toUpperCase());
+                                        JS),
+                                    ]),
                                     TextInput::make('medicines')
                                         ->placeholder('No cubierto')
+                                        ->required($medicationUncoveredOnly)
+                                        ->validationAttribute('medicamento no cubierto')
                                         ->live(onBlur: false)
                                         ->afterStateUpdated(function ($state, Set $set): void {
                                             if (filled($state)) {
@@ -1293,24 +1324,19 @@ class TelemedicineConsultationPatientForm
                                             Select::make('labs')
                                                 ->label('Laboratorios (CUBIERTOS)')
                                                 ->options(TelemedicineListLaboratory::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
-                                                ->visible(fn (): bool => TelemedicineConsultationClinicalUi::channelIsContemplated(ClinicalServiceChannel::Laboratory))
+                                                ->visible(fn (Component $livewire): bool => TelemedicineConsultationClinicalUi::channelIsContemplated(ClinicalServiceChannel::Laboratory)
+                                                    && ! ClinicalQuotaFormGuard::coveredIsHidden($livewire, ClinicalServiceChannel::Laboratory))
                                                 ->multiple()
-                                                ->rules([
-                                                    fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Laboratory),
-                                                ])
-                                                ->afterStateUpdated(function (Component $livewire): void {
-                                                    ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Laboratory);
-                                                })
                                                 ->live(onBlur: true)
-                                                ->helperText(fn (Component $livewire): ?string => ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Laboratory)
-                                                    ?? TelemedicineConsultationClinicalUi::channelHelper(ClinicalServiceChannel::Laboratory)
+                                                ->helperText(fn (): string => TelemedicineConsultationClinicalUi::channelHelper(ClinicalServiceChannel::Laboratory)
                                                     ?? 'Seleccione el/los exámenes de Laboratorio que requiera el paciente'),
                                             Select::make('other_labs')
                                                 ->label('Otros Laboratorio (NO CUBIERTOS)')
                                                 ->options(TelemedicineListLaboratory::where('type', 'NO CUBIERTO')->get()->pluck('name', 'name'))
                                                 ->multiple()
                                                 ->live(onBlur: true)
-                                                ->helperText('No cubiertos por el plan: se registran y no consumen cupo de laboratorio.'),
+                                                ->helperText(fn (Component $livewire): string => ClinicalQuotaFormGuard::uncoveredOnlyNotice($livewire, ClinicalServiceChannel::Laboratory)
+                                                    ?? 'No cubiertos por el plan: se registran y no consumen cupo de laboratorio.'),
                                         ])->columns(1),
                                     Fieldset::make('Imagenología')
                                         ->schema([
@@ -1318,17 +1344,11 @@ class TelemedicineConsultationPatientForm
                                                 ->label('Estudios de Imágenes (CUBIERTOS)')
                                                 ->live()
                                                 ->options(TelemedicineListStudy::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
-                                                ->visible(fn (): bool => TelemedicineConsultationClinicalUi::channelIsContemplated(ClinicalServiceChannel::Imaging))
+                                                ->visible(fn (Component $livewire): bool => TelemedicineConsultationClinicalUi::channelIsContemplated(ClinicalServiceChannel::Imaging)
+                                                    && ! ClinicalQuotaFormGuard::coveredIsHidden($livewire, ClinicalServiceChannel::Imaging))
                                                 ->multiple()
-                                                ->rules([
-                                                    fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Imaging),
-                                                ])
-                                                ->afterStateUpdated(function (Component $livewire): void {
-                                                    ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Imaging);
-                                                })
                                                 ->live(onBlur: true)
-                                                ->helperText(fn (Component $livewire): ?string => ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Imaging)
-                                                    ?? TelemedicineConsultationClinicalUi::channelHelper(ClinicalServiceChannel::Imaging)
+                                                ->helperText(fn (): string => TelemedicineConsultationClinicalUi::channelHelper(ClinicalServiceChannel::Imaging)
                                                     ?? 'Seleccione el/los estudios de Imágenes que requiera el paciente'),
                                             Select::make('other_studies')
                                                 ->label(' Otros Estudios de Imágenes (NO CUBIERTOS)')
@@ -1336,7 +1356,8 @@ class TelemedicineConsultationPatientForm
                                                 ->options(TelemedicineListStudy::where('type', 'NO CUBIERTO')->get()->pluck('name', 'name'))
                                                 ->multiple()
                                                 ->live(onBlur: true)
-                                                ->helperText('No cubiertos por el plan: se registran y no consumen cupo de imagenología.'),
+                                                ->helperText(fn (Component $livewire): string => ClinicalQuotaFormGuard::uncoveredOnlyNotice($livewire, ClinicalServiceChannel::Imaging)
+                                                    ?? 'No cubiertos por el plan: se registran y no consumen cupo de imagenología.'),
                                         ])->columnSpan(2)->columns(1),
                                     // ...
                                 ])->columns(3),
@@ -1359,23 +1380,19 @@ class TelemedicineConsultationPatientForm
                                     Select::make('consult_specialist')
                                         ->label('Interconsultas Especialistas para Patologías Agudas')
                                         ->options(TelemedicineListSpecialist::where('type', 'CUBIERTO')->get()->pluck('name', 'name'))
-                                        ->visible(fn (): bool => TelemedicineConsultationClinicalUi::specialistIsContemplated())
+                                        ->visible(fn (Component $livewire): bool => TelemedicineConsultationClinicalUi::specialistIsContemplated()
+                                            && ! ClinicalQuotaFormGuard::coveredIsHidden($livewire, ClinicalServiceChannel::Specialist))
                                         ->multiple()
-                                        ->rules([
-                                            fn (Component $livewire): \Closure => ClinicalQuotaFormGuard::rule($livewire, ClinicalServiceChannel::Specialist),
-                                        ])
-                                        ->afterStateUpdated(function (Component $livewire): void {
-                                            ClinicalQuotaFormGuard::notifyIfBlocked($livewire, ClinicalServiceChannel::Specialist);
-                                        })
                                         ->live(onBlur: true)
-                                        ->helperText(fn (Component $livewire): ?string => ClinicalQuotaFormGuard::helperText($livewire, ClinicalServiceChannel::Specialist)
+                                        ->helperText(fn (): string => TelemedicineConsultationClinicalUi::channelHelper(ClinicalServiceChannel::Specialist)
                                             ?? 'Interconsultas cubiertas por el plan.'),
                                     Select::make('other_specialist')
                                         ->label('Otros Especialistas') // BVA
                                         ->options(fn () => TelemedicineListSpecialist::uncoveredNames())
                                         ->multiple()
                                         ->live(onBlur: true)
-                                        ->helperText('Especialistas no cubiertos por el plan: se registran y no consumen cupo de especialista.'),
+                                        ->helperText(fn (Component $livewire): string => ClinicalQuotaFormGuard::uncoveredOnlyNotice($livewire, ClinicalServiceChannel::Specialist)
+                                            ?? 'Especialistas no cubiertos por el plan: se registran y no consumen cupo de especialista.'),
                                 ])->columnSpanFull()->columns(2),
                         ]),
 

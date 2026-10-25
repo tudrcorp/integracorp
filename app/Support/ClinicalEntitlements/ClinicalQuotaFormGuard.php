@@ -12,18 +12,22 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Impide cargar en el formulario un servicio cuyo cupo del plan ya está cubierto:
- * solo se libera con una autorización OTP verificada.
+ * Qué hace el formulario de consulta cuando el cupo del plan ya está cubierto.
  *
- * Adelantar el bloqueo al campo evita que el médico recorra todo el asistente y
- * descubra el tope recién al final. Como el asistente valida el paso al pulsar
- * «Siguiente», la misma regla impide avanzar.
+ * - Servicios Macro (TYPE_1): el campo se bloquea y solo se libera con una
+ *   autorización OTP verificada. Adelantar el bloqueo al campo evita que el
+ *   médico recorra todo el asistente y descubra el tope recién al final; como el
+ *   asistente valida el paso al pulsar «Siguiente», la misma regla impide avanzar.
+ * - Medicamentos, laboratorio, imagenología y especialista: no hay OTP. Se ocultan
+ *   los campos de lo cubierto y la consulta sigue solo con lo no cubierto, que no
+ *   consume cupo.
  */
 final class ClinicalQuotaFormGuard
 {
     /**
-     * Solo aplica donde existe el botón de autorización OTP. Sin ese botón el
-     * bloqueo dejaría al médico sin salida.
+     * Solo aplica en la pantalla de creación, la que tiene el botón de
+     * autorización OTP. En las demás no se bloquea ni se oculta nada: ocultar
+     * un campo con datos ya guardados los haría desaparecer de la vista.
      */
     public static function isEnforced(mixed $livewire): bool
     {
@@ -53,9 +57,8 @@ final class ClinicalQuotaFormGuard
      *
      * A propósito es más estricto que {@see ClinicalConsultationConsumption::assertCanSave()}:
      * el guardado deja pasar un uso extra dentro de un caso que ya contaba (alcance
-     * «En casos diferentes»), pero en el formulario un cupo cubierto siempre exige
-     * autorización OTP. Es la regla de negocio pedida: si el límite está cubierto,
-     * el médico no lo carga sin clave, sin importar el caso.
+     * «En casos diferentes»), pero en el formulario un cupo cubierto se trata como
+     * cubierto sin importar el caso.
      */
     public static function exhaustedEntitlement(
         ClinicalServiceChannel $channel,
@@ -82,12 +85,40 @@ final class ClinicalQuotaFormGuard
         return $entitlement;
     }
 
+    /**
+     * Si el campo de lo cubierto del canal debe ocultarse porque el cupo está
+     * cubierto. Nunca aplica a Servicios Macro, que sigue con OTP.
+     */
+    public static function coveredIsHidden(mixed $livewire, ClinicalServiceChannel $channel): bool
+    {
+        if (! self::isEnforced($livewire) || $channel->requiresOverrideWhenExhausted()) {
+            return false;
+        }
+
+        return self::exhaustedEntitlement($channel) !== null;
+    }
+
+    /**
+     * Aviso informativo bajo el campo de lo no cubierto cuando lo cubierto se ocultó.
+     */
+    public static function uncoveredOnlyNotice(mixed $livewire, ClinicalServiceChannel $channel): ?string
+    {
+        if (! self::coveredIsHidden($livewire, $channel)) {
+            return null;
+        }
+
+        return self::exhaustedEntitlement($channel)?->helperText();
+    }
+
+    /**
+     * Solo Servicios Macro bloquea: el resto oculta lo cubierto en vez de bloquear.
+     */
     public static function isBlocked(
         mixed $livewire,
         ClinicalServiceChannel $channel,
         ?int $serviceListId = null,
     ): bool {
-        if (! self::isEnforced($livewire)) {
+        if (! self::isEnforced($livewire) || ! $channel->requiresOverrideWhenExhausted()) {
             return false;
         }
 
@@ -163,21 +194,6 @@ final class ClinicalQuotaFormGuard
     }
 
     /**
-     * Los complementos son un solo campo con tres canales: solo la tilde de
-     * medicamentos consume cupo por sí sola.
-     */
-    public static function complementsRule(mixed $livewire): Closure
-    {
-        return function (string $attribute, mixed $value, Closure $fail) use ($livewire): void {
-            $entitlement = self::blockedComplementChannel($livewire, $value);
-
-            if ($entitlement !== null) {
-                $fail(self::message($entitlement));
-            }
-        };
-    }
-
-    /**
      * Aviso inmediato al seleccionar algo sin cupo, para que no lo descubra al avanzar.
      */
     public static function notifyIfBlocked(
@@ -202,24 +218,61 @@ final class ClinicalQuotaFormGuard
     }
 
     /**
-     * Complementos marcados que consumen cupo por sí solos (medicamentos). El resto
-     * se valida en su propio select, porque la tilde de laboratorio/imagen cubre dos
-     * canales y bloquearla entera taparía el que sí tiene cupo.
+     * Canales de un complemento. La tilde de laboratorio/imagen cubre dos.
+     *
+     * @return list<ClinicalServiceChannel>
+     */
+    public static function complementChannels(int $complementKey): array
+    {
+        return match ($complementKey) {
+            1 => [ClinicalServiceChannel::Medication],
+            2 => [ClinicalServiceChannel::Laboratory, ClinicalServiceChannel::Imaging],
+            TelemedicineConsultationClinicalUi::SPECIALIST_COMPLEMENT_KEY => [ClinicalServiceChannel::Specialist],
+            default => [],
+        };
+    }
+
+    /**
+     * Avisos de «solo no cubiertos» de los complementos marcados.
      *
      * @param  mixed  $state  Estado del checkbox list de complementos.
+     * @return list<string>
      */
-    public static function blockedComplementChannel(mixed $livewire, mixed $state): ?ClinicalEntitlement
+    public static function uncoveredOnlyComplementNotices(mixed $livewire, mixed $state): array
     {
-        $selected = array_map('intval', (array) $state);
+        $notices = [];
 
-        if (! in_array(1, $selected, true)) {
-            return null;
+        foreach (array_unique(array_map('intval', (array) $state)) as $complementKey) {
+            foreach (self::complementChannels($complementKey) as $channel) {
+                $notice = self::uncoveredOnlyNotice($livewire, $channel);
+
+                if ($notice !== null) {
+                    $notices[] = $channel->shortLabel().': '.$notice;
+                }
+            }
         }
 
-        if (! self::isBlocked($livewire, ClinicalServiceChannel::Medication)) {
-            return null;
+        return $notices;
+    }
+
+    /**
+     * Aviso al marcar un complemento cuyo cupo ya está cubierto: puede seguir,
+     * pero solo con lo no cubierto. No bloquea.
+     */
+    public static function notifyUncoveredOnlyComplements(mixed $livewire, mixed $state, mixed $old): void
+    {
+        $added = array_diff(array_map('intval', (array) $state), array_map('intval', (array) $old));
+
+        $notices = self::uncoveredOnlyComplementNotices($livewire, $added);
+
+        if ($notices === []) {
+            return;
         }
 
-        return self::exhaustedEntitlement(ClinicalServiceChannel::Medication);
+        Notification::make()
+            ->title('Cupo del plan cubierto')
+            ->body(implode(' ', $notices))
+            ->info()
+            ->send();
     }
 }

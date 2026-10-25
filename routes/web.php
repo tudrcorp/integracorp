@@ -2301,6 +2301,15 @@ Route::post('/lp/s', \App\Http\Controllers\LivePresencePingController::class)
     ->middleware(['auth', 'throttle:120,1'])
     ->name('live-presence.ping');
 
+/*
+| Bitácora del panel de Telemedicina: fallos que solo ve el navegador del médico
+| (petición caída, sesión vencida, error de JavaScript). Dirección neutra para
+| que los bloqueadores de publicidad no la filtren. Responde 204.
+*/
+Route::post('/tm/b', \App\Http\Controllers\TelemedicinePanelClientEventController::class)
+    ->middleware(['auth', 'throttle:30,1'])
+    ->name('telemedicine.panel-log.client');
+
 /**
  * Dirección anterior: los bloqueadores de publicidad filtran URLs con «ping» o
  * «presence», por eso el latido ahora va a /lp/s. Se conserva para pestañas

@@ -33,11 +33,14 @@ final class ClinicalEntitlement
 
         if ($this->exhausted) {
             return sprintf(
-                'Límite cubierto: %d de %d %s (%s). Para asignar uno extra se requiere autorización OTP.',
+                'Límite cubierto: %d de %d %s (%s). %s',
                 $this->used,
                 (int) $this->quota,
                 $unit,
                 $this->quotaScope->label(),
+                $this->channel->requiresOverrideWhenExhausted()
+                    ? 'Para asignar uno extra se requiere autorización OTP.'
+                    : 'Solo puede indicar '.$this->channel->uncoveredNoun().' no cubiertos por el plan.',
             );
         }
 

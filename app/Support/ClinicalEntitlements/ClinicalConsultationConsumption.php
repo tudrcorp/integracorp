@@ -10,6 +10,7 @@ use App\Models\TelemedicineConsultationPatient;
 use App\Models\TelemedicinePatient;
 use App\Models\TelemedicineServiceList;
 use App\Models\User;
+use App\Support\Telemedicine\TelemedicineMedicationCoverage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
@@ -61,6 +62,17 @@ final class ClinicalConsultationConsumption
                 $caseId,
                 $serviceListId,
             );
+
+            if ($entitlement->exhausted && $countsNew && ! $entitlement->channel->requiresOverrideWhenExhausted()) {
+                /*
+                 * Sin OTP fuera de Servicios Macro: el formulario oculta lo cubierto
+                 * con el cupo agotado. Si aun así llega, es estado arrastrado o una
+                 * petición manipulada, y no se guarda.
+                 */
+                throw ValidationException::withMessages([
+                    'complements' => $entitlement->helperText(),
+                ]);
+            }
 
             if ($entitlement->exhausted && $countsNew) {
                 $override = $overrides[$channel] ?? null;
@@ -125,15 +137,17 @@ final class ClinicalConsultationConsumption
 
         /*
          * Sólo lo cubierto consume cupo. Los campos «otros» (`other_labs`,
-         * `other_studies`, `other_specialist`) son servicios que el plan no
-         * cubre: se registran, pero no descuentan ni bloquean el beneficio.
+         * `other_studies`, `other_specialist`) y los medicamentos escritos en
+         * «No cubierto» son servicios que el plan no cubre: se registran, pero
+         * no descuentan ni bloquean el beneficio.
          */
         $complements = array_map('intval', (array) ($formData['complements'] ?? []));
         $hasLabs = $complements !== [] && in_array(2, $complements, true)
             && filled($formData['labs'] ?? null);
         $hasImaging = $complements !== [] && in_array(2, $complements, true)
             && filled($formData['studies'] ?? null);
-        $hasMeds = in_array(1, $complements, true);
+        $hasMeds = in_array(1, $complements, true)
+            && self::hasCoveredMedication($formData['medications'] ?? null);
         $hasSpecialist = in_array(3, $complements, true)
             && filled($formData['consult_specialist'] ?? null);
 
@@ -151,6 +165,25 @@ final class ClinicalConsultationConsumption
         }
 
         return $out;
+    }
+
+    /**
+     * Un medicamento consume cupo solo si sale del inventario TDC o va como
+     * cubierto sin inventario. Uno escrito en «No cubierto» no descuenta.
+     */
+    public static function hasCoveredMedication(mixed $medications): bool
+    {
+        if (! is_array($medications)) {
+            return false;
+        }
+
+        foreach ($medications as $row) {
+            if (is_array($row) && TelemedicineMedicationCoverage::rowIsCovered($row)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function unmappedChannelMayProceedWithoutQuota(string $channelValue): bool

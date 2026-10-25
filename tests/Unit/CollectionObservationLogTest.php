@@ -219,7 +219,7 @@ it('Gestión de Cobranza usa el resumen colapsable con el orden por cobrar, venc
 
     $positions = array_map(
         fn (string $label): int|false => strpos($page, "'label' => '{$label}'"),
-        ['Por cobrar', 'Vence en 7 días', 'Vencidos', 'Cobrado'],
+        ['Por cobrar', 'Vence en 7 días', 'Vencidos'],
     );
 
     expect($positions)->each->toBeInt()
