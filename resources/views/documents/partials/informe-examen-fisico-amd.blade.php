@@ -18,7 +18,7 @@
                 <th style="width: 76%; height: 0; padding: 0; border: 0; background: #ffffff; font-size: 0; line-height: 0;"></th>
             </tr>
             <tr>
-                <th colspan="2" style="background: #f0fdff; color: #0c4a6e; border: 0; border-left: 2.5px solid #00ADEF; font-size: 7.5pt; padding: 2px 5px 2px 6px;">Examen físico · Atención médica domiciliaria (AMD)</th>
+                <th colspan="2" style="background: {{ $brandTint ?? '#f0fdff' }}; color: {{ $brandDeep ?? '#0c4a6e' }}; border: 0; border-left: 2.5px solid {{ $brandCyan ?? '#00ADEF' }}; font-size: 7.5pt; padding: 2px 5px 2px 6px;">Examen físico · Atención médica domiciliaria (AMD)</th>
             </tr>
         </thead>
         <tbody>

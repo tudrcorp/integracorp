@@ -6,11 +6,19 @@
      * @var string $logoDataUri
      */
     $data = is_array($data ?? null) ? $data : [];
-    $brandCyan = '#00ADEF';
+    /** Logo y paleta de la empresa aliada del paciente, o los de TDEC (ver TelemedicineDocumentBrand). */
+    $brand = $brand ?? \App\Support\Telemedicine\TelemedicineDocumentBrand::forData(is_array($data ?? null) ? $data : []);
+    $brandCyan = $brand->primary;
+    $brandBorder = $brand->border;
+    $brandDeep = $brand->deep;
+    $brandTint = $brand->tint;
     /** Logo opaco: un PNG con transparencia sale con fondo negro si DomPDF falla al separar su canal alfa. */
     $logoDataUri = trim((string) ($logoDataUri ?? '')) !== ''
         ? \App\Support\PdfOpaqueImage::fromDataUri((string) $logoDataUri)
-        : \App\Support\PdfOpaqueImage::fromPath(public_path('image/logoNewPdf.png'));
+        : $brand->logoDataUri();
+    /** Caja del logo: el de TDEC (apaisado) llena el ancho; uno cuadrado se limita por alto y no estira la cabecera. */
+    $logoSize = \App\Support\Telemedicine\TelemedicineDoctorStamp::displaySize($logoDataUri, 88, 46) ?? ['width' => 88, 'height' => 22];
+    $logoAlt = $brand->printsAlliedLogo() ? $brand->name() : \App\Support\Telemedicine\TelemedicineDocumentBrand::DEFAULT_NAME;
     $val = static fn (mixed $value): string => filled($value) ? (string) $value : '—';
     $medications = \App\Support\Telemedicine\TelemedicineMedicationsPdfRows::normalize(
         is_array($data['medicationsArr'] ?? null) ? $data['medicationsArr'] : []
@@ -124,11 +132,11 @@
         .section-title {
             font-size: 7pt;
             font-weight: bold;
-            color: #0c4a6e;
+            color: {{ $brandDeep }};
             margin: 5px 0 2px 0;
             padding: 2px 5px 2px 6px;
             border-left: 2.5px solid {{ $brandCyan }};
-            background: #f0fdff;
+            background: {{ $brandTint }};
         }
         .grid { width: 100%; table-layout: fixed; border-collapse: collapse; }
         .grid td { width: 50%; padding: 1px 6px 2px 0; vertical-align: top; }
@@ -147,8 +155,8 @@
         table.items thead { display: table-header-group; }
         table.items tr { page-break-inside: avoid; }
         table.items th.section-head {
-            background: #f0fdff;
-            color: #0c4a6e;
+            background: {{ $brandTint }};
+            color: {{ $brandDeep }};
             border: 0;
             border-left: 2.5px solid {{ $brandCyan }};
             font-size: 7pt;
@@ -168,7 +176,7 @@
             padding: 3px 4px;
             text-align: left;
             font-size: 6.25pt;
-            border: 1px solid #0090c7;
+            border: 1px solid {{ $brandBorder }};
         }
         table.items td {
             border: 1px solid #e5e7eb;
@@ -251,9 +259,9 @@
                     <tr>
                         <td class="col-logo">
                             @if($logoDataUri !== '')
-                                <img class="header-logo" src="{{ $logoDataUri }}" width="88" alt="Tu Doctor en Casa">
+                                <img class="header-logo" src="{{ $logoDataUri }}" alt="{{ $logoAlt }}" width="{{ $logoSize['width'] }}" height="{{ $logoSize['height'] }}" style="width: {{ $logoSize['width'] }}px; height: {{ $logoSize['height'] }}px;">
                             @else
-                                <span style="font-weight:bold;color:{{ $brandCyan }};font-size:8pt;">Tu Doctor en Casa</span>
+                                <span style="font-weight:bold;color:{{ $brandCyan }};font-size:8pt;">{{ $logoAlt }}</span>
                             @endif
                         </td>
                         <td class="col-title">
@@ -364,7 +372,7 @@
 @endforeach
 @foreach ($copies as $copyLabel)
     <div class="footer-fixed footer-fixed-{{ $copyLabel === 'Original' ? 'original' : 'copy' }}">
-        <strong>TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1</strong><br>
+        <strong>{{ $brand->isAllied() ? 'Servicio médico de ' : '' }}TU DOCTOR EN CASA, C. A. RIF.: J-50358368-1</strong><br>
         Dirección Comercial: Av. Francisco de Miranda, Centro Lido, Torre A, Piso 12, Oficina 124. El Rosal, Caracas.<br>
         Teléfono MediChat atención 24 horas: (0424) 213 21 12- Celular Coordinación de servicios: (0414) 901 03 52<br>
         Correo: 24H@tudrencasa.com IG: @tudrencasa WEB: https://tudrencasa.com/
