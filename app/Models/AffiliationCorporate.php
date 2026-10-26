@@ -5,9 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AffiliationCorporate extends Model
 {
+    /** Eliminación reversible: ver {@see \App\Support\Affiliations\Deletion\AffiliationDeletionService}. */
+    use SoftDeletes;
+
     protected $table = 'affiliation_corporates';
 
     protected $fillable = [

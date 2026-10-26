@@ -9,11 +9,15 @@ use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class Affiliation extends Model
 {
+    /** Eliminación reversible: ver {@see \App\Support\Affiliations\Deletion\AffiliationDeletionService}. */
+    use SoftDeletes;
+
     protected $table = 'affiliations';
 
     protected $fillable = [

@@ -315,9 +315,9 @@ final class CorporateDetail
             ? $q->where(static fn (Builder $w) => $w->whereNull("{$table}.status")->orWhereRaw("TRIM({$table}.status) = ''"))
             : $q->whereRaw("UPPER(TRIM({$table}.status)) = ?", [$value]);
 
-        $individual = $status(DB::table('affiliations'), 'affiliations')
+        $individual = $status(DB::table('affiliations')->whereNull('affiliations.deleted_at'), 'affiliations')
             ->selectRaw("CONCAT('a', affiliations.id) as row_id, affiliations.created_at, affiliations.code, affiliations.full_name_ti as name, 'Individual' as kind, affiliations.code_agency, affiliations.status, affiliations.total_amount");
-        $corporate = $status(DB::table('affiliation_corporates'), 'affiliation_corporates')
+        $corporate = $status(DB::table('affiliation_corporates')->whereNull('affiliation_corporates.deleted_at'), 'affiliation_corporates')
             ->selectRaw("CONCAT('c', affiliation_corporates.id) as row_id, affiliation_corporates.created_at, affiliation_corporates.code, affiliation_corporates.name_corporate as name, 'Corporativa' as kind, affiliation_corporates.code_agency, affiliation_corporates.status, affiliation_corporates.total_amount");
 
         $total = (clone $individual)->count() + (clone $corporate)->count();

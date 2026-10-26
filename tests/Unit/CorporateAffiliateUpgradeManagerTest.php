@@ -26,6 +26,7 @@ uses(Tests\TestCase::class);
 function seedUpgradeScenario(): void
 {
     Schema::create('affiliation_corporates', function (Blueprint $table): void {
+        $table->timestamp('deleted_at')->nullable();
         $table->id();
         $table->string('code')->nullable();
         $table->string('name_corporate')->nullable();
@@ -41,6 +42,7 @@ function seedUpgradeScenario(): void
     });
 
     Schema::create('affiliate_corporates', function (Blueprint $table): void {
+        $table->timestamp('deleted_at')->nullable();
         $table->id();
         $table->unsignedBigInteger('affiliation_corporate_id');
         $table->string('first_name')->nullable();

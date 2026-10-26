@@ -53,10 +53,10 @@ class AffiliationForm
                                     ->dehydrated()
                                     ->maxLength(255)
                                     ->default(function () {
-                                        if (Affiliation::max('id') == null) {
+                                        if (Affiliation::withTrashed()->max('id') == null) {
                                             $parte_entera = 0;
                                         } else {
-                                            $parte_entera = Affiliation::max('id');
+                                            $parte_entera = Affiliation::withTrashed()->max('id');
                                         }
 
                                         return 'TDEC-IND-000'.$parte_entera + 1;

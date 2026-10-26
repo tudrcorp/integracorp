@@ -795,10 +795,10 @@ class IndividualPreAffiliation extends Component implements HasForms
         $individual_quote = IndividualQuote::find($individual_quote_id);
 
         // Logica para genera el codgio de afiliacion
-        if (Affiliation::max('id') == null) {
+        if (Affiliation::withTrashed()->max('id') == null) {
             $parte_entera = 0;
         } else {
-            $parte_entera = Affiliation::max('id');
+            $parte_entera = Affiliation::withTrashed()->max('id');
         }
 
         try {

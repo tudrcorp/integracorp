@@ -6,7 +6,6 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\Pages;
 
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Models\AffiliationCorporate;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Contracts\Support\Htmlable;
@@ -64,7 +63,6 @@ class EditAffiliationCorporate extends EditRecord
     {
         return [
             ViewAction::make(),
-            DeleteAction::make(),
         ];
     }
 

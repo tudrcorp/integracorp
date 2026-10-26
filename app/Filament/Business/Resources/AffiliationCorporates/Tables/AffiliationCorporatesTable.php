@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\Tables;
 use App\Exceptions\CorporatePaymentFrequencyChangeBlockedException;
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Exports\AffiliationCorporateExporter;
+use App\Filament\Shared\Affiliations\AffiliationDeletionActions;
 use App\Http\Controllers\AffiliateCorporateExportCsvController;
 use App\Http\Controllers\AffiliationCorporateController;
 use App\Http\Controllers\AffiliationCorporateExportCsvController;
@@ -26,7 +27,6 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -383,6 +383,7 @@ class AffiliationCorporatesTable
                     }),
             ])
             ->filters([
+                AffiliationDeletionActions::deletedFilter(),
                 SelectFilter::make('code_agency')
                     ->label('Agencia')
                     ->options(fn (): array => Agency::query()->orderBy('name_corporative')->pluck('name_corporative', 'code')->all())
@@ -451,6 +452,7 @@ class AffiliationCorporatesTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
+            ->checkIfRecordIsSelectableUsing(fn ($record): bool => ! $record->trashed())
             ->recordActions([
                 ActionGroup::make([
                     /**REGENERAR CERTIFICADO Y CARNETS */
@@ -1344,7 +1346,8 @@ class AffiliationCorporatesTable
                         })
                         ->hidden(fn () => ! in_array('SUPERADMIN', (array) (Auth::user()?->departament ?? []))),
                     self::changePaymentFrequencyAction(),
-                ])->hidden(fn ($record) => $record->status == 'EXCLUIDO'),
+                ])->hidden(fn ($record) => $record->status == 'EXCLUIDO' || $record->trashed()),
+                ...AffiliationDeletionActions::recordActions(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -1412,7 +1415,7 @@ class AffiliationCorporatesTable
                             return redirect()->route('business.affiliate-corporates.export-csv', ['token' => $token]);
                         }),
                     self::changePaymentFrequencyBulkAction(),
-                    DeleteBulkAction::make(),
+                    AffiliationDeletionActions::deleteBulkAction(),
                 ]),
             ])
             ->striped();

@@ -35,6 +35,7 @@ beforeEach(function (): void {
     $schema->dropIfExists('affiliate_corporates');
 
     $schema->create('affiliation_corporates', function (Blueprint $table): void {
+        $table->timestamp('deleted_at')->nullable();
         $table->id();
         $table->string('code')->nullable();
         $table->string('status')->nullable();
@@ -43,6 +44,7 @@ beforeEach(function (): void {
     });
 
     $schema->create('affiliate_corporates', function (Blueprint $table): void {
+        $table->timestamp('deleted_at')->nullable();
         $table->id();
         $table->unsignedBigInteger('affiliation_corporate_id');
         $table->string('first_name')->nullable();

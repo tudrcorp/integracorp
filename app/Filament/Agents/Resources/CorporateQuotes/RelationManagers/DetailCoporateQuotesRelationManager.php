@@ -236,10 +236,10 @@ class DetailCoporateQuotesRelationManager extends RelationManager
     {
         try {
 
-            if (AffiliationCorporate::max('id') == null) {
+            if (AffiliationCorporate::withTrashed()->max('id') == null) {
                 $parte_entera = 0;
             } else {
-                $parte_entera = AffiliationCorporate::max('id');
+                $parte_entera = AffiliationCorporate::withTrashed()->max('id');
             }
 
             $code = 'TDEC-AFC-000'.$parte_entera + 1;

@@ -100,10 +100,10 @@ class AffiliationCorporateForm
                                             ->dehydrated()
                                             ->maxLength(255)
                                             ->default(function () {
-                                                if (AffiliationCorporate::max('id') == null) {
+                                                if (AffiliationCorporate::withTrashed()->max('id') == null) {
                                                     $parte_entera = 0;
                                                 } else {
-                                                    $parte_entera = AffiliationCorporate::max('id');
+                                                    $parte_entera = AffiliationCorporate::withTrashed()->max('id');
                                                 }
 
                                                 return 'TDEC-COR-000'.$parte_entera + 1;

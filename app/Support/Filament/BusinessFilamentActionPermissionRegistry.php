@@ -20,6 +20,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const REPAIR_DATE_INCONSISTENCIES = 'reparar-inconsistencias-de-fechas';
 
+    public const DELETE_AFFILIATIONS = 'eliminar-afiliaciones';
+
     public const MANAGE_DROPPED_AFFILIATION_COLLECTIONS = 'gestionar-cuotas-afiliaciones-dadas-de-baja';
 
     public const MANAGE_WHITE_COMPANY_NEGOTIATED_FEES = 'matriz-negociacion-empresas-aliadas';
@@ -102,6 +104,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Cambiar plan de afiliaciones individuales (plan, cobertura, frecuencia y rangos de edad)',
                 'group' => 'AFILIACIONES',
                 'modules' => [self::OWNER_MODULE],
+            ],
+            self::DELETE_AFFILIATIONS => [
+                'name' => 'Eliminar afiliaciones individuales y corporativas (y restaurarlas)',
+                'group' => 'AFILIACIONES',
+                'modules' => [self::OWNER_MODULE, 'ADMINISTRACION'],
             ],
             self::CHANGE_CORPORATE_PAYMENT_FREQUENCY => [
                 'name' => 'Cambiar frecuencia de pago de afiliaciones corporativas',

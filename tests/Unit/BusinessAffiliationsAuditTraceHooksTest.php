@@ -31,8 +31,10 @@ it('registra trazas de auditoria en acciones sensibles de afiliaciones business'
         ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATION_OBSERVATION_ADDED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATION_STATUS_UPDATED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATION_EXCLUDED')
-        ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATIONS_BULK_DELETED')
-        ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATIONS_BULK_DELETE_FAILED')
+        // El borrado masivo sin validaciones se reemplazó por la eliminación segura (26/10/2026); su
+        // auditoría la deja AffiliationDeletionService (AUDIT_AFFILIATION_DELETED).
+        ->and($contents)->toContain('AffiliationDeletionActions::deleteBulkAction()')
+        ->and($contents)->not->toContain('DeleteBulkAction::make()')
         ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATIONS_BULK_PAYMENT_UPLOAD')
         ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATIONS_BULK_PAYMENT_UPLOAD_FAILED')
         ->and($contents)->toContain('AUDIT_BUSINESS_AFFILIATIONS_BULK_REASSIGNED')

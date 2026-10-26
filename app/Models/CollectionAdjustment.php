@@ -23,6 +23,9 @@ class CollectionAdjustment extends Model
     /** Anulada o restituida por la baja (o la reactivación) de su afiliación, o por la decisión del analista sobre esas cuotas. */
     public const MODE_DROPOUT = 'baja';
 
+    /** Anulada por la eliminación de su afiliación, o restituida al restaurarla. */
+    public const MODE_DELETION = 'eliminacion';
+
     protected $table = 'collection_adjustments';
 
     protected $fillable = [

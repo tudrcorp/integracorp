@@ -35,7 +35,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
@@ -1012,12 +1011,6 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                 ->send();
 
                         }),
-                    DeleteBulkAction::make()
-                        ->modalHeading('Eliminar registros seleccionados')
-                        ->modalDescription('Esta acción no se puede deshacer.')
-                        ->requiresConfirmation()
-                        ->color('danger')
-                        ->icon(Heroicon::Trash),
 
                 ]),
             ])
