@@ -120,6 +120,14 @@ final class UserPermissionFormUi
         return self::moduleTheme($module)['subtitle'];
     }
 
+    /**
+     * Color del módulo (el mismo del panel), para el editor de permisos.
+     */
+    public static function moduleAccent(string $module): string
+    {
+        return self::moduleTheme($module)['accent'];
+    }
+
     public static function moduleSectionClass(string $module): string
     {
         $theme = self::moduleTheme($module);

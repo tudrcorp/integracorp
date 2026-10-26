@@ -7,6 +7,8 @@ namespace App\Filament\Business\Resources\Users\Pages;
 use App\Filament\Business\Resources\Users\Schemas\UserForm;
 use App\Filament\Business\Resources\Users\UserResource;
 use App\Models\User;
+use App\Support\Filament\UserPermissionCatalog;
+use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Icons\Heroicon;
@@ -26,7 +28,7 @@ class CreateUser extends CreateRecord
         foreach (UserForm::allPermissionFieldKeys() as $permissionFieldKey) {
             unset($data[$permissionFieldKey]);
         }
-        unset($data['permissions'], $data[UserForm::MODULE_FOCUS_FIELD]);
+        unset($data['permissions']);
 
         return $data;
     }
@@ -45,6 +47,13 @@ class CreateUser extends CreateRecord
             $this->pendingPermissionIds,
             $pivotValues
         );
+
+        SecurityAudit::log('AUDIT_USER_PERMISSIONS_UPDATED', 'business.users.create', [
+            'user_id' => $this->record->getKey(),
+            'user' => $this->record->name,
+            'added' => UserPermissionCatalog::describe(array_map('intval', $this->pendingPermissionIds)),
+            'removed' => [],
+        ]);
     }
 
     protected function getRedirectUrl(): string

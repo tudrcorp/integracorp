@@ -10,8 +10,9 @@ use App\Models\Permission;
 use App\Models\User;
 use App\Support\Filament\CommercialNetworkPermissionRegistry;
 use App\Support\Filament\UserCredentialSynchronizer;
-use App\Support\Filament\UserFormPermissionOptions;
 use App\Support\Filament\UserPageHeader;
+use App\Support\Filament\UserPermissionCatalog;
+use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
@@ -28,6 +29,9 @@ class EditUser extends EditRecord
 
     protected ?string $originalEmailBeforeSave = null;
 
+    /** @var list<int> Permisos que tenía antes de guardar (para la traza). */
+    protected array $permissionIdsBeforeSave = [];
+
     protected bool $passwordWasChanged = false;
 
     public function getTitle(): string|Htmlable
@@ -43,9 +47,8 @@ class EditUser extends EditRecord
         $record = $this->getRecord();
 
         /**
-         * Los permisos del usuario se traen de una vez y se agrupan en
-         * memoria: antes era una consulta por módulo, nueve para abrir la
-         * ficha de alguien que puede tener permisos en uno solo.
+         * Todos los permisos del usuario en una consulta: los asignables van al
+         * editor y los de red comercial a su propia pestaña.
          *
          * @var array<string, list<int>> $permissionIdsByModule
          */
@@ -59,20 +62,12 @@ class EditUser extends EditRecord
                 ->all())
             ->all();
 
-        foreach (UserForm::getPermissionAssignableModules() as $module) {
-            $modulePermissionIds = $permissionIdsByModule[$module] ?? [];
+        $assignable = UserPermissionCatalog::index();
 
-            foreach (UserFormPermissionOptions::groupedPermissionsForModule($module) as $navigationGroup => $permissions) {
-                $groupPermissionIds = $permissions
-                    ->pluck('id')
-                    ->map(fn (mixed $id): int => (int) $id)
-                    ->all();
-
-                $data[UserForm::permissionGroupFieldKey($module, $navigationGroup)] = array_values(
-                    array_intersect($modulePermissionIds, $groupPermissionIds),
-                );
-            }
-        }
+        $data[UserForm::PERMISSION_IDS_FIELD] = array_values(array_filter(
+            array_merge(...array_values($permissionIdsByModule ?: [[]])),
+            fn (int $id): bool => isset($assignable[$id]),
+        ));
 
         $data[CommercialNetworkPermissionRegistry::FIELD_KEY] =
             $permissionIdsByModule[CommercialNetworkPermissionRegistry::MODULE] ?? [];
@@ -90,6 +85,10 @@ class EditUser extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $this->originalEmailBeforeSave = (string) $this->record->email;
+        $this->permissionIdsBeforeSave = $this->record->permissions()
+            ->pluck('permissions.id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
 
         if (filled($data['password'] ?? null)) {
             $this->passwordWasChanged = true;
@@ -130,7 +129,7 @@ class EditUser extends EditRecord
         foreach (UserForm::allPermissionFieldKeys() as $permissionFieldKey) {
             unset($data[$permissionFieldKey]);
         }
-        unset($data['permissions'], $data[UserForm::MODULE_FOCUS_FIELD]);
+        unset($data['permissions']);
 
         return $data;
     }
@@ -145,6 +144,17 @@ class EditUser extends EditRecord
             $this->pendingPermissionIds,
             $pivotValues
         );
+
+        $changes = UserPermissionCatalog::diff($this->permissionIdsBeforeSave, array_map('intval', $this->pendingPermissionIds));
+
+        if ($changes['added'] !== [] || $changes['removed'] !== []) {
+            SecurityAudit::log('AUDIT_USER_PERMISSIONS_UPDATED', 'business.users.edit', [
+                'user_id' => $this->record->getKey(),
+                'user' => $this->record->name,
+                'added' => UserPermissionCatalog::describe($changes['added']),
+                'removed' => UserPermissionCatalog::describe($changes['removed']),
+            ]);
+        }
 
         $originalEmail = $this->originalEmailBeforeSave ?? (string) $this->record->email;
         $emailChanged = $originalEmail !== (string) $this->record->email;

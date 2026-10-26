@@ -194,6 +194,8 @@ final class DepartmentNavigationPermissionRegistry
         \App\Filament\Business\Pages\LiveActivityMonitor::class,
         \App\Filament\Business\Pages\LiveQueueCenter::class,
         UserResource::class,
+        /** Asigna y quita permisos: mismo nivel que Usuarios. */
+        \App\Filament\Business\Pages\UserPermissionsOverview::class,
         SystemAuditTraceResource::class,
         AccountManagerResource::class,
     ];

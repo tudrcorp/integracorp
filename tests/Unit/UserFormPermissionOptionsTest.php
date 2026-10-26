@@ -30,11 +30,12 @@ it('conserva permisos nav cuando no hay equivalente legacy en el modulo', functi
 });
 
 it('formulario de usuario usa el filtro de permisos asignables', function (): void {
-    $php = file_get_contents(__DIR__.'/../../app/Filament/Business/Resources/Users/Schemas/UserForm.php');
+    $form = file_get_contents(__DIR__.'/../../app/Filament/Business/Resources/Users/Schemas/UserForm.php');
+    $catalog = file_get_contents(__DIR__.'/../../app/Support/Filament/UserPermissionCatalog.php');
 
-    expect($php)->toContain('UserFormPermissionOptions::groupedOptionsForModule')
-        ->and($php)->toContain('permissionGroupFieldKey')
-        ->and($php)->toContain('UserPermissionFormUi::groupHeaderHtml');
+    expect($form)->toContain('PermissionMatrix::make(self::PERMISSION_IDS_FIELD)')
+        ->and($catalog)->toContain('UserFormPermissionOptions::groupedPermissionsForModule')
+        ->and($catalog)->toContain('UserForm::getPermissionAssignableModules()');
 });
 
 it('agrupa permisos por grupo de navegacion del recurso filamento', function (): void {
