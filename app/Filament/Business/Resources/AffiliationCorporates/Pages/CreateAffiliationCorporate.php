@@ -13,6 +13,8 @@ use App\Models\PlanGenerator;
 use App\Models\PlanGeneratorPopulation;
 use App\Services\CorporateAffiliateRemovalService;
 use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
+use App\Support\Affiliations\PersonIdentity\PersonIdentityGuard;
 use App\Support\PlanGenerators\PlanGeneratorCatalogPublisher;
 use App\Support\PlanGenerators\PlanGeneratorCoverageAssignment;
 use App\Support\PlanGenerators\PlanGeneratorPopulationStatus;
@@ -231,6 +233,8 @@ class CreateAffiliationCorporate extends CreateRecord
             $record->poblation = count($data_afiliados);
             $record->save();
 
+        } catch (DuplicatePersonIdentityException $duplicatePerson) {
+            throw $duplicatePerson;
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
             Notification::make()
@@ -445,6 +449,9 @@ class CreateAffiliationCorporate extends CreateRecord
                 if ($rows === []) {
                     return;
                 }
+
+                // Nadie del padrón puede estar ya vigente en otra afiliación (bloquea y revierte todo).
+                $rows = PersonIdentityGuard::assertCorporateRowsAreUnique($rows, $record);
 
                 AffiliateCorporate::query()->insert($rows);
                 $inserted += count($rows);

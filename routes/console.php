@@ -14,6 +14,7 @@ use App\Jobs\PrepareAffiliationRenovations;
 use App\Jobs\ReconcileOrphanedMassNotificationEmails;
 use App\Jobs\RegenerateSupplierReportPdfJob;
 use App\Jobs\ScanAffiliationDateInconsistenciesJob;
+use App\Jobs\ScanPersonIdentityFindingsJob;
 use App\Jobs\SendCollaboratorAnniversaryNotification;
 use App\Jobs\SendDailyAuditSummary;
 use App\Jobs\SendIndividualQuoteDayFiveFollowUp;
@@ -139,6 +140,12 @@ Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('7:30');
  * Después de las renovaciones de las 6:00, para ver los datos del día.
  */
 Schedule::job(new ScanAffiliationDateInconsistenciesJob, 'system')->dailyAt('6:45');
+
+/**
+ * Busca personas registradas dos veces entre afiliados individuales, corporativos y Nuevos Negocios
+ * (Negocios → Afiliaciones → Personas duplicadas). Recalcula antes las claves de identidad.
+ */
+Schedule::job(new ScanPersonIdentityFindingsJob, 'system')->dailyAt('6:50');
 
 /**
  * Marca tickets helpdesk con SLA vencido.

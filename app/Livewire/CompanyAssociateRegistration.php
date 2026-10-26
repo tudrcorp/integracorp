@@ -9,6 +9,8 @@ use App\Models\Company;
 use App\Models\CompanyAssociate;
 use App\Models\CompanyResponsible;
 use App\Models\State;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
+use App\Support\Affiliations\PersonIdentity\PersonIdentityGuard;
 use App\Support\Companies\CompanyAssociateRegistrar;
 use App\Support\Companies\CompanyAssociateRegistrationNotifier;
 use App\Support\Companies\CompanyAssociateStatusManager;
@@ -202,6 +204,22 @@ class CompanyAssociateRegistration extends Component
             return;
         }
 
+        try {
+            PersonIdentityGuard::assertModelIsValid((new CompanyAssociate)->forceFill([
+                'company_id' => $this->company->getKey(),
+                'full_name' => $validated['fullName'],
+                'identity_card' => $validated['identityCard'],
+                'birth_date' => $validated['birthDate'],
+                'flight_date' => $validated['flightDate'],
+                'registration_period_days' => CompanyAssociateRegistrar::DAYS_PER_REGISTRATION,
+                'status' => CompanyAssociateStatusManager::defaultStatus(),
+            ]));
+        } catch (DuplicatePersonIdentityException $exception) {
+            $this->addError('identityCard', $exception->publicMessage());
+
+            return;
+        }
+
         $registeredAt = now();
         $associateId = null;
 
@@ -261,6 +279,10 @@ class CompanyAssociateRegistration extends Component
             if ($associateId !== null) {
                 CompanyAssociateRegistrationNotifier::notify($associateId);
             }
+        } catch (DuplicatePersonIdentityException $exception) {
+            $this->addError('identityCard', $exception->publicMessage());
+
+            return;
         } catch (\Throwable $exception) {
             report($exception);
 

@@ -100,7 +100,9 @@ final class PopulationUpdateApplier
                     ->where('selected', true)
                     ->whereIn('action', [...Item::CHANGING_ACTIONS, Item::ACTION_DUPLICATE_BASE])
                     ->orderBy('id')
-                    ->get();
+                    ->get()
+                    ->sortBy(static fn (Item $item): string => self::applyOrder($item))
+                    ->values();
 
                 $affiliates = AffiliateCorporate::query()
                     ->whereIn('id', $items->pluck('affiliate_corporate_id')->filter()->all() ?: [0])
@@ -532,5 +534,20 @@ final class PopulationUpdateApplier
             ->{$ok ? 'success' : 'danger'}()
             ->actions($url !== null ? [Action::make('open')->label('Ver detalle')->url($url)->button()] : [])
             ->sendToDatabase($user);
+    }
+
+    /**
+     * Las bajas van primero: si el archivo reemplaza a una persona por otra fila con la cédula bien
+     * escrita, el alta no choca con el candado de personas duplicadas por la fila que sale.
+     */
+    private static function applyOrder(Item $item): string
+    {
+        $priority = match ($item->action) {
+            Item::ACTION_DEACTIVATE, Item::ACTION_DUPLICATE_BASE => 0,
+            Item::ACTION_FIX_DOCUMENT => 1,
+            default => 2,
+        };
+
+        return $priority.'-'.str_pad((string) $item->getKey(), 12, '0', STR_PAD_LEFT);
     }
 }

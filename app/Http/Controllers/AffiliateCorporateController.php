@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
 use App\Services\CorporateAffiliateRemovalService;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -68,6 +69,8 @@ class AffiliateCorporateController extends Controller
             }
 
             return true;
+        } catch (DuplicatePersonIdentityException $exception) {
+            throw $exception;
         } catch (\Throwable $th) {
             Log::error($th);
             Notification::make()

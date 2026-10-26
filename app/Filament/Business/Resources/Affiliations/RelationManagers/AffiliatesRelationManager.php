@@ -14,6 +14,7 @@ use App\Models\Plan;
 use App\Support\AffiliateVaucherIlsRemainingDays;
 use App\Support\AffiliationAffiliateFeeCalculator;
 use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\Filament\PatientAgeDisplay;
 use App\Support\FilamentDateDisplay;
 use App\Support\Plans\PlanInfantEligibility;
@@ -657,6 +658,8 @@ class AffiliatesRelationManager extends RelationManager
                                     ->title('Voucher ILS activado')
                                     ->icon(Heroicon::CheckCircle)
                                     ->send();
+                            } catch (DuplicatePersonIdentityException $duplicatePerson) {
+                                throw $duplicatePerson;
                             } catch (\Throwable $th) {
                                 Notification::make()
                                     ->danger()
@@ -700,6 +703,8 @@ class AffiliatesRelationManager extends RelationManager
                                 $owner->payment_frequency = $frequency;
                                 $this->recalculateAffiliationTotalsFromAffiliates($owner);
 
+                            } catch (DuplicatePersonIdentityException $duplicatePerson) {
+                                throw $duplicatePerson;
                             } catch (\Throwable) {
                                 Notification::make()
                                     ->danger()
@@ -806,6 +811,8 @@ class AffiliatesRelationManager extends RelationManager
                                     ->body("Tarifa anual US$ {$annualFee} ({$fee->range}) · período US$ {$periodAmount}.")
                                     ->icon(Heroicon::CheckCircle)
                                     ->send();
+                            } catch (DuplicatePersonIdentityException $duplicatePerson) {
+                                throw $duplicatePerson;
                             } catch (\Throwable) {
                                 Notification::make()
                                     ->danger()

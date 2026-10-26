@@ -7,6 +7,7 @@ namespace App\Filament\Business\Resources\CompanyAssociates\Pages;
 use App\Filament\Business\Resources\CompanyAssociates\CompanyAssociateResource;
 use App\Jobs\RegenerateCompanyAssociateCarnetAfterEditJob;
 use App\Models\CompanyAssociate;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\Companies\CompanyAssociateRegistrar;
 use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\ViewAction;
@@ -69,6 +70,8 @@ class EditCompanyAssociate extends EditRecord
         try {
             RegenerateCompanyAssociateCarnetAfterEditJob::dispatch((int) $record->getKey());
             $this->carnetRegenerationQueued = true;
+        } catch (DuplicatePersonIdentityException $duplicatePerson) {
+            throw $duplicatePerson;
         } catch (Throwable $throwable) {
             report($throwable);
             $this->carnetRegenerationFailed = true;

@@ -2,18 +2,19 @@
 
 namespace App\Filament\Resources\Affiliations\Pages;
 
-use Carbon\Carbon;
-use App\Models\User;
-use App\Models\Affiliate;
-use Filament\Actions\Action;
-use App\Models\IndividualQuote;
-use Illuminate\Support\Facades\Auth;
-use App\Models\DetailIndividualQuote;
+use App\Filament\Resources\Affiliations\AffiliationResource;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PdfController;
+use App\Models\Affiliate;
+use App\Models\DetailIndividualQuote;
+use App\Models\IndividualQuote;
+use App\Models\User;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
+use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
-use App\Http\Controllers\NotificationController;
-use App\Filament\Resources\Affiliations\AffiliationResource;
+use Illuminate\Support\Facades\Auth;
 
 class CreateAffiliation extends CreateRecord
 {
@@ -57,7 +58,7 @@ class CreateAffiliation extends CreateRecord
 
     protected function beforeCreate(): void
     {
-        //Si el titular en menor de edad no puede afiliarse
+        // Si el titular en menor de edad no puede afiliarse
         if (Carbon::parse($this->data['birth_date_ti'])->age < 18) {
             Notification::make()
                 ->title('El titular debe ser mayor de 18 años')
@@ -68,7 +69,6 @@ class CreateAffiliation extends CreateRecord
             $this->halt();
         }
 
-        return;
     }
 
     protected function afterCreate(): void
@@ -77,8 +77,8 @@ class CreateAffiliation extends CreateRecord
 
             $record = $this->getRecord();
 
-            /** 
-             * ? Preguntamos si e l contratante es el mismo titular de la cotizacion 
+            /**
+             * ? Preguntamos si e l contratante es el mismo titular de la cotizacion
              * $feedback == false significa que el contratante no es el titular, y debemos agregar afiliados
              * $feedback == true significa que el contratante es el titular, y debemos afiliar al contratante
              * -----------------------------------------------------------------------------------------------------------------------------
@@ -91,17 +91,17 @@ class CreateAffiliation extends CreateRecord
                  */
                 $affiliates = session()->get('affiliates');
                 // dd($affiliates);
-                //Agregamos al titular al array de afiliados
+                // Agregamos al titular al array de afiliados
                 $affiliates[] = [
-                    "full_name"          => $record->full_name_ti,
-                    "nro_identificacion" => $record->nro_identificacion_ti,
-                    "sex"                => $record->sex_ti,
-                    "birth_date"         => $record->birth_date_ti,
-                    "relationship"       => "TITULAR",
-                    "document"           => $record->document,
+                    'full_name' => $record->full_name_ti,
+                    'nro_identificacion' => $record->nro_identificacion_ti,
+                    'sex' => $record->sex_ti,
+                    'birth_date' => $record->birth_date_ti,
+                    'relationship' => 'TITULAR',
+                    'document' => $record->document,
                 ];
 
-                //Ordenamos los afiliados por fecha de nacimiento
+                // Ordenamos los afiliados por fecha de nacimiento
                 usort($affiliates, function ($a, $b) {
                     // Si uno es TITULAR, va primero
                     if ($a['relationship'] === 'TITULAR' && $b['relationship'] !== 'TITULAR') {
@@ -114,7 +114,6 @@ class CreateAffiliation extends CreateRecord
                     // Si ambos son distintos de TITULAR, ordenar alfabéticamente descendente por relationship
                     return $b['relationship'] <=> $a['relationship'];
                 });
-
 
                 // dd($affiliates);
 
@@ -134,11 +133,11 @@ class CreateAffiliation extends CreateRecord
                     // dd(count($affiliates));
                     $quote = DetailIndividualQuote::where('individual_quote_id', $record->individual_quote_id)->get();
                     foreach ($quote as $item) {
-                        $item->total_persons        = count($affiliates);
-                        $item->subtotal_anual       = count($affiliates) * $item->fee;
-                        $item->subtotal_quarterly   = $item->subtotal_anual / 4;
-                        $item->subtotal_biannual    = $item->subtotal_anual / 2;
-                        $item->subtotal_monthly     = $item->subtotal_anual / 12;
+                        $item->total_persons = count($affiliates);
+                        $item->subtotal_anual = count($affiliates) * $item->fee;
+                        $item->subtotal_quarterly = $item->subtotal_anual / 4;
+                        $item->subtotal_biannual = $item->subtotal_anual / 2;
+                        $item->subtotal_monthly = $item->subtotal_anual / 12;
                         $item->save();
                     }
 
@@ -147,9 +146,7 @@ class CreateAffiliation extends CreateRecord
                     $update_pdf = PdfController::generatePdfIndividualQuote($individual_quote);
                 }
 
-
                 /**----------------------------------------------------------------------------------------------------------------------------- */
-
 
                 /**
                  * For para cargar la data de los afiliados en la tabla de affiliates
@@ -157,27 +154,27 @@ class CreateAffiliation extends CreateRecord
                  */
                 for ($i = 0; $i < count($affiliates); $i++) {
                     $record->affiliates()->create([
-                        'full_name'             => $affiliates[$i]['full_name'],
-                        'nro_identificacion'    => $affiliates[$i]['nro_identificacion'],
-                        'sex'                   => $affiliates[$i]['sex'],
-                        'birth_date'            => $affiliates[$i]['birth_date'],
-                        'age'                   => Carbon::parse($affiliates[$i]['birth_date'])->age,
-                        'relationship'          => $affiliates[$i]['relationship'],
-                        'document'              => $affiliates[$i]['document'],
-                        'address'               => $record->adress_ti,
-                        'phone'                 => $record->phone_ti,
-                        'country_id'            => $record->country_id_ti,
-                        'state_id'              => $record->state_id_ti,
-                        'city_id'               => $record->city_id_ti,
-                        'region'                => $record->region_ti,
-                        'status'                => 'PRE-APROBADA',
+                        'full_name' => $affiliates[$i]['full_name'],
+                        'nro_identificacion' => $affiliates[$i]['nro_identificacion'],
+                        'sex' => $affiliates[$i]['sex'],
+                        'birth_date' => $affiliates[$i]['birth_date'],
+                        'age' => Carbon::parse($affiliates[$i]['birth_date'])->age,
+                        'relationship' => $affiliates[$i]['relationship'],
+                        'document' => $affiliates[$i]['document'],
+                        'address' => $record->adress_ti,
+                        'phone' => $record->phone_ti,
+                        'country_id' => $record->country_id_ti,
+                        'state_id' => $record->state_id_ti,
+                        'city_id' => $record->city_id_ti,
+                        'region' => $record->region_ti,
+                        'status' => 'PRE-APROBADA',
                     ]);
                 }
 
                 /**
                  * Actualizamos el estatus de la cotizacion a EJECUTADA
                  * para evitar que pueda volverse a pre-afiliarse
-                 * 
+                 *
                  * Esta actualizacion se realiza en ambas tablas
                  * ----------------------------------------------------------------------------------------------------
                  */
@@ -186,7 +183,6 @@ class CreateAffiliation extends CreateRecord
                 $quote->save();
 
                 $quote->detailsQuote()->update(['status' => 'EJECUTADA']);
-
 
                 /**
                  * Actualizacion de la cotizacion
@@ -200,7 +196,6 @@ class CreateAffiliation extends CreateRecord
                 $quote_detail->status = 'APROBADA';
                 $quote_detail->save();
 
-
                 /**
                  * Se envia el certificado del afiliado
                  * ----------------------------------------------------------------------------------------------------
@@ -209,8 +204,7 @@ class CreateAffiliation extends CreateRecord
 
                 $this->getRecord()->sendCertificate($record, $data_titular, $affiliates);
 
-
-                /** 
+                /**
                  * Elimino las variable de sesion para evitar sobrecargar
                  * ----------------------------------------------------------------------------------------------------
                  */
@@ -224,8 +218,6 @@ class CreateAffiliation extends CreateRecord
                 $record->family_members = $record->affiliates()->count();
                 $record->save();
 
-
-
                 /**
                  * Logica para enviar una notificacion a la sesion del administrador despues de crear la corizacion
                  * ----------------------------------------------------------------------------------------------------
@@ -236,7 +228,7 @@ class CreateAffiliation extends CreateRecord
                     $recipient_for_user = User::find($user->id);
                     Notification::make()
                         ->title('PRE-AFILIACION INDIVIDUAL CREADA')
-                        ->body('Se ha registrado una nueva pre-afiliacion individual de forma exitosa. Codigo: ' . $record->code)
+                        ->body('Se ha registrado una nueva pre-afiliacion individual de forma exitosa. Codigo: '.$record->code)
                         ->icon('heroicon-s-user-group')
                         ->iconColor('success')
                         ->success()
@@ -256,26 +248,26 @@ class CreateAffiliation extends CreateRecord
             if ($record->feedback == false) {
                 /** 1- Registro los datos de contratante como los datos del afiliado ya que la cotizacion es para el mismo*/
                 $record->affiliates()->create([
-                    'full_name'             => $record->full_name_ti,
-                    'nro_identificacion'    => $record->nro_identificacion_ti,
-                    'sex'                   => $record->sex_ti,
-                    'birth_date'            => $record->birth_date_ti,
-                    'age'                   => Carbon::parse($record->birth_date_ti)->age,
-                    'address'               => $record->adress_ti,
-                    'document'              => $record->document,
-                    'phone'                 => $record->phone_ti,
-                    'country_id'            => $record->country_id_ti,
-                    'state_id'              => $record->state_id_ti,
-                    'city_id'               => $record->city_id_ti,
-                    'region'                => $record->region_ti,
-                    'status'                => 'PRE-APROBADA',
-                    'relationship'          => 'TITULAR',
+                    'full_name' => $record->full_name_ti,
+                    'nro_identificacion' => $record->nro_identificacion_ti,
+                    'sex' => $record->sex_ti,
+                    'birth_date' => $record->birth_date_ti,
+                    'age' => Carbon::parse($record->birth_date_ti)->age,
+                    'address' => $record->adress_ti,
+                    'document' => $record->document,
+                    'phone' => $record->phone_ti,
+                    'country_id' => $record->country_id_ti,
+                    'state_id' => $record->state_id_ti,
+                    'city_id' => $record->city_id_ti,
+                    'region' => $record->region_ti,
+                    'status' => 'PRE-APROBADA',
+                    'relationship' => 'TITULAR',
                 ]);
 
                 /**
                  * Actualizamos el estatus de la cotizacion a EJECUTADA
                  * para evitar que pueda volverse a pre-afiliarse
-                 * 
+                 *
                  * Esta actualizacion se realiza en ambas tablas
                  * ----------------------------------------------------------------------------------------------------
                  */
@@ -284,7 +276,6 @@ class CreateAffiliation extends CreateRecord
                 $quote->save();
 
                 $quote->detailsQuote()->update(['status' => 'EJECUTADA']);
-
 
                 /**
                  * Actualizacion de la cotizacion
@@ -298,13 +289,11 @@ class CreateAffiliation extends CreateRecord
                 $quote_detail->status = 'APROBADA';
                 $quote_detail->save();
 
-
                 /**
                  * Elimino las variable de sesion para evitar sobrecargar
                  * ----------------------------------------------------------------------------------------------------
                  */
                 session()->forget('persons');
-
 
                 /**
                  * Se envia el certificado del afiliado
@@ -332,7 +321,7 @@ class CreateAffiliation extends CreateRecord
                     $recipient_for_user = User::find($user->id);
                     Notification::make()
                         ->title('PRE-AFILIACION INDIVIDUAL CREADA')
-                        ->body('Se ha registrado una nueva pre-afiliacion individual de forma exitosa. Codigo: ' . $record->code)
+                        ->body('Se ha registrado una nueva pre-afiliacion individual de forma exitosa. Codigo: '.$record->code)
                         ->icon('heroicon-s-user-group')
                         ->iconColor('success')
                         ->success()
@@ -346,18 +335,18 @@ class CreateAffiliation extends CreateRecord
                 }
             }
 
-
             /**
              * Notificación para el usuario que creo la cotización
              * ----------------------------------------------------------------------------------
              */
             NotificationController::createdIndividualPreAfilliation($record->code, Auth::user()->name);
-            
+
+        } catch (DuplicatePersonIdentityException $duplicatePerson) {
+            throw $duplicatePerson;
         } catch (\Throwable $th) {
             dd($th);
         }
     }
-
 
     protected function getRedirectUrl(): string
     {

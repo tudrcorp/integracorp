@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\CompanyAssociateStatus;
+use App\Observers\PersonIdentityObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[ObservedBy([PersonIdentityObserver::class])]
 class CompanyAssociate extends Model
 {
     protected $fillable = [

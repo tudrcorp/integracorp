@@ -73,6 +73,7 @@ use App\Filament\Business\Resources\Fees\FeeResource;
 use App\Filament\Business\Resources\GuiaChatFeedbacks\GuiaChatFeedbackResource;
 use App\Filament\Business\Resources\Helpdesks\HelpdeskResource as BusinessHelpdeskResource;
 use App\Filament\Business\Resources\IndividualQuotes\IndividualQuoteResource;
+use App\Filament\Business\Resources\PersonIdentityFindings\PersonIdentityFindingResource;
 use App\Filament\Business\Resources\PlanGeneratorImages\PlanGeneratorImageResource;
 use App\Filament\Business\Resources\PlanGenerators\PlanGeneratorResource;
 use App\Filament\Business\Resources\Plans\PlanResource;
@@ -217,6 +218,7 @@ final class DepartmentNavigationPermissionRegistry
         RenovationCorporateResource::class => ['renovaciones-corporativas'],
         AffiliationRenovationHistoryResource::class => ['historico-renovaciones'],
         AffiliationCorporateRenovationHistoryResource::class => ['historico-renovaciones-corporativas'],
+        PersonIdentityFindingResource::class => ['personas-duplicadas'],
         AgencyResource::class => ['agencias-de-corretaje'],
         AgentResource::class => ['agentes-de-corretaje'],
         TravelAgencyResource::class => ['agencias-de-viaje'],
