@@ -31,7 +31,7 @@ afterEach(fn () => DB::rollBack());
  */
 function amdVisitCard(TelemedicineAmdVisitProgress $progress): string
 {
-    $component = new class extends Component
+    $component = new class TelemedicineAmdVisitProgressTest Component
     {
         public static ?TelemedicineAmdVisitProgress $progress = null;
 
