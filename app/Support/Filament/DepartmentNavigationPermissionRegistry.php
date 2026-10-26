@@ -125,6 +125,7 @@ use App\Filament\Metrics\Pages\OperacionesYSalud as MetricsOperacionesYSalud;
 use App\Filament\Metrics\Pages\Organizacion as MetricsOrganizacion;
 use App\Filament\Metrics\Pages\Proveedores as MetricsProveedores;
 use App\Filament\Metrics\Pages\Proyectos as MetricsProyectos;
+use App\Filament\Metrics\Pages\Usuarios as MetricsUsuarios;
 use App\Filament\Operations\Pages\AgendaCorporativa as OperationsAgendaCorporativa;
 use App\Filament\Operations\Pages\BitacoraDeCaso;
 use App\Filament\Operations\Pages\CalendariosTdg as OperationsCalendariosTdg;
@@ -386,6 +387,7 @@ final class DepartmentNavigationPermissionRegistry
         MetricsCartera::class => ['metricas-cartera'],
         MetricsOperacionesYSalud::class => ['metricas-operaciones-y-salud'],
         MetricsOrganizacion::class => ['metricas-organizacion'],
+        MetricsUsuarios::class => ['metricas-usuarios'],
     ];
 
     /**

@@ -59,6 +59,7 @@ final class CorporateInsights
                 ...self::commercial($period),
                 ...self::operations($period),
                 ...self::organization($period),
+                ...self::users($period),
             ];
 
             usort($insights, static fn (array $a, array $b): int => self::ORDER[$a['tone']] <=> self::ORDER[$b['tone']]);
@@ -233,6 +234,18 @@ final class CorporateInsights
             CorporateMetrics::number((int) $current['created']).' tickets nuevos, '.CorporateMetrics::number((int) $current['resolved']).' resueltos; '.CorporateMetrics::number($kpis['open']).' abiertos hoy.',
             'organization',
         )];
+    }
+
+    /**
+     * Las dos lecturas más urgentes de Usuarios (las de solo contexto no suben al resumen).
+     *
+     * @return list<array{tone: string, area: string, title: string, text: string, url_key: string}>
+     */
+    private static function users(Period $period): array
+    {
+        $insights = array_filter(CorporateUsersMetrics::insights($period), static fn (array $insight): bool => $insight['tone'] !== self::NEUTRAL);
+
+        return array_slice(array_values($insights), 0, 2);
     }
 
     /**

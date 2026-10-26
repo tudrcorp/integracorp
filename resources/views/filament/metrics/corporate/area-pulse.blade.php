@@ -4,7 +4,7 @@
         <span class="text-xs text-gray-500 dark:text-gray-400">Abra un área para ver su detalle</span>
     </div>
 
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5" x-data="{ shown: false }" x-intersect.once="shown = true" wire:key="corp-pulse-{{ $periodKey }}">
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6" x-data="{ shown: false }" x-intersect.once="shown = true" wire:key="corp-pulse-{{ $periodKey }}">
         @foreach ($areas as $index => $area)
             @php
                 $delta = $area['delta'];

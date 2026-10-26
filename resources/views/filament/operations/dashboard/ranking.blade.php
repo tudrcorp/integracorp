@@ -27,7 +27,7 @@
                                 @if ($row['meta'])
                                     <span class="hidden shrink-0 text-xs text-gray-400 sm:inline dark:text-gray-500">{{ $row['meta'] }}</span>
                                 @endif
-                                <span class="shrink-0 font-semibold tabular-nums text-gray-950 dark:text-white">{{ ($money ?? false) ? 'US$ ' : '' }}{{ number_format($row['value'], 0, ',', '.') }}</span>
+                                <span class="shrink-0 font-semibold tabular-nums text-gray-950 dark:text-white">{{ ($money ?? false) ? 'US$ ' : '' }}{{ number_format($row['value'], $decimals ?? 0, ',', '.') }}{{ $suffix ?? '' }}</span>
                                 <span class="w-14 shrink-0 text-end text-xs tabular-nums text-gray-500 dark:text-gray-400">{{ $row['percent'] }}</span>
                             </div>
                             <div class="ms-8 mt-1 h-1.5 overflow-hidden rounded-full" style="background: var(--ops-track)">
@@ -43,7 +43,7 @@
 
             @if ($others > 0)
                 <p class="mt-3 ps-10 text-xs text-gray-500 dark:text-gray-400">
-                    Otros: {{ ($money ?? false) ? 'US$ '.number_format($others, 0, ',', '.') : number_format($others, 0, ',', '.').' '.$noun }}
+                    Otros: {{ ($money ?? false) ? 'US$ '.number_format($others, 0, ',', '.') : number_format($others, $decimals ?? 0, ',', '.').' '.$noun }}
                 </p>
             @endif
         @endif

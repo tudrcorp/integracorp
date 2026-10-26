@@ -9,7 +9,7 @@
 @endphp
 
 <x-filament-widgets::widget class="corp-insights">
-    <x-filament::section heading="Lectura del período" description="Lo que pide atención primero. Reglas fijas sobre las cifras de todas las áreas.">
+    <x-filament::section :heading="$heading ?? 'Lectura del período'" :description="$description ?? 'Lo que pide atención primero. Reglas fijas sobre las cifras de todas las áreas.'">
         @if ($insights === [])
             <div class="flex h-48 flex-col items-center justify-center gap-2 text-center">
                 <x-filament::icon icon="heroicon-o-light-bulb" class="size-8 text-gray-300 dark:text-gray-600" />

@@ -30,6 +30,14 @@ class SupplierServiceTypeChart extends OperationsServiceTypeChart
         return SupplierDashboardAnalytics::serviceTypes($this->period());
     }
 
+    /**
+     * Una sola serie: aquí se cuentan casos, no consultas ni ítems.
+     */
+    protected function typeBreakdown(): ?array
+    {
+        return null;
+    }
+
     protected function noun(): string
     {
         return 'casos';

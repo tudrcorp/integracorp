@@ -9,6 +9,7 @@ use App\Filament\Metrics\Pages\Comercial;
 use App\Filament\Metrics\Pages\Finanzas;
 use App\Filament\Metrics\Pages\OperacionesYSalud;
 use App\Filament\Metrics\Pages\Organizacion;
+use App\Filament\Metrics\Pages\Usuarios;
 use App\Filament\Operations\Widgets\Dashboard\Concerns\InteractsWithOperationsDashboard;
 use App\Filament\Operations\Widgets\Dashboard\OperationsKpiTiles;
 use App\Support\Metrics\Corporate\CorporateCommercialMetrics;
@@ -16,6 +17,7 @@ use App\Support\Metrics\Corporate\CorporateFinanceMetrics;
 use App\Support\Metrics\Corporate\CorporateMetrics;
 use App\Support\Metrics\Corporate\CorporateOrganizationMetrics;
 use App\Support\Metrics\Corporate\CorporatePortfolioMetrics;
+use App\Support\Metrics\Corporate\CorporateUsersMetrics;
 use App\Support\Operations\Dashboard\OperationsDashboardAnalytics;
 use Filament\Widgets\Widget;
 use Throwable;
@@ -47,6 +49,7 @@ class CorporateAreaPulse extends Widget
         $organization = CorporateOrganizationMetrics::kpis($period);
         $snapshot = CorporatePortfolioMetrics::snapshot();
         $receivables = CorporateFinanceMetrics::receivables();
+        $users = CorporateUsersMetrics::kpis($period);
 
         $areas = [
             self::area('finance', Finanzas::class, 'Finanzas', 'heroicon-o-banknotes', 'Ingresos', CorporateMetrics::money((float) $finance['current']['income']), (float) $finance['current']['income'], (float) $finance['previous']['income'], false, [
@@ -68,6 +71,10 @@ class CorporateAreaPulse extends Widget
             self::area('organization', Organizacion::class, 'Organización', 'heroicon-o-lifebuoy', 'Tickets nuevos', CorporateMetrics::number((int) $organization['current']['created']), (float) $organization['current']['created'], (float) $organization['previous']['created'], true, [
                 ['Dentro de SLA', $organization['current']['sla_rate'] === null ? '—' : CorporateMetrics::number((float) $organization['current']['sla_rate'], 1).' %'],
                 ['Abiertos hoy', CorporateMetrics::number($organization['open'])],
+            ]),
+            self::area('users', Usuarios::class, 'Usuarios', 'heroicon-o-users', 'Horas activas', CorporateMetrics::number((float) $users['current']['hours'], 1).' h', (float) $users['current']['hours'], (float) $users['previous']['hours'], false, [
+                ['Uso de la jornada', $users['current']['work_usage'] === null ? '—' : CorporateMetrics::number((float) $users['current']['work_usage'], 1).' %'],
+                ['Conectadas hoy', CorporateMetrics::number($users['snapshot']['online_today'])],
             ]),
         ];
 
