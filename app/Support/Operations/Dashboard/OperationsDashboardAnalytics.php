@@ -117,6 +117,32 @@ final class OperationsDashboardAnalytics
     }
 
     /**
+     * Servicios por tipo en dos grupos: los principales (macro: telemedicina,
+     * AMD, traslados…, ver {@see OperationsMacroServices}) y los derivados de la
+     * consulta (medicamentos, laboratorios…). Cada grupo de mayor a menor.
+     *
+     * @return array{principal: array<string, int>, derived: array<string, int>}
+     */
+    public static function serviceTypeBreakdown(OperationsDashboardPeriod $period): array
+    {
+        return self::remember('service_type_breakdown', $period, static function () use ($period): array {
+            $statisticTypes = self::grouped($period, 'service_type', 'Sin tipo');
+
+            $derived = array_filter(
+                $statisticTypes,
+                static fn (string $type): bool => OperationsMacroServices::keyForStatisticType($type) === null,
+                ARRAY_FILTER_USE_KEY,
+            );
+            arsort($derived);
+
+            return [
+                'principal' => OperationsMacroServices::counts($period->from, $period->to, $statisticTypes),
+                'derived' => $derived,
+            ];
+        });
+    }
+
+    /**
      * @return array<string, int>
      */
     public static function byBusinessLine(OperationsDashboardPeriod $period): array
@@ -254,6 +280,10 @@ final class OperationsDashboardAnalytics
      */
     public static function detail(OperationsDashboardPeriod $period, string $dimension, string $value, int $limit = 200): array
     {
+        if ($dimension === 'macro_service') {
+            return OperationsMacroServices::detail($period->from, $period->to, trim($value), $limit);
+        }
+
         $query = self::inPeriod($period->from, $period->to);
 
         if (! self::applyDimension($query, $dimension, $value)) {
@@ -298,6 +328,7 @@ final class OperationsDashboardAnalytics
         return match ($dimension) {
             'service_status' => 'Estatus: '.$value,
             'service_type' => 'Tipo de servicio: '.$value,
+            'macro_service' => 'Servicio principal: '.$value,
             'business_line' => 'Línea de negocio: '.$value,
             'state' => 'Estado: '.$value,
             'specific_service' => 'Servicio: '.$value,
@@ -314,11 +345,13 @@ final class OperationsDashboardAnalytics
      */
     public static function dimensions(): array
     {
-        return ['service_status', 'service_type', 'business_line', 'state', 'specific_service', 'patient', 'age_band', 'slot', 'all'];
+        return ['service_status', 'service_type', 'macro_service', 'business_line', 'state', 'specific_service', 'patient', 'age_band', 'slot', 'all'];
     }
 
     public static function flush(): void
     {
+        OperationsMacroServices::flush();
+
         /** Con la caché `database`, increment() sobre una clave que no existe no la crea. */
         Cache::forever('ops-dashboard:version', (int) Cache::get('ops-dashboard:version', 0) + 1);
     }

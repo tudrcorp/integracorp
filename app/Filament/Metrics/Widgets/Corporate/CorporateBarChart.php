@@ -31,4 +31,12 @@ abstract class CorporateBarChart extends OperationsServiceTypeChart
     {
         return '';
     }
+
+    /**
+     * Una sola serie: las barras salen de {@see self::values()}.
+     */
+    protected function typeBreakdown(): ?array
+    {
+        return null;
+    }
 }

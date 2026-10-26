@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  * fila, segmento o estado se listan los registros que lo componen.
  *
  * Cada dimensión pertenece a una familia (ventas, cuotas, órdenes, afiliaciones,
- * cotizaciones, tickets) que define la consulta y las columnas.
+ * cotizaciones, tickets, personas) que define la consulta y las columnas.
  */
 final class CorporateDetail
 {
@@ -34,6 +34,8 @@ final class CorporateDetail
         'ticket_status' => 'tickets',
         'ticket_priority' => 'tickets',
         'ticket_type' => 'tickets',
+        'user_person' => 'person_days',
+        'user_department' => 'people',
     ];
 
     /** @var array<string, string> familia => qué lista (plural) */
@@ -44,6 +46,8 @@ final class CorporateDetail
         'affiliations' => 'afiliaciones',
         'quotes' => 'cotizaciones',
         'tickets' => 'tickets',
+        'person_days' => 'días con conexión',
+        'people' => 'personas',
     ];
 
     /**
@@ -112,6 +116,25 @@ final class CorporateDetail
                 ['label' => 'Agencia', 'key' => 'agency'],
                 ['label' => 'Estatus', 'key' => 'status'],
             ],
+            'person_days' => [
+                ['label' => 'Fecha', 'key' => 'date'],
+                ['label' => 'Primera conexión', 'key' => 'first'],
+                ['label' => 'Última conexión', 'key' => 'last'],
+                ['label' => 'Activo', 'key' => 'active'],
+                ['label' => 'Inactivo', 'key' => 'idle'],
+                ['label' => 'Uso de jornada', 'key' => 'work_usage'],
+                ['label' => 'Horas extra', 'key' => 'overtime'],
+                ['label' => 'Registros creados', 'key' => 'records'],
+            ],
+            'people' => [
+                ['label' => 'Persona', 'key' => 'name'],
+                ['label' => 'Días conectado', 'key' => 'days'],
+                ['label' => 'Horas activas', 'key' => 'active'],
+                ['label' => 'Promedio por día', 'key' => 'avg_day'],
+                ['label' => 'Uso de jornada', 'key' => 'work_usage'],
+                ['label' => 'Horas extra', 'key' => 'overtime'],
+                ['label' => 'Registros creados', 'key' => 'records'],
+            ],
             default => [
                 ['label' => 'Fecha', 'key' => 'date'],
                 ['label' => 'Ticket', 'key' => 'code'],
@@ -144,6 +167,8 @@ final class CorporateDetail
             'ticket_status' => 'Tickets · '.$value,
             'ticket_priority' => 'Tickets de prioridad '.mb_strtolower($value),
             'ticket_type' => 'Tickets · '.$value,
+            'user_person' => 'Actividad de '.(CorporateUsersMetrics::directory()[(int) $value]['name'] ?? 'la persona'),
+            'user_department' => 'Personas del área '.$value,
             default => 'Detalle',
         };
     }
@@ -171,6 +196,8 @@ final class CorporateDetail
             'costs' => self::costs($period, $value, $limit),
             'affiliations' => self::affiliations($value, $limit),
             'quotes' => self::quotes($period, $value, $limit),
+            'person_days' => CorporateUsersMetrics::personDays($period, (int) $value, $limit),
+            'people' => CorporateUsersMetrics::departmentPeople($period, $value, $limit),
             default => self::tickets($period, $dimension, $value, $limit),
         };
     }

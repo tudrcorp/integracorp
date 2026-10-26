@@ -8,6 +8,7 @@ use App\Filament\Metrics\Pages\Dashboard;
 use App\Filament\Metrics\Pages\Finanzas;
 use App\Filament\Metrics\Pages\OperacionesYSalud;
 use App\Filament\Metrics\Pages\Organizacion;
+use App\Filament\Metrics\Pages\Usuarios;
 use App\Filament\Metrics\Widgets\Corporate\CommercialKpiTiles;
 use App\Filament\Metrics\Widgets\Corporate\CorporateAreaPulse;
 use App\Filament\Metrics\Widgets\Corporate\CorporateDetailWidget;
@@ -369,7 +370,7 @@ it('los tableros agrupan con DashboardGrouping (subconsulta), la única forma qu
 });
 
 it('en pantalla grande cada fila de cada página llena las 12 columnas, sin huecos', function (): void {
-    $pages = [Dashboard::class, Finanzas::class, Comercial::class, Cartera::class, OperacionesYSalud::class, Organizacion::class];
+    $pages = [Dashboard::class, Finanzas::class, Comercial::class, Cartera::class, OperacionesYSalud::class, Organizacion::class, Usuarios::class];
 
     foreach ($pages as $page) {
         $used = 0;
@@ -397,12 +398,12 @@ it('en pantalla grande cada fila de cada página llena las 12 columnas, sin huec
 });
 
 it('el organigrama va primero en la barra superior', function (): void {
-    $sorts = collect([\App\Filament\Metrics\Pages\Organigrama::class, Dashboard::class, Finanzas::class, Comercial::class, Cartera::class, OperacionesYSalud::class, Organizacion::class])
+    $sorts = collect([\App\Filament\Metrics\Pages\Organigrama::class, Dashboard::class, Finanzas::class, Comercial::class, Cartera::class, OperacionesYSalud::class, Organizacion::class, Usuarios::class])
         ->mapWithKeys(fn (string $page): array => [class_basename($page) => $page::getNavigationSort()])
         ->sort();
 
     expect($sorts->keys()->first())->toBe('Organigrama')
-        ->and($sorts->keys()->all())->toBe(['Organigrama', 'Dashboard', 'Finanzas', 'Comercial', 'Cartera', 'OperacionesYSalud', 'Organizacion']);
+        ->and($sorts->keys()->all())->toBe(['Organigrama', 'Dashboard', 'Finanzas', 'Comercial', 'Cartera', 'OperacionesYSalud', 'Organizacion', 'Usuarios']);
 });
 
 it('los ingresos de una empresa aliada se heredan por la jerarquía de agencias, no por la venta', function (): void {

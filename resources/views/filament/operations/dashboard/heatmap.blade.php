@@ -90,13 +90,13 @@
                                         x-on:mouseenter="show($el)"
                                         x-on:focus="show($el)"
                                         x-on:blur="tip = null"
-                                        @if ($value > 0)
+                                        @if ($value > 0 && ($clickable ?? true))
                                             x-on:click="$wire.dispatch('operations-dashboard-detail', { dimension: 'slot', value: '{{ $weekday }}-{{ $hour }}' })"
                                         @else
                                             aria-disabled="true"
                                         @endif
                                         aria-label="{{ ucfirst($fullDays[$weekday]) }} {{ $hourLabel($hour) }}: {{ $value }} {{ $noun }}"
-                                        class="ops-heat-cell h-7 w-full rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 {{ $value === 0 ? 'cursor-default ring-1 ring-inset ring-gray-950/5 dark:ring-white/10' : 'cursor-pointer' }}"
+                                        class="ops-heat-cell h-7 w-full rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 {{ $value === 0 ? 'cursor-default ring-1 ring-inset ring-gray-950/5 dark:ring-white/10' : (($clickable ?? true) ? 'cursor-pointer' : 'cursor-default') }}"
                                         style="background: var(--ops-heat-{{ $step }})"
                                     ></button>
                                 @endforeach

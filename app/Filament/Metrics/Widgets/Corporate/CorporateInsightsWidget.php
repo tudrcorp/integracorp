@@ -9,6 +9,7 @@ use App\Filament\Metrics\Pages\Comercial;
 use App\Filament\Metrics\Pages\Finanzas;
 use App\Filament\Metrics\Pages\OperacionesYSalud;
 use App\Filament\Metrics\Pages\Organizacion;
+use App\Filament\Metrics\Pages\Usuarios;
 use App\Filament\Operations\Widgets\Dashboard\Concerns\InteractsWithOperationsDashboard;
 use App\Support\Metrics\Corporate\CorporateInsights;
 use Filament\Widgets\Widget;
@@ -34,6 +35,7 @@ class CorporateInsightsWidget extends Widget
         'portfolio' => Cartera::class,
         'operations' => OperacionesYSalud::class,
         'organization' => Organizacion::class,
+        'users' => Usuarios::class,
     ];
 
     /**
