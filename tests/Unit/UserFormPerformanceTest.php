@@ -126,24 +126,17 @@ it('abre la ficha de un usuario con pocas consultas', function (): void {
     expect($consultas)->toBeLessThan(50);
 });
 
-it('dibuja solo el módulo que se está configurando', function (): void {
+it('el editor de permisos no dibuja casillas en el servidor: las arma el navegador', function (): void {
     $superAdmin = superAdminDePruebaUi();
 
     $componente = Livewire::actingAs($superAdmin)
         ->test(EditUser::class, ['record' => $superAdmin->id])
         ->assertSuccessful();
 
-    $modulos = is_array($superAdmin->departament) ? $superAdmin->departament : [];
-
-    if (count($modulos) < 2) {
-        test()->markTestSkipped('El SUPERADMIN de prueba no tiene varios módulos.');
-    }
-
-    $casillas = substr_count($componente->html(), 'type="checkbox"');
-
-    /** Con los ocho módulos a la vez eran 180 casillas y 899 KB de HTML. */
-    expect($casillas)->toBeLessThan(120)
-        ->and($componente->get('data.'.UserForm::MODULE_FOCUS_FIELD))->toBeIn($modulos);
+    /** Con el diseño anterior eran hasta 180 casillas y 899 KB de HTML. */
+    expect(substr_count($componente->html(), 'type="checkbox"'))->toBeLessThan(60)
+        ->and(strlen($componente->html()))->toBeLessThan(600_000)
+        ->and($componente->get('data.'.UserForm::PERMISSION_IDS_FIELD))->toBeArray();
 });
 
 it('guardar conserva los permisos de los módulos que no están a la vista', function (): void {
@@ -189,16 +182,17 @@ it('no consulta el listado hasta que la tabla se carga', function (): void {
     expect($consultas)->toBeLessThan(5);
 });
 
-it('el selector de módulo no llega a la tabla de usuarios', function (): void {
-    expect(UserForm::MODULE_FOCUS_FIELD)->toBe('permission_module_focus')
-        ->and(Schema::hasColumn('users', UserForm::MODULE_FOCUS_FIELD))->toBeFalse();
+it('los campos de permisos no llegan a la tabla de usuarios', function (): void {
+    expect(UserForm::allPermissionFieldKeys())->toContain(UserForm::PERMISSION_IDS_FIELD)
+        ->and(Schema::hasColumn('users', UserForm::PERMISSION_IDS_FIELD))->toBeFalse();
 
     foreach ([
         'app/Filament/Business/Resources/Users/Pages/EditUser.php',
         'app/Filament/Business/Resources/Users/Pages/CreateUser.php',
     ] as $pagina) {
         expect((string) file_get_contents(dirname(__DIR__, 2).'/'.$pagina))
-            ->toContain("unset(\$data['permissions'], \$data[UserForm::MODULE_FOCUS_FIELD]);");
+            ->toContain('foreach (UserForm::allPermissionFieldKeys() as $permissionFieldKey)')
+            ->toContain('unset($data[$permissionFieldKey]);');
     }
 });
 

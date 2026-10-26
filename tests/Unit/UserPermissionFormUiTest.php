@@ -7,9 +7,11 @@ it('ui de permisos incluye estilos y temas por modulo', function (): void {
     $ui = file_get_contents(__DIR__.'/../../app/Support/Filament/UserPermissionFormUi.php');
     $styles = file_get_contents(__DIR__.'/../../resources/views/filament/business/users/partials/permission-form-styles.blade.php');
 
+    $catalog = file_get_contents(__DIR__.'/../../app/Support/Filament/UserPermissionCatalog.php');
+
     expect($form)->toContain('UserPermissionFormUi::permissionsIntroHtml')
-        ->and($form)->toContain('UserPermissionFormUi::moduleDisplayLabel')
-        ->and($form)->toContain('user-perm-checkbox-list')
+        ->and($catalog)->toContain('UserPermissionFormUi::moduleDisplayLabel')
+        ->and($catalog)->toContain('UserPermissionFormUi::moduleAccent')
         ->and($ui)->toContain('user-perm-module-badge')
         ->and($ui)->toContain('user-perm-panel-')
         ->and($ui)->toContain('user-perm-stat-pill')

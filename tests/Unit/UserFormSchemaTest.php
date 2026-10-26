@@ -18,22 +18,18 @@ it('formulario de usuario usa pestañas del sistema y permisos mejorados', funct
         ->toContain("Tab::make('Permisos')")
         ->toContain('modulesTabSchema')
         ->toContain('UserModulesFormUi')
-        ->toContain('user-modules-checkbox-list')
-        ->toContain('CheckboxList::make(\'departament\')')
+        ->toContain('ModuleSelector::make(\'departament\')')
         ->toContain('->required(fn (Get $get, ?User $record): bool => ! CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record))')
         ->toContain('commercialNetworkPermissionsTabSchema')
         ->toContain('CommercialNetworkPermissionRegistry')
-        ->toContain('permissionModuleSections')
-        ->toContain('groupedOptionsForModule')
-        ->toContain('permissionGroupFieldKey')
+        ->toContain('PermissionMatrix::make(self::PERMISSION_IDS_FIELD)')
+        ->toContain('copyPermissionsAction')
         ->toContain('UserPermissionFormUi')
-        ->toContain('user-perm-checkbox-list')
         ->toContain('getPermissionAssignableModules')
         ->toContain('PERMISSIONS_EXCLUDED_MODULES')
         ->toContain("'SISTEMAS'")
         ->toContain("'SUPERADMIN'")
         ->toContain("'TELEMEDICINA'")
-        ->toContain('permissions_empty_state')
         ->toContain('bulkToggleable')
         ->toContain('identity_card')
         ->toContain('Documento de identidad')
@@ -56,7 +52,8 @@ it('campo departament vive en la pestaña modulos y no en informacion del usuari
     $infoTabSection = substr($php, $infoTabStart, $modulesTabStart - $infoTabStart);
 
     expect($infoTabSection)->not->toContain("Select::make('departament')")
-        ->and($infoTabSection)->not->toContain("CheckboxList::make('departament')");
+        ->and($infoTabSection)->not->toContain("CheckboxList::make('departament')")
+        ->and($infoTabSection)->not->toContain("ModuleSelector::make('departament')");
 });
 
 it('modulos internos no son requeridos al asignar permisos de red a agente o agencia', function (): void {
@@ -71,9 +68,9 @@ it('modulos internos no son requeridos al asignar permisos de red a agente o age
     $modulesTab = substr($php, $modulesTabStart, $configureStart - $modulesTabStart);
 
     expect($modulesTab)
-        ->toContain("CheckboxList::make('departament')")
+        ->toContain("ModuleSelector::make('departament')")
         ->toContain('! CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record)')
         ->toContain('->default([])')
-        ->toContain('Los módulos internos son opcionales para agentes y agencias')
-        ->toContain('Opcional. Si no asignas módulos internos');
+        ->toContain('Opcionales para agentes y agencias')
+        ->toContain('->optionalForCommercialNetwork(');
 });

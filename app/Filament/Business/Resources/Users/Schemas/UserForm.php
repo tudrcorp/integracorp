@@ -4,34 +4,40 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Users\Schemas;
 
+use App\Filament\Business\Pages\UserPermissionsOverview;
+use App\Filament\Forms\Components\ModuleSelector;
+use App\Filament\Forms\Components\PermissionMatrix;
+use App\Filament\Forms\Components\RoleSelector;
 use App\Models\Rol;
 use App\Models\User;
 use App\Support\Filament\CommercialNetworkAccess;
 use App\Support\Filament\CommercialNetworkPermissionRegistry;
 use App\Support\Filament\UserCredentialSynchronizer;
-use App\Support\Filament\UserFormPermissionOptions;
 use App\Support\Filament\UserModulesFormUi;
+use App\Support\Filament\UserPermissionCatalog;
 use App\Support\Filament\UserPermissionFormUi;
-use App\Support\Filament\UserRoleFormUi;
 use App\Support\Filament\UserRoleProfiles;
+use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ToggleButtons;
+use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Unique;
 
 class UserForm
@@ -73,109 +79,48 @@ class UserForm
     }
 
     /**
-     * Clave segura para Livewire (evita guiones/espacios en nombres de módulo como MODERADOR-INTRANET).
+     * Campo del editor de permisos: la lista de ids marcados (todos los módulos).
      */
-    public static function permissionFieldKey(string $module): string
-    {
-        return 'permissions_mod_'.Str::slug($module, '_');
-    }
-
-    public static function permissionGroupFieldKey(string $module, string $navigationGroup): string
-    {
-        return self::permissionFieldKey($module).'_nav_'.Str::slug($navigationGroup, '_');
-    }
+    public const PERMISSION_IDS_FIELD = 'permission_ids';
 
     /**
+     * Campos del formulario que son permisos y no columnas de `users`.
+     *
      * @return list<string>
      */
     public static function allPermissionFieldKeys(): array
     {
-        $keys = [];
-
-        foreach (self::getPermissionAssignableModules() as $module) {
-            foreach (array_keys(UserFormPermissionOptions::groupedOptionsForModule($module)) as $navigationGroup) {
-                $keys[] = self::permissionGroupFieldKey($module, $navigationGroup);
-            }
-
-            $keys[] = self::permissionFieldKey($module);
-        }
-
-        $keys[] = CommercialNetworkPermissionRegistry::FIELD_KEY;
-
-        return array_values(array_unique($keys));
+        return [self::PERMISSION_IDS_FIELD, CommercialNetworkPermissionRegistry::FIELD_KEY];
     }
 
     /**
+     * Ids de permisos a guardar: los del editor que pertenecen a los módulos
+     * asignados (validados contra el catálogo) más los de red comercial.
+     *
      * @param  array<string, mixed>  $state
      * @return list<int>
      */
     public static function extractPermissionIdsFromState(array $state): array
     {
-        $departments = is_array($state['departament'] ?? null)
-            ? array_values(array_filter(
-                $state['departament'],
-                fn (mixed $department): bool => is_string($department) && trim($department) !== '',
-            ))
-            : [];
+        $departments = is_array($state['departament'] ?? null) ? $state['departament'] : [];
+        $permissionIds = UserPermissionCatalog::sanitize(
+            is_array($state[self::PERMISSION_IDS_FIELD] ?? null) ? $state[self::PERMISSION_IDS_FIELD] : [],
+            $departments,
+        );
 
-        $permissionIds = [];
+        $commercialValue = $state[CommercialNetworkPermissionRegistry::FIELD_KEY] ?? null;
 
-        foreach (self::getPermissionAssignableModules() as $module) {
-            if (! in_array($module, $departments, true)) {
-                continue;
-            }
+        if (is_array($commercialValue)) {
+            $allowed = array_map('intval', array_keys(CommercialNetworkPermissionRegistry::options()));
 
-            foreach (array_keys(UserFormPermissionOptions::groupedOptionsForModule($module)) as $navigationGroup) {
-                $key = self::permissionGroupFieldKey($module, $navigationGroup);
-                $value = $state[$key] ?? null;
-
-                if (is_array($value)) {
-                    foreach ($value as $id) {
-                        $permissionIds[] = (int) $id;
-                    }
-                }
-            }
-
-            $legacyKey = self::permissionFieldKey($module);
-            $legacyValue = $state[$legacyKey] ?? null;
-
-            if (is_array($legacyValue)) {
-                foreach ($legacyValue as $id) {
+            foreach ($commercialValue as $id) {
+                if (is_numeric($id) && in_array((int) $id, $allowed, true)) {
                     $permissionIds[] = (int) $id;
                 }
             }
         }
 
-        $commercialValue = $state[CommercialNetworkPermissionRegistry::FIELD_KEY] ?? null;
-
-        if (is_array($commercialValue)) {
-            foreach ($commercialValue as $id) {
-                $permissionIds[] = (int) $id;
-            }
-        }
-
         return array_values(array_unique($permissionIds));
-    }
-
-    public static function moduleFromPermissionFieldKey(string $fieldKey): ?string
-    {
-        if (! str_starts_with($fieldKey, 'permissions_mod_')) {
-            return null;
-        }
-
-        $fieldSlug = substr($fieldKey, strlen('permissions_mod_'));
-
-        if (str_contains($fieldSlug, '_nav_')) {
-            $fieldSlug = Str::before($fieldSlug, '_nav_');
-        }
-
-        foreach (self::getDepartamentModules() as $module) {
-            if (Str::slug($module, '_') === $fieldSlug) {
-                return $module;
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -219,201 +164,95 @@ class UserForm
     }
 
     /**
-     * @return list<Section>
+     * Copia los permisos (y, si se pide, los módulos) de otro usuario al
+     * formulario. No guarda nada: el analista revisa y guarda.
      */
-    /**
-     * Campo auxiliar: qué módulo se está editando. No se persiste.
-     */
-    public const MODULE_FOCUS_FIELD = 'permission_module_focus';
-
-    /**
-     * @return list<mixed>
-     */
-    public static function permissionModuleSections(): array
+    public static function copyPermissionsAction(): Action
     {
-        return [
-            self::permissionModuleFocusSelector(),
-            ...collect(self::getPermissionAssignableModules())
-                ->map(fn (string $module): Section => self::permissionModuleSection($module))
-                ->all(),
-        ];
-    }
+        return Action::make('copyPermissionsFrom')
+            ->label('Copiar permisos de…')
+            ->icon(Heroicon::OutlinedDocumentDuplicate)
+            ->color('gray')
+            ->modalHeading('Copiar permisos de otro usuario')
+            ->modalDescription('Carga en este formulario los permisos de un compañero. No se guarda nada hasta que pulses «Guardar»: podrás revisar y ajustar antes.')
+            ->modalSubmitActionLabel('Cargar permisos')
+            ->schema(fn (?User $record): array => [
+                Select::make('source_user_id')
+                    ->label('Usuario de referencia')
+                    ->placeholder('Escribe un nombre o correo…')
+                    ->searchable()
+                    ->required()
+                    ->getSearchResultsUsing(fn (string $search): array => self::copySourceOptions($search, $record?->getKey()))
+                    ->getOptionLabelUsing(fn (mixed $value): ?string => User::query()->whereKey($value)->value('name'))
+                    ->helperText('Solo aparecen usuarios activos con permisos asignados.'),
+                Radio::make('mode')
+                    ->label('¿Qué hacer con los permisos actuales?')
+                    ->options([
+                        'replace' => 'Reemplazarlos por los del usuario de referencia',
+                        'merge' => 'Conservarlos y sumar los del usuario de referencia',
+                    ])
+                    ->default('replace')
+                    ->required(),
+                Toggle::make('copy_modules')
+                    ->label('Asignar también sus módulos')
+                    ->helperText('Sin el módulo, sus permisos se quitarían al guardar. Nunca se quita un módulo que este usuario ya tenga.')
+                    ->default(true),
+            ])
+            ->action(function (array $data, Get $get, Set $set): void {
+                $source = User::query()->find($data['source_user_id'] ?? null);
 
-    /**
-     * Selector del módulo que se está editando.
-     *
-     * Un usuario con los ocho módulos renderizaba 54 listas y 180 casillas de
-     * una sola vez: 899 KB de HTML que el navegador tiene que montar y que
-     * Livewire reenvía en cada interacción. Mostrando un módulo cada vez, el
-     * documento baja a una fracción y las marcas de los demás siguen intactas
-     * en el estado del formulario.
-     */
-    private static function permissionModuleFocusSelector(): ToggleButtons
-    {
-        return ToggleButtons::make(self::MODULE_FOCUS_FIELD)
-            ->label('Módulo a configurar')
-            ->helperText('Se muestran los permisos de un módulo a la vez. Lo que marque en los demás se conserva.')
-            ->inline()
-            ->live()
-            ->dehydrated(false)
-            ->options(fn (Get $get): array => self::assignedModuleOptions($get))
-            ->visible(fn (Get $get): bool => count(self::assignedModules($get)) > 1)
-            ->afterStateHydrated(function (ToggleButtons $component, Get $get, mixed $state): void {
-                $modules = self::assignedModules($get);
+                if ($source === null) {
+                    Notification::make()->danger()->title('No se encontró el usuario de referencia')->send();
 
-                if ($modules === []) {
                     return;
                 }
 
-                if (! is_string($state) || ! in_array($state, $modules, true)) {
-                    $component->state($modules[0]);
+                $sourceIds = UserPermissionCatalog::assignableIdsOf((int) $source->getKey());
+                $departments = array_values(array_filter((array) ($get('departament') ?? []), 'is_string'));
+
+                if ((bool) ($data['copy_modules'] ?? false)) {
+                    $sourceModules = array_values(array_filter((array) ($source->departament ?? []), fn (mixed $module): bool => is_string($module) && $module !== 'SUPERADMIN'));
+                    $departments = array_values(array_unique([...$departments, ...$sourceModules]));
+                    $set('departament', $departments);
                 }
+
+                $current = array_map('intval', array_filter((array) ($get(self::PERMISSION_IDS_FIELD) ?? []), 'is_numeric'));
+                $next = ($data['mode'] ?? 'replace') === 'merge'
+                    ? array_values(array_unique([...$current, ...$sourceIds]))
+                    : $sourceIds;
+
+                $set(self::PERMISSION_IDS_FIELD, $next);
+
+                $kept = count(UserPermissionCatalog::sanitize($next, $departments));
+
+                Notification::make()
+                    ->success()
+                    ->title('Permisos cargados de '.$source->name)
+                    ->body($kept.' '.($kept === 1 ? 'permiso queda marcado' : 'permisos quedan marcados').'. Revisa el resumen de cambios y pulsa «Guardar» para aplicarlos.')
+                    ->send();
             });
     }
 
     /**
-     * Módulos que el usuario tiene asignados, en el orden del formulario.
-     *
-     * @return list<string>
+     * @return array<int, string>
      */
-    private static function assignedModules(Get $get): array
+    private static function copySourceOptions(string $search, mixed $excludeId): array
     {
-        $departments = $get('departament') ?? [];
+        $search = trim($search);
 
-        if (! is_array($departments)) {
-            return [];
-        }
-
-        return array_values(array_filter(
-            self::getPermissionAssignableModules(),
-            fn (string $module): bool => in_array($module, $departments, true),
-        ));
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private static function assignedModuleOptions(Get $get): array
-    {
-        $options = [];
-
-        foreach (self::assignedModules($get) as $module) {
-            $options[$module] = UserPermissionFormUi::moduleDisplayLabel($module);
-        }
-
-        return $options;
-    }
-
-    /**
-     * Sección de permisos de un módulo.
-     *
-     * El contenido —cabecera, grupos y casillas— se construye **solo cuando el
-     * módulo está asignado al usuario**. Antes se armaban los ocho módulos y
-     * sus 53 listas de casillas en cada render, aunque el usuario tuviera uno:
-     * 205 KB de HTML y una reconstrucción completa en cada clic, porque el
-     * selector de módulos es `live()`.
-     */
-    private static function permissionModuleSection(string $module): Section
-    {
-        $moduleIsAssigned = function (Get $get) use ($module): bool {
-            $modules = self::assignedModules($get);
-
-            if (! in_array($module, $modules, true)) {
-                return false;
-            }
-
-            /** Con un solo módulo no hay selector: se muestra siempre. */
-            if (count($modules) === 1) {
-                return true;
-            }
-
-            $focus = $get(self::MODULE_FOCUS_FIELD);
-
-            return is_string($focus) && $focus !== ''
-                ? $focus === $module
-                : $module === $modules[0];
-        };
-
-        return Section::make(UserPermissionFormUi::moduleDisplayLabel($module))
-            ->description(UserPermissionFormUi::moduleMenuSubtitle($module))
-            ->icon(UserPermissionFormUi::moduleIcon($module))
-            ->collapsible()
-            ->collapsed()
-            ->visible($moduleIsAssigned)
-            ->extraAttributes([
-                'class' => UserPermissionFormUi::moduleSectionClass($module),
-            ])
-            ->schema(fn (Get $get): array => $moduleIsAssigned($get)
-                ? self::permissionModuleContent($module)
-                : []);
-    }
-
-    /**
-     * @return list<mixed>
-     */
-    private static function permissionModuleContent(string $module): array
-    {
-        $groupedOptions = UserFormPermissionOptions::groupedOptionsForModule($module);
-
-        return [
-            Placeholder::make('permission_module_header_'.Str::slug($module, '_'))
-                ->hiddenLabel()
-                ->content(UserPermissionFormUi::moduleHeaderHtml(
-                    $module,
-                    UserFormPermissionOptions::countForModule($module),
-                    count($groupedOptions),
-                )),
-            Grid::make(1)
-                ->extraAttributes([
-                    'class' => 'user-perm-groups-stack',
-                ])
-                ->schema(
-                    collect($groupedOptions)
-                        ->map(fn (array $options, string $navigationGroup): Section => self::permissionGroupSection(
-                            $module,
-                            $navigationGroup,
-                            $options,
-                        ))
-                        ->values()
-                        ->all()
-                ),
-        ];
-    }
-
-    /**
-     * @param  array<int|string, string>  $options
-     */
-    private static function permissionGroupSection(string $module, string $navigationGroup, array $options): Section
-    {
-        $optionCount = count($options);
-
-        return Section::make()
-            ->key('user_perm_'.Str::slug($module, '_').'_'.Str::slug($navigationGroup, '_'))
-            ->heading(UserPermissionFormUi::groupHeaderHtml($navigationGroup, $optionCount, $module))
-            ->collapsible()
-            ->collapsed($optionCount > 8)
-            ->compact()
-            ->extraAttributes([
-                'class' => UserPermissionFormUi::groupCardClass($module),
-            ])
-            ->schema([
-                Grid::make(1)
-                    ->extraAttributes([
-                        'class' => 'user-perm-checkbox-shell',
-                    ])
-                    ->schema([
-                        CheckboxList::make(self::permissionGroupFieldKey($module, $navigationGroup))
-                            ->hiddenLabel()
-                            ->options($options)
-                            ->bulkToggleable()
-                            ->searchable($optionCount >= 5)
-                            ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
-                            ->gridDirection('row')
-                            ->extraAttributes([
-                                'class' => 'user-perm-checkbox-list',
-                            ]),
-                    ]),
-            ]);
+        return User::query()
+            ->where('status', 'ACTIVO')
+            ->whereHas('permissions')
+            ->when($excludeId !== null, fn ($query) => $query->whereKeyNot($excludeId))
+            ->when($search !== '', fn ($query) => $query->where(fn ($inner) => $inner
+                ->where('name', 'like', '%'.$search.'%')
+                ->orWhere('email', 'like', '%'.$search.'%')))
+            ->withCount('permissions')
+            ->orderBy('name')
+            ->limit(20)
+            ->get(['id', 'name', 'email'])
+            ->mapWithKeys(fn (User $user): array => [$user->id => $user->name.' · '.$user->permissions_count.' permisos'])
+            ->all();
     }
 
     /**
@@ -426,8 +265,8 @@ class UserForm
                 ->columnSpanFull(),
             Section::make('Paneles INTEGRACORP')
                 ->description(fn (Get $get, ?User $record): string => CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record)
-                    ? 'Los módulos internos son opcionales para agentes y agencias. Asígnalos solo si este usuario también debe entrar a paneles de INTEGRACORP.'
-                    : 'Selecciona los módulos a los que tendrá acceso este usuario.')
+                    ? 'Opcionales para agentes y agencias: asígnalos solo si también debe entrar a paneles de INTEGRACORP. Su panel comercial se gestiona en «Permisos de red».'
+                    : 'Elige a qué paneles entra esta persona. Las pantallas exactas de cada panel se marcan en la pestaña «Permisos».')
                 ->icon(Heroicon::OutlinedSquares2x2)
                 ->extraAttributes([
                     'class' => self::IOS_SECTION_CLASS,
@@ -438,47 +277,15 @@ class UserForm
                             'class' => self::IOS_INNER_CLASS.' user-modules-tab-inner',
                         ])
                         ->schema([
-                            Placeholder::make('modules_intro')
-                                ->hiddenLabel()
-                                ->content(fn (Get $get, ?User $record): HtmlString => UserModulesFormUi::modulesIntroHtml(
-                                    CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record),
-                                )),
-                            Placeholder::make('modules_selection_summary')
-                                ->hiddenLabel()
-                                ->content(fn (Get $get, ?User $record): HtmlString => UserModulesFormUi::selectionSummaryHtml(
-                                    $get('departament'),
-                                    CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record),
-                                )),
-                            Placeholder::make('proveedor_amd_notice')
-                                ->hiddenLabel()
-                                ->visible(fn (?User $record): bool => (bool) ($record?->is_proveedor_amd))
-                                ->content(new HtmlString(
-                                    '<div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">'
-                                    .'<p class="font-semibold">Tipo de usuario: Proveedor AMD</p>'
-                                    .'<p class="mt-1 leading-relaxed opacity-90">'
-                                    .'Este usuario es de portal de proveedor. El acceso al módulo Operaciones se gestiona abajo; el tipo Proveedor AMD no es un módulo de la lista.'
-                                    .'</p>'
-                                    .'</div>'
-                                )),
-                            CheckboxList::make('departament')
+                            ModuleSelector::make('departament')
                                 ->label('Módulos asignados')
-                                ->options(fn (): array => UserModulesFormUi::moduleOptions())
-                                ->columns(['default' => 1, 'lg' => 2])
-                                ->gridDirection('row')
-                                ->bulkToggleable()
-                                ->searchable()
+                                ->hiddenLabel()
                                 ->default([])
                                 ->required(fn (Get $get, ?User $record): bool => ! CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record))
-                                ->helperText(fn (Get $get, ?User $record): ?string => CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record)
-                                    ? 'Opcional. Si no asignas módulos internos, el usuario solo usará su panel comercial (agente o agencia).'
-                                    : null)
-                                ->live()
-                                ->extraAttributes([
-                                    'class' => 'user-modules-checkbox-list',
-                                ]),
-                            Placeholder::make('modules_permissions_hint')
-                                ->hiddenLabel()
-                                ->content(UserModulesFormUi::permissionsHintHtml()),
+                                ->validationMessages(['required' => 'Asigna al menos un módulo: sin módulos la persona no puede entrar a ningún panel interno.'])
+                                ->optionalForCommercialNetwork(fn (Get $get, ?User $record): bool => CommercialNetworkAccess::formUserIsCommercialNetwork($get, $record))
+                                ->permissionsField(self::PERMISSION_IDS_FIELD)
+                                ->emailField('email'),
                         ]),
                 ]),
         ];
@@ -707,41 +514,18 @@ class UserForm
                         Tab::make('Roles del usuario')
                             ->icon(Heroicon::OutlinedShieldCheck)
                             ->schema([
-                                View::make(UserRoleFormUi::stylesView())
-                                    ->columnSpanFull(),
                                 Section::make('Roles del Usuario')
-                                    ->description('Activa los perfiles funcionales que aplican a este usuario.')
+                                    ->description('Los roles cambian qué portal abre la persona o qué parte de la información ve. Cada tarjeta explica qué hace.')
                                     ->icon(Heroicon::OutlinedShieldCheck)
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
                                     ])
                                     ->schema([
-                                        Grid::make(1)
-                                            ->extraAttributes([
-                                                'class' => self::IOS_INNER_CLASS,
-                                            ])
-                                            ->schema([
-                                                Grid::make(1)
-                                                    ->schema(
-                                                        collect(UserRoleProfiles::formGroupedDefinitions())
-                                                            ->map(function (array $roles, string $groupLabel): Section {
-                                                                return Section::make($groupLabel)
-                                                                    ->compact()
-                                                                    ->extraAttributes([
-                                                                        'class' => UserRoleFormUi::groupShellClass($groupLabel),
-                                                                    ])
-                                                                    ->schema([
-                                                                        Grid::make(['default' => 1, 'md' => 2])
-                                                                            ->extraAttributes([
-                                                                                'class' => UserRoleFormUi::togglesGridClass(),
-                                                                            ])
-                                                                            ->schema(UserRoleProfiles::formTogglesForGroup($roles, $groupLabel)),
-                                                                    ]);
-                                                            })
-                                                            ->values()
-                                                            ->all()
-                                                    ),
-                                            ]),
+                                        ...collect(UserRoleProfiles::formCatalog())
+                                            ->map(fn (array $role): Hidden => Hidden::make($role['field'])->default(false))
+                                            ->all(),
+                                        RoleSelector::make('roles_editor')
+                                            ->hiddenLabel(),
                                     ]),
                             ]),
                         Tab::make('Permisos de red')
@@ -754,8 +538,19 @@ class UserForm
                                 View::make(UserPermissionFormUi::stylesView())
                                     ->columnSpanFull(),
                                 Section::make('Permisos por módulo')
-                                    ->description('Asigna los ítems de menú a los que puede acceder el usuario. Los permisos se muestran agrupados igual que en la barra lateral del panel.')
+                                    ->key('permissionsByModule')
+                                    ->description('Marca las pantallas y acciones a las que puede acceder el usuario, agrupadas igual que en el menú de cada panel.')
                                     ->icon(Heroicon::OutlinedAdjustmentsHorizontal)
+                                    ->afterHeader([
+                                        self::copyPermissionsAction(),
+                                        Action::make('openPermissionsOverview')
+                                            ->label('Ver por pantalla')
+                                            ->icon(Heroicon::OutlinedKey)
+                                            ->color('gray')
+                                            ->tooltip('Quién tiene cada permiso, para dar o quitar a varias personas a la vez')
+                                            ->url(fn (): string => UserPermissionsOverview::getUrl())
+                                            ->openUrlInNewTab(),
+                                    ])
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
                                     ])
@@ -768,11 +563,9 @@ class UserForm
                                                 Placeholder::make('permissions_intro')
                                                     ->hiddenLabel()
                                                     ->content(UserPermissionFormUi::permissionsIntroHtml()),
-                                                Placeholder::make('permissions_empty_state')
+                                                PermissionMatrix::make(self::PERMISSION_IDS_FIELD)
                                                     ->hiddenLabel()
-                                                    ->content(UserPermissionFormUi::permissionsEmptyStateHtml())
-                                                    ->visible(fn (Get $get): bool => empty($get('departament'))),
-                                                ...self::permissionModuleSections(),
+                                                    ->departmentsField('departament'),
                                             ]),
                                     ]),
                             ]),
