@@ -73,6 +73,7 @@ use App\Filament\Business\Resources\Fees\FeeResource;
 use App\Filament\Business\Resources\GuiaChatFeedbacks\GuiaChatFeedbackResource;
 use App\Filament\Business\Resources\Helpdesks\HelpdeskResource as BusinessHelpdeskResource;
 use App\Filament\Business\Resources\IndividualQuotes\IndividualQuoteResource;
+use App\Filament\Business\Resources\MedicalQuestionnaires\MedicalQuestionnaireResource;
 use App\Filament\Business\Resources\PersonIdentityFindings\PersonIdentityFindingResource;
 use App\Filament\Business\Resources\PlanGeneratorImages\PlanGeneratorImageResource;
 use App\Filament\Business\Resources\PlanGenerators\PlanGeneratorResource;
@@ -243,6 +244,7 @@ final class DepartmentNavigationPermissionRegistry
         GuiaChatFeedbackResource::class => ['guia-chat'],
         ConfigCostoBenefitResource::class => ['porcentajes-costos'],
         PlanResource::class => ['planes'],
+        MedicalQuestionnaireResource::class => ['cuestionarios-medicos'],
         BenefitResource::class => ['beneficios'],
         BenefitCoverageResource::class => ['beneficios-coberturas'],
         FeeResource::class => ['tarifas-costos'],

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\Affiliates\Schemas;
 
 use App\Filament\Operations\Support\OperationsLocationMapAction;
+use App\Filament\Shared\MedicalQuestionnaires\MedicalQuestionnaireAnswersEntry;
 use App\Models\Affiliate;
 use App\Support\ClinicalEntitlements\OperationsAffiliatePlanBenefitsCard;
 use App\Support\Filament\PatientAgeDisplay;
@@ -22,6 +23,7 @@ use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\TextSize;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Model;
 
 class AffiliateInfolist
 {
@@ -75,35 +77,11 @@ class AffiliateInfolist
     }
 
     /**
-     * @return array<int, IconEntry>
+     * @return list<\Filament\Infolists\Components\TextEntry>
      */
     private static function medicalQuestionIconEntries(): array
     {
-        $labels = [
-            'affiliation.cuestion_1' => '¿Usted y el grupo de beneficiarios solicitantes, gozan de buena salud?',
-            'affiliation.cuestion_2' => '¿Usted o el grupo de beneficiarios presentan alguna condición médica o congénita?',
-            'affiliation.cuestion_3' => '¿Usted o el grupo de beneficiario ha sido intervenido quirúrgicamente?',
-            'affiliation.cuestion_4' => '¿Usted o el grupo de beneficiario padece o ha padecido alguna enfermedad?',
-            'affiliation.cuestion_5' => 'Enfermedades Cardiovasculares, tales como; Hipertensión Arterial, Ataque cardíaco, Angina o dolor de pecho, Soplo Cardíaco, Insuficiencia Cardíaca Congestiva o desórdenes del corazón o sistema circulatorio.',
-            'affiliation.cuestion_6' => 'Enfermedades Cerebrovasculares, tales como: Desmayos, confusión, parálisis de miembros, dificultad para hablar, articular y entender, Accidente Cerebro-vascular (ACV). Cefalea o migraña. Epilepsia o Convulsiones. Otros trastornos o enfermedad del Cerebro o Sistema Nervioso.',
-            'affiliation.cuestion_7' => 'Enfermedades Respiratorias, tales como: Asma Bronquial, Bronquitis, Bronquiolitis, Enfisema, Neumonía, Enfermedad pulmonar Obstructiva Crónica (EPOC) u otras enfermedades del Sistema Respiratorio.',
-            'affiliation.cuestion_8' => 'Enfermedades o Trastornos Endocrinos tales como: Diabetes Mellitus, Bocio, hipertiroidismo, hipotiroidismo, Tiroiditis, Resistencia a la insulina, enfermedad de Cushing, cáncer de tiroides.',
-            'affiliation.cuestion_9' => 'Enfermedades Gastrointestinales como: Litiasis vesicular, Cólico Biliar, Úlcera gástrica, gastritis, Hemorragia digestivas, colitis, hemorroides, Apendicitis, Peritonitis, Pancreatitis u otros desórdenes del estómago, intestino, hígado o vesícula biliar.',
-            'affiliation.cuestion_10' => 'Enfermedades Renales: Litiasis renal, Cólico nefrítico, Sangre en la orina o Hematuria, Cistitis, Infecciones urinarias, Pielonefritis, Insuficiencia renal aguda. Otras enfermedades del riñón, vejiga o próstata.',
-            'affiliation.cuestion_11' => 'Enfermedades Osteoarticulares, Artrosis, Artritis reumatoide, Traumatismo craneoencefálico, Fracturas óseas, Luxaciones o esguinces, tumores óseos, u otros trastornos de los músculos, articulaciones o columna vertical o espalda.',
-            'affiliation.cuestion_12' => '¿Ha sufrido o padece de alguna enfermedad de la Piel como: Dermatitis, Celulitis, Abscesos cutáneos, quistes, tumores o cáncer? Quemaduras o Heridas Complicadas.',
-            'affiliation.cuestion_13' => '¿Padece de alguna enfermedad o desorden de los ojos, oídos, nariz o garganta?',
-            'affiliation.cuestion_14' => '¿Ha padecido de algún Envenenamiento o Intoxicación, Alergia o Reacción de Hipersensibilidad (medicamentosa, alimentaria, picadura de insecto, otras), edema de glotis o anafilaxia?',
-            'affiliation.cuestion_15' => '¿Usted o alguno de los solicitantes, toma algún tipo de medicamentos por tratamiento prolongado?',
-            'affiliation.cuestion_16' => '¿Ha padecido de algún Envenenamiento o Intoxicación, Alergia o Reacción de Hipersensibilidad (medicamentosa, alimentaria, picadura de insecto, otras), edema de glotis o anafilaxia?',
-        ];
-
-        return collect($labels)
-            ->map(fn (string $label, string $field): IconEntry => IconEntry::make($field)
-                ->label($label)
-                ->boolean())
-            ->values()
-            ->all();
+        return [MedicalQuestionnaireAnswersEntry::make(fn (Model $record): ?Model => $record->affiliation)];
     }
 
     public static function configure(Schema $schema): Schema
