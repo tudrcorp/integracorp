@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\PersonIdentityFindings\Pages;
 
+use App\Enums\PersonIdentityFindingKind;
 use App\Enums\PersonIdentitySource;
 use App\Filament\Business\Resources\PersonIdentityFindings\PersonIdentityFindingResource;
 use App\Models\AffiliateCorporate;
@@ -14,6 +15,7 @@ use App\Support\Affiliations\PersonIdentity\PersonIdentityNormalizer;
 use App\Support\Affiliations\PersonIdentity\PersonIdentityRecord;
 use App\Support\Affiliations\PersonIdentity\PersonIdentityResolver;
 use App\Support\Affiliations\PersonIdentity\PersonIdentityScanner;
+use App\Support\Filament\RecordPageHeader;
 use App\Support\Operations\AffiliatePersonalDataUpdater;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -52,6 +54,58 @@ class ViewPersonIdentityFinding extends ViewRecord
         $record = $this->getRecord();
 
         return ($record->kindEnum()?->label() ?? 'Caso').' · '.$record->person_name;
+    }
+
+    /**
+     * Encabezado de ficha como el de las afiliaciones ({@see RecordPageHeader}): qué tipo de caso es,
+     * la persona, el estado y dónde está registrada cada vez.
+     */
+    public function getHeading(): string|Htmlable
+    {
+        /** @var Finding $record */
+        $record = $this->getRecord();
+        $kind = $record->kindEnum();
+        $a = $record->side('a');
+        $b = $record->side('b');
+        $sources = array_values(array_unique(array_filter([
+            $record->sourceA()?->shortLabel(),
+            $record->sourceB()?->shortLabel(),
+        ])));
+        $documents = array_values(array_unique(array_filter([
+            trim((string) ($a['document'] ?? '')),
+            trim((string) ($b['document'] ?? '')),
+        ])));
+        $where = array_values(array_filter([
+            (string) ($a['parent_code'] ?? ''),
+            (string) ($b['parent_code'] ?? ''),
+        ]));
+
+        return RecordPageHeader::render(
+            eyebrow: 'Personas duplicadas · '.($kind?->label() ?? 'Caso'),
+            title: (string) ($record->person_name ?: 'Sin nombre'),
+            status: RecordPageHeader::tag(
+                $record->statusLabel(),
+                match ($record->status) {
+                    Finding::STATUS_OPEN => RecordPageHeader::TONE_DANGER,
+                    Finding::STATUS_CORRECTED => RecordPageHeader::TONE_SUCCESS,
+                    Finding::STATUS_DISMISSED => RecordPageHeader::TONE_NEUTRAL,
+                    default => RecordPageHeader::TONE_INFO,
+                },
+            ),
+            chips: [
+                RecordPageHeader::tag(
+                    'Gravedad '.mb_strtolower((string) $record->severity),
+                    $record->severity === PersonIdentityFindingKind::SEVERITY_HIGH ? RecordPageHeader::TONE_DANGER : RecordPageHeader::TONE_WARNING,
+                ),
+                $sources !== [] ? RecordPageHeader::tag(implode(' + ', $sources), RecordPageHeader::TONE_VIOLET) : null,
+            ],
+            facts: [
+                ($kind?->isDuplicate() ?? true) ? 'Registrada en' : 'Registro' => implode(' y ', $where),
+                count($documents) > 1 ? 'Cédulas' : 'Cédula' => $documents !== [] ? implode(' / ', $documents) : 'Sin cédula',
+                'Nacimiento' => (string) ($a['birth_date'] ?? ''),
+                'Detectado' => $record->first_detected_at?->format('d/m/Y'),
+            ],
+        );
     }
 
     protected function getHeaderActions(): array

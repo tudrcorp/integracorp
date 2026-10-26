@@ -43,6 +43,9 @@ it('muestra la lista y el detalle de un caso al usuario con permiso', function (
 
     Livewire::test(ViewPersonIdentityFinding::class, ['record' => $finding->getKey()])
         ->assertSuccessful()
+        ->assertSee('Personas duplicadas · '.$finding->kindEnum()?->label(), false)
+        ->assertSee($finding->statusLabel())
+        ->assertSee('Detectado')
         ->assertSee('Qué se detectó')
         ->assertSee((string) $finding->person_name)
         ->assertSee('Corregir datos')
