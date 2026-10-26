@@ -2,6 +2,7 @@
 
 namespace App\Filament\General\Resources\AffiliationCorporates\Schemas;
 
+use App\Filament\Shared\MedicalQuestionnaires\MedicalQuestionnaireFields;
 use App\Models\AffiliationCorporate;
 use App\Models\Agency;
 use App\Models\City;
@@ -10,9 +11,9 @@ use App\Models\Country;
 use App\Models\DetailCorporateQuote;
 use App\Models\Region;
 use App\Models\State;
+use App\Support\MedicalQuestionnaires\MedicalQuestionnaireCatalog;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
@@ -331,113 +332,9 @@ class AffiliationCorporateForm
                     ->collapsed()
                     ->icon('heroicon-s-building-office-2')
                     ->schema([
-                        Radio::make('cuestion_1')
-                            ->label('¿ Usted y el grupo de beneficiarios solicitantes, gozan de buena salud ?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_2')
-                            ->label('¿ Usted o el grupo de beneficiarios presentan alguna condición médica o congénita?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_3')
-                            ->label('¿ Usted o el grupo de beneficiarios ha sido intervenido quirúrgicamente?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_4')
-                            ->label('Enfermedades Cerebrovasculares, tales como: Desmayos, confusión, parálisis de miembros, dicultad para
-                                    hablar, articular y entender, Accidente Cerebro-vascular (ACV). Cefalea o migraña. Epilepsia o Convulsiones.
-                                    Otros trastornos o enfermedad del Cerebro o Sistema Nervioso.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_5')
-                            ->label('Enfermedades Respiratorias, tales como: Asma Bronquial, Bronquitis, Bronquiolitis, Enfisema, Neumonía, Enfermedad pulmonar Obstructiva Crónica (EPOC) u otras enfermedades del Sistema Respiratorio.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_6')
-                            ->label('Enfermedades o Trastornos Endocrinos tales como: Diabetes Mellitus, Bocio, hipertiroidismo, hipotiroidismo, Tiroiditis, Resistencia a la insulina, enfermedad de Cushing, cáncer de tiroides.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_7')
-                            ->label('Enfermedades Gastrointestinales como: Litiasis vesicular, Cólico Biliar, Úlcera gástrica, gastritis, Hemorragia
-                                    digestivas, colitis, hemorroides, Apendicitis, Peritonitis, Pancreatitis u otros desórdenes del estómago, intestino,
-                                    hígado o vesícula biliar.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_8')
-                            ->label('Enfermedades Renales: Litiasis renal, Cólico nefrítico, Sangre en la orina o Hematuria, Cistitis, Infecciones urinarias, Pielonefritis, Insficiencia renal aguda. Otras enfermedades del riñón, vejiga o próstata.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_9')
-                            ->label('Enfermedades Osteoarticulares, Artrosis, Artritis reumatoide, Traumatismo craneoencefálico, Fracturas óseas,
-                                    Luxaciones o esguinces, tumores óseos, u otros trastornos de los músculos, articulaciones o columna vertical o
-                                    espalda.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_10')
-                            ->label('¿Ha sufrido o padece de alguna enfermedad de la Piel como: Dermatitis, Celulitis, Abscesos cutáneos, quistes, tumores o cáncer? ,Quemaduras o Heridas Complicadas.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_11')
-                            ->label('¿Padece de alguna enfermedad o desorden de los ojos, oídos, nariz o garganta?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_12')
-                            ->label('¿Ha padecido de algún Envenenamiento o Intoxicación, ¿Alergia o Reacción de Hipersensibilidad (medicamentosa, alimentaria, picadura de insecto, otras), edema de glotis o analaxia?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_13')
-                            ->label('¿Usted o alguno de los solicitantes, toma algún tipo de medicamentos por tratamiento prolongado?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_14')
-                            ->label('¿Ha padecido de algún Envenenamiento o Intoxicación, ¿Alergia o Reacción de Hipersensibilidad (medicamentosa, alimentaria, picadura de insecto, otras), edema de glotis o analaxia?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-
+                        MedicalQuestionnaireFields::make(),
                     ])
-                    ->hidden(fn (Get $get) => $get('plan_id') != 3),
+                    ->hidden(fn (Get $get): bool => ! MedicalQuestionnaireCatalog::planHasQuestionnaire($get('plan_id'))),
                 Section::make('ACUERDO Y CONDICIONES')
                     ->hiddenOn('edit')
                     ->collapsed()

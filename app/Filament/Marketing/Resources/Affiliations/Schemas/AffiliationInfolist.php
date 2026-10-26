@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\Affiliations\Schemas;
 
+use App\Filament\Shared\MedicalQuestionnaires\MedicalQuestionnaireAnswersEntry;
 use App\Support\Filament\PatientAgeDisplay;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -42,34 +43,7 @@ class AffiliationInfolist
                 TextEntry::make('region_ti'),
                 TextEntry::make('phone_ti'),
                 TextEntry::make('email_ti'),
-                IconEntry::make('cuestion_1')
-                    ->boolean(),
-                IconEntry::make('cuestion_2')
-                    ->boolean(),
-                IconEntry::make('cuestion_3')
-                    ->boolean(),
-                IconEntry::make('cuestion_4')
-                    ->boolean(),
-                IconEntry::make('cuestion_5')
-                    ->boolean(),
-                IconEntry::make('cuestion_6')
-                    ->boolean(),
-                IconEntry::make('cuestion_7')
-                    ->boolean(),
-                IconEntry::make('cuestion_8')
-                    ->boolean(),
-                IconEntry::make('cuestion_9')
-                    ->boolean(),
-                IconEntry::make('cuestion_10')
-                    ->boolean(),
-                IconEntry::make('cuestion_11')
-                    ->boolean(),
-                IconEntry::make('cuestion_12')
-                    ->boolean(),
-                IconEntry::make('cuestion_13')
-                    ->boolean(),
-                IconEntry::make('cuestion_14')
-                    ->boolean(),
+                MedicalQuestionnaireAnswersEntry::make(),
                 TextEntry::make('full_name_agent'),
                 TextEntry::make('code_agent'),
                 TextEntry::make('date_today'),

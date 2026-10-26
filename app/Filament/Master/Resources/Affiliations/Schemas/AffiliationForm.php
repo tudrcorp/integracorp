@@ -2,6 +2,7 @@
 
 namespace App\Filament\Master\Resources\Affiliations\Schemas;
 
+use App\Filament\Shared\MedicalQuestionnaires\MedicalQuestionnaireFields;
 use App\Http\Controllers\UtilsController;
 use App\Models\Affiliation;
 use App\Models\Agency;
@@ -12,6 +13,7 @@ use App\Models\DetailIndividualQuote;
 use App\Models\IndividualQuote;
 use App\Models\Region;
 use App\Models\State;
+use App\Support\MedicalQuestionnaires\MedicalQuestionnaireCatalog;
 use App\Support\Plans\PlanInfantEligibility;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
@@ -595,88 +597,12 @@ class AffiliationForm
                                 ->addActionLabel('Agregar afiliado'),
                         ]),
                     Step::make('Declaración de Condiciones Médicas')
-                        ->hidden(fn (Get $get) => $get('plan_id') != 3)
+                        ->hidden(fn (Get $get): bool => ! MedicalQuestionnaireCatalog::planHasQuestionnaire($get('plan_id')))
                         ->description('Data de afiliados')
                         ->schema([
                             Fieldset::make('Cuestionario de salud')
                                 ->schema([
-                                    Radio::make('cuestion_1')
-                                        ->label('¿Usted y el grupo de beneficiarios solicitantes, gozan de buena salud?')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_2')
-                                        ->label('¿Usted o el grupo de beneficiarios presentan alguna condición médica o congénita?')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_3')
-                                        ->label('¿Usted o el grupo de beneficiario ha sido intervenido quirúrgicamente? ')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_4')
-                                        ->label('¿Usted o el grupo de beneficiario padece o ha padecido alguna enfermedad?')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_5')
-                                        ->label('Enfermedades Cardiovasculares, tales como; Hipertensión Arterial, Ataque cardíaco, Angina o dolor de pecho,
-                                                        Soplo Cardíaco, Insuficiencia Cardíaca Congestiva o desórdenes del corazón o sistema circulatorio.')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_6')
-                                        ->label('Enfermedades Cerebrovasculares, tales como: Desmayos, confusión, parálisis de miembros, dificultad para
-                                                        hablar, articular y entender, Accidente Cerebro-vascular (ACV). Cefalea o migraña. Epilepsia o Convulsiones.
-                                                        Otros trastornos o enfermedad del Cerebro o Sistema Nervioso.')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_7')
-                                        ->label('Enfermedades Respiratorias, tales como: Asma Bronquial, Bronquitis, Bronquiolitis, Enfisema, Neumonía, Enfer-
-                                                        medad pulmonar Obstructiva Crónica (EPOC) u otras enfermedades del Sistema Respiratorio.')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_8')
-                                        ->label('Enfermedades o Trastornos Endocrinos tales como: Diabetes Mellitus, Bocio, hipertiroidismo, hipotiroidismo,
-                                                    Tiroiditis, Resistencia a la insulina, enfermedad de Cushing, cáncer de tiroides.')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_9')
-                                        ->label('Enfermedades Gastrointestinales como: Litiasis vesicular, Cólico Biliar, Úlcera gástrica, gastritis, Hemorragia
-                                                    digestivas, colitis, hemorroides, Apendicitis, Peritonitis, Pancreatitis u otros desórdenes del estómago, intestino,
-                                                    hígado o vesícula biliar.')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_10')
-                                        ->label('Enfermedades Renales: Litiasis renal, Cólico nefrítico, Sangre en la orina o Hematuria, Cistitis, Infecciones
-                                                    urinarias, Pielonefritis, Insuficiencia renal aguda. Otras enfermedades del riñón, vejiga o próstata.')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_11')
-                                        ->label('Enfermedades Osteoarticulares, Artrosis, Artritis reumatoide, Traumatismo craneoencefálico, Fracturas óseas,
-                                                    Luxaciones o esguinces, tumores óseos, u otros trastornos de los músculos, articulaciones o columna vertical o
-                                                    espalda.')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_12')
-                                        ->label('¿Ha sufrido o padece de alguna enfermedad de la Piel como: Dermatitis, Celulitis, Abscesos cutáneos, quistes,
-                                                    tumores o cáncer? ,Quemaduras o Heridas Complicadas.')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_13')
-                                        ->label('¿Padece de alguna enfermedad o desorden de los ojos, oídos, nariz o garganta?')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_14')
-                                        ->label('¿Ha padecido de algún Envenenamiento o Intoxicación, ¿Alergia o Reacción de Hipersensibilidad (medicamen-
-                                                    tosa, alimentaria, picadura de insecto, otras), edema de glotis o anafilaxia?')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_15')
-                                        ->label('¿Usted o alguno de los solicitantes, toma algún tipo de medicamentos por tratamiento prolongado?')
-                                        ->boolean()
-                                        ->inline(),
-                                    Radio::make('cuestion_16')
-                                        ->label('¿Ha padecido de algún Envenenamiento o Intoxicación, ¿Alergia o Reacción de Hipersensibilidad (medicamen-
-                                                    tosa, alimentaria, picadura de insecto, otras), edema de glotis o anafilaxia?')
-                                        ->boolean()
-                                        ->inline(),
+                                    MedicalQuestionnaireFields::make(),
                                 ])->columns(1)->columnSpanFull(),
                             Fieldset::make('Información Adicional')
                                 ->schema([

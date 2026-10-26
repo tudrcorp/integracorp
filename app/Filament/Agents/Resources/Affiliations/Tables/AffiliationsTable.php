@@ -30,7 +30,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Width;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
@@ -101,61 +100,11 @@ class AffiliationsTable
                     ->color('info')
                     ->icon('fluentui-money-hand-20')
                     ->searchable(),
-                IconColumn::make('cuestion_1')
-                    ->label('Prgunta 1')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_2')
-                    ->label('Prgunta 2')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_3')
-                    ->label('Prgunta 3')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_4')
-                    ->label('Prgunta 4')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_5')
-                    ->label('Prgunta 5')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_6')
-                    ->label('Prgunta 6')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_7')
-                    ->label('Prgunta 7')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_8')
-                    ->label('Prgunta 8')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_9')
-                    ->label('Prgunta 9')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_10')
-                    ->label('Prgunta 10')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_11')
-                    ->label('Prgunta 11')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_12')
-                    ->label('Prgunta 12')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_13')
-                    ->label('Prgunta 13')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('cuestion_14')
-                    ->label('Prgunta 14')
-                    ->boolean()
+                TextColumn::make('medical_questionnaire_answers_count')
+                    ->label('Cuestionario médico: respuestas «Sí»')
+                    ->counts(['medicalQuestionnaireAnswers' => fn (Builder $query): Builder => $query->where('answer', true)])
+                    ->badge()
+                    ->color(fn (?int $state): string => (int) $state > 0 ? 'danger' : 'success')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Fecha de registro')

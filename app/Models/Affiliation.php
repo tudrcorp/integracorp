@@ -384,4 +384,15 @@ class Affiliation extends Model
             // throw $th;
         }
     }
+
+    /**
+     * Respuestas del cuestionario médico (Negocios → Cuestionarios médicos).
+     *
+     * @return HasMany<MedicalQuestionnaireAnswer, $this>
+     */
+    public function medicalQuestionnaireAnswers(): HasMany
+    {
+        return $this->hasMany(MedicalQuestionnaireAnswer::class, 'answerable_id')
+            ->where('answerable_type', \App\Support\MedicalQuestionnaires\MedicalQuestionnaireAnswers::TYPE_INDIVIDUAL);
+    }
 }

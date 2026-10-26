@@ -2,6 +2,7 @@
 
 namespace App\Filament\Marketing\Resources\Affiliations\Schemas;
 
+use App\Filament\Shared\MedicalQuestionnaires\MedicalQuestionnaireFields;
 use App\Support\Filament\PatientAgeDisplay;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -49,20 +50,7 @@ class AffiliationForm
                     ->tel(),
                 TextInput::make('email_ti')
                     ->email(),
-                Toggle::make('cuestion_1'),
-                Toggle::make('cuestion_2'),
-                Toggle::make('cuestion_3'),
-                Toggle::make('cuestion_4'),
-                Toggle::make('cuestion_5'),
-                Toggle::make('cuestion_6'),
-                Toggle::make('cuestion_7'),
-                Toggle::make('cuestion_8'),
-                Toggle::make('cuestion_9'),
-                Toggle::make('cuestion_10'),
-                Toggle::make('cuestion_11'),
-                Toggle::make('cuestion_12'),
-                Toggle::make('cuestion_13'),
-                Toggle::make('cuestion_14'),
+                MedicalQuestionnaireFields::make(),
                 TextInput::make('full_name_agent'),
                 TextInput::make('code_agent'),
                 TextInput::make('date_today'),

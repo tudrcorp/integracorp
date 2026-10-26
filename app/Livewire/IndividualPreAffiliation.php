@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Filament\Shared\MedicalQuestionnaires\MedicalQuestionnaireFields;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Models\Agent;
@@ -13,6 +14,8 @@ use App\Models\Region;
 use App\Models\State;
 use App\Models\User;
 use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
+use App\Support\MedicalQuestionnaires\MedicalQuestionnaireAnswers;
+use App\Support\MedicalQuestionnaires\MedicalQuestionnaireCatalog;
 use App\Support\Plans\PlanInfantEligibility;
 use Awcodes\TableRepeater\Header;
 use Carbon\Carbon;
@@ -595,113 +598,9 @@ class IndividualPreAffiliation extends Component implements HasForms
                     ->collapsed()
                     ->icon('heroicon-s-building-office-2')
                     ->schema([
-                        Radio::make('cuestion_1')
-                            ->label('¿ Usted y el grupo de beneficiarios solicitantes, gozan de buena salud ?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_2')
-                            ->label('¿ Usted o el grupo de beneficiarios presentan alguna condición médica o congénita?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_3')
-                            ->label('¿ Usted o el grupo de beneficiarios ha sido intervenido quirúrgicamente?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_4')
-                            ->label('Enfermedades Cerebrovasculares, tales como: Desmayos, confusión, parálisis de miembros, dicultad para
-                                    hablar, articular y entender, Accidente Cerebro-vascular (ACV). Cefalea o migraña. Epilepsia o Convulsiones.
-                                    Otros trastornos o enfermedad del Cerebro o Sistema Nervioso.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_5')
-                            ->label('Enfermedades Respiratorias, tales como: Asma Bronquial, Bronquitis, Bronquiolitis, Enfisema, Neumonía, Enfermedad pulmonar Obstructiva Crónica (EPOC) u otras enfermedades del Sistema Respiratorio.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_6')
-                            ->label('Enfermedades o Trastornos Endocrinos tales como: Diabetes Mellitus, Bocio, hipertiroidismo, hipotiroidismo, Tiroiditis, Resistencia a la insulina, enfermedad de Cushing, cáncer de tiroides.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_7')
-                            ->label('Enfermedades Gastrointestinales como: Litiasis vesicular, Cólico Biliar, Úlcera gástrica, gastritis, Hemorragia
-                                    digestivas, colitis, hemorroides, Apendicitis, Peritonitis, Pancreatitis u otros desórdenes del estómago, intestino,
-                                    hígado o vesícula biliar.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_8')
-                            ->label('Enfermedades Renales: Litiasis renal, Cólico nefrítico, Sangre en la orina o Hematuria, Cistitis, Infecciones urinarias, Pielonefritis, Insficiencia renal aguda. Otras enfermedades del riñón, vejiga o próstata.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_9')
-                            ->label('Enfermedades Osteoarticulares, Artrosis, Artritis reumatoide, Traumatismo craneoencefálico, Fracturas óseas,
-                                    Luxaciones o esguinces, tumores óseos, u otros trastornos de los músculos, articulaciones o columna vertical o
-                                    espalda.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_10')
-                            ->label('¿Ha sufrido o padece de alguna enfermedad de la Piel como: Dermatitis, Celulitis, Abscesos cutáneos, quistes, tumores o cáncer? ,Quemaduras o Heridas Complicadas.')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_11')
-                            ->label('¿Padece de alguna enfermedad o desorden de los ojos, oídos, nariz o garganta?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_12')
-                            ->label('¿Ha padecido de algún Envenenamiento o Intoxicación, ¿Alergia o Reacción de Hipersensibilidad (medicamentosa, alimentaria, picadura de insecto, otras), edema de glotis o analaxia?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_13')
-                            ->label('¿Usted o alguno de los solicitantes, toma algún tipo de medicamentos por tratamiento prolongado?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-                        Radio::make('cuestion_14')
-                            ->label('¿Ha padecido de algún Envenenamiento o Intoxicación, ¿Alergia o Reacción de Hipersensibilidad (medicamentosa, alimentaria, picadura de insecto, otras), edema de glotis o analaxia?')
-                            ->default(false)
-                            ->live()
-                            ->boolean()
-                            ->inline()
-                            ->inlineLabel(false),
-
+                        MedicalQuestionnaireFields::make(),
                     ])
-                    ->hidden(fn (Get $get) => $get('plan_id') == 1 || $get('plan_id') == 2),
+                    ->hidden(fn (Get $get): bool => ! MedicalQuestionnaireCatalog::planHasQuestionnaire($get('plan_id'))),
                 Section::make('ACUERDO Y CONDICIONES')
                     ->collapsed()
                     ->description(function (Get $get) {
@@ -834,21 +733,6 @@ class IndividualPreAffiliation extends Component implements HasForms
                     'phone_ti' => $data['feedback'] == 1 ? $data['phone_con'] : $data['phone_ti'],
                     'email_ti' => $data['feedback'] == 1 ? $data['email_con'] : $data['email_ti'],
 
-                    'cuestion_1' => $data['plan_id'] == 3 ? $data['cuestion_1'] : null,
-                    'cuestion_2' => $data['plan_id'] == 3 ? $data['cuestion_2'] : null,
-                    'cuestion_3' => $data['plan_id'] == 3 ? $data['cuestion_3'] : null,
-                    'cuestion_4' => $data['plan_id'] == 3 ? $data['cuestion_4'] : null,
-                    'cuestion_5' => $data['plan_id'] == 3 ? $data['cuestion_5'] : null,
-                    'cuestion_6' => $data['plan_id'] == 3 ? $data['cuestion_6'] : null,
-                    'cuestion_7' => $data['plan_id'] == 3 ? $data['cuestion_7'] : null,
-                    'cuestion_8' => $data['plan_id'] == 3 ? $data['cuestion_8'] : null,
-                    'cuestion_9' => $data['plan_id'] == 3 ? $data['cuestion_9'] : null,
-                    'cuestion_10' => $data['plan_id'] == 3 ? $data['cuestion_10'] : null,
-                    'cuestion_11' => $data['plan_id'] == 3 ? $data['cuestion_11'] : null,
-                    'cuestion_12' => $data['plan_id'] == 3 ? $data['cuestion_12'] : null,
-                    'cuestion_13' => $data['plan_id'] == 3 ? $data['cuestion_13'] : null,
-                    'cuestion_14' => $data['plan_id'] == 3 ? $data['cuestion_14'] : null,
-
                     'full_name_agent' => $data['full_name_agent'],
                     'code_agent' => $data['code_agent'],
                     'date_today' => $data['date_today'],
@@ -870,6 +754,13 @@ class IndividualPreAffiliation extends Component implements HasForms
                     $affiliates->sex = $value['sex'];
                     $affiliates->save();
                 }
+
+                MedicalQuestionnaireAnswers::save(
+                    $affiliation,
+                    $data['plan_id'] ?? null,
+                    (array) ($this->form->getRawState()[MedicalQuestionnaireFields::STATE_PATH] ?? []),
+                    'LINK EXTERNO',
+                );
             });
         } catch (DuplicatePersonIdentityException $exception) {
             Notification::make()

@@ -474,6 +474,10 @@ Route::get('operations/coordination/clinic-documents/{document}/download', [Oper
     ->middleware(['web', 'auth'])
     ->name('operations.coordination.clinic-documents.download');
 
+Route::get('business/medical-questionnaires/{questionnaire}/pdf', \App\Http\Controllers\MedicalQuestionnairePdfController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.medical-questionnaires.pdf');
+
 Route::get('business/agents/{agent}/ficha-pdf/preview', [BusinessAgentFichaPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
     ->name('business.agents.ficha-pdf.preview');
