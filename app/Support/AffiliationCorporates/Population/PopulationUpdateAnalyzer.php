@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Support\AffiliationCorporates\Population;
 
+use App\Enums\PersonIdentitySource;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
 use App\Models\CorporatePopulationUpdate;
 use App\Models\CorporatePopulationUpdateItem as Item;
 use App\Models\User;
 use App\Support\AffiliationCorporates\CorporateAffiliatePlanSynchronizer;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
+use App\Support\Affiliations\PersonIdentity\PersonIdentityGuard;
+use App\Support\Affiliations\PersonIdentity\PersonIdentityRecord;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -48,6 +52,7 @@ final class PopulationUpdateAnalyzer
             $items = PopulationMatcher::match($persons, $affiliates);
             $items = self::resolvePlans($owner, $items);
             $items = self::blockOpenActivity($owner, $items, $affiliates);
+            $items = self::blockPeopleActiveElsewhere($owner, $items);
             $items = self::observe($items, $affiliates->keyBy('id'));
 
             $summary = self::summary($items, $file['rows'], $affiliates);
@@ -196,6 +201,65 @@ final class PopulationUpdateAnalyzer
             $items[$i]['selectable'] = false;
             $items[$i]['selected'] = false;
             $items[$i]['reason'] = 'No se da de baja: tiene actividad abierta. Debe revisarlo el equipo de Operaciones.';
+        }
+
+        return $items;
+    }
+
+    /**
+     * Altas de personas que ya están vigentes en otra afiliación (individual, corporativa o Nuevos
+     * Negocios) o con el nombre cargado dos veces: no se proponen, pasan a Revisar con el motivo.
+     * Las personas de esta misma afiliación que el archivo da de baja no cuentan: al aplicar, las
+     * bajas van primero.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private static function blockPeopleActiveElsewhere(AffiliationCorporate $owner, array $items): array
+    {
+        $leaving = [];
+        foreach ($items as $item) {
+            if (in_array($item['action'], [Item::ACTION_DEACTIVATE, Item::ACTION_DUPLICATE_BASE], true) && $item['affiliate_corporate_id'] !== null) {
+                $leaving[(int) $item['affiliate_corporate_id']] = true;
+            }
+        }
+
+        foreach ($items as $i => $item) {
+            if ($item['action'] !== Item::ACTION_ADD || ! is_array($item['file_data'])) {
+                continue;
+            }
+
+            $person = $item['file_data'];
+            $probe = (new AffiliateCorporate)->forceFill([
+                'affiliation_corporate_id' => $owner->getKey(),
+                'first_name' => (string) ($person['first_name'] ?? ''),
+                'last_name' => (string) ($person['last_name'] ?? ''),
+                'nro_identificacion' => PopulationPerson::storedDocument((string) ($person['document'] ?? '')),
+                'birth_date' => PopulationPerson::toStoredBirthDate($person['birth_date'] ?? null),
+                'status' => 'ACTIVO',
+            ]);
+            $record = PersonIdentityRecord::fromModel($probe, $owner);
+
+            $conflicts = array_values(array_filter(
+                PersonIdentityGuard::conflictsFor($record),
+                static fn (array $conflict): bool => ! ($conflict['existing']->source === PersonIdentitySource::Corporate
+                    && isset($leaving[(int) $conflict['existing']->id])),
+            ));
+
+            $reason = match (true) {
+                PersonIdentityGuard::hasRepeatedName($probe) => DuplicatePersonIdentityException::repeatedName($record)->getMessage(),
+                $conflicts !== [] => (new DuplicatePersonIdentityException($conflicts))->getMessage(),
+                default => null,
+            };
+
+            if ($reason === null) {
+                continue;
+            }
+
+            $items[$i]['action'] = Item::ACTION_REVIEW;
+            $items[$i]['selectable'] = false;
+            $items[$i]['selected'] = false;
+            $items[$i]['reason'] = $reason;
         }
 
         return $items;

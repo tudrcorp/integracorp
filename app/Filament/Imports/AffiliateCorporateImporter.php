@@ -3,6 +3,8 @@
 namespace App\Filament\Imports;
 
 use App\Models\AffiliateCorporate;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
+use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
@@ -90,7 +92,20 @@ class AffiliateCorporateImporter extends Importer
         ];
     }
 
+    /**
+     * Una fila cuya persona ya está vigente en otra afiliación (o con el nombre repetido) no se
+     * importa: queda en el CSV de filas fallidas con el motivo completo.
+     */
     public function resolveRecord(): AffiliateCorporate
+    {
+        try {
+            return $this->createRecord();
+        } catch (DuplicatePersonIdentityException $exception) {
+            throw new RowImportFailedException($exception->getMessage());
+        }
+    }
+
+    private function createRecord(): AffiliateCorporate
     {
         return AffiliateCorporate::create([
             // Update existing records, matching them by `$this->data['column_name']`
@@ -114,10 +129,10 @@ class AffiliateCorporateImporter extends Importer
 
     public static function getCompletedNotificationBody(Import $import): string
     {
-        $body = 'Your affiliate corporate import has completed and ' . Number::format($import->successful_rows) . ' ' . str('row')->plural($import->successful_rows) . ' imported.';
+        $body = 'Your affiliate corporate import has completed and '.Number::format($import->successful_rows).' '.str('row')->plural($import->successful_rows).' imported.';
 
         if ($failedRowsCount = $import->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' ' . str('row')->plural($failedRowsCount) . ' failed to import.';
+            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to import.';
         }
 
         return $body;

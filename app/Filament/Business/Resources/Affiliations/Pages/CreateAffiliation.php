@@ -12,6 +12,7 @@ use App\Models\DetailIndividualQuote;
 use App\Models\IndividualQuote;
 use App\Models\PlanGenerator;
 use App\Models\User;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\PlanGenerators\PlanGeneratorCatalogPublisher;
 use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
 use Carbon\Carbon;
@@ -409,6 +410,8 @@ class CreateAffiliation extends CreateRecord
              * ----------------------------------------------------------------------------------
              */
             NotificationController::createdIndividualPreAfilliation($record->code, Auth::user()->name);
+        } catch (DuplicatePersonIdentityException $duplicatePerson) {
+            throw $duplicatePerson;
         } catch (\Throwable $th) {
             dd($th);
         }

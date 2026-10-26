@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Observers\PersonIdentityObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[ObservedBy([PersonIdentityObserver::class])]
 class AffiliateCorporate extends Model
 {
     protected $table = 'affiliate_corporates';

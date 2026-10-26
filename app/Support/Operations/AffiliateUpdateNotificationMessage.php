@@ -98,6 +98,7 @@ final class AffiliateUpdateNotificationMessage
     {
         return match ($source) {
             AffiliatePersonalDataUpdater::SOURCE_MAPS_ADDRESS => 'Dirección fijada con el mapa',
+            AffiliatePersonalDataUpdater::SOURCE_PERSON_IDENTITY_DETECTOR => 'Corrección desde Personas duplicadas (Negocios)',
             default => 'Edición de datos personales',
         };
     }

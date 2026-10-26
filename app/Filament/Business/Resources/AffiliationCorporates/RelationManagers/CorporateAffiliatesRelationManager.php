@@ -21,6 +21,7 @@ use App\Support\AffiliationCorporates\CorporateAffiliatePlanSynchronizer;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\AffiliationCorporates\CorporateAffiliateUpgradeManager;
 use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\PatientAgeDisplay;
@@ -126,6 +127,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                         }
                                         try {
                                             $set('age', (int) Carbon::createFromFormat('d/m/Y', $state)->diffInYears(now()));
+                                        } catch (DuplicatePersonIdentityException $duplicatePerson) {
+                                            throw $duplicatePerson;
                                         } catch (\Throwable) {
                                             // formato inválido momentáneo al escribir
                                         }
@@ -812,6 +815,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
                                     ->title('Afiliado dado de baja')
                                     ->body('Se actualizaron montos, población del plan y totales de la afiliación.')
                                     ->send();
+                            } catch (DuplicatePersonIdentityException $duplicatePerson) {
+                                throw $duplicatePerson;
                             } catch (\Throwable $th) {
                                 Log::error($th);
                                 Notification::make()
@@ -1098,6 +1103,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
             Notification::make()->warning()->title('Revise los upgrades')->body($exception->getMessage())->send();
 
             return;
+        } catch (DuplicatePersonIdentityException $duplicatePerson) {
+            throw $duplicatePerson;
         } catch (\Throwable $throwable) {
             Log::error('NEGOCIOS-AFILIACIONES-CORPORATIVAS: Error al agregar upgrades.', [
                 'affiliation_corporate_id' => $owner->getKey(),
@@ -1151,6 +1158,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
             Notification::make()->warning()->title('Sin upgrades que quitar')->body($exception->getMessage())->send();
 
             return;
+        } catch (DuplicatePersonIdentityException $duplicatePerson) {
+            throw $duplicatePerson;
         } catch (\Throwable $throwable) {
             Log::error('NEGOCIOS-AFILIACIONES-CORPORATIVAS: Error al quitar upgrades.', [
                 'affiliation_corporate_id' => $owner->getKey(),
@@ -1266,6 +1275,8 @@ class CorporateAffiliatesRelationManager extends RelationManager
 
         try {
             $result = CorporateAffiliatePlanSynchronizer::sync($owner, $affiliates);
+        } catch (DuplicatePersonIdentityException $duplicatePerson) {
+            throw $duplicatePerson;
         } catch (\Throwable $throwable) {
             Log::error('NEGOCIOS-AFILIACIONES-CORPORATIVAS: Error al sincronizar afiliados con la afiliación.', [
                 'affiliation_corporate_id' => $owner->getKey(),

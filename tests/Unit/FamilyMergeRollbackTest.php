@@ -83,6 +83,9 @@ function familyMergeTestClone(Affiliation $template, string $tag, string $effect
         $copy = $affiliate->replicate();
         $copy->affiliation_id = $clone->id;
         $copy->nro_identificacion = 'TFM'.$tag.$index.random_int(100000, 999999);
+        // Un clon con el mismo nombre y nacimiento que la persona real es, para el candado de personas
+        // duplicadas, la misma persona vigente dos veces: se le marca el nombre.
+        $copy->full_name = $affiliate->full_name.' TFM'.$tag.$index;
         $copy->relationship = $index === 0 ? 'TITULAR' : 'HIJO';
         $copy->save();
     }

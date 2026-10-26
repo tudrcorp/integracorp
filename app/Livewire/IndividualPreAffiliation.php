@@ -12,6 +12,7 @@ use App\Models\IndividualQuote;
 use App\Models\Region;
 use App\Models\State;
 use App\Models\User;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\Plans\PlanInfantEligibility;
 use Awcodes\TableRepeater\Header;
 use Carbon\Carbon;
@@ -33,6 +34,7 @@ use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\MaxWidth;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class IndividualPreAffiliation extends Component implements HasForms
@@ -799,72 +801,86 @@ class IndividualPreAffiliation extends Component implements HasForms
             $parte_entera = Affiliation::max('id');
         }
 
-        $affiliation = Affiliation::create([
-            'individual_quote_id' => $individual_quote_id,
-            'code' => 'TDEC-AFI-000'.$parte_entera + 1,
-            'agent_id' => $individual_quote->agent_id,
-            'code_agency' => $individual_quote->code_agency,
-            'plan_id' => $data['plan_id'],
+        try {
+            DB::transaction(function () use ($data, $individual_quote_id, $individual_quote, $parte_entera): void {
+                $affiliation = Affiliation::create([
+                    'individual_quote_id' => $individual_quote_id,
+                    'code' => 'TDEC-AFI-000'.$parte_entera + 1,
+                    'agent_id' => $individual_quote->agent_id,
+                    'code_agency' => $individual_quote->code_agency,
+                    'plan_id' => $data['plan_id'],
 
-            'full_name_con' => $data['full_name_con'],
-            'nro_identificacion_con' => $data['nro_identificacion_con'],
-            'sex_con' => $data['sex_con'],
-            'birth_date_con' => $data['birth_date_con'],
-            'adress_con' => $data['adress_con'],
-            'city_id_con' => $data['city_id_con'],
-            'state_id_con' => $data['state_id_con'],
-            'country_id_con' => $data['country_id_con'],
-            'region_con' => $data['region_con'],
-            'phone_con' => $data['phone_con'],
-            'email_con' => $data['email_con'],
+                    'full_name_con' => $data['full_name_con'],
+                    'nro_identificacion_con' => $data['nro_identificacion_con'],
+                    'sex_con' => $data['sex_con'],
+                    'birth_date_con' => $data['birth_date_con'],
+                    'adress_con' => $data['adress_con'],
+                    'city_id_con' => $data['city_id_con'],
+                    'state_id_con' => $data['state_id_con'],
+                    'country_id_con' => $data['country_id_con'],
+                    'region_con' => $data['region_con'],
+                    'phone_con' => $data['phone_con'],
+                    'email_con' => $data['email_con'],
 
-            'full_name_ti' => $data['feedback'] == 1 ? $data['full_name_con'] : $data['full_name_ti'],
-            'nro_identificacion_ti' => $data['feedback'] == 1 ? $data['nro_identificacion_con'] : $data['nro_identificacion_ti'],
-            'sex_ti' => $data['feedback'] == 1 ? $data['sex_con'] : $data['sex_ti'],
-            'birth_date_ti' => $data['feedback'] == 1 ? $data['birth_date_con'] : $data['birth_date_ti'],
-            'adress_ti' => $data['feedback'] == 1 ? $data['adress_con'] : $data['adress_ti'],
-            'city_id_ti' => $data['feedback'] == 1 ? $data['city_id_con'] : $data['city_id_ti'],
-            'state_id_ti' => $data['feedback'] == 1 ? $data['state_id_con'] : $data['state_id_ti'],
-            'country_id_ti' => $data['feedback'] == 1 ? $data['country_id_con'] : $data['country_id_ti'],
-            'region_ti' => $data['feedback'] == 1 ? $data['region_con'] : $data['region_ti'],
-            'phone_ti' => $data['feedback'] == 1 ? $data['phone_con'] : $data['phone_ti'],
-            'email_ti' => $data['feedback'] == 1 ? $data['email_con'] : $data['email_ti'],
+                    'full_name_ti' => $data['feedback'] == 1 ? $data['full_name_con'] : $data['full_name_ti'],
+                    'nro_identificacion_ti' => $data['feedback'] == 1 ? $data['nro_identificacion_con'] : $data['nro_identificacion_ti'],
+                    'sex_ti' => $data['feedback'] == 1 ? $data['sex_con'] : $data['sex_ti'],
+                    'birth_date_ti' => $data['feedback'] == 1 ? $data['birth_date_con'] : $data['birth_date_ti'],
+                    'adress_ti' => $data['feedback'] == 1 ? $data['adress_con'] : $data['adress_ti'],
+                    'city_id_ti' => $data['feedback'] == 1 ? $data['city_id_con'] : $data['city_id_ti'],
+                    'state_id_ti' => $data['feedback'] == 1 ? $data['state_id_con'] : $data['state_id_ti'],
+                    'country_id_ti' => $data['feedback'] == 1 ? $data['country_id_con'] : $data['country_id_ti'],
+                    'region_ti' => $data['feedback'] == 1 ? $data['region_con'] : $data['region_ti'],
+                    'phone_ti' => $data['feedback'] == 1 ? $data['phone_con'] : $data['phone_ti'],
+                    'email_ti' => $data['feedback'] == 1 ? $data['email_con'] : $data['email_ti'],
 
-            'cuestion_1' => $data['plan_id'] == 3 ? $data['cuestion_1'] : null,
-            'cuestion_2' => $data['plan_id'] == 3 ? $data['cuestion_2'] : null,
-            'cuestion_3' => $data['plan_id'] == 3 ? $data['cuestion_3'] : null,
-            'cuestion_4' => $data['plan_id'] == 3 ? $data['cuestion_4'] : null,
-            'cuestion_5' => $data['plan_id'] == 3 ? $data['cuestion_5'] : null,
-            'cuestion_6' => $data['plan_id'] == 3 ? $data['cuestion_6'] : null,
-            'cuestion_7' => $data['plan_id'] == 3 ? $data['cuestion_7'] : null,
-            'cuestion_8' => $data['plan_id'] == 3 ? $data['cuestion_8'] : null,
-            'cuestion_9' => $data['plan_id'] == 3 ? $data['cuestion_9'] : null,
-            'cuestion_10' => $data['plan_id'] == 3 ? $data['cuestion_10'] : null,
-            'cuestion_11' => $data['plan_id'] == 3 ? $data['cuestion_11'] : null,
-            'cuestion_12' => $data['plan_id'] == 3 ? $data['cuestion_12'] : null,
-            'cuestion_13' => $data['plan_id'] == 3 ? $data['cuestion_13'] : null,
-            'cuestion_14' => $data['plan_id'] == 3 ? $data['cuestion_14'] : null,
+                    'cuestion_1' => $data['plan_id'] == 3 ? $data['cuestion_1'] : null,
+                    'cuestion_2' => $data['plan_id'] == 3 ? $data['cuestion_2'] : null,
+                    'cuestion_3' => $data['plan_id'] == 3 ? $data['cuestion_3'] : null,
+                    'cuestion_4' => $data['plan_id'] == 3 ? $data['cuestion_4'] : null,
+                    'cuestion_5' => $data['plan_id'] == 3 ? $data['cuestion_5'] : null,
+                    'cuestion_6' => $data['plan_id'] == 3 ? $data['cuestion_6'] : null,
+                    'cuestion_7' => $data['plan_id'] == 3 ? $data['cuestion_7'] : null,
+                    'cuestion_8' => $data['plan_id'] == 3 ? $data['cuestion_8'] : null,
+                    'cuestion_9' => $data['plan_id'] == 3 ? $data['cuestion_9'] : null,
+                    'cuestion_10' => $data['plan_id'] == 3 ? $data['cuestion_10'] : null,
+                    'cuestion_11' => $data['plan_id'] == 3 ? $data['cuestion_11'] : null,
+                    'cuestion_12' => $data['plan_id'] == 3 ? $data['cuestion_12'] : null,
+                    'cuestion_13' => $data['plan_id'] == 3 ? $data['cuestion_13'] : null,
+                    'cuestion_14' => $data['plan_id'] == 3 ? $data['cuestion_14'] : null,
 
-            'full_name_agent' => $data['full_name_agent'],
-            'code_agent' => $data['code_agent'],
-            'date_today' => $data['date_today'],
+                    'full_name_agent' => $data['full_name_agent'],
+                    'code_agent' => $data['code_agent'],
+                    'date_today' => $data['date_today'],
 
-            'status' => 'APROBADA-POR-PAGAR',
-            'created_by' => 'LINK EXTERNO',
-        ]);
+                    'status' => 'APROBADA-POR-PAGAR',
+                    'created_by' => 'LINK EXTERNO',
+                ]);
 
-        $data_affiliates = $data['affiliates'];
+                $data_affiliates = $data['affiliates'];
 
-        foreach ($data_affiliates as $value) {
-            $affiliates = new Affiliate;
-            $affiliates->affiliation_id = $affiliation->id;
-            $affiliates->full_name = $value['full_name'];
-            $affiliates->birth_date = $value['birth_date'];
-            $affiliates->age = Carbon::createFromFormat('d-m-Y', $value['birth_date'])->age;
-            $affiliates->nro_identificacion = $value['nro_identificacion'];
-            $affiliates->relationship = $value['relationship'];
-            $affiliates->sex = $value['sex'];
-            $affiliates->save();
+                foreach ($data_affiliates as $value) {
+                    $affiliates = new Affiliate;
+                    $affiliates->affiliation_id = $affiliation->id;
+                    $affiliates->full_name = $value['full_name'];
+                    $affiliates->birth_date = $value['birth_date'];
+                    $affiliates->age = Carbon::createFromFormat('d-m-Y', $value['birth_date'])->age;
+                    $affiliates->nro_identificacion = $value['nro_identificacion'];
+                    $affiliates->relationship = $value['relationship'];
+                    $affiliates->sex = $value['sex'];
+                    $affiliates->save();
+                }
+            });
+        } catch (DuplicatePersonIdentityException $exception) {
+            Notification::make()
+                ->title('NO SE PUDO REGISTRAR LA AFILIACION')
+                ->body($exception->publicMessage())
+                ->icon('heroicon-m-user-minus')
+                ->danger()
+                ->persistent()
+                ->send();
+
+            return;
         }
 
         // Guardamos los afilidos en la tabla de afiliates

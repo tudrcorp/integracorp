@@ -60,6 +60,7 @@ class UserFormPermissionOptions
         'creditreconciliationresource' => ['conciliacion-de-credito'],
         'affiliationcorporatepaymentfrequencychangeresource' => ['cambios-de-frecuencia-de-pago'],
         'affiliationdateinconsistencyresource' => ['inconsistencias-de-fechas'],
+        'personidentityfindingresource' => ['personas-duplicadas'],
         'informeadministrativo' => ['informe-administrativo'],
         'droppedaffiliationcollectionresource' => ['cuotas-de-afiliaciones-dadas-de-baja'],
         'zoneresource' => ['gestion-de-carpetas'],

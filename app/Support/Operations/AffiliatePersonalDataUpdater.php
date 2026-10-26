@@ -47,6 +47,8 @@ final class AffiliatePersonalDataUpdater
 
     public const SOURCE_MAPS_ADDRESS = 'maps_address';
 
+    public const SOURCE_PERSON_IDENTITY_DETECTOR = 'person_identity_detector';
+
     public const KIND_INDIVIDUAL = 'individual';
 
     public const KIND_CORPORATE = 'corporate';

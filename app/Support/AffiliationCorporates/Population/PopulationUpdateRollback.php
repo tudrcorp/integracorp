@@ -12,6 +12,7 @@ use App\Models\CorporatePopulationUpdate;
 use App\Models\CorporatePopulationUpdateItem as Item;
 use App\Models\TelemedicinePatient;
 use App\Models\User;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\SecurityAudit;
 use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 use Filament\Actions\Action;
@@ -104,7 +105,13 @@ final class PopulationUpdateRollback
                     ->where('corporate_population_update_id', $locked->getKey())
                     ->where('apply_status', Item::APPLY_APPLIED)
                     ->orderByDesc('id')
-                    ->get();
+                    ->get()
+                    ->sortBy(static fn (Item $item): int => match ($item->action) {
+                        Item::ACTION_DEACTIVATE, Item::ACTION_DUPLICATE_BASE => 2,
+                        Item::ACTION_FIX_DOCUMENT => 1,
+                        default => 0,
+                    })
+                    ->values();
 
                 $affiliates = AffiliateCorporate::query()
                     ->whereIn('id', $items->pluck('affiliate_corporate_id')->filter()->all() ?: [0])
@@ -243,7 +250,14 @@ final class PopulationUpdateRollback
                     return ['reverted' => false, 'detail' => 'Alguien cambió su estatus después ('.$status.').'];
                 }
 
-                $affiliate->forceFill(['status' => $before['status'] ?? 'ACTIVO'])->save();
+                try {
+                    $affiliate->forceFill(['status' => $before['status'] ?? 'ACTIVO'])->save();
+                } catch (DuplicatePersonIdentityException $exception) {
+                    $affiliate->forceFill(['status' => $status]);
+
+                    return ['reverted' => false, 'detail' => 'No vuelve a quedar vigente: '.$exception->getMessage()];
+                }
+
                 self::restorePatients($snapshot, $linked[$id] ?? []);
                 TelemedicinePatientPlanBridge::syncFromAffiliateCorporate($affiliate);
 

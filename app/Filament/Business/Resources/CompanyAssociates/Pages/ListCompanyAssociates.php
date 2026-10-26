@@ -9,6 +9,7 @@ use App\Filament\Business\Resources\CompanyAssociates\Tables\CompanyAssociatesTa
 use App\Jobs\NotifyCompanyAssociateIlsCoverageConfirmedJob;
 use App\Models\CompanyAssociate;
 use App\Models\CompanyResponsible;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\Companies\CompanyAssociateDocumentsManualSender;
 use App\Support\Companies\CompanyAssociatesTableContext;
 use App\Support\Companies\CompanyAssociateVoucherIlsUpdater;
@@ -156,6 +157,8 @@ class ListCompanyAssociates extends ListRecords
 
         try {
             CompanyAssociateVoucherIlsUpdater::save($associate, $voucher);
+        } catch (DuplicatePersonIdentityException $duplicatePerson) {
+            throw $duplicatePerson;
         } catch (Throwable $throwable) {
             report($throwable);
 
@@ -242,6 +245,8 @@ class ListCompanyAssociates extends ListRecords
                 'name' => (string) $associate->full_name,
                 'message' => 'Documentos enviados correctamente.',
             ];
+        } catch (DuplicatePersonIdentityException $duplicatePerson) {
+            throw $duplicatePerson;
         } catch (Throwable $exception) {
             $result = [
                 'ok' => false,

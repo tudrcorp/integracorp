@@ -7,6 +7,7 @@ namespace App\Filament\Business\Resources\CompanyAssociates\Actions;
 use App\Filament\Business\Resources\CompanyAssociates\Pages\ListCompanyAssociates;
 use App\Http\Controllers\CompanyAssociateExportCsvController;
 use App\Models\CompanyAssociate;
+use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\Companies\CompanyAssociateCarnetGenerator;
 use App\Support\Companies\CompanyAssociateInclusionQrCatalog;
 use App\Support\Companies\CompanyAssociateStatusManager;
@@ -102,6 +103,8 @@ final class CompanyAssociatesTableActions
                         ->send();
                 } catch (ValidationException $exception) {
                     throw $exception;
+                } catch (DuplicatePersonIdentityException $duplicatePerson) {
+                    throw $duplicatePerson;
                 } catch (Throwable $throwable) {
                     report($throwable);
 

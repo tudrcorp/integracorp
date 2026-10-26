@@ -105,6 +105,9 @@ class AppServiceProvider extends ServiceProvider
         /** Bitácora del panel de Telemedicina (Operaciones → Bitácora del panel). */
         TelemedicinePanelLivewireMonitor::register();
 
+        /** Personas duplicadas: el bloqueo se muestra como notificación en los paneles. */
+        \App\Support\Affiliations\PersonIdentity\DuplicatePersonLivewireNotifier::register();
+
         if (config('live-presence.enabled', true)) {
             /** Contador de consultas por petición para el monitor en vivo. */
             DB::listen(static function (): void {
