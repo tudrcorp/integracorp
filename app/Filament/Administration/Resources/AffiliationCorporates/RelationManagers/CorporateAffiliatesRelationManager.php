@@ -15,7 +15,6 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -438,11 +437,6 @@ class CorporateAffiliatesRelationManager extends RelationManager
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->modalHeading('INTEGRACORP eliminar el/los registros seleccionados!')
-                        ->requiresConfirmation()
-                        ->color('danger')
-                        ->icon(Heroicon::Trash),
 
                 ]),
             ])->striped()->poll('5s');

@@ -36,7 +36,9 @@ final class BirthdayRecipientQuery
     public static function affiliates(): Builder
     {
         $query = DB::table('affiliates')
-            ->leftJoin('affiliations', 'affiliates.affiliation_id', '=', 'affiliations.id');
+            ->leftJoin('affiliations', 'affiliates.affiliation_id', '=', 'affiliations.id')
+            ->whereNull('affiliates.deleted_at')
+            ->whereNull('affiliations.deleted_at');
 
         return self::excludePqq($query, 'affiliates', 'affiliations');
     }
@@ -52,7 +54,9 @@ final class BirthdayRecipientQuery
                 'affiliate_corporates.affiliation_corporate_id',
                 '=',
                 'affiliation_corporates.id'
-            );
+            )
+            ->whereNull('affiliate_corporates.deleted_at')
+            ->whereNull('affiliation_corporates.deleted_at');
 
         return self::excludePqq($query, 'affiliate_corporates', 'affiliation_corporates');
     }

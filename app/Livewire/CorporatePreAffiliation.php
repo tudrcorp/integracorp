@@ -2,43 +2,37 @@
 
 namespace App\Livewire;
 
+use App\Models\AffiliationCorporate;
 use App\Models\City;
-use App\Models\User;
-use App\Models\Agent;
-use App\Models\State;
-use App\Models\Region;
+use App\Models\CorporateQuote;
 use App\Models\Country;
+use App\Models\DetailCorporateQuote;
+use App\Models\Region;
+use App\Models\State;
+use App\Models\User;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
-use Livewire\Component;
-use Filament\Forms\Form;
-use App\Models\CorporateQuote;
-use App\Models\IndividualQuote;
-use Filament\Forms\Components\Grid;
-use App\Models\AffiliationCorporate;
-use App\Models\DetailCorporateQuote;
-use Filament\Forms\Components\Radio;
-use Illuminate\Support\Facades\Auth;
-use App\Models\DetailIndividualQuote;
-use Filament\Forms\Components\Select;
-use Illuminate\Support\Facades\Crypt;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Concerns\InteractsWithForms;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
+use Livewire\Component;
 
 class CorporatePreAffiliation extends Component implements HasForms
 {
-
     use InteractsWithForms;
 
     public ?array $data = [];
+
     public $id;
 
     public function mount($id): void
@@ -108,9 +102,9 @@ class CorporatePreAffiliation extends Component implements HasForms
                             )
                             ->required()
                             ->validationMessages([
-                                'unique'    => 'El RIF ya se encuentra registrado.',
-                                'required'  => 'Campo requerido',
-                                'numeric'   => 'El campo es numerico',
+                                'unique' => 'El RIF ya se encuentra registrado.',
+                                'required' => 'Campo requerido',
+                                'numeric' => 'El campo es numerico',
                             ])
                             ->required(),
 
@@ -133,9 +127,9 @@ class CorporatePreAffiliation extends Component implements HasForms
                                 column: 'email_con',
                             )
                             ->validationMessages([
-                                'unique'    => 'El Correo electrónico ya se encuentra registrado.',
-                                'required'  => 'Campo requerido',
-                                'email'     => 'El campo es un email',
+                                'unique' => 'El Correo electrónico ya se encuentra registrado.',
+                                'required' => 'Campo requerido',
+                                'email' => 'El campo es un email',
                             ])
                             ->maxLength(255),
                         TextInput::make('adress_con')
@@ -147,30 +141,30 @@ class CorporatePreAffiliation extends Component implements HasForms
                             ->prefixIcon('heroicon-s-identification')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->maxLength(255),
                         Select::make('country_code_con')
                             ->label('Código de país')
                             ->options([
-                                '+1'   => '🇺🇸 +1 (Estados Unidos)',
-                                '+44'  => '🇬🇧 +44 (Reino Unido)',
-                                '+49'  => '🇩🇪 +49 (Alemania)',
-                                '+33'  => '🇫🇷 +33 (Francia)',
-                                '+34'  => '🇪🇸 +34 (España)',
-                                '+39'  => '🇮🇹 +39 (Italia)',
-                                '+7'   => '🇷🇺 +7 (Rusia)',
-                                '+55'  => '🇧🇷 +55 (Brasil)',
-                                '+91'  => '🇮🇳 +91 (India)',
-                                '+86'  => '🇨🇳 +86 (China)',
-                                '+81'  => '🇯🇵 +81 (Japón)',
-                                '+82'  => '🇰🇷 +82 (Corea del Sur)',
-                                '+52'  => '🇲🇽 +52 (México)',
-                                '+58'  => '🇻🇪 +58 (Venezuela)',
-                                '+57'  => '🇨🇴 +57 (Colombia)',
-                                '+54'  => '🇦🇷 +54 (Argentina)',
-                                '+56'  => '🇨🇱 +56 (Chile)',
-                                '+51'  => '🇵🇪 +51 (Perú)',
+                                '+1' => '🇺🇸 +1 (Estados Unidos)',
+                                '+44' => '🇬🇧 +44 (Reino Unido)',
+                                '+49' => '🇩🇪 +49 (Alemania)',
+                                '+33' => '🇫🇷 +33 (Francia)',
+                                '+34' => '🇪🇸 +34 (España)',
+                                '+39' => '🇮🇹 +39 (Italia)',
+                                '+7' => '🇷🇺 +7 (Rusia)',
+                                '+55' => '🇧🇷 +55 (Brasil)',
+                                '+91' => '🇮🇳 +91 (India)',
+                                '+86' => '🇨🇳 +86 (China)',
+                                '+81' => '🇯🇵 +81 (Japón)',
+                                '+82' => '🇰🇷 +82 (Corea del Sur)',
+                                '+52' => '🇲🇽 +52 (México)',
+                                '+58' => '🇻🇪 +58 (Venezuela)',
+                                '+57' => '🇨🇴 +57 (Colombia)',
+                                '+54' => '🇦🇷 +54 (Argentina)',
+                                '+56' => '🇨🇱 +56 (Chile)',
+                                '+51' => '🇵🇪 +51 (Perú)',
                                 '+502' => '🇬🇹 +502 (Guatemala)',
                                 '+503' => '🇸🇻 +503 (El Salvador)',
                                 '+504' => '🇭🇳 +504 (Honduras)',
@@ -181,34 +175,34 @@ class CorporatePreAffiliation extends Component implements HasForms
                                 '+592' => '🇬🇾 +592 (Guyana)',
                                 '+591' => '🇧🇴 +591 (Bolivia)',
                                 '+598' => '🇺🇾 +598 (Uruguay)',
-                                '+20'  => '🇪🇬 +20 (Egipto)',
-                                '+27'  => '🇿🇦 +27 (Sudáfrica)',
+                                '+20' => '🇪🇬 +20 (Egipto)',
+                                '+27' => '🇿🇦 +27 (Sudáfrica)',
                                 '+234' => '🇳🇬 +234 (Nigeria)',
                                 '+212' => '🇲🇦 +212 (Marruecos)',
                                 '+971' => '🇦🇪 +971 (Emiratos Árabes)',
-                                '+92'  => '🇵🇰 +92 (Pakistán)',
+                                '+92' => '🇵🇰 +92 (Pakistán)',
                                 '+880' => '🇧🇩 +880 (Bangladesh)',
-                                '+62'  => '🇮🇩 +62 (Indonesia)',
-                                '+63'  => '🇵🇭 +63 (Filipinas)',
-                                '+66'  => '🇹🇭 +66 (Tailandia)',
-                                '+60'  => '🇲🇾 +60 (Malasia)',
-                                '+65'  => '🇸🇬 +65 (Singapur)',
-                                '+61'  => '🇦🇺 +61 (Australia)',
-                                '+64'  => '🇳🇿 +64 (Nueva Zelanda)',
-                                '+90'  => '🇹🇷 +90 (Turquía)',
+                                '+62' => '🇮🇩 +62 (Indonesia)',
+                                '+63' => '🇵🇭 +63 (Filipinas)',
+                                '+66' => '🇹🇭 +66 (Tailandia)',
+                                '+60' => '🇲🇾 +60 (Malasia)',
+                                '+65' => '🇸🇬 +65 (Singapur)',
+                                '+61' => '🇦🇺 +61 (Australia)',
+                                '+64' => '🇳🇿 +64 (Nueva Zelanda)',
+                                '+90' => '🇹🇷 +90 (Turquía)',
                                 '+375' => '🇧🇾 +375 (Bielorrusia)',
                                 '+372' => '🇪🇪 +372 (Estonia)',
                                 '+371' => '🇱🇻 +371 (Letonia)',
                                 '+370' => '🇱🇹 +370 (Lituania)',
-                                '+48'  => '🇵🇱 +48 (Polonia)',
-                                '+40'  => '🇷🇴 +40 (Rumania)',
-                                '+46'  => '🇸🇪 +46 (Suecia)',
-                                '+47'  => '🇳🇴 +47 (Noruega)',
-                                '+45'  => '🇩🇰 +45 (Dinamarca)',
-                                '+41'  => '🇨🇭 +41 (Suiza)',
-                                '+43'  => '🇦🇹 +43 (Austria)',
-                                '+31'  => '🇳🇱 +31 (Países Bajos)',
-                                '+32'  => '🇧🇪 +32 (Bélgica)',
+                                '+48' => '🇵🇱 +48 (Polonia)',
+                                '+40' => '🇷🇴 +40 (Rumania)',
+                                '+46' => '🇸🇪 +46 (Suecia)',
+                                '+47' => '🇳🇴 +47 (Noruega)',
+                                '+45' => '🇩🇰 +45 (Dinamarca)',
+                                '+41' => '🇨🇭 +41 (Suiza)',
+                                '+43' => '🇦🇹 +43 (Austria)',
+                                '+31' => '🇳🇱 +31 (Países Bajos)',
+                                '+32' => '🇧🇪 +32 (Bélgica)',
                                 '+353' => '🇮🇪 +353 (Irlanda)',
                                 '+375' => '🇧🇾 +375 (Bielorrusia)',
                                 '+380' => '🇺🇦 +380 (Ucrania)',
@@ -216,7 +210,7 @@ class CorporatePreAffiliation extends Component implements HasForms
                                 '+995' => '🇬🇪 +995 (Georgia)',
                                 '+976' => '🇲🇳 +976 (Mongolia)',
                                 '+998' => '🇺🇿 +998 (Uzbekistán)',
-                                '+84'  => '🇻🇳 +84 (Vietnam)',
+                                '+84' => '🇻🇳 +84 (Vietnam)',
                                 '+856' => '🇱🇦 +856 (Laos)',
                                 '+374' => '🇦🇲 +374 (Armenia)',
                                 '+965' => '🇰🇼 +965 (Kuwait)',
@@ -236,14 +230,14 @@ class CorporatePreAffiliation extends Component implements HasForms
                             ->label('Número de teléfono')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, callable $set, Get $get) {
                                 $countryCode = $get('country_code_con');
                                 if ($countryCode) {
                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                    $set('phone_con', $countryCode . $cleanNumber);
+                                    $set('phone_con', $countryCode.$cleanNumber);
                                 }
                             }),
                         Select::make('country_id_con')
@@ -254,7 +248,7 @@ class CorporatePreAffiliation extends Component implements HasForms
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->preload(),
                         Select::make('state_id_con')
@@ -272,7 +266,7 @@ class CorporatePreAffiliation extends Component implements HasForms
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->preload(),
                         TextInput::make('region_con')
@@ -290,7 +284,7 @@ class CorporatePreAffiliation extends Component implements HasForms
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->preload(),
                     ])->columns(4),
@@ -405,7 +399,7 @@ class CorporatePreAffiliation extends Component implements HasForms
                             ->inlineLabel(false),
 
                     ])
-                    ->hidden(fn(Get $get) => $get('plan_id') != 3),
+                    ->hidden(fn (Get $get) => $get('plan_id') != 3),
                 Section::make('ACUERDO Y CONDICIONES')
                     ->collapsed()
                     ->description(function (Get $get) {
@@ -441,7 +435,7 @@ class CorporatePreAffiliation extends Component implements HasForms
                                 ->dehydrated()
                                 ->default(now()->format('d-m-Y'))
                                 ->maxLength(255),
-                        ])
+                        ]),
                     ])->columns(3),
                 Section::make('AFILIADOS')
                     ->description('Campo Requerido(*)')
@@ -468,54 +462,54 @@ class CorporatePreAffiliation extends Component implements HasForms
             return;
         }
 
-        //Infomacion de la cotizacion
+        // Infomacion de la cotizacion
         $corporate_quote_id = Crypt::decryptString($this->id);
         $corporate_quote = CorporateQuote::find($corporate_quote_id);
         // dd($corporate_quote);
 
-        //Logica para genera el codgio de afiliacion
-        if (AffiliationCorporate::max('id') == null) {
+        // Logica para genera el codgio de afiliacion
+        if (AffiliationCorporate::withTrashed()->max('id') == null) {
             $parte_entera = 0;
         } else {
-            $parte_entera = AffiliationCorporate::max('id');
+            $parte_entera = AffiliationCorporate::withTrashed()->max('id');
         }
 
         $affiliation = AffiliationCorporate::create([
-            "corporate_quote_id"                => $corporate_quote_id,
-            "code"                              => 'TDEC-AFC-000' . $parte_entera + 1,
-            "code_agency"                       => $corporate_quote->code_agency,
-            "plan_id"                           => $data['plan_id'],
+            'corporate_quote_id' => $corporate_quote_id,
+            'code' => 'TDEC-AFC-000'.$parte_entera + 1,
+            'code_agency' => $corporate_quote->code_agency,
+            'plan_id' => $data['plan_id'],
 
-            'full_name_con'                     => $data['full_name_con'],
-            'rif'                               => $data['rif'],
-            'adress_con'                        => $data['adress_con'],
-            'city_id_con'                       => $data['city_id_con'],
-            'state_id_con'                      => $data['state_id_con'],
-            'country_id_con'                    => $data['country_id_con'],
-            'region_con'                        => $data['region_con'],
-            'phone_con'                         => $data['phone_con'],
-            'email_con'                         => $data['email_con'],
+            'full_name_con' => $data['full_name_con'],
+            'rif' => $data['rif'],
+            'adress_con' => $data['adress_con'],
+            'city_id_con' => $data['city_id_con'],
+            'state_id_con' => $data['state_id_con'],
+            'country_id_con' => $data['country_id_con'],
+            'region_con' => $data['region_con'],
+            'phone_con' => $data['phone_con'],
+            'email_con' => $data['email_con'],
 
-            'cuestion_1'                        =>  $data['plan_id'] == 3 ? $data['cuestion_1'] : null,
-            'cuestion_2'                        =>  $data['plan_id'] == 3 ? $data['cuestion_2'] : null,
-            'cuestion_3'                        =>  $data['plan_id'] == 3 ? $data['cuestion_3'] : null,
-            'cuestion_4'                        =>  $data['plan_id'] == 3 ? $data['cuestion_4'] : null,
-            'cuestion_5'                        =>  $data['plan_id'] == 3 ? $data['cuestion_5'] : null,
-            'cuestion_6'                        =>  $data['plan_id'] == 3 ? $data['cuestion_6'] : null,
-            'cuestion_7'                        =>  $data['plan_id'] == 3 ? $data['cuestion_7'] : null,
-            'cuestion_8'                        =>  $data['plan_id'] == 3 ? $data['cuestion_8'] : null,
-            'cuestion_9'                        =>  $data['plan_id'] == 3 ? $data['cuestion_9'] : null,
-            'cuestion_10'                       =>  $data['plan_id'] == 3 ? $data['cuestion_10'] : null,
-            'cuestion_11'                       =>  $data['plan_id'] == 3 ? $data['cuestion_11'] : null,
-            'cuestion_12'                       =>  $data['plan_id'] == 3 ? $data['cuestion_12'] : null,
-            'cuestion_13'                       =>  $data['plan_id'] == 3 ? $data['cuestion_13'] : null,
-            'cuestion_14'                       =>  $data['plan_id'] == 3 ? $data['cuestion_14'] : null,
+            'cuestion_1' => $data['plan_id'] == 3 ? $data['cuestion_1'] : null,
+            'cuestion_2' => $data['plan_id'] == 3 ? $data['cuestion_2'] : null,
+            'cuestion_3' => $data['plan_id'] == 3 ? $data['cuestion_3'] : null,
+            'cuestion_4' => $data['plan_id'] == 3 ? $data['cuestion_4'] : null,
+            'cuestion_5' => $data['plan_id'] == 3 ? $data['cuestion_5'] : null,
+            'cuestion_6' => $data['plan_id'] == 3 ? $data['cuestion_6'] : null,
+            'cuestion_7' => $data['plan_id'] == 3 ? $data['cuestion_7'] : null,
+            'cuestion_8' => $data['plan_id'] == 3 ? $data['cuestion_8'] : null,
+            'cuestion_9' => $data['plan_id'] == 3 ? $data['cuestion_9'] : null,
+            'cuestion_10' => $data['plan_id'] == 3 ? $data['cuestion_10'] : null,
+            'cuestion_11' => $data['plan_id'] == 3 ? $data['cuestion_11'] : null,
+            'cuestion_12' => $data['plan_id'] == 3 ? $data['cuestion_12'] : null,
+            'cuestion_13' => $data['plan_id'] == 3 ? $data['cuestion_13'] : null,
+            'cuestion_14' => $data['plan_id'] == 3 ? $data['cuestion_14'] : null,
 
-            'full_name_agent'                   => $corporate_quote->created_by,
-            'date_today'                        => $data['date_today'],
+            'full_name_agent' => $corporate_quote->created_by,
+            'date_today' => $data['date_today'],
 
-            "status"                            => 'APROBADA-POR-PAGAR',
-            "created_by"                        => 'LINK EXTERNO',
+            'status' => 'APROBADA-POR-PAGAR',
+            'created_by' => 'LINK EXTERNO',
         ]);
 
         Notification::make()
@@ -527,7 +521,7 @@ class CorporatePreAffiliation extends Component implements HasForms
             ->seconds(5)
             ->send();
 
-        //Notificacion para Admin
+        // Notificacion para Admin
         $recipient = User::where('is_admin', 1)->get();
         foreach ($recipient as $user) {
             $recipient_for_user = User::find($user->id);
@@ -542,7 +536,7 @@ class CorporatePreAffiliation extends Component implements HasForms
 
         $this->form->fill();
 
-        //redirect
+        // redirect
         $this->redirect('/at/c');
     }
 

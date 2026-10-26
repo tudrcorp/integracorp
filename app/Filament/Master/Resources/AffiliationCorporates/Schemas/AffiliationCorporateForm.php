@@ -2,26 +2,24 @@
 
 namespace App\Filament\Master\Resources\AffiliationCorporates\Schemas;
 
-use App\Models\City;
-use App\Models\State;
-use App\Models\Region;
-use App\Models\Country;
-use Filament\Schemas\Schema;
-use App\Models\CorporateQuote;
 use App\Models\AffiliationCorporate;
+use App\Models\City;
+use App\Models\CorporateQuote;
+use App\Models\Country;
 use App\Models\DetailCorporateQuote;
-use Filament\Forms\Components\Radio;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Grid;
+use App\Models\Region;
+use App\Models\State;
 use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class AffiliationCorporateForm
 {
@@ -43,12 +41,13 @@ class AffiliationCorporateForm
                                 ->dehydrated()
                                 ->maxLength(255)
                                 ->default(function () {
-                                    if (AffiliationCorporate::max('id') == null) {
+                                    if (AffiliationCorporate::withTrashed()->max('id') == null) {
                                         $parte_entera = 0;
                                     } else {
-                                        $parte_entera = AffiliationCorporate::max('id');
+                                        $parte_entera = AffiliationCorporate::withTrashed()->max('id');
                                     }
-                                    return 'TDEC-AFC-000' . $parte_entera + 1;
+
+                                    return 'TDEC-AFC-000'.$parte_entera + 1;
                                 })
                                 ->required(),
 
@@ -58,7 +57,7 @@ class AffiliationCorporateForm
                             ->live()
                             ->prefixIcon('heroicon-m-clipboard-document-check')
                             ->options(CorporateQuote::select('id', 'code_agency', 'status', 'full_name')->where('owner_code', Auth::user()->code_agency)->where('status', 'APROBADA')->pluck('full_name', 'id'))
-                            ->default(fn() => request()->query('corporate_quote_id'))
+                            ->default(fn () => request()->query('corporate_quote_id'))
                             // ->options(CorporateQuote::select('id', 'agent_id', 'status', 'full_name')->where('agent_id', Auth::user()->agent_id)->where('status', 'APROBADA')->pluck('full_name', 'id'))
                             ->searchable()
                             ->preload()
@@ -72,6 +71,7 @@ class AffiliationCorporateForm
                                 if (isset($plan_id)) {
                                     return $plan_id;
                                 }
+
                                 return null;
                             })
                             ->label('Plan')
@@ -116,7 +116,7 @@ class AffiliationCorporateForm
                          */
                         Hidden::make('code_agency')->default(Auth::user()->code_agency),
                         Hidden::make('owner_code')->default(Auth::user()->code_agency),
-                        //------------------------------------------------------------------
+                        // ------------------------------------------------------------------
 
                     ])->columns(3),
                 Section::make('INFORMACION CORPORATIVA DEL CONTRATANTE')
@@ -148,9 +148,9 @@ class AffiliationCorporateForm
                             )
                             ->required()
                             ->validationMessages([
-                                'unique'    => 'El RIF ya se encuentra registrado.',
-                                'required'  => 'Campo requerido',
-                                'numeric'   => 'El campo es numérico',
+                                'unique' => 'El RIF ya se encuentra registrado.',
+                                'required' => 'Campo requerido',
+                                'numeric' => 'El campo es numérico',
                             ])
                             ->required(),
                         TextInput::make('email_con')
@@ -164,9 +164,9 @@ class AffiliationCorporateForm
                                 column: 'email_con',
                             )
                             ->validationMessages([
-                                'unique'    => 'El Correo Electrónico ya se encuentra registrado.',
-                                'required'  => 'Campo requerido',
-                                'email'     => 'El campo es un email',
+                                'unique' => 'El Correo Electrónico ya se encuentra registrado.',
+                                'required' => 'Campo requerido',
+                                'email' => 'El campo es un email',
                             ])
                             ->maxLength(255),
                         TextInput::make('adress_con')
@@ -178,30 +178,30 @@ class AffiliationCorporateForm
                             ->prefixIcon('heroicon-s-identification')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->maxLength(255),
                         Select::make('country_code_con')
                             ->label('Código de país')
                             ->options([
-                                '+1'   => '🇺🇸 +1 (Estados Unidos)',
-                                '+44'  => '🇬🇧 +44 (Reino Unido)',
-                                '+49'  => '🇩🇪 +49 (Alemania)',
-                                '+33'  => '🇫🇷 +33 (Francia)',
-                                '+34'  => '🇪🇸 +34 (España)',
-                                '+39'  => '🇮🇹 +39 (Italia)',
-                                '+7'   => '🇷🇺 +7 (Rusia)',
-                                '+55'  => '🇧🇷 +55 (Brasil)',
-                                '+91'  => '🇮🇳 +91 (India)',
-                                '+86'  => '🇨🇳 +86 (China)',
-                                '+81'  => '🇯🇵 +81 (Japón)',
-                                '+82'  => '🇰🇷 +82 (Corea del Sur)',
-                                '+52'  => '🇲🇽 +52 (México)',
-                                '+58'  => '🇻🇪 +58 (Venezuela)',
-                                '+57'  => '🇨🇴 +57 (Colombia)',
-                                '+54'  => '🇦🇷 +54 (Argentina)',
-                                '+56'  => '🇨🇱 +56 (Chile)',
-                                '+51'  => '🇵🇪 +51 (Perú)',
+                                '+1' => '🇺🇸 +1 (Estados Unidos)',
+                                '+44' => '🇬🇧 +44 (Reino Unido)',
+                                '+49' => '🇩🇪 +49 (Alemania)',
+                                '+33' => '🇫🇷 +33 (Francia)',
+                                '+34' => '🇪🇸 +34 (España)',
+                                '+39' => '🇮🇹 +39 (Italia)',
+                                '+7' => '🇷🇺 +7 (Rusia)',
+                                '+55' => '🇧🇷 +55 (Brasil)',
+                                '+91' => '🇮🇳 +91 (India)',
+                                '+86' => '🇨🇳 +86 (China)',
+                                '+81' => '🇯🇵 +81 (Japón)',
+                                '+82' => '🇰🇷 +82 (Corea del Sur)',
+                                '+52' => '🇲🇽 +52 (México)',
+                                '+58' => '🇻🇪 +58 (Venezuela)',
+                                '+57' => '🇨🇴 +57 (Colombia)',
+                                '+54' => '🇦🇷 +54 (Argentina)',
+                                '+56' => '🇨🇱 +56 (Chile)',
+                                '+51' => '🇵🇪 +51 (Perú)',
                                 '+502' => '🇬🇹 +502 (Guatemala)',
                                 '+503' => '🇸🇻 +503 (El Salvador)',
                                 '+504' => '🇭🇳 +504 (Honduras)',
@@ -212,34 +212,34 @@ class AffiliationCorporateForm
                                 '+592' => '🇬🇾 +592 (Guyana)',
                                 '+591' => '🇧🇴 +591 (Bolivia)',
                                 '+598' => '🇺🇾 +598 (Uruguay)',
-                                '+20'  => '🇪🇬 +20 (Egipto)',
-                                '+27'  => '🇿🇦 +27 (Sudáfrica)',
+                                '+20' => '🇪🇬 +20 (Egipto)',
+                                '+27' => '🇿🇦 +27 (Sudáfrica)',
                                 '+234' => '🇳🇬 +234 (Nigeria)',
                                 '+212' => '🇲🇦 +212 (Marruecos)',
                                 '+971' => '🇦🇪 +971 (Emiratos Árabes)',
-                                '+92'  => '🇵🇰 +92 (Pakistán)',
+                                '+92' => '🇵🇰 +92 (Pakistán)',
                                 '+880' => '🇧🇩 +880 (Bangladesh)',
-                                '+62'  => '🇮🇩 +62 (Indonesia)',
-                                '+63'  => '🇵🇭 +63 (Filipinas)',
-                                '+66'  => '🇹🇭 +66 (Tailandia)',
-                                '+60'  => '🇲🇾 +60 (Malasia)',
-                                '+65'  => '🇸🇬 +65 (Singapur)',
-                                '+61'  => '🇦🇺 +61 (Australia)',
-                                '+64'  => '🇳🇿 +64 (Nueva Zelanda)',
-                                '+90'  => '🇹🇷 +90 (Turquía)',
+                                '+62' => '🇮🇩 +62 (Indonesia)',
+                                '+63' => '🇵🇭 +63 (Filipinas)',
+                                '+66' => '🇹🇭 +66 (Tailandia)',
+                                '+60' => '🇲🇾 +60 (Malasia)',
+                                '+65' => '🇸🇬 +65 (Singapur)',
+                                '+61' => '🇦🇺 +61 (Australia)',
+                                '+64' => '🇳🇿 +64 (Nueva Zelanda)',
+                                '+90' => '🇹🇷 +90 (Turquía)',
                                 '+375' => '🇧🇾 +375 (Bielorrusia)',
                                 '+372' => '🇪🇪 +372 (Estonia)',
                                 '+371' => '🇱🇻 +371 (Letonia)',
                                 '+370' => '🇱🇹 +370 (Lituania)',
-                                '+48'  => '🇵🇱 +48 (Polonia)',
-                                '+40'  => '🇷🇴 +40 (Rumania)',
-                                '+46'  => '🇸🇪 +46 (Suecia)',
-                                '+47'  => '🇳🇴 +47 (Noruega)',
-                                '+45'  => '🇩🇰 +45 (Dinamarca)',
-                                '+41'  => '🇨🇭 +41 (Suiza)',
-                                '+43'  => '🇦🇹 +43 (Austria)',
-                                '+31'  => '🇳🇱 +31 (Países Bajos)',
-                                '+32'  => '🇧🇪 +32 (Bélgica)',
+                                '+48' => '🇵🇱 +48 (Polonia)',
+                                '+40' => '🇷🇴 +40 (Rumania)',
+                                '+46' => '🇸🇪 +46 (Suecia)',
+                                '+47' => '🇳🇴 +47 (Noruega)',
+                                '+45' => '🇩🇰 +45 (Dinamarca)',
+                                '+41' => '🇨🇭 +41 (Suiza)',
+                                '+43' => '🇦🇹 +43 (Austria)',
+                                '+31' => '🇳🇱 +31 (Países Bajos)',
+                                '+32' => '🇧🇪 +32 (Bélgica)',
                                 '+353' => '🇮🇪 +353 (Irlanda)',
                                 '+375' => '🇧🇾 +375 (Bielorrusia)',
                                 '+380' => '🇺🇦 +380 (Ucrania)',
@@ -247,7 +247,7 @@ class AffiliationCorporateForm
                                 '+995' => '🇬🇪 +995 (Georgia)',
                                 '+976' => '🇲🇳 +976 (Mongolia)',
                                 '+998' => '🇺🇿 +998 (Uzbekistán)',
-                                '+84'  => '🇻🇳 +84 (Vietnam)',
+                                '+84' => '🇻🇳 +84 (Vietnam)',
                                 '+856' => '🇱🇦 +856 (Laos)',
                                 '+374' => '🇦🇲 +374 (Armenia)',
                                 '+965' => '🇰🇼 +965 (Kuwait)',
@@ -267,14 +267,14 @@ class AffiliationCorporateForm
                             ->label('Número de teléfono')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, callable $set, Get $get) {
                                 $countryCode = $get('country_code_con');
                                 if ($countryCode) {
                                     $cleanNumber = ltrim(preg_replace('/[^0-9]/', '', $state), '0');
-                                    $set('phone_con', $countryCode . $cleanNumber);
+                                    $set('phone_con', $countryCode.$cleanNumber);
                                 }
                             }),
                         Select::make('country_id_con')
@@ -285,7 +285,7 @@ class AffiliationCorporateForm
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->preload(),
                         Select::make('state_id_con')
@@ -303,7 +303,7 @@ class AffiliationCorporateForm
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->preload(),
                         TextInput::make('region_con')
@@ -321,7 +321,7 @@ class AffiliationCorporateForm
                             ->prefixIcon('heroicon-s-globe-europe-africa')
                             ->required()
                             ->validationMessages([
-                                'required'  => 'Campo Requerido',
+                                'required' => 'Campo Requerido',
                             ])
                             ->preload(),
                     ])->columns(4),
@@ -436,7 +436,7 @@ class AffiliationCorporateForm
                             ->inlineLabel(false),
 
                     ])
-                    ->hidden(fn(Get $get) => $get('plan_id') != 3),
+                    ->hidden(fn (Get $get) => $get('plan_id') != 3),
                 Section::make('ACUERDO Y CONDICIONES')
                     ->hiddenOn('edit')
                     ->collapsed()
@@ -473,7 +473,7 @@ class AffiliationCorporateForm
                                 ->dehydrated()
                                 ->default(now()->format('d-m-Y'))
                                 ->maxLength(255),
-                        ])
+                        ]),
                     ])->columns(3),
             ]);
     }

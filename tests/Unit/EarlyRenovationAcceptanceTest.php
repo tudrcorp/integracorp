@@ -81,6 +81,7 @@ function seedEarlyRenovationSchema(): void
     });
 
     Schema::create('affiliations', function (Blueprint $table): void {
+        $table->timestamp('deleted_at')->nullable();
         $table->id();
         $table->string('code');
         $table->string('status');
@@ -107,6 +108,7 @@ function seedEarlyRenovationSchema(): void
     });
 
     Schema::create('affiliates', function (Blueprint $table): void {
+        $table->timestamp('deleted_at')->nullable();
         $table->id();
         $table->unsignedBigInteger('affiliation_id');
         $table->string('full_name');
@@ -229,6 +231,7 @@ function seedEarlyRenovationSchema(): void
     });
 
     Schema::create('affiliation_corporates', function (Blueprint $table): void {
+        $table->timestamp('deleted_at')->nullable();
         $table->id();
         $table->string('name_corporate')->nullable();
         $table->string('status')->nullable();
@@ -236,6 +239,7 @@ function seedEarlyRenovationSchema(): void
     });
 
     Schema::create('affiliate_corporates', function (Blueprint $table): void {
+        $table->timestamp('deleted_at')->nullable();
         $table->id();
         $table->unsignedBigInteger('affiliation_corporate_id');
         $table->string('status')->nullable();

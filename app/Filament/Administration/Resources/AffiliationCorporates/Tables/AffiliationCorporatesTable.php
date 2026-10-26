@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Administration\Resources\AffiliationCorporates\Tables;
 
 use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use App\Filament\Shared\Affiliations\AffiliationDeletionActions;
 use App\Http\Controllers\AffiliateCorporateExportCsvController;
 use App\Http\Controllers\AffiliationCorporateController;
 use App\Http\Controllers\AffiliationCorporateExportCsvController;
@@ -21,7 +22,6 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -281,6 +281,7 @@ class AffiliationCorporatesTable
             ])
             ->recordClasses(fn (AffiliationCorporate $record): array => self::recordRowClasses($record))
             ->filters([
+                AffiliationDeletionActions::deletedFilter(),
                 SelectFilter::make('status')
                     ->label('Estatus')
                     ->options([
@@ -325,6 +326,7 @@ class AffiliationCorporatesTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
+            ->checkIfRecordIsSelectableUsing(fn ($record): bool => ! $record->trashed())
             ->recordActions([
                 ActionGroup::make([
                     Action::make('upload_info_ils')
@@ -1208,7 +1210,8 @@ class AffiliationCorporatesTable
                     ->icon(Heroicon::OutlinedEllipsisVertical)
                     ->button()
                     ->color('gray')
-                    ->hidden(fn ($record) => $record->status == 'EXCLUIDO'),
+                    ->hidden(fn ($record) => $record->status == 'EXCLUIDO' || $record->trashed()),
+                ...AffiliationDeletionActions::recordActions(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -1254,7 +1257,7 @@ class AffiliationCorporatesTable
 
                             return redirect()->route('administration.affiliate-corporates.export-csv', ['token' => $token]);
                         }),
-                    DeleteBulkAction::make(),
+                    AffiliationDeletionActions::deleteBulkAction(),
                     BulkAction::make('pay_multiple_affiliation_corporates')
                         ->label('Pagar afiliaciones')
                         ->icon('fontisto-share')

@@ -193,7 +193,7 @@ final class CommercialVipFacturacion
             ->whereNotNull('agent_id')
             ->groupBy('agent_id');
 
-        $groups = DB::table('affiliation_corporates')
+        $groups = DB::table('affiliation_corporates')->whereNull('deleted_at')
             ->select('agent_id')
             ->whereNotNull('agent_id')
             ->groupBy('agent_id');
@@ -228,7 +228,7 @@ final class CommercialVipFacturacion
             ->where('code_agency', '!=', '')
             ->groupBy('code_agency');
 
-        $groups = DB::table('affiliation_corporates')
+        $groups = DB::table('affiliation_corporates')->whereNull('deleted_at')
             ->select('code_agency')
             ->whereNotNull('code_agency')
             ->where('code_agency', '!=', '')
@@ -435,7 +435,7 @@ final class CommercialVipFacturacion
 
     public static function agentHasLineaDirecta(int $agentId): bool
     {
-        $hasGroups = DB::table('affiliation_corporates')
+        $hasGroups = DB::table('affiliation_corporates')->whereNull('deleted_at')
             ->where('agent_id', $agentId)
             ->exists();
 
@@ -456,7 +456,7 @@ final class CommercialVipFacturacion
             return false;
         }
 
-        $hasGroups = DB::table('affiliation_corporates')
+        $hasGroups = DB::table('affiliation_corporates')->whereNull('deleted_at')
             ->where('code_agency', $code)
             ->exists();
 

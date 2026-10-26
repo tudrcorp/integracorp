@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\Affiliations\Tables;
 
 use App\Filament\Resources\Affiliations\AffiliationResource;
+use App\Filament\Shared\Affiliations\AffiliationDeletionActions;
 use App\Filament\Shared\Affiliations\ChangeAffiliationPlanBulkAction;
 use App\Http\Controllers\AffiliateExportCsvController;
 use App\Http\Controllers\AffiliationController;
@@ -26,7 +27,6 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -382,6 +382,7 @@ class AffiliationsTable
                     }),
             ])
             ->filters([
+                AffiliationDeletionActions::deletedFilter(),
                 SelectFilter::make('code_agency')
                     ->label('Agencia')
                     ->options(fn (): array => Agency::query()->orderBy('name_corporative')->pluck('name_corporative', 'code')->all())
@@ -454,6 +455,7 @@ class AffiliationsTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
+            ->checkIfRecordIsSelectableUsing(fn ($record): bool => ! $record->trashed())
             ->recordActions([
                 ActionGroup::make([
 
@@ -1450,55 +1452,13 @@ class AffiliationsTable
                                 ->send();
                         }),
 
-                ])->hidden(fn ($record) => $record->status == 'EXCLUIDO'),
+                ])->hidden(fn ($record) => $record->status == 'EXCLUIDO' || $record->trashed()),
+                ...AffiliationDeletionActions::recordActions(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
 
-                    DeleteBulkAction::make()
-                        ->deselectRecordsAfterCompletion()
-                        ->requiresConfirmation()
-                        ->color('danger')
-                        ->icon('heroicon-m-trash')
-                        ->label('Eliminar Registro(s)')
-                        ->modalHeading('ELIMINAR REGOSTRO DE AFILIACION(ES)')
-                        ->modalDescription('Esta accion elimina la afiliacion(es) seleccionada(s) de manera permanente, asi como tambien todas sus asociaciones.)')
-                        ->action(function (Collection $records) {
-
-                            try {
-                                $recordIds = $records->pluck('id')->values()->all();
-
-                                foreach ($records as $record) {
-
-                                    // Elimina la afiliacion
-                                    $record->delete();
-                                    Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino la afiliacion: '.$record->id);
-
-                                    // Elimina la Cotizacion individual
-                                    $record->individual_quote()->delete();
-                                    Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino la cotizacion individual: '.$record->individual_quote->id);
-
-                                    // Eliminamos los afiliados
-                                    $record->affiliates()->delete();
-                                    Log::info('AFILIACIONES: El usuario '.Auth::user()->name.' elimino el afiliado: '.$record->affiliates()->first()->id);
-                                }
-
-                                self::audit('AUDIT_BUSINESS_AFFILIATIONS_BULK_DELETED', 'business.affiliations.bulk-delete', [
-                                    'record_ids' => $recordIds,
-                                    'total' => count($recordIds),
-                                ]);
-                            } catch (\Throwable $th) {
-                                self::audit('AUDIT_BUSINESS_AFFILIATIONS_BULK_DELETE_FAILED', 'business.affiliations.bulk-delete', [
-                                    'error' => $th->getMessage(),
-                                ]);
-                                Notification::make()
-                                    ->title('REGISTRO NO ELIMINADO')
-                                    ->body($th->getMessage().' Linea: '.$th->getLine().' Archivo: '.$th->getFile())
-                                    ->icon('heroicon-m-x-circle')
-                                    ->danger()
-                                    ->send();
-                            }
-                        }),
+                    AffiliationDeletionActions::deleteBulkAction(),
 
                     BulkAction::make('pay_multiple_affiliations')
                         ->label('Pagar afiliaciones')

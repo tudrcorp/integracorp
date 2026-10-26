@@ -42,10 +42,10 @@ final class CorporatePortfolioMetrics
     public static function snapshot(): array
     {
         return CorporateMetrics::remember('portfolio_snapshot_'.CarbonImmutable::today()->toDateString(), null, static function (): array {
-            $individual = DB::table('affiliations')->where('status', self::ACTIVE)->count();
-            $corporate = DB::table('affiliation_corporates')->where('status', self::ACTIVE)->count();
-            $lives = DB::table('affiliates')->where('status', 'ACTIVO')->count()
-                + DB::table('affiliate_corporates')->where('status', 'ACTIVO')->count();
+            $individual = DB::table('affiliations')->whereNull('deleted_at')->where('status', self::ACTIVE)->count();
+            $corporate = DB::table('affiliation_corporates')->whereNull('deleted_at')->where('status', self::ACTIVE)->count();
+            $lives = DB::table('affiliates')->whereNull('deleted_at')->where('status', 'ACTIVO')->count()
+                + DB::table('affiliate_corporates')->whereNull('deleted_at')->where('status', 'ACTIVO')->count();
 
             return [
                 'active' => $individual + $corporate,

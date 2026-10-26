@@ -5,9 +5,7 @@ namespace App\Filament\Resources\AffiliationCorporates\RelationManagers;
 use App\Support\Filament\PatientAgeDisplay;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Table;
@@ -98,11 +96,6 @@ class CorporateAffiliatesRelationManager extends RelationManager
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->modalHeading('INTEGRACORP eliminar el/los registros seleccionados!')
-                        ->requiresConfirmation()
-                        ->color('danger')
-                        ->icon(Heroicon::Trash),
 
                 ]),
             ])->striped()->poll('5s');

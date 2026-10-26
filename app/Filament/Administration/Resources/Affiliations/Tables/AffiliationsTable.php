@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Administration\Resources\Affiliations\Tables;
 
 use App\Filament\Administration\Resources\Affiliations\AffiliationResource;
+use App\Filament\Shared\Affiliations\AffiliationDeletionActions;
 use App\Http\Controllers\AffiliateExportCsvController;
 use App\Http\Controllers\AffiliationController;
 use App\Http\Controllers\AffiliationExportCsvController;
@@ -21,7 +22,6 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -401,6 +401,7 @@ class AffiliationsTable
                 self::recordRowClasses($record),
             ))
             ->filters([
+                AffiliationDeletionActions::deletedFilter(),
                 SelectFilter::make('status')
                     ->label('Estatus')
                     ->options([
@@ -457,6 +458,7 @@ class AffiliationsTable
                     ->label('Filtros')
                     ->icon(Heroicon::OutlinedFunnel),
             )
+            ->checkIfRecordIsSelectableUsing(fn ($record): bool => ! $record->trashed())
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()
@@ -1238,7 +1240,8 @@ class AffiliationsTable
                     ->icon(Heroicon::OutlinedEllipsisVertical)
                     ->button()
                     ->color('gray')
-                    ->hidden(fn ($record) => $record->status == 'EXCLUIDO'),
+                    ->hidden(fn ($record) => $record->status == 'EXCLUIDO' || $record->trashed()),
+                ...AffiliationDeletionActions::recordActions(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -1284,7 +1287,7 @@ class AffiliationsTable
 
                             return redirect()->route('administration.affiliates.export-csv', ['token' => $token]);
                         }),
-                    DeleteBulkAction::make(),
+                    AffiliationDeletionActions::deleteBulkAction(),
                     BulkAction::make('pay_multiple_affiliations')
                         ->label('Pagar afiliaciones')
                         ->icon('fontisto-share')

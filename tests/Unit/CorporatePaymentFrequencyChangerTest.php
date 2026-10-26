@@ -37,6 +37,7 @@ uses(Tests\TestCase::class);
 function seedFrequencyScenario(): void
 {
     Schema::create('affiliation_corporates', function (Blueprint $table): void {
+        $table->timestamp('deleted_at')->nullable();
         $table->id();
         $table->string('code')->nullable();
         $table->string('name_corporate')->nullable();
@@ -53,6 +54,7 @@ function seedFrequencyScenario(): void
     });
 
     Schema::create('affiliate_corporates', function (Blueprint $table): void {
+        $table->timestamp('deleted_at')->nullable();
         $table->id();
         $table->unsignedBigInteger('affiliation_corporate_id');
         $table->decimal('fee', 8, 2)->default(0);

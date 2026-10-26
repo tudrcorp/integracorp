@@ -8,10 +8,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[ObservedBy([PersonIdentityObserver::class])]
 class AffiliateCorporate extends Model
 {
+    /** Eliminación reversible: ver {@see \App\Support\Affiliations\Deletion\AffiliationDeletionService}. */
+    use SoftDeletes;
+
     protected $table = 'affiliate_corporates';
 
     protected $fillable = [
