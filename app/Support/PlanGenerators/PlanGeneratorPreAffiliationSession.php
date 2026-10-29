@@ -45,6 +45,14 @@ final class PlanGeneratorPreAffiliationSession
             'people' => $amounts['people'],
         ];
         $payload['total_persons'] = $amounts['people'];
+        /**
+         * Upgrades: el total del formulario lleva un estimado por persona del rango
+         * elegido; al crear la afiliación se asignan por la edad real de cada
+         * familiar y el total se ajusta a lo asignado.
+         */
+        $payload['upgrade_lines'] = PlanGeneratorUpgrades::linesFromModel($plan);
+        $payload['upgrade_row_label'] = (string) ($individualRow['age_range_label'] ?? '');
+        $payload['upgrade_annual_estimate'] = round((float) ($individualRow['upgrade_fee'] ?? 0) * $amounts['people'], 2);
         $payload['data_records'] = [self::dataRecordFromRow(
             $plan,
             [...$individualRow, ...$amounts, 'population' => $amounts['people']],
@@ -305,7 +313,11 @@ final class PlanGeneratorPreAffiliationSession
         $matrixState = PlanGeneratorPersistence::formStateFromModel($plan);
         $columns = $matrixState['columns'];
         $rateRows = $matrixState['rate_rows'];
-        $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows);
+        $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn(
+            $columns,
+            $rateRows,
+            PlanGeneratorUpgrades::quote(PlanGeneratorUpgrades::linesFromModel($plan), $rateRows)['annual_total'],
+        );
         $columnKeys = PlanGeneratorMatrixState::extractColumnKeys($columns);
         $primaryColumnKey = $columnKeys[0] ?? null;
         $totalPersons = self::totalPopulation($rateRows);

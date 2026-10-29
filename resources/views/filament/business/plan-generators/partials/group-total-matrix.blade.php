@@ -11,7 +11,9 @@
     // Solo el editor quita y restaura filas; la vista del registro es de lectura.
     $editable = (bool) ($editable ?? false) && filled($matrixStatePath ?? null);
     $columnCount = count($columns);
-    $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows);
+    // Costo anual de los upgrades de la cotización: se suma a cada columna.
+    $upgradesAnnual = (float) ($upgradesAnnual ?? 0);
+    $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows, $upgradesAnnual);
     $rows = PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal, $groupTotalHiddenRows);
     $removedRows = $editable ? PlanGeneratorGroupTotalCalculator::removedRows($includeMonthlyTotal, $groupTotalHiddenRows) : [];
     $visibleKeys = array_column($rows, 'key');
@@ -112,7 +114,7 @@
         </div>
     @endif
     <p class="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-        Cálculo automático: tarifa individual anual × población por rango etario.@foreach ($divisorNotes as $note) {{ $note }}@endforeach
+        Cálculo automático: tarifa individual anual × población por rango etario.@if ($upgradesAnnual > 0) Incluye {{ \App\Support\PlanGenerators\PlanGeneratorUpgrades::money($upgradesAnnual) }} al año de upgrades en cada columna.@endif @foreach ($divisorNotes as $note) {{ $note }}@endforeach
         @if ($editable)
             Las filas que quite no salen en el PDF ni se ofrecen como forma de pago al registrar la empresa.
         @endif

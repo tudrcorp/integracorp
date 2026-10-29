@@ -14,18 +14,20 @@ function corporateAffiliatesManagerSource(): string
 
 it('expone agregar y quitar upgrade por fila y en lote', function (): void {
     expect(corporateAffiliatesManagerSource())
-        ->toContain("Action::make('add_upgrade')")
+        ->toContain('$this->addUpgradeWithVoucherAction(fn (): bool => self::userCanManageUpgrades()),')
         ->toContain("Action::make('remove_upgrades')")
-        ->toContain("BulkAction::make('add_upgrade_bulk')")
+        ->toContain('$this->addUpgradeWithVoucherBulkAction(fn (): bool => self::userCanManageUpgrades()),')
         ->toContain("BulkAction::make('remove_upgrade_bulk')")
-        ->toContain('CorporateAffiliateUpgradeManager::add($owner, $affiliates,')
+        ->toContain('use AssignsUpgradesWithIlsVoucher;')
+        ->toContain('CorporateAffiliateUpgradeManager::add($this->getOwnerRecord(), $affiliateIds, [$coverageId], null, $vouchers)')
+        ->toContain('CorporateAffiliateUpgradeManager::preview($this->getOwnerRecord(), $affiliateIds, $coverageId)')
         ->toContain('CorporateAffiliateUpgradeManager::deactivate($owner, $upgradeIds)');
 });
 
 it('las acciones de upgrade se autorizan con el permiso granular, no con is_business_admin', function (): void {
     $source = corporateAffiliatesManagerSource();
 
-    expect(substr_count($source, '->visible(fn (): bool => self::userCanManageUpgrades())'))->toBe(3)
+    expect(substr_count($source, 'fn (): bool => self::userCanManageUpgrades()'))->toBe(3)
         ->and($source)->toContain('BusinessFilamentActionPermissionRegistry::MANAGE_CORPORATE_AFFILIATE_UPGRADES')
         ->toContain("->hidden(fn (\$record) => \$record->status == 'INACTIVO' || \$record->status == 'EXCLUIDO'),")
         ->not->toContain('Auth::user()->is_business_admin != 1)');
@@ -48,15 +50,23 @@ it('reasignar plan conserva los upgrades del afiliado', function (): void {
         ->toContain("'fee' => CorporateAffiliatePlanSynchronizer::expectedFeeFor(\$record, \$plans),");
 });
 
-it('la renovación corporativa conserva los upgrades al recalcular por edad', function (): void {
+it('la renovación corporativa recotiza los upgrades por edad al recalcular', function (): void {
     expect(corporateUpgradeSource('app/Jobs/PrepareAffiliationCorporateRenovations.php'))
         ->toContain('->withActiveUpgradesTotal()')
-        ->toContain("round(\$amounts['annual_fee'] + CorporateAffiliateUpgradeManager::activeTotalFor(\$affiliate), 2)");
+        ->toContain("round(\$amounts['annual_fee'] + UpgradeRenewalRepricer::projectedTotal(\$affiliate, \$today), 2)");
 
     $accept = corporateUpgradeSource('app/Services/AcceptAffiliationCorporateRenovationsService.php');
 
-    expect(substr_count($accept, "\$this->annualFeeWithUpgrades(\$affiliate, (float) \$amounts['annual_fee'])"))->toBe(2)
+    expect(substr_count($accept, "\$this->annualFeeWithUpgrades(\$affiliate, (float) \$amounts['annual_fee'], \$acceptanceDate)"))->toBe(2)
+        ->and($accept)->toContain('UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate)')
         ->and($accept)->toContain('->withActiveUpgradesTotal()');
+});
+
+it('el modal toma el upgrade del catálogo: ya no se escriben nombre ni monto a mano', function (): void {
+    expect(corporateAffiliatesManagerSource())
+        ->toContain('CorporateAffiliateUpgradeManager::activeAssignmentIdsForUpgrades(')
+        ->not->toContain("Repeater::make('upgrades')")
+        ->not->toContain('catalogPrices()');
 });
 
 it('el aviso de cobro corporativo imprime las líneas de upgrade si vienen', function (): void {

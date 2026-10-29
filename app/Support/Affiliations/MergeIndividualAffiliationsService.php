@@ -18,6 +18,7 @@ use App\Support\AffiliationCorporates\CorporatePaymentFrequency;
 use App\Support\AffiliationCorporates\CorporatePaymentFrequencyChanger;
 use App\Support\Collections\DroppedAffiliationCollections;
 use App\Support\SecurityAudit;
+use App\Support\Upgrades\IndividualAffiliateUpgradeManager;
 use Carbon\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
@@ -438,7 +439,9 @@ final class MergeIndividualAffiliationsService
         foreach ($affiliates as $affiliate) {
             $amounts = $this->calculator->calculateAffiliateAmounts($target, $affiliate);
             $status = strtoupper((string) ($affiliate->status ?? ''));
-            $feeAfter = $amounts['annual_fee'] ?? null;
+            $feeAfter = $amounts !== null
+                ? round((float) $amounts['annual_fee'] + IndividualAffiliateUpgradeManager::activeTotalFor($affiliate), 2)
+                : null;
 
             if ($amounts === null && in_array($status, PrepareAffiliationRenovations::AFFILIATE_STATUSES_FOR_RENEWAL, true)) {
                 $blockers[] = 'No se pudo calcular la tarifa de '.$affiliate->full_name.' (cédula '.$affiliate->nro_identificacion.'). Revise edad, plan y cobertura antes de unificar.';

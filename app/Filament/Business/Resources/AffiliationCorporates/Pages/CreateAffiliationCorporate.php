@@ -19,6 +19,7 @@ use App\Support\PlanGenerators\PlanGeneratorCatalogPublisher;
 use App\Support\PlanGenerators\PlanGeneratorCoverageAssignment;
 use App\Support\PlanGenerators\PlanGeneratorPopulationStatus;
 use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
+use App\Support\PlanGenerators\PlanGeneratorUpgradeAssignment;
 use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -138,6 +139,14 @@ class CreateAffiliationCorporate extends CreateRecord
      * @var array{plan: \App\Models\Plan, coverage_ids: array<string, int>, age_range_ids: array<string, int>}|null
      */
     private ?array $planGeneratorCatalog = null;
+
+    /**
+     * Personas del padrón en el orden en que se insertaron como afiliados, para
+     * asignarles sus upgrades (`PlanGeneratorUpgradeAssignment::assignCorporate()`).
+     *
+     * @var list<array{population_id: int, nro_identificacion: mixed, age: mixed}>
+     */
+    private array $planGeneratorInsertedPeople = [];
 
     private function planGeneratorFromSession(): ?PlanGenerator
     {
@@ -285,6 +294,13 @@ class CreateAffiliationCorporate extends CreateRecord
                     .' ubicados en el padrón. El padrón cambió mientras se creaba la afiliación.');
             }
 
+            // Los upgrades cotizados ya van sumados en la tarifa de cada afiliado.
+            $upgradesAssigned = PlanGeneratorUpgradeAssignment::assignCorporate(
+                $record,
+                $this->planGeneratorInsertedPeople,
+                $placements['affiliates'],
+            );
+
             // Montos de la población real ubicada, no los que llegan del
             // formulario: así la cabecera cuadra con «Plan(es) Afiliado(s)».
             $record->poblation = $imported;
@@ -320,6 +336,7 @@ class CreateAffiliationCorporate extends CreateRecord
             'affiliates' => $imported,
             'plan_rows' => count($placements['plan_rows']),
             'fee_anual' => $placements['annual'],
+            'upgrades_assigned' => $upgradesAssigned,
             'assignment_signature' => $placements['signature'],
         ]);
 
@@ -395,6 +412,7 @@ class CreateAffiliationCorporate extends CreateRecord
         // `affiliate_corporates.created_by` es entero: guarda el id del usuario.
         $createdBy = Auth::id();
         $specificBusinessUnit = AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit($record->specific_business_unit);
+        $this->planGeneratorInsertedPeople = [];
 
         $plan->populations()
             ->getQuery()
@@ -402,6 +420,7 @@ class CreateAffiliationCorporate extends CreateRecord
             ->orderBy('id')
             ->chunkById(500, function ($populations) use ($record, $now, $placements, $frequency, $createdBy, $specificBusinessUnit, &$inserted): void {
                 $rows = [];
+                $people = [];
 
                 foreach ($populations as $population) {
                     /** @var PlanGeneratorPopulation $population */
@@ -412,6 +431,11 @@ class CreateAffiliationCorporate extends CreateRecord
                     }
 
                     $fee = $placement['fee'];
+                    $people[] = [
+                        'population_id' => (int) $population->getKey(),
+                        'nro_identificacion' => $population->nro_identificacion,
+                        'age' => $population->age,
+                    ];
 
                     $rows[] = [
                         'affiliation_corporate_id' => $record->id,
@@ -455,6 +479,7 @@ class CreateAffiliationCorporate extends CreateRecord
 
                 AffiliateCorporate::query()->insert($rows);
                 $inserted += count($rows);
+                array_push($this->planGeneratorInsertedPeople, ...$people);
             });
 
         return $inserted;

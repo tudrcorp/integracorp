@@ -153,6 +153,12 @@ class OperationsPanelProvider extends PanelProvider
                 fn () => view('filament.operations.dashboard.page-start', ['branding' => false]),
                 scopes: DashboardProveedor::class,
             )
+            /** Dashboard de proveedores: mismo concepto, con la barra de TDG en presentación. */
+            ->renderHook(
+                PanelsRenderHook::PAGE_START,
+                fn () => view('filament.operations.dashboard.page-start', ['branding' => true, 'brandingLabel' => 'Red de proveedores']),
+                scopes: \App\Filament\Operations\Pages\DashboardRedProveedores::class,
+            )
             ->defaultThemeMode(ThemeMode::Light)
             ->viteTheme('resources/css/filament/admin/theme.css');
     }

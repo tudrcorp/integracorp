@@ -52,6 +52,9 @@ final class PlanGeneratorPdfPagination
 
     public const SECTION_GROUP = 'group';
 
+    /** Un bloque por upgrade de la cotización, debajo del total grupal. */
+    public const SECTION_UPGRADES = 'upgrades';
+
     public const SECTION_CONDITIONS = 'conditions';
 
     /**
@@ -69,20 +72,26 @@ final class PlanGeneratorPdfPagination
         string $populationUnitLabel = 'Población',
         string $conditions = '',
         mixed $groupTotalHiddenRows = [],
+        array $upgradeQuote = [],
     ): bool {
-        $sections = self::sections($conditions);
+        $sections = self::sections($conditions, $upgradeQuote);
 
-        return self::sectionsOnFirstPage($columns, $rows, $rateRows, $includeMonthlyTotal, $populationUnitLabel, $conditions, $groupTotalHiddenRows) < count($sections);
+        return self::sectionsOnFirstPage($columns, $rows, $rateRows, $includeMonthlyTotal, $populationUnitLabel, $conditions, $groupTotalHiddenRows, $upgradeQuote) < count($sections);
     }
 
     /**
      * Secciones que se imprimen, en orden.
      *
+     * @param  array{upgrades?: list<array<string, mixed>>}  $upgradeQuote  `PlanGeneratorUpgrades::quote()`
      * @return list<string>
      */
-    public static function sections(string $conditions = ''): array
+    public static function sections(string $conditions = '', array $upgradeQuote = []): array
     {
         $sections = [self::SECTION_RATES, self::SECTION_GROUP];
+
+        if (($upgradeQuote['upgrades'] ?? []) !== []) {
+            $sections[] = self::SECTION_UPGRADES;
+        }
 
         if (PlanGeneratorConditions::normalize($conditions) !== '') {
             $sections[] = self::SECTION_CONDITIONS;
@@ -112,6 +121,7 @@ final class PlanGeneratorPdfPagination
         string $populationUnitLabel = 'Población',
         string $conditions = '',
         mixed $groupTotalHiddenRows = [],
+        array $upgradeQuote = [],
     ): int {
         $columnCount = max(1, count($columns));
         $planWidthPt = self::mmToPt((float) PlanGeneratorMatrixColumnLayout::planColumnWidthMm($columnCount));
@@ -122,6 +132,7 @@ final class PlanGeneratorPdfPagination
         $heights = [
             self::SECTION_RATES => self::ratesSectionHeight($columns, $rateRows, $populationUnitLabel, $rateAgeWidthPt, $ratePopWidthPt, $planWidthPt),
             self::SECTION_GROUP => self::groupSectionHeight($columns, $includeMonthlyTotal, $groupTotalHiddenRows, $leadWidthPt, $planWidthPt),
+            self::SECTION_UPGRADES => self::upgradesSectionHeight($upgradeQuote),
             self::SECTION_CONDITIONS => self::conditionsBlockHeight($conditions),
         ];
 
@@ -138,7 +149,7 @@ final class PlanGeneratorPdfPagination
 
         $fits = 0;
 
-        foreach (self::sections($conditions) as $section) {
+        foreach (self::sections($conditions, $upgradeQuote) as $section) {
             $available -= $heights[$section];
 
             if ($available < 0) {
@@ -264,6 +275,47 @@ final class PlanGeneratorPdfPagination
         }
 
         return self::SECTION_TITLE_PT + self::headerRowHeight('Total Grupal', $leadWidthPt, $columns, $planWidthPt) + $body;
+    }
+
+    /**
+     * Alto de los bloques de upgrades: título, tabla de precios y lista de servicios.
+     *
+     * @param  array{upgrades?: list<array<string, mixed>>}  $upgradeQuote
+     */
+    private static function upgradesSectionHeight(array $upgradeQuote): float
+    {
+        $contentWidth = self::mmToPt(PlanGeneratorMatrixColumnLayout::PDF_CONTENT_WIDTH_MM);
+        $labelWidth = self::textWidthPt($contentWidth * 0.64);
+        $fullWidth = self::textWidthPt($contentWidth);
+        $height = 0.0;
+
+        foreach ((array) ($upgradeQuote['upgrades'] ?? []) as $upgrade) {
+            $height += self::SECTION_TITLE_PT
+                + self::bodyRowHeight(self::lineCount(mb_strtoupper((string) ($upgrade['upgrade_name'] ?? '')), $labelWidth, true));
+
+            $priceRows = ($upgrade['uniform_price'] ?? null) !== null
+                ? [['label' => 'Tarifa anual individual por persona']]
+                : PlanGeneratorUpgrades::chargedRows($upgrade);
+
+            foreach ($priceRows as $row) {
+                $height += self::bodyRowHeight(self::lineCount('Tarifa anual individual · '.($row['label'] ?? ''), $labelWidth, false));
+            }
+
+            $height += self::bodyRowHeight(1);
+
+            $services = (array) ($upgrade['services'] ?? []);
+
+            if ($services !== []) {
+                $height += 4.0 + self::bodyRowHeight(1);
+
+                foreach ($services as $index => $service) {
+                    $text = ($index + 1).'. '.($service['name'] ?? '').(filled($service['description'] ?? null) ? ' — '.$service['description'] : '');
+                    $height += self::bodyRowHeight(self::lineCount($text, $fullWidth, false));
+                }
+            }
+        }
+
+        return $height;
     }
 
     private static function conditionsBlockHeight(string $conditions): float

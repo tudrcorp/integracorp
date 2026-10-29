@@ -132,6 +132,16 @@ class PlanGenerator extends Model
             ->orderBy('id');
     }
 
+    /**
+     * Upgrades incluidos en la cotización, con su precio congelado.
+     */
+    public function upgrades(): HasMany
+    {
+        return $this->hasMany(PlanGeneratorUpgrade::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
     public function quotationPages(): HasMany
     {
         return $this->hasMany(PlanGeneratorQuotationPage::class)

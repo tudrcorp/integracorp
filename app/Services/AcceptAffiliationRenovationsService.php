@@ -16,6 +16,7 @@ use App\Support\Renovations\EarlyRenovationAcceptance;
 use App\Support\Renovations\EarlyRenovationAuthorization;
 use App\Support\Renovations\EarlyRenovationNotificationPayload;
 use App\Support\SecurityAudit;
+use App\Support\Upgrades\UpgradeRenewalRepricer;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -257,12 +258,14 @@ final class AcceptAffiliationRenovationsService
 
         foreach ($affiliates as $affiliate) {
             if ($this->isTitular($affiliate)) {
+                $annualFee = round($titularAmounts['annual_fee'] + UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate), 2);
+
                 $affiliate->update([
                     'plan_id' => $manualOptions->planId,
                     'coverage_id' => $titularAmounts['coverage_id'],
                     'age_range_id' => $titularAmounts['age_range_id'],
-                    'fee' => $titularAmounts['annual_fee'],
-                    'total_amount' => $titularAmounts['period_amount'],
+                    'fee' => $annualFee,
+                    'total_amount' => $this->calculator->totalAmountForPaymentFrequency($annualFee, $manualOptions->paymentFrequency),
                     'payment_frequency' => $manualOptions->paymentFrequency,
                 ]);
 
@@ -346,13 +349,15 @@ final class AcceptAffiliationRenovationsService
         }
 
         $paymentFrequency = (string) ($affiliationForFees->payment_frequency ?? 'ANUAL');
+        /** Los upgrades se recotizan con la edad a la fecha de renovación, igual que el plan. */
+        $annualFee = round((float) $amounts['annual_fee'] + UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate), 2);
 
         $affiliate->update([
             'plan_id' => $affiliationForFees->plan_id,
             'coverage_id' => $amounts['coverage_id'],
             'age_range_id' => $amounts['age_range_id'],
-            'fee' => $amounts['annual_fee'],
-            'total_amount' => $amounts['period_amount'],
+            'fee' => $annualFee,
+            'total_amount' => $this->calculator->totalAmountForPaymentFrequency($annualFee, $paymentFrequency),
             'payment_frequency' => $paymentFrequency,
         ]);
     }

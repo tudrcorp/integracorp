@@ -246,6 +246,15 @@ function seedEarlyRenovationSchema(): void
         $table->timestamps();
     });
 
+    /** Al aceptar, los upgrades activos de cada afiliado se recotizan por edad. */
+    createUpgradeCatalogTestSchema(withFixture: false);
+
+    Schema::create('affiliate_upgrades', function (Blueprint $table): void {
+        $table->id();
+        $table->unsignedBigInteger('affiliate_id');
+        upgradeAssignmentTestColumns($table);
+    });
+
     Schema::create('users', function (Blueprint $table): void {
         $table->id();
         $table->string('name')->nullable();

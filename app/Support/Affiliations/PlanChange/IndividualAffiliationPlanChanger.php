@@ -27,6 +27,7 @@ use App\Support\AffiliationCorporates\CorporatePaymentFrequencyChanger;
 use App\Support\ClinicalEntitlements\PlanClinicalCompleteness;
 use App\Support\SecurityAudit;
 use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
+use App\Support\Upgrades\IndividualAffiliateUpgradeManager;
 use App\Support\WhiteCompanies\WhiteCompanyNegotiatedRateResolver;
 use App\Support\WhiteCompanies\WhiteCompanyOwnership;
 use Carbon\Carbon;
@@ -397,7 +398,8 @@ final class IndividualAffiliationPlanChanger
                     });
                 }
 
-                $annual = round((float) $fee->price, 2);
+                /** Los upgrades del afiliado se conservan con su monto: cambiar de plan no los recotiza. */
+                $annual = round((float) $fee->price + IndividualAffiliateUpgradeManager::activeTotalFor($affiliate), 2);
                 $ageRangeId = $fee->age_range_id !== null ? (int) $fee->age_range_id : null;
             }
 

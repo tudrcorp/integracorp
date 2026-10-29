@@ -147,7 +147,7 @@ final class PlanGeneratorTemplateCloner
         $attributes['plan_page_number'] = $template->plan_page_number;
         $attributes['created_by'] = $createdBy;
 
-        return DB::transaction(function () use ($attributes, $formState, $quotationPages): PlanGenerator {
+        return DB::transaction(function () use ($attributes, $formState, $quotationPages, $template): PlanGenerator {
             $derived = PlanGenerator::query()->create($attributes);
 
             PlanGeneratorPersistence::syncFromFormState($derived, [
@@ -156,6 +156,9 @@ final class PlanGeneratorTemplateCloner
                 'rate_rows' => (array) ($formState['rate_rows'] ?? []),
                 'quotation_pages' => $quotationPages,
             ]);
+
+            /** Los upgrades de la plantilla pasan tal cual, con su precio congelado. */
+            PlanGeneratorUpgrades::copy($template, $derived);
 
             return $derived;
         });

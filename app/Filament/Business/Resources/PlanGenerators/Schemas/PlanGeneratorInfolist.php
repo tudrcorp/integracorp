@@ -8,6 +8,7 @@ use App\Enums\PlanGeneratorPopulationUnit;
 use App\Models\PlanGenerator;
 use App\Support\PlanGenerators\PlanGeneratorConditions;
 use App\Support\PlanGenerators\PlanGeneratorPreviewBuilder;
+use App\Support\PlanGenerators\PlanGeneratorUpgrades;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -228,6 +229,10 @@ class PlanGeneratorInfolist
                                                         'includeMonthlyTotal' => (bool) $record->include_monthly_total,
                                                         'groupTotalHiddenRows' => $record->group_total_hidden_rows ?? [],
                                                         'conditions' => PlanGeneratorConditions::normalize($record->conditions),
+                                                        'upgradeQuote' => PlanGeneratorUpgrades::quote(
+                                                            PlanGeneratorUpgrades::linesFromModel($record),
+                                                            PlanGeneratorPreviewBuilder::rateRows($record),
+                                                        ),
                                                     ])
                                                     ->columnSpanFull(),
                                             ]),

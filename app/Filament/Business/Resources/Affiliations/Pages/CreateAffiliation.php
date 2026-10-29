@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\PlanGenerators\PlanGeneratorCatalogPublisher;
 use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
+use App\Support\PlanGenerators\PlanGeneratorUpgradeAssignment;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -133,6 +134,8 @@ class CreateAffiliation extends CreateRecord
 
             $record = $this->getRecord();
             $fromPlanGenerator = PlanGeneratorPreAffiliationSession::isActive();
+            // Se lee antes de que el flujo limpie la sesión del generador.
+            $generatorPayload = $fromPlanGenerator ? (PlanGeneratorPreAffiliationSession::get() ?? []) : [];
 
             /**
              * ? Preguntamos si e l contratante es el mismo titular de la cotizacion
@@ -239,6 +242,9 @@ class CreateAffiliation extends CreateRecord
                     $quote->detailsQuote()->update(['status' => 'EJECUTADA']);
                 }
 
+                // Upgrades del generador: por la edad real de cada familiar; el total se ajusta.
+                PlanGeneratorUpgradeAssignment::assignIndividual($record, $generatorPayload);
+
                 if (! $fromPlanGenerator) {
                     /**
                      * Actualizacion de la cotizacion
@@ -328,6 +334,9 @@ class CreateAffiliation extends CreateRecord
                     'business_line_id' => $record->business_line_id,
                     'specific_business_unit' => $record->specific_business_unit,
                 ]);
+
+                // Upgrades del generador: por la edad real de cada familiar; el total se ajusta.
+                PlanGeneratorUpgradeAssignment::assignIndividual($record, $generatorPayload);
 
                 if (! $fromPlanGenerator) {
                     /**

@@ -4,8 +4,10 @@ namespace App\Models;
 
 use App\Observers\PersonIdentityObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[ObservedBy([PersonIdentityObserver::class])]
@@ -100,5 +102,36 @@ class Affiliate extends Model
     public function businessLine(): BelongsTo
     {
         return $this->belongsTo(BusinessLine::class);
+    }
+
+    /**
+     * @return HasMany<AffiliateUpgrade, $this>
+     */
+    public function upgrades(): HasMany
+    {
+        return $this->hasMany(AffiliateUpgrade::class);
+    }
+
+    /**
+     * @return HasMany<AffiliateUpgrade, $this>
+     */
+    public function activeUpgrades(): HasMany
+    {
+        return $this->upgrades()
+            ->where('status', AffiliateUpgrade::STATUS_ACTIVE)
+            ->orderBy('id');
+    }
+
+    /**
+     * Agrega `active_upgrades_total`: suma de upgrades activos, sin N+1 en tablas.
+     *
+     * @param  Builder<Affiliate>  $query
+     */
+    public function scopeWithActiveUpgradesTotal(Builder $query): void
+    {
+        $query->withSum([
+            'upgrades as active_upgrades_total' => fn (Builder $upgrades): Builder => $upgrades
+                ->where('status', AffiliateUpgrade::STATUS_ACTIVE),
+        ], 'amount');
     }
 }

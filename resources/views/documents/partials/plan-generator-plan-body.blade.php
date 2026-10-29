@@ -12,6 +12,7 @@
     use App\Services\PlanGeneratorPdfService;
     use App\Support\PlanGenerators\PlanGeneratorPdfPagination;
     use App\Support\PlanGenerators\PlanGeneratorConditions;
+    use App\Support\PlanGenerators\PlanGeneratorUpgrades;
 
     $conditions = PlanGeneratorConditions::normalize($planGenerator->conditions ?? '');
 
@@ -22,7 +23,9 @@
     $rateAgePercent = PlanGeneratorMatrixColumnLayout::RATE_AGE_PERCENT;
     $ratePopPercent = PlanGeneratorMatrixColumnLayout::RATE_POP_PERCENT;
     $planPercent = PlanGeneratorMatrixColumnLayout::planColumnPercent(max(1, $columnCount));
-    $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn((array) $columns, (array) $rateRows);
+    // Upgrades de la cotización: su costo anual va al total grupal y cada uno sale en su tabla.
+    $upgradeQuote = PlanGeneratorUpgrades::quote(PlanGeneratorUpgrades::linesFromModel($planGenerator), (array) $rateRows);
+    $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn((array) $columns, (array) $rateRows, $upgradeQuote['annual_total']);
     $includeMonthlyTotal = (bool) ($planGenerator->include_monthly_total ?? false);
     $groupTotalHiddenRows = PlanGeneratorGroupTotalCalculator::normalizeHiddenRows($planGenerator->group_total_hidden_rows ?? []);
     $groupRows = PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal, $groupTotalHiddenRows);
@@ -34,8 +37,9 @@
         $populationUnitLabel,
         $conditions,
         $groupTotalHiddenRows,
+        $upgradeQuote,
     );
-    $calculationSections = PlanGeneratorPdfPagination::sections($conditions);
+    $calculationSections = PlanGeneratorPdfPagination::sections($conditions, $upgradeQuote);
     $firstPageCount = $columnCount > 0 ? PlanGeneratorPdfPagination::sectionsOnFirstPage(
         (array) $columns,
         (array) $rows,
@@ -44,6 +48,7 @@
         $populationUnitLabel,
         $conditions,
         $groupTotalHiddenRows,
+        $upgradeQuote,
     ) : 0;
     $firstPageSections = array_slice($calculationSections, 0, $firstPageCount);
     $nextPageSections = array_slice($calculationSections, $firstPageCount);

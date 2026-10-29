@@ -291,6 +291,7 @@
     @include('filament.business.plan-generators.partials.group-total-matrix', [
         'columns' => $columns,
         'rateRows' => $rateRows,
+        'upgradesAnnual' => (float) ($upgradesAnnual ?? 0),
         'includeMonthlyTotal' => (bool) ($includeMonthlyTotal ?? false),
         'groupTotalHiddenRows' => $groupTotalHiddenRows,
         'editable' => true,

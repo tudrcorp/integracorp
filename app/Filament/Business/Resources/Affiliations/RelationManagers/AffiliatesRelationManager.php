@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Affiliations\RelationManagers;
 
+use App\Filament\Business\Concerns\AssignsUpgradesWithIlsVoucher;
 use App\Filament\Business\Concerns\ManagesAffiliateSpecificBusinessUnit;
 use App\Models\Affiliate;
+use App\Models\AffiliateUpgrade;
 use App\Models\Affiliation;
 use App\Models\AgeRange;
 use App\Models\BusinessLine;
@@ -15,17 +17,23 @@ use App\Support\AffiliateVaucherIlsRemainingDays;
 use App\Support\AffiliationAffiliateFeeCalculator;
 use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
 use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
+use App\Support\Filament\BusinessFilamentActionAccess;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\PatientAgeDisplay;
 use App\Support\FilamentDateDisplay;
 use App\Support\Plans\PlanInfantEligibility;
 use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
+use App\Support\Upgrades\IndividualAffiliateUpgradeManager;
+use App\Support\Upgrades\UpgradePricing;
 use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -51,10 +59,14 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AffiliatesRelationManager extends RelationManager
 {
+    use AssignsUpgradesWithIlsVoucher;
     use ManagesAffiliateSpecificBusinessUnit;
 
     protected static string $relationship = 'affiliates';
@@ -190,6 +202,9 @@ class AffiliatesRelationManager extends RelationManager
                                         'required' => 'Campo Obligatorio',
                                     ])
                                     ->label('Tarifa Anual')
+                                    ->helperText(fn (?Affiliate $record): ?string => $record !== null && IndividualAffiliateUpgradeManager::activeTotalFor($record) > 0
+                                        ? 'Incluye '.UpgradePricing::money(IndividualAffiliateUpgradeManager::activeTotalFor($record)).' de upgrades. Para quitarlos use «Quitar upgrade».'
+                                        : null)
                                     ->live(onBlur: true)
                                     ->prefixIcon('heroicon-s-globe-europe-africa'),
                                 Select::make('payment_frequency')
@@ -301,7 +316,9 @@ class AffiliatesRelationManager extends RelationManager
                     'coverage',
                     'businessLine:id,definition',
                     'businessUnit:id,definition',
+                    'activeUpgrades',
                 ])
+                ->withActiveUpgradesTotal()
                 ->orderByRaw("CASE WHEN relationship = 'TITULAR' THEN 0 ELSE 1 END")
                 ->orderBy('full_name'))
             ->heading('Carga familiar')
@@ -426,6 +443,8 @@ class AffiliatesRelationManager extends RelationManager
                     ->icon(Heroicon::CurrencyDollar)
                     ->numeric(decimalPlaces: 2)
                     ->suffix(' US$')
+                    ->description(fn (Affiliate $record): ?string => self::upgradesBreakdown($record))
+                    ->tooltip(fn (Affiliate $record): ?string => self::upgradesTooltip($record))
                     ->sortable(),
                 TextColumn::make('total_amount')
                     ->label('Monto período')
@@ -823,6 +842,30 @@ class AffiliatesRelationManager extends RelationManager
                         })
                         ->hidden(fn (): bool => ! self::userIsBusinessAdmin()),
 
+                    $this->addUpgradeWithVoucherAction(fn (Affiliate $record): bool => self::userCanManageUpgrades() && $record->status !== 'INACTIVO'),
+                    Action::make('remove_upgrades')
+                        ->label('Quitar upgrade')
+                        ->icon(Heroicon::MinusCircle)
+                        ->color('danger')
+                        ->modalWidth(Width::TwoExtraLarge)
+                        ->modalIcon(Heroicon::MinusCircle)
+                        ->modalHeading(fn (Affiliate $record): string => 'Quitar upgrade a '.IndividualAffiliateUpgradeManager::labelFor($record))
+                        ->modalDescription('El monto de cada upgrade seleccionado se descuenta de la tarifa anual del afiliado, de los totales de la afiliación y de las cuotas por pagar. El upgrade queda inactivo en el historial.')
+                        ->modalSubmitActionLabel('Quitar seleccionados')
+                        ->form(fn (Affiliate $record): array => [
+                            CheckboxList::make('upgrade_ids')
+                                ->label('Upgrades activos')
+                                ->options(self::activeUpgradeOptions($record))
+                                ->required()
+                                ->validationMessages(['required' => 'Seleccione al menos un upgrade.'])
+                                ->bulkToggleable(),
+                        ])
+                        ->action(function (array $data): void {
+                            $this->runRemoveUpgrades(array_map('intval', (array) ($data['upgrade_ids'] ?? [])));
+                        })
+                        ->visible(fn (Affiliate $record): bool => self::userCanManageUpgrades()
+                            && IndividualAffiliateUpgradeManager::activeTotalFor($record) > 0),
+
                     $this->changeSpecificBusinessUnitAction(),
                     $this->specificBusinessUnitHistoryAction(),
                 ])
@@ -833,6 +876,42 @@ class AffiliatesRelationManager extends RelationManager
             ->toolbarActions([
                 BulkActionGroup::make([
                     $this->changeSpecificBusinessUnitBulkAction(),
+                    $this->addUpgradeWithVoucherBulkAction(fn (): bool => self::userCanManageUpgrades()),
+                    BulkAction::make('remove_upgrade_bulk')
+                        ->label('Quitar upgrade')
+                        ->icon(Heroicon::MinusCircle)
+                        ->color('danger')
+                        ->modalWidth(Width::TwoExtraLarge)
+                        ->modalIcon(Heroicon::MinusCircle)
+                        ->modalHeading('Quitar upgrade a los familiares seleccionados')
+                        ->modalDescription('Se quita el upgrade elegido en cada familiar seleccionado que lo tenga activo. Su monto se descuenta de su tarifa anual, de los totales de la afiliación y de las cuotas por pagar.')
+                        ->modalSubmitActionLabel('Quitar seleccionados')
+                        ->form(function (Collection $records): array {
+                            $options = collect(IndividualAffiliateUpgradeManager::activeUpgradesAmong($this->getOwnerRecord(), array_map('intval', $records->modelKeys())))
+                                ->mapWithKeys(fn (array $row, int $upgradeId): array => [
+                                    $upgradeId => $row['name'].' ('.$row['total'].' '.($row['total'] === 1 ? 'familiar' : 'familiares').')',
+                                ])
+                                ->all();
+
+                            return [
+                                CheckboxList::make('upgrade_ids')
+                                    ->label('Upgrades activos entre los seleccionados')
+                                    ->options($options)
+                                    ->required()
+                                    ->validationMessages(['required' => 'Seleccione al menos un upgrade.'])
+                                    ->helperText($options === [] ? 'Ninguno de los familiares seleccionados tiene upgrades activos.' : null)
+                                    ->bulkToggleable(),
+                            ];
+                        })
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records, array $data): void {
+                            $this->runRemoveUpgrades(IndividualAffiliateUpgradeManager::activeAssignmentIdsForUpgrades(
+                                $this->getOwnerRecord(),
+                                array_map('intval', $records->modelKeys()),
+                                (array) ($data['upgrade_ids'] ?? []),
+                            ));
+                        })
+                        ->visible(fn (): bool => self::userCanManageUpgrades()),
                 ]),
             ])
             ->headerActions([
@@ -876,6 +955,138 @@ class AffiliatesRelationManager extends RelationManager
     private static function userIsBusinessAdmin(): bool
     {
         return (int) (Auth::user()?->is_business_admin ?? 0) === 1;
+    }
+
+    /**
+     * SUPERADMIN siempre; el resto de analistas de Negocios solo con el permiso asignado.
+     */
+    private static function userCanManageUpgrades(): bool
+    {
+        return BusinessFilamentActionAccess::userCan(
+            BusinessFilamentActionPermissionRegistry::MANAGE_INDIVIDUAL_AFFILIATE_UPGRADES,
+        );
+    }
+
+    /**
+     * @param  list<int>  $affiliateIds
+     * @return array<string, mixed>
+     */
+    protected function upgradeManagerPreview(array $affiliateIds, mixed $coverageId): array
+    {
+        return IndividualAffiliateUpgradeManager::preview($this->getOwnerRecord(), $affiliateIds, $coverageId);
+    }
+
+    /**
+     * @param  list<int>  $affiliateIds
+     * @param  array<int, array<string, mixed>>  $vouchers
+     * @return array{affiliates_updated: int, upgrades_created: int, annual_delta: float, collections_adjusted: int, skipped: list<array<string, string>>}
+     */
+    protected function upgradeManagerAdd(array $affiliateIds, mixed $coverageId, array $vouchers): array
+    {
+        return IndividualAffiliateUpgradeManager::add($this->getOwnerRecord(), $affiliateIds, [$coverageId], null, $vouchers);
+    }
+
+    protected function upgradeAffiliateLabel(Model $affiliate): string
+    {
+        return $affiliate instanceof Affiliate ? IndividualAffiliateUpgradeManager::labelFor($affiliate) : 'el afiliado';
+    }
+
+    /**
+     * @param  list<int>  $upgradeIds
+     */
+    private function runRemoveUpgrades(array $upgradeIds): void
+    {
+        $owner = $this->getOwnerRecord();
+
+        try {
+            $result = IndividualAffiliateUpgradeManager::deactivate($owner, $upgradeIds);
+        } catch (\InvalidArgumentException $exception) {
+            Notification::make()->warning()->title('Sin upgrades que quitar')->body($exception->getMessage())->send();
+
+            return;
+        } catch (DuplicatePersonIdentityException $duplicatePerson) {
+            throw $duplicatePerson;
+        } catch (\Throwable $throwable) {
+            Log::error('NEGOCIOS-AFILIACIONES-INDIVIDUALES: Error al quitar upgrades.', [
+                'affiliation_id' => $owner->getKey(),
+                'error' => $throwable->getMessage(),
+            ]);
+
+            Notification::make()
+                ->danger()
+                ->title('No se pudo quitar el upgrade')
+                ->body($throwable instanceof \RuntimeException ? $throwable->getMessage() : 'No se aplicó ningún cambio. Intente de nuevo o contacte a soporte.')
+                ->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->success()
+            ->title('Upgrade quitado')
+            ->body(implode(' ', [
+                $result['upgrades_removed'].' '.($result['upgrades_removed'] === 1 ? 'upgrade quitado' : 'upgrades quitados')
+                    .' en '.$result['affiliates_updated'].' '.($result['affiliates_updated'] === 1 ? 'familiar' : 'familiares').'.',
+                ...self::ownerImpactLines($result),
+            ]))
+            ->send();
+    }
+
+    /**
+     * @param  array{annual_delta: float, collections_adjusted: int}  $result
+     * @return list<string>
+     */
+    private static function ownerImpactLines(array $result): array
+    {
+        $lines = [];
+
+        if (abs($result['annual_delta']) >= 0.01) {
+            $lines[] = 'Tarifa anual de la afiliación '.($result['annual_delta'] > 0 ? '+' : '−').UpgradePricing::money(abs($result['annual_delta'])).'.';
+        }
+
+        if ($result['collections_adjusted'] > 0) {
+            $lines[] = $result['collections_adjusted'].' '.($result['collections_adjusted'] === 1 ? 'cuota por pagar ajustada' : 'cuotas por pagar ajustadas').', con su observación en la cobranza.';
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function activeUpgradeOptions(Affiliate $record): array
+    {
+        return $record->activeUpgrades()
+            ->get()
+            ->mapWithKeys(fn (AffiliateUpgrade $upgrade): array => [
+                (int) $upgrade->getKey() => $upgrade->name.' · '.UpgradePricing::money((float) $upgrade->amount)
+                    .(filled($upgrade->ils_voucher_code) ? ' · voucher '.$upgrade->ils_voucher_code : '')
+                    .' · cargado por '.($upgrade->created_by ?: 'sistema')
+                    .($upgrade->created_at !== null ? ' el '.$upgrade->created_at->format('d/m/Y') : ''),
+            ])
+            ->all();
+    }
+
+    private static function upgradesBreakdown(Affiliate $record): ?string
+    {
+        $upgrades = IndividualAffiliateUpgradeManager::activeTotalFor($record);
+
+        if ($upgrades <= 0) {
+            return null;
+        }
+
+        return 'Plan '.UpgradePricing::money(max(0.0, (float) $record->fee - $upgrades)).' + upgrades '.UpgradePricing::money($upgrades);
+    }
+
+    private static function upgradesTooltip(Affiliate $record): ?string
+    {
+        if (! $record->relationLoaded('activeUpgrades') || $record->activeUpgrades->isEmpty()) {
+            return null;
+        }
+
+        return $record->activeUpgrades
+            ->map(fn (AffiliateUpgrade $upgrade): string => $upgrade->name.': '.UpgradePricing::money((float) $upgrade->amount))
+            ->implode(' · ');
     }
 
     private function affiliateBusinessContextIsSynced(Affiliate $record): bool

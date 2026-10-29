@@ -95,6 +95,15 @@ class PlanGeneratorPdfService
         $parts[] = (string) ($rateFingerprint->c ?? 0);
         $parts[] = (string) ($rateFingerprint->max_updated ?? '');
 
+        $upgradeFingerprint = DB::table('plan_generator_upgrades')
+            ->where('plan_generator_id', $planGenerator->getKey())
+            ->selectRaw('count(*) as c, max(updated_at) as max_updated, max(id) as max_id')
+            ->first();
+
+        $parts[] = (string) ($upgradeFingerprint->c ?? 0);
+        $parts[] = (string) ($upgradeFingerprint->max_updated ?? '');
+        $parts[] = (string) ($upgradeFingerprint->max_id ?? '');
+
         foreach ($planGenerator->quotationPages->sortBy('page_number') as $page) {
             $relativePath = (string) ($page->image_path ?? '');
             $parts[] = $relativePath;

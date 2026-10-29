@@ -247,6 +247,7 @@ final class DepartmentNavigationPermissionRegistry
         MedicalQuestionnaireResource::class => ['cuestionarios-medicos'],
         BenefitResource::class => ['beneficios'],
         BenefitCoverageResource::class => ['beneficios-coberturas'],
+        \App\Filament\Business\Resources\Upgrades\UpgradeResource::class => ['gestionar-upgrades'],
         FeeResource::class => ['tarifas-costos'],
         RegionResource::class => ['regiones'],
         StateResource::class => ['estados'],
@@ -361,6 +362,7 @@ final class DepartmentNavigationPermissionRegistry
         OperationsEscritorio::class => ['escritorio'],
         DashboardOperaciones::class => ['dashboard-operaciones'],
         DashboardProveedor::class => ['dashboard-proveedor'],
+        \App\Filament\Operations\Pages\DashboardRedProveedores::class => ['dashboard-de-proveedores'],
         GeneradorDeReportes::class => ['generador-de-reportes'],
 
         // PROYECTOS

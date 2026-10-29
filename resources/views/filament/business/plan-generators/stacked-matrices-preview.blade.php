@@ -152,8 +152,13 @@
     @include('filament.business.plan-generators.partials.group-total-matrix', [
         'columns' => $columns,
         'rateRows' => $rateRows,
+        'upgradesAnnual' => (float) ($upgradeQuote['annual_total'] ?? 0),
         'includeMonthlyTotal' => (bool) ($includeMonthlyTotal ?? false),
         'groupTotalHiddenRows' => $groupTotalHiddenRows ?? [],
+    ])
+
+    @include('filament.business.plan-generators.partials.upgrades-preview', [
+        'upgradeQuote' => $upgradeQuote ?? [],
     ])
 
     @include('filament.business.plan-generators.partials.conditions-list', [

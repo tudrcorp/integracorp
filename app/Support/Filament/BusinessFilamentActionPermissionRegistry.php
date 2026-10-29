@@ -10,6 +10,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const MANAGE_CORPORATE_AFFILIATE_UPGRADES = 'gestionar-upgrades-afiliado-corporativo';
 
+    public const MANAGE_INDIVIDUAL_AFFILIATE_UPGRADES = 'gestionar-upgrades-afiliado-individual';
+
     public const CHANGE_CORPORATE_PAYMENT_FREQUENCY = 'cambiar-frecuencia-pago-afiliacion-corporativa';
 
     public const REVERSE_CORPORATE_PAYMENT_FREQUENCY_CHANGE = 'reversar-cambio-frecuencia-pago-corporativa';
@@ -97,6 +99,11 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::MANAGE_CORPORATE_AFFILIATE_UPGRADES => [
                 'name' => 'Agregar y quitar upgrades de afiliados corporativos',
+                'group' => 'AFILIACIONES',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::MANAGE_INDIVIDUAL_AFFILIATE_UPGRADES => [
+                'name' => 'Agregar y quitar upgrades de afiliados individuales',
                 'group' => 'AFILIACIONES',
                 'modules' => [self::OWNER_MODULE],
             ],

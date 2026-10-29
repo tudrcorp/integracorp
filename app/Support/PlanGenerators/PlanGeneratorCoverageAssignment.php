@@ -233,6 +233,12 @@ final class PlanGeneratorCoverageAssignment
         $placements = [];
         $signature = [implode(',', $columnKeys)];
 
+        // Upgrades de la cotización: cada persona los recibe por su edad real.
+        $upgradeLines = PlanGeneratorUpgrades::linesFromModel($plan);
+        $rateRowLabels = $upgradeLines !== [] ? $plan->rateRows()->get(['age_range_label'])->all() : [];
+        $upgradesByPerson = [];
+        $upgradeRealCounts = [];
+
         foreach ($people as $person) {
             $name = trim($person->last_name.' '.$person->first_name);
             $age = self::parseAge($person->age);
@@ -243,6 +249,10 @@ final class PlanGeneratorCoverageAssignment
             } elseif (! self::fitsAnyCoverage($coverages, $age)) {
                 $unplaceable[] = ['name' => $name, 'age' => $age];
             }
+
+            $rowLabel = PlanGeneratorUpgrades::rowLabelForAge($rateRowLabels, $age);
+            $eligibility = $upgradeLines !== [] ? PlanGeneratorUpgrades::eligibilityForAge($upgradeLines, $age, $rowLabel) : [];
+            $upgradesByPerson[(int) $person->id] = $eligibility;
 
             if ($columnKey === null) {
                 $unassigned++;
@@ -272,8 +282,20 @@ final class PlanGeneratorCoverageAssignment
                 continue;
             }
 
+            $personUpgrades = array_values(array_map(
+                static fn (array $item): array => $item['upgrade'],
+                array_filter($eligibility, static fn (array $item): bool => $item['receives']),
+            ));
+            $upgradeFee = round(array_sum(array_column($personUpgrades, 'amount')), 2);
+
+            foreach ($eligibility as $item) {
+                if ($item['receives']) {
+                    $upgradeRealCounts[$item['line_key']][PlanGeneratorUpgrades::rangeKey((string) $rowLabel)] = ($upgradeRealCounts[$item['line_key']][PlanGeneratorUpgrades::rangeKey((string) $rowLabel)] ?? 0) + 1;
+                }
+            }
+
             $byCoverage[$columnKey]['persons']++;
-            $byCoverage[$columnKey]['annual'] += $range['fee'];
+            $byCoverage[$columnKey]['annual'] += $range['fee'] + $upgradeFee;
             $byCoverage[$columnKey]['ranges'][$range['label']] ??= ['persons' => 0, 'fee' => $range['fee']];
             $byCoverage[$columnKey]['ranges'][$range['label']]['persons']++;
 
@@ -281,9 +303,11 @@ final class PlanGeneratorCoverageAssignment
                 'column_key' => $columnKey,
                 'range_label' => $range['label'],
                 'fee' => $range['fee'],
+                'upgrade_fee' => $upgradeFee,
+                'upgrades' => $personUpgrades,
             ];
 
-            $signature[] = $person->id.':'.$columnKey.':'.$range['label'].':'.number_format($range['fee'], 2, '.', '');
+            $signature[] = $person->id.':'.$columnKey.':'.$range['label'].':'.number_format($range['fee'], 2, '.', '').':'.number_format($upgradeFee, 2, '.', '');
         }
 
         foreach ($byCoverage as $columnKey => $amounts) {
@@ -300,9 +324,58 @@ final class PlanGeneratorCoverageAssignment
             'misassigned' => $misassigned,
             'by_coverage' => $byCoverage,
             'placements' => $placements,
+            'upgrades_by_person' => $upgradesByPerson,
+            'upgrade_summary' => self::upgradeSummary($plan, $upgradeLines, $upgradeRealCounts),
             'plan_defects' => array_values(array_unique($planDefects)),
             'signature' => sha1(implode('|', $signature)),
         ];
+    }
+
+    /**
+     * Lo cotizado frente a lo real, por upgrade y rango: cuántas personas se
+     * cotizaron (o se declararon al incluir un rango a mano) y cuántas del padrón
+     * ubicado tienen de verdad la edad. Se cobra lo real.
+     *
+     * @param  list<array<string, mixed>>  $lines
+     * @param  array<string, array<string, int>>  $realCounts
+     * @return list<array{name: string, quoted: int, real: int, rows: list<array{label: string, quoted: int, real: int, manual: bool}>}>
+     */
+    private static function upgradeSummary(PlanGenerator $plan, array $lines, array $realCounts): array
+    {
+        if ($lines === []) {
+            return [];
+        }
+
+        $quote = PlanGeneratorUpgrades::quote($lines, PlanGeneratorPersistence::formStateFromModel($plan)['rate_rows']);
+        $summary = [];
+
+        foreach ($quote['upgrades'] as $upgrade) {
+            $rows = [];
+
+            foreach ($upgrade['rows'] as $row) {
+                $real = (int) ($realCounts[$upgrade['line_key']][$row['key']] ?? 0);
+
+                if ((int) $row['charged_persons'] === 0 && $real === 0) {
+                    continue;
+                }
+
+                $rows[] = [
+                    'label' => $row['label'],
+                    'quoted' => (int) $row['charged_persons'],
+                    'real' => $real,
+                    'manual' => $row['status'] === PlanGeneratorUpgrades::STATUS_MANUAL,
+                ];
+            }
+
+            $summary[] = [
+                'name' => (string) $upgrade['upgrade_name'],
+                'quoted' => (int) $upgrade['persons'],
+                'real' => array_sum(array_column($rows, 'real')),
+                'rows' => $rows,
+            ];
+        }
+
+        return $summary;
     }
 
     /**
@@ -547,7 +620,7 @@ final class PlanGeneratorCoverageAssignment
      *
      * @param  array{plan: \App\Models\Plan, coverage_ids: array<string, int>, age_range_ids: array<string, int>}  $catalog
      * @return array{
-     *     affiliates: array<int, array{plan_id: int, coverage_id: int, fee: float}>,
+     *     affiliates: array<int, array{plan_id: int, coverage_id: int, fee: float, upgrades: list<array<string, mixed>>}>,
      *     plan_rows: list<array{plan_id: int, coverage_id: int, age_range_id: int, total_persons: int, fee: float, subtotal_anual: float, subtotal_biannual: float, subtotal_quarterly: float, subtotal_monthly: float}>,
      *     total_persons: int,
      *     annual: float,
@@ -610,11 +683,14 @@ final class PlanGeneratorCoverageAssignment
 
         $affiliates = [];
 
+        // La tarifa del afiliado suma sus upgrades (como cuando se agregan a mano);
+        // las filas de «Plan(es) Afiliado(s)» quedan solo con la tarifa del plan.
         foreach ($report['placements'] as $populationId => $placement) {
             $affiliates[$populationId] = [
                 'plan_id' => $planId,
                 'coverage_id' => (int) $catalog['coverage_ids'][$placement['column_key']],
-                'fee' => $placement['fee'],
+                'fee' => round($placement['fee'] + ($placement['upgrade_fee'] ?? 0), 2),
+                'upgrades' => $placement['upgrades'] ?? [],
             ];
         }
 

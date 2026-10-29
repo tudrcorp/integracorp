@@ -27,9 +27,10 @@ class CreatePlanGenerator extends CreateRecord
         $data = $this->normalizeMatrixFormState($data);
         $this->assertPlanGeneratorPopulationTotalsMatch();
         $this->assertPlanGeneratorQuotationBodyIsValid();
+        $this->assertPlanGeneratorUpgradesArePriceable($data);
         $data['created_by'] = Auth::user()?->name;
 
-        unset($data['columns'], $data['rows'], $data['rate_rows'], $data['quotation_pages'], $data['conditions']);
+        unset($data['columns'], $data['rows'], $data['rate_rows'], $data['quotation_pages'], $data['conditions'], $data['upgrades']);
 
         return $data;
     }

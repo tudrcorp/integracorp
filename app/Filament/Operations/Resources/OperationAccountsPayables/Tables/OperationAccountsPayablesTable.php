@@ -13,6 +13,7 @@ use App\Support\Filament\CsvExportDownloadTrigger;
 use App\Support\Filament\Operations\SpecificBusinessUnitTableTools;
 use App\Support\Operations\AccountsPayableInvoicePreview;
 use App\Support\Operations\AccountsPayablePaymentReceiptPreview;
+use App\Support\Operations\AccountsPayableServiceDisplay;
 use App\Support\Operations\OperationServiceOrderListDisplay;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -42,14 +43,15 @@ class OperationAccountsPayablesTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->heading('Cuentas por pagar')
-            ->description('Facturas de proveedores, su estatus de pago y los montos cancelados en US$ y Bs.')
+            ->heading('Facturas de proveedores')
+            ->description('Quién factura, qué servicio se le paga, cuánto y si ya está pagado. Busque por proveedor, factura, orden o servicio (por ejemplo «hematologia»).')
             ->defaultSort('invoice_registration_date', 'desc')
             ->persistFiltersInSession()
             ->striped()
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
                 'businessUnit:id,definition,code',
-                'operationServiceOrder:id,order_number,operation_coordination_service_id',
+                'operationServiceOrder:id,order_number,operation_coordination_service_id,service_type,description',
+                'operationServiceOrder.operationServiceOrderItems:id,operation_service_order_id,item_name,quantity',
                 'operationServiceOrder.operationCoordinationService:id,telemedicine_patient_id',
                 'operationServiceOrder.operationCoordinationService.telemedicinePatient:id,specific_business_unit',
             ]))
@@ -69,8 +71,9 @@ class OperationAccountsPayablesTable
                     ->searchable()
                     ->sortable()
                     ->weight(FontWeight::Medium)
-                    ->wrap()
-                    ->description(fn (OperationAccountsPayable $record): string => $record->supplier_rif),
+                    ->limit(36)
+                    ->tooltip(fn (OperationAccountsPayable $record): ?string => mb_strlen((string) $record->supplier_name) > 36 ? (string) $record->supplier_name : null)
+                    ->description(fn (OperationAccountsPayable $record): string => (string) $record->supplier_rif),
                 TextColumn::make('supplier_rif')
                     ->label('RIF')
                     ->searchable()
@@ -94,6 +97,23 @@ class OperationAccountsPayablesTable
                     ->color(fn (OperationAccountsPayable $record): string => $record->operation_service_order_id !== null ? 'info' : 'gray')
                     ->searchable()
                     ->toggleable(),
+                TextColumn::make('service_to_pay')
+                    ->label('Servicio por pagar')
+                    ->state(fn (OperationAccountsPayable $record): string => $record->operationServiceOrder !== null
+                        ? AccountsPayableServiceDisplay::type($record->operationServiceOrder->service_type)['label']
+                        : 'Sin orden de servicio')
+                    ->badge()
+                    ->color(fn (OperationAccountsPayable $record): string => AccountsPayableServiceDisplay::type($record->operationServiceOrder?->service_type)['color'])
+                    ->icon(fn (OperationAccountsPayable $record): string => AccountsPayableServiceDisplay::type($record->operationServiceOrder?->service_type)['icon'])
+                    ->description(fn (OperationAccountsPayable $record): ?string => AccountsPayableServiceDisplay::itemsLine($record->operationServiceOrder))
+                    ->tooltip(fn (OperationAccountsPayable $record): ?string => AccountsPayableServiceDisplay::itemsTooltip($record->operationServiceOrder))
+                    ->wrap()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->whereHas(
+                        'operationServiceOrder',
+                        fn (Builder $order): Builder => $order
+                            ->where('service_type', 'like', '%'.$search.'%')
+                            ->orWhereHas('operationServiceOrderItems', fn (Builder $items): Builder => $items->where('item_name', 'like', '%'.$search.'%')),
+                    )),
                 TextColumn::make('invoice_number')
                     ->label('N.º factura')
                     ->searchable()
@@ -182,6 +202,29 @@ class OperationAccountsPayablesTable
                     ->label('Estatus de pago')
                     ->options(StatusCuentaPorPagar::options())
                     ->multiple(),
+                SelectFilter::make('service_type')
+                    ->label('Tipo de servicio')
+                    ->options(AccountsPayableServiceDisplay::typeOptions())
+                    ->multiple()
+                    ->query(fn (Builder $query, array $data): Builder => filled($data['values'] ?? null)
+                        ? $query->whereHas('operationServiceOrder', fn (Builder $order): Builder => $order->whereIn('service_type', (array) $data['values']))
+                        : $query),
+                Filter::make('paid_this_month')
+                    ->label('Pagadas este mes')
+                    ->toggle()
+                    ->query(function (Builder $query): Builder {
+                        AccountsPayableServiceDisplay::whereStatus($query, [StatusCuentaPorPagar::Pagada]);
+
+                        return $query->whereBetween('payment_date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()]);
+                    }),
+                Filter::make('paid_without_receipt')
+                    ->label('Pagadas sin comprobante')
+                    ->toggle()
+                    ->query(function (Builder $query): Builder {
+                        AccountsPayableServiceDisplay::whereStatus($query, [StatusCuentaPorPagar::Pagada]);
+
+                        return $query->where(fn (Builder $receipt): Builder => $receipt->whereNull('payment_receipt_path')->orWhere('payment_receipt_path', ''));
+                    }),
                 SelectFilter::make('business_unit_id')
                     ->label('Unidad de negocio')
                     ->options(fn (): array => BusinessUnit::query()

@@ -8,6 +8,8 @@ use App\Enums\PlanGeneratorPopulationUnit;
 use App\Filament\Business\Resources\PlanGenerators\Actions\AdjustRateAmountsAction;
 use App\Models\Benefit;
 use App\Models\Plan;
+use App\Models\PlanGenerator;
+use App\Models\UpgradeCoverage;
 use App\Support\PlanGenerators\PlanGeneratorAgentLookup;
 use App\Support\PlanGenerators\PlanGeneratorBrandColor;
 use App\Support\PlanGenerators\PlanGeneratorConditions;
@@ -17,6 +19,8 @@ use App\Support\PlanGenerators\PlanGeneratorPopulationValidator;
 use App\Support\PlanGenerators\PlanGeneratorQuotationState;
 use App\Support\PlanGenerators\PlanGeneratorQuotationValidator;
 use App\Support\PlanGenerators\PlanGeneratorStructureImporter;
+use App\Support\PlanGenerators\PlanGeneratorUpgrades;
+use App\Support\Upgrades\UpgradePricing;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\ColorPicker;
@@ -596,10 +600,11 @@ class PlanGeneratorForm
                                                     ->registerActions([
                                                         AdjustRateAmountsAction::make(),
                                                     ])
-                                                    ->viewData(fn (Get $get): array => [
+                                                    ->viewData(fn (Get $get, ?PlanGenerator $record): array => [
                                                         'columns' => PlanGeneratorMatrixState::normalizeColumns((array) ($get('columns') ?? [])),
                                                         'rows' => (array) ($get('rows') ?? []),
                                                         'rateRows' => (array) ($get('rate_rows') ?? []),
+                                                        'upgradesAnnual' => self::upgradesQuote($get, $record)['annual_total'],
                                                         'populationUnitLabel' => PlanGeneratorPopulationUnit::resolve($get('population_unit'))->label(),
                                                         'includeMonthlyTotal' => (bool) $get('include_monthly_total'),
                                                         'groupTotalHiddenRows' => $get('group_total_hidden_rows') ?? [],
@@ -614,11 +619,126 @@ class PlanGeneratorForm
                                                             ->all(),
                                                     ])
                                                     ->columnSpanFull(),
+                                                self::upgradesSection(),
                                                 PlanGeneratorConditions::field(onlyOnDerivedRecord: true),
                                             ]),
                                     ]),
                             ]),
                     ]),
             ]);
+    }
+
+    /**
+     * Upgrades opcionales de la cotización, en tres pasos guiados: elegir el
+     * upgrade, revisar a qué rangos de la población se aplica y ver el recálculo
+     * del total grupal. El costo anual se suma al total de cada columna y en el
+     * PDF cada upgrade sale en su tabla.
+     */
+    private static function upgradesSection(): Section
+    {
+        return Section::make('Upgrades opcionales')
+            ->description('1) Elija el upgrade y su cobertura. 2) Revise a qué rangos de edad de la población se aplica: entran todos los que tienen precio, puede sacar los que no correspondan e incluir a mano, con una nota obligatoria, los que el upgrade no cubre. 3) Verifique el recálculo del total grupal. Al aprobar la cotización, cada afiliado de un rango incluido recibe el upgrade.')
+            ->icon(Heroicon::Sparkles)
+            ->collapsible()
+            ->columnSpanFull()
+            ->schema([
+                Repeater::make('upgrades')
+                    ->hiddenLabel()
+                    ->addActionLabel('Agregar upgrade')
+                    ->defaultItems(0)
+                    ->maxItems(PlanGeneratorUpgrades::MAX_LINES)
+                    ->reorderable()
+                    ->collapsible()
+                    ->live()
+                    ->itemLabel(fn (array $state): string => self::upgradeCoverageLabel($state['upgrade_coverage_id'] ?? null) ?? 'Nuevo upgrade: elija cuál')
+                    ->schema([
+                        Hidden::make('line_key')
+                            ->default(fn (): string => (string) Str::uuid()),
+                        Hidden::make('excluded_ranges')
+                            ->default([])
+                            ->dehydrated(),
+                        Hidden::make('manual_ranges')
+                            ->default([])
+                            ->dehydrated(),
+                        Select::make('upgrade_coverage_id')
+                            ->label('Paso 1 · Upgrade y cobertura')
+                            ->placeholder('Buscar upgrade…')
+                            ->helperText('Se administran en Configuración → Upgrades. Al guardar, el precio queda congelado en esta cotización.')
+                            ->options(fn (): array => UpgradePricing::coverageOptions())
+                            ->getOptionLabelUsing(fn (mixed $value): ?string => self::upgradeCoverageLabel($value))
+                            ->searchable()
+                            ->required()
+                            ->distinct()
+                            ->live()
+                            // Otra cobertura tiene otros precios: la población elegida se rehace.
+                            ->afterStateUpdated(function (Set $set): void {
+                                $set('excluded_ranges', []);
+                                $set('manual_ranges', []);
+                            })
+                            ->noSearchResultsMessage('No hay upgrades activos con ese nombre.')
+                            ->validationMessages([
+                                'required' => 'Elija el upgrade y su cobertura, o quite la fila.',
+                                'distinct' => 'Este upgrade ya está en la cotización.',
+                            ]),
+                        View::make('filament.business.plan-generators.partials.upgrade-population')
+                            ->visible(fn (Get $get): bool => filled($get('upgrade_coverage_id')))
+                            ->viewData(fn (Get $get, ?PlanGenerator $record): array => [
+                                'upgradeQuote' => PlanGeneratorUpgrades::quote(
+                                    PlanGeneratorUpgrades::resolveLines($record, [[
+                                        'line_key' => $get('line_key'),
+                                        'upgrade_coverage_id' => $get('upgrade_coverage_id'),
+                                        'excluded_ranges' => $get('excluded_ranges') ?? [],
+                                        'manual_ranges' => $get('manual_ranges') ?? [],
+                                    ]])['lines'],
+                                    (array) ($get('../../rate_rows') ?? []),
+                                ),
+                                'populationUnitLabel' => PlanGeneratorPopulationUnit::resolve($get('../../population_unit'))->label(),
+                            ])
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
+                View::make('filament.business.plan-generators.partials.upgrades-recalculation')
+                    ->visible(fn (Get $get): bool => filled($get('upgrades')))
+                    ->viewData(fn (Get $get, ?PlanGenerator $record): array => [
+                        'columns' => PlanGeneratorMatrixState::normalizeColumns((array) ($get('columns') ?? [])),
+                        'rateRows' => (array) ($get('rate_rows') ?? []),
+                        'upgradeQuote' => self::upgradesQuote($get, $record),
+                        'includeMonthlyTotal' => (bool) $get('include_monthly_total'),
+                        'groupTotalHiddenRows' => $get('group_total_hidden_rows') ?? [],
+                    ])
+                    ->columnSpanFull(),
+            ]);
+    }
+
+    /**
+     * @return array{upgrades: list<array<string, mixed>>, annual_total: float, population: int, errors: list<string>}
+     */
+    private static function upgradesQuote(Get $get, ?PlanGenerator $record): array
+    {
+        $state = (array) ($get('upgrades') ?? []);
+
+        if ($state === []) {
+            return ['upgrades' => [], 'annual_total' => 0.0, 'population' => 0, 'errors' => []];
+        }
+
+        $resolved = PlanGeneratorUpgrades::resolveLines($record, $state);
+        $quote = PlanGeneratorUpgrades::quote($resolved['lines'], (array) ($get('rate_rows') ?? []));
+        $quote['errors'] = array_values(array_unique([...$resolved['errors'], ...$quote['errors']]));
+
+        return $quote;
+    }
+
+    /**
+     * Etiqueta de una cobertura ya elegida, aunque ya no esté activa en el catálogo.
+     */
+    private static function upgradeCoverageLabel(mixed $value): ?string
+    {
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        $coverage = UpgradeCoverage::query()->with('upgrade')->find((int) $value);
+
+        return $coverage !== null ? UpgradePricing::optionLabel($coverage) : null;
     }
 }

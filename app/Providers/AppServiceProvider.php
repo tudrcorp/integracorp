@@ -192,6 +192,10 @@ class AppServiceProvider extends ServiceProvider
         ObservationCommercialStructure::observe(ObservationCommercialStructureObserver::class);
         PlanGenerator::observe(PlanGeneratorObserver::class);
         Supplier::observe(SupplierReportPdfObserver::class);
+        /** Dashboard de proveedores: quién registró/actualizó, bitácora del equipo y caché. */
+        Supplier::observe(\App\Observers\ProviderActivityObserver::class);
+        \App\Models\DoctorNurse::observe(\App\Observers\ProviderActivityObserver::class);
+        \App\Models\CorporateAlly::observe(\App\Observers\ProviderActivityObserver::class);
         RrhhColaborador::observe(OrgStructureRrhhObserver::class);
         RrhhCargo::observe(OrgStructureRrhhObserver::class);
         RrhhDepartamento::observe(OrgStructureRrhhObserver::class);

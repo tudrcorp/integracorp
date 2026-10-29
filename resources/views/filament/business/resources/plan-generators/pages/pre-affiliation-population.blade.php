@@ -120,6 +120,42 @@
         </div>
     </div>
 
+    {{-- Upgrades de la cotización: lo cotizado frente a quién tiene de verdad la
+         edad en el padrón. Se cobra lo real; nadie fuera de las edades lo recibe. --}}
+    @if ($report['upgrade_summary'] !== [])
+        <div class="rounded-[1.25rem] border border-slate-200/90 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/60">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Upgrades de la cotización</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Se asignan por la edad real de cada persona ubicada. Se cobra lo real, no lo cotizado.</p>
+            </div>
+            <div class="mt-3 grid gap-3 md:grid-cols-2">
+                @foreach ($report['upgrade_summary'] as $upgrade)
+                    @php $differs = $upgrade['real'] !== $upgrade['quoted']; @endphp
+                    <div wire:key="upgrade-summary-{{ $loop->index }}" @class([
+                        'rounded-xl border px-3 py-2',
+                        'border-amber-300/80 bg-amber-50/80 dark:border-amber-500/30 dark:bg-amber-500/10' => $differs,
+                        'border-emerald-300/80 bg-emerald-50/80 dark:border-emerald-500/30 dark:bg-emerald-500/10' => ! $differs,
+                    ])>
+                        <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ $upgrade['name'] }}</p>
+                        <p class="text-xs text-slate-700 dark:text-slate-200">
+                            Cotizado: <span class="font-semibold">{{ $upgrade['quoted'] }}</span> · Con la edad en el padrón: <span class="font-semibold">{{ $upgrade['real'] }}</span>
+                            @if ($differs)
+                                <span class="font-semibold text-amber-800 dark:text-amber-200">· se cobrará a {{ $upgrade['real'] }}</span>
+                            @endif
+                        </p>
+                        <ul class="mt-1 space-y-0.5 text-[11px] text-slate-600 dark:text-slate-300">
+                            @foreach ($upgrade['rows'] as $row)
+                                <li>
+                                    {{ $row['label'] }}: {{ $row['quoted'] }} cotizada(s){{ $row['manual'] ? ' (declaradas a mano)' : '' }} → {{ $row['real'] }} con la edad
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     {{ $this->table }}
 
     <x-filament-actions::modals />

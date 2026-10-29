@@ -6,6 +6,10 @@ namespace App\Filament\Operations\Resources\OperationAccountsPayables\Schemas;
 
 use App\Enums\StatusCuentaPorPagar;
 use App\Models\OperationAccountsPayable;
+use App\Models\OperationServiceOrderItem;
+use App\Support\Operations\AccountsPayableServiceDisplay;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -45,6 +49,45 @@ class OperationAccountsPayableInfolist
                             ->placeholder('Carga manual')
                             ->badge()
                             ->color(fn (OperationAccountsPayable $record): string => $record->operation_service_order_id !== null ? 'info' : 'gray'),
+                    ]),
+
+                Section::make('Servicio por pagar')
+                    ->description(fn (OperationAccountsPayable $record): string => $record->operationServiceOrder !== null
+                        ? 'Lo que el proveedor prestó en la orden '.$record->operationServiceOrder->order_number.'.'
+                        : 'Factura cargada sin orden de servicio.')
+                    ->icon('heroicon-o-clipboard-document-list')
+                    ->columnSpanFull()
+                    ->schema([
+                        TextEntry::make('service_type')
+                            ->label('Tipo de servicio')
+                            ->state(fn (OperationAccountsPayable $record): string => AccountsPayableServiceDisplay::type($record->operationServiceOrder?->service_type)['label'])
+                            ->badge()
+                            ->color(fn (OperationAccountsPayable $record): string => AccountsPayableServiceDisplay::type($record->operationServiceOrder?->service_type)['color'])
+                            ->icon(fn (OperationAccountsPayable $record): string => AccountsPayableServiceDisplay::type($record->operationServiceOrder?->service_type)['icon']),
+                        RepeatableEntry::make('service_items')
+                            ->label('Detalle')
+                            ->placeholder('La orden no tiene ítems cargados.')
+                            ->state(fn (OperationAccountsPayable $record): array => $record->operationServiceOrder?->operationServiceOrderItems
+                                ->map(fn (OperationServiceOrderItem $item): array => [
+                                    'name' => (string) $item->item_name,
+                                    'category' => (string) ($item->category ?? ''),
+                                    'quantity' => $item->quantity !== null ? rtrim(rtrim(number_format((float) $item->quantity, 2, ',', '.'), '0'), ',') : '—',
+                                    'amount' => $item->amount !== null ? self::money($item->amount, $item->currency === 'VES' ? 'VES' : 'USD') : '—',
+                                ])
+                                ->values()
+                                ->all() ?? [])
+                            ->table([
+                                TableColumn::make('Servicio'),
+                                TableColumn::make('Categoría'),
+                                TableColumn::make('Cantidad'),
+                                TableColumn::make('Monto'),
+                            ])
+                            ->schema([
+                                TextEntry::make('name')->weight('semibold'),
+                                TextEntry::make('category')->placeholder('—'),
+                                TextEntry::make('quantity'),
+                                TextEntry::make('amount'),
+                            ]),
                     ]),
 
                 Section::make('Pago')

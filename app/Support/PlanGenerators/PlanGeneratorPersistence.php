@@ -109,6 +109,12 @@ final class PlanGeneratorPersistence
             }
 
             self::syncQuotationPages($planGenerator, (array) ($formState['quotation_pages'] ?? []));
+
+            // Solo cuando el formulario los trae: la derivada de una plantilla los
+            // copia aparte y no debe borrarlos aquí.
+            if (array_key_exists('upgrades', $formState)) {
+                PlanGeneratorUpgrades::sync($planGenerator, (array) $formState['upgrades']);
+            }
         });
     }
 
@@ -222,6 +228,7 @@ final class PlanGeneratorPersistence
             'columns' => $columns,
             'rows' => $rows,
             'rate_rows' => $rateRows,
+            'upgrades' => PlanGeneratorUpgrades::formState($planGenerator),
             'quotation_page_count' => $planGenerator->quotation_page_count,
             'plan_page_number' => $planGenerator->plan_page_number,
             'quotation_pages' => PlanGeneratorQuotationState::syncImagePagesForQuotation(

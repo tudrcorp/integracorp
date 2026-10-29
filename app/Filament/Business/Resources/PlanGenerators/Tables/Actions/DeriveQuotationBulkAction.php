@@ -15,6 +15,7 @@ use App\Support\PlanGenerators\PlanGeneratorGroupTotalCalculator;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorPopulationValidator;
 use App\Support\PlanGenerators\PlanGeneratorTemplateCloner;
+use App\Support\PlanGenerators\PlanGeneratorUpgrades;
 use App\Support\SecurityAudit;
 use Closure;
 use Filament\Actions\BulkAction;
@@ -75,6 +76,7 @@ final class DeriveQuotationBulkAction
 
                 self::assertMatrixIsUsable($action, $formState);
                 self::assertConditionsArePresent($action, $formState);
+                self::assertTemplateUpgradesArePriceable($action, $template, $formState);
 
                 $derived = PlanGeneratorTemplateCloner::create(
                     $template,
@@ -217,6 +219,33 @@ final class DeriveQuotationBulkAction
         Notification::make()
             ->title('La matriz está incompleta')
             ->body('Falta '.implode(', ', $problems).'. Complete la matriz y vuelva a intentarlo.')
+            ->danger()
+            ->persistent()
+            ->send();
+
+        $action->halt();
+    }
+
+    /**
+     * Los upgrades de la plantilla se copian a la derivada: si el analista cambió
+     * los rangos de edad en la modal, todos tienen que seguir teniendo precio.
+     *
+     * @param  array<string, mixed>  $formState
+     */
+    private static function assertTemplateUpgradesArePriceable(BulkAction $action, PlanGenerator $template, array $formState): void
+    {
+        $errors = PlanGeneratorUpgrades::quote(
+            PlanGeneratorUpgrades::linesFromModel($template),
+            (array) ($formState['rate_rows'] ?? []),
+        )['errors'];
+
+        if ($errors === []) {
+            return;
+        }
+
+        Notification::make()
+            ->title('Los upgrades de la plantilla no se pueden cotizar')
+            ->body(implode(' ', $errors))
             ->danger()
             ->persistent()
             ->send();
