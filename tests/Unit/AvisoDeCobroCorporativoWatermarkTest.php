@@ -2,13 +2,12 @@
 
 declare(strict_types=1);
 
-it('incluye marca de agua con logo al 85% en aviso de cobro corporativo', function (): void {
+it('no incluye marca de agua y conserva el layout dompdf en aviso de cobro corporativo', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/aviso-de-cobro-corporativo.blade.php');
 
     expect($source)
-        ->toContain('document-watermark')
-        ->toContain("public_path('image/logoNewTDG.png')")
-        ->toContain('width: 85%')
+        ->not->toContain('document-watermark')
+        ->not->toContain('logoNewTDG.png')
         ->toContain('margin: 15mm 20mm')
         ->toContain('footer-legal')
         ->toContain('position: fixed')

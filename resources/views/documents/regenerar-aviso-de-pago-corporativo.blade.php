@@ -34,29 +34,6 @@
             color: #000000;
         }
 
-        /**
-         * Marca de agua de seguridad: logo al 85% del área útil, centrado, baja opacidad.
-         */
-        .document-watermark {
-            position: fixed;
-            top: 50%;
-            left: 7.5%;
-            width: 85%;
-            max-width: 85%;
-            opacity: 0.08;
-            z-index: 0;
-            pointer-events: none;
-            text-align: center;
-            transform: translateY(-50%);
-        }
-
-        .document-watermark img {
-            width: 100%;
-            height: auto;
-            display: block;
-            margin: 0 auto;
-        }
-
         .doc-root {
             position: relative;
             z-index: 1;
@@ -274,10 +251,6 @@
 </head>
 
 <body>
-
-    <div class="document-watermark" aria-hidden="true">
-        <img src="{{ public_path('image/logoNewTDG.png') }}" alt="">
-    </div>
 
     <div class="doc-root">
 
