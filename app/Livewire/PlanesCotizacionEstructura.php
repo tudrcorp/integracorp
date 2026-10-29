@@ -65,6 +65,14 @@ class PlanesCotizacionEstructura extends Component
      */
     public array $flatRateRows = [];
 
+    /**
+     * Upgrades de la cotización ({@see \App\Support\Quotes\IndividualQuoteUpgrades::summary()}): se
+     * muestran debajo de las tarifas, con el total que resulta de sumarlos.
+     *
+     * @var array{lines?: list<array<string, mixed>>, annual_total?: float, frequencies?: array<string, float>}
+     */
+    public array $upgrades = [];
+
     public function mount(
         mixed $data,
         ?string $name,
@@ -75,7 +83,9 @@ class PlanesCotizacionEstructura extends Component
         bool $compact = false,
         bool $showConditions = true,
         bool $storefrontFooter = false,
+        array $upgrades = [],
     ): void {
+        $this->upgrades = $upgrades;
         $this->data = $data;
         $this->name = $name;
         $this->name_user = $name_user;

@@ -90,11 +90,14 @@ final class RenovationManualAcceptancePricing
             ->get();
 
         $subtotalAnual = 0.0;
+        $upgradesAnual = 0.0;
         $titularAnnual = $titularAmounts['annual_fee'];
 
         foreach ($affiliates as $affiliate) {
-            /** Los upgrades se suman recotizados a la fecha, como al aceptar. */
-            $subtotalAnual += UpgradeRenewalRepricer::projectedTotal($affiliate, $referenceDate);
+            /** Los upgrades se suman recotizados a la fecha, como al aceptar; van completos en la primera cuota. */
+            $affiliateUpgrades = UpgradeRenewalRepricer::projectedTotal($affiliate, $referenceDate);
+            $subtotalAnual += $affiliateUpgrades;
+            $upgradesAnual += $affiliateUpgrades;
 
             if ($this->isTitular($affiliate)) {
                 $subtotalAnual += $titularAnnual;
@@ -117,13 +120,17 @@ final class RenovationManualAcceptancePricing
 
         if ($affiliates->isEmpty()) {
             $subtotalAnual = $titularAnnual;
+            $upgradesAnual = 0.0;
         }
+
+        $planAnual = max(0.0, $subtotalAnual - $upgradesAnual);
 
         return [
             'subtotal_anual' => round($subtotalAnual, 2),
-            'subtotal_quarterly' => round($subtotalAnual / 4, 2),
-            'subtotal_biannual' => round($subtotalAnual / 2, 2),
-            'subtotal_monthly' => round($subtotalAnual / 12, 2),
+            'subtotal_quarterly' => round($planAnual / 4, 2),
+            'subtotal_biannual' => round($planAnual / 2, 2),
+            'subtotal_monthly' => round($planAnual / 12, 2),
+            'upgrades_annual' => round($upgradesAnual, 2),
             'titular_annual' => round($titularAnnual, 2),
             'total_persons' => $affiliates->count() ?: 1,
         ];
@@ -195,12 +202,15 @@ final class RenovationManualAcceptancePricing
             ->get();
 
         $subtotalAnual = 0.0;
+        $upgradesAnual = 0.0;
         $referenceAnnual = $titularAmounts['annual_fee'];
         $isFirst = true;
 
         foreach ($affiliates as $affiliate) {
-            /** Los upgrades se suman recotizados a la fecha, como al aceptar. */
-            $subtotalAnual += UpgradeRenewalRepricer::projectedTotal($affiliate, $referenceDate);
+            /** Los upgrades se suman recotizados a la fecha, como al aceptar; van completos en la primera cuota. */
+            $affiliateUpgrades = UpgradeRenewalRepricer::projectedTotal($affiliate, $referenceDate);
+            $subtotalAnual += $affiliateUpgrades;
+            $upgradesAnual += $affiliateUpgrades;
 
             if ($isFirst) {
                 $subtotalAnual += $referenceAnnual;
@@ -231,13 +241,17 @@ final class RenovationManualAcceptancePricing
 
         if ($affiliates->isEmpty()) {
             $subtotalAnual = $referenceAnnual;
+            $upgradesAnual = 0.0;
         }
+
+        $planAnual = max(0.0, $subtotalAnual - $upgradesAnual);
 
         return [
             'subtotal_anual' => round($subtotalAnual, 2),
-            'subtotal_quarterly' => round($subtotalAnual / 4, 2),
-            'subtotal_biannual' => round($subtotalAnual / 2, 2),
-            'subtotal_monthly' => round($subtotalAnual / 12, 2),
+            'subtotal_quarterly' => round($planAnual / 4, 2),
+            'subtotal_biannual' => round($planAnual / 2, 2),
+            'subtotal_monthly' => round($planAnual / 12, 2),
+            'upgrades_annual' => round($upgradesAnual, 2),
             'titular_annual' => round($referenceAnnual, 2),
             'total_persons' => $affiliates->count() ?: 1,
         ];

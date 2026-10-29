@@ -32,6 +32,8 @@ class AffiliateCorporateUpgrade extends Model
         'coverage_amount',
         'age_at_assignment',
         'amount',
+        'billing_mode',
+        'charged_collection_id',
         'ils_voucher_code',
         'ils_date_init',
         'ils_date_end',

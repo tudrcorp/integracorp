@@ -176,7 +176,8 @@ it('engancha el multiplan en los dos generadores del panel de negocios', functio
 
         expect($codigo)
             ->toContain('QuoteServiceAttempt::generateMultiple(')
-            ->toContain('generatePdfMultiple(');
+            // La individual usa la propuesta múltiple con página dinámica por plan (29/10/2026).
+            ->toMatch('/generatePdf(Structure)?Multiple\(/');
     }
 });
 

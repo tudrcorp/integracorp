@@ -429,6 +429,8 @@ function upgradeAssignmentTestColumns(Illuminate\Database\Schema\Blueprint $tabl
     $table->decimal('coverage_amount', 12, 2)->nullable();
     $table->unsignedTinyInteger('age_at_assignment')->nullable();
     $table->decimal('amount', 10, 2);
+    $table->string('billing_mode', 20)->nullable();
+    $table->unsignedBigInteger('charged_collection_id')->nullable();
     $table->string('ils_voucher_code', 80)->nullable();
     $table->date('ils_date_init')->nullable();
     $table->date('ils_date_end')->nullable();

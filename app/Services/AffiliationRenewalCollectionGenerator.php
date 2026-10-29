@@ -62,6 +62,8 @@ final class AffiliationRenewalCollectionGenerator
 
         $createdBy ??= Auth::user()?->name ?? 'SISTEMA';
         $periodAmount = (float) ($affiliation->total_amount ?? 0);
+        /** Los upgrades se cobran una sola vez al año, completos, en la primera cuota. */
+        $oneTimeUpgrades = \App\Support\Upgrades\UpgradeFirstPaymentBilling::individualOneTimeTotal($affiliation);
         $includeDate = $effectiveDate->format('d/m/Y');
         $lastInvoiceNumber = $this->resolveLastCollectionInvoiceNumber();
         $created = 0;
@@ -90,7 +92,7 @@ final class AffiliationRenewalCollectionGenerator
             $collection->type = 'AFILIACION INDIVIDUAL';
             $collection->service = 'servicio';
             $collection->persons = (string) ($affiliation->family_members ?? 0);
-            $collection->total_amount = $periodAmount;
+            $collection->total_amount = $paymentDate === $paymentDates[0] ? round($periodAmount + $oneTimeUpgrades, 2) : $periodAmount;
             $collection->payment_method = null;
             $collection->payment_frequency = $paymentFrequency;
             $collection->next_payment_date = $nextPaymentDate;
@@ -124,6 +126,8 @@ final class AffiliationRenewalCollectionGenerator
 
         $createdBy ??= Auth::user()?->name ?? 'SISTEMA';
         $periodAmount = (float) ($affiliation->total_amount ?? 0);
+        /** Los upgrades se cobran una sola vez al año, completos, en la primera cuota. */
+        $oneTimeUpgrades = \App\Support\Upgrades\UpgradeFirstPaymentBilling::corporateOneTimeTotal($affiliation);
         $includeDate = $effectiveDate->format('d/m/Y');
         $lastInvoiceNumber = $this->resolveLastCollectionInvoiceNumber();
         $created = 0;
@@ -157,7 +161,7 @@ final class AffiliationRenewalCollectionGenerator
             $collection->type = 'AFILIACION CORPORATIVA';
             $collection->service = 'servicio';
             $collection->persons = $persons;
-            $collection->total_amount = $periodAmount;
+            $collection->total_amount = $paymentDate === $paymentDates[0] ? round($periodAmount + $oneTimeUpgrades, 2) : $periodAmount;
             $collection->payment_method = null;
             $collection->payment_frequency = $paymentFrequency;
             $collection->next_payment_date = $nextPaymentDate;

@@ -10,7 +10,6 @@ use App\Models\AffiliationCorporate;
 use App\Models\AfilliationCorporatePlan;
 use App\Models\AgeRange;
 use App\Services\CorporateAffiliatePlanSyncService;
-use App\Services\CorporateAffiliateRemovalService;
 use App\Support\AffiliationAffiliateBusinessContextSynchronizer;
 use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
 use App\Support\SecurityAudit;
@@ -292,7 +291,7 @@ final class CorporateAffiliatePlanSynchronizer
             'fee' => $fee,
             'payment_frequency' => $frequency,
             'subtotal_anual' => $fee,
-            'subtotal_payment_frequency' => CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($fee, $frequency),
+            'subtotal_payment_frequency' => \App\Support\Upgrades\UpgradeFirstPaymentBilling::affiliateRegular($affiliate, $fee, $frequency),
             'subtotal_daily' => $fee / 30,
             'business_unit_id' => $owner->business_unit_id,
             'specific_business_unit' => AffiliateSpecificBusinessUnitChanger::isLocked($affiliate)

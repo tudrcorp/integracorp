@@ -474,7 +474,7 @@ final class AffiliationAffiliateFeeCalculator
             'coverage_id' => $amounts['coverage_id'],
             'age_range_id' => $amounts['age_range_id'],
             'fee' => $annualFee,
-            'total_amount' => $this->totalAmountForPaymentFrequency($annualFee, $paymentFrequency),
+            'total_amount' => \App\Support\Upgrades\UpgradeFirstPaymentBilling::affiliateRegular($affiliate, $annualFee, $paymentFrequency),
             'payment_frequency' => $paymentFrequency,
         ]);
 
@@ -490,7 +490,7 @@ final class AffiliationAffiliateFeeCalculator
         $frequency = (string) ($owner->payment_frequency ?? 'ANUAL');
 
         $owner->fee_anual = round($sumAnnualFees, 2);
-        $owner->total_amount = $this->totalAmountForPaymentFrequency($owner->fee_anual, $frequency);
+        $owner->total_amount = \App\Support\Upgrades\UpgradeFirstPaymentBilling::individualRegular($owner, (float) $owner->fee_anual, $frequency);
         $owner->family_members = $owner->affiliates()->where('status', 'ACTIVO')->count();
         $owner->save();
     }

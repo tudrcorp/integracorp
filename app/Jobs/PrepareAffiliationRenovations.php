@@ -191,6 +191,8 @@ class PrepareAffiliationRenovations implements ShouldQueue
         $affiliationForFees = $this->affiliationSnapshotForFeeCalculation($affiliation, $isNegotiationCandidate);
 
         $subtotalAnual = 0.0;
+        /** Upgrades proyectados: van completos en la primera cuota, no en las demás. */
+        $upgradesAnual = 0.0;
         $titularAnnualFee = null;
         $titularAgeRangeId = null;
         $affiliateCount = 0;
@@ -205,6 +207,7 @@ class PrepareAffiliationRenovations implements ShouldQueue
         foreach ($affiliation->affiliates as $affiliate) {
             $projected = $feeProjection->forAffiliate($affiliationForFees, $affiliate, $feeReferenceDate);
             $subtotalAnual += $projected['annual_fee'];
+            $upgradesAnual += (float) ($projected['upgrades'] ?? 0);
 
             if ($projected['priced']) {
                 $outcome['affiliates_priced']++;
@@ -231,8 +234,11 @@ class PrepareAffiliationRenovations implements ShouldQueue
 
         if ($affiliateCount === 0) {
             $subtotalAnual = (float) ($affiliation->fee_anual ?? 0);
+            $upgradesAnual = 0.0;
             $titularAnnualFee = $subtotalAnual;
         }
+
+        $planAnual = max(0.0, $subtotalAnual - $upgradesAnual);
 
         $paymentFrequency = (string) ($affiliation->payment_frequency ?? 'ANUAL');
 
@@ -262,9 +268,9 @@ class PrepareAffiliationRenovations implements ShouldQueue
                 'age' => $titularAge,
                 'fee' => round($titularAnnualFee ?? $subtotalAnual, 2),
                 'subtotal_anual' => round($subtotalAnual, 2),
-                'subtotal_quarterly' => round($subtotalAnual / 4, 2),
-                'subtotal_biannual' => round($subtotalAnual / 2, 2),
-                'subtotal_monthly' => round($subtotalAnual / 12, 2),
+                'subtotal_quarterly' => round($planAnual / 4, 2),
+                'subtotal_biannual' => round($planAnual / 2, 2),
+                'subtotal_monthly' => round($planAnual / 12, 2),
                 'total_persons' => $affiliateCount,
                 'payment_frequency' => $paymentFrequency,
                 'created_by' => self::SYSTEM_ACTOR,

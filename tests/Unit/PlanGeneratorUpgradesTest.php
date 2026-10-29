@@ -132,18 +132,32 @@ it('el precio por persona de un rango junta todos los upgrades para asignarlos',
         ->and($result['upgrades'][0]['upgrade_coverage_age_range_id'])->toBe(702);
 });
 
-it('suma el costo de los upgrades al total grupal de cada columna con tarifa', function (): void {
+it('suma los upgrades completos al primer pago de cada columna con tarifa; los pagos siguientes llevan solo el plan', function (): void {
     $columns = [
         ['column_key' => 'c1', 'header_label' => 'Especial US$ 5K'],
         ['column_key' => 'c2', 'header_label' => 'Sin tarifas'],
     ];
+    $plan = 311.0 * 40 + 339 * 10;
 
     $totals = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, quoteRateRows(), 1700.0);
 
-    expect($totals['annual']['c1'])->toBe(311.0 * 40 + 339 * 10 + 1700)
+    expect($totals['annual']['c1'])->toBe($plan + 1700)
         ->and($totals['annual']['c2'])->toBe(0.0)
-        ->and($totals['trimestral']['c1'])->toBe((311.0 * 40 + 339 * 10 + 1700) / 4)
-        ->and(PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, quoteRateRows())['annual']['c1'])->toBe(311.0 * 40 + 339 * 10);
+        ->and($totals['trimestral']['c1'])->toBe($plan / 4 + 1700)
+        ->and($totals['trimestral_next']['c1'])->toBe($plan / 4)
+        ->and($totals['semestral']['c1'])->toBe($plan / 2 + 1700)
+        ->and($totals['semestral_next']['c1'])->toBe($plan / 2)
+        ->and($totals['trimestral']['c2'])->toBe(0.0)
+        ->and(PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, quoteRateRows())['trimestral']['c1'])->toBe($plan / 4);
+});
+
+it('con upgrades abre cada frecuencia en primer pago y pagos siguientes; sin upgrades no cambia nada', function (): void {
+    $withUpgrades = PlanGeneratorGroupTotalCalculator::displayRows(true, ['semestral'], 35.0);
+
+    expect(array_column($withUpgrades, 'key'))->toBe(['annual', 'trimestral', 'trimestral_next', 'mensual', 'mensual_next'])
+        ->and(array_column($withUpgrades, 'frequency_key'))->toBe(['annual', 'trimestral', 'trimestral', 'mensual', 'mensual'])
+        ->and(array_column($withUpgrades, 'label'))->toBe(['Tarifa anual (pago único)', 'Tarifa Trimestral · 1.er pago', 'Tarifa Trimestral · pagos 2 a 4', 'Total Mensual · 1.er pago', 'Total Mensual · pagos 2 a 12'])
+        ->and(array_column(PlanGeneratorGroupTotalCalculator::displayRows(false, [], 0.0), 'label'))->toBe(['Tarifa anual', 'Tarifa Semestral', 'Tarifa Trimestral']);
 });
 
 it('la sección de upgrades va entre el total grupal y las condiciones', function (): void {

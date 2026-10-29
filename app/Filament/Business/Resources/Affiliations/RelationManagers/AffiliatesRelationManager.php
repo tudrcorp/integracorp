@@ -850,7 +850,7 @@ class AffiliatesRelationManager extends RelationManager
                         ->modalWidth(Width::TwoExtraLarge)
                         ->modalIcon(Heroicon::MinusCircle)
                         ->modalHeading(fn (Affiliate $record): string => 'Quitar upgrade a '.IndividualAffiliateUpgradeManager::labelFor($record))
-                        ->modalDescription('El monto de cada upgrade seleccionado se descuenta de la tarifa anual del afiliado, de los totales de la afiliación y de las cuotas por pagar. El upgrade queda inactivo en el historial.')
+                        ->modalDescription('El monto de cada upgrade seleccionado se descuenta de la tarifa anual del afiliado y de los totales de la afiliación; si se había sumado a un aviso que sigue por pagar, se descuenta de él. El upgrade queda inactivo en el historial.')
                         ->modalSubmitActionLabel('Quitar seleccionados')
                         ->form(fn (Affiliate $record): array => [
                             CheckboxList::make('upgrade_ids')
@@ -884,7 +884,7 @@ class AffiliatesRelationManager extends RelationManager
                         ->modalWidth(Width::TwoExtraLarge)
                         ->modalIcon(Heroicon::MinusCircle)
                         ->modalHeading('Quitar upgrade a los familiares seleccionados')
-                        ->modalDescription('Se quita el upgrade elegido en cada familiar seleccionado que lo tenga activo. Su monto se descuenta de su tarifa anual, de los totales de la afiliación y de las cuotas por pagar.')
+                        ->modalDescription('Se quita el upgrade elegido en cada familiar seleccionado que lo tenga activo. Su monto se descuenta de su tarifa anual y de los totales de la afiliación; si se había sumado a un aviso que sigue por pagar, se descuenta de él.')
                         ->modalSubmitActionLabel('Quitar seleccionados')
                         ->form(function (Collection $records): array {
                             $options = collect(IndividualAffiliateUpgradeManager::activeUpgradesAmong($this->getOwnerRecord(), array_map('intval', $records->modelKeys())))

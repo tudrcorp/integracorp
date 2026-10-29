@@ -11,6 +11,7 @@ use App\Models\Collection as BillingCollection;
 use App\Services\CorporateAffiliateRemovalService;
 use App\Support\SecurityAudit;
 use App\Support\Upgrades\UpgradeAssignmentPreview;
+use App\Support\Upgrades\UpgradeFirstPaymentBilling;
 use App\Support\Upgrades\UpgradeIlsVoucher;
 use App\Support\Upgrades\UpgradePricing;
 use Illuminate\Support\Facades\Auth;
@@ -25,10 +26,14 @@ use RuntimeException;
  * asignación hasta la próxima renovación.
  *
  * Cada alta o baja se aplica como un delta, en una sola transacción, sobre:
- * la tarifa del afiliado, los totales de la afiliación (solo si el afiliado
- * cuenta como población) y los avisos de cobro pendientes. Así el monto que se
- * agrega es exactamente el que se refleja, sin recalcular desde cero lo que ya
- * estaba cuadrado.
+ * la tarifa del afiliado y los totales de la afiliación (solo si el afiliado
+ * cuenta como población). Así el monto que se agrega es exactamente el que se
+ * refleja, sin recalcular desde cero lo que ya estaba cuadrado.
+ *
+ * Los upgrades se cobran una sola vez (`UpgradeFirstPaymentBilling`): si la empresa
+ * aún no hizo su primer pago van en él; si ya está en curso, completos en el próximo
+ * aviso por pagar. Las asignaciones de antes, repartidas en las cuotas, se quitan
+ * como antes.
  */
 final class CorporateAffiliateUpgradeManager
 {
@@ -47,6 +52,8 @@ final class CorporateAffiliateUpgradeManager
     public const LOCKED_AFFILIATE_STATUSES = ['INACTIVO', 'EXCLUIDO'];
 
     public const REMOVAL_REASON = 'QUITADO POR ANALISTA';
+
+    public const NO_PENDING_COLLECTION_MESSAGE = 'No hay un aviso de cobro por pagar donde sumar el upgrade: los upgrades se cobran completos en el próximo aviso. Genere el aviso pendiente en Administración (o espere la renovación) y vuelva a intentarlo.';
 
     public const SKIP_NOT_IN_AFFILIATION = UpgradePricing::SKIP_NOT_IN_AFFILIATION;
 
@@ -180,9 +187,11 @@ final class CorporateAffiliateUpgradeManager
             $upgradesCreated = 0;
             $ownerDelta = 0.0;
             $created = [];
+            $chargedIds = [];
 
             foreach ($locked as $affiliate) {
                 $name = CorporateAffiliatePlanSynchronizer::labelFor($affiliate);
+                $affiliateCreated = [];
 
                 if (in_array((string) $affiliate->status, self::LOCKED_AFFILIATE_STATUSES, true)) {
                     $skipped[] = ['name' => $name, 'reason' => self::SKIP_AFFILIATE_INACTIVE];
@@ -229,9 +238,11 @@ final class CorporateAffiliateUpgradeManager
                         'affiliation_corporate_id' => $ownerLocked->getKey(),
                         ...UpgradePricing::assignmentAttributes($coverage, $range, $age, $actor),
                         ...UpgradeIlsVoucher::columns($voucher),
+                        ...UpgradeFirstPaymentBilling::assignmentAttributes('affiliate_corporate_upgrades'),
                     ]);
 
                     $created[] = $upgrade->getKey();
+                    $affiliateCreated[] = (int) $upgrade->getKey();
                     $delta += (float) $upgrade->amount;
                     $upgradesCreated++;
                 }
@@ -245,10 +256,13 @@ final class CorporateAffiliateUpgradeManager
 
                 if (self::countsAsPopulation($affiliate)) {
                     $ownerDelta += $delta;
+                    $chargedIds = [...$chargedIds, ...$affiliateCreated];
                 }
             }
 
-            $collectionIds = self::applyOwnerDelta($ownerLocked, $ownerDelta);
+            $collectionIds = UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'billing_mode')
+                ? self::chargeOnNextCollection($ownerLocked, $ownerDelta, $chargedIds)
+                : self::applyOwnerDelta($ownerLocked, $ownerDelta);
 
             SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_AFFILIATE_UPGRADES_ADDED', 'business.affiliation-corporates.upgrades.add', [
                 'panel' => 'business',
@@ -312,6 +326,9 @@ final class CorporateAffiliateUpgradeManager
 
             $affiliatesUpdated = 0;
             $ownerDelta = 0.0;
+            /** Repartidos en las cuotas (antes del cobro único): se descuentan de todas, como siempre. */
+            $spreadDelta = 0.0;
+            $billedOnce = [];
 
             foreach ($locked as $affiliate) {
                 $rows = $byAffiliate->get($affiliate->getKey());
@@ -345,10 +362,21 @@ final class CorporateAffiliateUpgradeManager
 
                 if (self::countsAsPopulation($affiliate)) {
                     $ownerDelta += $delta;
+
+                    foreach ($rows as $row) {
+                        if ($row->billing_mode === UpgradeFirstPaymentBilling::MODE) {
+                            $billedOnce[] = $row;
+                        } else {
+                            $spreadDelta -= round((float) $row->amount, 2);
+                        }
+                    }
                 }
             }
 
-            $collectionIds = self::applyOwnerDelta($ownerLocked, $ownerDelta);
+            $collectionIds = array_values(array_unique([
+                ...self::applyOwnerDelta($ownerLocked, $ownerDelta, $spreadDelta),
+                ...self::releaseChargedCollections($ownerLocked, $billedOnce),
+            ]));
 
             SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_AFFILIATE_UPGRADES_REMOVED', 'business.affiliation-corporates.upgrades.remove', [
                 'panel' => 'business',
@@ -449,15 +477,28 @@ final class CorporateAffiliateUpgradeManager
                 'fee_before' => $feeBefore,
                 'fee_after' => $feeAfter,
                 'period_before' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($feeBefore, $affiliateFrequency), 2),
-                'period_after' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($feeAfter, $affiliateFrequency), 2),
+                'period_after' => UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'billing_mode')
+                    ? round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($feeBefore, $affiliateFrequency), 2)
+                    : round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($feeAfter, $affiliateFrequency), 2),
             ];
         }
 
         $annualBefore = round((float) $owner->fee_anual, 2);
         $annualAfter = round($annualBefore + $ownerDelta, 2);
         $collections = [];
+        $blockers = [];
+        $billingNote = null;
+        $billedOnce = UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'billing_mode');
 
-        if (filled($owner->code) && $ownerDelta > 0) {
+        if ($billedOnce && $ownerDelta > 0) {
+            [$collections, $billingNote, $blocker] = self::nextCollectionPreview($owner, $ownerDelta);
+
+            if ($blocker !== null) {
+                $blockers[] = $blocker;
+            }
+        }
+
+        if (! $billedOnce && filled($owner->code) && $ownerDelta > 0) {
             foreach (BillingCollection::query()->calendarInstallments()->where('affiliation_code', $owner->code)->where('status', self::PENDING_COLLECTION_STATUS)->orderBy('id')->get() as $collection) {
                 $collectionFrequency = filled($collection->payment_frequency) ? (string) $collection->payment_frequency : $frequency;
                 $before = round((float) $collection->total_amount, 2);
@@ -472,7 +513,7 @@ final class CorporateAffiliateUpgradeManager
 
         return [
             'error' => null,
-            'blockers' => [],
+            'blockers' => $blockers,
             'upgrade' => [
                 'name' => (string) $coverage->upgrade->name,
                 'coverage' => $coverage->label(),
@@ -484,11 +525,16 @@ final class CorporateAffiliateUpgradeManager
                 'frequency' => $frequency,
                 'annual_before' => $annualBefore,
                 'annual_after' => $annualAfter,
-                'period_before' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($annualBefore, $frequency), 2),
-                'period_after' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($annualAfter, $frequency), 2),
-                'note' => $outsidePopulation > 0
-                    ? $outsidePopulation.' '.($outsidePopulation === 1 ? 'afiliado aún no cuenta' : 'afiliados aún no cuentan').' como población (pre-afiliado): su upgrade se suma a su tarifa, no al total de la afiliación.'
-                    : null,
+                'period_before' => round((float) $owner->total_amount, 2),
+                'period_after' => $billedOnce
+                    ? round((float) $owner->total_amount, 2)
+                    : round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($annualAfter, $frequency), 2),
+                'note' => trim(implode(' ', array_filter([
+                    $billingNote,
+                    $outsidePopulation > 0
+                        ? $outsidePopulation.' '.($outsidePopulation === 1 ? 'afiliado aún no cuenta' : 'afiliados aún no cuentan').' como población (pre-afiliado): su upgrade se suma a su tarifa, no al total de la afiliación.'
+                        : null,
+                ]))) ?: null,
             ],
             'collections' => $collections,
             'annual_delta' => round($ownerDelta, 2),
@@ -501,33 +547,45 @@ final class CorporateAffiliateUpgradeManager
     }
 
     /**
-     * Líneas de upgrades para el aviso de cobro, agrupadas por nombre.
+     * Líneas de upgrades para el aviso de cobro, agrupadas por nombre. Los repartidos en
+     * cuotas (de antes) llevan su parte del período; los de cobro único solo salen, completos,
+     * en el aviso donde se cobraron (`$collectionId`).
      *
      * @return list<array{name: string, affiliates: int, annual_amount: float, amount: float}>
      */
-    public static function noticeLinesFor(AffiliationCorporate $owner, ?string $paymentFrequency = null): array
+    public static function noticeLinesFor(AffiliationCorporate $owner, ?string $paymentFrequency = null, ?int $collectionId = null): array
     {
         $frequency = $paymentFrequency ?? (string) $owner->payment_frequency;
+        $billingColumns = UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'charged_collection_id')
+            ? ['billing_mode', 'charged_collection_id']
+            : [];
+        $lines = [];
 
-        return AffiliateCorporateUpgrade::query()
+        $rows = AffiliateCorporateUpgrade::query()
             ->where('affiliate_corporate_upgrades.affiliation_corporate_id', $owner->getKey())
             ->where('affiliate_corporate_upgrades.status', AffiliateCorporateUpgrade::STATUS_ACTIVE)
             ->whereHas('affiliateCorporate', fn ($query) => $query->whereIn('status', CorporateAffiliatePlanSynchronizer::COUNTABLE_STATUSES))
-            ->selectRaw('name, COUNT(*) as affiliates, SUM(amount) as annual_amount')
-            ->groupBy('name')
             ->orderBy('name')
-            ->get()
-            ->map(fn (AffiliateCorporateUpgrade $row): array => [
-                'name' => (string) $row->name,
-                'affiliates' => (int) $row->getAttribute('affiliates'),
-                'annual_amount' => round((float) $row->getAttribute('annual_amount'), 2),
-                'amount' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount(
-                    (float) $row->getAttribute('annual_amount'),
-                    $frequency,
-                ), 2),
-            ])
-            ->values()
-            ->all();
+            ->get(['name', 'amount', ...$billingColumns]);
+
+        foreach ($rows as $row) {
+            $annual = round((float) $row->amount, 2);
+            $billedOnce = $billingColumns !== [] && $row->billing_mode === UpgradeFirstPaymentBilling::MODE;
+
+            if ($billedOnce && ($collectionId === null || (int) $row->charged_collection_id !== $collectionId)) {
+                continue;
+            }
+
+            $name = (string) $row->name;
+            $lines[$name] ??= ['name' => $name, 'affiliates' => 0, 'annual_amount' => 0.0, 'amount' => 0.0];
+            $lines[$name]['affiliates']++;
+            $lines[$name]['annual_amount'] = round($lines[$name]['annual_amount'] + $annual, 2);
+            $lines[$name]['amount'] = round($lines[$name]['amount'] + ($billedOnce
+                ? $annual
+                : CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($annual, $frequency)), 2);
+        }
+
+        return array_values($lines);
     }
 
     /**
@@ -604,7 +662,7 @@ final class CorporateAffiliateUpgradeManager
         $affiliate->update([
             'fee' => $fee,
             'subtotal_anual' => $fee,
-            'subtotal_payment_frequency' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($fee, $frequency), 2),
+            'subtotal_payment_frequency' => UpgradeFirstPaymentBilling::regularInstallment($fee, UpgradeFirstPaymentBilling::affiliateOneTimeTotal($affiliate), $frequency),
             'subtotal_daily' => round($fee / 30, 2),
         ]);
     }
@@ -615,11 +673,13 @@ final class CorporateAffiliateUpgradeManager
     }
 
     /**
-     * Suma el delta anual a la afiliación y a sus avisos de cobro pendientes.
+     * Suma el delta anual a la afiliación. La cuota regular deja fuera los upgrades de cobro
+     * único. `$spreadDelta` (por defecto, todo el delta) es la parte repartida en las cuotas:
+     * se suma a cada aviso pendiente según su frecuencia.
      *
      * @return list<int> IDs de cobros ajustados
      */
-    private static function applyOwnerDelta(AffiliationCorporate $owner, float $annualDelta): array
+    private static function applyOwnerDelta(AffiliationCorporate $owner, float $annualDelta, ?float $spreadDelta = null): array
     {
         $annualDelta = round($annualDelta, 2);
 
@@ -628,7 +688,7 @@ final class CorporateAffiliateUpgradeManager
         }
 
         $feeAnual = max(0.0, round((float) $owner->fee_anual + $annualDelta, 2));
-        $totalAmount = round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($feeAnual, $owner->payment_frequency), 2);
+        $totalAmount = UpgradeFirstPaymentBilling::regularInstallment($feeAnual, UpgradeFirstPaymentBilling::corporateOneTimeTotal($owner), (string) $owner->payment_frequency);
 
         if ($totalAmount > self::MAX_STORED_AMOUNT) {
             throw new RuntimeException('El total de la afiliación superaría el máximo permitido. No se aplicó ningún cambio.');
@@ -638,7 +698,9 @@ final class CorporateAffiliateUpgradeManager
         $owner->total_amount = $totalAmount;
         $owner->save();
 
-        if (blank($owner->code)) {
+        $annualDelta = round($spreadDelta ?? $annualDelta, 2);
+
+        if (blank($owner->code) || abs($annualDelta) < 0.01) {
             return [];
         }
 
@@ -661,6 +723,134 @@ final class CorporateAffiliateUpgradeManager
         }
 
         return array_map('intval', $collections->modelKeys());
+    }
+
+    /**
+     * Upgrades nuevos (cobro único): suben el anual sin tocar la cuota regular. Si el primer
+     * pago aún no se hizo, van en él; si no, completos en el próximo aviso por pagar, que queda
+     * anotado en cada asignación para poder descontarlo si se quita.
+     *
+     * @param  list<int>  $upgradeIds  asignaciones recién creadas de afiliados que cuentan como población
+     * @return list<int> IDs de cobros ajustados
+     */
+    private static function chargeOnNextCollection(AffiliationCorporate $owner, float $annualDelta, array $upgradeIds): array
+    {
+        self::applyOwnerDelta($owner, $annualDelta, 0.0);
+        $annualDelta = round($annualDelta, 2);
+
+        if ($annualDelta < 0.01 || UpgradeFirstPaymentBilling::awaitsFirstPayment($owner)) {
+            return [];
+        }
+
+        $collection = UpgradeFirstPaymentBilling::nextPendingCollection((string) $owner->code, self::PENDING_COLLECTION_STATUS);
+
+        if ($collection === null) {
+            throw new RuntimeException(self::NO_PENDING_COLLECTION_MESSAGE);
+        }
+
+        self::assertNoPartialPayment($collection);
+
+        $collection->total_amount = round((float) $collection->total_amount + $annualDelta, 2);
+        $collection->save();
+
+        if ($upgradeIds !== [] && UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'charged_collection_id')) {
+            AffiliateCorporateUpgrade::query()->whereIn('id', $upgradeIds)->update(['charged_collection_id' => $collection->getKey()]);
+        }
+
+        return [(int) $collection->getKey()];
+    }
+
+    /**
+     * Quita del aviso donde se cobraron los upgrades de cobro único que se dan de baja, si ese
+     * aviso sigue por pagar. Si ya se pagó (o fueron en el primer pago) no se toca nada.
+     *
+     * @param  list<AffiliateCorporateUpgrade>  $upgrades
+     * @return list<int> IDs de cobros ajustados
+     */
+    private static function releaseChargedCollections(AffiliationCorporate $owner, array $upgrades): array
+    {
+        $byCollection = [];
+
+        foreach ($upgrades as $upgrade) {
+            $collectionId = (int) ($upgrade->charged_collection_id ?? 0);
+
+            if ($collectionId > 0) {
+                $byCollection[$collectionId] = ($byCollection[$collectionId] ?? 0.0) + round((float) $upgrade->amount, 2);
+            }
+        }
+
+        $adjusted = [];
+
+        foreach ($byCollection as $collectionId => $amount) {
+            $collection = BillingCollection::query()
+                ->whereKey($collectionId)
+                ->where('affiliation_code', $owner->code)
+                ->where('status', self::PENDING_COLLECTION_STATUS)
+                ->lockForUpdate()
+                ->first();
+
+            if ($collection === null) {
+                continue;
+            }
+
+            self::assertNoPartialPayment($collection);
+
+            $collection->total_amount = max(0.0, round((float) $collection->total_amount - $amount, 2));
+            $collection->save();
+            $adjusted[] = (int) $collection->getKey();
+        }
+
+        return $adjusted;
+    }
+
+    /**
+     * Aviso que recibiría el upgrade (vista previa), nota para el analista y bloqueo si no hay
+     * dónde cobrarlo.
+     *
+     * @return array{0: list<array{invoice: string, date: string, before: float, after: float}>, 1: string, 2: ?string}
+     */
+    private static function nextCollectionPreview(AffiliationCorporate $owner, float $annualDelta): array
+    {
+        $note = 'Los upgrades se pagan una sola vez al año, completos: no cambian la cuota regular.';
+
+        if (UpgradeFirstPaymentBilling::awaitsFirstPayment($owner)) {
+            return [[], $note.' Este se cobra en el primer pago ('.UpgradePricing::money($annualDelta).' más).', null];
+        }
+
+        $collection = BillingCollection::query()
+            ->calendarInstallments()
+            ->where('affiliation_code', (string) $owner->code)
+            ->where('status', self::PENDING_COLLECTION_STATUS)
+            ->orderByRaw('filter_next_payment_date IS NULL')
+            ->orderBy('filter_next_payment_date')
+            ->orderBy('id')
+            ->first();
+
+        if ($collection === null) {
+            return [[], $note, self::NO_PENDING_COLLECTION_MESSAGE];
+        }
+
+        $invoice = (string) ($collection->collection_invoice_number ?: '#'.$collection->getKey());
+        $blocker = (float) ($collection->pay_amount_usd ?? 0) > 0 || (float) ($collection->pay_amount_ves ?? 0) > 0
+            ? 'El aviso de cobro '.$invoice.' tiene un abono registrado. Concilie ese pago en Administración antes de cambiar upgrades.'
+            : null;
+        $before = round((float) $collection->total_amount, 2);
+
+        return [[[
+            'invoice' => $invoice,
+            'date' => (string) ($collection->next_payment_date ?? ''),
+            'before' => $before,
+            'after' => round($before + $annualDelta, 2),
+        ]], $note.' Se suma completo al próximo aviso por pagar.', $blocker];
+    }
+
+    private static function assertNoPartialPayment(BillingCollection $collection): void
+    {
+        if ((float) ($collection->pay_amount_usd ?? 0) > 0 || (float) ($collection->pay_amount_ves ?? 0) > 0) {
+            $invoice = (string) ($collection->collection_invoice_number ?: '#'.$collection->getKey());
+
+            throw new RuntimeException('El aviso de cobro '.$invoice.' tiene un abono registrado. Concilie ese pago en Administración antes de cambiar upgrades.');
+        }
     }
 
     /**

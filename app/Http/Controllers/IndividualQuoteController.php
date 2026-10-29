@@ -164,6 +164,53 @@ class IndividualQuoteController extends Controller
         }
     }
 
+    /**
+     * Propuesta individual de varios planes con el generador local: una página dinámica por plan
+     * (beneficios del catálogo, tarifas y upgrades debajo), en el orden de los planes.
+     *
+     * @param  list<array<string, mixed>>  $plans
+     */
+    public static function generatePdfStructureMultiple(array $plans, int|string $user): void
+    {
+        $user = User::findOrFail($user);
+
+        try {
+            $first = $plans[0] ?? [];
+            $details_generals = [
+                'code' => $first['code'] ?? '',
+                'name' => $first['name'] ?? '',
+            ];
+
+            ini_set('memory_limit', '2048M');
+            set_time_limit(120);
+
+            self::ensureQuotesDirectoryExists();
+
+            $name_user = $first['agent_name'] ?? $user->name;
+            $pdf = Pdf::loadView('documents.propuesta-economica-dinamica-multiple', compact('plans', 'details_generals', 'name_user'));
+            $pdf->save(public_path('storage/quotes/'.$details_generals['code'].'.pdf'));
+
+            Notification::make()
+                ->title('¡TAREA COMPLETADA!')
+                ->body('📎 '.$details_generals['code'].'.pdf ya se encuentra disponible para su descarga.')
+                ->success()
+                ->actions([
+                    Action::make('download')
+                        ->label('Descargar archivo')
+                        ->url('/storage/quotes/'.$details_generals['code'].'.pdf'),
+                ])
+                ->sendToDatabase($user);
+        } catch (\Throwable $th) {
+            Log::error('generatePdfStructureMultiple: '.$th->getMessage());
+
+            Notification::make()
+                ->title('¡TAREA NO COMPLETADA!')
+                ->body('Hubo un error en la creación de la propuesta economica. Por favor, contacte con el administrador del Sistema.')
+                ->danger()
+                ->sendToDatabase($user);
+        }
+    }
+
     public static function generatePdfMultiple($collect_final, $user)
     {
         try {

@@ -202,7 +202,9 @@ final class IndividualAffiliationPlanChanger
         $lines = $this->priceAffiliates($locked, $affiliates, $plan, $coverageId, $frequency, $request, $samePlan);
 
         $feeAnual = round(array_sum(array_column($lines, 'new_fee')), 2);
-        $periodAmount = $this->calculator->totalAmountForPaymentFrequency($feeAnual, $frequency);
+        /** La cuota regular y los avisos llevan solo el plan: los upgrades se cobran una sola vez. */
+        $periodAmount = \App\Support\Upgrades\UpgradeFirstPaymentBilling::individualRegular($locked, $feeAnual, $frequency);
+        $regularAnnual = max(0.0, round($feeAnual - \App\Support\Upgrades\UpgradeFirstPaymentBilling::individualOneTimeTotal($locked), 2));
 
         foreach ($lines as $line) {
             /** @var Affiliate $affiliate */
@@ -229,7 +231,7 @@ final class IndividualAffiliationPlanChanger
         ])->save();
 
         $whiteCompany = $this->recalculateWhiteCompanyRate($locked);
-        $billing = $this->rebuildPendingBilling($locked, $plan, $coverageId, $frequency, $previous['frequency'], $feeAnual, count($lines), $frequencyChanged, $actorName, $simulate);
+        $billing = $this->rebuildPendingBilling($locked, $plan, $coverageId, $frequency, $previous['frequency'], $regularAnnual, count($lines), $frequencyChanged, $actorName, $simulate);
         $renovations = $this->syncPreparedRenovations($locked, (int) $plan->id, $coverageId, $frequency);
 
         $result = self::identity($locked) + [
@@ -415,7 +417,7 @@ final class IndividualAffiliationPlanChanger
                 'new_age_range_id' => $ageRangeId,
                 'new_age_range' => $fee !== null ? IndividualPlanChangeCatalog::rangeLabel($fee->ageRange, $fee) : self::ageRangeLabel($ageRangeId),
                 'new_fee' => $annual,
-                'new_period' => $this->calculator->totalAmountForPaymentFrequency($annual, $frequency),
+                'new_period' => \App\Support\Upgrades\UpgradeFirstPaymentBilling::affiliateRegular($affiliate, $annual, $frequency),
                 'overridden' => $override !== null,
                 'kept' => $keepCurrent,
                 'exception' => $outsideIdeal,
@@ -510,6 +512,8 @@ final class IndividualAffiliationPlanChanger
             return $empty;
         }
 
+        /** Upgrades de cobro único que ya estaban sumados a un aviso: siguen en él (o en su reemplazo). */
+        $charged = \App\Support\Upgrades\UpgradeFirstPaymentBilling::chargedOnCollections('affiliate_upgrades', array_map('intval', $pending->modelKeys()));
         $installments = [];
         // Frecuencia que tenía la afiliación antes del cambio: una cuota sin frecuencia propia se mide con ella.
         $previousFrequency = CorporatePaymentFrequency::normalize($previousFrequencyRaw) ?? CorporatePaymentFrequency::ANUAL;
@@ -544,7 +548,7 @@ final class IndividualAffiliationPlanChanger
             foreach ($installments as $installment) {
                 /** @var BillingCollection $collection */
                 $collection = $installment['collection'];
-                $amount = round($feeAnual * $installment['months'] / 12, 2);
+                $amount = round($feeAnual * $installment['months'] / 12 + ($charged[(int) $collection->getKey()] ?? 0.0), 2);
                 $updated[] = [
                     'id' => (int) $collection->getKey(),
                     'invoice' => (string) $collection->collection_invoice_number,
@@ -569,6 +573,11 @@ final class IndividualAffiliationPlanChanger
         }
 
         $schedule = $this->reschedule($installments, $frequency, $feeAnual);
+
+        if ($charged !== [] && $schedule !== []) {
+            $schedule[0]['amount'] = round($schedule[0]['amount'] + array_sum($charged), 2);
+        }
+
         $cancelled = [];
 
         foreach ($installments as $installment) {
@@ -586,6 +595,10 @@ final class IndividualAffiliationPlanChanger
 
         $created = $this->createInstallments($affiliation, $installments[0]['collection'], $schedule, $plan, $coverageId, $frequency, $persons, $actorName, $simulate);
         $replacedBy = implode(', ', array_column($created, 'invoice'));
+
+        if ($charged !== [] && $created !== []) {
+            \App\Support\Upgrades\UpgradeFirstPaymentBilling::moveCharges('affiliate_upgrades', array_keys($charged), (int) $created[0]['id']);
+        }
 
         foreach ($installments as $installment) {
             $this->observe($installment['collection'], $installment['date'], $installment['amount'], $note.' Aviso anulado; lo reemplazan: '.$replacedBy.'.', $simulate);

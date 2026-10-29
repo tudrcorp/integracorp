@@ -471,7 +471,7 @@ class AffiliationsTable
                             Fieldset::make('INFORMACION PRINCIPAL')
                                 ->schema([
                                     Hidden::make('base_total_amount')
-                                        ->default(fn (Affiliation $record): float => (float) ($record->total_amount ?? 0))
+                                        ->default(fn (Affiliation $record): float => \App\Support\Upgrades\UpgradeFirstPaymentBilling::suggestedProofAmount($record))
                                         ->dehydrated(),
                                     ...self::bcvRateManualStateHiddenFields(),
                                     Grid::make(['default' => 1, 'md' => 2])->schema([
@@ -479,7 +479,7 @@ class AffiliationsTable
                                             ->label('Total a pagar')
                                             ->helperText(fn (Affiliation $record): string => AffiliationPaymentTotalAdjustment::totalAmountHelperText($record))
                                             ->prefix('US$')
-                                            ->default(fn (Affiliation $record): float => (float) ($record->total_amount ?? 0))
+                                            ->default(fn (Affiliation $record): float => \App\Support\Upgrades\UpgradeFirstPaymentBilling::suggestedProofAmount($record))
                                             ->numeric()
                                             ->live()
                                             ->afterStateUpdated(function ($state, Get $get, Set $set): void {
@@ -1473,7 +1473,7 @@ class AffiliationsTable
                         ->deselectRecordsAfterCompletion()
                         ->form(function (Collection $records) {
 
-                            $data = $records->toArray();
+                            $data = \App\Support\Upgrades\UpgradeFirstPaymentBilling::withSuggestedProofAmounts($records);
 
                             // guardo la data en la sesion para usarla en el formulario
                             session()->put('data', $data);

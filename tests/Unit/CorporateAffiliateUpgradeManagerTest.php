@@ -39,6 +39,7 @@ function seedUpgradeScenario(): void
         $table->integer('poblation')->default(0);
         $table->string('fee_anual')->nullable();
         $table->decimal('total_amount', 8, 2)->default(0);
+        $table->string('activated_at')->nullable();
         $table->timestamps();
     });
 
@@ -109,8 +110,8 @@ function seedUpgradeScenario(): void
     });
 
     DB::table('affiliation_corporates')->insert([
-        ['id' => 10, 'code' => 'TDEC-COR-00010', 'name_corporate' => 'EMPRESA DEMO', 'payment_frequency' => 'TRIMESTRAL', 'poblation' => 2, 'fee_anual' => '1000', 'total_amount' => 250],
-        ['id' => 11, 'code' => 'TDEC-COR-00011', 'name_corporate' => 'OTRA EMPRESA', 'payment_frequency' => 'ANUAL', 'poblation' => 1, 'fee_anual' => '300', 'total_amount' => 300],
+        ['id' => 10, 'code' => 'TDEC-COR-00010', 'name_corporate' => 'EMPRESA DEMO', 'payment_frequency' => 'TRIMESTRAL', 'poblation' => 2, 'fee_anual' => '1000', 'total_amount' => 250, 'activated_at' => '01/07/2026'],
+        ['id' => 11, 'code' => 'TDEC-COR-00011', 'name_corporate' => 'OTRA EMPRESA', 'payment_frequency' => 'ANUAL', 'poblation' => 1, 'fee_anual' => '300', 'total_amount' => 300, 'activated_at' => null],
     ]);
 
     DB::table('affiliate_corporates')->insert([
@@ -123,9 +124,9 @@ function seedUpgradeScenario(): void
     ]);
 
     DB::table('collections')->insert([
-        ['id' => 100, 'collection_invoice_number' => 'AC-0100', 'affiliation_code' => 'TDEC-COR-00010', 'payment_frequency' => 'TRIMESTRAL', 'next_payment_date' => '01/10/2026', 'total_amount' => 250, 'status' => 'POR PAGAR'],
-        ['id' => 101, 'collection_invoice_number' => 'AC-0101', 'affiliation_code' => 'TDEC-COR-00010', 'payment_frequency' => 'TRIMESTRAL', 'next_payment_date' => '01/01/2027', 'total_amount' => 250, 'status' => 'POR PAGAR'],
-        ['id' => 102, 'collection_invoice_number' => 'AC-0102', 'affiliation_code' => 'TDEC-COR-00010', 'payment_frequency' => 'TRIMESTRAL', 'next_payment_date' => '01/07/2026', 'total_amount' => 250, 'status' => 'PAGADO'],
+        ['id' => 100, 'collection_invoice_number' => 'AC-0100', 'affiliation_code' => 'TDEC-COR-00010', 'payment_frequency' => 'TRIMESTRAL', 'next_payment_date' => '01/10/2026', 'filter_next_payment_date' => '2026-10-01', 'total_amount' => 250, 'status' => 'POR PAGAR'],
+        ['id' => 101, 'collection_invoice_number' => 'AC-0101', 'affiliation_code' => 'TDEC-COR-00010', 'payment_frequency' => 'TRIMESTRAL', 'next_payment_date' => '01/01/2027', 'filter_next_payment_date' => '2027-01-01', 'total_amount' => 250, 'status' => 'POR PAGAR'],
+        ['id' => 102, 'collection_invoice_number' => 'AC-0102', 'affiliation_code' => 'TDEC-COR-00010', 'payment_frequency' => 'TRIMESTRAL', 'next_payment_date' => '01/07/2026', 'filter_next_payment_date' => '2026-07-01', 'total_amount' => 250, 'status' => 'PAGADO'],
     ]);
 }
 
@@ -172,7 +173,7 @@ afterEach(function (): void {
     DB::setDefaultConnection($this->previousConnection);
 });
 
-it('cobra el precio del rango de edad y lo suma al afiliado, a la afiliación y a los avisos pendientes', function (): void {
+it('cobra el precio del rango de edad y lo suma completo solo al próximo aviso pendiente', function (): void {
     $result = CorporateAffiliateUpgradeManager::add(upgradeOwner(), [1], [10], null, upgradeVouchersFor([1]));
 
     $affiliate = AffiliateCorporate::query()->findOrFail(1);
@@ -180,15 +181,16 @@ it('cobra el precio del rango de edad y lo suma al afiliado, a la afiliación y 
 
     expect($result['upgrades_created'])->toBe(1)
         ->and($result['annual_delta'])->toBe(40.0)
-        ->and($result['collections_adjusted'])->toBe(2)
+        ->and($result['collections_adjusted'])->toBe(1)
         ->and((float) $affiliate->fee)->toBe(540.0)
         ->and((float) $affiliate->subtotal_anual)->toBe(540.0)
-        ->and((float) $affiliate->subtotal_payment_frequency)->toBe(135.0)
+        ->and((float) $affiliate->subtotal_payment_frequency)->toBe(125.0)
         ->and((float) $owner->fee_anual)->toBe(1040.0)
-        ->and((float) $owner->total_amount)->toBe(260.0)
-        ->and(collectionTotal(100))->toBe(260.0)
-        ->and(collectionTotal(101))->toBe(260.0)
-        ->and(collectionTotal(102))->toBe(250.0);
+        ->and((float) $owner->total_amount)->toBe(250.0)
+        ->and(collectionTotal(100))->toBe(290.0)
+        ->and(collectionTotal(101))->toBe(250.0)
+        ->and(collectionTotal(102))->toBe(250.0)
+        ->and(App\Support\Upgrades\UpgradeFirstPaymentBilling::corporateOneTimeTotal($owner))->toBe(40.0);
 
     $upgrade = AffiliateCorporateUpgrade::query()->sole();
 
@@ -198,26 +200,47 @@ it('cobra el precio del rango de edad y lo suma al afiliado, a la afiliación y 
         ->and((int) $upgrade->upgrade_coverage_age_range_id)->toBe(100)
         ->and((float) $upgrade->coverage_amount)->toBe(5000.0)
         ->and($upgrade->age_at_assignment)->toBe(30)
-        ->and($upgrade->created_by)->toBe('Analista Negocios');
+        ->and($upgrade->created_by)->toBe('Analista Negocios')
+        ->and($upgrade->billing_mode)->toBe(App\Support\Upgrades\UpgradeFirstPaymentBilling::MODE)
+        ->and((int) $upgrade->charged_collection_id)->toBe(100);
 
-    Bus::assertDispatchedTimes(CreateAvisoDeCobro::class, 2);
+    Bus::assertDispatchedTimes(CreateAvisoDeCobro::class, 1);
 });
 
-it('regenera el aviso con el total ajustado y la línea del upgrade', function (): void {
+it('regenera el aviso con el total ajustado y la línea del upgrade completa', function (): void {
     CorporateAffiliateUpgradeManager::add(upgradeOwner(), [1], [10], null, upgradeVouchersFor([1]));
 
     Bus::assertDispatched(CreateAvisoDeCobro::class, function (CreateAvisoDeCobro $job): bool {
         $data = (fn (): array => $this->data)->call($job);
 
         return $data['invoice_number'] === 'AC-0100'
-            && (float) $data['total_amount'] === 260.0
+            && (float) $data['total_amount'] === 290.0
             && $data['upgrades'] === [[
                 'name' => 'ODONTOLOGÍA',
                 'affiliates' => 1,
                 'annual_amount' => 40.0,
-                'amount' => 10.0,
+                'amount' => 40.0,
             ]];
     });
+
+    expect(CorporateAffiliateUpgradeManager::noticeLinesFor(upgradeOwner(), 'TRIMESTRAL', 101))->toBe([]);
+});
+
+it('una empresa sin primer pago lo cobra en él, y sin aviso pendiente no agrega nada', function (): void {
+    DB::table('affiliation_corporates')->where('id', 10)->update(['activated_at' => null]);
+
+    $result = CorporateAffiliateUpgradeManager::add(upgradeOwner(), [1], [10], null, upgradeVouchersFor([1]));
+
+    expect($result['collections_adjusted'])->toBe(0)
+        ->and(collectionTotal(100))->toBe(250.0)
+        ->and((float) upgradeOwner()->total_amount)->toBe(250.0)
+        ->and(App\Support\Upgrades\UpgradeFirstPaymentBilling::suggestedProofAmount(upgradeOwner()))->toBe(290.0);
+
+    DB::table('affiliation_corporates')->where('id', 10)->update(['activated_at' => '01/07/2026']);
+    DB::table('collections')->where('status', 'POR PAGAR')->update(['status' => 'PAGADO']);
+
+    expect(fn () => CorporateAffiliateUpgradeManager::add(upgradeOwner(), [2], [10], null, upgradeVouchersFor([2])))
+        ->toThrow(RuntimeException::class, 'No hay un aviso de cobro por pagar');
 });
 
 it('cada afiliado paga el rango de su edad y se omite a quien no cabe en ningún rango', function (): void {
@@ -230,7 +253,8 @@ it('cada afiliado paga el rango de su edad y se omite a quien no cabe en ningún
         ->and(affiliateFee(3))->toBe(400.0)
         ->and(affiliateFee(4))->toBe(260.0)
         ->and((float) upgradeOwner()->fee_anual)->toBe(1120.0)
-        ->and(collectionTotal(100))->toBe(280.0)
+        ->and(collectionTotal(100))->toBe(370.0)
+        ->and(collectionTotal(101))->toBe(250.0)
         ->and(collect($result['skipped'])->pluck('reason')->all())->toBe([
             CorporateAffiliateUpgradeManager::SKIP_NO_RANGE,
             CorporateAffiliateUpgradeManager::SKIP_AFFILIATE_INACTIVE,
@@ -294,7 +318,8 @@ it('quita el upgrade y revierte los montos exactamente', function (): void {
         ->and($result['annual_delta'])->toBe(-20.0)
         ->and(affiliateFee(1))->toBe(540.0)
         ->and((float) upgradeOwner()->fee_anual)->toBe(1040.0)
-        ->and(collectionTotal(100))->toBe(260.0)
+        ->and((float) upgradeOwner()->total_amount)->toBe(250.0)
+        ->and(collectionTotal(100))->toBe(290.0)
         ->and(collectionTotal(102))->toBe(250.0)
         ->and($optica->fresh()->status)->toBe(AffiliateCorporateUpgrade::STATUS_INACTIVE)
         ->and($optica->fresh()->deactivated_by)->toBe('Analista Negocios')
@@ -365,13 +390,14 @@ it('corporativo: sin voucher no se agrega nada y la vista previa calcula sin esc
 
     expect(AffiliateCorporateUpgrade::query()->count())->toBe(0)
         ->and($rows[1]['price'])->toBe(40.0)
-        ->and($rows[1]['period_after'])->toBe(135.0)
+        ->and($rows[1]['period_after'])->toBe(125.0)
         ->and($rows[2]['price'])->toBe(60.0)
         ->and($rows[3]['receives'])->toBeFalse()
         ->and($rows[3]['reason'])->toBe('está dado de baja')
         ->and($rows[4]['price'])->toBe(40.0)
         ->and($preview['owner']['annual_after'])->toBe(1100.0)
         ->and($preview['owner']['note'])->toContain('1 afiliado aún no cuenta')
-        ->and(array_column($preview['collections'], 'after'))->toBe([275.0, 275.0])
+        ->and($preview['owner']['note'])->toContain('una sola vez')
+        ->and(array_column($preview['collections'], 'after'))->toBe([350.0])
         ->and(affiliateFee(1))->toBe(500.0);
 });

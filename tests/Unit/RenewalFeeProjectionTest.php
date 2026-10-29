@@ -123,6 +123,7 @@ it('conserva la tarifa vigente cuando la edad no cae en ningún rango del plan',
 
     expect($resultado)->toBe([
         'annual_fee' => 245.5,
+        'upgrades' => 0.0,
         'age_range_id' => 12,
         'priced' => false,
     ]);
@@ -145,7 +146,7 @@ it('conserva la tarifa vigente en un plan con coberturas sin cobertura asignada'
 
     expect($projection->canRecalculateFees($affiliation))->toBeFalse()
         ->and($projection->forAffiliate($affiliation, renewalProjectionAffiliate('10/03/1990', 90.0, null), Carbon::parse('2026-11-22')))
-        ->toBe(['annual_fee' => 90.0, 'age_range_id' => null, 'priced' => false]);
+        ->toBe(['annual_fee' => 90.0, 'upgrades' => 0.0, 'age_range_id' => null, 'priced' => false]);
 });
 
 it('el job tarifica siempre y usa la misma fecha de referencia que la renovación anticipada', function (): void {

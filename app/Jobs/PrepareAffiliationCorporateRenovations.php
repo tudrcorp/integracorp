@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Models\AffiliationCorporate;
 use App\Models\RenovationCorporate;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\AffiliationCorporates\CorporateAffiliateUpgradeManager;
 use App\Support\Concerns\ReportsScheduledExecution;
 use App\Support\ScheduledTaskRunReport;
 use App\Support\Upgrades\UpgradeRenewalRepricer;
@@ -111,6 +112,8 @@ class PrepareAffiliationCorporateRenovations implements ShouldQueue
                             $outOfRangeIds = $planTransition['out_of_range_affiliate_ids'];
 
                             $subtotalAnual = 0.0;
+                            /** Upgrades proyectados: van completos en la primera cuota, no en las demás. */
+                            $upgradesAnual = 0.0;
                             $affiliateCount = 0;
                             $representativePlanId = null;
                             $representativeCoverageId = null;
@@ -147,6 +150,7 @@ class PrepareAffiliationCorporateRenovations implements ShouldQueue
                                 }
 
                                 $annualFee = (float) ($affiliate->fee ?? 0);
+                                $affiliateUpgrades = CorporateAffiliateUpgradeManager::activeTotalFor($affiliate);
                                 $ageRangeId = null;
                                 $age = $calculator->resolveAffiliateCorporateAgeForRenewal($affiliate, $today);
                                 $birthDate = $calculator->parseBirthDate($affiliate->birth_date)?->toDateString();
@@ -162,7 +166,8 @@ class PrepareAffiliationCorporateRenovations implements ShouldQueue
                                     if ($amounts !== null) {
                                         $affiliatesPriced++;
                                         /** Los upgrades se suman recotizados con la edad del afiliado, igual que el plan. */
-                                        $annualFee = round($amounts['annual_fee'] + UpgradeRenewalRepricer::projectedTotal($affiliate, $today), 2);
+                                        $affiliateUpgrades = UpgradeRenewalRepricer::projectedTotal($affiliate, $today);
+                                        $annualFee = round($amounts['annual_fee'] + $affiliateUpgrades, 2);
                                         $ageRangeId = $amounts['age_range_id'];
                                         $coverageId = $amounts['coverage_id'];
                                     } else {
@@ -177,6 +182,7 @@ class PrepareAffiliationCorporateRenovations implements ShouldQueue
                                 }
 
                                 $subtotalAnual += $annualFee;
+                                $upgradesAnual += $affiliateUpgrades;
 
                                 if ($representativePlanId === null && $projectedPlanId > 0) {
                                     $representativePlanId = $projectedPlanId;
@@ -201,8 +207,11 @@ class PrepareAffiliationCorporateRenovations implements ShouldQueue
 
                             if ($affiliateCount === 0) {
                                 $subtotalAnual = (float) ($affiliation->fee_anual ?? 0);
+                                $upgradesAnual = 0.0;
                                 $firstAnnualFee = $subtotalAnual;
                             }
+
+                            $planAnual = max(0.0, $subtotalAnual - $upgradesAnual);
 
                             $previousPlanId = null;
                             if ($isNegotiationCandidate) {
@@ -237,9 +246,9 @@ class PrepareAffiliationCorporateRenovations implements ShouldQueue
                                     'age' => $firstAge,
                                     'fee' => round($firstAnnualFee ?? $subtotalAnual, 2),
                                     'subtotal_anual' => round($subtotalAnual, 2),
-                                    'subtotal_quarterly' => round($subtotalAnual / 4, 2),
-                                    'subtotal_biannual' => round($subtotalAnual / 2, 2),
-                                    'subtotal_monthly' => round($subtotalAnual / 12, 2),
+                                    'subtotal_quarterly' => round($planAnual / 4, 2),
+                                    'subtotal_biannual' => round($planAnual / 2, 2),
+                                    'subtotal_monthly' => round($planAnual / 12, 2),
                                     'total_persons' => $affiliateCount,
                                     'payment_frequency' => $paymentFrequency,
                                     'info_renovation' => [

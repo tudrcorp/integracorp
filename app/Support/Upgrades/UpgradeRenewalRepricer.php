@@ -50,6 +50,9 @@ final class UpgradeRenewalRepricer
      * transacción de la renovación. Cada upgrade que cambia de precio o de rango
      * pasa a INACTIVO y lo reemplaza uno nuevo que apunta a él (`replaces_id`).
      *
+     * El año nuevo arranca con la regla de cobro único: todos los upgrades activos (también los
+     * que venían repartidos en cuotas) quedan para cobrarse completos en el primer pago.
+     *
      * @return float suma de upgrades activos después de recotizar
      */
     public static function reprice(Affiliate|AffiliateCorporate $affiliate, Carbon $asOf, ?string $actor = null): float
@@ -60,19 +63,23 @@ final class UpgradeRenewalRepricer
 
         $actor = trim((string) ($actor ?? Auth::user()?->name ?? '')) ?: 'system';
         $total = 0.0;
+        $table = $affiliate instanceof Affiliate ? 'affiliate_upgrades' : 'affiliate_corporate_upgrades';
+        $billing = UpgradeFirstPaymentBilling::hasColumn($table, 'charged_collection_id')
+            ? ['billing_mode' => UpgradeFirstPaymentBilling::MODE, 'charged_collection_id' => null]
+            : [];
 
         foreach (self::activeAssignments($affiliate, lock: true) as $assignment) {
             $quote = self::quote($assignment, $affiliate, $asOf);
             $total += $quote['amount'];
+            $sameQuote = $quote['range'] === null
+                || (abs((float) $assignment->amount - $quote['amount']) < 0.005
+                    && (int) $assignment->upgrade_coverage_age_range_id === (int) $quote['range']->getKey());
 
-            if ($quote['range'] === null) {
-                continue;
-            }
+            if ($sameQuote) {
+                if ($billing !== []) {
+                    $assignment->forceFill($billing)->save();
+                }
 
-            $samePrice = abs((float) $assignment->amount - $quote['amount']) < 0.005;
-            $sameRange = (int) $assignment->upgrade_coverage_age_range_id === (int) $quote['range']->getKey();
-
-            if ($samePrice && $sameRange) {
                 continue;
             }
 
@@ -93,6 +100,7 @@ final class UpgradeRenewalRepricer
                 'replaces_id' => (int) $assignment->getKey(),
                 'created_by' => $actor,
                 'updated_by' => $actor,
+                ...$billing,
             ])->save();
         }
 

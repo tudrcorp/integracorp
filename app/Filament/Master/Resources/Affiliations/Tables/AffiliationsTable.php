@@ -280,7 +280,7 @@ class AffiliationsTable
                                                  */
                                                 $amount = Affiliation::where('id', $record->id)->first();
 
-                                                return $amount->total_amount;
+                                                return \App\Support\Upgrades\UpgradeFirstPaymentBilling::suggestedProofAmount($amount);
                                             })
                                             ->disabled()
                                             ->dehydrated()
@@ -1027,7 +1027,7 @@ class AffiliationsTable
                         ->deselectRecordsAfterCompletion()
                         ->form(function (Collection $records) {
 
-                            $data = $records->toArray();
+                            $data = \App\Support\Upgrades\UpgradeFirstPaymentBilling::withSuggestedProofAmounts($records);
 
                             // guardo la data en la sesion para usarla en el formulario
                             session()->put('data', $data);

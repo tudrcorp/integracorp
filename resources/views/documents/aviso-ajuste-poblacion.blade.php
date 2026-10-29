@@ -7,6 +7,10 @@
     $adds = $lines->where('kind', \App\Models\CorporateBillingAdjustmentLine::KIND_ADD)->values();
     $removes = $lines->where('kind', \App\Models\CorporateBillingAdjustmentLine::KIND_REMOVE)->values();
     $perYear = (int) ($summary['per_year'] ?? 1);
+    $frequencyLabel = (string) ($summary['frequency_label'] ?? \App\Support\AffiliationCorporates\CorporatePaymentFrequency::label($adjustment->payment_frequency));
+    $frequencyLower = mb_strtolower($frequencyLabel, 'UTF-8');
+    $installmentLabel = $perYear === 1 ? 'cuota anual' : 'cuota '.$frequencyLower;
+    $installmentsPerYear = $perYear.' '.($perYear === 1 ? 'cuota' : 'cuotas').' al año';
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -72,8 +76,9 @@
             Cambio de población con fecha efectiva <strong>{{ $summary['effective_date'] }}</strong>:
             <strong>{{ $adjustment->persons_added }}</strong> {{ $adjustment->persons_added === 1 ? 'persona incluida' : 'personas incluidas' }} y
             <strong>{{ $adjustment->persons_removed }}</strong> {{ $adjustment->persons_removed === 1 ? 'persona excluida' : 'personas excluidas' }}.
-            Las personas incluidas pagan, del período ya facturado, la tarifa de su cuota por los días que les quedan
-            (tarifa anual ÷ {{ $perYear }} × días ÷ días del período). Las exclusiones no generan crédito del período ya facturado.
+            La frecuencia de pago es <strong>{{ $frequencyLower }}</strong> ({{ $installmentsPerYear }}), así que la <strong>{{ $installmentLabel }}</strong>
+            de cada persona es su tarifa anual ÷ {{ $perYear }}. Las personas incluidas pagan, del período ya facturado, su {{ $installmentLabel }}
+            por los días que les quedan ({{ $installmentLabel }} × días ÷ días del período). Las exclusiones no generan crédito del período ya facturado.
         </td></tr>
     </table>
 
@@ -89,7 +94,7 @@
         <thead><tr>
             <th style="width: 30%;">Personas</th>
             <th style="width: 16%;" class="num">Tarifa anual</th>
-            <th style="width: 15%;" class="num">Por cuota</th>
+            <th style="width: 15%;" class="num">{{ \Illuminate\Support\Str::ucfirst($installmentLabel) }}</th>
             <th style="width: 23%;">Cálculo por persona</th>
             <th style="width: 16%;" class="num">Total</th>
         </tr></thead>
@@ -98,7 +103,7 @@
                 <tr>
                     <td>{{ $group['count'] }} {{ $group['count'] === 1 ? 'persona incluida' : 'personas incluidas' }}</td>
                     <td class="num">{{ $money($group['annual_cents']) }}</td>
-                    <td class="num">{{ $money($group['period_cents']) }}</td>
+                    <td class="num">{{ $money($group['period_cents']) }}<br><span class="muted">anual ÷ {{ $perYear }}</span></td>
                     <td>{{ $money($group['period_cents']) }} × {{ $group['days'] }} ÷ {{ $group['period_days'] }} = {{ $money($group['unit_charge_cents']) }}</td>
                     <td class="num">{{ $money($group['charge_cents']) }}</td>
                 </tr>
@@ -111,7 +116,7 @@
     </tr></table>
 
     @if (($summary['adjusted'] ?? []) !== [])
-        <table><tr><td class="section">Cuotas por pagar que cambian de monto</td></tr></table>
+        <table><tr><td class="section">Cuotas {{ $perYear === 1 ? 'anuales' : ($frequencyLower === 'mensual' ? 'mensuales' : $frequencyLower.'es') }} por pagar que cambian de monto</td></tr></table>
         <table class="grid">
             <thead><tr>
                 <th style="width: 22%;">Aviso</th>

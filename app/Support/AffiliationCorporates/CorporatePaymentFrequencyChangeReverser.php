@@ -87,6 +87,19 @@ final class CorporatePaymentFrequencyChangeReverser
                 $collection->save();
             }
 
+            /** Los upgrades de cobro único vuelven al primer aviso restaurado (el cambio los había pasado al primero nuevo). */
+            $firstRestored = collect($cancelled)
+                ->sortBy(fn ($collection): string => (CorporatePaymentFrequencyChanger::parseDueDate($collection->next_payment_date, $collection->filter_next_payment_date)?->format('Ymd') ?? '99999999').str_pad((string) $collection->getKey(), 12, '0', STR_PAD_LEFT))
+                ->first();
+
+            if ($firstRestored !== null) {
+                \App\Support\Upgrades\UpgradeFirstPaymentBilling::moveCharges(
+                    'affiliate_corporate_upgrades',
+                    array_map(static fn ($collection): int => (int) $collection->getKey(), $created),
+                    (int) $firstRestored->getKey(),
+                );
+            }
+
             $snapshot = $locked->snapshot ?? [];
             $previousFrequency = $snapshot['affiliation']['payment_frequency'] ?? $locked->previous_frequency;
 

@@ -500,7 +500,7 @@ class AffiliationCorporateController extends Controller
 
             foreach ($records as $record) {
                 $paymentData = array_merge($data, [
-                    'total_amount' => $record->total_amount,
+                    'total_amount' => \App\Support\Upgrades\UpgradeFirstPaymentBilling::suggestedProofAmount($record),
                 ]);
 
                 $uploaded = self::uploadPayment($record, $paymentData, $type_roll);

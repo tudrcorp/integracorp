@@ -610,12 +610,8 @@ class AffiliationCorporatesTable
                                         TextInput::make('total_amount')
                                             ->label('Total a pagar')
                                             ->prefix('US$')
-                                            ->default(function ($state, $set, Get $get, AffiliationCorporate $record) {
-
-                                                $amount = $record->total_amount;
-
-                                                return $amount;
-                                            })
+                                            ->default(fn (AffiliationCorporate $record): float => \App\Support\Upgrades\UpgradeFirstPaymentBilling::suggestedProofAmount($record))
+                                            ->helperText(fn (AffiliationCorporate $record): ?string => \App\Support\Upgrades\UpgradeFirstPaymentBilling::proofAmountHint($record))
                                             ->numeric()
                                             ->live(),
                                         DatePicker::make('date_payment_voucher')

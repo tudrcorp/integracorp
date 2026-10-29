@@ -118,6 +118,7 @@ final class UpgradeCatalogPersistence
         return [
             'name' => $upgrade->name,
             'description' => $upgrade->description,
+            'image_path' => $upgrade->image_path,
             'status' => $upgrade->status,
             'services' => $upgrade->activeServices
                 ->mapWithKeys(fn (UpgradeService $service): array => ['service-'.$service->getKey() => [
@@ -144,8 +145,20 @@ final class UpgradeCatalogPersistence
     }
 
     /**
-     * @param  array{name: string, description: ?string, status: string}  $data
+     * @param  array{name: string, description: ?string, image_path?: ?string, status: string}  $data
      */
+    /**
+     * La imagen solo se escribe si la columna existe: sin la migración, crear y editar upgrades
+     * siguen funcionando.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, string|null>
+     */
+    private static function imageAttributes(array $data): array
+    {
+        return Upgrade::hasImageColumn() ? ['image_path' => $data['image_path'] ?? null] : [];
+    }
+
     private static function createHeader(array $data, string $actor): Upgrade
     {
         $upgrade = Upgrade::query()->create([
@@ -155,6 +168,7 @@ final class UpgradeCatalogPersistence
             'status' => $data['status'],
             'created_by' => $actor,
             'updated_by' => $actor,
+            ...self::imageAttributes($data),
         ]);
 
         $upgrade->forceFill(['code' => 'UPG-'.str_pad((string) $upgrade->getKey(), 4, '0', STR_PAD_LEFT)])->save();
@@ -163,7 +177,7 @@ final class UpgradeCatalogPersistence
     }
 
     /**
-     * @param  array{name: string, description: ?string, status: string}  $data
+     * @param  array{name: string, description: ?string, image_path?: ?string, status: string}  $data
      */
     private static function updateHeader(Upgrade $upgrade, array $data, string $actor): Upgrade
     {
@@ -175,6 +189,7 @@ final class UpgradeCatalogPersistence
             'description' => $data['description'],
             'status' => $data['status'],
             'updated_by' => $actor,
+            ...self::imageAttributes($data),
         ])->save();
 
         return $locked;

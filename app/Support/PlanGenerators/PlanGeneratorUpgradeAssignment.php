@@ -11,6 +11,7 @@ use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\Upgrade;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\Upgrades\UpgradeFirstPaymentBilling;
 use App\Support\Upgrades\UpgradePricing;
 use Illuminate\Support\Facades\Auth;
 use RuntimeException;
@@ -55,6 +56,7 @@ final class PlanGeneratorUpgradeAssignment
                 AffiliateUpgrade::query()->create([
                     'affiliate_id' => $affiliate->getKey(),
                     ...self::attributes($upgrade, $age, $actor),
+                    ...UpgradeFirstPaymentBilling::assignmentAttributes('affiliate_upgrades'),
                 ]);
                 $created++;
                 $annual += (float) $upgrade['amount'];
@@ -64,14 +66,16 @@ final class PlanGeneratorUpgradeAssignment
         $annual = round($annual, 2);
         $delta = round($annual - (float) ($payload['upgrade_annual_estimate'] ?? 0), 2);
 
-        if (abs($delta) >= 0.01) {
-            $feeAnual = max(0.0, round((float) $affiliation->fee_anual + $delta, 2));
-            $affiliation->forceFill([
-                'fee_anual' => $feeAnual,
-                'total_amount' => app(AffiliationAffiliateFeeCalculator::class)
-                    ->totalAmountForPaymentFrequency($feeAnual, (string) ($affiliation->payment_frequency ?? 'ANUAL')),
-            ])->save();
-        }
+        $feeAnual = max(0.0, round((float) $affiliation->fee_anual + $delta, 2));
+        $frequency = (string) ($affiliation->payment_frequency ?? 'ANUAL');
+
+        /** La cuota regular lleva solo el plan: los upgrades se cobran completos en el primer pago. */
+        $affiliation->forceFill([
+            'fee_anual' => $feeAnual,
+            'total_amount' => UpgradeFirstPaymentBilling::hasColumn('affiliate_upgrades', 'billing_mode')
+                ? UpgradeFirstPaymentBilling::regularInstallment($feeAnual, UpgradeFirstPaymentBilling::individualOneTimeTotal($affiliation), $frequency)
+                : app(AffiliationAffiliateFeeCalculator::class)->totalAmountForPaymentFrequency($feeAnual, $frequency),
+        ])->save();
 
         return ['created' => $created, 'annual' => $annual, 'delta' => $delta];
     }
@@ -128,6 +132,7 @@ final class PlanGeneratorUpgradeAssignment
                     'affiliate_corporate_id' => $affiliate->getKey(),
                     'affiliation_corporate_id' => $affiliation->getKey(),
                     ...self::attributes($upgrade, UpgradePricing::ageOf($affiliate), $actor),
+                    ...UpgradeFirstPaymentBilling::assignmentAttributes('affiliate_corporate_upgrades'),
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];

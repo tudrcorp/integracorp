@@ -63,7 +63,7 @@ final class CorporateCollectionNoticeDispatcher
                     'email_ti' => $owner->email,
                     'total_amount' => (float) $collection->total_amount,
                     'plan' => $plans,
-                    'upgrades' => CorporateAffiliateUpgradeManager::noticeLinesFor($owner, $frequency),
+                    'upgrades' => CorporateAffiliateUpgradeManager::noticeLinesFor($owner, $frequency, (int) $collection->getKey()),
                     'coverage' => null,
                     'frequency' => $frequency,
                     'affiliates_count' => $affiliatesCount,

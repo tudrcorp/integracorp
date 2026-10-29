@@ -120,7 +120,21 @@ final class PlanGeneratorUpgrades
      */
     public static function resolveLines(?PlanGenerator $plan, array $state): array
     {
-        $stored = collect(self::linesFromModel($plan))->keyBy('line_key');
+        return self::resolveLinesFrom(self::linesFromModel($plan), $state);
+    }
+
+    /**
+     * Igual que {@see self::resolveLines()}, pero con las líneas ya guardadas en cualquier
+     * documento (generador de planes, cotización individual): mismas reglas, mismas copias
+     * congeladas.
+     *
+     * @param  list<array<string, mixed>>  $storedLines
+     * @param  array<int|string, mixed>  $state
+     * @return array{lines: list<array<string, mixed>>, errors: list<string>}
+     */
+    public static function resolveLinesFrom(array $storedLines, array $state): array
+    {
+        $stored = collect($storedLines)->keyBy('line_key');
         $lines = [];
         $errors = [];
         $seenUpgrades = [];

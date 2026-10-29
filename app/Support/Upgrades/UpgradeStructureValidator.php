@@ -80,10 +80,30 @@ final class UpgradeStructureValidator
         return [
             'name' => mb_strtoupper(self::cleanText($data['name'] ?? ''), 'UTF-8'),
             'description' => self::nullableText($data['description'] ?? null),
+            'image_path' => self::imagePath($data['image_path'] ?? null),
             'status' => $status !== '' ? $status : 'ACTIVO',
             'services' => $services,
             'coverages' => $coverages,
         ];
+    }
+
+    /**
+     * Ruta de la imagen de la tarjeta: solo dentro de la carpeta de imágenes de upgrades (el
+     * FileUpload a veces entrega un arreglo con un solo elemento).
+     */
+    private static function imagePath(mixed $value): ?string
+    {
+        if (is_array($value)) {
+            $value = array_values($value)[0] ?? null;
+        }
+
+        $path = is_string($value) ? trim($value) : '';
+
+        if ($path === '' || str_contains($path, '..') || ! str_starts_with($path, \App\Models\Upgrade::IMAGE_DIRECTORY.'/')) {
+            return null;
+        }
+
+        return $path;
     }
 
     /**

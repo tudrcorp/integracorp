@@ -265,7 +265,7 @@ final class AcceptAffiliationRenovationsService
                     'coverage_id' => $titularAmounts['coverage_id'],
                     'age_range_id' => $titularAmounts['age_range_id'],
                     'fee' => $annualFee,
-                    'total_amount' => $this->calculator->totalAmountForPaymentFrequency($annualFee, $manualOptions->paymentFrequency),
+                    'total_amount' => \App\Support\Upgrades\UpgradeFirstPaymentBilling::affiliateRegular($affiliate, $annualFee, $manualOptions->paymentFrequency),
                     'payment_frequency' => $manualOptions->paymentFrequency,
                 ]);
 
@@ -357,7 +357,7 @@ final class AcceptAffiliationRenovationsService
             'coverage_id' => $amounts['coverage_id'],
             'age_range_id' => $amounts['age_range_id'],
             'fee' => $annualFee,
-            'total_amount' => $this->calculator->totalAmountForPaymentFrequency($annualFee, $paymentFrequency),
+            'total_amount' => \App\Support\Upgrades\UpgradeFirstPaymentBilling::affiliateRegular($affiliate, $annualFee, $paymentFrequency),
             'payment_frequency' => $paymentFrequency,
         ]);
     }

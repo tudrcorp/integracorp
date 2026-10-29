@@ -36,5 +36,8 @@
             @endforeach
         </tbody>
     </table>
+    @if (($upgradeQuote['annual_total'] ?? 0) > 0)
+        <p style="margin: 3px 0 0; font-size: 8px;">{{ \App\Support\Upgrades\UpgradeInstallments::RULE }} Los pagos siguientes llevan solo el plan.</p>
+    @endif
     </div>
 

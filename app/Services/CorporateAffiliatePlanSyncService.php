@@ -81,10 +81,7 @@ final class CorporateAffiliatePlanSyncService
 
         $owner->fee_anual = $sumFee;
         $owner->poblation = $count;
-        $owner->total_amount = CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount(
-            $sumFee,
-            $owner->payment_frequency
-        );
+        $owner->total_amount = \App\Support\Upgrades\UpgradeFirstPaymentBilling::corporateRegular($owner, (float) $sumFee);
         $owner->save();
     }
 

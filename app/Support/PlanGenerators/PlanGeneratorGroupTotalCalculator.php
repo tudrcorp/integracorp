@@ -15,46 +15,88 @@ final class PlanGeneratorGroupTotalCalculator
     public const ROW_MENSUAL = 'mensual';
 
     /**
+     * Sufijo de la fila «pagos siguientes» de cada frecuencia (`semestral_next`, …).
+     */
+    public const NEXT_SUFFIX = '_next';
+
+    /**
      * `$upgradesAnnual` es el costo anual de los upgrades de la cotización
      * (`PlanGeneratorUpgrades::quote()`): cubre a toda la población, así que se
      * suma igual a cada columna que tiene tarifa. Una columna sin tarifas sigue
      * en cero.
      *
+     * Los upgrades no se reparten en cuotas (`UpgradeInstallments`): van completos en el
+     * primer pago. Por eso cada frecuencia trae su primer pago (`semestral`, …: plan ÷ n +
+     * upgrades) y sus pagos siguientes (`semestral_next`, …: solo plan ÷ n). Sin upgrades
+     * ambos valen lo mismo.
+     *
      * @param  array<int, array<string, mixed>>  $columns
      * @param  array<string, array<string, mixed>>  $rateRows
-     * @return array{
-     *     annual: array<string, float>,
-     *     semestral: array<string, float>,
-     *     trimestral: array<string, float>,
-     *     mensual: array<string, float>
-     * }
+     * @return array<string, array<string, float>>
      */
     public static function totalsByColumn(array $columns, array $rateRows, float $upgradesAnnual = 0.0): array
     {
         $columns = PlanGeneratorMatrixState::normalizeColumns($columns);
-        $annualByColumn = [];
+        $upgradesAnnual = max(0.0, $upgradesAnnual);
+        $totals = [
+            self::ROW_ANNUAL => [],
+            self::ROW_SEMESTRAL => [],
+            self::ROW_TRIMESTRAL => [],
+            self::ROW_MENSUAL => [],
+            self::ROW_SEMESTRAL.self::NEXT_SUFFIX => [],
+            self::ROW_TRIMESTRAL.self::NEXT_SUFFIX => [],
+            self::ROW_MENSUAL.self::NEXT_SUFFIX => [],
+        ];
 
         foreach (PlanGeneratorMatrixState::extractColumnKeys($columns) as $columnKey) {
             $planAnnual = self::annualTotalForColumn($columnKey, $rateRows);
-            $annualByColumn[$columnKey] = $planAnnual > 0 ? $planAnnual + max(0.0, $upgradesAnnual) : $planAnnual;
+            $upgrades = $planAnnual > 0 ? $upgradesAnnual : 0.0;
+            $totals[self::ROW_ANNUAL][$columnKey] = $planAnnual + $upgrades;
+
+            foreach ([self::ROW_SEMESTRAL => 2, self::ROW_TRIMESTRAL => 4, self::ROW_MENSUAL => 12] as $row => $installments) {
+                $totals[$row][$columnKey] = $planAnnual / $installments + $upgrades;
+                $totals[$row.self::NEXT_SUFFIX][$columnKey] = $planAnnual / $installments;
+            }
         }
 
-        $semestralByColumn = [];
-        $trimestralByColumn = [];
-        $mensualByColumn = [];
+        return $totals;
+    }
 
-        foreach ($annualByColumn as $columnKey => $annualTotal) {
-            $semestralByColumn[$columnKey] = $annualTotal / 2;
-            $trimestralByColumn[$columnKey] = $annualTotal / 4;
-            $mensualByColumn[$columnKey] = $annualTotal / 12;
+    /**
+     * Filas que se dibujan en el total grupal. Sin upgrades son las de `groupTotalRows()`;
+     * con upgrades, cada frecuencia en cuotas se abre en «1.er pago» (con los upgrades) y
+     * «pagos siguientes» (solo el plan). `frequency_key` es la fila de la que salen: es la
+     * que se quita o se restaura.
+     *
+     * @return list<array{key: string, frequency_key: string, label: string, bold: bool}>
+     */
+    public static function displayRows(bool $includeMonthlyTotal, mixed $hiddenRows, float $upgradesAnnual = 0.0): array
+    {
+        $rows = [];
+
+        foreach (self::groupTotalRows($includeMonthlyTotal, $hiddenRows) as $row) {
+            if ($upgradesAnnual <= 0 || $row['key'] === self::ROW_ANNUAL) {
+                $rows[] = [...$row, 'frequency_key' => $row['key'], 'label' => $row['key'] === self::ROW_ANNUAL && $upgradesAnnual > 0 ? $row['label'].' (pago único)' : $row['label']];
+
+                continue;
+            }
+
+            $installments = match ($row['key']) {
+                self::ROW_SEMESTRAL => 2,
+                self::ROW_TRIMESTRAL => 4,
+                default => 12,
+            };
+
+            $rows[] = ['key' => $row['key'], 'frequency_key' => $row['key'], 'label' => $row['label'].' · 1.er pago', 'bold' => $row['bold']];
+            $rows[] = [
+                'key' => $row['key'].self::NEXT_SUFFIX,
+                'frequency_key' => $row['key'],
+                'label' => $row['label'].($installments === 2 ? ' · 2.º pago' : ' · pagos 2 a '.$installments),
+                'bold' => false,
+            ];
         }
 
-        return [
-            self::ROW_ANNUAL => $annualByColumn,
-            self::ROW_SEMESTRAL => $semestralByColumn,
-            self::ROW_TRIMESTRAL => $trimestralByColumn,
-            self::ROW_MENSUAL => $mensualByColumn,
-        ];
+        return $rows;
     }
 
     /**

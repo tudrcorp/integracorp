@@ -79,6 +79,16 @@ class IndividualQuotePdfLayout
         return [self::Inicial, self::Ideal, self::Especial];
     }
 
+    /**
+     * Cotización individual (desde el 29/10/2026): todos los planes, incluidos Inicial, Ideal y
+     * Especial, se componen desde su estructura —beneficios del catálogo, tarifas y upgrades
+     * debajo—, igual que en el generador de planes. La corporativa sigue con {@see self::resolve()}.
+     */
+    public static function resolveForIndividual(int $planId): string
+    {
+        return self::resolveFromStructure($planId);
+    }
+
     private static function resolveFromStructure(int $planId): string
     {
         $plan = Plan::query()->find($planId);

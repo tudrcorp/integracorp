@@ -83,6 +83,8 @@ final class PlanGeneratorPreAffiliationOptions
                 $fee += $upgrades['total'];
                 $population = max(1, (int) ($rateRow['population'] ?? 0));
                 $annual = $fee * $population;
+                /** Las cuotas llevan solo el plan: los upgrades van completos en el primer pago. */
+                $planAnnual = $planFee * $population;
 
                 $rows[] = [
                     'key' => $columnKey.self::KEY_SEPARATOR.$index,
@@ -97,9 +99,10 @@ final class PlanGeneratorPreAffiliationOptions
                     'upgrades' => $upgrades['upgrades'],
                     'fee' => $fee,
                     'subtotal_anual' => $annual,
-                    'subtotal_biannual' => $annual / 2,
-                    'subtotal_quarterly' => $annual / 4,
-                    'subtotal_monthly' => $annual / 12,
+                    'subtotal_biannual' => $planAnnual / 2,
+                    'subtotal_quarterly' => $planAnnual / 4,
+                    'subtotal_monthly' => $planAnnual / 12,
+                    'upgrades_annual' => $upgrades['total'] * $population,
                 ];
             }
         }
@@ -175,9 +178,11 @@ final class PlanGeneratorPreAffiliationOptions
                 // una sola por plan.
                 'fee' => $annual / $population,
                 'subtotal_anual' => $annual,
-                'subtotal_biannual' => (float) ($groupTotals['semestral'][$columnKey] ?? 0),
-                'subtotal_quarterly' => (float) ($groupTotals['trimestral'][$columnKey] ?? 0),
-                'subtotal_monthly' => (float) ($groupTotals['mensual'][$columnKey] ?? 0),
+                /** Cuota regular (solo plan): los upgrades van completos en el primer pago. */
+                'subtotal_biannual' => (float) ($groupTotals['semestral'.PlanGeneratorGroupTotalCalculator::NEXT_SUFFIX][$columnKey] ?? 0),
+                'subtotal_quarterly' => (float) ($groupTotals['trimestral'.PlanGeneratorGroupTotalCalculator::NEXT_SUFFIX][$columnKey] ?? 0),
+                'subtotal_monthly' => (float) ($groupTotals['mensual'.PlanGeneratorGroupTotalCalculator::NEXT_SUFFIX][$columnKey] ?? 0),
+                'upgrades_annual' => max(0.0, $annual - (float) ($groupTotals['semestral'.PlanGeneratorGroupTotalCalculator::NEXT_SUFFIX][$columnKey] ?? 0) * 2),
             ];
         }
 
@@ -245,14 +250,17 @@ final class PlanGeneratorPreAffiliationOptions
         $people = max(1, $people);
         $fee = (float) ($row['fee'] ?? 0);
         $annual = $fee * $people;
+        /** Las cuotas llevan solo el plan: los upgrades van completos en el primer pago. */
+        $planAnnual = (float) ($row['plan_fee'] ?? $fee) * $people;
 
         return [
             'people' => $people,
             'fee' => $fee,
             'subtotal_anual' => $annual,
-            'subtotal_biannual' => $annual / 2,
-            'subtotal_quarterly' => $annual / 4,
-            'subtotal_monthly' => $annual / 12,
+            'subtotal_biannual' => $planAnnual / 2,
+            'subtotal_quarterly' => $planAnnual / 4,
+            'subtotal_monthly' => $planAnnual / 12,
+            'upgrades_annual' => max(0.0, $annual - $planAnnual),
         ];
     }
 
@@ -274,7 +282,8 @@ final class PlanGeneratorPreAffiliationOptions
             .' × '.self::money($amounts['fee'])
             .'  =  Anual '.self::money($amounts['subtotal_anual'])
             .' · Semestral '.self::money($amounts['subtotal_biannual'])
-            .' · Trimestral '.self::money($amounts['subtotal_quarterly']);
+            .' · Trimestral '.self::money($amounts['subtotal_quarterly'])
+            .self::upgradesNote($amounts['upgrades_annual']);
     }
 
     /**
@@ -317,7 +326,19 @@ final class PlanGeneratorPreAffiliationOptions
             .' · '.$people.' '.($people === 1 ? 'persona' : 'personas')
             .' · Anual '.self::money($row['subtotal_anual'] ?? 0)
             .' · Semestral '.self::money($row['subtotal_biannual'] ?? 0)
-            .' · Trimestral '.self::money($row['subtotal_quarterly'] ?? 0);
+            .' · Trimestral '.self::money($row['subtotal_quarterly'] ?? 0)
+            .self::upgradesNote((float) ($row['upgrades_annual'] ?? 0));
+    }
+
+    /**
+     * Aclara que semestral y trimestral son la cuota del plan y que los upgrades se pagan aparte,
+     * completos, en el primer pago.
+     */
+    private static function upgradesNote(float $upgradesAnnual): string
+    {
+        return $upgradesAnnual >= 0.5
+            ? ' (cuotas del plan; + '.self::money($upgradesAnnual).' de upgrades en el primer pago)'
+            : '';
     }
 
     public static function money(mixed $amount): string

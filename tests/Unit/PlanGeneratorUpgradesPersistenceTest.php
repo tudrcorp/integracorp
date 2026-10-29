@@ -260,7 +260,9 @@ it('al aprobar en individual cada familiar recibe el upgrade por su edad real y 
         ->and($result['delta'])->toBe(-40.0)
         ->and(AffiliateUpgrade::query()->pluck('affiliate_id')->all())->toBe([1])
         ->and((float) $affiliation->fee_anual)->toBe(1040.0)
-        ->and((float) $affiliation->total_amount)->toBe(260.0)
+        /** La cuota regular lleva solo el plan: los US$ 40 del upgrade van completos en el primer pago. */
+        ->and((float) $affiliation->total_amount)->toBe(250.0)
+        ->and(AffiliateUpgrade::query()->value('billing_mode'))->toBe(App\Support\Upgrades\UpgradeFirstPaymentBilling::MODE)
         ->and(PlanGeneratorUpgradeAssignment::assignIndividual($affiliation, [])['created'])->toBe(0);
 });
 

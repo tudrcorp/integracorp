@@ -7,6 +7,7 @@ namespace App\Services\TuDr;
 use App\Exceptions\IncompleteQuoteDetailException;
 use App\Exceptions\QuoteServiceUnavailableException;
 use App\Exceptions\TarifaNoDisponibleException;
+use App\Support\Quotes\IndividualQuoteProposalPages;
 use App\Support\TuDrQuote\QuoteControlNumber;
 use App\Support\TuDrQuote\QuoteDocumentAssembler;
 use App\Support\TuDrQuote\QuoteDocumentLayout;
@@ -168,9 +169,25 @@ class QuoteProposalPdfService
         }
 
         /** Una página de cálculos por plan cotizado. */
+        $calculationPages = count($payload['planes']);
+
+        /**
+         * Propuesta individual: la página de cada plan se compone aquí (beneficios de la
+         * configuración del plan, tarifas y upgrades debajo) en lugar de la imagen horneada del
+         * servicio. Solo si cada plan tiene su página; si no, el documento queda como vino.
+         */
+        $orderedPlanIds = $planIds;
+        sort($orderedPlanIds);
+
+        if ($scope === QuoteDocumentLayout::SCOPE_INDIVIDUAL && count($orderedPlanIds) === $calculationPages) {
+            $composed = IndividualQuoteProposalPages::replaceCalculationPages($calculations, $quoteId, $orderedPlanIds);
+            $calculations = $composed['document'];
+            $calculationPages = $composed['calculation_pages'];
+        }
+
         $document = QuoteDocumentAssembler::apply(
             $calculations,
-            count($payload['planes']),
+            $calculationPages,
             $scope,
         );
 
