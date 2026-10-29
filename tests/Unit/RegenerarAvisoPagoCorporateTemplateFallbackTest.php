@@ -16,12 +16,12 @@ it('usa fallback para subtotal semestral en aviso de pago corporativo regenerado
         ->and($contents)->toContain("\$planRow = \$data['plan'][\$i];");
 });
 
-it('incluye marca de agua y layout dompdf en regenerar aviso de pago corporativo', function (): void {
+it('no incluye marca de agua y conserva el layout dompdf en regenerar aviso de pago corporativo', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/documents/regenerar-aviso-de-pago-corporativo.blade.php');
 
     expect($source)
-        ->toContain('document-watermark')
-        ->toContain("public_path('image/logoNewTDG.png')")
+        ->not->toContain('document-watermark')
+        ->not->toContain('logoNewTDG.png')
         ->toContain('margin: 15mm 20mm')
         ->toContain('footer-legal')
         ->toContain('footer-banner')
