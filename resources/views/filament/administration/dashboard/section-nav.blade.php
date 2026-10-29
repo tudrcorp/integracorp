@@ -2,13 +2,29 @@
     /** @var list<array{anchor: string, label: string, icon: string}> $sections */
 @endphp
 
-<x-filament-widgets::widget class="admin-section-nav sticky top-16 z-20">
+<x-filament-widgets::widget class="admin-section-nav sticky top-20 z-20">
     <nav
         aria-label="Secciones del escritorio"
         x-data="{
             active: @js($sections[0]['anchor'] ?? ''),
             observer: null,
+            resizer: null,
+            gap: 12,
+            stickyTop: 76,
+            {{-- La barra superior no siempre mide 64 px: se mide y la barra de secciones flota debajo con aire. --}}
+            place() {
+                const topbar = document.querySelector('.fi-topbar-ctn') ?? document.querySelector('.fi-topbar');
+                this.stickyTop = Math.round((topbar?.getBoundingClientRect().height || 64) + this.gap);
+                const wrapper = this.$root.closest('.admin-section-nav');
+                if (wrapper) { wrapper.style.top = this.stickyTop + 'px'; }
+            },
             init() {
+                this.place();
+                const topbar = document.querySelector('.fi-topbar-ctn') ?? document.querySelector('.fi-topbar');
+                if (topbar && 'ResizeObserver' in window) {
+                    this.resizer = new ResizeObserver(() => this.place());
+                    this.resizer.observe(topbar);
+                }
                 this.observer = new IntersectionObserver((entries) => {
                     entries.filter((entry) => entry.isIntersecting).forEach((entry) => { this.active = entry.target.id; });
                 }, { rootMargin: '-35% 0px -60% 0px' });
@@ -23,9 +39,14 @@
                 const element = document.getElementById(id);
                 if (!element) { return; }
                 this.active = id;
-                element.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+                {{-- El título de la sección queda debajo de la barra de secciones, no escondido detrás. --}}
+                const offset = this.stickyTop + this.$root.offsetHeight + 16;
+                window.scrollTo({
+                    top: Math.max(0, element.getBoundingClientRect().top + window.scrollY - offset),
+                    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                });
             },
-            destroy() { this.observer?.disconnect(); },
+            destroy() { this.observer?.disconnect(); this.resizer?.disconnect(); },
         }"
         class="ops-hide-in-presentation flex gap-1 overflow-x-auto rounded-xl bg-white/90 p-1 shadow-sm ring-1 ring-gray-950/5 backdrop-blur [scrollbar-width:none] dark:bg-gray-900/90 dark:ring-white/10"
     >

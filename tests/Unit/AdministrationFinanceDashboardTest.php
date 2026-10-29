@@ -173,6 +173,20 @@ it('el Escritorio conserva la bienvenida arriba y arma sus secciones con la barr
         ->assertSee('id="admin-rrhh"', false);
 });
 
+it('la barra de secciones flota debajo de la barra superior con aire y no tapa el título al saltar', function (): void {
+    $html = Livewire::test(AdministrationSectionNav::class)->html();
+
+    expect($html)
+        ->toContain('sticky top-20')
+        ->not->toContain('top-16')
+        ->toContain("document.querySelector('.fi-topbar-ctn')")
+        ->toContain('gap: 12')
+        ->toContain('new ResizeObserver')
+        ->toContain('this.stickyTop + this.$root.offsetHeight + 16')
+        ->toContain('this.resizer?.disconnect()')
+        ->not->toContain('{{--');
+});
+
 it('cada widget del Escritorio se renderiza con datos', function (): void {
     sembrarAdministracionMarzo2031();
     $filters = filtrosAdministracionMarzo2031();
