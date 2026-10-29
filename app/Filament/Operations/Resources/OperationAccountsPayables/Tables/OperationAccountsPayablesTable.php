@@ -9,12 +9,14 @@ use App\Filament\Operations\Resources\OperationAccountsPayables\Actions\Accounts
 use App\Http\Controllers\OperationAccountsPayableExportCsvController;
 use App\Models\BusinessUnit;
 use App\Models\OperationAccountsPayable;
+use App\Services\AccountsPayableSupplierReportXlsxService;
 use App\Support\Filament\CsvExportDownloadTrigger;
 use App\Support\Filament\Operations\SpecificBusinessUnitTableTools;
 use App\Support\Operations\AccountsPayableInvoicePreview;
 use App\Support\Operations\AccountsPayablePaymentReceiptPreview;
 use App\Support\Operations\AccountsPayableServiceDisplay;
 use App\Support\Operations\OperationServiceOrderListDisplay;
+use App\Support\SecurityAudit;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -31,6 +33,10 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class OperationAccountsPayablesTable
 {
@@ -297,6 +303,56 @@ class OperationAccountsPayablesTable
                                 $action,
                                 route('operations.operation-accounts-payables.export-csv', ['token' => $token]),
                             );
+                        }),
+                    BulkAction::make('export_accounts_payables_supplier_xlsx')
+                        ->label('Exportar Excel por proveedor')
+                        ->icon('heroicon-o-table-cells')
+                        ->color('success')
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records): ?StreamedResponse {
+                            if ($records->isEmpty()) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('Selecciona al menos una factura')
+                                    ->body('Marca los registros que deseas exportar o usa «Seleccionar todos» en la tabla.')
+                                    ->send();
+
+                                return null;
+                            }
+
+                            try {
+                                $report = AccountsPayableSupplierReportXlsxService::build($records->pluck('id')->all());
+                            } catch (Throwable $exception) {
+                                Log::error('No se pudo generar el Excel de cuentas por pagar por proveedor.', [
+                                    'ids' => $records->count(),
+                                    'exception' => $exception,
+                                ]);
+
+                                Notification::make()
+                                    ->danger()
+                                    ->title('No se pudo generar el Excel')
+                                    ->body($exception instanceof RuntimeException
+                                        ? $exception->getMessage()
+                                        : 'Ocurrió un error al armar el reporte. Inténtalo de nuevo; si persiste, avisa a Sistemas.')
+                                    ->send();
+
+                                return null;
+                            }
+
+                            SecurityAudit::log('AUDIT_ACCOUNTS_PAYABLE_SUPPLIER_XLSX_EXPORTED', 'operations.accounts-payable.supplier-xlsx', [
+                                'rows' => $report['rows'],
+                                'sheets' => $report['sheets'],
+                                'filename' => $report['filename'],
+                            ]);
+
+                            $contents = $report['contents'];
+
+                            return response()->streamDownload(static function () use ($contents): void {
+                                echo $contents;
+                            }, $report['filename'], [
+                                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                'X-Content-Type-Options' => 'nosniff',
+                            ]);
                         }),
                     AccountsPayablePaymentReceiptActions::makeBulkAction(),
                     DeleteBulkAction::make()
