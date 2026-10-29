@@ -328,3 +328,145 @@ function bootQuoteWhatsAppSqliteSchema(): void
         $table->timestamps();
     });
 }
+
+/**
+ * Catálogo de upgrades en la conexión por defecto (que el test ya apuntó a
+ * sqlite `:memory:`), con un juego de datos fijo:
+ *
+ * - 1 ODONTOLOGÍA (activo): cobertura 10 (5.000 US$) 0–35 = 40, 36–64 = 60;
+ *   cobertura 11 (10.000 US$) 0–64 = 80.
+ * - 2 ÓPTICA (activo): cobertura 20 (sin monto) 0–35 = 20.
+ * - 3 VIEJO (inactivo): cobertura 30 0–120 = 10.
+ */
+function createUpgradeCatalogTestSchema(bool $withFixture = true): void
+{
+    $schema = Illuminate\Support\Facades\Schema::connection(null);
+
+    $schema->create('upgrades', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->string('code', 40)->unique();
+        $table->string('name', 120);
+        $table->text('description')->nullable();
+        $table->string('status', 20)->default('ACTIVO');
+        $table->unsignedBigInteger('legacy_upgrade_benefit_id')->nullable();
+        $table->string('created_by')->nullable();
+        $table->string('updated_by')->nullable();
+        $table->timestamps();
+    });
+
+    $schema->create('upgrade_services', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->unsignedBigInteger('upgrade_id');
+        $table->string('name', 160);
+        $table->text('description')->nullable();
+        $table->unsignedSmallInteger('sort')->default(0);
+        $table->string('status', 20)->default('ACTIVO');
+        $table->string('created_by')->nullable();
+        $table->string('updated_by')->nullable();
+        $table->timestamps();
+    });
+
+    $schema->create('upgrade_coverages', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->unsignedBigInteger('upgrade_id');
+        $table->decimal('amount', 12, 2)->nullable();
+        $table->unsignedSmallInteger('sort')->default(0);
+        $table->string('status', 20)->default('ACTIVO');
+        $table->string('created_by')->nullable();
+        $table->string('updated_by')->nullable();
+        $table->timestamps();
+    });
+
+    $schema->create('upgrade_coverage_age_ranges', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->unsignedBigInteger('upgrade_coverage_id');
+        $table->unsignedTinyInteger('age_from');
+        $table->unsignedTinyInteger('age_to');
+        $table->decimal('price', 10, 2);
+        $table->string('status', 20)->default('ACTIVO');
+        $table->string('created_by')->nullable();
+        $table->string('updated_by')->nullable();
+        $table->timestamps();
+    });
+
+    if (! $withFixture) {
+        return;
+    }
+
+    $db = Illuminate\Support\Facades\DB::connection(null);
+
+    $db->table('upgrades')->insert([
+        ['id' => 1, 'code' => 'UPG-0001', 'name' => 'ODONTOLOGÍA', 'status' => 'ACTIVO'],
+        ['id' => 2, 'code' => 'UPG-0002', 'name' => 'ÓPTICA', 'status' => 'ACTIVO'],
+        ['id' => 3, 'code' => 'UPG-0003', 'name' => 'VIEJO', 'status' => 'INACTIVO'],
+    ]);
+
+    $db->table('upgrade_coverages')->insert([
+        ['id' => 10, 'upgrade_id' => 1, 'amount' => 5000, 'sort' => 0, 'status' => 'ACTIVO'],
+        ['id' => 11, 'upgrade_id' => 1, 'amount' => 10000, 'sort' => 1, 'status' => 'ACTIVO'],
+        ['id' => 20, 'upgrade_id' => 2, 'amount' => null, 'sort' => 0, 'status' => 'ACTIVO'],
+        ['id' => 30, 'upgrade_id' => 3, 'amount' => null, 'sort' => 0, 'status' => 'ACTIVO'],
+    ]);
+
+    $db->table('upgrade_coverage_age_ranges')->insert([
+        ['id' => 100, 'upgrade_coverage_id' => 10, 'age_from' => 0, 'age_to' => 35, 'price' => 40, 'status' => 'ACTIVO'],
+        ['id' => 101, 'upgrade_coverage_id' => 10, 'age_from' => 36, 'age_to' => 64, 'price' => 60, 'status' => 'ACTIVO'],
+        ['id' => 110, 'upgrade_coverage_id' => 11, 'age_from' => 0, 'age_to' => 64, 'price' => 80, 'status' => 'ACTIVO'],
+        ['id' => 200, 'upgrade_coverage_id' => 20, 'age_from' => 0, 'age_to' => 35, 'price' => 20, 'status' => 'ACTIVO'],
+        ['id' => 300, 'upgrade_coverage_id' => 30, 'age_from' => 0, 'age_to' => 120, 'price' => 10, 'status' => 'ACTIVO'],
+    ]);
+}
+
+/**
+ * Columnas de una tabla de asignación de upgrades (corporativa o individual).
+ */
+function upgradeAssignmentTestColumns(Illuminate\Database\Schema\Blueprint $table): void
+{
+    $table->unsignedBigInteger('upgrade_id')->nullable();
+    $table->unsignedBigInteger('upgrade_coverage_id')->nullable();
+    $table->unsignedBigInteger('upgrade_coverage_age_range_id')->nullable();
+    $table->string('name', 120);
+    $table->decimal('coverage_amount', 12, 2)->nullable();
+    $table->unsignedTinyInteger('age_at_assignment')->nullable();
+    $table->decimal('amount', 10, 2);
+    $table->string('ils_voucher_code', 80)->nullable();
+    $table->date('ils_date_init')->nullable();
+    $table->date('ils_date_end')->nullable();
+    $table->string('ils_document_path')->nullable();
+    $table->string('status', 20)->default('ACTIVO');
+    $table->unsignedBigInteger('replaces_id')->nullable();
+    $table->string('created_by')->nullable();
+    $table->string('updated_by')->nullable();
+    $table->timestamp('deactivated_at')->nullable();
+    $table->string('deactivated_by')->nullable();
+    $table->string('deactivation_reason', 60)->nullable();
+    $table->timestamps();
+}
+
+/**
+ * Vouchers ILS válidos para `add()` de los gestores de upgrades: un comprobante
+ * por afiliado en el disco `public` (el test debe llamar antes a
+ * `Storage::fake('public')`) y un número que no se repite.
+ *
+ * @param  list<int>  $affiliateIds
+ * @return array<int, array{code: string, date_init: string, date_end: string, document_path: string}>
+ */
+function upgradeVouchersFor(array $affiliateIds): array
+{
+    $vouchers = [];
+
+    foreach ($affiliateIds as $affiliateId) {
+        $code = 'ILS-'.strtoupper(substr(md5(uniqid((string) $affiliateId, true)), 0, 10));
+        $path = App\Support\Upgrades\UpgradeIlsVoucher::DOCUMENT_DIRECTORY.'/'.$code.'.pdf';
+        Illuminate\Support\Facades\Storage::disk(App\Support\Upgrades\UpgradeIlsVoucher::DOCUMENT_DISK)->put($path, '%PDF-1.4 prueba');
+
+        $vouchers[(int) $affiliateId] = [
+            'code' => $code,
+            'date_init' => now()->toDateString(),
+            'date_end' => now()->addYear()->toDateString(),
+            'document_path' => $path,
+        ];
+    }
+
+    return $vouchers;
+}

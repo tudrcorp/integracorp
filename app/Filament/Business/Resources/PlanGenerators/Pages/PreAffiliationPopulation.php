@@ -15,6 +15,7 @@ use App\Support\Filament\PatientAgeDisplay;
 use App\Support\PlanGenerators\PlanGeneratorCoverageAssignment;
 use App\Support\PlanGenerators\PlanGeneratorPopulationStatus;
 use App\Support\PlanGenerators\PlanGeneratorPreAffiliationSession;
+use App\Support\PlanGenerators\PlanGeneratorUpgrades;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -279,6 +280,16 @@ class PreAffiliationPopulation extends Page implements HasTable
                     ->icon(fn (PlanGeneratorPopulation $record): ?string => $this->coverageCell($record)['icon'])
                     ->description(fn (PlanGeneratorPopulation $record): ?string => $this->coverageCell($record)['description'])
                     ->tooltip(fn (PlanGeneratorPopulation $record): ?string => $this->coverageCell($record)['tooltip']),
+                TextColumn::make('upgrades')
+                    ->label('Upgrade')
+                    ->state(fn (PlanGeneratorPopulation $record): array => $this->upgradeLines($record))
+                    ->badge()
+                    ->color(fn (string $state): string => str_starts_with($state, 'No recibe') ? 'gray' : 'success')
+                    ->icon(fn (string $state): string => str_starts_with($state, 'No recibe') ? 'heroicon-m-no-symbol' : 'heroicon-m-sparkles')
+                    ->listWithLineBreaks()
+                    ->wrap()
+                    ->placeholder('—')
+                    ->visible(fn (): bool => PlanGeneratorCoverageAssignment::report($this->getRecord())['upgrade_summary'] !== []),
                 TextColumn::make('eligible_coverages')
                     ->label('Admitida en')
                     ->state(fn (PlanGeneratorPopulation $record): string => $this->eligibleCoveragesLine($record))
@@ -488,6 +499,23 @@ class PreAffiliationPopulation extends Page implements HasTable
             'description' => $placement['range_label'].' · US$ '.number_format($placement['fee'], 2, ',', '.').' anual',
             'tooltip' => null,
         ];
+    }
+
+    /**
+     * Si la persona recibe cada upgrade de la cotización por su edad real, o por qué no.
+     *
+     * @return list<string>
+     */
+    protected function upgradeLines(PlanGeneratorPopulation $record): array
+    {
+        $eligibility = PlanGeneratorCoverageAssignment::report($this->getRecord())['upgrades_by_person'][(int) $record->getKey()] ?? [];
+
+        return array_map(
+            static fn (array $item): string => $item['receives']
+                ? $item['name'].' · '.PlanGeneratorUpgrades::money((float) $item['upgrade']['amount'])
+                : 'No recibe '.$item['name'].': '.$item['reason'],
+            $eligibility,
+        );
     }
 
     protected function eligibleCoveragesLine(PlanGeneratorPopulation $record): string

@@ -15,6 +15,11 @@ final class PlanGeneratorGroupTotalCalculator
     public const ROW_MENSUAL = 'mensual';
 
     /**
+     * `$upgradesAnnual` es el costo anual de los upgrades de la cotización
+     * (`PlanGeneratorUpgrades::quote()`): cubre a toda la población, así que se
+     * suma igual a cada columna que tiene tarifa. Una columna sin tarifas sigue
+     * en cero.
+     *
      * @param  array<int, array<string, mixed>>  $columns
      * @param  array<string, array<string, mixed>>  $rateRows
      * @return array{
@@ -24,13 +29,14 @@ final class PlanGeneratorGroupTotalCalculator
      *     mensual: array<string, float>
      * }
      */
-    public static function totalsByColumn(array $columns, array $rateRows): array
+    public static function totalsByColumn(array $columns, array $rateRows, float $upgradesAnnual = 0.0): array
     {
         $columns = PlanGeneratorMatrixState::normalizeColumns($columns);
         $annualByColumn = [];
 
         foreach (PlanGeneratorMatrixState::extractColumnKeys($columns) as $columnKey) {
-            $annualByColumn[$columnKey] = self::annualTotalForColumn($columnKey, $rateRows);
+            $planAnnual = self::annualTotalForColumn($columnKey, $rateRows);
+            $annualByColumn[$columnKey] = $planAnnual > 0 ? $planAnnual + max(0.0, $upgradesAnnual) : $planAnnual;
         }
 
         $semestralByColumn = [];

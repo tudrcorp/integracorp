@@ -21,6 +21,10 @@ use App\Models\PlanGenerator;
  * Los subtotales se calculan igual que en la tabla «Detalles de la cotización»
  * de Negocios: `subtotal_anual = tarifa individual × población`, semestral la
  * mitad, trimestral un cuarto, mensual un doceavo.
+ *
+ * Si la cotización lleva upgrades, la tarifa individual de cada opción ya los
+ * incluye (precio del upgrade para ese rango) y la fila trae el detalle en
+ * `upgrades` para asignarlos a cada afiliado al crear la afiliación.
  */
 final class PlanGeneratorPreAffiliationOptions
 {
@@ -51,6 +55,7 @@ final class PlanGeneratorPreAffiliationOptions
         $matrix = PlanGeneratorPersistence::formStateFromModel($plan);
         $columns = PlanGeneratorMatrixState::normalizeColumns($matrix['columns']);
         $rateRows = array_values($matrix['rate_rows']);
+        $upgradeLines = PlanGeneratorUpgrades::linesFromModel($plan);
 
         $rows = [];
 
@@ -71,6 +76,11 @@ final class PlanGeneratorPreAffiliationOptions
                     continue;
                 }
 
+                // Solo los upgrades que alcanzan a este rango (población elegida en la cotización).
+                $upgrades = PlanGeneratorUpgrades::perPersonForLabel($upgradeLines, (string) ($rateRow['age_range_label'] ?? ''));
+
+                $planFee = $fee;
+                $fee += $upgrades['total'];
                 $population = max(1, (int) ($rateRow['population'] ?? 0));
                 $annual = $fee * $population;
 
@@ -82,6 +92,9 @@ final class PlanGeneratorPreAffiliationOptions
                         ? (string) $rateRow['age_range_label']
                         : 'Sin rango',
                     'population' => $population,
+                    'plan_fee' => $planFee,
+                    'upgrade_fee' => $upgrades['total'],
+                    'upgrades' => $upgrades['upgrades'],
                     'fee' => $fee,
                     'subtotal_anual' => $annual,
                     'subtotal_biannual' => $annual / 2,
@@ -114,7 +127,11 @@ final class PlanGeneratorPreAffiliationOptions
         $matrix = PlanGeneratorPersistence::formStateFromModel($plan);
         $columns = PlanGeneratorMatrixState::normalizeColumns($matrix['columns']);
         $rateRows = array_values($matrix['rate_rows']);
-        $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows);
+        $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn(
+            $columns,
+            $rateRows,
+            PlanGeneratorUpgrades::quote(PlanGeneratorUpgrades::linesFromModel($plan), $rateRows)['annual_total'],
+        );
 
         $rows = [];
 
@@ -199,6 +216,9 @@ final class PlanGeneratorPreAffiliationOptions
 
         foreach (self::individualRows($plan) as $row) {
             $descriptions[$row['key']] = 'Tarifa individual anual '.self::money($row['fee'])
+                .(($row['upgrade_fee'] ?? 0) > 0
+                    ? ' (plan '.self::money((float) $row['plan_fee']).' + upgrades estimados '.self::money((float) $row['upgrade_fee']).'; al afiliar se asignan por la edad real de cada persona)'
+                    : '')
                 .' · el rango tiene '.$row['population'].' '
                 .($row['population'] === 1 ? 'persona cotizada' : 'personas cotizadas');
         }

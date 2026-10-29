@@ -44,8 +44,9 @@ class EditPlanGenerator extends EditRecord
         $data = $this->normalizeMatrixFormState($data);
         $this->assertPlanGeneratorPopulationTotalsMatch();
         $this->assertPlanGeneratorQuotationBodyIsValid();
+        $this->assertPlanGeneratorUpgradesArePriceable($data, $this->getRecord());
 
-        unset($data['columns'], $data['rows'], $data['rate_rows'], $data['quotation_pages']);
+        unset($data['columns'], $data['rows'], $data['rate_rows'], $data['quotation_pages'], $data['upgrades']);
 
         if ($this->getRecord()->isDerivedQuotation()) {
             $conditions = PlanGeneratorConditions::normalize($data['conditions'] ?? null);

@@ -12,6 +12,7 @@ use App\Filament\Operations\Resources\OperationAccountsPayables\Pages\ViewOperat
 use App\Filament\Operations\Resources\OperationAccountsPayables\Schemas\OperationAccountsPayableForm;
 use App\Filament\Operations\Resources\OperationAccountsPayables\Schemas\OperationAccountsPayableInfolist;
 use App\Filament\Operations\Resources\OperationAccountsPayables\Tables\OperationAccountsPayablesTable;
+use App\Filament\Operations\Resources\OperationAccountsPayables\Widgets\AccountsPayableOverview;
 use App\Models\OperationAccountsPayable;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -83,6 +84,13 @@ class OperationAccountsPayableResource extends Resource
     public static function getRelations(): array
     {
         return [];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            AccountsPayableOverview::class,
+        ];
     }
 
     public static function getPages(): array

@@ -7,9 +7,9 @@ namespace App\Jobs;
 use App\Models\AffiliationCorporate;
 use App\Models\RenovationCorporate;
 use App\Support\AffiliationAffiliateFeeCalculator;
-use App\Support\AffiliationCorporates\CorporateAffiliateUpgradeManager;
 use App\Support\Concerns\ReportsScheduledExecution;
 use App\Support\ScheduledTaskRunReport;
+use App\Support\Upgrades\UpgradeRenewalRepricer;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -161,8 +161,8 @@ class PrepareAffiliationCorporateRenovations implements ShouldQueue
 
                                     if ($amounts !== null) {
                                         $affiliatesPriced++;
-                                        /** Los upgrades del afiliado se mantienen al renovar. */
-                                        $annualFee = round($amounts['annual_fee'] + CorporateAffiliateUpgradeManager::activeTotalFor($affiliate), 2);
+                                        /** Los upgrades se suman recotizados con la edad del afiliado, igual que el plan. */
+                                        $annualFee = round($amounts['annual_fee'] + UpgradeRenewalRepricer::projectedTotal($affiliate, $today), 2);
                                         $ageRangeId = $amounts['age_range_id'];
                                         $coverageId = $amounts['coverage_id'];
                                     } else {

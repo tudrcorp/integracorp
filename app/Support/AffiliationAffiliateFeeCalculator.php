@@ -11,6 +11,7 @@ use App\Models\Affiliation;
 use App\Models\AgeRange;
 use App\Models\Fee;
 use App\Models\Plan;
+use App\Support\Upgrades\IndividualAffiliateUpgradeManager;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -453,6 +454,10 @@ final class AffiliationAffiliateFeeCalculator
         ];
     }
 
+    /**
+     * Tarifa del plan según la edad, más los upgrades activos del afiliado (con su
+     * monto congelado: fuera de la renovación un upgrade no se recotiza).
+     */
     public function applyAmountsToAffiliate(Affiliation $affiliation, Affiliate $affiliate): bool
     {
         $amounts = $this->calculateAffiliateAmounts($affiliation, $affiliate);
@@ -462,13 +467,14 @@ final class AffiliationAffiliateFeeCalculator
         }
 
         $paymentFrequency = (string) ($affiliation->payment_frequency ?? 'ANUAL');
+        $annualFee = round((float) $amounts['annual_fee'] + IndividualAffiliateUpgradeManager::activeTotalFor($affiliate), 2);
 
         $affiliate->update([
             'plan_id' => $affiliation->plan_id,
             'coverage_id' => $amounts['coverage_id'],
             'age_range_id' => $amounts['age_range_id'],
-            'fee' => $amounts['annual_fee'],
-            'total_amount' => $amounts['period_amount'],
+            'fee' => $annualFee,
+            'total_amount' => $this->totalAmountForPaymentFrequency($annualFee, $paymentFrequency),
             'payment_frequency' => $paymentFrequency,
         ]);
 

@@ -8,9 +8,11 @@ use App\Models\AffiliateCorporate;
 use App\Models\AffiliateCorporateUpgrade;
 use App\Models\AffiliationCorporate;
 use App\Models\Collection as BillingCollection;
-use App\Models\UpgradeBenefit;
 use App\Services\CorporateAffiliateRemovalService;
 use App\Support\SecurityAudit;
+use App\Support\Upgrades\UpgradeAssignmentPreview;
+use App\Support\Upgrades\UpgradeIlsVoucher;
+use App\Support\Upgrades\UpgradePricing;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -18,7 +20,9 @@ use RuntimeException;
 
 /**
  * Upgrades de afiliados corporativos: montos anuales en US$ que se suman a la
- * tarifa del afiliado.
+ * tarifa del afiliado. El precio sale del catálogo (`upgrades`) según la
+ * cobertura elegida y la edad de cada afiliado, y queda congelado en la
+ * asignación hasta la próxima renovación.
  *
  * Cada alta o baja se aplica como un delta, en una sola transacción, sobre:
  * la tarifa del afiliado, los totales de la afiliación (solo si el afiliado
@@ -28,11 +32,7 @@ use RuntimeException;
  */
 final class CorporateAffiliateUpgradeManager
 {
-    public const MAX_NAME_LENGTH = 120;
-
-    public const MAX_ITEMS = 10;
-
-    public const MAX_AMOUNT = 99999.99;
+    public const MAX_ITEMS = UpgradePricing::MAX_COVERAGES_PER_ASSIGNMENT;
 
     /**
      * Tope de `affiliate_corporates.fee` y `affiliation_corporates.total_amount` (decimal 8,2).
@@ -46,17 +46,21 @@ final class CorporateAffiliateUpgradeManager
      */
     public const LOCKED_AFFILIATE_STATUSES = ['INACTIVO', 'EXCLUIDO'];
 
-    public const SKIP_NOT_IN_AFFILIATION = 'not_in_affiliation';
+    public const REMOVAL_REASON = 'QUITADO POR ANALISTA';
 
-    public const SKIP_AFFILIATE_INACTIVE = 'affiliate_inactive';
+    public const SKIP_NOT_IN_AFFILIATION = UpgradePricing::SKIP_NOT_IN_AFFILIATION;
 
-    public const SKIP_ALREADY_ACTIVE = 'already_active';
+    public const SKIP_AFFILIATE_INACTIVE = UpgradePricing::SKIP_AFFILIATE_INACTIVE;
+
+    public const SKIP_ALREADY_ACTIVE = UpgradePricing::SKIP_ALREADY_ACTIVE;
+
+    public const SKIP_NO_AGE = UpgradePricing::SKIP_NO_AGE;
+
+    public const SKIP_NO_RANGE = UpgradePricing::SKIP_NO_RANGE;
 
     public static function normalizeName(?string $name): string
     {
-        $name = preg_replace('/\s+/u', ' ', trim((string) $name)) ?? '';
-
-        return mb_strtoupper($name, 'UTF-8');
+        return UpgradePricing::normalizeName($name);
     }
 
     /**
@@ -83,41 +87,12 @@ final class CorporateAffiliateUpgradeManager
     }
 
     /**
-     * Catálogo activo para autocompletar el nombre del upgrade.
-     *
-     * @return array<string, float> nombre => precio de referencia
-     */
-    public static function catalogPrices(): array
-    {
-        return UpgradeBenefit::query()
-            ->where('status', 'ACTIVO')
-            ->orderBy('description')
-            ->get(['description', 'price'])
-            ->mapWithKeys(fn (UpgradeBenefit $benefit): array => [
-                self::normalizeName($benefit->description) => round((float) $benefit->price, 2),
-            ])
-            ->filter(fn (float $price, string $name): bool => $name !== '')
-            ->all();
-    }
-
-    public static function catalogPriceFor(?string $name): ?float
-    {
-        $name = self::normalizeName($name);
-
-        if ($name === '') {
-            return null;
-        }
-
-        return self::catalogPrices()[$name] ?? null;
-    }
-
-    /**
-     * Nombres de upgrades activos entre los afiliados indicados, con cuántos lo tienen.
+     * Upgrades activos entre los afiliados indicados, con cuántos lo tienen.
      *
      * @param  list<int>  $affiliateIds
-     * @return array<string, int>
+     * @return array<int, array{name: string, total: int}> upgrade_id => datos
      */
-    public static function activeNamesAmong(AffiliationCorporate $owner, array $affiliateIds): array
+    public static function activeUpgradesAmong(AffiliationCorporate $owner, array $affiliateIds): array
     {
         if ($affiliateIds === []) {
             return [];
@@ -127,24 +102,27 @@ final class CorporateAffiliateUpgradeManager
             ->where('affiliation_corporate_id', $owner->getKey())
             ->whereIn('affiliate_corporate_id', $affiliateIds)
             ->where('status', AffiliateCorporateUpgrade::STATUS_ACTIVE)
-            ->selectRaw('name, COUNT(*) as total')
-            ->groupBy('name')
+            ->whereNotNull('upgrade_id')
+            ->selectRaw('upgrade_id, MAX(name) as name, COUNT(*) as total')
+            ->groupBy('upgrade_id')
             ->orderBy('name')
-            ->pluck('total', 'name')
-            ->map(fn (mixed $total): int => (int) $total)
+            ->get()
+            ->mapWithKeys(fn (AffiliateCorporateUpgrade $row): array => [
+                (int) $row->upgrade_id => ['name' => (string) $row->getAttribute('name'), 'total' => (int) $row->getAttribute('total')],
+            ])
             ->all();
     }
 
     /**
      * @param  list<int>  $affiliateIds
-     * @param  list<string>  $names
-     * @return list<int>
+     * @param  array<int, mixed>  $catalogUpgradeIds  ids de `upgrades`
+     * @return list<int> ids de `affiliate_corporate_upgrades`
      */
-    public static function activeUpgradeIdsForNames(AffiliationCorporate $owner, array $affiliateIds, array $names): array
+    public static function activeAssignmentIdsForUpgrades(AffiliationCorporate $owner, array $affiliateIds, array $catalogUpgradeIds): array
     {
-        $names = array_values(array_unique(array_filter(array_map(self::normalizeName(...), $names))));
+        $catalogUpgradeIds = array_values(array_filter(array_map('intval', $catalogUpgradeIds), fn (int $id): bool => $id > 0));
 
-        if ($affiliateIds === [] || $names === []) {
+        if ($affiliateIds === [] || $catalogUpgradeIds === []) {
             return [];
         }
 
@@ -152,42 +130,51 @@ final class CorporateAffiliateUpgradeManager
             ->where('affiliation_corporate_id', $owner->getKey())
             ->whereIn('affiliate_corporate_id', $affiliateIds)
             ->where('status', AffiliateCorporateUpgrade::STATUS_ACTIVE)
-            ->whereIn('name', $names)
+            ->whereIn('upgrade_id', $catalogUpgradeIds)
             ->pluck('id')
             ->map(fn (mixed $id): int => (int) $id)
             ->all();
     }
 
     /**
-     * Agrega uno o varios upgrades a uno o varios afiliados.
+     * Agrega uno o varios upgrades del catálogo a uno o varios afiliados. Cada
+     * afiliado paga el precio del rango de edad en el que cae.
+     *
+     * Cada afiliado que recibe el upgrade necesita su Voucher ILS (`$vouchers`,
+     * afiliado_id => número, desde, hasta y comprobante). Si alguno falta o no es
+     * válido, no se escribe nada.
      *
      * @param  iterable<int, AffiliateCorporate|int>  $affiliates
-     * @param  array<int, array{name?: mixed, amount?: mixed}>  $items
+     * @param  array<int, mixed>  $coverageIds  ids de `upgrade_coverages`
+     * @param  array<int|string, mixed>  $vouchers
      * @return array{affiliates_updated: int, upgrades_created: int, annual_delta: float, collections_adjusted: int, skipped: list<array{name: string, reason: string, upgrade?: string}>}
      */
-    public static function add(AffiliationCorporate $owner, iterable $affiliates, array $items, ?string $actor = null): array
+    public static function add(AffiliationCorporate $owner, iterable $affiliates, array $coverageIds, ?string $actor = null, array $vouchers = []): array
     {
-        $items = self::normalizeItems($items);
         $affiliateIds = self::affiliateIds($affiliates);
 
         if ($affiliateIds === []) {
             throw new InvalidArgumentException('Seleccione al menos un afiliado.');
         }
 
+        $coverages = UpgradePricing::resolveCoverages($coverageIds);
         $actor = self::actorName($actor);
+        $labels = AffiliateCorporate::query()->whereIn('id', $affiliateIds)->get()
+            ->mapWithKeys(fn (AffiliateCorporate $affiliate): array => [(int) $affiliate->getKey() => CorporateAffiliatePlanSynchronizer::labelFor($affiliate)])
+            ->all();
+        $vouchers = UpgradeIlsVoucher::validateMany($vouchers, $labels);
 
-        $result = DB::transaction(function () use ($owner, $affiliateIds, $items, $actor): array {
+        $result = DB::transaction(function () use ($owner, $affiliateIds, $coverages, $actor, $vouchers): array {
             $ownerLocked = self::lockOwner($owner);
             $locked = self::lockAffiliates($ownerLocked, $affiliateIds);
             $skipped = self::skippedForeignAffiliates($affiliateIds, $locked);
-            $catalog = self::resolveCatalog($items);
 
-            $activeNames = AffiliateCorporateUpgrade::query()
+            $activeUpgradeIds = AffiliateCorporateUpgrade::query()
                 ->whereIn('affiliate_corporate_id', $locked->modelKeys())
                 ->where('status', AffiliateCorporateUpgrade::STATUS_ACTIVE)
-                ->get(['affiliate_corporate_id', 'name'])
+                ->get(['affiliate_corporate_id', 'upgrade_id'])
                 ->groupBy('affiliate_corporate_id')
-                ->map(fn ($rows): array => $rows->pluck('name')->map(self::normalizeName(...))->all());
+                ->map(fn ($rows): array => $rows->pluck('upgrade_id')->filter()->map(fn (mixed $id): int => (int) $id)->all());
 
             $affiliatesUpdated = 0;
             $upgradesCreated = 0;
@@ -195,39 +182,57 @@ final class CorporateAffiliateUpgradeManager
             $created = [];
 
             foreach ($locked as $affiliate) {
+                $name = CorporateAffiliatePlanSynchronizer::labelFor($affiliate);
+
                 if (in_array((string) $affiliate->status, self::LOCKED_AFFILIATE_STATUSES, true)) {
-                    $skipped[] = ['name' => CorporateAffiliatePlanSynchronizer::labelFor($affiliate), 'reason' => self::SKIP_AFFILIATE_INACTIVE];
+                    $skipped[] = ['name' => $name, 'reason' => self::SKIP_AFFILIATE_INACTIVE];
+
+                    continue;
+                }
+
+                $age = UpgradePricing::ageOf($affiliate);
+
+                if ($age === null) {
+                    $skipped[] = ['name' => $name, 'reason' => self::SKIP_NO_AGE];
 
                     continue;
                 }
 
                 $delta = 0.0;
-                $already = $activeNames->get($affiliate->getKey(), []);
+                $already = $activeUpgradeIds->get($affiliate->getKey(), []);
 
-                foreach ($items as $item) {
-                    if (in_array($item['name'], $already, true)) {
-                        $skipped[] = [
-                            'name' => CorporateAffiliatePlanSynchronizer::labelFor($affiliate),
-                            'reason' => self::SKIP_ALREADY_ACTIVE,
-                            'upgrade' => $item['name'],
-                        ];
+                foreach ($coverages as $coverage) {
+                    $upgradeName = (string) $coverage->upgrade->name;
+
+                    if (in_array((int) $coverage->upgrade_id, $already, true)) {
+                        $skipped[] = ['name' => $name, 'reason' => self::SKIP_ALREADY_ACTIVE, 'upgrade' => $upgradeName];
 
                         continue;
+                    }
+
+                    $range = UpgradePricing::rangeFor($coverage, $age);
+
+                    if ($range === null) {
+                        $skipped[] = ['name' => $name.' ('.$age.' años)', 'reason' => self::SKIP_NO_RANGE, 'upgrade' => $upgradeName];
+
+                        continue;
+                    }
+
+                    $voucher = $vouchers[(int) $affiliate->getKey()] ?? null;
+
+                    if ($voucher === null) {
+                        throw new InvalidArgumentException('Falta el Voucher ILS de '.$name.': cada afiliado que recibe el upgrade necesita el suyo.');
                     }
 
                     $upgrade = AffiliateCorporateUpgrade::query()->create([
                         'affiliate_corporate_id' => $affiliate->getKey(),
                         'affiliation_corporate_id' => $ownerLocked->getKey(),
-                        'upgrade_benefit_id' => $catalog[$item['name']] ?? null,
-                        'name' => $item['name'],
-                        'amount' => $item['amount'],
-                        'status' => AffiliateCorporateUpgrade::STATUS_ACTIVE,
-                        'created_by' => $actor,
-                        'updated_by' => $actor,
+                        ...UpgradePricing::assignmentAttributes($coverage, $range, $age, $actor),
+                        ...UpgradeIlsVoucher::columns($voucher),
                     ]);
 
                     $created[] = $upgrade->getKey();
-                    $delta += $item['amount'];
+                    $delta += (float) $upgrade->amount;
                     $upgradesCreated++;
                 }
 
@@ -250,7 +255,7 @@ final class CorporateAffiliateUpgradeManager
                 'module' => 'affiliation_corporates',
                 'affiliation_corporate_id' => $ownerLocked->getKey(),
                 'affiliation_code' => $ownerLocked->code,
-                'items' => $items,
+                'upgrade_coverage_ids' => $coverages->modelKeys(),
                 'affiliate_ids' => $locked->modelKeys(),
                 'upgrade_ids' => $created,
                 'annual_delta' => round($ownerDelta, 2),
@@ -330,6 +335,7 @@ final class CorporateAffiliateUpgradeManager
                         'status' => AffiliateCorporateUpgrade::STATUS_INACTIVE,
                         'deactivated_at' => now(),
                         'deactivated_by' => $actor,
+                        'deactivation_reason' => self::REMOVAL_REASON,
                         'updated_by' => $actor,
                         'updated_at' => now(),
                     ]);
@@ -373,14 +379,125 @@ final class CorporateAffiliateUpgradeManager
         return self::publicResult($result, 'upgrades_removed');
     }
 
+    /**
+     * Qué pasaría al agregar el upgrade, sin escribir nada: precio por la edad de
+     * cada afiliado (o por qué no lo recibe), tarifa antes y después, totales de
+     * la afiliación y avisos de cobro pendientes que se ajustarían.
+     *
+     * @param  list<int>  $affiliateIds
+     * @return array<string, mixed> ver `UpgradeAssignmentPreview`
+     */
+    public static function preview(AffiliationCorporate $owner, array $affiliateIds, mixed $coverageId): array
+    {
+        $owner = AffiliationCorporate::query()->findOrFail($owner->getKey());
+        $frequency = (string) ($owner->payment_frequency ?: 'ANUAL');
+
+        try {
+            $coverage = UpgradePricing::resolveCoverages([$coverageId])->first();
+        } catch (InvalidArgumentException $exception) {
+            return UpgradeAssignmentPreview::empty($exception->getMessage());
+        }
+
+        $affiliates = AffiliateCorporate::query()
+            ->whereIn('id', array_values(array_map('intval', $affiliateIds)))
+            ->where('affiliation_corporate_id', $owner->getKey())
+            ->orderBy('id')
+            ->get();
+        $alreadyActive = AffiliateCorporateUpgrade::query()
+            ->whereIn('affiliate_corporate_id', $affiliates->modelKeys())
+            ->where('status', AffiliateCorporateUpgrade::STATUS_ACTIVE)
+            ->where('upgrade_id', $coverage->upgrade_id)
+            ->pluck('affiliate_corporate_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+        $rows = [];
+        $ownerDelta = 0.0;
+        $outsidePopulation = 0;
+
+        foreach ($affiliates as $affiliate) {
+            $age = UpgradePricing::ageOf($affiliate);
+            $range = $age !== null ? UpgradePricing::rangeFor($coverage, $age) : null;
+            $affiliateFrequency = filled($affiliate->payment_frequency) ? (string) $affiliate->payment_frequency : $frequency;
+            $reason = match (true) {
+                in_array((string) $affiliate->status, self::LOCKED_AFFILIATE_STATUSES, true) => 'está dado de baja',
+                in_array((int) $affiliate->getKey(), $alreadyActive, true) => 'ya tiene este upgrade activo',
+                $age === null => 'no tiene fecha de nacimiento ni edad registrada',
+                $range === null => 'tiene '.$age.' años y el upgrade cubre '.UpgradePricing::coversLabel($coverage),
+                default => null,
+            };
+            $price = $reason === null ? round((float) $range->price, 2) : 0.0;
+            $feeBefore = round((float) $affiliate->fee, 2);
+            $feeAfter = round($feeBefore + $price, 2);
+
+            if ($price > 0) {
+                if (self::countsAsPopulation($affiliate)) {
+                    $ownerDelta += $price;
+                } else {
+                    $outsidePopulation++;
+                }
+            }
+
+            $rows[] = [
+                'id' => (int) $affiliate->getKey(),
+                'name' => CorporateAffiliatePlanSynchronizer::labelFor($affiliate),
+                'age' => $age,
+                'receives' => $reason === null,
+                'reason' => $reason,
+                'price' => $price,
+                'range' => $range?->label(),
+                'frequency' => $affiliateFrequency,
+                'fee_before' => $feeBefore,
+                'fee_after' => $feeAfter,
+                'period_before' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($feeBefore, $affiliateFrequency), 2),
+                'period_after' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($feeAfter, $affiliateFrequency), 2),
+            ];
+        }
+
+        $annualBefore = round((float) $owner->fee_anual, 2);
+        $annualAfter = round($annualBefore + $ownerDelta, 2);
+        $collections = [];
+
+        if (filled($owner->code) && $ownerDelta > 0) {
+            foreach (BillingCollection::query()->where('affiliation_code', $owner->code)->where('status', self::PENDING_COLLECTION_STATUS)->orderBy('id')->get() as $collection) {
+                $collectionFrequency = filled($collection->payment_frequency) ? (string) $collection->payment_frequency : $frequency;
+                $before = round((float) $collection->total_amount, 2);
+                $collections[] = [
+                    'invoice' => (string) ($collection->collection_invoice_number ?: '#'.$collection->getKey()),
+                    'date' => (string) ($collection->next_payment_date ?? ''),
+                    'before' => $before,
+                    'after' => round($before + CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($ownerDelta, $collectionFrequency), 2),
+                ];
+            }
+        }
+
+        return [
+            'error' => null,
+            'blockers' => [],
+            'upgrade' => [
+                'name' => (string) $coverage->upgrade->name,
+                'coverage' => $coverage->label(),
+                'covers' => UpgradePricing::coversLabel($coverage),
+            ],
+            'rows' => $rows,
+            'owner' => [
+                'label' => 'Afiliación '.$owner->code,
+                'frequency' => $frequency,
+                'annual_before' => $annualBefore,
+                'annual_after' => $annualAfter,
+                'period_before' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($annualBefore, $frequency), 2),
+                'period_after' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($annualAfter, $frequency), 2),
+                'note' => $outsidePopulation > 0
+                    ? $outsidePopulation.' '.($outsidePopulation === 1 ? 'afiliado aún no cuenta' : 'afiliados aún no cuentan').' como población (pre-afiliado): su upgrade se suma a su tarifa, no al total de la afiliación.'
+                    : null,
+            ],
+            'collections' => $collections,
+            'annual_delta' => round($ownerDelta, 2),
+        ];
+    }
+
     public static function skipReasonLabel(string $reason): string
     {
-        return match ($reason) {
-            self::SKIP_NOT_IN_AFFILIATION => 'no pertenece a esta afiliación',
-            self::SKIP_AFFILIATE_INACTIVE => 'está dado de baja',
-            self::SKIP_ALREADY_ACTIVE => 'ya tenía ese upgrade activo',
-            default => 'no se pudo procesar',
-        };
+        return UpgradePricing::skipReasonLabel($reason);
     }
 
     /**
@@ -411,54 +528,6 @@ final class CorporateAffiliateUpgradeManager
             ])
             ->values()
             ->all();
-    }
-
-    /**
-     * @param  array<int, array{name?: mixed, amount?: mixed}>  $items
-     * @return list<array{name: string, amount: float}>
-     */
-    private static function normalizeItems(array $items): array
-    {
-        $normalized = [];
-
-        foreach ($items as $item) {
-            $name = self::normalizeName(is_scalar($item['name'] ?? null) ? (string) $item['name'] : '');
-            $rawAmount = $item['amount'] ?? null;
-
-            if ($name === '') {
-                throw new InvalidArgumentException('Cada upgrade debe tener un nombre.');
-            }
-
-            if (mb_strlen($name) > self::MAX_NAME_LENGTH) {
-                throw new InvalidArgumentException('El nombre «'.$name.'» supera los '.self::MAX_NAME_LENGTH.' caracteres.');
-            }
-
-            if (! is_numeric($rawAmount)) {
-                throw new InvalidArgumentException('El monto del upgrade «'.$name.'» debe ser un número.');
-            }
-
-            $amount = round((float) $rawAmount, 2);
-
-            if ($amount <= 0.0 || $amount > self::MAX_AMOUNT) {
-                throw new InvalidArgumentException('El monto del upgrade «'.$name.'» debe ser mayor a 0 y no superar '.number_format(self::MAX_AMOUNT, 2, ',', '.').' US$.');
-            }
-
-            if (isset($normalized[$name])) {
-                throw new InvalidArgumentException('El upgrade «'.$name.'» está repetido. Cárguelo una sola vez.');
-            }
-
-            $normalized[$name] = ['name' => $name, 'amount' => $amount];
-        }
-
-        if ($normalized === []) {
-            throw new InvalidArgumentException('Agregue al menos un upgrade.');
-        }
-
-        if (count($normalized) > self::MAX_ITEMS) {
-            throw new InvalidArgumentException('Puede cargar hasta '.self::MAX_ITEMS.' upgrades a la vez.');
-        }
-
-        return array_values($normalized);
     }
 
     /**
@@ -514,46 +583,6 @@ final class CorporateAffiliateUpgradeManager
             ->map(fn (int $id): array => ['name' => 'Afiliado #'.$id, 'reason' => self::SKIP_NOT_IN_AFFILIATION])
             ->values()
             ->all();
-    }
-
-    /**
-     * Busca cada nombre en el catálogo de upgrades y crea los que no existen.
-     *
-     * @param  list<array{name: string, amount: float}>  $items
-     * @return array<string, int> nombre => upgrade_benefit_id
-     */
-    private static function resolveCatalog(array $items): array
-    {
-        $ids = [];
-
-        foreach ($items as $item) {
-            $existing = UpgradeBenefit::query()
-                ->whereRaw('UPPER(TRIM(description)) = ?', [$item['name']])
-                ->orderByRaw("CASE WHEN status = 'ACTIVO' THEN 0 ELSE 1 END")
-                ->orderBy('id')
-                ->first();
-
-            if ($existing === null) {
-                $existing = new UpgradeBenefit([
-                    'code' => self::nextCatalogCode(),
-                    'description' => $item['name'],
-                    'price' => $item['amount'],
-                    'status' => 'ACTIVO',
-                ]);
-                $existing->save();
-            }
-
-            $ids[$item['name']] = (int) $existing->getKey();
-        }
-
-        return $ids;
-    }
-
-    private static function nextCatalogCode(): string
-    {
-        $next = (int) UpgradeBenefit::query()->max('id') + 1;
-
-        return 'UPG-'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
     }
 
     private static function applyAffiliateDelta(AffiliationCorporate $owner, AffiliateCorporate $affiliate, float $delta): void

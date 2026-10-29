@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers;
 
+use App\Filament\Business\Concerns\AssignsUpgradesWithIlsVoucher;
 use App\Filament\Business\Concerns\ManagesAffiliateSpecificBusinessUnit;
 use App\Filament\Business\Resources\AffiliationCorporates\Support\CorporateAffiliateIlsVoucherForm;
 use App\Http\Controllers\AffiliateCorporateController;
@@ -39,7 +40,6 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -66,11 +66,13 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class CorporateAffiliatesRelationManager extends RelationManager
 {
+    use AssignsUpgradesWithIlsVoucher;
     use ManagesAffiliateSpecificBusinessUnit;
 
     protected static string $relationship = 'corporateAffiliates';
@@ -733,23 +735,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                             $this->runAffiliateSync([$record]);
                         })
                         ->visible(fn (): bool => self::userIsBusinessAdmin()),
-                    Action::make('add_upgrade')
-                        ->label('Agregar upgrade')
-                        ->icon(Heroicon::Sparkles)
-                        ->color('success')
-                        ->modalWidth(Width::ThreeExtraLarge)
-                        ->modalIcon(Heroicon::Sparkles)
-                        ->modalHeading(fn (AffiliateCorporate $record): string => 'Agregar upgrade a '.CorporateAffiliatePlanSynchronizer::labelFor($record))
-                        ->modalDescription(fn (AffiliateCorporate $record): string => 'Tarifa anual actual: '.self::money((float) $record->fee)
-                            .'. Cada monto se suma a la tarifa anual del afiliado, a los totales de la afiliación y a los avisos de cobro pendientes.')
-                        ->modalSubmitActionLabel('Agregar upgrade')
-                        ->form([
-                            self::upgradeItemsRepeater(),
-                        ])
-                        ->action(function (AffiliateCorporate $record, array $data): void {
-                            $this->runAddUpgrades([$record], $data);
-                        })
-                        ->visible(fn (): bool => self::userCanManageUpgrades()),
+                    $this->addUpgradeWithVoucherAction(fn (): bool => self::userCanManageUpgrades()),
                     Action::make('remove_upgrades')
                         ->label('Quitar upgrade')
                         ->icon(Heroicon::MinusCircle)
@@ -865,24 +851,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->action(function (Collection $records): void {
                             $this->runAffiliateSync($records);
                         }),
-                    BulkAction::make('add_upgrade_bulk')
-                        ->label('Agregar upgrade')
-                        ->icon(Heroicon::Sparkles)
-                        ->color('success')
-                        ->modalWidth(Width::ThreeExtraLarge)
-                        ->modalIcon(Heroicon::Sparkles)
-                        ->modalHeading('Agregar upgrade a los afiliados seleccionados')
-                        ->modalDescription(fn (Collection $records): string => 'Se agregarán los mismos upgrades a '.$records->count().' '.($records->count() === 1 ? 'afiliado' : 'afiliados')
-                            .'. Cada monto se suma a la tarifa anual de cada afiliado, a los totales de la afiliación y a los avisos de cobro pendientes. Se omiten los afiliados dados de baja y los que ya tienen ese upgrade.')
-                        ->modalSubmitActionLabel('Agregar upgrade')
-                        ->form([
-                            self::upgradeItemsRepeater(),
-                        ])
-                        ->deselectRecordsAfterCompletion()
-                        ->action(function (Collection $records, array $data): void {
-                            $this->runAddUpgrades($records, $data);
-                        })
-                        ->visible(fn (): bool => self::userCanManageUpgrades()),
+                    $this->addUpgradeWithVoucherBulkAction(fn (): bool => self::userCanManageUpgrades()),
                     BulkAction::make('remove_upgrade_bulk')
                         ->label('Quitar upgrade')
                         ->icon(Heroicon::MinusCircle)
@@ -893,10 +862,10 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->modalDescription('Se da de baja el upgrade elegido en cada afiliado seleccionado que lo tenga activo. Su monto se descuenta de la tarifa anual del afiliado, de los totales de la afiliación y de los avisos de cobro pendientes.')
                         ->modalSubmitActionLabel('Quitar seleccionados')
                         ->form(function (Collection $records): array {
-                            $options = self::activeUpgradeNameOptions($this->getOwnerRecord(), $records);
+                            $options = self::activeUpgradeCatalogOptions($this->getOwnerRecord(), $records);
 
                             return [
-                                CheckboxList::make('names')
+                                CheckboxList::make('upgrade_ids')
                                     ->label('Upgrades activos entre los seleccionados')
                                     ->options($options)
                                     ->required()
@@ -909,10 +878,10 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         })
                         ->deselectRecordsAfterCompletion()
                         ->action(function (Collection $records, array $data): void {
-                            $ids = CorporateAffiliateUpgradeManager::activeUpgradeIdsForNames(
+                            $ids = CorporateAffiliateUpgradeManager::activeAssignmentIdsForUpgrades(
                                 $this->getOwnerRecord(),
                                 array_map('intval', $records->modelKeys()),
-                                array_map('strval', (array) ($data['names'] ?? [])),
+                                (array) ($data['upgrade_ids'] ?? []),
                             );
 
                             $this->runRemoveUpgrades($ids);
@@ -1032,110 +1001,28 @@ class CorporateAffiliatesRelationManager extends RelationManager
         );
     }
 
-    private static function upgradeItemsRepeater(): Repeater
+    /**
+     * @param  list<int>  $affiliateIds
+     * @return array<string, mixed>
+     */
+    protected function upgradeManagerPreview(array $affiliateIds, mixed $coverageId): array
     {
-        return Repeater::make('upgrades')
-            ->label('Upgrades')
-            ->schema([
-                TextInput::make('name')
-                    ->label('Nombre del upgrade')
-                    ->placeholder('Ej.: ODONTOLOGÍA AMPLIADA')
-                    ->helperText('Escríbalo o elija uno del catálogo. Si no existe, se agrega al catálogo al guardar.')
-                    ->datalist(fn (): array => array_keys(CorporateAffiliateUpgradeManager::catalogPrices()))
-                    ->required()
-                    ->maxLength(CorporateAffiliateUpgradeManager::MAX_NAME_LENGTH)
-                    ->distinct()
-                    ->live(onBlur: true)
-                    ->afterStateUpdated(function (Set $set, Get $get, ?string $state): void {
-                        $price = CorporateAffiliateUpgradeManager::catalogPriceFor($state);
-
-                        if ($price !== null && blank($get('amount'))) {
-                            $set('amount', number_format($price, 2, '.', ''));
-                        }
-                    })
-                    ->validationMessages([
-                        'required' => 'Indique el nombre del upgrade.',
-                        'distinct' => 'Este upgrade está repetido.',
-                    ])
-                    ->columnSpan(2),
-                TextInput::make('amount')
-                    ->label('Monto anual')
-                    ->numeric()
-                    ->inputMode('decimal')
-                    ->step(0.01)
-                    ->minValue(0.01)
-                    ->maxValue(CorporateAffiliateUpgradeManager::MAX_AMOUNT)
-                    ->prefix('US$')
-                    ->required()
-                    ->validationMessages([
-                        'required' => 'Indique el monto.',
-                        'min' => 'El monto debe ser mayor a 0.',
-                        'max' => 'El monto es demasiado alto.',
-                    ]),
-            ])
-            ->columns(3)
-            ->defaultItems(1)
-            ->minItems(1)
-            ->maxItems(CorporateAffiliateUpgradeManager::MAX_ITEMS)
-            ->reorderable(false)
-            ->addActionLabel('Agregar otro upgrade')
-            ->columnSpanFull();
+        return CorporateAffiliateUpgradeManager::preview($this->getOwnerRecord(), $affiliateIds, $coverageId);
     }
 
     /**
-     * @param  iterable<int, AffiliateCorporate>  $affiliates
-     * @param  array<string, mixed>  $data
+     * @param  list<int>  $affiliateIds
+     * @param  array<int, array<string, mixed>>  $vouchers
+     * @return array{affiliates_updated: int, upgrades_created: int, annual_delta: float, collections_adjusted: int, skipped: list<array<string, string>>}
      */
-    private function runAddUpgrades(iterable $affiliates, array $data): void
+    protected function upgradeManagerAdd(array $affiliateIds, mixed $coverageId, array $vouchers): array
     {
-        $owner = $this->getOwnerRecord();
+        return CorporateAffiliateUpgradeManager::add($this->getOwnerRecord(), $affiliateIds, [$coverageId], null, $vouchers);
+    }
 
-        try {
-            $result = CorporateAffiliateUpgradeManager::add($owner, $affiliates, array_values((array) ($data['upgrades'] ?? [])));
-        } catch (\InvalidArgumentException $exception) {
-            Notification::make()->warning()->title('Revise los upgrades')->body($exception->getMessage())->send();
-
-            return;
-        } catch (DuplicatePersonIdentityException $duplicatePerson) {
-            throw $duplicatePerson;
-        } catch (\Throwable $throwable) {
-            Log::error('NEGOCIOS-AFILIACIONES-CORPORATIVAS: Error al agregar upgrades.', [
-                'affiliation_corporate_id' => $owner->getKey(),
-                'error' => $throwable->getMessage(),
-            ]);
-
-            Notification::make()
-                ->danger()
-                ->title('No se pudo agregar el upgrade')
-                ->body($throwable instanceof \RuntimeException ? $throwable->getMessage() : 'No se aplicó ningún cambio. Intente de nuevo o contacte a soporte.')
-                ->send();
-
-            return;
-        }
-
-        $body = [];
-
-        if ($result['upgrades_created'] > 0) {
-            $body[] = $result['upgrades_created'].' '.($result['upgrades_created'] === 1 ? 'upgrade agregado' : 'upgrades agregados')
-                .' a '.$result['affiliates_updated'].' '.($result['affiliates_updated'] === 1 ? 'afiliado' : 'afiliados').'.';
-        }
-
-        $body = [...$body, ...self::ownerImpactLines($result)];
-
-        foreach ($result['skipped'] as $skipped) {
-            $body[] = $skipped['name'].(isset($skipped['upgrade']) ? ' ('.$skipped['upgrade'].')' : '').': '
-                .CorporateAffiliateUpgradeManager::skipReasonLabel($skipped['reason']).'.';
-        }
-
-        $notification = Notification::make()
-            ->title($result['upgrades_created'] > 0 ? 'Upgrade agregado' : 'No se agregó ningún upgrade')
-            ->body(implode(' ', $body));
-
-        $result['upgrades_created'] === 0
-            ? $notification->warning()
-            : ($result['skipped'] === [] ? $notification->success() : $notification->warning());
-
-        $notification->send();
+    protected function upgradeAffiliateLabel(Model $affiliate): string
+    {
+        return $affiliate instanceof AffiliateCorporate ? CorporateAffiliatePlanSynchronizer::labelFor($affiliate) : 'el afiliado';
     }
 
     /**
@@ -1208,6 +1095,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
             ->get()
             ->mapWithKeys(fn (AffiliateCorporateUpgrade $upgrade): array => [
                 (int) $upgrade->getKey() => $upgrade->name.' · '.self::money((float) $upgrade->amount)
+                    .(filled($upgrade->ils_voucher_code) ? ' · voucher '.$upgrade->ils_voucher_code : '')
                     .' · cargado por '.($upgrade->created_by ?: 'sistema')
                     .($upgrade->created_at !== null ? ' el '.$upgrade->created_at->format('d/m/Y') : ''),
             ])
@@ -1216,13 +1104,13 @@ class CorporateAffiliatesRelationManager extends RelationManager
 
     /**
      * @param  Collection<int, AffiliateCorporate>  $records
-     * @return array<string, string>
+     * @return array<int, string>
      */
-    private static function activeUpgradeNameOptions(AffiliationCorporate $owner, Collection $records): array
+    private static function activeUpgradeCatalogOptions(AffiliationCorporate $owner, Collection $records): array
     {
-        return collect(CorporateAffiliateUpgradeManager::activeNamesAmong($owner, array_map('intval', $records->modelKeys())))
-            ->mapWithKeys(fn (int $count, string $name): array => [
-                $name => $name.' ('.$count.' '.($count === 1 ? 'afiliado' : 'afiliados').')',
+        return collect(CorporateAffiliateUpgradeManager::activeUpgradesAmong($owner, array_map('intval', $records->modelKeys())))
+            ->mapWithKeys(fn (array $row, int $upgradeId): array => [
+                $upgradeId => $row['name'].' ('.$row['total'].' '.($row['total'] === 1 ? 'afiliado' : 'afiliados').')',
             ])
             ->all();
     }

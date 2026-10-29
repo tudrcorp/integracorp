@@ -467,3 +467,38 @@ function ejecutarCreacionDesdeGenerador(AffiliationCorporate $record, array $cat
     $method = $reflection->getMethod('afterCreateFromPlanGenerator');
     $method->invoke($page, $record);
 }
+
+it('con upgrades, cada persona del padrón lo recibe solo si su edad real está cubierta y se cobra lo real', function (): void {
+    DB::table('plan_generator_upgrades')->insert([
+        'plan_generator_id' => $this->plan->getKey(),
+        'line_key' => 'linea-funeraria',
+        'upgrade_id' => null,
+        'upgrade_coverage_id' => null,
+        'upgrade_code' => 'UPG-PEST',
+        'upgrade_name' => 'FUNERARIO PEST',
+        'coverage_amount' => 2000,
+        'age_prices' => json_encode([['id' => null, 'age_from' => 18, 'age_to' => 40, 'price' => 35]]),
+        'services' => json_encode([]),
+        'excluded_ranges' => json_encode([]),
+        'manual_ranges' => json_encode([['label' => '0 a 45 años', 'persons' => 2, 'note' => 'Según el padrón del cliente']]),
+        'sort_order' => 0,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $joven = personaDelPadron($this->plan, 'JOVEN', '30', 'cov-3k');
+    $nino = personaDelPadron($this->plan, 'NINO', '10', 'cov-3k');
+    $mayor = personaDelPadron($this->plan, 'MAYOR', '50', 'cov-3k');
+
+    PlanGeneratorCoverageAssignment::flush();
+    $report = PlanGeneratorCoverageAssignment::report($this->plan->fresh());
+
+    expect($report['placements'][$joven->id]['upgrade_fee'])->toBe(35.0)
+        ->and($report['placements'][$nino->id]['upgrade_fee'])->toBe(0.0)
+        ->and($report['placements'][$mayor->id]['upgrade_fee'])->toBe(0.0)
+        ->and($report['by_coverage']['cov-3k']['annual'])->toBe(200.0 + 35 + 200 + 250)
+        ->and($report['upgrades_by_person'][$nino->id][0]['reason'])->toBe('tiene 10 años y el upgrade cubre 18 a 40 años')
+        ->and($report['upgrades_by_person'][$mayor->id][0]['receives'])->toBeFalse()
+        ->and($report['upgrade_summary'][0]['quoted'])->toBe(2)
+        ->and($report['upgrade_summary'][0]['real'])->toBe(1);
+});

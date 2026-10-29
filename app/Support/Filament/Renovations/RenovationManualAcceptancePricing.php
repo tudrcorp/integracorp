@@ -11,6 +11,7 @@ use App\Models\Fee;
 use App\Models\Renovation;
 use App\Models\RenovationCorporate;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\Upgrades\UpgradeRenewalRepricer;
 use Carbon\Carbon;
 
 final class RenovationManualAcceptancePricing
@@ -85,12 +86,16 @@ final class RenovationManualAcceptancePricing
 
         $affiliates = $affiliation->affiliates()
             ->whereIn('status', PrepareAffiliationRenovations::AFFILIATE_STATUSES_FOR_RENEWAL)
+            ->withActiveUpgradesTotal()
             ->get();
 
         $subtotalAnual = 0.0;
         $titularAnnual = $titularAmounts['annual_fee'];
 
         foreach ($affiliates as $affiliate) {
+            /** Los upgrades se suman recotizados a la fecha, como al aceptar. */
+            $subtotalAnual += UpgradeRenewalRepricer::projectedTotal($affiliate, $referenceDate);
+
             if ($this->isTitular($affiliate)) {
                 $subtotalAnual += $titularAnnual;
 
@@ -186,6 +191,7 @@ final class RenovationManualAcceptancePricing
 
         $affiliates = $affiliation->corporateAffiliates()
             ->whereIn('status', PrepareAffiliationRenovations::AFFILIATE_STATUSES_FOR_RENEWAL)
+            ->withActiveUpgradesTotal()
             ->get();
 
         $subtotalAnual = 0.0;
@@ -193,6 +199,9 @@ final class RenovationManualAcceptancePricing
         $isFirst = true;
 
         foreach ($affiliates as $affiliate) {
+            /** Los upgrades se suman recotizados a la fecha, como al aceptar. */
+            $subtotalAnual += UpgradeRenewalRepricer::projectedTotal($affiliate, $referenceDate);
+
             if ($isFirst) {
                 $subtotalAnual += $referenceAnnual;
                 $isFirst = false;

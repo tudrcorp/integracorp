@@ -7,6 +7,7 @@ namespace App\Support\Renovations;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\Upgrades\UpgradeRenewalRepricer;
 use Carbon\Carbon;
 
 /**
@@ -18,6 +19,7 @@ use Carbon\Carbon;
  * - Fuera del período solo se acepta como renovación anticipada, que cobra con
  *   la edad que el afiliado tendrá en la fecha de renovación.
  * - Sin tarifa resoluble la aceptación no toca al afiliado: conserva la vigente.
+ * - Los upgrades activos se suman recotizados con la edad de esa fecha.
  */
 final class RenewalFeeProjection
 {
@@ -49,7 +51,7 @@ final class RenewalFeeProjection
 
         if ($amounts !== null) {
             return [
-                'annual_fee' => (float) $amounts['annual_fee'],
+                'annual_fee' => round((float) $amounts['annual_fee'] + UpgradeRenewalRepricer::projectedTotal($affiliate, $referenceDate), 2),
                 'age_range_id' => $amounts['age_range_id'],
                 'priced' => true,
             ];

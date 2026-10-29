@@ -11,11 +11,11 @@ use App\Models\AffiliationCorporate;
 use App\Models\AffiliationCorporateRenovationHistory;
 use App\Models\RenovationCorporate;
 use App\Support\AffiliationAffiliateFeeCalculator;
-use App\Support\AffiliationCorporates\CorporateAffiliateUpgradeManager;
 use App\Support\Renovations\EarlyRenovationAcceptance;
 use App\Support\Renovations\EarlyRenovationAuthorization;
 use App\Support\Renovations\EarlyRenovationNotificationPayload;
 use App\Support\SecurityAudit;
+use App\Support\Upgrades\UpgradeRenewalRepricer;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -226,7 +226,7 @@ final class AcceptAffiliationCorporateRenovationsService
                 continue;
             }
 
-            $annualFee = $this->annualFeeWithUpgrades($affiliate, (float) $amounts['annual_fee']);
+            $annualFee = $this->annualFeeWithUpgrades($affiliate, (float) $amounts['annual_fee'], $acceptanceDate);
 
             $affiliate->update([
                 'plan_id' => $manualOptions->planId,
@@ -282,7 +282,7 @@ final class AcceptAffiliationCorporateRenovationsService
                 );
 
                 if ($amounts !== null) {
-                    $annualFee = $this->annualFeeWithUpgrades($affiliate, (float) $amounts['annual_fee']);
+                    $annualFee = $this->annualFeeWithUpgrades($affiliate, (float) $amounts['annual_fee'], $acceptanceDate);
 
                     $affiliate->update([
                         'plan_id' => $planId,
@@ -307,11 +307,12 @@ final class AcceptAffiliationCorporateRenovationsService
     }
 
     /**
-     * La tarifa renovada por edad conserva los upgrades activos del afiliado.
+     * La tarifa renovada por edad suma los upgrades activos, recotizados con la
+     * edad a la fecha de renovación.
      */
-    private function annualFeeWithUpgrades(AffiliateCorporate $affiliate, float $planAnnualFee): float
+    private function annualFeeWithUpgrades(AffiliateCorporate $affiliate, float $planAnnualFee, Carbon $acceptanceDate): float
     {
-        return round($planAnnualFee + CorporateAffiliateUpgradeManager::activeTotalFor($affiliate), 2);
+        return round($planAnnualFee + UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate), 2);
     }
 
     private function recalculateAffiliationTotals(AffiliationCorporate $affiliation): void
