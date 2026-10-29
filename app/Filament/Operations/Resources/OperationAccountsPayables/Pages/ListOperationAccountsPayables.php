@@ -7,6 +7,7 @@ namespace App\Filament\Operations\Resources\OperationAccountsPayables\Pages;
 use App\Enums\StatusCuentaPorPagar;
 use App\Filament\Operations\Resources\OperationAccountsPayables\OperationAccountsPayableResource;
 use App\Filament\Operations\Resources\OperationAccountsPayables\Widgets\AccountsPayableOverview;
+use App\Support\Operations\AccountsPayableMonthlyLoad;
 use App\Support\Operations\AccountsPayableServiceDisplay;
 use Filament\Resources\Pages\ListRecords;
 use Livewire\Attributes\On;
@@ -47,6 +48,7 @@ class ListOperationAccountsPayables extends ListRecords
             'service_type' => ['values' => []],
             'paid_this_month' => ['isActive' => false],
             'paid_without_receipt' => ['isActive' => false],
+            'invoice_registration_range' => ['range' => ['from' => null, 'until' => null]],
         ];
 
         if ($key === 'pending') {
@@ -58,6 +60,9 @@ class ListOperationAccountsPayables extends ListRecords
         } elseif (str_starts_with($key, 'type:') && isset(AccountsPayableServiceDisplay::TYPES[substr($key, 5)])) {
             $filters['payment_status']['values'] = $pending;
             $filters['service_type']['values'] = [substr($key, 5)];
+        } elseif (str_starts_with($key, 'loaded:') && preg_match('/^\d{4}-\d{2}$/', substr($key, 7)) === 1) {
+            ['from' => $from, 'until' => $until] = AccountsPayableMonthlyLoad::period(AccountsPayableMonthlyLoad::resolveMonth(substr($key, 7)));
+            $filters['invoice_registration_range']['range'] = ['from' => $from->toDateString(), 'until' => $until->toDateString()];
         } elseif ($key !== 'all') {
             return;
         }
