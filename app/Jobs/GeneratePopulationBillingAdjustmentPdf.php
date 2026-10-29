@@ -22,6 +22,12 @@ class GeneratePopulationBillingAdjustmentPdf implements ShouldQueue
 
     public const DISK = 'local';
 
+    /**
+     * Sube cuando cambia la plantilla: el nombre del archivo la incluye, así un PDF guardado con
+     * la plantilla vieja no se vuelve a servir y se regenera solo al pedirlo.
+     */
+    public const TEMPLATE_VERSION = 2;
+
     public int $tries = 3;
 
     public int $timeout = 300;
@@ -35,7 +41,7 @@ class GeneratePopulationBillingAdjustmentPdf implements ShouldQueue
 
     public static function pathFor(CorporateBillingAdjustment $adjustment): string
     {
-        return 'billing-adjustments/'.$adjustment->public_id.'.pdf';
+        return 'billing-adjustments/'.$adjustment->public_id.'-v'.self::TEMPLATE_VERSION.'.pdf';
     }
 
     public function handle(): void

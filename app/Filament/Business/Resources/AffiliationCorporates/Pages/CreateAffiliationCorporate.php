@@ -305,10 +305,13 @@ class CreateAffiliationCorporate extends CreateRecord
             // formulario: así la cabecera cuadra con «Plan(es) Afiliado(s)».
             $record->poblation = $imported;
             $record->fee_anual = $placements['annual'];
-            $record->total_amount = round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount(
-                $placements['annual'],
-                $record->payment_frequency,
-            ), 2);
+            /** La cuota regular lleva solo el plan: los upgrades se cobran completos en el primer pago. */
+            $record->total_amount = $upgradesAssigned > 0 && \App\Support\Upgrades\UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'billing_mode')
+                ? \App\Support\Upgrades\UpgradeFirstPaymentBilling::regularInstallment((float) $placements['annual'], (float) ($placements['upgrades_annual'] ?? 0), (string) $record->payment_frequency)
+                : round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount(
+                    $placements['annual'],
+                    $record->payment_frequency,
+                ), 2);
             $record->save();
         } catch (Throwable $exception) {
             Log::error('Pre-afiliación corporativa desde el generador revertida', [
@@ -431,6 +434,11 @@ class CreateAffiliationCorporate extends CreateRecord
                     }
 
                     $fee = $placement['fee'];
+                    /** La cuota del afiliado lleva solo el plan: sus upgrades van completos en el primer pago. */
+                    $planFee = max(0.0, round($fee - array_sum(array_map(
+                        static fn (mixed $upgrade): float => is_array($upgrade) && is_numeric($upgrade['amount'] ?? null) ? (float) $upgrade['amount'] : 0.0,
+                        (array) ($placement['upgrades'] ?? []),
+                    )), 2));
                     $people[] = [
                         'population_id' => (int) $population->getKey(),
                         'nro_identificacion' => $population->nro_identificacion,
@@ -458,7 +466,7 @@ class CreateAffiliationCorporate extends CreateRecord
                         'fee' => $fee,
                         'subtotal_anual' => $fee,
                         'payment_frequency' => $frequency,
-                        'subtotal_payment_frequency' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($fee, $frequency), 2),
+                        'subtotal_payment_frequency' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($planFee, $frequency), 2),
                         'subtotal_daily' => round($fee / 30, 2),
                         'business_unit_id' => $record->business_unit_id,
                         'specific_business_unit' => $specificBusinessUnit,

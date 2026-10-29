@@ -194,15 +194,21 @@ final class PlanQuotability
     public static function descriptionsForIndividual(): array
     {
         $descriptions = self::queryForIndividual()
-            ->withCount('ageRanges')
+            ->with(['ageRanges' => static fn ($query) => $query->orderBy('age_init')->orderBy('id')->select(['id', 'plan_id', 'range', 'age_init'])])
             ->orderBy('description')
             ->get()
-            ->mapWithKeys(static fn (Plan $plan): array => [
-                $plan->id => $plan->age_ranges_count.' rango(s) de edad disponible(s).',
-            ])
+            ->mapWithKeys(static function (Plan $plan): array {
+                $ranges = $plan->ageRanges->pluck('range')->map(static fn (mixed $range): string => trim((string) $range))->filter()->unique()->values();
+
+                return [
+                    $plan->id => $ranges->isEmpty()
+                        ? 'Sin rangos de edad cargados: no se puede cotizar.'
+                        : 'Edades: '.$ranges->implode(' · ').' años.',
+                ];
+            })
             ->all();
 
-        $descriptions['CM'] = 'Seleccione más de dos (2) planes.';
+        $descriptions['CM'] = 'Combine dos o más planes en una misma propuesta.';
 
         return $descriptions;
     }

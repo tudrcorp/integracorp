@@ -71,7 +71,7 @@ final class PopulationBillingPreview
             .'<li>Fecha efectiva del cambio: <strong>'.e((string) $summary['effective_date']).'</strong> (la población se aplicó el '.e((string) ($summary['applied_on'] ?? '—')).').</li>'
             .'<li>Frecuencia de pago: <strong>'.e((string) ($summary['frequency_label'] ?? $summary['frequency'])).'</strong>: '.$perYear.' '.($perYear === 1 ? 'cuota' : 'cuotas').' al año.</li>'
             .'<li>Ciclo de cobro actual: del '.e((string) $summary['cycle_start']).' al '.e((string) $summary['cycle_end']).'.</li>'
-            .'<li>Tarifa por cuota de cada persona = tarifa anual ÷ '.$perYear.'.</li>'
+            .'<li>'.e(ucfirst(self::installmentLabel($summary))).' de cada persona = tarifa anual ÷ '.$perYear.'.</li>'
             .'<li>Movimientos: <strong>'.(int) $summary['persons_added'].' '.((int) $summary['persons_added'] === 1 ? 'alta' : 'altas').'</strong> y <strong>'.(int) $summary['persons_removed'].' '.((int) $summary['persons_removed'] === 1 ? 'baja' : 'bajas').'</strong>'.self::movementBreakdown($summary['groups']).'.</li>'
             .'</ul></div>';
 
@@ -120,14 +120,14 @@ final class PopulationBillingPreview
         }
 
         $html .= '<table class="mt-2 w-full border-collapse text-left"><thead><tr class="border-b border-gray-200 dark:border-white/10">'
-            .'<th class="px-2 py-1">Personas</th><th class="px-2 py-1 text-right">Tarifa anual</th><th class="px-2 py-1 text-right">Por cuota</th>'
+            .'<th class="px-2 py-1">Personas</th><th class="px-2 py-1 text-right">Tarifa anual</th><th class="px-2 py-1 text-right">'.e(ucfirst(self::installmentLabel($summary))).'</th>'
             .'<th class="px-2 py-1">Cálculo por persona</th><th class="px-2 py-1 text-right">Total</th></tr></thead><tbody>';
 
         foreach ($adds as $group) {
             $formula = $money($group['period_cents']).' × '.(int) $group['days'].' ÷ '.(int) $group['period_days'].' = <strong>'.$money($group['unit_charge_cents']).'</strong>';
             $html .= '<tr class="border-b border-gray-100 dark:border-white/5"><td class="px-2 py-1">'.(int) $group['count'].' '.self::movementText($group['movements']).'</td>'
                 .'<td class="px-2 py-1 text-right">'.$money($group['annual_cents']).'</td>'
-                .'<td class="px-2 py-1 text-right">'.$money($group['period_cents']).'</td>'
+                .'<td class="px-2 py-1 text-right">'.$money($group['period_cents']).'<br><span class="text-xs text-gray-500 dark:text-gray-400">anual ÷ '.(int) ($summary['per_year'] ?? 1).'</span></td>'
                 .'<td class="px-2 py-1">'.$formula.'</td>'
                 .'<td class="px-2 py-1 text-right"><strong>'.$money($group['charge_cents']).'</strong></td></tr>';
         }
@@ -168,6 +168,18 @@ final class PopulationBillingPreview
         }
 
         return $html.'</tbody></table></div>';
+    }
+
+    /**
+     * «cuota trimestral», «cuota mensual»…: la cuota según la frecuencia de pago.
+     *
+     * @param  array<string, mixed>  $summary
+     */
+    private static function installmentLabel(array $summary): string
+    {
+        $label = mb_strtolower((string) ($summary['frequency_label'] ?? $summary['frequency'] ?? ''), 'UTF-8');
+
+        return $label !== '' ? 'cuota '.$label : 'cuota';
     }
 
     /**

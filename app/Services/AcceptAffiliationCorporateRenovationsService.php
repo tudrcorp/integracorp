@@ -233,7 +233,7 @@ final class AcceptAffiliationCorporateRenovationsService
                 'coverage_id' => $amounts['coverage_id'],
                 'fee' => $annualFee,
                 'subtotal_anual' => $annualFee,
-                'subtotal_payment_frequency' => $this->calculator->totalAmountForPaymentFrequency($annualFee, $manualOptions->paymentFrequency),
+                'subtotal_payment_frequency' => \App\Support\Upgrades\UpgradeFirstPaymentBilling::affiliateRegular($affiliate, $annualFee, $manualOptions->paymentFrequency),
                 'payment_frequency' => $manualOptions->paymentFrequency,
                 'age' => $age,
             ]);
@@ -289,7 +289,7 @@ final class AcceptAffiliationCorporateRenovationsService
                         'coverage_id' => $amounts['coverage_id'],
                         'fee' => $annualFee,
                         'subtotal_anual' => $annualFee,
-                        'subtotal_payment_frequency' => $this->calculator->totalAmountForPaymentFrequency($annualFee, $paymentFrequency),
+                        'subtotal_payment_frequency' => \App\Support\Upgrades\UpgradeFirstPaymentBilling::affiliateRegular($affiliate, $annualFee, $paymentFrequency),
                         'payment_frequency' => $paymentFrequency,
                         'age' => $age,
                     ]);
@@ -327,7 +327,8 @@ final class AcceptAffiliationCorporateRenovationsService
             ->count();
 
         $affiliation->fee_anual = round($sumAnnualFees, 2);
-        $affiliation->total_amount = $this->calculator->totalAmountForPaymentFrequency($sumAnnualFees, $frequency);
+        /** La cuota regular lleva solo el plan: los upgrades van completos en la primera cuota del año. */
+        $affiliation->total_amount = \App\Support\Upgrades\UpgradeFirstPaymentBilling::regularInstallment($sumAnnualFees, \App\Support\Upgrades\UpgradeFirstPaymentBilling::corporateOneTimeTotal($affiliation), $frequency);
         $affiliation->poblation = $personCount;
         $affiliation->save();
     }

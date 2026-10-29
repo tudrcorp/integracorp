@@ -18,6 +18,7 @@ use App\Support\CreditReconciliations\WhiteCompanyCreditMovementRecorder;
 use App\Support\PaidMemberships\AffiliationQuoteNumber;
 use App\Support\PaidMemberships\AgencyTypeForCommission;
 use App\Support\SecurityAudit;
+use App\Support\Upgrades\UpgradeFirstPaymentBilling;
 use App\Support\WhiteCompanies\WhiteCompanyNegotiatedRateResolver;
 use App\Support\WhiteCompanies\WhiteCompanyPaymentSettlement;
 use App\Support\WhiteCompanies\WhiteCompanySaleAmounts;
@@ -58,6 +59,8 @@ class PaidMembershipController extends Controller
             );
             $saleAmount = $saleAmounts['total_amount'];
             $alliedNeta = $saleAmounts['white_company_neta'];
+            /** Las cuotas que nacen del primer pago no repiten los upgrades de cobro único que ya trae. */
+            $installmentAmount = UpgradeFirstPaymentBilling::installmentAfterFirstPayment($saleAmount, $record->upgrades_amount, (string) $record->affiliation->payment_frequency);
 
             /**
              * LOGICA PARA LA CARGA Y GESTION DEL PRIMER PAGO O LA PRIMERA CUOTA
@@ -254,7 +257,7 @@ class PaidMembershipController extends Controller
                         $collections->type = 'AFILIACION INDIVIDUAL';
                         $collections->service = 'servicio';
                         $collections->persons = $record->affiliation->family_members;
-                        $collections->total_amount = $saleAmount;
+                        $collections->total_amount = $installmentAmount;
                         $collections->payment_method = $record->payment_method;
 
                         $collections->pay_amount_usd = 0.00;
@@ -284,7 +287,7 @@ class PaidMembershipController extends Controller
                             'address_ti' => $record->affiliation->adress_ti,
                             'phone_ti' => $sales->affiliate_phone,
                             'email_ti' => $sales->affiliate_email,
-                            'total_amount' => $saleAmount,
+                            'total_amount' => $installmentAmount,
                             'plan' => $record->plan?->description,
                             'coverage' => $record->coverage?->price,
                             'frequency' => $record->affiliation->payment_frequency,
@@ -328,7 +331,7 @@ class PaidMembershipController extends Controller
                     $collections->type = 'AFILIACION INDIVIDUAL';
                     $collections->service = 'servicio';
                     $collections->persons = $record->affiliation->family_members;
-                    $collections->total_amount = $saleAmount;
+                    $collections->total_amount = $installmentAmount;
                     $collections->payment_method = $record->payment_method;
 
                     $collections->pay_amount_usd = 0.00;
@@ -362,7 +365,7 @@ class PaidMembershipController extends Controller
                         'address_ti' => $record->affiliation->adress_ti,
                         'phone_ti' => $sales->affiliate_phone,
                         'email_ti' => $sales->affiliate_email,
-                        'total_amount' => $saleAmount,
+                        'total_amount' => $installmentAmount,
                         'plan' => $record->plan?->description,
                         'coverage' => $record->coverage?->price,
                         'frequency' => $record->affiliation->payment_frequency,
@@ -404,7 +407,7 @@ class PaidMembershipController extends Controller
                         $collections->type = 'AFILIACION INDIVIDUAL';
                         $collections->service = 'servicio';
                         $collections->persons = $record->affiliation->family_members;
-                        $collections->total_amount = $saleAmount;
+                        $collections->total_amount = $installmentAmount;
                         $collections->payment_method = $record->payment_method;
 
                         $collections->pay_amount_usd = 0.00;
@@ -433,7 +436,7 @@ class PaidMembershipController extends Controller
                             'address_ti' => $record->affiliation->adress_ti,
                             'phone_ti' => $sales->affiliate_phone,
                             'email_ti' => $sales->affiliate_email,
-                            'total_amount' => $saleAmount,
+                            'total_amount' => $installmentAmount,
                             'plan' => $record->plan?->description,
                             'coverage' => $record->coverage?->price,
                             'frequency' => $record->affiliation->payment_frequency,

@@ -41,7 +41,9 @@ final class RenewalFeeProjection
     }
 
     /**
-     * @return array{annual_fee: float, age_range_id: int|null, priced: bool}
+     * `upgrades` es la parte de upgrades del anual: se cobra completa en la primera cuota.
+     *
+     * @return array{annual_fee: float, upgrades: float, age_range_id: int|null, priced: bool}
      */
     public function forAffiliate(Affiliation $affiliationForFees, Affiliate $affiliate, Carbon $referenceDate): array
     {
@@ -50,8 +52,11 @@ final class RenewalFeeProjection
             : null;
 
         if ($amounts !== null) {
+            $upgrades = UpgradeRenewalRepricer::projectedTotal($affiliate, $referenceDate);
+
             return [
-                'annual_fee' => round((float) $amounts['annual_fee'] + UpgradeRenewalRepricer::projectedTotal($affiliate, $referenceDate), 2),
+                'annual_fee' => round((float) $amounts['annual_fee'] + $upgrades, 2),
+                'upgrades' => $upgrades,
                 'age_range_id' => $amounts['age_range_id'],
                 'priced' => true,
             ];
@@ -59,6 +64,7 @@ final class RenewalFeeProjection
 
         return [
             'annual_fee' => (float) $affiliate->fee,
+            'upgrades' => \App\Support\Upgrades\IndividualAffiliateUpgradeManager::activeTotalFor($affiliate),
             'age_range_id' => $affiliate->age_range_id !== null ? (int) $affiliate->age_range_id : null,
             'priced' => false,
         ];

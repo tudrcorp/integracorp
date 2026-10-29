@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\IndividualQuotes\Schemas;
 
 use App\Models\IndividualQuote;
+use App\Support\Quotes\IndividualQuoteUpgrades;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
@@ -102,6 +104,20 @@ class IndividualQuoteInfolist
                                                             ->badge()
                                                             ->color('primary'),
                                                     ]),
+                                            ]),
+                                    ]),
+                            ]),
+                        Tab::make('Upgrades')
+                            ->icon(Heroicon::Sparkles)
+                            ->visible(fn (IndividualQuote $record): bool => $record->upgrades()->exists())
+                            ->schema([
+                                Section::make('Upgrades cotizados')
+                                    ->description('Precio congelado al cotizar. Se suma a la tarifa del plan y la cobertura que elija el cliente.')
+                                    ->extraAttributes(['class' => self::IOS_SECTION_CLASS])
+                                    ->schema([
+                                        View::make('filament.business.individual-quotes.partials.upgrades-summary')
+                                            ->viewData(fn (IndividualQuote $record): array => [
+                                                'summary' => IndividualQuoteUpgrades::summary($record),
                                             ]),
                                     ]),
                             ]),

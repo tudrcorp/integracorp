@@ -81,6 +81,16 @@ class IndividualQuote extends Model
         return $this->hasMany(DetailIndividualQuote::class, 'individual_quote_id', 'id');
     }
 
+    /**
+     * Upgrades cotizados (copia congelada del catálogo).
+     *
+     * @return HasMany<IndividualQuoteUpgrade, $this>
+     */
+    public function upgrades(): HasMany
+    {
+        return $this->hasMany(IndividualQuoteUpgrade::class, 'individual_quote_id', 'id')->orderBy('sort_order')->orderBy('id');
+    }
+
     public function paymentReceipts(): HasMany
     {
         return $this->hasMany(IndividualQuotePaymentReceipt::class, 'individual_quote_id');

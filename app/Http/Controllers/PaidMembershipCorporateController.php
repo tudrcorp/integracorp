@@ -14,6 +14,7 @@ use App\Support\CreditReconciliations\WhiteCompanyCreditMovementRecorder;
 use App\Support\PaidMemberships\AffiliationQuoteNumber;
 use App\Support\PaidMemberships\AgencyTypeForCommission;
 use App\Support\SecurityAudit;
+use App\Support\Upgrades\UpgradeFirstPaymentBilling;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
@@ -51,6 +52,9 @@ class PaidMembershipCorporateController extends Controller
                     ? $record->reference_payment_ves
                     : $record->reference_payment_usd;
             }
+
+            /** Las cuotas que nacen del primer pago no repiten los upgrades de cobro único que ya trae. */
+            $installmentAmount = UpgradeFirstPaymentBilling::installmentAfterFirstPayment((float) $record->total_amount, $record->upgrades_amount, (string) $record->affiliation_corporate->payment_frequency);
 
             // Primer pago cargado
             if (! isset($data['collections'])) {
@@ -249,7 +253,7 @@ class PaidMembershipCorporateController extends Controller
                         $collections->type = 'AFILIACION CORPORATIVA';
                         $collections->service = 'servicio';
                         $collections->persons = $record->affiliation_corporate->poblation;
-                        $collections->total_amount = $record->total_amount;
+                        $collections->total_amount = $installmentAmount;
                         $collections->payment_method = $record->payment_method;
 
                         $collections->pay_amount_usd = 0.00;
@@ -278,7 +282,7 @@ class PaidMembershipCorporateController extends Controller
                             'address_ti' => $record->affiliation_corporate->address,
                             'phone_ti' => $record->affiliation_corporate->phone,
                             'email_ti' => $record->affiliation_corporate->email,
-                            'total_amount' => $record->total_amount,
+                            'total_amount' => $installmentAmount,
                             'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
                             'coverage' => $record->coverage?->price,
                             'frequency' => $record->affiliation_corporate->payment_frequency,
@@ -315,7 +319,7 @@ class PaidMembershipCorporateController extends Controller
                     $collections->type = 'AFILIACION CORPORATIVA';
                     $collections->service = 'servicio';
                     $collections->persons = $record->affiliation_corporate->poblation;
-                    $collections->total_amount = $record->total_amount;
+                    $collections->total_amount = $installmentAmount;
                     $collections->payment_method = $record->payment_method;
 
                     $collections->pay_amount_usd = 0.00;
@@ -344,7 +348,7 @@ class PaidMembershipCorporateController extends Controller
                         'address_ti' => $record->affiliation_corporate->address,
                         'phone_ti' => $record->affiliation_corporate->phone,
                         'email_ti' => $record->affiliation_corporate->email,
-                        'total_amount' => $record->total_amount,
+                        'total_amount' => $installmentAmount,
                         'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
                         'coverage' => $record->coverage?->price,
                         'frequency' => $record->affiliation_corporate->payment_frequency,
@@ -386,7 +390,7 @@ class PaidMembershipCorporateController extends Controller
                         $collections->type = 'AFILIACION CORPORATIVA';
                         $collections->service = 'servicio';
                         $collections->persons = $record->affiliation_corporate->poblation;
-                        $collections->total_amount = $record->total_amount;
+                        $collections->total_amount = $installmentAmount;
                         $collections->payment_method = $record->payment_method;
 
                         $collections->pay_amount_usd = 0.00;
@@ -415,7 +419,7 @@ class PaidMembershipCorporateController extends Controller
                             'address_ti' => $record->affiliation_corporate->address,
                             'phone_ti' => $record->affiliation_corporate->phone,
                             'email_ti' => $record->affiliation_corporate->email,
-                            'total_amount' => $record->total_amount,
+                            'total_amount' => $installmentAmount,
                             'plan' => $record->affiliation_corporate->affiliationCorporatePlans->toArray(),
                             'coverage' => $record->coverage?->price,
                             'frequency' => $record->affiliation_corporate->payment_frequency,

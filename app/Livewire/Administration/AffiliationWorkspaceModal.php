@@ -436,7 +436,7 @@ class AffiliationWorkspaceModal extends Component
     private function hydrateDefaults(): void
     {
         $affiliation = $this->resolveAffiliation();
-        $this->paymentForm['total_amount'] = (float) ($affiliation->total_amount ?? 0);
+        $this->paymentForm['total_amount'] = \App\Support\Upgrades\UpgradeFirstPaymentBilling::suggestedProofAmount($affiliation);
         $this->paymentForm['date_payment_voucher'] = now()->format('Y-m-d');
     }
 

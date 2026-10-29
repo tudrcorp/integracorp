@@ -128,6 +128,8 @@ final class PlanGeneratorPreAffiliationSession
             }
 
             $annual = (float) $amounts['annual'];
+            /** Las cuotas llevan solo el plan: los upgrades van completos en el primer pago. */
+            $planAnnual = max(0.0, $annual - (float) ($amounts['upgrades_annual'] ?? 0));
             $persons += $amounts['persons'];
 
             $records[] = self::dataRecordFromRow($plan, [
@@ -136,9 +138,9 @@ final class PlanGeneratorPreAffiliationSession
                 'population' => $amounts['persons'],
                 'fee' => $annual / $amounts['persons'],
                 'subtotal_anual' => $annual,
-                'subtotal_biannual' => $annual / 2,
-                'subtotal_quarterly' => $annual / 4,
-                'subtotal_monthly' => $annual / 12,
+                'subtotal_biannual' => $planAnnual / 2,
+                'subtotal_quarterly' => $planAnnual / 4,
+                'subtotal_monthly' => $planAnnual / 12,
             ], self::TYPE_CORPORATE);
         }
 
@@ -397,13 +399,13 @@ final class PlanGeneratorPreAffiliationSession
             'fee' => $totalPersons > 0 ? $annual / $totalPersons : 0,
             'subtotal_anual' => $annual,
             'subtotal_biannual' => $primaryColumnKey !== null
-                ? (float) ($groupTotals['semestral'][$primaryColumnKey] ?? 0)
+                ? (float) ($groupTotals['semestral'.PlanGeneratorGroupTotalCalculator::NEXT_SUFFIX][$primaryColumnKey] ?? 0)
                 : 0.0,
             'subtotal_quarterly' => $primaryColumnKey !== null
-                ? (float) ($groupTotals['trimestral'][$primaryColumnKey] ?? 0)
+                ? (float) ($groupTotals['trimestral'.PlanGeneratorGroupTotalCalculator::NEXT_SUFFIX][$primaryColumnKey] ?? 0)
                 : 0.0,
             'subtotal_monthly' => $primaryColumnKey !== null
-                ? (float) ($groupTotals['mensual'][$primaryColumnKey] ?? 0)
+                ? (float) ($groupTotals['mensual'.PlanGeneratorGroupTotalCalculator::NEXT_SUFFIX][$primaryColumnKey] ?? 0)
                 : 0.0,
         ];
     }
@@ -446,9 +448,9 @@ final class PlanGeneratorPreAffiliationSession
                 'total_persons' => $totalPersons,
                 'fee' => $totalPersons > 0 ? $annual / $totalPersons : 0,
                 'subtotal_anual' => $annual,
-                'subtotal_biannual' => (float) ($groupTotals['semestral'][$columnKey] ?? 0),
-                'subtotal_quarterly' => (float) ($groupTotals['trimestral'][$columnKey] ?? 0),
-                'subtotal_monthly' => (float) ($groupTotals['mensual'][$columnKey] ?? 0),
+                'subtotal_biannual' => (float) ($groupTotals['semestral'.PlanGeneratorGroupTotalCalculator::NEXT_SUFFIX][$columnKey] ?? 0),
+                'subtotal_quarterly' => (float) ($groupTotals['trimestral'.PlanGeneratorGroupTotalCalculator::NEXT_SUFFIX][$columnKey] ?? 0),
+                'subtotal_monthly' => (float) ($groupTotals['mensual'.PlanGeneratorGroupTotalCalculator::NEXT_SUFFIX][$columnKey] ?? 0),
             ];
         }
 

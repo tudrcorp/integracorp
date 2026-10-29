@@ -51,6 +51,64 @@ final class QuoteAgeRangeSelection
         );
     }
 
+    /**
+     * Cotizador individual: una fila por cada rango de edad del plan, ya elegido, para que el
+     * analista solo indique cuántas personas hay en cada uno. Conserva las personas que ya
+     * estuvieran indicadas en filas del mismo rango.
+     *
+     * @return list<array{plan_id: int, age_range_id: int, range_label: string, total_persons: int|null}>
+     */
+    public static function presetRowsForPlan(int $planId, mixed $current = []): array
+    {
+        if ($planId <= 0) {
+            return [];
+        }
+
+        $persons = [];
+
+        foreach (is_array($current) ? $current : [] as $row) {
+            if (is_array($row) && is_numeric($row['age_range_id'] ?? null) && is_numeric($row['total_persons'] ?? null)) {
+                $persons[(int) $row['age_range_id']] = (int) $row['total_persons'];
+            }
+        }
+
+        $options = self::optionsForPlan($planId);
+
+        return array_values(array_map(
+            static fn (int $id, string $label): array => [
+                'plan_id' => $planId,
+                'age_range_id' => $id,
+                'range_label' => $label,
+                'total_persons' => $persons[$id] ?? null,
+            ],
+            array_keys($options),
+            array_values($options),
+        ));
+    }
+
+    /**
+     * Filas preparadas, o null si las que hay ya son exactamente las del plan.
+     *
+     * @return list<array{plan_id: int, age_range_id: int, range_label: string, total_persons: int|null}>|null
+     */
+    public static function presetRowsIfMissing(mixed $plan, mixed $details): ?array
+    {
+        $planId = self::selectedPlanId($plan);
+
+        if ($planId === null) {
+            return [];
+        }
+
+        $expected = array_keys(self::optionsForPlan($planId));
+        $current = array_values(array_map(
+            static fn (mixed $row): int => is_array($row) && is_numeric($row['age_range_id'] ?? null) ? (int) $row['age_range_id'] : 0,
+            is_array($details) ? $details : [],
+        ));
+        $labelsReady = is_array($details) && collect($details)->every(static fn (mixed $row): bool => is_array($row) && filled($row['range_label'] ?? null));
+
+        return $current === $expected && $labelsReady ? null : self::presetRowsForPlan($planId, $details);
+    }
+
     public static function countForPlan(int $planId): int
     {
         if ($planId <= 0) {

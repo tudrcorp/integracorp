@@ -27,11 +27,45 @@ class Upgrade extends Model
         'code',
         'name',
         'description',
+        'image_path',
         'status',
         'legacy_upgrade_benefit_id',
         'created_by',
         'updated_by',
     ];
+
+    /** Carpeta del disco `public` donde viven las imágenes de las tarjetas. */
+    public const IMAGE_DIRECTORY = 'upgrades/images';
+
+    /**
+     * Si la tabla ya tiene la columna de imagen (el código puede llegar antes que la migración).
+     * Se recuerda por conexión.
+     */
+    public static function hasImageColumn(?string $connection = null): bool
+    {
+        static $exists = [];
+        $connection ??= (new self)->getConnectionName() ?? (string) config('database.default');
+
+        try {
+            return $exists[$connection] ??= \Illuminate\Support\Facades\Schema::connection($connection)->hasColumn('upgrades', 'image_path');
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * URL pública de la imagen de la tarjeta, o null si no tiene (o el archivo ya no existe).
+     */
+    public function imageUrl(): ?string
+    {
+        $path = trim((string) $this->image_path);
+
+        if ($path === '' || ! str_starts_with($path, self::IMAGE_DIRECTORY.'/') || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->url($path);
+    }
 
     /**
      * @return HasMany<UpgradeService, $this>

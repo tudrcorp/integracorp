@@ -13,6 +13,7 @@ use App\Services\AffiliationRenewalCollectionGenerator;
 use App\Support\AffiliationCorporates\CorporatePaymentFrequency;
 use App\Support\AffiliationCorporates\CorporatePaymentFrequencyChanger;
 use App\Support\PaidMemberships\AffiliationQuoteNumber;
+use App\Support\Upgrades\UpgradeFirstPaymentBilling;
 use Carbon\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Cache;
@@ -131,7 +132,14 @@ final class FamilyMergeBilling
             $blockers[] = 'Hay '.$pendingProofs.' comprobante(s) de pago por aprobar en estas pólizas. Apruébelos o recházelos en Administración antes de unificar: al aprobarse generarían avisos con el monto anterior.';
         }
 
-        $periodAmount = CorporatePaymentFrequency::periodAmount($feeAnual, $frequency);
+        /**
+         * El grupo unificado arranca un año nuevo: los upgrades de cobro único van completos en
+         * la primera cuota y las demás llevan solo el plan.
+         */
+        $oneTimeUpgrades = round(array_sum($affiliations->map(
+            static fn (Affiliation $affiliation): float => UpgradeFirstPaymentBilling::individualOneTimeTotal($affiliation),
+        )->all()), 2);
+        $periodAmount = CorporatePaymentFrequency::periodAmount(max(0.0, $feeAnual - $oneTimeUpgrades), $frequency);
         $installments = [];
 
         if ($effective !== null) {
@@ -143,6 +151,10 @@ final class FamilyMergeBilling
                     'due' => $date->copy()->addDays($expirationDays),
                     'amount' => $periodAmount,
                 ];
+            }
+
+            if ($installments !== [] && $oneTimeUpgrades > 0) {
+                $installments[0]['amount'] = round($installments[0]['amount'] + $oneTimeUpgrades, 2);
             }
 
             $overdue = count(array_filter($installments, static fn (array $row): bool => $row['date']->lt($today)));

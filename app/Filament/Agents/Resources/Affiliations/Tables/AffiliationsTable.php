@@ -240,15 +240,15 @@ class AffiliationsTable
                                                     ->first();
 
                                                 if ($record->payment_frequency == 'ANUAL') {
-                                                    return $amount->subtotal_anual;
+                                                    return $amount->subtotal_anual + \App\Support\Upgrades\UpgradeFirstPaymentBilling::pendingFirstPaymentUpgrades($record);
                                                 }
 
                                                 if ($record->payment_frequency == 'TRIMESTRAL') {
-                                                    return $amount->subtotal_quarterly;
+                                                    return $amount->subtotal_quarterly + \App\Support\Upgrades\UpgradeFirstPaymentBilling::pendingFirstPaymentUpgrades($record);
                                                 }
 
                                                 if ($record->payment_frequency == 'SEMESTRAL') {
-                                                    return $amount->subtotal_biannual;
+                                                    return $amount->subtotal_biannual + \App\Support\Upgrades\UpgradeFirstPaymentBilling::pendingFirstPaymentUpgrades($record);
                                                 }
 
                                                 return null;
@@ -989,7 +989,7 @@ class AffiliationsTable
                         ->deselectRecordsAfterCompletion()
                         ->form(function (Collection $records) {
 
-                            $data = $records->toArray();
+                            $data = \App\Support\Upgrades\UpgradeFirstPaymentBilling::withSuggestedProofAmounts($records);
 
                             // guardo la data en la sesion para usarla en el formulario
                             session()->put('data', $data);

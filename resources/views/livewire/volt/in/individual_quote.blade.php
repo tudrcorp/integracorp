@@ -28,7 +28,7 @@ new #[Layout('components.layouts.interactive')] #[Title('Tu cotización')] class
         }
 
         $record = IndividualQuote::query()
-            ->with(['detailsQuote.ageRange', 'detailsQuote.coverage'])
+            ->with(['detailsQuote.ageRange', 'detailsQuote.coverage', 'upgrades'])
             ->find($quoteId);
 
         abort_unless($record instanceof IndividualQuote, 404);
@@ -38,6 +38,7 @@ new #[Layout('components.layouts.interactive')] #[Title('Tu cotización')] class
         abort_unless($plan instanceof Plan, 404);
 
         $this->view = InteractiveIndividualQuoteView::from($record, $plan, $record->detailsQuote);
+        $this->view['upgrades'] = \App\Support\Quotes\IndividualQuoteUpgrades::summary($record);
     }
 
     public function download()
@@ -170,6 +171,35 @@ new #[Layout('components.layouts.interactive')] #[Title('Tu cotización')] class
             </div>
         @endif
     </section>
+
+    @if (($view['upgrades']['lines'] ?? []) !== [])
+        <section class="iq-card" aria-label="Upgrades incluidos">
+            <h2>Upgrades incluidos</h2>
+            <p class="iq-card__lead">Se suman a la cobertura que elijas y se pagan una sola vez al año, completos, en el primer pago. Las demás cuotas llevan solo el plan. Aplican a las personas cuya edad está dentro de las que cubre cada upgrade.</p>
+            <div class="iq-pay">
+                <ul>
+                    @foreach ($view['upgrades']['lines'] as $upgradeLine)
+                        <li>
+                            <span>
+                                {{ $upgradeLine['name'] }}
+                                <small>{{ $upgradeLine['coverage'] }} · {{ $upgradeLine['persons'] }} {{ $upgradeLine['persons'] === 1 ? 'persona' : 'personas' }}</small>
+                            </span>
+                            <strong>US$ {{ number_format($upgradeLine['annual'], 2, ',', '.') }} al año</strong>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+            <div class="iq-pay">
+                <p class="iq-pay__label">Total de upgrades</p>
+                <ul>
+                    <li>
+                        <span>Pago único, en el primer pago</span>
+                        <strong>US$ {{ number_format((float) $view['upgrades']['annual_total'], 2, ',', '.') }}</strong>
+                    </li>
+                </ul>
+            </div>
+        </section>
+    @endif
 
     <div class="iq-cta">
         <button type="button" class="iq-cta__btn" wire:click="download" wire:loading.attr="disabled">

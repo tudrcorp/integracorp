@@ -53,7 +53,9 @@ it('reasignar plan conserva los upgrades del afiliado', function (): void {
 it('la renovación corporativa recotiza los upgrades por edad al recalcular', function (): void {
     expect(corporateUpgradeSource('app/Jobs/PrepareAffiliationCorporateRenovations.php'))
         ->toContain('->withActiveUpgradesTotal()')
-        ->toContain("round(\$amounts['annual_fee'] + UpgradeRenewalRepricer::projectedTotal(\$affiliate, \$today), 2)");
+        ->toContain('$affiliateUpgrades = UpgradeRenewalRepricer::projectedTotal($affiliate, $today);')
+        ->toContain("round(\$amounts['annual_fee'] + \$affiliateUpgrades, 2)")
+        ->toContain("'subtotal_quarterly' => round(\$planAnual / 4, 2)");
 
     $accept = corporateUpgradeSource('app/Services/AcceptAffiliationCorporateRenovationsService.php');
 

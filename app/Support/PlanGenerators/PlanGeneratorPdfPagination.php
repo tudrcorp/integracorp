@@ -131,7 +131,7 @@ final class PlanGeneratorPdfPagination
 
         $heights = [
             self::SECTION_RATES => self::ratesSectionHeight($columns, $rateRows, $populationUnitLabel, $rateAgeWidthPt, $ratePopWidthPt, $planWidthPt),
-            self::SECTION_GROUP => self::groupSectionHeight($columns, $includeMonthlyTotal, $groupTotalHiddenRows, $leadWidthPt, $planWidthPt),
+            self::SECTION_GROUP => self::groupSectionHeight($columns, $includeMonthlyTotal, $groupTotalHiddenRows, $leadWidthPt, $planWidthPt, (float) ($upgradeQuote['annual_total'] ?? 0)),
             self::SECTION_UPGRADES => self::upgradesSectionHeight($upgradeQuote),
             self::SECTION_CONDITIONS => self::conditionsBlockHeight($conditions),
         ];
@@ -264,11 +264,12 @@ final class PlanGeneratorPdfPagination
     /**
      * @param  array<int|string, mixed>  $columns
      */
-    private static function groupSectionHeight(array $columns, bool $includeMonthlyTotal, mixed $groupTotalHiddenRows, float $leadWidthPt, float $planWidthPt): float
+    private static function groupSectionHeight(array $columns, bool $includeMonthlyTotal, mixed $groupTotalHiddenRows, float $leadWidthPt, float $planWidthPt, float $upgradesAnnual = 0.0): float
     {
-        $body = 0.0;
+        /** Con upgrades se suma la nota de la regla de cobro debajo de la tabla. */
+        $body = $upgradesAnnual > 0 ? self::bodyRowHeight(1) : 0.0;
 
-        foreach (PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal, $groupTotalHiddenRows) as $groupRow) {
+        foreach (PlanGeneratorGroupTotalCalculator::displayRows($includeMonthlyTotal, $groupTotalHiddenRows, $upgradesAnnual) as $groupRow) {
             $body += self::bodyRowHeight(
                 self::lineCount($groupRow['label'], self::textWidthPt($leadWidthPt), (bool) $groupRow['bold']),
             );

@@ -217,7 +217,7 @@ final class PlanGeneratorCoverageAssignment
         $byCoverage = [];
 
         foreach ($coverages as $columnKey => $coverage) {
-            $byCoverage[$columnKey] = ['persons' => 0, 'annual' => 0.0, 'ranges' => []];
+            $byCoverage[$columnKey] = ['persons' => 0, 'annual' => 0.0, 'upgrades_annual' => 0.0, 'ranges' => []];
         }
 
         $people = PlanGeneratorPopulation::query()
@@ -296,6 +296,7 @@ final class PlanGeneratorCoverageAssignment
 
             $byCoverage[$columnKey]['persons']++;
             $byCoverage[$columnKey]['annual'] += $range['fee'] + $upgradeFee;
+            $byCoverage[$columnKey]['upgrades_annual'] += $upgradeFee;
             $byCoverage[$columnKey]['ranges'][$range['label']] ??= ['persons' => 0, 'fee' => $range['fee']];
             $byCoverage[$columnKey]['ranges'][$range['label']]['persons']++;
 
@@ -312,6 +313,7 @@ final class PlanGeneratorCoverageAssignment
 
         foreach ($byCoverage as $columnKey => $amounts) {
             $byCoverage[$columnKey]['annual'] = round($amounts['annual'], 2);
+            $byCoverage[$columnKey]['upgrades_annual'] = round($amounts['upgrades_annual'], 2);
         }
 
         return self::$reports[$cacheKey] = [
@@ -699,6 +701,8 @@ final class PlanGeneratorCoverageAssignment
             'plan_rows' => $planRows,
             'total_persons' => count($affiliates),
             'annual' => round(array_sum(array_column($report['by_coverage'], 'annual')), 2),
+            /** Upgrades de la población: se cobran completos en el primer pago, no en las cuotas. */
+            'upgrades_annual' => round(array_sum(array_column($report['by_coverage'], 'upgrades_annual')), 2),
             'signature' => $report['signature'],
         ];
     }

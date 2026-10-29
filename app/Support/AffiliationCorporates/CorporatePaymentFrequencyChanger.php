@@ -60,7 +60,7 @@ final class CorporatePaymentFrequencyChanger
             'unchanged' => false,
             'current' => $current,
             'target' => $target,
-            'period_amount' => CorporatePaymentFrequency::periodAmount((float) $owner->fee_anual, $target),
+            'period_amount' => \App\Support\Upgrades\UpgradeFirstPaymentBilling::corporateRegular($owner, (float) $owner->fee_anual, $target),
             'pending_count' => 0,
             'pending_balance' => 0.0,
             'schedule' => [],
@@ -87,7 +87,7 @@ final class CorporatePaymentFrequencyChanger
                 'date' => $installment['date']->format('d/m/Y'),
                 'months' => $installment['months'],
                 'amount' => $installment['amount'],
-            ], self::reschedule($pending, $target)),
+            ], self::reschedule($pending, $target, self::oneTimeCharged($pending))),
         ];
     }
 
@@ -133,13 +133,19 @@ final class CorporatePaymentFrequencyChanger
             $snapshot = self::snapshotOf($locked);
             $previousTotalAmount = round((float) $locked->total_amount, 2);
             $pending = self::pendingInstallments($locked, self::previousFrequency($locked), lock: true);
-            $schedule = self::reschedule($pending, $target);
+            $charged = self::oneTimeCharged($pending);
+            $schedule = self::reschedule($pending, $target, $charged);
             $cancelledDetails = self::describePending($pending);
             $cancelledIds = self::cancelPending($pending);
             $createdDetails = self::createInstallments($locked, $pending, $schedule, $target, $actor);
             $createdIds = array_column($createdDetails, 'id');
 
-            $periodAmount = CorporatePaymentFrequency::periodAmount((float) $locked->fee_anual, $target);
+            /** Los upgrades de cobro único que estaban en un aviso anulado pasan, completos, al primero nuevo. */
+            if ($charged > 0 && $createdIds !== []) {
+                \App\Support\Upgrades\UpgradeFirstPaymentBilling::moveCharges('affiliate_corporate_upgrades', $cancelledIds, (int) $createdIds[0]);
+            }
+
+            $periodAmount = \App\Support\Upgrades\UpgradeFirstPaymentBilling::corporateRegular($locked, (float) $locked->fee_anual, $target);
             $locked->payment_frequency = $target;
             $locked->total_amount = $periodAmount;
             $locked->save();
@@ -150,6 +156,8 @@ final class CorporatePaymentFrequencyChanger
                     'payment_frequency' => $target,
                     'subtotal_payment_frequency' => DB::raw('ROUND(COALESCE(fee, 0) / '.CorporatePaymentFrequency::installmentsPerYear($target).'.0, 2)'),
                 ]);
+
+            \App\Support\Upgrades\UpgradeFirstPaymentBilling::refreshCorporateAffiliateInstallments($locked);
 
             AfilliationCorporatePlan::query()
                 ->where('affiliation_corporate_id', $locked->getKey())
@@ -276,19 +284,22 @@ final class CorporatePaymentFrequencyChanger
     }
 
     /**
-     * Reparte los meses y el saldo pendientes en cuotas de la nueva frecuencia.
+     * Reparte los meses y el saldo pendientes en cuotas de la nueva frecuencia. Los upgrades de
+     * cobro único que ya estaban en un aviso (`$oneTimeCharged`) no se reparten: van completos en
+     * la primera cuota nueva.
      *
      * @param  list<array{date: Carbon, months: int, amount: float}>  $pending
      * @return list<array{date: Carbon, months: int, amount: float}>
      */
-    public static function reschedule(array $pending, string $frequency): array
+    public static function reschedule(array $pending, string $frequency, float $oneTimeCharged = 0.0): array
     {
         if ($pending === []) {
             return [];
         }
 
         $totalMonths = array_sum(array_column($pending, 'months'));
-        $balance = round(array_sum(array_column($pending, 'amount')), 2);
+        $oneTimeCharged = max(0.0, round($oneTimeCharged, 2));
+        $balance = round(array_sum(array_column($pending, 'amount')) - $oneTimeCharged, 2);
 
         if ($totalMonths <= 0) {
             return [];
@@ -310,11 +321,23 @@ final class CorporatePaymentFrequencyChanger
             $schedule[] = [
                 'date' => $start->copy()->addMonthsNoOverflow($index * $interval),
                 'months' => $months,
-                'amount' => $amount,
+                'amount' => $index === 0 ? round($amount + $oneTimeCharged, 2) : $amount,
             ];
         }
 
         return $schedule;
+    }
+
+    /**
+     * Upgrades de cobro único sumados a estos avisos pendientes.
+     *
+     * @param  list<array{collection: BillingCollection}>  $pending
+     */
+    private static function oneTimeCharged(array $pending): float
+    {
+        $ids = array_map(static fn (array $installment): int => (int) $installment['collection']->getKey(), $pending);
+
+        return round(array_sum(\App\Support\Upgrades\UpgradeFirstPaymentBilling::chargedOnCollections('affiliate_corporate_upgrades', $ids)), 2);
     }
 
     /**

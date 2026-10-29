@@ -419,7 +419,7 @@ final class PopulationUpdateApplier
     {
         $owner->poblation = max(0, (int) $owner->poblation + $sign * $delta['persons']);
         $owner->fee_anual = max(0, round((float) $owner->fee_anual + $sign * $delta['fee'], 2));
-        $owner->total_amount = CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount((float) $owner->fee_anual, $owner->payment_frequency);
+        $owner->total_amount = \App\Support\Upgrades\UpgradeFirstPaymentBilling::corporateRegular($owner, (float) $owner->fee_anual);
         $owner->save();
 
         foreach ($delta['rows'] as $rowId => $persons) {

@@ -438,7 +438,7 @@ class AffiliationCorporatesTable
                             Fieldset::make('INFORMACION PRINCIPAL')
                                 ->schema([
                                     Hidden::make('base_total_amount')
-                                        ->default(fn (AffiliationCorporate $record): float => (float) ($record->total_amount ?? 0))
+                                        ->default(fn (AffiliationCorporate $record): float => \App\Support\Upgrades\UpgradeFirstPaymentBilling::suggestedProofAmount($record))
                                         ->dehydrated(),
                                     ...self::bcvRateManualStateHiddenFields(),
                                     Grid::make(['default' => 1, 'md' => 2])->schema([
@@ -447,10 +447,12 @@ class AffiliationCorporatesTable
                                             ->helperText(function (AffiliationCorporate $record): string {
                                                 $planDescription = $record->plan?->description ?? 'N/A';
 
-                                                return 'Plan: '.$planDescription.' - Frecuencia: '.($record->payment_frequency ?? 'N/A');
+                                                $upgradesHint = \App\Support\Upgrades\UpgradeFirstPaymentBilling::proofAmountHint($record);
+
+                                                return 'Plan: '.$planDescription.' - Frecuencia: '.($record->payment_frequency ?? 'N/A').($upgradesHint !== null ? '. '.$upgradesHint : '');
                                             })
                                             ->prefix('US$')
-                                            ->default(fn (AffiliationCorporate $record): float => (float) ($record->total_amount ?? 0))
+                                            ->default(fn (AffiliationCorporate $record): float => \App\Support\Upgrades\UpgradeFirstPaymentBilling::suggestedProofAmount($record))
                                             ->numeric()
                                             ->live()
                                             ->afterStateUpdated(function ($state, Get $get, Set $set): void {
@@ -1271,7 +1273,7 @@ class AffiliationCorporatesTable
                         ->deselectRecordsAfterCompletion()
                         ->form(function (Collection $records) {
 
-                            $data = $records->toArray();
+                            $data = \App\Support\Upgrades\UpgradeFirstPaymentBilling::withSuggestedProofAmounts($records);
 
                             // guardo la data en la sesion para usarla en el formulario
                             session()->put('data', $data);

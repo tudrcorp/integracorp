@@ -743,7 +743,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->modalWidth(Width::TwoExtraLarge)
                         ->modalIcon(Heroicon::MinusCircle)
                         ->modalHeading(fn (AffiliateCorporate $record): string => 'Quitar upgrade a '.CorporateAffiliatePlanSynchronizer::labelFor($record))
-                        ->modalDescription('El monto de cada upgrade seleccionado se descuenta de la tarifa anual del afiliado, de los totales de la afiliación y de los avisos de cobro pendientes. El upgrade queda inactivo en el historial.')
+                        ->modalDescription('El monto de cada upgrade seleccionado se descuenta de la tarifa anual del afiliado y de los totales de la afiliación; si se había sumado a un aviso que sigue por pagar, se descuenta de él. El upgrade queda inactivo en el historial.')
                         ->modalSubmitActionLabel('Quitar seleccionados')
                         ->form(fn (AffiliateCorporate $record): array => [
                             CheckboxList::make('upgrade_ids')
@@ -859,7 +859,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->modalWidth(Width::TwoExtraLarge)
                         ->modalIcon(Heroicon::MinusCircle)
                         ->modalHeading('Quitar upgrade a los afiliados seleccionados')
-                        ->modalDescription('Se da de baja el upgrade elegido en cada afiliado seleccionado que lo tenga activo. Su monto se descuenta de la tarifa anual del afiliado, de los totales de la afiliación y de los avisos de cobro pendientes.')
+                        ->modalDescription('Se da de baja el upgrade elegido en cada afiliado seleccionado que lo tenga activo. Su monto se descuenta de la tarifa anual del afiliado y de los totales de la afiliación; si se había sumado a un aviso que sigue por pagar, se descuenta de él.')
                         ->modalSubmitActionLabel('Quitar seleccionados')
                         ->form(function (Collection $records): array {
                             $options = self::activeUpgradeCatalogOptions($this->getOwnerRecord(), $records);

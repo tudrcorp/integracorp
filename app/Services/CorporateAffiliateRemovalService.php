@@ -103,10 +103,7 @@ final class CorporateAffiliateRemovalService
             $feeToSubtract = (float) $affiliateLocked->fee;
             $newFeeAnual = max(0, (float) $ownerLocked->fee_anual - $feeToSubtract);
             $ownerLocked->fee_anual = $newFeeAnual;
-            $ownerLocked->total_amount = self::annualFeeToPerPeriodAmount(
-                $newFeeAnual,
-                $ownerLocked->payment_frequency
-            );
+            $ownerLocked->total_amount = \App\Support\Upgrades\UpgradeFirstPaymentBilling::corporateRegular($ownerLocked, (float) $newFeeAnual);
             $ownerLocked->poblation = max(0, (int) $ownerLocked->poblation - 1);
             $ownerLocked->save();
 

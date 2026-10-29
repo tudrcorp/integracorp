@@ -17,6 +17,7 @@ class PaidMembership extends Model
         'pay_amount_ves',
         'pay_amount_usd',
         'total_amount',
+        'upgrades_amount',
         'currency',
         'reference_payment_usd',
         'reference_payment_ves',
@@ -38,12 +39,27 @@ class PaidMembership extends Model
         'created_by',
         'aproved_by',
 
-        //Agregado
+        // Agregado
         'name_ti_usd',
         'date_payment_voucher',
         'invoice_number',
-        
+
     ];
+
+    /**
+     * El primer comprobante anota cuánto de su monto son upgrades de cobro único, para que al
+     * aprobarlo las cuotas siguientes no los repitan (`UpgradeFirstPaymentBilling`).
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $proof): void {
+            if ($proof->upgrades_amount !== null || ! \App\Support\Upgrades\UpgradeFirstPaymentBilling::hasColumn('paid_memberships', 'upgrades_amount')) {
+                return;
+            }
+
+            $proof->upgrades_amount = \App\Support\Upgrades\UpgradeFirstPaymentBilling::proofUpgradesAmount($proof->affiliation()->first(), $proof->total_amount);
+        });
+    }
 
     public function affiliation()
     {
@@ -70,6 +86,4 @@ class PaidMembership extends Model
     {
         return $this->belongsTo(Sale::class);
     }
-
-    
 }

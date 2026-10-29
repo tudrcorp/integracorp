@@ -28,7 +28,7 @@
     $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn((array) $columns, (array) $rateRows, $upgradeQuote['annual_total']);
     $includeMonthlyTotal = (bool) ($planGenerator->include_monthly_total ?? false);
     $groupTotalHiddenRows = PlanGeneratorGroupTotalCalculator::normalizeHiddenRows($planGenerator->group_total_hidden_rows ?? []);
-    $groupRows = PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal, $groupTotalHiddenRows);
+    $groupRows = PlanGeneratorGroupTotalCalculator::displayRows($includeMonthlyTotal, $groupTotalHiddenRows, (float) $upgradeQuote['annual_total']);
     $calculationsOnNextPage = $columnCount > 0 && PlanGeneratorPdfPagination::calculationsStartOnNextPage(
         (array) $columns,
         (array) $rows,

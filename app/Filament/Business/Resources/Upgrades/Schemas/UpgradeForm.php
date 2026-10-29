@@ -7,6 +7,7 @@ namespace App\Filament\Business\Resources\Upgrades\Schemas;
 use App\Models\Upgrade;
 use App\Support\Upgrades\UpgradeStructureValidator;
 use Closure;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
@@ -60,6 +61,18 @@ class UpgradeForm
                             ->placeholder('Qué agrega este upgrade al plan del afiliado.')
                             ->rows(2)
                             ->maxLength(2000)
+                            ->columnSpanFull(),
+                        FileUpload::make('image_path')
+                            ->label('Imagen de la tarjeta')
+                            ->helperText('Se ve en la tarjeta del upgrade al cotizar. Vertical (3:4), JPG, PNG o WebP de hasta 2 MB. Sin imagen, la tarjeta usa un fondo de color.')
+                            ->image()
+                            ->disk('public')
+                            ->directory(Upgrade::IMAGE_DIRECTORY)
+                            ->visibility('public')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->maxSize(2048)
+                            ->imageCropAspectRatio('3:4')
+                            ->imagePreviewHeight('180')
                             ->columnSpanFull(),
                     ]),
 

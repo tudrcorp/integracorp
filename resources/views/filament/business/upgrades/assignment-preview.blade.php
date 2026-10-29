@@ -119,9 +119,9 @@
                 </div>
 
                 <div class="rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-xs shadow-sm dark:border-white/10 dark:bg-slate-950/40">
-                    <p class="font-semibold text-slate-700 dark:text-slate-200">Cuotas por pagar que se ajustan</p>
+                    <p class="font-semibold text-slate-700 dark:text-slate-200">Aviso de cobro que lo incluye</p>
                     @if ($collections === [])
-                        <p class="mt-1 text-slate-500 dark:text-slate-400">No hay cuotas por pagar: el nuevo monto se verá en los próximos avisos de cobro.</p>
+                        <p class="mt-1 text-slate-500 dark:text-slate-400">Ningún aviso cambia: el upgrade se cobra completo en el primer pago.</p>
                     @else
                         <table class="mt-1 w-full">
                             @foreach ($collections as $collection)

@@ -133,8 +133,13 @@
                                     str_replace('COT-IND-', '', $details['code']) :
                                     str_replace('COT-CORP-', '', $details['code']),
                 'planId' => $details['plan'],
+                'upgrades' => $details['upgrades'] ?? [],
             ]
         )
+        {{-- El Especial con página dinámica conserva su hoja de patologías. --}}
+        @if ((int) ($details['plan'] ?? 0) === 3)
+            @livewire('propuesta-economica.propuesta-economica-plan-especial')
+        @endif
     @endif
 
     @if($layout === 'especial')

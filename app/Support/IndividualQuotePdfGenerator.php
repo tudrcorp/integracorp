@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Http\Controllers\IndividualQuoteController;
 use App\Models\Agency;
 use App\Models\IndividualQuote;
+use App\Support\Quotes\IndividualQuoteUpgrades;
 use App\Support\TuDrQuote\QuoteDocumentLayout;
 use App\Support\TuDrQuote\QuoteServiceAttempt;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,14 @@ class IndividualQuotePdfGenerator
      */
     public static function generateForQuote(IndividualQuote $record, array $detailsQuote = []): bool
     {
+        return self::generateProposal($record, $detailsQuote);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $detailsQuote
+     */
+    private static function generateProposal(IndividualQuote $record, array $detailsQuote = []): bool
+    {
         $agentName = self::resolveAgentName($record);
 
         if ($record->plan === 'CM') {
@@ -26,7 +35,7 @@ class IndividualQuotePdfGenerator
         }
 
         $planId = (int) $record->plan;
-        $layout = IndividualQuotePdfLayout::resolve($planId);
+        $layout = IndividualQuotePdfLayout::resolveForIndividual($planId);
         $details = self::buildDetailsPayload($record, $planId, $layout, $agentName);
 
         if ($details === null) {
@@ -104,7 +113,7 @@ class IndividualQuotePdfGenerator
             }
 
             $processedPlanIds[] = $planId;
-            $layout = IndividualQuotePdfLayout::resolve($planId);
+            $layout = IndividualQuotePdfLayout::resolveForIndividual($planId);
             $details = self::buildDetailsPayload($record, $planId, $layout, $agentName);
 
             if ($details !== null) {
@@ -128,7 +137,7 @@ class IndividualQuotePdfGenerator
             return true;
         }
 
-        IndividualQuoteController::generatePdfMultiple($groupDetails, Auth::id());
+        IndividualQuoteController::generatePdfStructureMultiple($groupDetails, Auth::id());
 
         return true;
     }
@@ -174,6 +183,7 @@ class IndividualQuotePdfGenerator
             'phone' => $record->phone,
             'date' => $record->created_at->format('d-m-Y'),
             'data' => $data,
+            'upgrades' => IndividualQuoteUpgrades::summary($record),
         ];
     }
 

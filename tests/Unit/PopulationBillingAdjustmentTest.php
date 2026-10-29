@@ -181,7 +181,7 @@ it('registra el menú y el permiso de acción en Administración, y los módulos
     foreach ([
         'app/Support/Affiliations/DateCorrection/AffiliationDateCorrector.php' => 2,
         'app/Support/AffiliationCorporates/CorporatePaymentFrequencyChanger.php' => 1,
-        'app/Support/AffiliationCorporates/CorporateAffiliateUpgradeManager.php' => 2,
+        'app/Support/AffiliationCorporates/CorporateAffiliateUpgradeManager.php' => 3,
     ] as $file => $expected) {
         expect(substr_count((string) file_get_contents($root.$file), 'calendarInstallments()'))->toBe($expected);
     }

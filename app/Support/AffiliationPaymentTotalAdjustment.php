@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Models\Affiliation;
+use App\Support\Upgrades\UpgradeFirstPaymentBilling;
 use Illuminate\Support\HtmlString;
 
 final class AffiliationPaymentTotalAdjustment
@@ -86,10 +87,11 @@ final class AffiliationPaymentTotalAdjustment
         $planDescription = $record->plan?->description ?? '—';
         $frequency = $record->payment_frequency ?? '—';
 
-        if (filled($record->coverage_id) && $record->coverage !== null) {
-            return 'Plan: '.$planDescription.' - Cobertura: '.$record->coverage->price.' - Frecuencia: '.$frequency;
-        }
+        $text = filled($record->coverage_id) && $record->coverage !== null
+            ? 'Plan: '.$planDescription.' - Cobertura: '.$record->coverage->price.' - Frecuencia: '.$frequency
+            : 'Plan: '.$planDescription.' - Frecuencia: '.$frequency;
+        $upgradesHint = UpgradeFirstPaymentBilling::proofAmountHint($record);
 
-        return 'Plan: '.$planDescription.' - Frecuencia: '.$frequency;
+        return $upgradesHint !== null ? $text.'. '.$upgradesHint : $text;
     }
 }

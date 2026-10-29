@@ -10,14 +10,9 @@
     $planTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows);
     $withUpgrades = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows, $upgradesAnnual);
     $frequencyRows = array_values(array_filter(
-        PlanGeneratorGroupTotalCalculator::groupTotalRows((bool) ($includeMonthlyTotal ?? false), $groupTotalHiddenRows ?? []),
+        PlanGeneratorGroupTotalCalculator::displayRows((bool) ($includeMonthlyTotal ?? false), $groupTotalHiddenRows ?? [], $upgradesAnnual),
         static fn (array $row): bool => $row['key'] !== PlanGeneratorGroupTotalCalculator::ROW_ANNUAL,
     ));
-    $frequencyLabels = [
-        PlanGeneratorGroupTotalCalculator::ROW_SEMESTRAL => 'Total semestral con upgrades',
-        PlanGeneratorGroupTotalCalculator::ROW_TRIMESTRAL => 'Total trimestral con upgrades',
-        PlanGeneratorGroupTotalCalculator::ROW_MENSUAL => 'Total mensual con upgrades',
-    ];
     $errors = (array) ($upgradeQuote['errors'] ?? []);
     $cell = static fn (float $amount): string => PlanGeneratorGroupTotalCalculator::formatGroupTotal($amount > 0 ? $amount : null);
 @endphp
@@ -69,14 +64,14 @@
                         </tr>
                     @endforeach
                     <tr class="bg-slate-50 dark:bg-white/[0.04]">
-                        <td class="border border-slate-200 px-3 py-2 font-bold dark:border-white/10">Total anual con upgrades</td>
+                        <td class="border border-slate-200 px-3 py-2 font-bold dark:border-white/10">Total anual con upgrades (pago único)</td>
                         @foreach ($columns as $column)
                             <td class="border border-slate-200 px-3 py-2 text-center font-bold text-slate-900 dark:border-white/10 dark:text-white">{{ $cell((float) ($withUpgrades['annual'][$column['column_key']] ?? 0)) }}</td>
                         @endforeach
                     </tr>
                     @foreach ($frequencyRows as $row)
                         <tr>
-                            <td class="border border-slate-200 px-3 py-2 dark:border-white/10">{{ $frequencyLabels[$row['key']] ?? $row['label'] }}</td>
+                            <td class="border border-slate-200 px-3 py-2 dark:border-white/10">{{ $row['label'] }}</td>
                             @foreach ($columns as $column)
                                 <td class="border border-slate-200 px-3 py-2 text-center dark:border-white/10">{{ $cell((float) ($withUpgrades[$row['key']][$column['column_key']] ?? 0)) }}</td>
                             @endforeach
@@ -86,6 +81,7 @@
             </table>
         </div>
         <p class="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+            Los upgrades se pagan una sola vez al año, completos, en el primer pago; los pagos siguientes llevan solo el plan.
             Este desglose es solo para usted. En el PDF el cliente ve un único total grupal (ya con los upgrades) y, debajo, una tabla por upgrade con su cobertura, su tarifa y sus servicios.
         </p>
     @endif

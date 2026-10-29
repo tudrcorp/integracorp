@@ -13,7 +13,7 @@ it('recalcula afiliación desde suma de tarifas anuales y frecuencia', function 
     expect(file_get_contents($calculatorPath))
         ->toContain('recalculateAffiliationTotalsFromAffiliates')
         ->toContain('sum(\'fee\')')
-        ->toContain('totalAmountForPaymentFrequency($owner->fee_anual')
+        ->toContain('UpgradeFirstPaymentBilling::individualRegular($owner, (float) $owner->fee_anual')
         ->toContain('where(\'status\', \'ACTIVO\')')
         ->toContain("->where('age_range_id', 1)")
         ->toContain("->where('coverage_id', \$affiliation->coverage_id)")
