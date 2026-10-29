@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\OperationAccountsPayables\Tables;
 
 use App\Enums\StatusCuentaPorPagar;
+use App\Filament\Forms\Components\DateRangePicker;
 use App\Filament\Operations\Resources\OperationAccountsPayables\Actions\AccountsPayablePaymentReceiptActions;
 use App\Http\Controllers\OperationAccountsPayableExportCsvController;
 use App\Models\BusinessUnit;
@@ -17,6 +18,7 @@ use App\Support\Operations\AccountsPayablePaymentReceiptPreview;
 use App\Support\Operations\AccountsPayableServiceDisplay;
 use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\SecurityAudit;
+use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -203,6 +205,7 @@ class OperationAccountsPayablesTable
                     ->label('Registrado por')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->filtersApplyAction(fn (Action $action): Action => $action->close())
             ->filters([
                 SelectFilter::make('payment_status')
                     ->label('Estatus de pago')
@@ -268,6 +271,27 @@ class OperationAccountsPayablesTable
                         }
 
                         return $indicators;
+                    }),
+                Filter::make('invoice_registration_range')
+                    ->label('Fecha de registro')
+                    ->schema([
+                        DateRangePicker::make('range')
+                            ->label('Fecha de registro de la factura')
+                            ->helperText('Toca el día inicial y luego el final. Un solo día filtra esa fecha.'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        ['from' => $from, 'until' => $until] = DateRangePicker::normalize($data['range'] ?? null);
+
+                        if ($from === null || $until === null) {
+                            return $query;
+                        }
+
+                        return $query->whereBetween('invoice_registration_date', [$from->toDateString(), $until->toDateString()]);
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $range = DateRangePicker::describe($data['range'] ?? null);
+
+                        return $range !== null ? ['Registradas: '.$range] : [];
                     }),
             ])
             ->recordActions([
