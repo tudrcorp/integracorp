@@ -153,6 +153,23 @@ it('guarda la copia congelada y la página dinámica del plan lleva los upgrades
         ->not->toContain('TOTAL CON UPGRADES')
         ->and(strpos($html, 'UPGRADES OPCIONALES'))->toBeGreaterThan(strpos($html, 'TARIFA GRUPAL ANUAL'));
 
+    // Cada upgrade lleva su logo (imagen del catálogo o insignia con iniciales) y la página cabe en una hoja aunque haya varios.
+    $line = fn (string $name, int $id): array => ['name' => $name, 'coverage' => 'Cobertura $2.000', 'persons' => 1, 'annual' => 35.0, 'rows' => [], 'services' => [], 'logo' => IndividualQuoteUpgrades::logo($id, $name)];
+    $crowded = [...$details, 'upgrades' => ['lines' => [$line('PLAN FUNERARIO 2K', 3), $line('PLAN FUNERARIO 3K', 3), $line('PLAN FUNERARIO 5K', 3), $line('ODONTOLOGÍA', 1)], 'annual_total' => 140.0]];
+    $crowdedHtml = view('documents.propuesta-plan-dinamica', ['details' => $crowded, 'group_collect' => collect($crowded['data'])->groupBy('age_range'), 'name_user' => 'Pest', 'fit_to_page' => true])->render();
+    $onePage = tempnam(sys_get_temp_dir(), 'iq-test-');
+    file_put_contents($onePage, App\Support\Quotes\IndividualQuoteProposalPages::renderPlanPage($crowded));
+
+    try {
+        expect((new setasign\Fpdi\Fpdi)->setSourceFile($onePage))->toBe(1)
+            ->and($crowdedHtml)->toContain('is-compact is-fit')
+            ->toContain('upgrade-badge')
+            ->toContain('>F2<')
+            ->toContain('>O<');
+    } finally {
+        @unlink($onePage);
+    }
+
     // Documento como el del microservicio: portada, acerca, 1 página del plan, patologías, contraportada.
     $service = Barryvdh\DomPDF\Facade\Pdf::loadHTML(implode('<div style="page-break-after: always;"></div>', ['<p>portada</p>', '<p>acerca</p>', '<p>imagen horneada</p>', '<p>patologias</p>', '<p>contraportada</p>']))->output();
     $composed = App\Support\Quotes\IndividualQuoteProposalPages::replaceCalculationPages($service, (int) $quote->getKey(), [3]);
@@ -195,6 +212,14 @@ it('el formulario muestra las tarjetas y un toque agrega o quita el upgrade con 
     expect(array_column(array_values($page->get('data.upgrades')), 'upgrade_id'))->toBe([2])
         ->and(method_exists(CreateIndividualQuote::class, 'togglePlanGeneratorUpgradeRange'))->toBeTrue()
         ->and(method_exists(CreateIndividualQuote::class, 'includeUpgradeRangeManuallyAction'))->toBeTrue();
+});
+
+it('el logo del upgrade en el PDF usa su imagen o una insignia con iniciales y el color de su tarjeta', function (): void {
+    expect(App\Support\Upgrades\UpgradeCardCatalog::initials('PLAN FUNERARIO 2K'))->toBe('F2')
+        ->and(App\Support\Upgrades\UpgradeCardCatalog::initials('30% DE COBERTURA DE PREEXISTENCIA'))->toBe('3C')
+        ->and(App\Support\Upgrades\UpgradeCardCatalog::initials('  '))->toBe('U')
+        ->and(IndividualQuoteUpgrades::logo(3, 'FUNERARIO 2K'))->toBe(['image' => null, 'color' => App\Support\Upgrades\UpgradeCardCatalog::fallbackGradient(3)[0], 'initials' => 'F2'])
+        ->and(IndividualQuoteUpgrades::logo(3, 'FUNERARIO 2K', new App\Models\Upgrade(['image_path' => 'otra-carpeta/x.png']))['image'])->toBeNull();
 });
 
 it('las tarjetas resumen cada upgrade activo: cobertura, edades, precio desde y su imagen', function (): void {

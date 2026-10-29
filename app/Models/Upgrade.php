@@ -54,6 +54,20 @@ class Upgrade extends Model
     }
 
     /**
+     * Ruta local de la imagen (para DomPDF, que no descarga URLs), o null si no tiene.
+     */
+    public function imagePath(): ?string
+    {
+        $path = trim((string) $this->image_path);
+
+        if ($path === '' || ! str_starts_with($path, self::IMAGE_DIRECTORY.'/') || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+    }
+
+    /**
      * URL pública de la imagen de la tarjeta, o null si no tiene (o el archivo ya no existe).
      */
     public function imageUrl(): ?string

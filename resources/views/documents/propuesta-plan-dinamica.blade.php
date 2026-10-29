@@ -93,6 +93,7 @@
             'number_control' => Str::contains($details['code'], 'COT-IND-') ? str_replace('COT-IND-', '', $details['code']) : $details['code'],
             'planId' => $details['plan'],
             'upgrades' => $details['upgrades'] ?? [],
+            'fitToPage' => (bool) ($fit_to_page ?? false),
         ]
     )
 </body>

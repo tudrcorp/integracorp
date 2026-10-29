@@ -258,13 +258,133 @@
             border-color: #082f62;
             text-align: left;
         }
+
+        /* Logo del upgrade junto a su nombre: imagen del catálogo o insignia con iniciales. */
+        /* Sin table-layout fijo: DomPDF ignora el ancho de la columna del logo y la estira a la mitad. */
+        .upgrade-name {
+            border-collapse: collapse;
+        }
+
+        .upgrade-name td {
+            border: 0;
+            padding: 0;
+            vertical-align: middle;
+        }
+
+        .upgrade-logo-cell {
+            width: 30px;
+        }
+
+        .upgrade-logo {
+            width: 24px;
+            height: 24px;
+            border-radius: 5px;
+        }
+
+        .upgrade-badge-table {
+            border-collapse: collapse;
+        }
+
+        /* Celda y no div: DomPDF no centra el texto en vertical con line-height. */
+        .upgrade-name .upgrade-badge {
+            width: 24px;
+            height: 24px;
+            border-radius: 5px;
+            color: #ffffff;
+            font-size: 7pt;
+            font-weight: bold;
+            text-align: center;
+            vertical-align: middle;
+            padding: 0;
+        }
+
+        .upgrades-note {
+            margin: 4px 0 0 0;
+            font-size: 7pt;
+        }
+
+        /*
+         * Una sola hoja: la propuesta individual vuelve a dibujar la página con esta clase si la
+         * versión normal se pasa a una segunda hoja (p. ej. con varios upgrades).
+         */
+        .is-fit .page-cell {
+            padding: 0 12mm;
+        }
+
+        .is-fit .page-cell-first {
+            padding-top: 7mm;
+        }
+
+        .is-fit .page-cell-last {
+            padding-bottom: 5mm;
+        }
+
+        .is-fit .header-table {
+            margin-bottom: 6px;
+        }
+
+        .is-fit .plan-title {
+            font-size: 13pt;
+        }
+
+        .is-fit .meta {
+            font-size: 8pt;
+            margin: 0 0 2px 0;
+        }
+
+        .is-fit .validity {
+            font-size: 7.5pt;
+            margin: 6px 0 2px 0;
+        }
+
+        .is-fit .note-title {
+            font-size: 8pt;
+            margin: 6px 0 1px 0;
+        }
+
+        .is-fit .note-body {
+            font-size: 7pt;
+            line-height: 1.3;
+        }
+
+        .is-fit .data-table {
+            margin-top: 7px;
+        }
+
+        .is-fit .data-table th,
+        .is-fit .data-table td {
+            padding: 2px 3px;
+            font-size: 6.5pt;
+        }
+
+        .is-fit .conditions {
+            font-size: 7pt;
+            margin: 6px 0 0 0;
+            line-height: 1.25;
+        }
+
+        .is-fit .conditions li {
+            margin-bottom: 1px;
+        }
+
+        .is-fit .upgrade-logo,
+        .is-fit .upgrade-name .upgrade-badge {
+            width: 18px;
+            height: 18px;
+            font-size: 6pt;
+        }
+
+        .is-fit .upgrade-logo-cell {
+            width: 24px;
+        }
     </style>
 </head>
 
-<body class="{{ $compact ? 'is-compact' : '' }}">
+<body class="{{ trim(($compact ? 'is-compact' : '').($fitToPage ? ' is-compact is-fit' : '')) }}">
     {{-- Un solo hijo de body: Livewire (con APP_DEBUG) cuenta raíces en <body>
          y el pie fijo no puede vivir como segundo hermano del page-frame. --}}
-    <div class="pdf-root">
+    {{-- La clase va también aquí: embebida en otro documento, DomPDF ignora la del <body> interno. --}}
+    <div class="pdf-root{{ $fitToPage ? ' is-compact is-fit' : '' }}">
     <table class="page-frame">
         <tr>
             <td class="page-cell page-cell-first">
@@ -396,14 +516,29 @@
                         <tbody>
                             @foreach ($upgrades['lines'] as $upgradeLine)
                                 <tr>
-                                    <td class="label-col" style="font-weight: bold;">{{ $upgradeLine['name'] }}<br><span style="font-weight: normal;">{{ $upgradeLine['coverage'] }}</span></td>
+                                    <td class="label-col">
+                                        <table class="upgrade-name">
+                                            <tr>
+                                                <td class="upgrade-logo-cell" style="width: {{ $fitToPage ? 24 : 30 }}px;">
+                                                    @if (filled($upgradeLine['logo']['image'] ?? null))
+                                                        <img class="upgrade-logo" src="{{ $upgradeLine['logo']['image'] }}" alt="">
+                                                    @else
+                                                        <table class="upgrade-badge-table"><tr><td class="upgrade-badge" style="background-color: {{ $upgradeLine['logo']['color'] ?? '#052F60' }};">{{ $upgradeLine['logo']['initials'] ?? 'U' }}</td></tr></table>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    <strong>{{ $upgradeLine['name'] }}</strong><br>{{ $upgradeLine['coverage'] }}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
                                     <td class="value-col">{{ (int) $upgradeLine['persons'] }} persona(s)</td>
                                     <td class="value-col">{{ $upgradeMoney((float) $upgradeLine['annual']) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
-                    <p style="margin: 4px 0 0; font-size: 9px;">{{ \App\Support\Upgrades\UpgradeInstallments::RULE }} Las demás cuotas llevan solo el plan.</p>
+                    <p class="upgrades-note">{{ \App\Support\Upgrades\UpgradeInstallments::RULE }} Las demás cuotas llevan solo el plan.</p>
                 </td>
             </tr>
         @endif
