@@ -7,6 +7,7 @@ namespace App\Filament\Administration\Resources\AnnualCollections\Actions;
 use App\Models\Collection;
 use App\Models\CollectionObservation;
 use App\Models\User;
+use App\Support\Collections\CollectionFollowUp;
 use App\Support\Collections\CollectionObservationLog;
 use App\Support\Collections\CollectionReceivableReport;
 use App\Support\SecurityAudit;
@@ -18,6 +19,7 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\HtmlString;
 use InvalidArgumentException;
 use Throwable;
 
@@ -57,6 +59,9 @@ final class CollectionObservationsAction
                         'required' => 'Escriba la observación antes de guardarla.',
                         'max' => 'La observación no puede superar '.CollectionObservation::MAX_LENGTH.' caracteres.',
                     ]),
+                Placeholder::make('follow_up_log')
+                    ->label('Estados de gestión de esta cuota')
+                    ->content(fn (): HtmlString => self::followUpLog($record)),
                 Placeholder::make('observation_log')
                     ->label('Bitácora de la afiliación')
                     ->content(fn () => view('filament.administration.annual-collections.observation-log', [
@@ -143,5 +148,29 @@ final class CollectionObservationsAction
         ]);
 
         return implode(' · ', $parts);
+    }
+
+    /**
+     * Estado vigente de la cuota y quién lo cambió y cuándo (los últimos 50 cambios).
+     */
+    private static function followUpLog(Collection $record): HtmlString
+    {
+        $events = CollectionFollowUp::history((int) $record->getKey());
+        $html = '<div class="space-y-2 text-sm"><p>Estado actual: <strong>'.e(CollectionFollowUp::label($record->follow_up_status)).'</strong></p>';
+
+        if ($events->isEmpty()) {
+            return new HtmlString($html.'<p class="text-gray-500 dark:text-gray-400">Todavía nadie ha marcado un estado en esta cuota.</p></div>');
+        }
+
+        $html .= '<ul class="space-y-1">';
+
+        foreach ($events as $event) {
+            $change = $event->new_status === null
+                ? 'quitó todo (antes «'.CollectionFollowUp::label($event->previous_status).'»)'
+                : 'dejó «'.CollectionFollowUp::label($event->new_status).'»'.($event->previous_status !== null ? ' (antes «'.CollectionFollowUp::label($event->previous_status).'»)' : '');
+            $html .= '<li><span class="text-gray-500 dark:text-gray-400">'.e($event->created_at?->format('d/m/Y H:i') ?? '').'</span> · <strong>'.e((string) $event->user_name).'</strong> '.e($change).'</li>';
+        }
+
+        return new HtmlString($html.'</ul></div>');
     }
 }

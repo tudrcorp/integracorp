@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\Administration\Resources\AnnualCollections\Tables;
 
+use App\Enums\CollectionFollowUpStatus;
 use App\Filament\Administration\Resources\AnnualCollections\Actions\CollectionObservationsAction;
 use App\Models\Agency;
 use App\Models\Collection;
+use App\Support\Collections\CollectionFollowUp;
 use App\Support\Collections\CollectionNotice;
 use App\Support\Collections\CollectionReceivableReport;
 use App\Support\Exports\CollectionReceivableCsvExportService;
@@ -19,6 +21,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
@@ -35,6 +38,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class AnnualCollectionsTable
 {
+    /** Opción del filtro para las cuotas sin estado de gestión. */
+    public const WITHOUT_FOLLOW_UP = '__sin_estado__';
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -65,7 +71,7 @@ class AnnualCollectionsTable
     }
 
     /**
-     * @return array<int, TextColumn>
+     * @return array<int, TextColumn|ViewColumn>
      */
     private static function columns(): array
     {
@@ -162,6 +168,11 @@ class AnnualCollectionsTable
                 ->state(fn (Collection $record): string => CollectionReceivableReport::collectionStatus($record))
                 ->badge()
                 ->color(fn (string $state): string => $state === CollectionReceivableReport::STATUS_OVERDUE ? 'danger' : 'warning'),
+            ViewColumn::make('follow_up_status')
+                ->label('Estado de gestión')
+                ->tooltip('«Aviso enviado» y «Aviso remitido» pueden ir juntos; «Aviso en revisión» va solo y apaga a los otros. Pulse de nuevo un estado marcado para quitarlo. Cada cambio queda en la traza.')
+                ->view('filament.administration.annual-collections.follow-up-column')
+                ->viewData(['canEdit' => CollectionFollowUp::userCan()]),
             TextColumn::make('days')
                 ->label('Días')
                 ->state(fn (Collection $record): string => CollectionReceivableReport::daysLabel($record))
@@ -207,6 +218,21 @@ class AnnualCollectionsTable
                     'PRE-APROBADA' => 'Pre-aprobada',
                 ])
                 ->query(fn (Builder $query, array $data): Builder => CollectionReceivableReport::applyAffiliateStatus($query, $data['values'] ?? [])),
+            SelectFilter::make('follow_up_status')
+                ->label('Estado de gestión')
+                ->placeholder('Todos')
+                ->options([
+                    ...CollectionFollowUpStatus::options(),
+                    ...array_map(fn (string $label): string => $label.' (ya no se usa)', CollectionFollowUpStatus::RETIRED),
+                    self::WITHOUT_FOLLOW_UP => 'Sin estado',
+                ])
+                ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
+                    null, '' => $query,
+                    self::WITHOUT_FOLLOW_UP => $query->whereNull($query->qualifyColumn('follow_up_status')),
+                    default => ($state = CollectionFollowUpStatus::tryFrom((string) $data['value'])) !== null
+                        ? $query->whereIn($query->qualifyColumn('follow_up_status'), CollectionFollowUpStatus::storedValuesContaining($state))
+                        : $query->where($query->qualifyColumn('follow_up_status'), $data['value']),
+                }),
             SelectFilter::make('code_agency')
                 ->label('Agencia')
                 ->relationship('agencyByCode', 'name_corporative')

@@ -398,6 +398,7 @@ final class CorporatePaymentFrequencyChanger
         }
 
         $query = BillingCollection::query()
+            ->calendarInstallments()
             ->where('affiliation_code', $owner->code)
             ->where('status', CorporateAffiliateUpgradeManager::PENDING_COLLECTION_STATUS)
             ->orderBy('id');

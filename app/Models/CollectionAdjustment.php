@@ -26,6 +26,9 @@ class CollectionAdjustment extends Model
     /** Anulada por la eliminación de su afiliación, o restituida al restaurarla. */
     public const MODE_DELETION = 'eliminacion';
 
+    /** Monto ajustado o aviso emitido por un cambio de población corporativa. */
+    public const MODE_POPULATION = 'poblacion';
+
     protected $table = 'collection_adjustments';
 
     protected $fillable = [

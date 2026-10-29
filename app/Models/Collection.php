@@ -43,8 +43,52 @@ class Collection extends Model
         'created_by',
         'bank',
         'filter_next_payment_date',
-
+        'billing_adjustment_id',
     ];
+
+    /**
+     * Avisos de cobro por ajuste de población: no son cuotas del calendario, así que los
+     * módulos que recorren el calendario (vigencia, frecuencia, upgrades, detector) los dejan
+     * fuera con este scope.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Collection>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Collection>
+     */
+    public function scopeCalendarInstallments($query)
+    {
+        return self::hasBillingAdjustmentColumn($query->getModel()->getConnectionName())
+            ? $query->whereNull($query->qualifyColumn('billing_adjustment_id'))
+            : $query;
+    }
+
+    /**
+     * Si el código llega antes que la migración, el scope no filtra en vez de romper consultas.
+     * Se recuerda por conexión: cada conexión puede tener su propia tabla.
+     */
+    public static function hasBillingAdjustmentColumn(?string $connection = null): bool
+    {
+        static $exists = [];
+        $connection ??= (string) config('database.default');
+
+        try {
+            return $exists[$connection] ??= \Illuminate\Support\Facades\Schema::connection($connection)->hasColumn('collections', 'billing_adjustment_id');
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    public function isBillingAdjustment(): bool
+    {
+        return $this->billing_adjustment_id !== null;
+    }
+
+    /**
+     * @return BelongsTo<CorporateBillingAdjustment, $this>
+     */
+    public function billingAdjustment(): BelongsTo
+    {
+        return $this->belongsTo(CorporateBillingAdjustment::class, 'billing_adjustment_id');
+    }
 
     /**
      * La fecha oficial de la cuota es `next_payment_date`; `filter_next_payment_date`

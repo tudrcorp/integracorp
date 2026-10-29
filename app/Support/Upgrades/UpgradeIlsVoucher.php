@@ -34,6 +34,9 @@ final class UpgradeIlsVoucher
      * Valida los vouchers de una asignación (uno por afiliado) y los deja listos
      * para guardar. Lanza con el primer problema, nombrando al afiliado.
      *
+     * El mismo número de voucher puede repetirse entre afiliados y con vouchers ya
+     * registrados (un voucher ILS de grupo cubre a varias personas; decisión del 29/10/2026).
+     *
      * @param  array<int|string, mixed>  $vouchers  afiliado_id => datos del formulario
      * @param  array<int, string>  $labels  afiliado_id => nombre, para los mensajes
      * @return array<int, array{code: string, date_init: string, date_end: string, document_path: string}>
@@ -41,20 +44,11 @@ final class UpgradeIlsVoucher
     public static function validateMany(array $vouchers, array $labels = [], ?Carbon $today = null): array
     {
         $normalized = [];
-        $seen = [];
 
         foreach ($vouchers as $affiliateId => $voucher) {
             $affiliateId = (int) $affiliateId;
             $who = $labels[$affiliateId] ?? 'el afiliado #'.$affiliateId;
-            $clean = self::validate(is_array($voucher) ? $voucher : [], $who, $today);
-            $key = mb_strtoupper($clean['code'], 'UTF-8');
-
-            if (isset($seen[$key])) {
-                throw new InvalidArgumentException('El voucher '.$clean['code'].' está repetido entre '.$seen[$key].' y '.$who.'. Cada upgrade lleva su propio voucher.');
-            }
-
-            $seen[$key] = $who;
-            $normalized[$affiliateId] = $clean;
+            $normalized[$affiliateId] = self::validate(is_array($voucher) ? $voucher : [], $who, $today);
         }
 
         return $normalized;
@@ -94,10 +88,6 @@ final class UpgradeIlsVoucher
 
         if ($document === null) {
             throw new InvalidArgumentException('Adjunte el comprobante del Voucher ILS de '.$who.'.');
-        }
-
-        if (self::isCodeTaken($code)) {
-            throw new InvalidArgumentException('El voucher '.$code.' ya está registrado en el sistema. Verifique el número de '.$who.'.');
         }
 
         return [

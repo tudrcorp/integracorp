@@ -29,11 +29,55 @@ use Throwable;
 
 /**
  * «Corregir emisión y vigencia» y su reversión, para afiliaciones individuales y corporativas,
- * en Negocios y Administración. Es la única vía para cambiar esas fechas una vez emitida la
- * póliza: en las tablas quedan de solo lectura. Ambas exigen el permiso propio de cada tipo.
+ * en Negocios y Administración: en la vista de la afiliación y en el menú «Acciones» de las
+ * tablas ({@see self::tableActions()}). Es la única vía para cambiar esas fechas una vez
+ * emitida la póliza: las columnas de las tablas quedan de solo lectura. Ambas exigen el
+ * permiso propio de cada tipo.
  */
 final class AffiliationDateCorrectionActions
 {
+    /**
+     * IDs con una corrección aplicada, por tipo, cargados una vez por petición: en una tabla
+     * «Revertir» decide si se muestra en cada fila y no puede consultar fila por fila.
+     *
+     * @var array<string, array<int, true>>
+     */
+    private static array $appliedByType = [];
+
+    /**
+     * Para el menú «Acciones» de las tablas de afiliaciones individuales y corporativas.
+     *
+     * @return list<Action>
+     */
+    public static function tableActions(): array
+    {
+        return [self::correct(), self::revert()];
+    }
+
+    public static function hasAppliedCorrection(Model $record): bool
+    {
+        try {
+            $type = DateCorrectionSubject::for($record)->type;
+        } catch (Throwable) {
+            return false;
+        }
+
+        self::$appliedByType[$type] ??= AffiliationDateCorrection::query()
+            ->where('affiliation_type', $type)
+            ->where('status', AffiliationDateCorrection::STATUS_APPLIED)
+            ->distinct()
+            ->pluck('affiliation_id')
+            ->mapWithKeys(fn (mixed $id): array => [(int) $id => true])
+            ->all();
+
+        return isset(self::$appliedByType[$type][(int) $record->getKey()]);
+    }
+
+    public static function forgetAppliedCorrections(): void
+    {
+        self::$appliedByType = [];
+    }
+
     public static function correct(): Action
     {
         return Action::make('correctEffectiveDate')
@@ -125,6 +169,7 @@ final class AffiliationDateCorrectionActions
                     ->persistent()
                     ->send();
 
+                self::forgetAppliedCorrections();
                 $record->refresh();
             });
     }
@@ -140,8 +185,7 @@ final class AffiliationDateCorrectionActions
             ->modalSubmitActionLabel('Revertir ahora')
             ->modalCancelActionLabel('Cancelar')
             ->modalWidth(Width::ThreeExtraLarge)
-            ->visible(fn (Model $record): bool => self::allowed($record)
-                && AffiliationDateCorrectionRollback::latestAppliedFor($record) instanceof AffiliationDateCorrection)
+            ->visible(fn (Model $record): bool => self::allowed($record) && self::hasAppliedCorrection($record))
             ->authorize(fn (Model $record): bool => self::allowed($record))
             ->schema([
                 Placeholder::make('rollback_preview')
@@ -196,6 +240,7 @@ final class AffiliationDateCorrectionActions
                     ->persistent()
                     ->send();
 
+                self::forgetAppliedCorrections();
                 $record->refresh();
             });
     }

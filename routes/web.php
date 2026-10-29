@@ -724,6 +724,10 @@ Route::get('certificado/envio/{delivery}/descargar', \App\Http\Controllers\Affil
     ->middleware(['signed', 'throttle:30,1'])
     ->name('affiliation-certificate.delivery.download');
 
+Route::get('administration/population-billing-adjustments/{adjustment}/pdf', \App\Http\Controllers\PopulationBillingAdjustmentPdfController::class)
+    ->middleware(['web', 'auth'])
+    ->name('administration.population-billing-adjustments.pdf');
+
 Route::post('administration/white-companies/{whiteCompany}/sales-report/preview', [
     \App\Http\Controllers\WhiteCompanySalesReportController::class,
     'preview',

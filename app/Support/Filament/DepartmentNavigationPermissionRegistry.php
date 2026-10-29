@@ -27,6 +27,7 @@ use App\Filament\Administration\Resources\CreditReconciliations\CreditReconcilia
 use App\Filament\Administration\Resources\DownloadZones\DownloadZoneResource as AdministrationDownloadZoneResource;
 use App\Filament\Administration\Resources\DroppedAffiliationCollections\DroppedAffiliationCollectionResource;
 use App\Filament\Administration\Resources\Helpdesks\HelpdeskResource as AdministrationHelpdeskResource;
+use App\Filament\Administration\Resources\PopulationBillingAdjustments\PopulationBillingAdjustmentResource;
 use App\Filament\Administration\Resources\RenovationCorporates\RenovationCorporateResource as AdministrationRenovationCorporateResource;
 use App\Filament\Administration\Resources\Renovations\RenovationResource as AdministrationRenovationResource;
 use App\Filament\Administration\Resources\RrhhAsignacions\RrhhAsignacionResource;
@@ -294,6 +295,7 @@ final class DepartmentNavigationPermissionRegistry
         AffiliationDateInconsistencyResource::class => ['inconsistencias-de-fechas'],
         InformeAdministrativo::class => ['informe-administrativo'],
         DroppedAffiliationCollectionResource::class => ['cuotas-de-afiliaciones-dadas-de-baja'],
+        PopulationBillingAdjustmentResource::class => ['ajustes-por-poblacion'],
 
         // MARKETING
         MarketingAgendaCorporativa::class => ['agenda-corporativa'],

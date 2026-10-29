@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Administration\Resources\AffiliationCorporates\Tables;
 
 use App\Filament\Administration\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use App\Filament\Shared\Affiliations\AffiliationDateCorrectionActions;
 use App\Filament\Shared\Affiliations\AffiliationDeletionActions;
 use App\Http\Controllers\AffiliateCorporateExportCsvController;
 use App\Http\Controllers\AffiliationCorporateController;
@@ -1205,6 +1206,7 @@ class AffiliationCorporatesTable
                             }
                         }),
 
+                    ...AffiliationDateCorrectionActions::tableActions(),
                 ])
                     ->label('Acciones')
                     ->icon(Heroicon::OutlinedEllipsisVertical)

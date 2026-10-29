@@ -102,6 +102,7 @@ final class AffiliationDateCorrector
         $newAnchor = CollectionDueDate::parse($newDate);
 
         $collections = Collection::query()
+            ->calendarInstallments()
             ->where('affiliation_code', $affiliation->code)
             ->whereIn('status', [self::PENDING_STATUS, self::PAID_STATUS])
             ->orderBy('id')
@@ -529,6 +530,7 @@ final class AffiliationDateCorrector
         $perYear = $frequency !== null ? CorporatePaymentFrequency::installmentsPerYear($frequency) : 1;
 
         $pending = Collection::query()
+            ->calendarInstallments()
             ->where('affiliation_code', $affiliation->code)
             ->where('status', self::PENDING_STATUS)
             ->orderBy('id')

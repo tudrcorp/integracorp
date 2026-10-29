@@ -458,7 +458,7 @@ final class CorporateAffiliateUpgradeManager
         $collections = [];
 
         if (filled($owner->code) && $ownerDelta > 0) {
-            foreach (BillingCollection::query()->where('affiliation_code', $owner->code)->where('status', self::PENDING_COLLECTION_STATUS)->orderBy('id')->get() as $collection) {
+            foreach (BillingCollection::query()->calendarInstallments()->where('affiliation_code', $owner->code)->where('status', self::PENDING_COLLECTION_STATUS)->orderBy('id')->get() as $collection) {
                 $collectionFrequency = filled($collection->payment_frequency) ? (string) $collection->payment_frequency : $frequency;
                 $before = round((float) $collection->total_amount, 2);
                 $collections[] = [
@@ -643,6 +643,7 @@ final class CorporateAffiliateUpgradeManager
         }
 
         $collections = BillingCollection::query()
+            ->calendarInstallments()
             ->where('affiliation_code', $owner->code)
             ->where('status', self::PENDING_COLLECTION_STATUS)
             ->orderBy('id')

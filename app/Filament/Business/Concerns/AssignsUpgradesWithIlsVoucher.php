@@ -238,11 +238,6 @@ trait AssignsUpgradesWithIlsVoucher
                     ->maxLength(UpgradeIlsVoucher::MAX_CODE_LENGTH)
                     ->required($required)
                     ->live(onBlur: true)
-                    ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
-                        if (is_string($value) && trim($value) !== '' && UpgradeIlsVoucher::isCodeTaken($value)) {
-                            $fail('Este número de voucher ya está registrado en el sistema.');
-                        }
-                    })
                     ->validationMessages(['required' => 'Falta el número de voucher.']),
                 DatePicker::make('date_init')
                     ->label('Desde')
