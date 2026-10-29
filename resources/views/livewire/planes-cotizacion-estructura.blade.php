@@ -379,16 +379,7 @@
         </tr>
         @if (($upgrades['lines'] ?? []) !== [])
             @php
-                $upgradesAnnual = (float) ($upgrades['annual_total'] ?? 0);
                 $upgradeMoney = static fn (float $amount): string => number_format($amount, 2, ',', '.').' US$';
-                /** Los upgrades van completos en el primer pago; las demás cuotas solo llevan el plan. */
-                $upgradeScheduleRows = [
-                    ['ANUAL (PAGO ÚNICO)', 1, true],
-                    ['SEMESTRAL · 1.ER PAGO', 2, true],
-                    ['SEMESTRAL · 2.º PAGO', 2, false],
-                    ['TRIMESTRAL · 1.ER PAGO', 4, true],
-                    ['TRIMESTRAL · PAGOS 2 A 4', 4, false],
-                ];
             @endphp
             {{-- Upgrades debajo de las tarifas, en su propia fila de la tabla de página para que
                  DomPDF pueda pasar a la hoja siguiente sin dejar huecos. --}}
@@ -413,52 +404,6 @@
                         </tbody>
                     </table>
                     <p style="margin: 4px 0 0; font-size: 9px;">{{ \App\Support\Upgrades\UpgradeInstallments::RULE }} Las demás cuotas llevan solo el plan.</p>
-
-                    @if ($priceColumnCount > 0)
-                        <table class="data-table" style="margin-top: 8px;">
-                            <thead>
-                                <tr>
-                                    <th class="label-col" style="width: 42%;">TOTAL CON UPGRADES</th>
-                                    @foreach ($coverageColumns as $coverage)
-                                        <th>US$ {{ QuotePdfCoverageTable::formatLabel($coverage) }}</th>
-                                    @endforeach
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($upgradeScheduleRows as [$totalLabel, $divisor, $withUpgrades])
-                                    <tr>
-                                        <td class="total-label">{{ $totalLabel }}</td>
-                                        @foreach ($coverageColumns as $coverage)
-                                            @php
-                                                $total = $totals[QuotePdfCoverageTable::coverageKey($coverage)] ?? null;
-                                            @endphp
-                                            <td class="value-col">{{ $total !== null ? round($total / $divisor + ($withUpgrades ? $upgradesAnnual : 0)).' US$' : '-' }}</td>
-                                        @endforeach
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @else
-                        @php
-                            $flatAnnual = (float) collect($flatRateRows)->sum('annual');
-                        @endphp
-                        <table class="data-table" style="margin-top: 8px;">
-                            <thead>
-                                <tr>
-                                    <th class="label-col" style="width: 60%;">TOTAL CON UPGRADES</th>
-                                    <th>PLAN + UPGRADES</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($upgradeScheduleRows as [$totalLabel, $divisor, $withUpgrades])
-                                    <tr>
-                                        <td class="total-label">{{ $totalLabel }}</td>
-                                        <td class="value-col">{{ round($flatAnnual / $divisor + ($withUpgrades ? $upgradesAnnual : 0)) }} US$</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @endif
                 </td>
             </tr>
         @endif
