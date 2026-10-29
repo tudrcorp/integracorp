@@ -11,6 +11,7 @@ use App\Support\TuDrQuote\QuoteDocumentAssembler;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use setasign\Fpdi\Fpdi;
+use setasign\Fpdi\PdfParser\StreamReader;
 use Throwable;
 
 /**
@@ -90,15 +91,42 @@ final class IndividualQuoteProposalPages
     }
 
     /**
+     * La página del plan va en una sola hoja: si la versión normal se pasa a una segunda (muchos
+     * beneficios o varios upgrades), se vuelve a dibujar ajustada (`fitToPage`).
+     *
      * @param  array<string, mixed>  $details
      */
     public static function renderPlanPage(array $details): string
+    {
+        $document = self::renderPlanDocument($details, fitToPage: false);
+
+        if (self::pageCount($document) <= 1) {
+            return $document;
+        }
+
+        return self::renderPlanDocument($details, fitToPage: true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $details
+     */
+    private static function renderPlanDocument(array $details, bool $fitToPage): string
     {
         return Pdf::loadView('documents.propuesta-plan-dinamica', [
             'details' => $details,
             'group_collect' => collect($details['data'])->groupBy('age_range'),
             'name_user' => (string) ($details['agent_name'] ?? ''),
+            'fit_to_page' => $fitToPage,
         ])->setPaper('a4')->output();
+    }
+
+    private static function pageCount(string $document): int
+    {
+        try {
+            return (new Fpdi)->setSourceFile(StreamReader::createByString($document));
+        } catch (Throwable) {
+            return 1;
+        }
     }
 
     /**

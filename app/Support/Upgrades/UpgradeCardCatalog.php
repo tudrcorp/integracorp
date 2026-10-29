@@ -76,7 +76,7 @@ final class UpgradeCardCatalog
                     'id' => (int) $upgrade->getKey(),
                     'name' => (string) $upgrade->name,
                     'image_url' => $upgrade->imageUrl(),
-                    'gradient' => self::FALLBACK_GRADIENTS[(int) $upgrade->getKey() % count(self::FALLBACK_GRADIENTS)],
+                    'gradient' => self::fallbackGradient((int) $upgrade->getKey()),
                     'eyebrow' => count($coverages) === 1
                         ? $first['label'].' · '.$first['ages']
                         : count($coverages).' coberturas · '.PlanGeneratorUpgrades::coverageSpansLabel($allAgePrices),
@@ -88,6 +88,32 @@ final class UpgradeCardCatalog
 
             return $cards;
         });
+    }
+
+    /**
+     * Colores del fondo de un upgrade sin imagen (los mismos de su tarjeta).
+     *
+     * @return array{0: string, 1: string}
+     */
+    public static function fallbackGradient(int $upgradeId): array
+    {
+        return self::FALLBACK_GRADIENTS[$upgradeId % count(self::FALLBACK_GRADIENTS)];
+    }
+
+    /**
+     * Iniciales para la insignia de un upgrade sin imagen: «FUNERARIO 2K» → «F2».
+     */
+    public static function initials(string $name): string
+    {
+        $words = preg_split('/\s+/u', trim(mb_strtoupper($name, 'UTF-8'))) ?: [];
+        $words = array_values(array_filter($words, static fn (string $word): bool => ! in_array($word, ['PLAN', 'DE', 'DEL', 'LA', 'EL', 'Y'], true)));
+        $initials = '';
+
+        foreach (array_slice($words, 0, 2) as $word) {
+            $initials .= mb_substr($word, 0, 1, 'UTF-8');
+        }
+
+        return $initials !== '' ? $initials : 'U';
     }
 
     /**

@@ -58,6 +58,12 @@ class PlanesCotizacionEstructura extends Component
     public bool $storefrontFooter = false;
 
     /**
+     * Ajusta la página a una sola hoja (espaciados y letra menores). Lo activa la propuesta
+     * individual solo cuando la página normal no cabe (`IndividualQuoteProposalPages`).
+     */
+    public bool $fitToPage = false;
+
+    /**
      * Filas de precio para un paquete de beneficios, que no tiene coberturas y
      * por lo tanto no puede desglosarse en columnas.
      *
@@ -84,8 +90,10 @@ class PlanesCotizacionEstructura extends Component
         bool $showConditions = true,
         bool $storefrontFooter = false,
         array $upgrades = [],
+        bool $fitToPage = false,
     ): void {
         $this->upgrades = $upgrades;
+        $this->fitToPage = $fitToPage;
         $this->data = $data;
         $this->name = $name;
         $this->name_user = $name_user;

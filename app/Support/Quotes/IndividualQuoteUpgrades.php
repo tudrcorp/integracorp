@@ -7,8 +7,10 @@ namespace App\Support\Quotes;
 use App\Models\AgeRange;
 use App\Models\IndividualQuote;
 use App\Models\IndividualQuoteUpgrade;
+use App\Models\Upgrade;
 use App\Support\PlanGenerators\PlanGeneratorUpgrades;
 use App\Support\SecurityAudit;
+use App\Support\Upgrades\UpgradeCardCatalog;
 use Illuminate\Support\Facades\Auth;
 use InvalidArgumentException;
 
@@ -190,11 +192,15 @@ final class IndividualQuoteUpgrades
      * Los upgrades no se reparten en cuotas: se pagan completos en el primer pago
      * (`UpgradeInstallments`).
      *
-     * @return array{lines: list<array{name: string, coverage: string, persons: int, annual: float, rows: list<array<string, mixed>>, services: list<array<string, mixed>>}>, annual_total: float}
+     * @return array{lines: list<array{name: string, coverage: string, persons: int, annual: float, rows: list<array<string, mixed>>, services: list<array<string, mixed>>, logo: array{image: ?string, color: string, initials: string}}>, annual_total: float}
      */
     public static function summary(IndividualQuote $quote): array
     {
         $upgrades = $quote->relationLoaded('upgrades') ? $quote->upgrades : $quote->upgrades()->get();
+        $catalog = Upgrade::query()
+            ->whereIn('id', $upgrades->pluck('upgrade_id')->filter()->unique()->values()->all())
+            ->get()
+            ->keyBy('id');
         $lines = [];
         $total = 0.0;
 
@@ -208,11 +214,27 @@ final class IndividualQuoteUpgrades
                 'annual' => $annual,
                 'rows' => array_values((array) $upgrade->rows),
                 'services' => array_values((array) $upgrade->services),
+                'logo' => self::logo((int) $upgrade->upgrade_id, (string) $upgrade->upgrade_name, $catalog->get($upgrade->upgrade_id)),
             ];
         }
 
         $total = round($total, 2);
 
         return ['lines' => $lines, 'annual_total' => $total];
+    }
+
+    /**
+     * Logo pequeño del upgrade para el PDF: su imagen del catálogo (ruta local) o, si no tiene,
+     * una insignia con el color de su tarjeta y sus iniciales.
+     *
+     * @return array{image: ?string, color: string, initials: string}
+     */
+    public static function logo(int $upgradeId, string $name, ?Upgrade $upgrade = null): array
+    {
+        return [
+            'image' => $upgrade !== null && Upgrade::hasImageColumn() ? $upgrade->imagePath() : null,
+            'color' => UpgradeCardCatalog::fallbackGradient(max(0, $upgradeId))[0],
+            'initials' => UpgradeCardCatalog::initials($name),
+        ];
     }
 }
