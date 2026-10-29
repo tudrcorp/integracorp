@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\Affiliations\Tables;
 
 use App\Filament\Resources\Affiliations\AffiliationResource;
+use App\Filament\Shared\Affiliations\AffiliationDateCorrectionActions;
 use App\Filament\Shared\Affiliations\AffiliationDeletionActions;
 use App\Filament\Shared\Affiliations\ChangeAffiliationPlanBulkAction;
 use App\Http\Controllers\AffiliateExportCsvController;
@@ -1452,6 +1453,7 @@ class AffiliationsTable
                                 ->send();
                         }),
 
+                    ...AffiliationDateCorrectionActions::tableActions(),
                 ])->hidden(fn ($record) => $record->status == 'EXCLUIDO' || $record->trashed()),
                 ...AffiliationDeletionActions::recordActions(),
             ])

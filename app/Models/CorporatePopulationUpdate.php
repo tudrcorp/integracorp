@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 /**
  * Una carga del archivo de población de una afiliación corporativa.
@@ -103,6 +104,24 @@ class CorporatePopulationUpdate extends Model
     public function items(): HasMany
     {
         return $this->hasMany(CorporatePopulationUpdateItem::class);
+    }
+
+    /**
+     * Ajustes de facturación hechos en Administración por esta carga (uno aplicado como máximo).
+     *
+     * @return HasMany<CorporateBillingAdjustment, $this>
+     */
+    public function billingAdjustments(): HasMany
+    {
+        return $this->hasMany(CorporateBillingAdjustment::class);
+    }
+
+    /**
+     * @return HasManyThrough<CorporateBillingAdjustmentLine, CorporateBillingAdjustment, $this>
+     */
+    public function billingAdjustmentLines(): HasManyThrough
+    {
+        return $this->hasManyThrough(CorporateBillingAdjustmentLine::class, CorporateBillingAdjustment::class);
     }
 
     public function statusLabel(): string

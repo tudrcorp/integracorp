@@ -310,21 +310,22 @@ it('rechaza vouchers inválidos sin escribir nada', function (Closure $mutate, s
     'vencido' => [fn (array $v): array => array_replace_recursive($v, [1 => ['date_init' => now()->subYear()->toDateString(), 'date_end' => now()->subDay()->toDateString()]]), 'venció'],
     'sin comprobante' => [fn (array $v): array => array_replace_recursive($v, [1 => ['document_path' => 'upgrades-ils/no-existe.pdf']]), 'Adjunte el comprobante'],
     'ruta con trucos' => [fn (array $v): array => array_replace_recursive($v, [1 => ['document_path' => '../.env']]), 'Adjunte el comprobante'],
-    'mismo número en el lote' => [fn (array $v): array => array_replace_recursive($v, [2 => ['code' => strtolower($v[1]['code'])]]), 'está repetido'],
     'falta el de un familiar' => [fn (array $v): array => [1 => $v[1]], 'Falta el Voucher ILS de LUIS PEREZ'],
 ]);
 
-it('un número de voucher ya usado en el sistema no se acepta, sin importar mayúsculas', function (): void {
-    $first = upgradeVouchersFor([1]);
-    IndividualAffiliateUpgradeManager::add(individualOwner(), [1], [10], null, $first);
+it('acepta el mismo número de voucher entre afiliados del lote y con vouchers ya registrados', function (): void {
+    $first = upgradeVouchersFor([1, 2]);
+    $first[2]['code'] = strtolower($first[1]['code']);
 
-    $second = upgradeVouchersFor([2]);
-    $second[2]['code'] = ' '.strtolower($first[1]['code']).' ';
+    IndividualAffiliateUpgradeManager::add(individualOwner(), [1, 2], [10], null, $first);
 
-    expect(fn () => IndividualAffiliateUpgradeManager::add(individualOwner(), [2], [10], null, $second))
-        ->toThrow(InvalidArgumentException::class, 'ya está registrado');
+    $second = upgradeVouchersFor([3]);
+    $second[3]['code'] = ' '.$first[1]['code'].' ';
 
-    expect(App\Support\Upgrades\UpgradeIlsVoucher::isCodeTaken($first[1]['code']))->toBeTrue()
+    expect(App\Support\Upgrades\UpgradeIlsVoucher::validateMany($second)[3]['code'])->toBe($first[1]['code'])
+        ->and(AffiliateUpgrade::query()->count())->toBe(2)
+        ->and(AffiliateUpgrade::query()->pluck('ils_voucher_code')->map(fn (string $code): string => strtoupper($code))->unique()->all())->toBe([strtoupper($first[1]['code'])])
+        ->and(App\Support\Upgrades\UpgradeIlsVoucher::isCodeTaken($first[1]['code']))->toBeTrue()
         ->and(App\Support\Upgrades\UpgradeIlsVoucher::isCodeTaken('ILS-NUEVO-999'))->toBeFalse();
 });
 

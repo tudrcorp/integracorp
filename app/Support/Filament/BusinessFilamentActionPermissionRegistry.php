@@ -68,6 +68,10 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const UPDATE_CORPORATE_POPULATION = 'actualizar-poblacion-corporativa';
 
+    public const ADJUST_POPULATION_BILLING = 'aplicar-ajustes-por-poblacion';
+
+    public const MARK_COLLECTION_FOLLOW_UP = 'marcar-estado-gestion-cobranza';
+
     public const EDIT_ORG_STRUCTURE = 'editar-estructura-organizacional';
 
     public const EXPORT_ORG_CHART = 'exportar-organigrama';
@@ -144,6 +148,16 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::MANAGE_DROPPED_AFFILIATION_COLLECTIONS => [
                 'name' => 'Cuotas de afiliaciones dadas de baja: anular, mantener como deuda y revertir',
+                'group' => 'COBRANZA',
+                'modules' => ['ADMINISTRACION'],
+            ],
+            self::ADJUST_POPULATION_BILLING => [
+                'name' => 'Ajustes por población: aplicar y revertir el cobro de la diferencia cuando cambia la población corporativa',
+                'group' => 'COBRANZA',
+                'modules' => ['ADMINISTRACION'],
+            ],
+            self::MARK_COLLECTION_FOLLOW_UP => [
+                'name' => 'Cobranza Por Mes: marcar y quitar el estado de gestión (seguimiento, aviso enviado, remitido, en revisión)',
                 'group' => 'COBRANZA',
                 'modules' => ['ADMINISTRACION'],
             ],

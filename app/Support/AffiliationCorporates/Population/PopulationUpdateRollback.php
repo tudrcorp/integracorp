@@ -12,6 +12,7 @@ use App\Models\CorporatePopulationUpdate;
 use App\Models\CorporatePopulationUpdateItem as Item;
 use App\Models\TelemedicinePatient;
 use App\Models\User;
+use App\Support\AffiliationCorporates\BillingAdjustments\PopulationBillingAdjuster;
 use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\SecurityAudit;
 use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
@@ -42,6 +43,10 @@ final class PopulationUpdateRollback
     {
         if ($update->status !== CorporatePopulationUpdate::STATUS_APPLIED) {
             return 'Solo se revierte una carga aplicada.';
+        }
+
+        if (PopulationBillingAdjuster::activeAdjustmentFor($update) !== null) {
+            return 'Esta carga ya tiene un ajuste de facturación aplicado en Administración (aviso por ajuste y cuotas ajustadas). Pida que lo reviertan en «Ajustes por población» antes de revertir la población.';
         }
 
         $later = CorporatePopulationUpdate::query()

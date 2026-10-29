@@ -66,6 +66,7 @@ class UserFormPermissionOptions
         'dashboardredproveedores' => ['dashboard-de-proveedores'],
         'informeadministrativo' => ['informe-administrativo'],
         'droppedaffiliationcollectionresource' => ['cuotas-de-afiliaciones-dadas-de-baja'],
+        'populationbillingadjustmentresource' => ['ajustes-por-poblacion'],
         'zoneresource' => ['gestion-de-carpetas'],
         'affiliateresource' => ['afiliados-individuales'],
         'affiliatecorporateresource' => ['afiliados-corporativos'],

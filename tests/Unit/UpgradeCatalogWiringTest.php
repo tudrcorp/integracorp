@@ -93,5 +93,5 @@ it('agregar upgrade siempre pasa por la vista previa y el voucher obligatorio', 
         ->toContain('UpgradeAssignmentPreview::blockingMessage($preview)')
         ->toContain('public const UPGRADE_BULK_LIMIT = 20;')
         ->toContain("FileUpload::make('document_path')")
-        ->toContain('UpgradeIlsVoucher::isCodeTaken($value)');
+        ->not->toContain('UpgradeIlsVoucher::isCodeTaken($value)');
 });

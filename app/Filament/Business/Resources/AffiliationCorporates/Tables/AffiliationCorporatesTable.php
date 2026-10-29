@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\Tables;
 use App\Exceptions\CorporatePaymentFrequencyChangeBlockedException;
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Exports\AffiliationCorporateExporter;
+use App\Filament\Shared\Affiliations\AffiliationDateCorrectionActions;
 use App\Filament\Shared\Affiliations\AffiliationDeletionActions;
 use App\Http\Controllers\AffiliateCorporateExportCsvController;
 use App\Http\Controllers\AffiliationCorporateController;
@@ -1346,6 +1347,7 @@ class AffiliationCorporatesTable
                         })
                         ->hidden(fn () => ! in_array('SUPERADMIN', (array) (Auth::user()?->departament ?? []))),
                     self::changePaymentFrequencyAction(),
+                    ...AffiliationDateCorrectionActions::tableActions(),
                 ])->hidden(fn ($record) => $record->status == 'EXCLUIDO' || $record->trashed()),
                 ...AffiliationDeletionActions::recordActions(),
             ])
