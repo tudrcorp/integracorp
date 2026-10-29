@@ -142,17 +142,15 @@ it('guarda la copia congelada y la página dinámica del plan lleva los upgrades
         'name_user' => 'Pest',
     ])->render();
 
-    // Beneficios de la configuración del plan, tarifas y, debajo, los upgrades con el total.
+    // Beneficios de la configuración del plan, tarifas y, debajo, los upgrades (sin tabla de totales).
     expect($details['layout'])->toBe(App\Support\IndividualQuotePdfLayout::Estructura)
         ->and($html)->toContain('EMERGENCIAS MÉDICAS POR PATOLOGIAS LISTADAS')
         ->toContain('TARIFA GRUPAL ANUAL')
         ->toContain('UPGRADES OPCIONALES')
         ->toContain('30% DE COBERTURA DE PREEXISTENCIA')
-        ->toContain('TOTAL CON UPGRADES')
         ->toContain('PAGO ÚNICO ANUAL')
-        ->toContain('TRIMESTRAL · 1.ER PAGO')
-        ->toContain('TRIMESTRAL · PAGOS 2 A 4')
         ->toContain(App\Support\Upgrades\UpgradeInstallments::RULE)
+        ->not->toContain('TOTAL CON UPGRADES')
         ->and(strpos($html, 'UPGRADES OPCIONALES'))->toBeGreaterThan(strpos($html, 'TARIFA GRUPAL ANUAL'));
 
     // Documento como el del microservicio: portada, acerca, 1 página del plan, patologías, contraportada.
