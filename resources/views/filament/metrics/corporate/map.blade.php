@@ -5,6 +5,7 @@
      */
     $layerIcons = [
         'income' => 'heroicon-m-banknotes',
+        'new_affiliations' => 'heroicon-m-user-plus',
         'affiliations' => 'heroicon-m-identification',
         'network' => 'heroicon-m-users',
         'services' => 'heroicon-m-heart',

@@ -16,6 +16,7 @@ use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\AffiliationCorporates\CorporateAffiliationContractedPlan;
 use App\Support\AffiliationCorporates\CorporateCertificateBenefitSections;
 use App\Support\Affiliations\AffiliationJobFailureLogger;
+use App\Support\Affiliations\Certificates\CertificatePrintableAffiliates;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\Viveplus\ViveplusDocumentWebhookDispatcher;
 use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
@@ -44,6 +45,20 @@ class AffiliationCorporateBusinessDocumentsService
      * puede tardar bastante más que los 20 minutos que se usaban antes.
      */
     private const TASK_TTL_MINUTES = 180;
+
+    /**
+     * Quienes reciben certificado y carnet.
+     *
+     * @return Collection<int, AffiliateCorporate>
+     */
+    public static function printableAffiliates(AffiliationCorporate $record): Collection
+    {
+        if (! $record->relationLoaded('corporateAffiliates')) {
+            $record->loadMissing('corporateAffiliates');
+        }
+
+        return CertificatePrintableAffiliates::filter($record->corporateAffiliates, $record->status);
+    }
 
     private static function documentsQueue(): string
     {
@@ -102,7 +117,7 @@ class AffiliationCorporateBusinessDocumentsService
                 'queued' => true,
                 'task_id' => $activeTask['task_id'],
                 'reused' => true,
-                'affiliates_count' => $record->corporateAffiliates->count(),
+                'affiliates_count' => self::printableAffiliates($record)->count(),
                 'progress_percentage' => (int) ($activeTask['payload']['progress_percentage'] ?? 0),
                 'eta_seconds' => $activeTask['payload']['eta_seconds'] ?? null,
             ];
@@ -111,7 +126,7 @@ class AffiliationCorporateBusinessDocumentsService
         self::purgeExistingGeneratedDocuments($record);
         self::ensureDirectories();
 
-        $affiliates = $record->corporateAffiliates;
+        $affiliates = self::printableAffiliates($record);
         $affiliateCount = $affiliates->count();
 
         if (self::shouldRunInline($affiliateCount)) {
@@ -440,7 +455,7 @@ class AffiliationCorporateBusinessDocumentsService
                     $payload['documents'] = $documents;
                 }
 
-                $payload['affiliates_count'] = $record->corporateAffiliates->count();
+                $payload['affiliates_count'] = self::printableAffiliates($record)->count();
             }
         }
 
@@ -491,7 +506,7 @@ class AffiliationCorporateBusinessDocumentsService
             $record->loadMissing('corporateAffiliates');
         }
 
-        return $record->corporateAffiliates
+        return self::printableAffiliates($record)
             ->map(fn ($affiliate): string => 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf')
             ->values()
             ->all();
@@ -523,7 +538,7 @@ class AffiliationCorporateBusinessDocumentsService
         $documents = [];
         $seen = [];
 
-        foreach ($record->corporateAffiliates as $affiliate) {
+        foreach (self::printableAffiliates($record) as $affiliate) {
             $identification = (string) $affiliate->nro_identificacion;
             if (trim($identification) === '') {
                 continue;
@@ -564,7 +579,7 @@ class AffiliationCorporateBusinessDocumentsService
         if (is_file($combinedPath)) {
             $paths[] = $combinedPath;
         } else {
-            foreach ($record->corporateAffiliates as $affiliate) {
+            foreach (self::printableAffiliates($record) as $affiliate) {
                 $paths[] = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'-'.$affiliate->id.'.pdf');
             }
         }
@@ -716,7 +731,7 @@ class AffiliationCorporateBusinessDocumentsService
         $planNames = CorporateCertificateBenefitSections::planNames($record);
         $showPlanColumn = count($benefitSections) > 1;
 
-        $affiliates = $record->corporateAffiliates->map(function ($affiliate) use ($planNames, $pagador): array {
+        $affiliates = self::printableAffiliates($record)->map(function ($affiliate) use ($planNames, $pagador): array {
             return [
                 'full_name' => self::certificateFullName($affiliate->first_name, $affiliate->last_name),
                 'nro_identificacion' => (string) $affiliate->nro_identificacion,
@@ -809,7 +824,7 @@ class AffiliationCorporateBusinessDocumentsService
      */
     public static function generateCombinedCards(AffiliationCorporate $record, ?Collection $affiliates = null): ?string
     {
-        $affiliates ??= $record->loadMissing('corporateAffiliates')->corporateAffiliates;
+        $affiliates ??= self::printableAffiliates($record);
 
         if ($affiliates->isEmpty()) {
             return null;
@@ -869,7 +884,7 @@ class AffiliationCorporateBusinessDocumentsService
         }
 
         if (is_file(self::combinedCardsAbsolutePath($record))) {
-            $affiliatesCount = $record->corporateAffiliates->count();
+            $affiliatesCount = self::printableAffiliates($record)->count();
 
             $documents[] = [
                 'label' => 'Carnets de afiliación ('.$affiliatesCount.' '.($affiliatesCount === 1 ? 'afiliado' : 'afiliados').')',
@@ -951,6 +966,10 @@ class AffiliationCorporateBusinessDocumentsService
 
         $query = AffiliateCorporate::query()
             ->where('affiliation_corporate_id', $record->getKey())
+            ->when(
+                CertificatePrintableAffiliates::appliesTo($record->status),
+                fn ($builder) => $builder->whereIn('status', CertificatePrintableAffiliates::PRINTABLE_STATUSES),
+            )
             ->orderBy('id');
 
         if ($search !== '') {

@@ -198,6 +198,10 @@ Route::get('guardias/cronograma/pdf', TdgCalendarSchedulePdfController::class)
     ->middleware(['web', 'auth'])
     ->name('tdg-calendar.schedule-pdf');
 
+Route::get('operations/guardias-medicas/pdf', App\Http\Controllers\MedicalGuardSchedulePdfController::class)
+    ->middleware(['web', 'auth'])
+    ->name('operations.medical-guards.pdf');
+
 Route::get('operations/telemedicine-patients/siniestralidad/csv', [App\Http\Controllers\TelemedicinePatientSiniestralidadReportController::class, 'downloadCsv'])
     ->middleware(['web', 'auth'])
     ->name('operations.telemedicine-patients.siniestralidad.csv');

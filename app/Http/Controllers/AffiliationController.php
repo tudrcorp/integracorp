@@ -8,6 +8,7 @@ use App\Models\Affiliation;
 use App\Models\Plan;
 use App\Models\User;
 use App\Support\AffiliationCorporates\CorporateCertificateBenefitSections;
+use App\Support\Affiliations\Certificates\CertificatePrintableAffiliates;
 use App\Support\Affiliations\WelcomeKitAttachments;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\SecurityAudit;
@@ -926,6 +927,8 @@ class AffiliationController extends Controller
             if (! $record || ! $record->plan) {
                 throw new \Exception('La afiliación no tiene un plan asociado o el registro es inválido.');
             }
+
+            $afiliates = CertificatePrintableAffiliates::filter($afiliates, $record->status);
 
             $userForNotification = null;
             if ($notifyUser) {

@@ -84,7 +84,7 @@ final class CorporateMapMetrics
      * @param  array<string, float>|null  $previous
      * @return array{label: string, short: string, money: bool, snapshot: bool, hint: string, values: array<string, float>, previous: array<string, float>|null, total: float, unknown: float}
      */
-    private static function layer(string $label, string $short, bool $money, bool $snapshot, string $hint, array $values, ?array $previous): array
+    public static function layer(string $label, string $short, bool $money, bool $snapshot, string $hint, array $values, ?array $previous): array
     {
         $unknown = (float) ($values[CorporateGeography::UNKNOWN] ?? 0);
         unset($values[CorporateGeography::UNKNOWN]);

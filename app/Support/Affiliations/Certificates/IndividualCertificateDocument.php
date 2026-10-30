@@ -23,7 +23,7 @@ use Illuminate\Support\Str;
 final class IndividualCertificateDocument
 {
     /** Afiliados que se imprimen: los vigentes, como en las renovaciones. */
-    public const PRINTABLE_STATUSES = ['ACTIVO', 'PRE-APROBADA'];
+    public const PRINTABLE_STATUSES = CertificatePrintableAffiliates::PRINTABLE_STATUSES;
 
     /**
      * Relaciones que necesita el documento; cargarlas juntas evita consultas por fila.

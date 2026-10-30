@@ -14,6 +14,7 @@ use App\Services\AffiliationCertificateGeneratorService;
 use App\Support\AffiliationCorporates\CorporateAffiliationContractedPlan;
 use App\Support\Affiliations\Certificates\AffiliationCertificateAccess;
 use App\Support\Affiliations\Certificates\CertificateFormat;
+use App\Support\Affiliations\Certificates\CertificatePrintableAffiliates;
 use App\Support\Affiliations\Certificates\CorporateCertificateDocument;
 use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\Action;
@@ -50,7 +51,7 @@ class CorporateCertificateGenerator extends Page
 {
     use SendsAffiliationCertificateByEmail;
 
-    public const CERTIFIABLE_STATUSES = ['ACTIVA', 'PRE-APROBADA'];
+    public const CERTIFIABLE_STATUSES = CertificatePrintableAffiliates::CERTIFIABLE_AFFILIATION_STATUSES;
 
     public const MODE_ALL = 'all';
 

@@ -19,6 +19,10 @@ use Throwable;
  *
  * Precedencia: exenta > ausencia > feriado > fin de semana > descanso
  * post-guardia > día laboral (o «sin turno» para quien trabaja por guardias).
+ *
+ * Los médicos de TDG van por guardias médicas: su guardia es su jornada, cualquier
+ * día de la semana y sin horas extra, y va antes que feriado, fin de semana y
+ * descanso post-guardia.
  */
 final class WorkDayPlanner
 {
@@ -41,11 +45,12 @@ final class WorkDayPlanner
         $users = $users->keyBy('id');
         $absences = self::absences($users->keys()->all(), $from, $to);
         $guards = WorkGuardSource::windows($users, $from->subDay(), $to);
+        $tdgDoctors = WorkGuardSource::tdgDoctorUserIds($users);
         $plans = [];
 
         foreach ($users as $userId => $user) {
             for ($day = $from; $day->lessThanOrEqualTo($to); $day = $day->addDay()) {
-                $plans[(int) $userId][$day->toDateString()] = self::build($user, $day, $absences[(int) $userId] ?? [], $guards[(int) $userId] ?? []);
+                $plans[(int) $userId][$day->toDateString()] = self::build($user, $day, $absences[(int) $userId] ?? [], $guards[(int) $userId] ?? [], isset($tdgDoctors[(int) $userId]));
             }
         }
 
@@ -104,13 +109,17 @@ final class WorkDayPlanner
 
     /**
      * @param  list<UserWorkAbsence>  $absences
-     * @param  array<string, list<array{from: int, to: int, label: string}>>  $guards
+     * @param  array<string, list<array{from: int, to: int, label: string, medical?: bool}>>  $guards
      */
-    private static function build(User $user, CarbonImmutable $day, array $absences, array $guards): WorkDayPlan
+    private static function build(User $user, CarbonImmutable $day, array $absences, array $guards, bool $isTdgDoctor = false): WorkDayPlan
     {
         $date = $day->toDateString();
         $yesterday = $day->subDay()->toDateString();
         $schedule = WorkScheduleType::fromStored($user->getAttributes()['work_schedule'] ?? null);
+
+        if ($isTdgDoctor && $schedule !== WorkScheduleType::Exempt && WorkdayConfig::medicalGuardsApplyOn($date)) {
+            $schedule = WorkScheduleType::Guards;
+        }
 
         $ownToday = $guards[$date] ?? [];
         $ownYesterday = $guards[$yesterday] ?? [];
@@ -122,15 +131,15 @@ final class WorkDayPlanner
 
         foreach ($ownYesterday as $window) {
             if ($window['to'] > 1440) {
-                $inDay[] = ['from' => 0, 'to' => min(1440, $window['to'] - 1440), 'owner' => $yesterday, 'label' => $window['label'], 'overtime' => $overtimeYesterday];
+                $inDay[] = ['from' => 0, 'to' => min(1440, $window['to'] - 1440), 'owner' => $yesterday, 'label' => $window['label'], 'overtime' => $overtimeYesterday && ! ($window['medical'] ?? false)];
             }
         }
 
         foreach ($ownToday as $window) {
-            $inDay[] = ['from' => $window['from'], 'to' => min(1440, $window['to']), 'owner' => $date, 'label' => $window['label'], 'overtime' => $overtimeToday];
+            $inDay[] = ['from' => $window['from'], 'to' => min(1440, $window['to']), 'owner' => $date, 'label' => $window['label'], 'overtime' => $overtimeToday && ! ($window['medical'] ?? false)];
 
             if ($window['to'] > 1440) {
-                $spill[] = ['from' => 0, 'to' => min(1440, $window['to'] - 1440), 'label' => $window['label'], 'overtime' => $overtimeToday];
+                $spill[] = ['from' => 0, 'to' => min(1440, $window['to'] - 1440), 'label' => $window['label'], 'overtime' => $overtimeToday && ! ($window['medical'] ?? false)];
             }
         }
 
@@ -150,9 +159,12 @@ final class WorkDayPlanner
             && collect($ownYesterday)->contains(static fn (array $window): bool => $window['to'] > 1440);
         $hasDaytimeShift = collect($ownToday)->contains(static fn (array $window): bool => $window['from'] < WorkdayConfig::workEnd() && $window['to'] > WorkdayConfig::workStart() && $window['to'] <= 1440);
 
+        $hasMedicalGuard = collect($ownToday)->contains(static fn (array $window): bool => $window['medical'] ?? false);
+
         [$kind, $note] = match (true) {
             $schedule === WorkScheduleType::Exempt => [WorkDayKind::Exempt, null],
             $absence !== null => [WorkDayKind::Absence, $absence->type->label().($absence->reason ? ' · '.$absence->reason : '')],
+            $hasMedicalGuard => [WorkDayKind::MedicalGuard, null],
             $holiday !== null => [WorkDayKind::Holiday, $holiday],
             $weekend => [WorkDayKind::Weekend, null],
             $restAfterGuard => [WorkDayKind::GuardRest, null],

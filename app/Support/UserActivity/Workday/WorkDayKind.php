@@ -17,6 +17,7 @@ enum WorkDayKind: string
     case GuardRest = 'descanso';
     case NoShift = 'sin_turno';
     case Exempt = 'exenta';
+    case MedicalGuard = 'guardia_medica';
 
     public function label(): string
     {
@@ -28,6 +29,7 @@ enum WorkDayKind: string
             self::GuardRest => 'Descanso post-guardia',
             self::NoShift => 'Sin turno asignado',
             self::Exempt => 'Jornada exenta',
+            self::MedicalGuard => 'Guardia médica',
         };
     }
 
@@ -41,6 +43,7 @@ enum WorkDayKind: string
             self::GuardRest => '😴',
             self::NoShift => '🗓️',
             self::Exempt => '⭐',
+            self::MedicalGuard => '🩺',
         };
     }
 }

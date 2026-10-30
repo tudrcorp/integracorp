@@ -426,13 +426,17 @@ final class DepartmentNavigationPermissionRegistry
      * - El estudio de estructura se abre en Negocios con el permiso de acción
      *   `editar-estructura-organizacional` o siendo SUPERADMIN.
      *
+     * - Guardias Médicas la ve todo analista de Operaciones; cargarlas pide la
+     *   acción `gestionar-guardias-medicas`.
+     *
      * `permissions:sync-navigation` las salta para no crear permisos de menú que
      * no controlarían nada.
      */
     public static function isManagedOutsideNavigationPermissions(string $class): bool
     {
         return is_a($class, \App\Filament\Shared\OrgStructure\Pages\OrgChartPage::class, true)
-            || is_a($class, \App\Filament\Business\Pages\EstructuraOrganizacional::class, true);
+            || is_a($class, \App\Filament\Business\Pages\EstructuraOrganizacional::class, true)
+            || is_a($class, \App\Filament\Operations\Pages\GuardiasMedicas::class, true);
     }
 
     /**
