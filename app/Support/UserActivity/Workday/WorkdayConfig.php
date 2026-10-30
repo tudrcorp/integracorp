@@ -26,6 +26,9 @@ final class WorkdayConfig
      */
     private const DEFAULT_SINCE = '2026-10-16';
 
+    /** Desde este día los médicos de TDG se miden por sus guardias médicas. */
+    private const DEFAULT_MEDICAL_GUARDS_SINCE = '2026-10-30';
+
     /** @var array<string, array{start: string, end: string}> */
     private const DEFAULT_SHIFTS = [
         'proveedores' => ['start' => '08:00', 'end' => '17:00'],
@@ -54,6 +57,15 @@ final class WorkdayConfig
         $since = self::since();
 
         return $since === null || $date->setTimezone(UserActivityClock::timezone())->startOfDay()->greaterThanOrEqualTo($since);
+    }
+
+    /**
+     * Los días anteriores conservan el cálculo de antes: las guardias médicas
+     * rigen hacia adelante y nunca reescriben lo ya medido.
+     */
+    public static function medicalGuardsApplyOn(string $date): bool
+    {
+        return $date >= (string) config('live-presence.activity.workday.medical_guards_since', self::DEFAULT_MEDICAL_GUARDS_SINCE);
     }
 
     public static function since(): ?CarbonImmutable

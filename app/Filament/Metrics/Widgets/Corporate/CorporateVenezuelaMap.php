@@ -7,6 +7,7 @@ namespace App\Filament\Metrics\Widgets\Corporate;
 use App\Filament\Operations\Widgets\Dashboard\Concerns\InteractsWithOperationsDashboard;
 use App\Support\Metrics\Corporate\CorporateGeography;
 use App\Support\Metrics\Corporate\CorporateMapMetrics;
+use App\Support\Operations\Dashboard\OperationsDashboardPeriod as Period;
 use Filament\Widgets\Widget;
 
 /**
@@ -31,6 +32,14 @@ class CorporateVenezuelaMap extends Widget
     public const STEPS = 7;
 
     /**
+     * @return array<string, array<string, mixed>>
+     */
+    protected function layers(Period $period): array
+    {
+        return CorporateMapMetrics::layers($period);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     protected function getViewData(): array
@@ -39,7 +48,7 @@ class CorporateVenezuelaMap extends Widget
 
         return [
             'paths' => CorporateGeography::paths(),
-            'layers' => CorporateMapMetrics::layers($period),
+            'layers' => $this->layers($period),
             'compare' => $period->compare,
             'periodLabel' => $period->label(),
             'previousLabel' => $period->previousLabel(),

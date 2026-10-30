@@ -119,7 +119,7 @@ final class CorporatePortfolioMetrics
             $counts = [];
 
             foreach (self::SOURCES as [$table]) {
-                foreach (DashboardGrouping::by(DB::table($table), ['grp_status' => "COALESCE(NULLIF(UPPER(TRIM(status)), ''), 'SIN ESTATUS')"])->selectRaw('COUNT(*) as total')->get() as $row) {
+                foreach (DashboardGrouping::by(DB::table($table)->whereNull("{$table}.deleted_at"), ['grp_status' => "COALESCE(NULLIF(UPPER(TRIM(status)), ''), 'SIN ESTATUS')"])->selectRaw('COUNT(*) as total')->get() as $row) {
                     $counts[(string) $row->grp_status] = ($counts[(string) $row->grp_status] ?? 0) + (int) $row->total;
                 }
             }
@@ -151,7 +151,7 @@ final class CorporatePortfolioMetrics
 
             foreach ([['affiliates', 'affiliates.plan_id'], ['affiliate_corporates', 'affiliate_corporates.plan_id']] as [$table, $planColumn]) {
                 $rows = DashboardGrouping::by(
-                    DB::table($table)->leftJoin('plans', 'plans.id', '=', $planColumn)->where("{$table}.status", 'ACTIVO'),
+                    DB::table($table)->whereNull("{$table}.deleted_at")->leftJoin('plans', 'plans.id', '=', $planColumn)->where("{$table}.status", 'ACTIVO'),
                     ['grp_label' => "UPPER(COALESCE(NULLIF(TRIM(plans.description), ''), 'SIN PLAN'))"],
                 )
                     ->selectRaw('COUNT(*) as total')
@@ -186,7 +186,7 @@ final class CorporatePortfolioMetrics
             $case .= ' END';
 
             foreach (['affiliates', 'affiliate_corporates'] as $table) {
-                foreach (DashboardGrouping::by(DB::table($table)->where('status', 'ACTIVO')->whereNotNull('age'), ['grp_band' => $case])->selectRaw('COUNT(*) as total')->get() as $row) {
+                foreach (DashboardGrouping::by(DB::table($table)->whereNull("{$table}.deleted_at")->where('status', 'ACTIVO')->whereNotNull('age'), ['grp_band' => $case])->selectRaw('COUNT(*) as total')->get() as $row) {
                     if ($row->grp_band !== null) {
                         $bands[(string) $row->grp_band] += (int) $row->total;
                     }
@@ -208,7 +208,7 @@ final class CorporatePortfolioMetrics
             $out = [];
 
             foreach (self::SOURCES as [$table, , $stateColumn]) {
-                $rows = DB::table($table)->where('status', self::ACTIVE)->selectRaw("{$stateColumn} as state_id, COUNT(*) as total")->groupBy($stateColumn)->pluck('total', 'state_id');
+                $rows = DB::table($table)->whereNull("{$table}.deleted_at")->where('status', self::ACTIVE)->selectRaw("{$stateColumn} as state_id, COUNT(*) as total")->groupBy($stateColumn)->pluck('total', 'state_id');
 
                 foreach (CorporateGeography::byGeoKeyFromIds($rows) as $key => $value) {
                     $out[$key] = ($out[$key] ?? 0) + $value;
@@ -219,6 +219,32 @@ final class CorporatePortfolioMetrics
 
             return $out;
         });
+    }
+
+    /**
+     * Afiliaciones emitidas en el rango, por estado (clave del mapa).
+     *
+     * @return array<string, float>
+     */
+    public static function newByState(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $out = [];
+
+        foreach (self::SOURCES as [$table, , $stateColumn]) {
+            $rows = DB::table($table)->whereNull("{$table}.deleted_at")
+                ->whereRaw(self::emissionSql($table).' BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()])
+                ->selectRaw("{$stateColumn} as state_id, COUNT(*) as total")
+                ->groupBy($stateColumn)
+                ->pluck('total', 'state_id');
+
+            foreach (CorporateGeography::byGeoKeyFromIds($rows) as $key => $value) {
+                $out[$key] = ($out[$key] ?? 0) + $value;
+            }
+        }
+
+        arsort($out);
+
+        return $out;
     }
 
     /**
@@ -260,7 +286,7 @@ final class CorporatePortfolioMetrics
         $total = 0;
 
         foreach (self::SOURCES as [$table]) {
-            $total += DB::table($table)->whereRaw(self::emissionSql($table).' BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()])->count();
+            $total += DB::table($table)->whereNull("{$table}.deleted_at")->whereRaw(self::emissionSql($table).' BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()])->count();
         }
 
         return $total;
@@ -269,13 +295,13 @@ final class CorporatePortfolioMetrics
     /**
      * @return list<float>
      */
-    private static function newDaily(CarbonImmutable $from, CarbonImmutable $to): array
+    public static function newDaily(CarbonImmutable $from, CarbonImmutable $to): array
     {
         $series = array_fill(0, (int) $from->diffInDays($to) + 1, 0.0);
 
         foreach (self::SOURCES as [$table]) {
             $daily = CorporateMetrics::daily(
-                DB::table($table)->whereRaw(self::emissionSql($table).' BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()]),
+                DB::table($table)->whereNull("{$table}.deleted_at")->whereRaw(self::emissionSql($table).' BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()]),
                 self::emissionSql($table),
                 $from,
                 $to,

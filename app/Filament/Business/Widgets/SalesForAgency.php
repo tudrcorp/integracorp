@@ -9,6 +9,9 @@ use Filament\Widgets\ChartWidget;
 
 class SalesForAgency extends ChartWidget
 {
+    /** Solo para el tablero del account manager: ver App\Filament\Business\Pages\Dashboard. */
+    protected static bool $isDiscovered = false;
+
     protected static ?int $sort = 5;
 
     /**

@@ -3,6 +3,22 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
+use App\Filament\Business\Pages\Dashboard;
+use App\Filament\Business\Widgets\Dashboard\BusinessKpiTiles;
+use App\Filament\Business\Widgets\Dashboard\BusinessNewVsRenewalCountChart;
+use App\Filament\Business\Widgets\Dashboard\BusinessNewVsRenewalIncomeChart;
+use App\Filament\Business\Widgets\Dashboard\BusinessNewVsRenewalTiles;
+use App\Filament\Business\Widgets\Dashboard\BusinessTeamRanking;
+use App\Filament\Business\Widgets\Dashboard\BusinessVenezuelaMap;
+use App\Filament\Business\Widgets\Dashboard\BusinessWhiteCompanyRanking;
+use App\Filament\Metrics\Widgets\Corporate\CorporateDetailWidget;
+use App\Filament\Metrics\Widgets\Corporate\CorporateFunnel;
+use App\Filament\Metrics\Widgets\Corporate\IncomeByAgencyRanking;
+use App\Filament\Metrics\Widgets\Corporate\IncomeTrendChart;
+use App\Filament\Metrics\Widgets\Corporate\NewVsDropoutsChart;
+use App\Filament\Metrics\Widgets\Corporate\PlansSoldChart;
+use App\Filament\Metrics\Widgets\Corporate\QuotesTrendChart;
+use App\Filament\Metrics\Widgets\Corporate\SalesByAgentRanking;
 use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Http\Middleware\DuplicatedSession;
@@ -14,7 +30,6 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Enums\Width;
@@ -66,6 +81,21 @@ class BusinessPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Business/Widgets'), for: 'App\Filament\Business\Widgets')
             ->widgets([
                 WelcomeUserLiquidGlassWidget::class,
+                BusinessKpiTiles::class,
+                BusinessNewVsRenewalTiles::class,
+                BusinessNewVsRenewalIncomeChart::class,
+                BusinessNewVsRenewalCountChart::class,
+                IncomeTrendChart::class,
+                QuotesTrendChart::class,
+                CorporateFunnel::class,
+                BusinessVenezuelaMap::class,
+                BusinessTeamRanking::class,
+                SalesByAgentRanking::class,
+                IncomeByAgencyRanking::class,
+                NewVsDropoutsChart::class,
+                PlansSoldChart::class,
+                BusinessWhiteCompanyRanking::class,
+                CorporateDetailWidget::class,
             ])
             ->userMenuItems([
                 'profile' => fn (Action $action) => $action->label('PERFIL DE USUARIO'),
@@ -141,6 +171,11 @@ class BusinessPanelProvider extends PanelProvider
                             ->directory('backgroundBusenissPanelLogin')
                     ),
             ])
+            ->renderHook(
+                PanelsRenderHook::PAGE_START,
+                fn () => view('filament.operations.dashboard.page-start', ['branding' => true, 'brandingLabel' => 'Negocios · Estadísticas del negocio']),
+                scopes: [Dashboard::class],
+            )
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn () => view('filament.panels.internal-quick-nav')

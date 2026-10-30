@@ -12,6 +12,9 @@ use Illuminate\Support\HtmlString;
 
 class StatsOverviewSaleBusiness extends StatsOverviewWidget
 {
+    /** Solo para el tablero del account manager: ver App\Filament\Business\Pages\Dashboard. */
+    protected static bool $isDiscovered = false;
+
     /**
      * @var array{year?: int, month?: int}
      */

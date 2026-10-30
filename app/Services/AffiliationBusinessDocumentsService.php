@@ -7,10 +7,12 @@ use App\Http\Controllers\TarjetaAfiliacionController;
 use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Support\AffiliateCard\AffiliateCardPageLayout;
+use App\Support\Affiliations\Certificates\CertificatePrintableAffiliates;
 use App\Support\TarjetaAfiliacionQrPlanCatalog;
 use App\Support\Viveplus\ViveplusDocumentWebhookDispatcher;
 use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
@@ -64,6 +66,39 @@ class AffiliationBusinessDocumentsService
         return ! $titularEnAfiliados;
     }
 
+    /**
+     * Quienes reciben certificado y carnet. {@see self::shouldGenerateLegacyTitularTarjeta()}
+     * mira la lista completa a propósito: un titular excluido sigue estando en
+     * `affiliates` y no debe recibir la tarjeta `TAR-{code}.pdf` de respaldo.
+     *
+     * @return Collection<int, Affiliate>
+     */
+    public static function printableAffiliates(Affiliation $record): Collection
+    {
+        if (! $record->relationLoaded('affiliates')) {
+            $record->loadMissing('affiliates');
+        }
+
+        return CertificatePrintableAffiliates::filter($record->affiliates, $record->status);
+    }
+
+    /**
+     * El titular suele tener fila en `affiliates`; si esa fila quedó excluida, no
+     * recibe carnet. Sin fila no hay exclusión posible.
+     */
+    public static function titularReceivesCarnet(Affiliation $record): bool
+    {
+        if (! $record->relationLoaded('affiliates')) {
+            $record->loadMissing('affiliates');
+        }
+
+        $titularCi = trim((string) $record->nro_identificacion_ti);
+        $matches = static fn (Affiliate $affiliate): bool => strcasecmp(trim((string) $affiliate->nro_identificacion), $titularCi) === 0;
+
+        return ! $record->affiliates->contains($matches)
+            || self::printableAffiliates($record)->contains($matches);
+    }
+
     public static function condicionadoAbsolutePathForPlanId(?int $planId): ?string
     {
         $basename = self::condicionadoBasenameForPlanId($planId);
@@ -99,7 +134,9 @@ class AffiliationBusinessDocumentsService
      */
     public static function titularTarjetaCandidateFilenames(Affiliation $record): array
     {
-        $record->loadMissing('affiliates');
+        if (! $record->relationLoaded('affiliates')) {
+            $record->loadMissing('affiliates');
+        }
 
         $candidates = [];
 
@@ -107,13 +144,14 @@ class AffiliationBusinessDocumentsService
             $candidates[] = 'TAR-'.$record->code.'.pdf';
         } else {
             $titularCi = trim((string) $record->nro_identificacion_ti);
-            $titularAffiliate = $record->affiliates->first(
+            $printable = self::printableAffiliates($record);
+            $titularAffiliate = $printable->first(
                 fn (Affiliate $affiliate): bool => strcasecmp(
                     trim((string) $affiliate->nro_identificacion),
                     $titularCi
                 ) === 0
             );
-            $affiliate = $titularAffiliate ?? $record->affiliates->first();
+            $affiliate = $titularAffiliate ?? $printable->first();
 
             if ($affiliate !== null) {
                 $candidates[] = 'TAR-'.$record->code.'-'.$affiliate->id.'.pdf';
@@ -165,7 +203,7 @@ class AffiliationBusinessDocumentsService
         $documents = [];
         $seen = [];
 
-        foreach ($record->affiliates as $affiliate) {
+        foreach (self::printableAffiliates($record) as $affiliate) {
             $identification = (string) $affiliate->nro_identificacion;
             if (trim($identification) === '') {
                 continue;
@@ -214,7 +252,8 @@ class AffiliationBusinessDocumentsService
 
         self::purgeExistingGeneratedDocuments($record);
 
-        $affiliateCount = $record->affiliates->count();
+        $printableAffiliates = self::printableAffiliates($record);
+        $affiliateCount = $printableAffiliates->count();
         $legacyTarjetaCount = self::shouldGenerateLegacyTitularTarjeta($record) ? 1 : 0;
         $totalPdfs = 1 + $affiliateCount + $legacyTarjetaCount;
         $memoryMb = min(1024, 384 + (48 * max(1, $totalPdfs)));
@@ -262,7 +301,7 @@ class AffiliationBusinessDocumentsService
         if ($useIndividualAffiliateCardLayout && $totalTarjetasForLayout > 1) {
             $batchCards = [];
 
-            foreach ($record->affiliates as $affiliate) {
+            foreach ($printableAffiliates as $affiliate) {
                 $batchCards[] = self::tarjetaPayload(
                     record: $record,
                     name: (string) $affiliate->full_name,
@@ -323,7 +362,7 @@ class AffiliationBusinessDocumentsService
                 $legacyTarjetaCount,
             );
         } else {
-            foreach ($record->affiliates as $affiliate) {
+            foreach ($printableAffiliates as $affiliate) {
                 $data = self::tarjetaPayload(
                     record: $record,
                     name: (string) $affiliate->full_name,
@@ -428,7 +467,7 @@ class AffiliationBusinessDocumentsService
         ?WhiteCompanyDocumentBrand $brand,
         int $legacyTarjetaCount,
     ): void {
-        foreach ($record->affiliates as $affiliate) {
+        foreach (self::printableAffiliates($record) as $affiliate) {
             $data = self::tarjetaPayload(
                 record: $record,
                 name: (string) $affiliate->full_name,
@@ -599,7 +638,7 @@ class AffiliationBusinessDocumentsService
         if (is_file($combinedCarnetsPath)) {
             $paths[] = $combinedCarnetsPath;
         } else {
-            foreach ($record->affiliates as $affiliate) {
+            foreach (self::printableAffiliates($record) as $affiliate) {
                 $paths[] = public_path('storage/tarjeta-afiliacion/TAR-'.$record->code.'-'.$affiliate->id.'.pdf');
             }
 

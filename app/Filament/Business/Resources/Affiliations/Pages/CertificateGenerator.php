@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\AffiliationCertificateGeneratorService;
 use App\Support\Affiliations\Certificates\AffiliationCertificateAccess;
 use App\Support\Affiliations\Certificates\CertificateFormat;
+use App\Support\Affiliations\Certificates\CertificatePrintableAffiliates;
 use App\Support\Affiliations\Certificates\IndividualCertificateDocument;
 use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\Action;
@@ -48,7 +49,7 @@ class CertificateGenerator extends Page
     use SendsAffiliationCertificateByEmail;
 
     /** Estatus de afiliación que pueden certificarse. */
-    public const CERTIFIABLE_STATUSES = ['ACTIVA', 'PRE-APROBADA'];
+    public const CERTIFIABLE_STATUSES = CertificatePrintableAffiliates::CERTIFIABLE_AFFILIATION_STATUSES;
 
     protected static string $resource = AffiliationResource::class;
 

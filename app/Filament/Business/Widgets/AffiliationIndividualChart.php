@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Auth;
 
 class AffiliationIndividualChart extends ChartWidget
 {
+    /** Solo para el tablero del account manager: ver App\Filament\Business\Pages\Dashboard. */
+    protected static bool $isDiscovered = false;
+
     protected string $view = 'filament.widgets.year-filter-fixed-height-chart';
 
     protected string $color = 'gray';

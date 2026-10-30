@@ -13,6 +13,7 @@ use App\Models\AnnualCollection;
 use App\Models\Collection;
 use App\Models\Commission;
 use App\Models\Sale;
+use App\Services\AffiliationBusinessDocumentsService;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use App\Support\CreditReconciliations\WhiteCompanyCreditMovementRecorder;
 use App\Support\PaidMemberships\AffiliationQuoteNumber;
@@ -757,7 +758,9 @@ class PaidMembershipController extends Controller
                 AffiliationController::generateCertificateIndividual($record->affiliation, $record->affiliation->affiliates, Auth::id());
 
                 // Creamos la tarjeta del afiliado
-                TarjetaAfiliacionController::generateTarjetaAfiliacion($data_tarjeta_afiliado);
+                if (AffiliationBusinessDocumentsService::titularReceivesCarnet($record->affiliation)) {
+                    TarjetaAfiliacionController::generateTarjetaAfiliacion($data_tarjeta_afiliado);
+                }
 
                 $array_correos = [
                     'agente' => $data_afiliaciones['agent_id'] != null

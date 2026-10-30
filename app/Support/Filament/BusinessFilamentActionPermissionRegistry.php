@@ -78,6 +78,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const EDIT_OFFICE_GUARDS = 'editar-guardia-oficinas';
 
+    public const MANAGE_MEDICAL_GUARDS = 'gestionar-guardias-medicas';
+
     public const VIEW_HR_AMOUNTS = 'ver-montos-rrhh';
 
     /**
@@ -280,6 +282,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Guardia Oficinas: crear, actualizar y eliminar',
                 'group' => 'DEL USUARIO',
                 'modules' => ['NEGOCIOS', 'ADMINISTRACION', 'OPERACIONES', 'MARKETING'],
+            ],
+            self::MANAGE_MEDICAL_GUARDS => [
+                'name' => 'Guardias Médicas: cargar, editar, copiar y anular',
+                'group' => 'DEL USUARIO',
+                'modules' => ['OPERACIONES'],
             ],
         ];
     }
