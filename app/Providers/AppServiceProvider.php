@@ -51,6 +51,7 @@ use App\Support\LivePresence\SecurityAuthListener;
 use App\Support\Operations\CoordinationServiceTabCounts;
 use App\Support\Telemedicine\PanelLog\TelemedicinePanelLivewireMonitor;
 use App\Support\Telemedicine\PanelLog\TelemedicinePanelLog;
+use App\Support\Theme\IntegracorpTheme;
 use App\Support\UserSessionAuditTracker;
 use Filament\Actions\Imports\Events\ImportChunkProcessed;
 use Filament\Actions\Imports\Events\ImportCompleted;
@@ -73,6 +74,7 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
@@ -107,6 +109,10 @@ class AppServiceProvider extends ServiceProvider
 
         /** Personas duplicadas: el bloqueo se muestra como notificación en los paneles. */
         \App\Support\Affiliations\PersonIdentity\DuplicatePersonLivewireNotifier::register();
+
+        /** Tema Integracorp: capa opcional sobre los paneles internos; el administrador la activa en «Tema». */
+        FilamentView::registerRenderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => IntegracorpTheme::stylesheet());
+        FilamentView::registerRenderHook(PanelsRenderHook::BODY_START, fn (): HtmlString => IntegracorpTheme::previewBanner());
 
         if (config('live-presence.enabled', true)) {
             /** Contador de consultas por petición para el monitor en vivo. */
