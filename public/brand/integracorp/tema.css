@@ -1,0 +1,163 @@
+/*
+ * Tema Integracorp (manual de marca v1.0): capa sobre los temas de cada panel.
+ * La carga App\Support\Theme\IntegracorpTheme solo si está activo o en vista
+ * previa, y nunca en un login. Con la navegación SPA puede seguir cargada al
+ * cambiar de panel: toda regla va acotada a los siete paneles internos, y las
+ * variables además a una página con barra superior, que el login no tiene.
+ */
+
+@import url('fonts.css');
+
+
+html:has(> body:is(:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects), .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-topbar) {
+  --brand-navy: #0f2233;
+  --brand-navy-deep: #0b1a28;
+  --brand-ochre: #d29d45;
+  --brand-ochre-hover: #c08d38;
+  --brand-ivory: #efe9df;
+  --brand-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+
+  --font-family: 'Manrope';
+
+  /* Neutros: marfil en modo claro, navy en modo oscuro. */
+  --gray-50: #efe9df;
+  --gray-100: #e4ddd1;
+  --gray-200: #d3cdc2;
+  --gray-300: #b4b3ae;
+  --gray-400: #8e979f;
+  --gray-500: #64727f;
+  --gray-600: #465767;
+  --gray-700: #2d4254;
+  --gray-800: #1b3144;
+  --gray-900: #0f2233;
+  --gray-950: #0b1a28;
+
+  /* 500 es el ocre del manual; 600 y 700 oscurecen para leerse como texto sobre marfil. */
+  --primary-50: #fbf5ea;
+  --primary-100: #f5e8cf;
+  --primary-200: #ebd3a4;
+  --primary-300: #e0bc78;
+  --primary-400: #d9ad5e;
+  --primary-500: #d29d45;
+  --primary-600: #8a6324;
+  --primary-700: #73521e;
+  --primary-800: #5f441a;
+  --primary-900: #453112;
+  --primary-950: #2a1e0b;
+
+  /* Los dashboards pintan con slate y con estos tokens. */
+  --color-slate-50: #efe9df;
+  --color-slate-100: #e4ddd1;
+  --color-slate-200: #d3cdc2;
+  --color-slate-300: #b4b3ae;
+  --color-slate-400: #8e979f;
+  --color-slate-500: #64727f;
+  --color-slate-600: #465767;
+  --color-slate-700: #2d4254;
+  --color-slate-800: #1b3144;
+  --color-slate-900: #0f2233;
+  --color-slate-950: #0b1a28;
+
+  --ops-series1: #0f2233;
+  --ops-series2: #b07d2c;
+  --ops-track: #e4ddd1;
+  --ops-heat-1: #f5e8cf;
+  --ops-heat-2: #ebd3a4;
+  --ops-heat-3: #e0bc78;
+  --ops-heat-4: #d29d45;
+  --ops-heat-5: #a87a30;
+  --ops-heat-6: #73521e;
+  --ops-heat-7: #453112;
+}
+
+html.dark:has(> body:is(:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects), .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-topbar) {
+  --ops-series1: #efe9df;
+  --ops-series2: #d29d45;
+  --ops-track: #1b3144;
+  --ops-heat-1: #453112;
+  --ops-heat-2: #73521e;
+  --ops-heat-3: #a87a30;
+  --ops-heat-4: #d29d45;
+  --ops-heat-5: #e0bc78;
+  --ops-heat-6: #ebd3a4;
+  --ops-heat-7: #f5e8cf;
+}
+
+/* Texto e interfaz: Manrope. El tema fija otras familias en piezas iOS. */
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-layout { line-height: 1.6; }
+
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-layout [class*='ios'],
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-layout [class*='ios'] * { font-family: var(--font-family), ui-sans-serif, system-ui, sans-serif; }
+
+/* Títulos, cifras y saludos: Cormorant Garamond. Telemedicina es clínica: sus cifras quedan en Manrope. */
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-header-heading,
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .ops-dash h1,
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-modal-heading {
+  font-family: var(--brand-serif);
+  font-weight: 300;
+  letter-spacing: 0;
+}
+
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-header-heading { font-size: 2.25rem; line-height: 1.15; }
+
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-section-header-heading,
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-ta-header-heading,
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-wi-chart .fi-section-header-heading {
+  font-family: var(--brand-serif);
+  font-size: 1.25rem;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-metrics, .fi-panel-projects) .fi-wi-stats-overview-stat-value,
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-metrics, .fi-panel-projects) .ops-kpi-tiles .text-3xl {
+  font-family: var(--brand-serif);
+  font-size: 2.5rem;
+  font-weight: 300;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-welcome-liquid-glass__name {
+  font-family: var(--brand-serif);
+  font-size: 1.5rem;
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: 0;
+  color: var(--brand-ochre);
+}
+
+/* Etiquetas en mayúsculas con letra espaciada. */
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .ops-kpi-tiles .uppercase { letter-spacing: 0.14em; }
+
+/* Solo la acción principal va en ocre sólido, con texto navy. */
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-btn.fi-color-primary,
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .aviso-btn-ios-primary,
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .ticket-btn-ios-theme {
+  background: var(--brand-ochre) !important;
+  border-color: var(--brand-ochre) !important;
+  color: var(--brand-navy) !important;
+  box-shadow: none !important;
+}
+
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-btn.fi-color-primary:hover,
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .aviso-btn-ios-primary:hover,
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .ticket-btn-ios-theme:hover {
+  background: var(--brand-ochre-hover) !important;
+  border-color: var(--brand-ochre-hover) !important;
+}
+
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-btn.fi-color-primary :is(svg, span),
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .aviso-btn-ios-primary :is(svg, span),
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .ticket-btn-ios-theme :is(svg, span) { color: var(--brand-navy) !important; }
+
+/* Lo secundario va con borde, sin relleno. */
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-btn.fi-color-gray,
+:is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .ticket-btn-ios-gray {
+  background: transparent !important;
+  border: 1px solid var(--gray-300) !important;
+  box-shadow: none !important;
+}
+
+.dark :is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .fi-btn.fi-color-gray,
+.dark :is(.fi-panel-business, .fi-panel-administration, .fi-panel-marketing, .fi-panel-operations, .fi-panel-telemedicina, .fi-panel-metrics, .fi-panel-projects) .ticket-btn-ios-gray { border-color: var(--gray-600) !important; }

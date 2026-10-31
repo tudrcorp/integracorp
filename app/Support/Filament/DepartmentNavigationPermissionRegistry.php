@@ -429,6 +429,8 @@ final class DepartmentNavigationPermissionRegistry
      * - Guardias Médicas la ve todo analista de Operaciones; cargarlas pide la
      *   acción `gestionar-guardias-medicas`.
      *
+     * - Tema lo decide solo el SUPERADMIN.
+     *
      * `permissions:sync-navigation` las salta para no crear permisos de menú que
      * no controlarían nada.
      */
@@ -436,7 +438,8 @@ final class DepartmentNavigationPermissionRegistry
     {
         return is_a($class, \App\Filament\Shared\OrgStructure\Pages\OrgChartPage::class, true)
             || is_a($class, \App\Filament\Business\Pages\EstructuraOrganizacional::class, true)
-            || is_a($class, \App\Filament\Operations\Pages\GuardiasMedicas::class, true);
+            || is_a($class, \App\Filament\Operations\Pages\GuardiasMedicas::class, true)
+            || is_a($class, \App\Filament\Shared\Theme\Pages\ThemeSettingsPage::class, true);
     }
 
     /**

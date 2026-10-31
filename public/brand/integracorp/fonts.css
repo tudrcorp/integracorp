@@ -1,0 +1,7 @@
+/* Fuentes del manual de marca Integracorp, guardadas en el proyecto. */
+
+@font-face { font-family: 'Manrope'; src: url('fonts/manrope-variable.woff2') format('woff2'); font-weight: 200 800; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Cormorant Garamond'; src: url('fonts/cormorant-garamond-300.woff2') format('woff2'); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Cormorant Garamond'; src: url('fonts/cormorant-garamond-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Cormorant Garamond'; src: url('fonts/cormorant-garamond-500.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Cormorant Garamond'; src: url('fonts/cormorant-garamond-300-italic.woff2') format('woff2'); font-weight: 300; font-style: italic; font-display: swap; }
