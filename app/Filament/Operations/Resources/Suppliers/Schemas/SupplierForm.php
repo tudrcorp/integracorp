@@ -7,13 +7,13 @@ namespace App\Filament\Operations\Resources\Suppliers\Schemas;
 use App\Models\City;
 use App\Models\State;
 use App\Models\SupplierClasificacion;
-use App\Models\SupplierEstatusSistema;
 use App\Models\SupplierStatusConvenio;
 use App\Models\SupplierTipoClinica;
 use App\Models\SupplierTipoServicio;
 use App\Support\Filament\Operations\OutsourcingMedicalDepartmentFields;
 use App\Support\Filament\Operations\SupplierBeneficiaryBankingForm;
 use App\Support\Filament\Operations\SupplierIntegracorpManagementForm;
+use App\Support\Operations\SupplierEstatusSistemaOptions;
 use App\Support\Operations\SupplierInfrastructureCatalog;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -193,7 +193,7 @@ class SupplierForm
                                                     ->preload(),
                                                 Select::make('status_sistema')
                                                     ->label('Estatus del convenio')
-                                                    ->options(SupplierEstatusSistema::query()->orderBy('description')->pluck('description', 'description'))
+                                                    ->options(fn (): array => SupplierEstatusSistemaOptions::forSelect())
                                                     ->searchable()
                                                     ->preload(),
                                                 Select::make('supplier_clasificacion_id')

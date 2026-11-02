@@ -40,7 +40,7 @@ final class GlobalSearchSupplierStatusLabel
             str_contains($normalized, 'AFILIADO') && ! str_contains($normalized, 'PROCESO') => 'sistema-afiliado',
             str_contains($normalized, 'ACTIVO') => 'sistema-activo',
             str_contains($normalized, 'PROCESO') => 'sistema-proceso',
-            str_contains($normalized, 'INACTIVO'), str_contains($normalized, 'SUSPEND') => 'sistema-inactivo',
+            str_contains($normalized, 'INACTIVO'), str_contains($normalized, 'SUSPEND'), str_contains($normalized, 'CERRADA') => 'sistema-inactivo',
             default => 'sistema-default',
         };
     }

@@ -27,6 +27,7 @@ it('asigna colores de dataset según el estatus en sistema', function (string $l
     'suspendido proveedor' => ['CONVENIO SUSPENDIDO POR EL PROVEEDOR', 'rgba(154, 0, 0, 0.85)'],
     'suspendido tdec' => ['CONVENIO SUSPENDIDO POR TDEC', 'rgba(130, 0, 0, 0.9)'],
     'conveio tdec' => ['Conveio suspendido por TDEC', 'rgba(130, 0, 0, 0.9)'],
+    'clinica cerrada' => ['CLINICA CERRADA', 'rgba(90, 90, 98, 0.88)'],
     'sin estatus' => ['Sin estatus en sistema', 'rgba(142, 142, 147, 0.42)'],
 ]);
 

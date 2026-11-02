@@ -13,9 +13,9 @@
             <td align="center" style="padding: 0; background-color: #18335e;">
                 @if (filled($animationUrl))
                     <a href="{{ $animationUrl }}" target="_blank" style="text-decoration: none; border: 0; display: block;">
-                        <img src="{{ \App\Support\Birthday\BirthdayCelebrationCard::publicUrl() }}"
+                        <img src="{{ \App\Support\Birthday\BirthdayCelebrationCard::emailPublicUrl() }}"
                             width="600"
-                            alt="¡Haz clic aquí para ver tus regalos!"
+                            alt="Haz clic aquí para ver tus cupones"
                             style="display: block; width: 100%; max-width: 600px; height: auto; border: 0;">
                     </a>
                 @else

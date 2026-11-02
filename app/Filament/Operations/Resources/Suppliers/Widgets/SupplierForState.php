@@ -40,6 +40,7 @@ class SupplierForState extends ChartWidget
         'NO DESEA CONVENIO',
         'CONVENIO SUSPENDIDO POR EL PROVEEDOR',
         'CONVENIO SUSPENDIDO POR TDEC',
+        'CLINICA CERRADA',
     ];
 
     private function normalizeSistemaStatusForMatch(string $label): string
@@ -149,6 +150,13 @@ class SupplierForState extends ChartWidget
             return [
                 'fill' => 'rgba(179, 0, 0, 0.82)',
                 'stroke' => 'rgba(255, 255, 255, 0.78)',
+            ];
+        }
+
+        if ($this->statusLabelMatchesWordSequence($n, 'CLINICA CERRADA')) {
+            return [
+                'fill' => 'rgba(90, 90, 98, 0.88)',
+                'stroke' => 'rgba(255, 255, 255, 0.72)',
             ];
         }
 
