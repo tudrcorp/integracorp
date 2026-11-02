@@ -2,10 +2,11 @@
 
 namespace App\Filament\Business\Resources\ProspectAgents\Pages;
 
+use App\Filament\Business\Resources\ProspectAgents\ProspectAgentDeletionActions;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentResource;
-use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
+use App\Models\ProspectAgent;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
 
@@ -19,7 +20,26 @@ class EditProspectAgent extends EditRecord
 
     private const IOS_DANGER_BUTTON_CLASS = 'aviso-btn-ios-danger'.self::IOS_BUTTON_BASE;
 
-    private const IOS_GRAY_BUTTON_CLASS = 'ticket-btn-ios-gray'.self::IOS_BUTTON_BASE;
+    /**
+     * Un prospecto eliminado no se edita: primero hay que restaurarlo desde Ver.
+     */
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        /** @var ProspectAgent $prospect */
+        $prospect = $this->getRecord();
+
+        if ($prospect->trashed()) {
+            Notification::make()
+                ->warning()
+                ->title('Este prospecto está eliminado')
+                ->body('Restáuralo para poder editarlo.')
+                ->send();
+
+            $this->redirect(ProspectAgentResource::getUrl('view', ['record' => $prospect]), navigate: true);
+        }
+    }
 
     protected function getHeaderActions(): array
     {
@@ -30,20 +50,30 @@ class EditProspectAgent extends EditRecord
                 ->extraAttributes([
                     'class' => self::IOS_PRIMARY_BUTTON_CLASS,
                 ]),
-            DeleteAction::make()
+            ProspectAgentDeletionActions::deleteAction(ProspectAgentResource::getUrl('index'))
                 ->extraAttributes([
                     'class' => self::IOS_DANGER_BUTTON_CLASS,
-                ])
-                ->modalSubmitAction(fn (Action $action): Action => $action->extraAttributes([
-                    'class' => self::IOS_DANGER_BUTTON_CLASS,
-                ]))
-                ->modalCancelAction(fn (Action $action): Action => $action->extraAttributes([
-                    'class' => self::IOS_GRAY_BUTTON_CLASS,
-                ])),
+                ]),
         ];
     }
 
     protected static ?string $title = 'Formularios de edición de prospectos';
+
+    protected function beforeSave(): void
+    {
+        /** @var ProspectAgent $prospect */
+        $prospect = $this->getRecord();
+
+        if ($prospect->trashed()) {
+            Notification::make()
+                ->danger()
+                ->title('No se guardaron los cambios')
+                ->body('El prospecto fue eliminado. Restáuralo para poder editarlo.')
+                ->send();
+
+            $this->halt();
+        }
+    }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {

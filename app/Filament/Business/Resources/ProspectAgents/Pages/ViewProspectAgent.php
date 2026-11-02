@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\ProspectAgents\Pages;
 
+use App\Filament\Business\Resources\ProspectAgents\ProspectAgentDeletionActions;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentLabels;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentResource;
 use App\Jobs\NotifyProspectAgentTaskAssigneeJob;
@@ -58,9 +59,11 @@ class ViewProspectAgent extends ViewRecord
                 EditAction::make()
                     ->label('Editar')
                     ->icon('heroicon-o-pencil')
-                    ->color('primary'),
+                    ->color('primary')
+                    ->hidden(fn (): bool => $this->isTrashedProspect()),
 
                 Action::make('notes')
+                    ->hidden(fn (): bool => $this->isTrashedProspect())
                     ->label('Agregar Notas/Observaciones')
                     ->icon('heroicon-o-document-text')
                     ->color('success')
@@ -134,6 +137,7 @@ class ViewProspectAgent extends ViewRecord
                     }),
 
                 Action::make('tascks')
+                    ->hidden(fn (): bool => $this->isTrashedProspect())
                     ->label('Nueva Tarea')
                     ->icon('heroicon-o-puzzle-piece')
                     ->color('success')
@@ -222,6 +226,7 @@ class ViewProspectAgent extends ViewRecord
                     }),
 
                 Action::make('print_pdf')
+                    ->hidden(fn (): bool => $this->isTrashedProspect())
                     ->label('Ficha Técnica del Prospecto')
                     ->icon('heroicon-o-printer')
                     ->color('primary')
@@ -239,6 +244,10 @@ class ViewProspectAgent extends ViewRecord
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar')
                     ->action(fn () => null),
+
+                ProspectAgentDeletionActions::restoreAction(),
+
+                ProspectAgentDeletionActions::deleteAction(ProspectAgentResource::getUrl('index')),
             ]),
         ];
     }
@@ -280,6 +289,13 @@ class ViewProspectAgent extends ViewRecord
             ->all();
     }
 
+    private function isTrashedProspect(): bool
+    {
+        $record = $this->getRecord();
+
+        return $record instanceof ProspectAgent && $record->trashed();
+    }
+
     public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
     {
         return 'Prospecto '.(trim((string) $this->getRecord()->name) ?: '');
@@ -299,17 +315,25 @@ class ViewProspectAgent extends ViewRecord
         return RecordPageHeader::render(
             eyebrow: 'Capacitación · Prospecto',
             title: trim((string) $prospect->name) ?: 'Sin nombre',
-            status: $status !== ''
-                ? RecordPageHeader::tag(Str::upper(ProspectAgentLabels::statusLabel($status)), self::statusTone($status))
-                : null,
+            status: $prospect->trashed()
+                ? RecordPageHeader::tag('ELIMINADO', RecordPageHeader::TONE_DANGER)
+                : ($status !== ''
+                    ? RecordPageHeader::tag(Str::upper(ProspectAgentLabels::statusLabel($status)), self::statusTone($status))
+                    : null),
             chips: [
                 filled($prospect->type) ? RecordPageHeader::tag(ProspectAgentLabels::typeLabel($prospect->type), RecordPageHeader::TONE_VIOLET) : null,
                 filled($prospect->reference_by) ? RecordPageHeader::tag('Referido por: '.ProspectAgentLabels::referenceLabel($prospect->reference_by), RecordPageHeader::TONE_NEUTRAL) : null,
             ],
-            facts: [
-                'Correo' => $prospect->email,
-                'Captado el' => $prospect->created_at?->format('d/m/Y'),
-            ],
+            facts: $prospect->trashed()
+                ? [
+                    'Eliminado el' => $prospect->deleted_at?->format('d/m/Y H:i'),
+                    'Eliminado por' => $prospect->deleted_by,
+                    'Motivo' => $prospect->deletion_reason,
+                ]
+                : [
+                    'Correo' => $prospect->email,
+                    'Captado el' => $prospect->created_at?->format('d/m/Y'),
+                ],
         );
     }
 

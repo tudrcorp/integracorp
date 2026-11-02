@@ -15,6 +15,27 @@ class ProspectAgentExportCsvController extends Controller
 
     private const TOKEN_TTL_SECONDS = 120;
 
+    /**
+     * Orden de columnas acordado con Negocios; {@see buildRow()} debe seguirlo campo por campo.
+     */
+    public const HEADERS = [
+        'Estado',
+        'Ciudad',
+        'Nombre del Prospecto',
+        'Tipo',
+        'Clasificación',
+        'Estatus',
+        'Teléfono principal',
+        'Teléfono alternativo',
+        'Correo',
+        'Instagram',
+        'Fecha Creado',
+        'Fecha Actualizado',
+        'Creado por',
+        'Actualizado por',
+        'Observaciones iniciales',
+    ];
+
     public function __invoke(Request $request): StreamedResponse
     {
         $token = $request->query('token');
@@ -29,25 +50,7 @@ class ProspectAgentExportCsvController extends Controller
             abort(400, 'Token de exportación no válido o expirado.');
         }
 
-        $headers = [
-            'Nombre',
-            'Tipo',
-            'Clasificación',
-            'Estatus',
-            'Observaciones iniciales',
-            'Teléfono principal',
-            'Teléfono alternativo',
-            'Correo',
-            'Instagram',
-            'Estado',
-            'Ciudad',
-            'País',
-            'Referido por',
-            'Creado',
-            'Actualizado',
-            'Creado por',
-            'Actualizado por',
-        ];
+        $headers = self::HEADERS;
 
         $filename = 'prospectos_agentes_'.now()->format('Y-m-d_His').'.csv';
 
@@ -61,7 +64,8 @@ class ProspectAgentExportCsvController extends Controller
             fputcsv($handle, $headers);
 
             ProspectAgent::query()
-                ->with(['state', 'city', 'country'])
+                ->withTrashed()
+                ->with(['state', 'city'])
                 ->whereIn('id', $ids)
                 ->orderBy('id')
                 ->lazyById(100)
@@ -79,26 +83,24 @@ class ProspectAgentExportCsvController extends Controller
     /**
      * @return array<int, string>
      */
-    private function buildRow(ProspectAgent $record): array
+    public function buildRow(ProspectAgent $record): array
     {
         return [
+            (string) ($record->state?->definition ?? ''),
+            (string) ($record->city?->definition ?? ''),
             (string) $record->name,
             ProspectAgentLabels::typeLabel($record->type),
             (string) ($record->classification ?? ''),
             ProspectAgentLabels::statusLabel($record->status),
-            (string) ($record->initial_observ ?? ''),
             (string) $record->phone_1,
             (string) $record->phone_2,
             (string) $record->email,
             (string) ($record->instagram ?? ''),
-            (string) ($record->state?->definition ?? ''),
-            (string) ($record->city?->definition ?? ''),
-            (string) ($record->country?->name ?? ''),
-            ProspectAgentLabels::referenceLabel($record->reference_by),
-            (string) $record->created_at,
-            (string) $record->updated_at,
+            (string) $record->created_at?->format('d/m/Y H:i'),
+            (string) $record->updated_at?->format('d/m/Y H:i'),
             (string) $record->created_by,
             (string) $record->updated_by,
+            (string) ($record->initial_observ ?? ''),
         ];
     }
 
