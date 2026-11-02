@@ -281,6 +281,46 @@ class ProspectAgentInfolist
                                             ]),
                                     ]),
                             ]),
+                        Tab::make('Zonas de cobertura')
+                            ->icon(Heroicon::OutlinedGlobeAmericas)
+                            ->badge(fn (ProspectAgent $record): ?int => $record->prospectAgentCoverageZones->count() ?: null)
+                            ->schema([
+                                Section::make('Zonas de cobertura')
+                                    ->icon(Heroicon::OutlinedGlobeAmericas)
+                                    ->description('Dónde atiende o vende el prospecto.')
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                RepeatableEntry::make('prospectAgentCoverageZones')
+                                                    ->hiddenLabel()
+                                                    ->table([
+                                                        TableColumn::make('Clasificación')->width('28%'),
+                                                        TableColumn::make('Tipo de servicio')->width('28%'),
+                                                        TableColumn::make('Estado')->width('22%'),
+                                                        TableColumn::make('Ciudad')->width('22%'),
+                                                    ])
+                                                    ->schema([
+                                                        TextEntry::make('classification')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('service_type')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('state.definition')
+                                                            ->weight('medium')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('city.definition')
+                                                            ->placeholder('Todo el estado'),
+                                                    ])
+                                                    ->placeholder('Sin zonas de cobertura registradas. Agrégalas desde Editar → Zonas de cobertura.')
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ]),
+                            ]),
                         Tab::make('Ubicación')
                             ->icon(Heroicon::OutlinedMapPin)
                             ->schema([
