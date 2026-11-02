@@ -174,11 +174,19 @@ final class OperationReportBuilder
      */
     public static function count(OperationReportType $type, OperationReportFilters $filters): int
     {
+        if ($type->isInventory()) {
+            return OperationInventoryReportBuilder::count($type, $filters);
+        }
+
         return self::query($type, $filters)->count();
     }
 
     public static function build(OperationReportType $type, OperationReportFilters $filters, ?int $rowLimit = null): OperationReportData
     {
+        if ($type->isInventory()) {
+            return OperationInventoryReportBuilder::build($type, $filters, $rowLimit);
+        }
+
         $criteria = $type->usesFilters() ? $filters->describe() : ['Todos los registros, sin filtros de periodo'];
 
         return match ($type) {
@@ -272,6 +280,7 @@ final class OperationReportBuilder
                 ["SUM(coverage = 'No cubierto')", 'No cubiertos'],
                 ['COALESCE(SUM(invoiced_amount), 0)', 'Facturado (USD)'],
             ]),
+            default => throw new \LogicException('Reporte sin constructor: '.$type->value),
         };
     }
 

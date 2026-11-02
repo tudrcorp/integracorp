@@ -1,15 +1,22 @@
 @php
-    /** @var list<\App\Enums\OperationReportType> $types */
+    /** @var list<array{label: string, types: list<\App\Enums\OperationReportType>}> $groups */
     $selected = $getState();
     $statePathValue = $getStatePath();
+    $showGroupLabels = count($groups) > 1;
 @endphp
 
+<div class="flex flex-col gap-6">
+@foreach ($groups as $group)
+<div class="flex flex-col gap-3">
+    @if ($showGroupLabels)
+        <h3 class="text-sm font-semibold text-gray-950 dark:text-white">{{ $group['label'] }}</h3>
+    @endif
 <div
     role="radiogroup"
-    aria-label="Tipo de reporte"
+    aria-label="{{ $showGroupLabels ? 'Reportes de '.mb_strtolower($group['label']) : 'Tipo de reporte' }}"
     class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
 >
-    @foreach ($types as $type)
+    @foreach ($group['types'] as $type)
         @php($isSelected = $selected === $type->value)
         <button
             type="button"
@@ -40,4 +47,7 @@
             <span class="text-xs leading-snug text-gray-500 dark:text-gray-400">{{ $type->description() }}</span>
         </button>
     @endforeach
+</div>
+</div>
+@endforeach
 </div>
