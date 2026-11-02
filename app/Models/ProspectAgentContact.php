@@ -17,9 +17,12 @@ class ProspectAgentContact extends Model
 
     protected $fillable = [
         'prospect_agent_id',
+        'department',
         'name',
         'position',
         'phone',
+        'local_phone',
+        'extensions',
         'email',
         'sort_order',
     ];

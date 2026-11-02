@@ -20,9 +20,12 @@ class ProspectAgentContactFactory extends Factory
     {
         return [
             'prospect_agent_id' => ProspectAgent::query()->value('id') ?? 1,
+            'department' => fake()->optional()->randomElement(['Comercial', 'Administración', 'Recursos Humanos', 'Gerencia']),
             'name' => fake()->name(),
             'position' => fake()->optional()->jobTitle(),
             'phone' => fake()->optional()->numerify('04#########'),
+            'local_phone' => fake()->optional()->numerify('0212#######'),
+            'extensions' => fake()->optional()->numerify('###'),
             'email' => fake()->optional()->safeEmail(),
             'sort_order' => 0,
         ];

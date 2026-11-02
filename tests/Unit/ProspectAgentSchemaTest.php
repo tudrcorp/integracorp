@@ -33,7 +33,10 @@ it('formulario ProspectAgent usa pestañas con estilos del sistema', function ()
         ->toContain("Textarea::make('social_networks')")
         ->toContain("Textarea::make('address')")
         ->toContain("Repeater::make('prospectAgentContacts')")
-        ->toContain('->maxItems(3)')
+        ->not->toContain('->maxItems(3)')
+        ->toContain("TextInput::make('department')")
+        ->toContain("TextInput::make('local_phone')")
+        ->toContain("TextInput::make('extensions')")
         ->toContain("->addActionLabel('Agregar contacto')")
         ->toContain('discardEmptyContact');
 });

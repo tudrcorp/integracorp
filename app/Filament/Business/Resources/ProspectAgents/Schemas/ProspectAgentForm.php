@@ -122,48 +122,83 @@ class ProspectAgentForm
                                                 Repeater::make('prospectAgentContacts')
                                                     ->relationship()
                                                     ->label('Personas de contacto')
-                                                    ->helperText('Registra el contacto principal y, si aplica, una segunda o tercera persona.')
+                                                    ->helperText('Registra todas las personas de contacto que necesites. El nombre es obligatorio cuando llenas cualquier otro dato del contacto.')
                                                     ->schema([
-                                                        TextInput::make('name')
-                                                            ->label('Nombre del contacto')
-                                                            ->required(fn (Get $get): bool => filled($get('phone')) || filled($get('email')) || filled($get('position')))
+                                                        TextInput::make('department')
+                                                            ->label('Departamento')
                                                             ->maxLength(255)
-                                                            ->prefixIcon(Heroicon::OutlinedUser)
-                                                            ->placeholder('Ej. Carlos Mendoza'),
+                                                            ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
+                                                            ->placeholder('Ej. Comercial'),
                                                         TextInput::make('position')
                                                             ->label('Cargo')
                                                             ->maxLength(255)
                                                             ->prefixIcon(Heroicon::OutlinedBriefcase)
                                                             ->placeholder('Ej. Gerente comercial'),
-                                                        TextInput::make('phone')
-                                                            ->label('Teléfono')
-                                                            ->tel()
-                                                            ->regex('/^[0-9]*$/')
+                                                        TextInput::make('name')
+                                                            ->label('Nombre y apellido')
+                                                            ->required(fn (Get $get): bool => self::contactHasData([
+                                                                'department' => $get('department'),
+                                                                'position' => $get('position'),
+                                                                'phone' => $get('phone'),
+                                                                'local_phone' => $get('local_phone'),
+                                                                'extensions' => $get('extensions'),
+                                                                'email' => $get('email'),
+                                                            ]))
                                                             ->validationMessages([
-                                                                'regex' => 'Solo números, sin espacios ni signos.',
+                                                                'required' => 'Indica el nombre y apellido de este contacto.',
                                                             ])
-                                                            ->placeholder('04125678909')
-                                                            ->autocomplete('tel-national'),
+                                                            ->maxLength(255)
+                                                            ->prefixIcon(Heroicon::OutlinedUser)
+                                                            ->placeholder('Ej. Carlos Mendoza'),
                                                         TextInput::make('email')
-                                                            ->label('Correo del contacto')
+                                                            ->label('Correo electrónico')
                                                             ->email()
                                                             ->maxLength(255)
                                                             ->prefixIcon(Heroicon::OutlinedEnvelope)
                                                             ->placeholder('contacto@ejemplo.com'),
+                                                        TextInput::make('phone')
+                                                            ->label('Teléfono celular')
+                                                            ->tel()
+                                                            ->maxLength(30)
+                                                            ->regex('/^[0-9]*$/')
+                                                            ->validationMessages([
+                                                                'regex' => 'Solo números, sin espacios ni signos.',
+                                                            ])
+                                                            ->prefixIcon(Heroicon::OutlinedDevicePhoneMobile)
+                                                            ->placeholder('04125678909')
+                                                            ->autocomplete('tel-national'),
+                                                        TextInput::make('local_phone')
+                                                            ->label('Teléfono local')
+                                                            ->tel()
+                                                            ->maxLength(30)
+                                                            ->regex('/^[0-9]*$/')
+                                                            ->validationMessages([
+                                                                'regex' => 'Solo números, sin espacios ni signos.',
+                                                            ])
+                                                            ->prefixIcon(Heroicon::OutlinedPhone)
+                                                            ->placeholder('02129876543'),
+                                                        TextInput::make('extensions')
+                                                            ->label('Extensión(es)')
+                                                            ->maxLength(100)
+                                                            ->regex('/^[0-9]+(\s*[,\/]\s*[0-9]+)*$/')
+                                                            ->validationMessages([
+                                                                'regex' => 'Solo números; si son varias, sepáralas con coma. Ej. 201, 204',
+                                                            ])
+                                                            ->prefixIcon(Heroicon::OutlinedHashtag)
+                                                            ->placeholder('Ej. 201, 204')
+                                                            ->helperText('Si son varias, sepáralas con coma.'),
                                                     ])
-                                                    ->columns(['default' => 1, 'lg' => 2])
+                                                    ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
                                                     ->defaultItems(1)
                                                     ->minItems(0)
-                                                    ->maxItems(3)
                                                     ->addActionLabel('Agregar contacto')
                                                     ->reorderable()
                                                     ->orderColumn('sort_order')
                                                     ->mutateRelationshipDataBeforeCreateUsing(self::discardEmptyContact(...))
                                                     ->mutateRelationshipDataBeforeSaveUsing(self::discardEmptyContact(...))
                                                     ->collapsible()
-                                                    ->itemLabel(fn (array $state): string => filled($state['name'] ?? null)
-                                                        ? (string) $state['name']
-                                                        : 'Nuevo contacto')
+                                                    ->collapsed(fn (?Schema $item): bool => self::isSavedContact($item))
+                                                    ->itemLabel(fn (array $state): string => self::contactItemLabel($state))
                                                     ->columnSpanFull(),
                                             ]),
                                     ]),
@@ -363,11 +398,51 @@ class ProspectAgentForm
      */
     private static function discardEmptyContact(array $data): ?array
     {
-        $hasContactData = filled($data['name'] ?? null)
-            || filled($data['position'] ?? null)
-            || filled($data['phone'] ?? null)
-            || filled($data['email'] ?? null);
+        return self::contactHasData($data, includeName: true) ? $data : null;
+    }
 
-        return $hasContactData ? $data : null;
+    /**
+     * Indica si una fila de contacto trae algún dato; sin el nombre decide si este es obligatorio.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function contactHasData(array $data, bool $includeName = false): bool
+    {
+        $fields = ['department', 'position', 'phone', 'local_phone', 'extensions', 'email'];
+
+        if ($includeName) {
+            $fields[] = 'name';
+        }
+
+        foreach ($fields as $field) {
+            if (filled($data[$field] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Al editar, los contactos ya guardados se muestran plegados; uno recién agregado queda abierto para llenarlo.
+     */
+    public static function isSavedContact(?Schema $item): bool
+    {
+        return $item?->getRecord()?->exists === true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    public static function contactItemLabel(array $state): string
+    {
+        $name = trim((string) ($state['name'] ?? ''));
+        $department = trim((string) ($state['department'] ?? ''));
+
+        if ($name === '') {
+            return 'Nuevo contacto';
+        }
+
+        return $department !== '' ? $name.' · '.$department : $name;
     }
 }

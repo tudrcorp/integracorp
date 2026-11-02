@@ -91,7 +91,7 @@ class ProspectAgentInfolist
                             ->schema([
                                 Section::make('Contacto')
                                     ->icon(Heroicon::OutlinedPhone)
-                                    ->description('Teléfonos, correo, web, redes y personas de contacto.')
+                                    ->description('Teléfonos, correo, web y redes del prospecto.')
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
                                     ])
@@ -167,30 +167,60 @@ class ProspectAgentInfolist
                                                             ->copyMessage('Copiado')
                                                             ->placeholder('—'),
                                                     ]),
+                                            ]),
+                                    ]),
+                            ]),
+                        Tab::make('Contactos Secundarios')
+                            ->icon(Heroicon::OutlinedUserGroup)
+                            ->badge(fn (ProspectAgent $record): ?int => $record->prospectAgentContacts->count() ?: null)
+                            ->schema([
+                                Section::make('Contactos Secundarios')
+                                    ->icon(Heroicon::OutlinedUserGroup)
+                                    ->description('Personas de contacto del prospecto por departamento, con sus teléfonos y extensiones.')
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
                                                 RepeatableEntry::make('prospectAgentContacts')
-                                                    ->label('Personas de contacto')
+                                                    ->hiddenLabel()
                                                     ->table([
-                                                        TableColumn::make('Nombre')->width('28%'),
-                                                        TableColumn::make('Cargo')->width('22%'),
-                                                        TableColumn::make('Teléfono')->width('22%'),
-                                                        TableColumn::make('Correo')->width('28%'),
+                                                        TableColumn::make('Departamento')->width('12%'),
+                                                        TableColumn::make('Cargo')->width('13%'),
+                                                        TableColumn::make('Nombre y apellido')->width('17%'),
+                                                        TableColumn::make('Correo electrónico')->width('22%'),
+                                                        TableColumn::make('Teléfono celular')->width('13%'),
+                                                        TableColumn::make('Teléfono local')->width('13%'),
+                                                        TableColumn::make('Extensión(es)')->width('10%'),
                                                     ])
                                                     ->schema([
-                                                        TextEntry::make('name')
-                                                            ->weight('medium')
+                                                        TextEntry::make('department')
                                                             ->placeholder('—'),
                                                         TextEntry::make('position')
                                                             ->placeholder('—'),
-                                                        TextEntry::make('phone')
-                                                            ->copyable()
-                                                            ->copyMessage('Copiado')
+                                                        TextEntry::make('name')
+                                                            ->weight('medium')
                                                             ->placeholder('—'),
                                                         TextEntry::make('email')
                                                             ->copyable()
                                                             ->copyMessage('Correo copiado')
                                                             ->placeholder('—'),
+                                                        TextEntry::make('phone')
+                                                            ->copyable()
+                                                            ->copyMessage('Teléfono copiado')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('local_phone')
+                                                            ->copyable()
+                                                            ->copyMessage('Teléfono copiado')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('extensions')
+                                                            ->placeholder('—'),
                                                     ])
-                                                    ->placeholder('Sin personas de contacto registradas.')
+                                                    ->placeholder('Sin contactos secundarios registrados. Agrégalos desde Editar → Datos del prospecto.')
                                                     ->columnSpanFull(),
                                             ]),
                                     ]),

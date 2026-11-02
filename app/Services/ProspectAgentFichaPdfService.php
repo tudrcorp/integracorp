@@ -15,7 +15,7 @@ class ProspectAgentFichaPdfService
     /**
      * v1: base64 en caché (driver database / UTF-8).
      */
-    private const PDF_CACHE_KEY_PREFIX = 'prospect_agent_ficha_pdf:v1:';
+    private const PDF_CACHE_KEY_PREFIX = 'prospect_agent_ficha_pdf:v2:';
 
     private const PDF_CACHE_TTL_FALLBACK_SECONDS = 900;
 
