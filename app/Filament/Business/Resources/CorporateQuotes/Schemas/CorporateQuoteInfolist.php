@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\CorporateQuotes\Schemas;
 
 use App\Models\CorporateQuote;
+use App\Support\Quotes\IndividualQuoteUpgrades;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
@@ -126,6 +128,20 @@ class CorporateQuoteInfolist
                                                     ->label('Características de la cotización')
                                                     ->hidden(fn (CorporateQuote $record): bool => $record->observation_dress_tailor === null)
                                                     ->columnSpanFull(),
+                                            ]),
+                                    ]),
+                            ]),
+                        Tab::make('Upgrades')
+                            ->icon(Heroicon::Sparkles)
+                            ->visible(fn (CorporateQuote $record): bool => $record->upgrades()->exists())
+                            ->schema([
+                                Section::make('Upgrades cotizados')
+                                    ->description('Precio congelado al cotizar. Se suma a la tarifa del plan y la cobertura que elija el cliente.')
+                                    ->extraAttributes(['class' => self::IOS_SECTION_CLASS])
+                                    ->schema([
+                                        View::make('filament.business.individual-quotes.partials.upgrades-summary')
+                                            ->viewData(fn (CorporateQuote $record): array => [
+                                                'summary' => IndividualQuoteUpgrades::summary($record),
                                             ]),
                                     ]),
                             ]),

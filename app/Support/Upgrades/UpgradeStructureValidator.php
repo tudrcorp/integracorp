@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support\Upgrades;
 
+use App\Enums\UpgradeNetworkVisibility;
+
 /**
  * Reglas de forma de un upgrade del catálogo, sin base de datos: las usa el
  * formulario para avisar antes de guardar y la persistencia para no escribir
@@ -37,7 +39,7 @@ final class UpgradeStructureValidator
      * repetidor, textos recortados, números como número o null.
      *
      * @param  array<string, mixed>  $data
-     * @return array{name: string, description: ?string, status: string, services: list<array{id: ?int, name: string, description: ?string}>, coverages: list<array{id: ?int, amount: ?float, ranges: list<array{id: ?int, age_from: ?int, age_to: ?int, price: ?float}>}>}
+     * @return array{name: string, description: ?string, status: string, network_visibility: ?string, network_agency_ids: list<int>, network_agent_ids: list<int>, is_plan: ?bool, plan_business_unit_id: ?int, services: list<array{id: ?int, name: string, description: ?string}>, coverages: list<array{id: ?int, amount: ?float, ranges: list<array{id: ?int, age_from: ?int, age_to: ?int, price: ?float}>}>}
      */
     public static function normalize(array $data): array
     {
@@ -82,9 +84,22 @@ final class UpgradeStructureValidator
             'description' => self::nullableText($data['description'] ?? null),
             'image_path' => self::imagePath($data['image_path'] ?? null),
             'status' => $status !== '' ? $status : 'ACTIVO',
+            'network_visibility' => self::nullableText($data['network_visibility'] ?? null),
+            'network_agency_ids' => self::idList($data['network_agency_ids'] ?? []),
+            'network_agent_ids' => self::idList($data['network_agent_ids'] ?? []),
+            'is_plan' => array_key_exists('is_plan', $data) ? (bool) $data['is_plan'] : null,
+            'plan_business_unit_id' => self::intOrNull($data['plan_business_unit_id'] ?? null),
             'services' => $services,
             'coverages' => $coverages,
         ];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private static function idList(mixed $value): array
+    {
+        return array_values(array_unique(array_map('intval', array_filter((array) $value, 'is_numeric'))));
     }
 
     /**
@@ -125,6 +140,16 @@ final class UpgradeStructureValidator
             $errors[] = 'El estatus del upgrade debe ser Activo o Inactivo.';
         }
 
+        $visibility = $data['network_visibility'] !== null ? UpgradeNetworkVisibility::tryFrom($data['network_visibility']) : null;
+
+        if ($data['network_visibility'] !== null && $visibility === null) {
+            $errors[] = 'La visibilidad en la red comercial no es válida.';
+        }
+
+        if ($visibility === UpgradeNetworkVisibility::Selected && $data['network_agency_ids'] === [] && $data['network_agent_ids'] === []) {
+            $errors[] = 'Elija al menos una agencia o un agente que pueda cotizar este upgrade.';
+        }
+
         $errors = [...$errors, ...self::serviceErrors($data['services'])];
 
         if ($data['coverages'] === []) {
@@ -154,6 +179,10 @@ final class UpgradeStructureValidator
 
             $seenAmounts[$amountKey] = true;
             $errors = [...$errors, ...self::rangeErrors($coverage['ranges'], $label)];
+        }
+
+        if ($data['is_plan'] === true) {
+            $errors = [...$errors, ...UpgradePlanProjection::errors($data)];
         }
 
         return array_values(array_unique($errors));

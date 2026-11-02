@@ -4,5 +4,7 @@
 @source '../../../../app/Filament/General/**/*';
 @source '../../../../resources/views/filament/general/**/*';
 @source '../../../../resources/views/filament/shared/**/*';
+@source '../../../../resources/views/filament/business/individual-quotes/partials/**/*';
+@source '../../../../resources/views/filament/business/plan-generators/partials/upgrade-population.blade.php';
 
 @import '../download-zone-tabs.css';

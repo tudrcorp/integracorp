@@ -2,17 +2,13 @@
 
 namespace App\Filament\Business\Resources\IndividualQuotes\Schemas;
 
+use App\Filament\Shared\Quotes\QuoteUpgradesSection;
 use App\Http\Controllers\UtilsController;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\IndividualQuote;
-use App\Models\UpgradeCoverage;
-use App\Support\PlanGenerators\PlanGeneratorUpgrades;
 use App\Support\Plans\PlanQuotability;
-use App\Support\Quotes\IndividualQuoteUpgrades;
 use App\Support\Quotes\QuoteAgeRangeSelection;
-use App\Support\Upgrades\UpgradeCardCatalog;
-use App\Support\Upgrades\UpgradePricing;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
@@ -28,11 +24,9 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
 class IndividualQuoteForm
 {
@@ -373,122 +367,10 @@ class IndividualQuoteForm
                                                     ]),
                                             ])->columns(2),
 
-                                        self::upgradesSection(),
+                                        QuoteUpgradesSection::make(),
                                     ]),
                             ]),
                     ]),
             ]);
-    }
-
-    /**
-     * Upgrades opcionales: el analista elige el upgrade y su cobertura; el servidor calcula rango
-     * por rango con las reglas del generador de planes ({@see IndividualQuoteUpgrades}). Solo al
-     * crear: la edición no recalcula las tarifas ni el PDF, así que no se ofrece ahí.
-     */
-    private static function upgradesSection(): Section
-    {
-        return Section::make('Upgrades (opcional)')
-            ->description('Toque las tarjetas de los upgrades que quiere sumar. En cada uno revise la cobertura y a qué rangos de edad se aplica (puede sacar rangos o incluir a mano, con nota, parte de un rango cubierto solo en algunas edades). El total se suma a la tarifa del plan.')
-            ->icon(Heroicon::Sparkles)
-            ->collapsible()
-            ->columnSpanFull()
-            ->visible(fn (Get $get, string $operation): bool => $operation === 'create' && filled($get('plan')))
-            ->schema([
-                View::make('filament.business.individual-quotes.partials.upgrade-cards')
-                    ->viewData(function (Get $get): array {
-                        $items = array_values(array_filter((array) ($get('upgrades') ?? []), 'is_array'));
-
-                        return [
-                            'cards' => UpgradeCardCatalog::cards(),
-                            'selected' => array_values(array_filter(array_map(
-                                static fn (array $item): ?int => is_numeric($item['upgrade_id'] ?? null) ? (int) $item['upgrade_id'] : UpgradeCardCatalog::upgradeIdForCoverage($item['upgrade_coverage_id'] ?? null),
-                                $items,
-                            ))),
-                            'limitReached' => count($items) >= PlanGeneratorUpgrades::MAX_LINES,
-                        ];
-                    })
-                    ->columnSpanFull(),
-                Repeater::make('upgrades')
-                    ->hiddenLabel()
-                    ->addable(false)
-                    ->defaultItems(0)
-                    ->maxItems(PlanGeneratorUpgrades::MAX_LINES)
-                    ->collapsible()
-                    ->live()
-                    ->deleteAction(fn ($action) => $action->tooltip('Quitar este upgrade'))
-                    ->itemLabel(fn (array $state): string => UpgradeCardCatalog::cards()[(int) ($state['upgrade_id'] ?? 0)]['name'] ?? self::upgradeCoverageLabel($state['upgrade_coverage_id'] ?? null) ?? 'Upgrade')
-                    ->schema([
-                        Hidden::make('line_key')
-                            ->default(fn (): string => (string) Str::uuid()),
-                        Hidden::make('upgrade_id'),
-                        Hidden::make('excluded_ranges')
-                            ->default([])
-                            ->dehydrated(),
-                        Hidden::make('manual_ranges')
-                            ->default([])
-                            ->dehydrated(),
-                        ToggleButtons::make('upgrade_coverage_id')
-                            ->label('Cobertura')
-                            ->options(fn (Get $get): array => collect(UpgradeCardCatalog::cards()[(int) ($get('upgrade_id') ?? 0)]['coverages'] ?? [])
-                                ->mapWithKeys(fn (array $coverage): array => [$coverage['id'] => $coverage['label'].' · '.$coverage['ages']])
-                                ->all())
-                            ->inline()
-                            ->required()
-                            ->live()
-                            // Otra cobertura tiene otros precios: la población elegida se rehace.
-                            ->afterStateUpdated(function (Set $set): void {
-                                $set('excluded_ranges', []);
-                                $set('manual_ranges', []);
-                            })
-                            ->validationMessages(['required' => 'Elija la cobertura del upgrade.']),
-                        View::make('filament.business.plan-generators.partials.upgrade-population')
-                            ->visible(fn (Get $get): bool => filled($get('upgrade_coverage_id')))
-                            ->viewData(fn (Get $get): array => [
-                                'upgradeQuote' => IndividualQuoteUpgrades::quote([[
-                                    'line_key' => $get('line_key'),
-                                    'upgrade_coverage_id' => $get('upgrade_coverage_id'),
-                                    'excluded_ranges' => $get('excluded_ranges') ?? [],
-                                    'manual_ranges' => $get('manual_ranges') ?? [],
-                                ]], self::rateRowsFrom($get, '../../')),
-                                'populationUnitLabel' => 'Personas',
-                            ])
-                            ->columnSpanFull(),
-                    ])
-                    ->columnSpanFull(),
-                View::make('filament.business.individual-quotes.partials.upgrades-total')
-                    ->visible(fn (Get $get): bool => filled($get('upgrades')))
-                    ->viewData(fn (Get $get): array => [
-                        'upgradeQuote' => IndividualQuoteUpgrades::quote((array) ($get('upgrades') ?? []), self::rateRowsFrom($get)),
-                    ])
-                    ->columnSpanFull(),
-            ]);
-    }
-
-    /**
-     * Rangos de la cotización con su población, leídos del formulario.
-     *
-     * @return list<array{age_range_label: string, population: int}>
-     */
-    private static function rateRowsFrom(Get $get, string $prefix = ''): array
-    {
-        return IndividualQuoteUpgrades::rateRows(
-            $get($prefix.'plan'),
-            (array) ($get($prefix.'details_quote') ?? []),
-            (array) ($get($prefix.'details_quote_multiple') ?? []),
-        );
-    }
-
-    /**
-     * Etiqueta de una cobertura ya elegida, aunque ya no esté activa en el catálogo.
-     */
-    private static function upgradeCoverageLabel(mixed $value): ?string
-    {
-        if (! is_numeric($value)) {
-            return null;
-        }
-
-        $coverage = UpgradeCoverage::query()->with('upgrade')->find((int) $value);
-
-        return $coverage !== null ? UpgradePricing::optionLabel($coverage) : null;
     }
 }

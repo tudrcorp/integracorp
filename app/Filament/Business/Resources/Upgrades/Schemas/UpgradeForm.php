@@ -4,22 +4,36 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Upgrades\Schemas;
 
+use App\Enums\UpgradeNetworkVisibility;
+use App\Filament\Business\Resources\Plans\PlanResource;
+use App\Models\BusinessUnit;
 use App\Models\Upgrade;
+use App\Support\Upgrades\UpgradeNetworkAudience;
+use App\Support\Upgrades\UpgradePlanProjection;
 use App\Support\Upgrades\UpgradeStructureValidator;
 use Closure;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
 class UpgradeForm
 {
+    private static function isSelected(mixed $visibility): bool
+    {
+        return ($visibility instanceof UpgradeNetworkVisibility ? $visibility->value : $visibility) === UpgradeNetworkVisibility::Selected->value;
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -73,6 +87,96 @@ class UpgradeForm
                             ->maxSize(2048)
                             ->imageCropAspectRatio('3:4')
                             ->imagePreviewHeight('180')
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('Visibilidad en la red comercial')
+                    ->description('Decide quién de la red puede ver y cotizar este upgrade. Negocios siempre puede cotizar los upgrades activos.')
+                    ->icon(Heroicon::Eye)
+                    ->columns(2)
+                    ->columnSpanFull()
+                    ->schema([
+                        ToggleButtons::make('network_visibility')
+                            ->label('¿Quién lo ve?')
+                            ->options(UpgradeNetworkVisibility::options())
+                            ->colors([
+                                UpgradeNetworkVisibility::BusinessOnly->value => 'gray',
+                                UpgradeNetworkVisibility::AllNetwork->value => 'success',
+                                UpgradeNetworkVisibility::Selected->value => 'info',
+                            ])
+                            ->icons([
+                                UpgradeNetworkVisibility::BusinessOnly->value => Heroicon::LockClosed,
+                                UpgradeNetworkVisibility::AllNetwork->value => Heroicon::GlobeAlt,
+                                UpgradeNetworkVisibility::Selected->value => Heroicon::UserGroup,
+                            ])
+                            ->default(UpgradeNetworkVisibility::BusinessOnly->value)
+                            ->inline()
+                            ->required()
+                            ->live()
+                            ->helperText('Inactivo gana siempre: un upgrade inactivo no lo ve nadie. Las cotizaciones ya hechas conservan su upgrade aunque aquí se cambie.')
+                            ->columnSpanFull(),
+                        Select::make('network_agency_ids')
+                            ->label('Agencias Master o General')
+                            ->helperText('Al elegir una agencia, toda su red también lo ve: las agencias y los agentes que tiene debajo.')
+                            ->multiple()
+                            ->searchable()
+                            ->searchPrompt('Escriba el código o el nombre de la agencia')
+                            ->noSearchResultsMessage('No hay agencias activas con ese dato.')
+                            ->getSearchResultsUsing(fn (string $search): array => UpgradeNetworkAudience::searchAgencies($search))
+                            ->getOptionLabelsUsing(fn (array $values): array => UpgradeNetworkAudience::agencyLabels($values))
+                            ->visible(fn (Get $get): bool => self::isSelected($get('network_visibility'))),
+                        Select::make('network_agent_ids')
+                            ->label('Agentes')
+                            ->helperText('Para dárselo a un agente puntual. Su agencia no lo ve; sus subagentes sí.')
+                            ->multiple()
+                            ->searchable()
+                            ->searchPrompt('Escriba el código o el nombre del agente')
+                            ->noSearchResultsMessage('No hay agentes activos con ese dato.')
+                            ->getSearchResultsUsing(fn (string $search): array => UpgradeNetworkAudience::searchAgents($search))
+                            ->getOptionLabelsUsing(fn (array $values): array => UpgradeNetworkAudience::agentLabels($values))
+                            ->visible(fn (Get $get): bool => self::isSelected($get('network_visibility'))),
+                    ]),
+
+                Section::make('Venderlo como plan')
+                    ->description('Además de upgrade, se vende como un plan propio: coberturas, rangos y tarifas salen de este formulario.')
+                    ->icon(Heroicon::RectangleStack)
+                    ->columns(2)
+                    ->columnSpanFull()
+                    ->schema([
+                        Toggle::make('is_plan')
+                            ->label('Es un plan')
+                            ->helperText(fn (Get $get): string => $get('is_plan')
+                                ? 'Sigue disponible como upgrade. Lo cotiza quien tenga la visibilidad elegida arriba.'
+                                : 'Actívelo para crear un plan a partir de este upgrade.')
+                            ->live(),
+                        Select::make('plan_business_unit_id')
+                            ->label('Unidad de negocio del plan')
+                            ->placeholder('Elija la unidad de negocio')
+                            ->options(fn (): array => BusinessUnit::query()->pluck('definition', 'id')->all())
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->required(fn (Get $get): bool => (bool) $get('is_plan'))
+                            ->visible(fn (Get $get): bool => (bool) $get('is_plan'))
+                            ->validationMessages(['required' => 'Elija la unidad de negocio del plan.']),
+                        View::make('filament.business.upgrades.plan-checklist')
+                            ->visible(fn (Get $get): bool => (bool) $get('is_plan'))
+                            ->viewData(function (Get $get, ?Upgrade $record): array {
+                                $plan = $record?->exists ? UpgradePlanProjection::planOf($record) : null;
+
+                                return [
+                                    'items' => UpgradePlanProjection::checklist([
+                                        'plan_business_unit_id' => $get('plan_business_unit_id'),
+                                        'services' => $get('services') ?? [],
+                                        'coverages' => $get('coverages') ?? [],
+                                    ], $plan),
+                                    'linkedPlan' => $plan === null ? null : [
+                                        'code' => (string) $plan->code,
+                                        'status' => (string) $plan->status,
+                                        'url' => PlanResource::getUrl('uso-clinico', ['record' => $plan]),
+                                    ],
+                                ];
+                            })
                             ->columnSpanFull(),
                     ]),
 
@@ -173,6 +277,7 @@ class UpgradeForm
                                         Hidden::make('id'),
                                         TextInput::make('age_from')
                                             ->hiddenLabel()
+                                            ->live(onBlur: true)
                                             ->integer()
                                             ->minValue(UpgradeStructureValidator::MIN_AGE)
                                             ->maxValue(UpgradeStructureValidator::MAX_AGE)
@@ -181,6 +286,7 @@ class UpgradeForm
                                             ->validationMessages(['required' => 'Indique la edad desde.']),
                                         TextInput::make('age_to')
                                             ->hiddenLabel()
+                                            ->live(onBlur: true)
                                             ->integer()
                                             ->minValue(UpgradeStructureValidator::MIN_AGE)
                                             ->maxValue(UpgradeStructureValidator::MAX_AGE)

@@ -4,29 +4,18 @@ namespace App\Filament\Business\Resources\IndividualQuotes\Pages;
 
 use App\Enums\QuoteWhatsAppNotification;
 use App\Filament\Business\Resources\IndividualQuotes\IndividualQuoteResource;
-use App\Filament\Business\Resources\PlanGenerators\Pages\Concerns\InteractsWithUpgradeRanges;
+use App\Filament\Concerns\HandlesQuoteUpgrades;
 use App\Http\Controllers\UtilsController;
 use App\Models\Agency;
-use App\Support\PlanGenerators\PlanGeneratorUpgrades;
-use App\Support\Quotes\IndividualQuoteUpgrades;
 use App\Support\Quotes\QuoteWhatsAppDispatcher;
-use App\Support\Upgrades\UpgradeCardCatalog;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
 class CreateIndividualQuote extends CreateRecord
 {
-    use InteractsWithUpgradeRanges;
-
-    /**
-     * Upgrades validados antes de crear, que se guardan junto con la cotización.
-     *
-     * @var array{state: array<int|string, mixed>, rate_rows: list<array{age_range_label: string, population: int}>}|null
-     */
-    private ?array $pendingUpgrades = null;
+    use HandlesQuoteUpgrades;
 
     protected static string $resource = IndividualQuoteResource::class;
 
@@ -44,94 +33,9 @@ class CreateIndividualQuote extends CreateRecord
         ];
     }
 
-    /**
-     * @return list<array{age_range_label: string, population: int}>
-     */
-    protected function upgradeRateRows(): array
-    {
-        return IndividualQuoteUpgrades::rateRows(
-            $this->data['plan'] ?? null,
-            (array) ($this->data['details_quote'] ?? []),
-            (array) ($this->data['details_quote_multiple'] ?? []),
-        );
-    }
-
-    /**
-     * Al crear no hay upgrades guardados: todos salen del catálogo vigente.
-     *
-     * @return list<array<string, mixed>>
-     */
-    protected function upgradeStoredLines(): array
-    {
-        return [];
-    }
-
-    /**
-     * Tarjeta de upgrade: si ya está en la cotización la quita; si no, la agrega con su primera
-     * cobertura. Solo acepta upgrades activos del catálogo y respeta el tope por cotización.
-     */
-    public function toggleQuoteUpgrade(int $upgradeId): void
-    {
-        $card = UpgradeCardCatalog::cards()[$upgradeId] ?? null;
-
-        if ($card === null) {
-            Notification::make()->warning()->title('Ese upgrade ya no está disponible')->body('Actualice la página: el catálogo cambió.')->send();
-
-            return;
-        }
-
-        $items = array_filter((array) ($this->data['upgrades'] ?? []), 'is_array');
-
-        foreach ($items as $key => $item) {
-            $itemUpgrade = is_numeric($item['upgrade_id'] ?? null) ? (int) $item['upgrade_id'] : UpgradeCardCatalog::upgradeIdForCoverage($item['upgrade_coverage_id'] ?? null);
-
-            if ($itemUpgrade === $upgradeId) {
-                unset($items[$key]);
-                $this->data['upgrades'] = $items;
-
-                return;
-            }
-        }
-
-        if (count($items) >= PlanGeneratorUpgrades::MAX_LINES) {
-            Notification::make()->warning()->title('Máximo de upgrades')->body('Una cotización admite hasta '.PlanGeneratorUpgrades::MAX_LINES.' upgrades.')->send();
-
-            return;
-        }
-
-        $items[(string) Str::uuid()] = [
-            'line_key' => (string) Str::uuid(),
-            'upgrade_id' => $upgradeId,
-            'upgrade_coverage_id' => $card['default_coverage_id'],
-            'excluded_ranges' => [],
-            'manual_ranges' => [],
-        ];
-
-        $this->data['upgrades'] = $items;
-    }
-
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $upgradeState = array_values(array_filter((array) ($data['upgrades'] ?? []), 'is_array'));
-        unset($data['upgrades']);
-
-        if ($upgradeState !== []) {
-            $rateRows = IndividualQuoteUpgrades::rateRows($data['plan'] ?? null, (array) ($data['details_quote'] ?? []), (array) ($data['details_quote_multiple'] ?? []));
-            $errors = IndividualQuoteUpgrades::quote($upgradeState, $rateRows)['errors'];
-
-            if ($errors !== []) {
-                Notification::make()
-                    ->title('No se guardó la cotización')
-                    ->body('Revise los upgrades: '.implode(' ', $errors))
-                    ->danger()
-                    ->persistent()
-                    ->send();
-
-                $this->halt();
-            }
-
-            $this->pendingUpgrades = ['state' => $upgradeState, 'rate_rows' => $rateRows];
-        }
+        $data = $this->captureQuoteUpgrades($data);
 
         if ($data['plan'] === 'CM') {
             session()->put('details_quote', $data['details_quote_multiple'] ?? []);
@@ -161,14 +65,7 @@ class CreateIndividualQuote extends CreateRecord
 
     protected function afterCreate(): void
     {
-        /**
-         * Los upgrades se guardan antes de las líneas y el PDF, y fuera del try de abajo: si
-         * fallan, la excepción deshace toda la cotización (transacción del panel) en lugar de
-         * dejarla sin los upgrades que el analista eligió.
-         */
-        if ($this->pendingUpgrades !== null) {
-            IndividualQuoteUpgrades::persist($this->getRecord(), $this->pendingUpgrades['state'], $this->pendingUpgrades['rate_rows']);
-        }
+        $this->persistQuoteUpgrades($this->getRecord());
 
         try {
             $detailsQuote = session()->get('details_quote', []);

@@ -2,6 +2,7 @@
 
 namespace App\Filament\General\Resources\CorporateQuotes\Schemas;
 
+use App\Filament\Shared\Quotes\QuoteUpgradesSection;
 use App\Http\Controllers\UtilsController;
 use App\Models\Agency;
 use App\Models\AgencyPlan;
@@ -9,6 +10,7 @@ use App\Models\Agent;
 use App\Models\AgeRange;
 use App\Models\CorporateQuote;
 use App\Models\Plan;
+use App\Support\Upgrades\UpgradeNetworkAudience;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
@@ -179,7 +181,7 @@ class CorporateQuoteForm
                                             // agregar el plan livewire
                                             $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
 
-                                            return $planesConBeneficios;
+                                            return UpgradeNetworkAudience::filterPlanOptions($planesConBeneficios, Auth::user());
                                         })
                                         ->descriptions([
                                             1 => 'Edad: 0 a +99 años/ilimitado.',
@@ -338,6 +340,8 @@ class CorporateQuoteForm
                                                 ]),
                                         ])->columns(2),
 
+                                    QuoteUpgradesSection::otherPlanRanges(),
+
                                     /**
                                      * REPETER PLAN MULTIPLE
                                      */
@@ -366,8 +370,8 @@ class CorporateQuoteForm
                                                     $planesUnidos = $planes + $planesAsignados;
                                                     // Log::info($planesUnidos);
 
-                                                    return $planesUnidos;
-                                                    // return Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->pluck('description', 'id');
+                                                    return UpgradeNetworkAudience::filterPlanOptions($planesUnidos, Auth::user());
+                                                    // return UpgradeNetworkAudience::filterPlanOptions(Plan::where('type', 'BASICO')->where('status', 'ACTIVO')->pluck('description', 'id'), Auth::user());
                                                 }),
                                             Select::make('age_range_id')
                                                 ->label('Rango de edad')
@@ -399,6 +403,7 @@ class CorporateQuoteForm
                                         ])->columns(2),
                                 ]),
                         ]),
+                    QuoteUpgradesSection::networkStep(),
                 ])
                     ->submitAction(new HtmlString(Blade::render(<<<'BLADE'
                     <x-filament::button

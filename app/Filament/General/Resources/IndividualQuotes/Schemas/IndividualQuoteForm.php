@@ -2,12 +2,14 @@
 
 namespace App\Filament\General\Resources\IndividualQuotes\Schemas;
 
+use App\Filament\Shared\Quotes\QuoteUpgradesSection;
 use App\Http\Controllers\UtilsController;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\AgeRange;
 use App\Models\IndividualQuote;
 use App\Support\Plans\PlanQuotability;
+use App\Support\Upgrades\UpgradeNetworkAudience;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
@@ -183,7 +185,7 @@ class IndividualQuoteForm
                                             // agregar el plan livewire
                                             $planesConBeneficios->put('CM', 'COTIZACIÓN MULTIPLE');
 
-                                            return $planesConBeneficios;
+                                            return UpgradeNetworkAudience::filterPlanOptions($planesConBeneficios, Auth::user());
                                         })
                                         ->descriptions([
                                             1 => 'Edad: 0 a +99 años/ilimitado.',
@@ -357,6 +359,8 @@ class IndividualQuoteForm
                                                 ->placeholder('Cantidad de personas'),
                                         ])->columns(2),
 
+                                    QuoteUpgradesSection::otherPlanRanges(),
+
                                     /**
                                      * REPETER PLAN MULTIPLE
                                      */
@@ -380,7 +384,7 @@ class IndividualQuoteForm
                                                 ->options(function (Get $get) {
                                                     Log::info($get('plan'));
 
-                                                    return PlanQuotability::optionsForIndividual();
+                                                    return UpgradeNetworkAudience::filterPlanOptions(PlanQuotability::optionsForIndividual(), Auth::user());
                                                 })->columnSpan(3),
                                             Select::make('age_range_id')
                                                 ->label('Rango de edad')
@@ -412,6 +416,7 @@ class IndividualQuoteForm
                                         ])->columns(2),
                                 ]),
                         ]),
+                    QuoteUpgradesSection::networkStep(),
                 ])
                     ->submitAction(new HtmlString(Blade::render(<<<'BLADE'
                     <x-filament::button

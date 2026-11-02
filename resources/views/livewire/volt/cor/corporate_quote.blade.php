@@ -38,6 +38,8 @@ new #[Layout('components.layouts.interactive')] class extends Component {
 
     public $agent;
 
+    public array $upgrades = [];
+
     public function mount()
     {
         // Recibir el parámetro de la URL
@@ -110,6 +112,8 @@ new #[Layout('components.layouts.interactive')] class extends Component {
         $this->group_collect = $this->collect->groupBy('age_range');
 
         $this->agent = $record->created_by;
+
+        $this->upgrades = \App\Support\Quotes\IndividualQuoteUpgrades::summary($record);
 
 
         if ($this->plan_id == 2) {
@@ -265,6 +269,43 @@ new #[Layout('components.layouts.interactive')] class extends Component {
 
     @else
     @include('interative_quote_ideal_especial')
+    @endif
+
+    @if (($upgrades['lines'] ?? []) !== [])
+    <!-- Upgrades de la cotización -->
+    <div
+        class="w-full lg:px-8 lg:py-4 overflow-x-auto p-5 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 mb-5 mt-5">
+        <flux:heading size="xl" level="1" class="text-center">Upgrades incluidos</flux:heading>
+        <flux:text class="mt-2 mb-6 text-base text-center">Se suman a la cobertura que elija y se pagan una sola vez al año,
+            completos, en el primer pago. Las demás cuotas llevan solo el plan. Aplican a las personas cuya edad está dentro de
+            las que cubre cada upgrade.
+        </flux:text>
+
+        <flux:table align="center">
+            <flux:table.rows>
+                @foreach ($upgrades['lines'] as $upgradeLine)
+                <flux:table.row wire:key="corporate-upgrade-{{ $loop->index }}">
+                    <flux:table.cell align="left">
+                        {{ $upgradeLine['name'] }} · {{ $upgradeLine['coverage'] }} · {{ $upgradeLine['persons'] }} persona(s)
+                    </flux:table.cell>
+                    <flux:table.cell align="center">
+                        <flux:badge variant="solid" color="green">
+                            {{ number_format((float) $upgradeLine['annual'], 2, ',', '.') }} US$ al año
+                        </flux:badge>
+                    </flux:table.cell>
+                </flux:table.row>
+                @endforeach
+                <flux:table.row>
+                    <flux:table.cell align="left">TOTAL DE UPGRADES (PAGO ÚNICO, EN EL PRIMER PAGO)</flux:table.cell>
+                    <flux:table.cell align="center">
+                        <flux:badge variant="solid" color="green">
+                            {{ number_format((float) $upgrades['annual_total'], 2, ',', '.') }} US$
+                        </flux:badge>
+                    </flux:table.cell>
+                </flux:table.row>
+            </flux:table.rows>
+        </flux:table>
+    </div>
     @endif
 
 </div>

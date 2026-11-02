@@ -2,12 +2,14 @@
 
 namespace App\Filament\Agents\Resources\CorporateQuotes\Schemas;
 
-use Filament\Schemas\Schema;
 use App\Models\CorporateQuote;
-use Filament\Support\Icons\Heroicon;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Fieldset;
+use App\Support\Quotes\IndividualQuoteUpgrades;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 
 class CorporateQuoteInfolist
 {
@@ -16,7 +18,7 @@ class CorporateQuoteInfolist
         return $schema
             ->components([
                 Section::make()
-                    ->description(fn(CorporateQuote $record) => 'Cotización Corporativa generada el: ' . $record->created_at->format('d/m/Y H:ma'))
+                    ->description(fn (CorporateQuote $record) => 'Cotización Corporativa generada el: '.$record->created_at->format('d/m/Y H:ma'))
                     ->columnSpanFull()
                     ->icon(Heroicon::Bars3BottomLeft)
                     ->schema([
@@ -40,7 +42,7 @@ class CorporateQuoteInfolist
                                     ->label('Registrado por:')
                                     ->badge()
                                     ->color('primary')
-                                    ->default(fn(CorporateQuote $record) => 'AGT-000' . $record->agent_id . ' : ' . $record->full_name),
+                                    ->default(fn (CorporateQuote $record) => 'AGT-000'.$record->agent_id.' : '.$record->full_name),
                                 TextEntry::make('created_at')
                                     ->label('Fecha de solicitud')
                                     ->badge()
@@ -73,10 +75,21 @@ class CorporateQuoteInfolist
                             ->schema([
                                 TextEntry::make('observation_dress_tailor')
                                     ->label('Características de la cotización')
-                                    ->hidden(fn(CorporateQuote $record) => $record->observation_dress_tailor == null),
+                                    ->hidden(fn (CorporateQuote $record) => $record->observation_dress_tailor == null),
                             ])->columnSpanFull()->columns(5),
 
                     ])->columnSpanFull(),
+                Section::make('Upgrades cotizados')
+                    ->description('Precio congelado al cotizar. Se suma a la tarifa del plan y la cobertura que elija el cliente.')
+                    ->columnSpanFull()
+                    ->icon(Heroicon::Sparkles)
+                    ->visible(fn (CorporateQuote $record): bool => $record->upgrades()->exists())
+                    ->schema([
+                        View::make('filament.business.individual-quotes.partials.upgrades-summary')
+                            ->viewData(fn (CorporateQuote $record): array => [
+                                'summary' => IndividualQuoteUpgrades::summary($record),
+                            ]),
+                    ]),
             ]);
     }
 }

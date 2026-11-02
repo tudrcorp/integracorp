@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\UpgradeNetworkVisibility;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Upgrade del catálogo: servicios que incluye y coberturas, cada una con sus
@@ -29,10 +31,24 @@ class Upgrade extends Model
         'description',
         'image_path',
         'status',
+        'network_visibility',
+        'is_plan',
+        'plan_business_unit_id',
         'legacy_upgrade_benefit_id',
         'created_by',
         'updated_by',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'network_visibility' => UpgradeNetworkVisibility::class,
+            'is_plan' => 'boolean',
+        ];
+    }
 
     /** Carpeta del disco `public` donde viven las imágenes de las tarjetas. */
     public const IMAGE_DIRECTORY = 'upgrades/images';
@@ -127,6 +143,26 @@ class Upgrade extends Model
     public function individualAssignments(): HasMany
     {
         return $this->hasMany(AffiliateUpgrade::class);
+    }
+
+    /**
+     * Agencias y agentes elegidos cuando la visibilidad es «Red seleccionada».
+     *
+     * @return HasMany<UpgradeNetworkTarget, $this>
+     */
+    public function networkTargets(): HasMany
+    {
+        return $this->hasMany(UpgradeNetworkTarget::class);
+    }
+
+    /**
+     * Plan real que nació de este upgrade, si lo marcaron «Es un plan».
+     *
+     * @return HasOne<Plan, $this>
+     */
+    public function plan(): HasOne
+    {
+        return $this->hasOne(Plan::class, 'source_upgrade_id');
     }
 
     public function isActive(): bool

@@ -10,6 +10,7 @@ use App\Filament\Business\Concerns\InteractsWithClinicalUsageAccessGate;
 use App\Filament\Business\Resources\Plans\PlanResource;
 use App\Filament\Business\Resources\Plans\Schemas\PlanForm;
 use App\Filament\Business\Resources\Plans\Schemas\PlanWizardForm;
+use App\Filament\Business\Resources\Upgrades\UpgradeResource;
 use App\Models\Plan;
 use App\Support\ClinicalEntitlements\PlanClinicalStructurePersistence;
 use App\Support\PlanCreationPersistence;
@@ -18,6 +19,7 @@ use App\Support\Plans\PlanStructurePersistence;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Schema;
 
@@ -39,6 +41,21 @@ class EditPlan extends EditRecord
     public function mount(int|string $record): void
     {
         parent::mount($record);
+
+        $plan = $this->getRecord();
+
+        if ($plan instanceof Plan && $plan->comesFromUpgrade()) {
+            Notification::make()
+                ->warning()
+                ->title('Este plan se edita desde su upgrade')
+                ->body('Sus coberturas, tarifas y beneficios salen de Configuración → Upgrades.')
+                ->send();
+
+            $this->redirect(UpgradeResource::getUrl('edit', ['record' => $plan->source_upgrade_id]));
+
+            return;
+        }
+
         $this->bootClinicalUsageAccessGate();
     }
 

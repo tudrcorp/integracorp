@@ -2,13 +2,14 @@
 
 namespace App\Filament\Agents\Resources\IndividualQuotes\Schemas;
 
-use Filament\Schemas\Schema;
 use App\Models\IndividualQuote;
-use Filament\Support\Icons\Heroicon;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Fieldset;
+use App\Support\Quotes\IndividualQuoteUpgrades;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 
 class IndividualQuoteInfolist
 {
@@ -17,7 +18,7 @@ class IndividualQuoteInfolist
         return $schema
             ->components([
                 Section::make()
-                    ->description(fn(IndividualQuote $record) => 'Cotización Individual generada el: ' . $record->created_at->format('d/m/Y H:ma'))
+                    ->description(fn (IndividualQuote $record) => 'Cotización Individual generada el: '.$record->created_at->format('d/m/Y H:ma'))
                     ->columnSpanFull()
                     ->icon(Heroicon::Bars3BottomLeft)
                     ->schema([
@@ -57,6 +58,17 @@ class IndividualQuoteInfolist
                             ])->columnSpanFull()->columns(5),
 
                     ])->columnSpanFull(),
+                Section::make('Upgrades cotizados')
+                    ->description('Precio congelado al cotizar. Se suma a la tarifa del plan y la cobertura que elija el cliente.')
+                    ->columnSpanFull()
+                    ->icon(Heroicon::Sparkles)
+                    ->visible(fn (IndividualQuote $record): bool => $record->upgrades()->exists())
+                    ->schema([
+                        View::make('filament.business.individual-quotes.partials.upgrades-summary')
+                            ->viewData(fn (IndividualQuote $record): array => [
+                                'summary' => IndividualQuoteUpgrades::summary($record),
+                            ]),
+                    ]),
             ]);
     }
 }

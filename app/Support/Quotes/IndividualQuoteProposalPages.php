@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Support\Quotes;
 
+use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
+use App\Support\CorporateQuotePdfGenerator;
 use App\Support\IndividualQuotePdfGenerator;
 use App\Support\IndividualQuotePdfLayout;
 use App\Support\TuDrQuote\QuoteDocumentAssembler;
+use App\Support\TuDrQuote\QuoteDocumentLayout;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use setasign\Fpdi\Fpdi;
@@ -15,7 +18,8 @@ use setasign\Fpdi\PdfParser\StreamReader;
 use Throwable;
 
 /**
- * Propuesta individual del microservicio con la página de cada plan compuesta aquí.
+ * Propuesta del microservicio con la página de cada plan compuesta aquí: siempre en la individual
+ * y, en la corporativa, solo si la cotización lleva upgrades.
  *
  * El servicio entrega portada, «acerca», una página de cálculos por plan (con la imagen de
  * beneficios horneada), patologías y contraportada. Se conserva todo salvo esas páginas de
@@ -31,10 +35,11 @@ final class IndividualQuoteProposalPages
      * @param  list<int>  $planIds  planes en el orden en que el servicio dibujó sus páginas
      * @return array{document: string, calculation_pages: int}
      */
-    public static function replaceCalculationPages(string $document, int $quoteId, array $planIds): array
+    public static function replaceCalculationPages(string $document, int $quoteId, array $planIds, string $scope = QuoteDocumentLayout::SCOPE_INDIVIDUAL): array
     {
         $unchanged = ['document' => $document, 'calculation_pages' => count($planIds)];
-        $quote = IndividualQuote::query()->find($quoteId);
+        $isCorporate = $scope === QuoteDocumentLayout::SCOPE_CORPORATE;
+        $quote = $isCorporate ? CorporateQuote::query()->find($quoteId) : IndividualQuote::query()->find($quoteId);
 
         if ($quote === null || $planIds === []) {
             return $unchanged;
@@ -57,7 +62,10 @@ final class IndividualQuoteProposalPages
             $planFiles = [];
 
             foreach ($planIds as $planId) {
-                $details = IndividualQuotePdfGenerator::detailsPayload($quote, $planId, IndividualQuotePdfLayout::resolveForIndividual($planId));
+                $layout = IndividualQuotePdfLayout::resolveForIndividual($planId);
+                $details = $isCorporate
+                    ? CorporateQuotePdfGenerator::detailsPayload($quote, $planId, $layout)
+                    : IndividualQuotePdfGenerator::detailsPayload($quote, $planId, $layout);
 
                 if ($details === null) {
                     return $unchanged;
@@ -88,6 +96,20 @@ final class IndividualQuoteProposalPages
                 @unlink($file);
             }
         }
+    }
+
+    /**
+     * Si la propuesta lleva las páginas compuestas aquí.
+     */
+    public static function appliesTo(string $scope, int $quoteId): bool
+    {
+        if ($scope === QuoteDocumentLayout::SCOPE_INDIVIDUAL) {
+            return true;
+        }
+
+        $quote = CorporateQuote::query()->find($quoteId);
+
+        return $quote !== null && CorporateQuotePdfGenerator::hasUpgrades($quote);
     }
 
     /**

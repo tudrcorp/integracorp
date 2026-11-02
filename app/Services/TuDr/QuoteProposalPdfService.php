@@ -172,15 +172,15 @@ class QuoteProposalPdfService
         $calculationPages = count($payload['planes']);
 
         /**
-         * Propuesta individual: la página de cada plan se compone aquí (beneficios de la
+         * Propuesta individual, o corporativa con upgrades: la página de cada plan se compone aquí (beneficios de la
          * configuración del plan, tarifas y upgrades debajo) en lugar de la imagen horneada del
          * servicio. Solo si cada plan tiene su página; si no, el documento queda como vino.
          */
         $orderedPlanIds = $planIds;
         sort($orderedPlanIds);
 
-        if ($scope === QuoteDocumentLayout::SCOPE_INDIVIDUAL && count($orderedPlanIds) === $calculationPages) {
-            $composed = IndividualQuoteProposalPages::replaceCalculationPages($calculations, $quoteId, $orderedPlanIds);
+        if (count($orderedPlanIds) === $calculationPages && IndividualQuoteProposalPages::appliesTo($scope, $quoteId)) {
+            $composed = IndividualQuoteProposalPages::replaceCalculationPages($calculations, $quoteId, $orderedPlanIds, $scope);
             $calculations = $composed['document'];
             $calculationPages = $composed['calculation_pages'];
         }

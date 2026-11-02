@@ -14,10 +14,12 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class PlansTable
 {
@@ -127,7 +129,8 @@ class PlansTable
                             : 'warning')
                         ->url(fn (Plan $record): string => \App\Filament\Business\Resources\Plans\PlanResource::getUrl('uso-clinico', ['record' => $record])),
                     EditAction::make()
-                        ->label('Editar'),
+                        ->label('Editar')
+                        ->hidden(fn (Plan $record): bool => $record->comesFromUpgrade()),
                     Action::make('update_status')
                         ->label('Actualizar Estatus')
                         ->icon('heroicon-s-check-circle')
@@ -143,19 +146,32 @@ class PlansTable
                         ])
                         ->action(function (Plan $record, array $data): void {
                             $record->update($data);
-                        }),
+                        })
+                        ->hidden(fn (Plan $record): bool => $record->comesFromUpgrade()),
 
                     DeleteAction::make()
                         ->label('Eliminar')
                         ->icon('heroicon-o-trash')
                         ->requiresConfirmation()
-                        ->color('danger'),
+                        ->color('danger')
+                        ->hidden(fn (Plan $record): bool => $record->comesFromUpgrade()),
 
                 ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->before(function (Collection $records, DeleteBulkAction $action): void {
+                            if ($records->contains(fn (Plan $record): bool => $record->comesFromUpgrade())) {
+                                Notification::make()
+                                    ->warning()
+                                    ->title('No se eliminó nada')
+                                    ->body('La selección incluye planes nacidos de un upgrade. Se retiran desde Configuración → Upgrades.')
+                                    ->send();
+
+                                $action->cancel();
+                            }
+                        }),
                 ]),
             ])
             ->striped();
