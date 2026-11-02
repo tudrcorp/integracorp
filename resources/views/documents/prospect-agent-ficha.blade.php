@@ -116,6 +116,15 @@
             background-color: #f1f5f9;
         }
 
+        .contacts-table {
+            table-layout: fixed;
+            font-size: 8px;
+        }
+
+        .contacts-table td.break-word {
+            word-wrap: break-word;
+        }
+
         .muted {
             color: #94a3b8;
             font-style: italic;
@@ -224,26 +233,32 @@
 </div>
 
 <div class="section-block">
-    <p class="section-title">Personas de contacto</p>
+    <p class="section-title">Contactos secundarios</p>
     @if ($contacts->isEmpty())
-        <p class="muted">Sin personas de contacto registradas.</p>
+        <p class="muted">Sin contactos secundarios registrados.</p>
     @else
-        <table class="data-table">
+        <table class="data-table contacts-table">
             <thead>
                 <tr>
-                    <th style="width: 28%;">Nombre</th>
-                    <th style="width: 22%;">Cargo</th>
-                    <th style="width: 22%;">Teléfono</th>
-                    <th style="width: 28%;">Correo</th>
+                    <th style="width: 12%;">Departamento</th>
+                    <th style="width: 12%;">Cargo</th>
+                    <th style="width: 17%;">Nombre y apellido</th>
+                    <th style="width: 22%;">Correo electrónico</th>
+                    <th style="width: 13%;">Teléfono celular</th>
+                    <th style="width: 13%;">Teléfono local</th>
+                    <th style="width: 11%;">Extensión(es)</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($contacts as $contact)
                     <tr>
-                        <td>{{ $val($contact->name) }}</td>
+                        <td>{{ $val($contact->department) }}</td>
                         <td>{{ $val($contact->position) }}</td>
+                        <td>{{ $val($contact->name) }}</td>
+                        <td class="break-word">{{ $val($contact->email) }}</td>
                         <td>{{ $val($contact->phone) }}</td>
-                        <td>{{ $val($contact->email) }}</td>
+                        <td>{{ $val($contact->local_phone) }}</td>
+                        <td>{{ $val($contact->extensions) }}</td>
                     </tr>
                 @endforeach
             </tbody>
