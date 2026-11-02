@@ -3,6 +3,7 @@
 namespace App\Filament\Administration\Resources\DownloadZones\Schemas;
 
 use App\Models\Zone;
+use App\Support\Filament\DownloadZoneUploadedAtField;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -72,6 +73,7 @@ class DownloadZoneForm
                             ->required()
                             ->maxLength(255)
                             ->default('ACTIVO'),
+                        DownloadZoneUploadedAtField::make(),
                     ])->columnSpanFull()->columns(3),
             ]);
     }

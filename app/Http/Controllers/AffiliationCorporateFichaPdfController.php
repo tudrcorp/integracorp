@@ -17,8 +17,9 @@ class AffiliationCorporateFichaPdfController extends Controller
 
         $binary = AffiliationCorporateFichaPdfService::outputBinaryCached($affiliationCorporate);
         $filename = AffiliationCorporateFichaPdfService::downloadFilename($affiliationCorporate);
+        $routeName = (string) (request()->route()?->getName() ?: 'administration.affiliation-corporates.ficha.download');
 
-        SecurityAudit::log('AUDIT_ADMINISTRATION_AFFILIATION_CORPORATE_FICHA_DOWNLOADED', 'administration.affiliation-corporates.ficha.download', [
+        SecurityAudit::log(self::auditEvent($routeName, 'DOWNLOADED'), $routeName, [
             'affiliation_corporate_id' => $affiliationCorporate->id,
             'affiliation_code' => $affiliationCorporate->code,
             'corporate_name' => $affiliationCorporate->name_corporate,
@@ -36,8 +37,9 @@ class AffiliationCorporateFichaPdfController extends Controller
 
         $binary = AffiliationCorporateFichaPdfService::outputBinaryCached($affiliationCorporate);
         $filename = AffiliationCorporateFichaPdfService::downloadFilename($affiliationCorporate);
+        $routeName = (string) (request()->route()?->getName() ?: 'administration.affiliation-corporates.ficha.preview');
 
-        SecurityAudit::log('AUDIT_ADMINISTRATION_AFFILIATION_CORPORATE_FICHA_VIEWED', 'administration.affiliation-corporates.ficha.preview', [
+        SecurityAudit::log(self::auditEvent($routeName, 'VIEWED'), $routeName, [
             'affiliation_corporate_id' => $affiliationCorporate->id,
             'affiliation_code' => $affiliationCorporate->code,
             'corporate_name' => $affiliationCorporate->name_corporate,
@@ -47,6 +49,20 @@ class AffiliationCorporateFichaPdfController extends Controller
         return response($binary, 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'inline; filename="'.$filename.'"');
+    }
+
+    private static function auditEvent(string $routeName, string $action): string
+    {
+        $isBusiness = str_starts_with($routeName, 'business.');
+
+        return match ($action) {
+            'DOWNLOADED' => $isBusiness
+                ? 'AUDIT_BUSINESS_AFFILIATION_CORPORATE_FICHA_DOWNLOADED'
+                : 'AUDIT_ADMINISTRATION_AFFILIATION_CORPORATE_FICHA_DOWNLOADED',
+            default => $isBusiness
+                ? 'AUDIT_BUSINESS_AFFILIATION_CORPORATE_FICHA_VIEWED'
+                : 'AUDIT_ADMINISTRATION_AFFILIATION_CORPORATE_FICHA_VIEWED',
+        };
     }
 
     private static function prepareLongRunningPdfResponse(): void

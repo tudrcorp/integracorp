@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\Pages;
 
+use App\Filament\Business\Resources\AffiliationCorporates\Actions\AffiliationCorporateFichaPdfActions;
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Business\Resources\AffiliationCorporates\Concerns\OptimizesAffiliationCorporateInfolistPerformance;
 use App\Filament\Shared\Affiliations\AffiliationDateCorrectionActions;
@@ -224,6 +225,7 @@ class ViewAffiliationCorporate extends ViewRecord
                     ->label('Editar')
                     ->icon(Heroicon::OutlinedPencil)
                     ->color('primary'),
+                AffiliationCorporateFichaPdfActions::printCorporatePdfAction(),
             ]),
         ];
     }

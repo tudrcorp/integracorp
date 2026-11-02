@@ -17,8 +17,9 @@ class AffiliationFichaPdfController extends Controller
 
         $binary = AffiliationFichaPdfService::outputBinaryCached($affiliation);
         $filename = AffiliationFichaPdfService::downloadFilename($affiliation);
+        $routeName = (string) (request()->route()?->getName() ?: 'administration.affiliations.ficha.download');
 
-        SecurityAudit::log('AUDIT_ADMINISTRATION_AFFILIATION_INDIVIDUAL_FICHA_DOWNLOADED', 'administration.affiliations.ficha.download', [
+        SecurityAudit::log(self::auditEvent($routeName, 'DOWNLOADED'), $routeName, [
             'affiliation_id' => $affiliation->id,
             'affiliation_code' => $affiliation->code,
             'titular_name' => $affiliation->full_name_ti,
@@ -36,8 +37,9 @@ class AffiliationFichaPdfController extends Controller
 
         $binary = AffiliationFichaPdfService::outputBinaryCached($affiliation);
         $filename = AffiliationFichaPdfService::downloadFilename($affiliation);
+        $routeName = (string) (request()->route()?->getName() ?: 'administration.affiliations.ficha.preview');
 
-        SecurityAudit::log('AUDIT_ADMINISTRATION_AFFILIATION_INDIVIDUAL_FICHA_VIEWED', 'administration.affiliations.ficha.preview', [
+        SecurityAudit::log(self::auditEvent($routeName, 'VIEWED'), $routeName, [
             'affiliation_id' => $affiliation->id,
             'affiliation_code' => $affiliation->code,
             'titular_name' => $affiliation->full_name_ti,
@@ -47,6 +49,20 @@ class AffiliationFichaPdfController extends Controller
         return response($binary, 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'inline; filename="'.$filename.'"');
+    }
+
+    private static function auditEvent(string $routeName, string $action): string
+    {
+        $isBusiness = str_starts_with($routeName, 'business.');
+
+        return match ($action) {
+            'DOWNLOADED' => $isBusiness
+                ? 'AUDIT_BUSINESS_AFFILIATION_INDIVIDUAL_FICHA_DOWNLOADED'
+                : 'AUDIT_ADMINISTRATION_AFFILIATION_INDIVIDUAL_FICHA_DOWNLOADED',
+            default => $isBusiness
+                ? 'AUDIT_BUSINESS_AFFILIATION_INDIVIDUAL_FICHA_VIEWED'
+                : 'AUDIT_ADMINISTRATION_AFFILIATION_INDIVIDUAL_FICHA_VIEWED',
+        };
     }
 
     private static function prepareLongRunningPdfResponse(): void

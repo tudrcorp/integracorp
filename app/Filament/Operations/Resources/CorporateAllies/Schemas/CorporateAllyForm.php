@@ -8,8 +8,8 @@ use App\Models\City;
 use App\Models\Country;
 use App\Models\State;
 use App\Models\SupplierClasificacion;
-use App\Models\SupplierEstatusSistema;
 use App\Models\SupplierStatusConvenio;
+use App\Support\Operations\SupplierEstatusSistemaOptions;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -199,12 +199,12 @@ class CorporateAllyForm
                                                     ->preload(),
                                                 Select::make('status_agreement')
                                                     ->label('Estatus del convenio')
-                                                    ->options(SupplierEstatusSistema::query()->orderBy('description')->pluck('description', 'description'))
+                                                    ->options(fn (): array => SupplierEstatusSistemaOptions::forSelect())
                                                     ->searchable()
                                                     ->preload(),
                                                 Select::make('status')
                                                     ->label('Estatus en sistema')
-                                                    ->options(SupplierEstatusSistema::query()->orderBy('description')->pluck('description', 'description'))
+                                                    ->options(fn (): array => SupplierEstatusSistemaOptions::forSelect())
                                                     ->searchable()
                                                     ->preload(),
                                             ]),

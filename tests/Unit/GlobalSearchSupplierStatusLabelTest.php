@@ -17,3 +17,10 @@ it('renderiza badge para convenio preferencial', function (): void {
     expect((string) $html)->toContain('PREFERENCIAL')
         ->toContain('fi-global-search-supplier-badge--convenio-preferencial');
 });
+
+it('renderiza badge inactivo para CLINICA CERRADA', function (): void {
+    $html = GlobalSearchSupplierStatusLabel::sistemaHtml('CLINICA CERRADA');
+
+    expect((string) $html)->toContain('CLINICA CERRADA')
+        ->toContain('fi-global-search-supplier-badge--sistema-inactivo');
+});
