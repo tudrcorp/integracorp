@@ -39,7 +39,8 @@ it('la plantilla de ficha del prospecto incluye las secciones principales', func
     expect($contents)
         ->toContain('Ficha del Prospecto')
         ->toContain('Información general')
-        ->toContain('Personas de contacto')
+        ->toContain('Contactos secundarios')
+        ->toContain('Sucursales')
         ->toContain('Ubicación')
         ->toContain('Tareas de seguimiento')
         ->toContain('Observaciones');
