@@ -129,5 +129,6 @@ it('pagina editar prospecto usa botones con estilo iOS', function (): void {
         ->toContain('aviso-btn-ios-danger')
         ->toContain('aviso-btn-ios-primary')
         ->toContain('ViewAction::make()')
-        ->toContain('DeleteAction::make()');
+        ->toContain('ProspectAgentDeletionActions::deleteAction(')
+        ->not->toContain('DeleteAction::make()');
 });

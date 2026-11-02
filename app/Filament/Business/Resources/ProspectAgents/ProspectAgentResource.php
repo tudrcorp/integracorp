@@ -17,6 +17,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use UnitEnum;
 
 class ProspectAgentResource extends Resource
@@ -51,6 +52,14 @@ class ProspectAgentResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['prospectAgentContacts', 'prospectAgentBranches.state', 'prospectAgentBranches.city', 'prospectAgentCoverageZones.state', 'prospectAgentCoverageZones.city']);
+    }
+
+    /**
+     * Ver un prospecto eliminado debe seguir funcionando (motivo y restauración); editarlo no.
+     */
+    public static function getRecordRouteBindingEloquentQuery(): Builder
+    {
+        return parent::getRecordRouteBindingEloquentQuery()->withoutGlobalScopes([SoftDeletingScope::class]);
     }
 
     public static function getRelations(): array

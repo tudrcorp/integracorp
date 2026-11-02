@@ -4,19 +4,21 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\ProspectAgents\Tables;
 
+use App\Filament\Business\Resources\ProspectAgents\ProspectAgentDeletionActions;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentLabels;
 use App\Http\Controllers\ProspectAgentExportCsvController;
 use App\Models\ProspectAgent;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -190,7 +192,28 @@ class ProspectAgentsTable
                         ->sortable()
                         ->toggleable(isToggledHiddenByDefault: true),
                 ]),
+                ColumnGroup::make('Eliminación', [
+                    TextColumn::make('deleted_at')
+                        ->label('Eliminado el')
+                        ->dateTime('d/m/Y H:i')
+                        ->color('danger')
+                        ->placeholder('—')
+                        ->sortable()
+                        ->visible(fn (HasTable $livewire): bool => self::isShowingTrashed($livewire)),
+                    TextColumn::make('deleted_by')
+                        ->label('Eliminado por')
+                        ->placeholder('—')
+                        ->visible(fn (HasTable $livewire): bool => self::isShowingTrashed($livewire)),
+                    TextColumn::make('deletion_reason')
+                        ->label('Motivo')
+                        ->limit(60)
+                        ->wrap()
+                        ->tooltip(fn (ProspectAgent $record): ?string => filled($record->deletion_reason) ? (string) $record->deletion_reason : null)
+                        ->placeholder('—')
+                        ->visible(fn (HasTable $livewire): bool => self::isShowingTrashed($livewire)),
+                ]),
             ])
+            ->recordClasses(fn (ProspectAgent $record): ?string => $record->trashed() ? 'opacity-70' : null)
             ->filters([
                 SelectFilter::make('status')
                     ->label('Estatus')
@@ -207,6 +230,12 @@ class ProspectAgentsTable
                     ->options(ProspectAgentLabels::referenceOptions())
                     ->placeholder('Todos')
                     ->searchable(),
+                TrashedFilter::make()
+                    ->label('Eliminados')
+                    ->placeholder('Ocultar eliminados')
+                    ->trueLabel('Mostrar también eliminados')
+                    ->falseLabel('Solo eliminados')
+                    ->native(false),
             ])
             ->recordActions([
                 ViewAction::make()
@@ -214,7 +243,9 @@ class ProspectAgentsTable
                     ->icon(Heroicon::OutlinedEye),
                 EditAction::make()
                     ->label('Editar')
-                    ->icon(Heroicon::OutlinedPencilSquare),
+                    ->icon(Heroicon::OutlinedPencilSquare)
+                    ->hidden(fn (ProspectAgent $record): bool => $record->trashed()),
+                ProspectAgentDeletionActions::restoreAction(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -238,8 +269,19 @@ class ProspectAgentsTable
 
                             return redirect()->route('business.prospect-agents.export-csv', ['token' => $token]);
                         }),
-                    DeleteBulkAction::make(),
+                    ProspectAgentDeletionActions::bulkDelete(),
+                    ProspectAgentDeletionActions::bulkRestore(),
                 ]),
             ]);
+    }
+
+    /**
+     * Las columnas de eliminación solo aparecen cuando el filtro «Eliminados» incluye registros eliminados.
+     */
+    public static function isShowingTrashed(HasTable $livewire): bool
+    {
+        $value = $livewire->getTableFilterState('trashed')['value'] ?? null;
+
+        return $value !== null && $value !== '';
     }
 }
