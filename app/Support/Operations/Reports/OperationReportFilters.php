@@ -29,12 +29,22 @@ final readonly class OperationReportFilters
 
     public const PERIOD_CUSTOM = 'custom';
 
+    public const STOCK_AVAILABLE = 'available';
+
+    public const STOCK_LOW = 'low';
+
+    public const STOCK_OUT = 'out';
+
     /**
      * @param  list<string>  $statuses
      * @param  list<string>  $coverages
      * @param  list<string>  $businessLines
      * @param  list<string>  $services
      * @param  list<string>  $serviceProviders
+     * @param  list<int>  $ubications  Ubicaciones de inventario (ids).
+     * @param  list<int>  $categories  Categorías de producto (ids).
+     * @param  list<int>  $products  Productos (ids).
+     * @param  list<string>  $stockStatuses  {@see self::stockStatusOptions()}
      */
     public function __construct(
         public CarbonImmutable $from,
@@ -44,6 +54,10 @@ final readonly class OperationReportFilters
         public array $businessLines = [],
         public array $services = [],
         public array $serviceProviders = [],
+        public array $ubications = [],
+        public array $categories = [],
+        public array $products = [],
+        public array $stockStatuses = [],
     ) {
         if ($from->greaterThan($to)) {
             throw new InvalidArgumentException('La fecha inicial no puede ser posterior a la final.');
@@ -61,6 +75,18 @@ final readonly class OperationReportFilters
             self::PERIOD_THIS_MONTH => 'Este mes',
             self::PERIOD_LAST_MONTH => 'Mes anterior',
             self::PERIOD_CUSTOM => 'Personalizado',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function stockStatusOptions(): array
+    {
+        return [
+            self::STOCK_AVAILABLE => 'Disponible',
+            self::STOCK_LOW => 'Stock bajo',
+            self::STOCK_OUT => 'Agotado',
         ];
     }
 
@@ -85,6 +111,13 @@ final readonly class OperationReportFilters
             businessLines: self::strings($data['business_lines'] ?? []),
             services: self::strings($data['services'] ?? []),
             serviceProviders: self::strings($data['service_providers'] ?? []),
+            ubications: self::ids($data['ubications'] ?? []),
+            categories: self::ids($data['categories'] ?? []),
+            products: self::ids($data['products'] ?? []),
+            stockStatuses: array_values(array_intersect(
+                self::strings($data['stock_statuses'] ?? []),
+                array_keys(self::stockStatusOptions()),
+            )),
         );
     }
 
@@ -171,6 +204,10 @@ final readonly class OperationReportFilters
             'business_lines' => $this->businessLines,
             'services' => $this->services,
             'service_providers' => $this->serviceProviders,
+            'ubications' => $this->ubications,
+            'categories' => $this->categories,
+            'products' => $this->products,
+            'stock_statuses' => $this->stockStatuses,
         ];
     }
 
@@ -185,6 +222,26 @@ final readonly class OperationReportFilters
         } catch (\Throwable) {
             throw new InvalidArgumentException("La fecha {$label} del periodo no es válida.");
         }
+    }
+
+    /**
+     * @return list<int>
+     */
+    private static function ids(mixed $values): array
+    {
+        $ids = [];
+
+        foreach ((array) $values as $value) {
+            if (is_int($value) || (is_string($value) && ctype_digit(trim($value)))) {
+                $id = (int) $value;
+
+                if ($id > 0) {
+                    $ids[] = $id;
+                }
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**

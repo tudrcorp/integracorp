@@ -8,9 +8,14 @@ use App\Enums\OperationReportFormat;
 use App\Enums\OperationReportType;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Jobs\GenerateOperationReportJob;
+use App\Models\OperationInventoryProduct;
+use App\Models\OperationInventoryProductCategory;
+use App\Models\OperationInventoryUbication;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\OperationsDashboardMetrics;
+use App\Support\Operations\Reports\OperationInventoryReportAccess;
+use App\Support\Operations\Reports\OperationInventoryReportBuilder;
 use App\Support\Operations\Reports\OperationReportBuilder;
 use App\Support\Operations\Reports\OperationReportFilters;
 use App\Support\Operations\Reports\OperationReportGenerator;
@@ -43,7 +48,9 @@ use Throwable;
 use UnitEnum;
 
 /**
- * Generador de reportes de Operaciones sobre `operation_service_statistics`.
+ * Generador de reportes de Operaciones: servicios (`operation_service_statistics`)
+ * e inventario propio (Diagnomóvil), este último solo para analistas TDG con
+ * permiso de inventario ({@see OperationInventoryReportAccess}).
  *
  * Tres pasos en una sola pantalla: tipo, periodo (con filtros opcionales
  * plegados) y formato. Lo pequeño se descarga al instante; el detalle grande
@@ -98,7 +105,9 @@ class GeneradorDeReportes extends Page
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'Elija el reporte, el periodo y el formato. Los datos salen de la trazabilidad de servicios de Operaciones.';
+        return OperationInventoryReportAccess::allows()
+            ? 'Elija el reporte, el periodo y el formato. Hay reportes de servicios y del inventario Diagnomóvil.'
+            : 'Elija el reporte, el periodo y el formato. Los datos salen de la trazabilidad de servicios de Operaciones.';
     }
 
     public function form(Schema $schema): Schema
@@ -110,9 +119,9 @@ class GeneradorDeReportes extends Page
                         ViewField::make('type')
                             ->hiddenLabel()
                             ->view('filament.operations.pages.partials.report-type-picker')
-                            ->viewData(['types' => OperationReportType::cases()])
+                            ->viewData(['groups' => self::typeGroups()])
                             ->required()
-                            ->in(array_column(OperationReportType::cases(), 'value'))
+                            ->in(fn (): array => array_column(self::availableTypes(), 'value'))
                             ->live()
                             ->afterStateUpdated(function (?string $state, Get $get, Set $set): void {
                                 $type = OperationReportType::tryFrom((string) $state);
@@ -125,8 +134,10 @@ class GeneradorDeReportes extends Page
                     ])
                     ->columnSpanFull(),
                 Section::make('2. Periodo')
-                    ->description('Por fecha de inicio del servicio.')
-                    ->visible(fn (Get $get): bool => self::selectedType($get)?->usesFilters() ?? true)
+                    ->description(fn (Get $get): string => self::selectedType($get)?->isInventory()
+                        ? 'Por fecha del movimiento de inventario.'
+                        : 'Por fecha de inicio del servicio.')
+                    ->visible(fn (Get $get): bool => self::selectedType($get)?->usesPeriod() ?? true)
                     ->schema([
                         ToggleButtons::make('period')
                             ->hiddenLabel()
@@ -155,6 +166,7 @@ class GeneradorDeReportes extends Page
                             ]),
                         Section::make('Filtros (opcional)')
                             ->description('Déjelos vacíos para incluir todo.')
+                            ->visible(fn (Get $get): bool => ! (self::selectedType($get)?->isInventory() ?? false))
                             ->collapsible()
                             ->collapsed()
                             ->compact()
@@ -168,6 +180,46 @@ class GeneradorDeReportes extends Page
                                         self::filterSelect('service_providers', 'Proveedor de servicio', 'service_provider')
                                             ->columnSpanFull(),
                                     ]),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
+                Section::make(fn (Get $get): string => self::selectedType($get)?->usesPeriod() ? 'Filtros de inventario (opcional)' : '2. Filtros de inventario (opcional)')
+                    ->description(fn (Get $get): string => self::selectedType($get)?->usesPeriod()
+                        ? 'Déjelos vacíos para incluir todo el inventario.'
+                        : 'Este reporte muestra la existencia al momento de generarlo. Déjelos vacíos para incluir todo.')
+                    ->visible(fn (Get $get): bool => self::selectedType($get)?->isInventory() ?? false)
+                    ->schema([
+                        Grid::make(['default' => 1, 'md' => 2])
+                            ->schema([
+                                Select::make('ubications')
+                                    ->label('Ubicación')
+                                    ->multiple()
+                                    ->placeholder('Todas')
+                                    ->options(fn (): array => self::inventoryOptions('ubications'))
+                                    ->live(),
+                                Select::make('categories')
+                                    ->label('Categoría')
+                                    ->multiple()
+                                    ->searchable()
+                                    ->placeholder('Todas')
+                                    ->options(fn (): array => self::inventoryOptions('categories'))
+                                    ->live(),
+                                Select::make('products')
+                                    ->label('Producto')
+                                    ->multiple()
+                                    ->searchable()
+                                    ->placeholder('Todos')
+                                    ->helperText('Busque por nombre o código.')
+                                    ->options(fn (): array => self::inventoryOptions('products'))
+                                    ->live(),
+                                Select::make('stock_statuses')
+                                    ->label('Estado del stock')
+                                    ->multiple()
+                                    ->placeholder('Todos')
+                                    ->options(OperationReportFilters::stockStatusOptions())
+                                    ->helperText(fn (): string => 'Stock bajo: hasta '.OperationInventoryReportBuilder::lowStockThreshold().' unidades.')
+                                    ->visible(fn (Get $get): bool => self::selectedType($get) === OperationReportType::InventoryGeneral)
+                                    ->live(),
                             ]),
                     ])
                     ->columnSpanFull(),
@@ -234,6 +286,12 @@ class GeneradorDeReportes extends Page
         $type = OperationReportType::from((string) $data['type']);
         $format = OperationReportFormat::from((string) $data['format']);
 
+        if ($type->isInventory() && ! OperationInventoryReportAccess::allows()) {
+            $this->notifyError('Sin acceso', 'No tiene permiso para generar reportes de inventario.');
+
+            return null;
+        }
+
         if (! $type->supportsFormat($format)) {
             $this->notifyError('Formato no disponible', '«'.$type->label().'» solo se genera en '.implode(', ', array_map(fn (OperationReportFormat $f): string => $f->label(), $type->formats())).'.');
 
@@ -251,7 +309,7 @@ class GeneradorDeReportes extends Page
         $count = OperationReportBuilder::count($type, $filters);
 
         if ($count === 0) {
-            $this->notifyError('No hay datos', 'No hay servicios para el periodo y los filtros seleccionados.', 'warning');
+            $this->notifyError('No hay datos', 'No hay '.$type->rowNoun()[1].' para '.($type->usesPeriod() ? 'el periodo y ' : '').'los filtros seleccionados.', 'warning');
 
             return null;
         }
@@ -264,7 +322,7 @@ class GeneradorDeReportes extends Page
 
             Notification::make()
                 ->title('Estamos generando su reporte')
-                ->body(number_format($count, 0, ',', '.').' servicios. Puede seguir trabajando: aparecerá en «Mis reportes recientes» y en la campana.')
+                ->body(number_format($count, 0, ',', '.').' '.$type->rowNoun()[$count === 1 ? 0 : 1].'. Puede seguir trabajando: aparecerá en «Mis reportes recientes» y en la campana.')
                 ->info()
                 ->send();
 
@@ -344,18 +402,23 @@ class GeneradorDeReportes extends Page
                 'business_lines' => $get('business_lines'),
                 'services' => $get('services'),
                 'service_providers' => $get('service_providers'),
+                'ubications' => $get('ubications'),
+                'categories' => $get('categories'),
+                'products' => $get('products'),
+                'stock_statuses' => $type === OperationReportType::InventoryGeneral ? $get('stock_statuses') : [],
             ]));
         } catch (InvalidArgumentException $exception) {
             return new HtmlString('<p class="text-sm text-amber-700 dark:text-amber-400">'.e($exception->getMessage()).'</p>');
         }
 
         $formatted = number_format($count, 0, ',', '.');
+        [$singular, $plural] = $type->rowNoun();
         $headline = $count === 0
-            ? 'No hay servicios con estos criterios.'
-            : 'Se incluirán <strong>'.$formatted.'</strong> '.($count === 1 ? 'servicio' : 'servicios').'.';
+            ? 'No hay '.$plural.' con estos criterios.'
+            : 'Se incluirán <strong>'.$formatted.'</strong> '.($count === 1 ? $singular : $plural).'.';
 
         $hint = match (true) {
-            $count === 0 => 'Amplíe el periodo o quite filtros.',
+            $count === 0 => $type->usesPeriod() ? 'Amplíe el periodo o quite filtros.' : 'Quite filtros para ver más resultados.',
             $format === OperationReportFormat::Pdf && $type->isDetail() && $count > OperationReportGenerator::PDF_ROW_LIMIT => 'El PDF mostrará los primeros '.number_format(OperationReportGenerator::PDF_ROW_LIMIT, 0, ',', '.').' y se generará en segundo plano. Para el listado completo use Excel o CSV.',
             $format === OperationReportFormat::Pdf && $type->hasManyRows() => 'El PDF (hasta '.number_format(OperationReportGenerator::PDF_ROW_LIMIT, 0, ',', '.').' filas) se generará en segundo plano y le avisaremos al terminar.',
             $format !== null && OperationReportGenerator::shouldQueue($type, $format, $count) => 'Es un reporte grande: se generará en segundo plano y le avisaremos al terminar.',
@@ -387,6 +450,56 @@ class GeneradorDeReportes extends Page
     private static function selectedType(Get $get): ?OperationReportType
     {
         return OperationReportType::tryFrom((string) $get('type'));
+    }
+
+    /**
+     * Tipos que el usuario puede generar: el inventario solo con su permiso.
+     *
+     * @return list<OperationReportType>
+     */
+    private static function availableTypes(): array
+    {
+        return OperationInventoryReportAccess::allows()
+            ? OperationReportType::cases()
+            : OperationReportType::forGroup(OperationReportType::GROUP_SERVICES);
+    }
+
+    /**
+     * @return list<array{label: string, types: list<OperationReportType>}>
+     */
+    private static function typeGroups(): array
+    {
+        $groups = [['label' => 'Servicios', 'types' => OperationReportType::forGroup(OperationReportType::GROUP_SERVICES)]];
+
+        if (OperationInventoryReportAccess::allows()) {
+            $groups[] = ['label' => 'Inventario Diagnomóvil', 'types' => OperationReportType::forGroup(OperationReportType::GROUP_INVENTORY)];
+        }
+
+        return $groups;
+    }
+
+    /**
+     * Opciones de los filtros de inventario (catálogos cortos, cacheados).
+     *
+     * @return array<int, string>
+     */
+    private static function inventoryOptions(string $catalog): array
+    {
+        return Cache::remember(
+            'operation-reports:inventory-options:'.$catalog,
+            self::FILTER_OPTIONS_TTL_SECONDS,
+            fn (): array => match ($catalog) {
+                'ubications' => OperationInventoryUbication::query()->orderBy('name')->pluck('name', 'id')->all(),
+                'categories' => OperationInventoryProductCategory::query()->orderBy('name')->pluck('name', 'id')->all(),
+                'products' => OperationInventoryProduct::query()
+                    ->orderBy('name')
+                    ->limit(2000)
+                    ->get(['id', 'code', 'name'])
+                    ->mapWithKeys(fn (OperationInventoryProduct $product): array => [$product->id => $product->name.' · '.$product->code])
+                    ->all(),
+                default => [],
+            },
+        );
     }
 
     private static function filterSelect(string $name, string $label, string $column): Select

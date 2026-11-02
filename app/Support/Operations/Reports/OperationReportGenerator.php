@@ -7,6 +7,7 @@ namespace App\Support\Operations\Reports;
 use App\Enums\OperationReportFormat;
 use App\Enums\OperationReportType;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -84,6 +85,10 @@ final class OperationReportGenerator
             throw new \InvalidArgumentException('El reporte «'.$type->label().'» no está disponible en '.$format->label().'.');
         }
 
+        if ($type->isInventory() && ! OperationInventoryReportAccess::allows()) {
+            throw new AuthorizationException('No tiene acceso a los reportes de inventario.');
+        }
+
         $disk = self::disk();
         $relativePath = self::userDirectory($userId).'/'.$filename;
         $disk->makeDirectory(self::userDirectory($userId));
@@ -121,7 +126,7 @@ final class OperationReportGenerator
             return null;
         }
 
-        $unit = $type->isDetail() ? 'servicios' : 'pacientes';
+        $unit = $type->rowNoun()[1];
 
         return 'El PDF muestra los primeros '.number_format(self::PDF_ROW_LIMIT, 0, ',', '.')
             .' de '.number_format($total, 0, ',', '.').' '.$unit
