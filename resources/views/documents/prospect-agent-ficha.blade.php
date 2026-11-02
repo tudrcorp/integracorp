@@ -143,6 +143,7 @@
     $val = static fn ($v): string => filled($v) ? (string) $v : '—';
     $contacts = collect($prospect->prospectAgentContacts ?? []);
     $branches = collect($prospect->prospectAgentBranches ?? []);
+    $coverageZones = collect($prospect->prospectAgentCoverageZones ?? []);
     $observations = collect($prospect->prospect_agent_observations ?? [])->take(12);
     $tasks = collect($prospect->prospect_agent_tasks ?? [])->take(12);
 @endphp
@@ -294,6 +295,34 @@
                         <td>{{ $val($branch->phone) }}</td>
                         <td>{{ $val($branch->local_phone) }}</td>
                         <td class="break-word">{{ $val($branch->address) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+</div>
+
+<div class="section-block">
+    <p class="section-title">Zonas de cobertura</p>
+    @if ($coverageZones->isEmpty())
+        <p class="muted">Sin zonas de cobertura registradas.</p>
+    @else
+        <table class="data-table contacts-table">
+            <thead>
+                <tr>
+                    <th style="width: 28%;">Clasificación</th>
+                    <th style="width: 28%;">Tipo de servicio</th>
+                    <th style="width: 22%;">Estado</th>
+                    <th style="width: 22%;">Ciudad</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($coverageZones as $zone)
+                    <tr>
+                        <td class="break-word">{{ $val($zone->classification) }}</td>
+                        <td class="break-word">{{ $val($zone->service_type) }}</td>
+                        <td>{{ $val($zone->state?->definition) }}</td>
+                        <td>{{ $zone->city?->definition ?? 'Todo el estado' }}</td>
                     </tr>
                 @endforeach
             </tbody>

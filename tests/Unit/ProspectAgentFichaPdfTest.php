@@ -41,6 +41,7 @@ it('la plantilla de ficha del prospecto incluye las secciones principales', func
         ->toContain('Información general')
         ->toContain('Contactos secundarios')
         ->toContain('Sucursales')
+        ->toContain('Zonas de cobertura')
         ->toContain('Ubicación')
         ->toContain('Tareas de seguimiento')
         ->toContain('Observaciones');

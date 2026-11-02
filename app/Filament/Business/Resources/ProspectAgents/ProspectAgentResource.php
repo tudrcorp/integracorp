@@ -50,7 +50,7 @@ class ProspectAgentResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['prospectAgentContacts', 'prospectAgentBranches.state', 'prospectAgentBranches.city']);
+        return parent::getEloquentQuery()->with(['prospectAgentContacts', 'prospectAgentBranches.state', 'prospectAgentBranches.city', 'prospectAgentCoverageZones.state', 'prospectAgentCoverageZones.city']);
     }
 
     public static function getRelations(): array

@@ -10,6 +10,7 @@ use App\Models\Country;
 use App\Models\State;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -313,6 +314,76 @@ class ProspectAgentForm
                                             ]),
                                     ]),
                             ]),
+                        Tab::make('Zonas de cobertura')
+                            ->icon(Heroicon::OutlinedGlobeAmericas)
+                            ->schema([
+                                Section::make('Zonas de cobertura')
+                                    ->icon(Heroicon::OutlinedGlobeAmericas)
+                                    ->description('Dónde atiende o vende el prospecto. Si dejas la ciudad vacía, la zona cubre todo el estado.')
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                Repeater::make('prospectAgentCoverageZones')
+                                                    ->relationship()
+                                                    ->hiddenLabel()
+                                                    ->table([
+                                                        TableColumn::make('Clasificación'),
+                                                        TableColumn::make('Tipo de servicio'),
+                                                        TableColumn::make('Estado')->markAsRequired(),
+                                                        TableColumn::make('Ciudad'),
+                                                    ])
+                                                    ->schema([
+                                                        TextInput::make('classification')
+                                                            ->label('Clasificación')
+                                                            ->maxLength(255)
+                                                            ->placeholder('Ej. Corretaje'),
+                                                        TextInput::make('service_type')
+                                                            ->label('Tipo de servicio')
+                                                            ->maxLength(255)
+                                                            ->placeholder('Ej. Venta de planes'),
+                                                        Select::make('state_id')
+                                                            ->label('Estado')
+                                                            ->options(fn (Get $get): array => self::branchStateOptions($get('../../country_id')))
+                                                            ->required(fn (Get $get): bool => self::coverageZoneHasData([
+                                                                'classification' => $get('classification'),
+                                                                'service_type' => $get('service_type'),
+                                                                'city_id' => $get('city_id'),
+                                                            ]))
+                                                            ->validationMessages([
+                                                                'required' => 'Selecciona el estado de esta zona.',
+                                                            ])
+                                                            ->live()
+                                                            ->afterStateUpdated(fn (Set $set): mixed => $set('city_id', null))
+                                                            ->searchable()
+                                                            ->preload()
+                                                            ->native(false)
+                                                            ->placeholder('Selecciona un estado'),
+                                                        Select::make('city_id')
+                                                            ->label('Ciudad')
+                                                            ->options(fn (Get $get): array => self::branchCityOptions($get('state_id')))
+                                                            ->disabled(fn (Get $get): bool => blank($get('state_id')))
+                                                            ->searchable()
+                                                            ->preload()
+                                                            ->native(false)
+                                                            ->placeholder('Todo el estado'),
+                                                    ])
+                                                    ->defaultItems(0)
+                                                    ->minItems(0)
+                                                    ->addActionLabel('Agregar zona')
+                                                    ->reorderable()
+                                                    ->orderColumn('sort_order')
+                                                    ->mutateRelationshipDataBeforeCreateUsing(self::discardEmptyCoverageZone(...))
+                                                    ->mutateRelationshipDataBeforeSaveUsing(self::discardEmptyCoverageZone(...))
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ]),
+                            ]),
                         Tab::make('Embudo comercial')
                             ->icon(Heroicon::OutlinedChartBar)
                             ->schema([
@@ -590,6 +661,37 @@ class ProspectAgentForm
     private static function discardEmptyBranch(array $data): ?array
     {
         return self::branchHasData($data, includeName: true) ? $data : null;
+    }
+
+    /**
+     * Una zona con clasificación, tipo de servicio o ciudad necesita su estado.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function coverageZoneHasData(array $data, bool $includeState = false): bool
+    {
+        $fields = ['classification', 'service_type', 'city_id'];
+
+        if ($includeState) {
+            $fields[] = 'state_id';
+        }
+
+        foreach ($fields as $field) {
+            if (filled($data[$field] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    private static function discardEmptyCoverageZone(array $data): ?array
+    {
+        return self::coverageZoneHasData($data, includeState: true) ? $data : null;
     }
 
     /**
