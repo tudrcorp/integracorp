@@ -5,22 +5,23 @@ declare(strict_types=1);
 namespace App\Support\Quotes;
 
 use App\Models\AgeRange;
+use App\Models\CorporateQuote;
 use App\Models\IndividualQuote;
-use App\Models\IndividualQuoteUpgrade;
 use App\Models\Upgrade;
 use App\Support\PlanGenerators\PlanGeneratorUpgrades;
 use App\Support\SecurityAudit;
 use App\Support\Upgrades\UpgradeCardCatalog;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use InvalidArgumentException;
 
 /**
- * Upgrades de una cotización individual (Negocios → Cotizaciones individuales).
+ * Upgrades de una cotización, individual o corporativa, en Negocios y en la red comercial.
  *
  * La cotización no conoce edades, solo cuántas personas hay en cada rango de edad del plan. Se
  * usan las mismas reglas del generador de planes ({@see PlanGeneratorUpgrades}): el precio de
  * cada rango es el del rango del upgrade que lo contiene (el más alto si cruza dos); un rango
- * cubierto en parte solo se cobra si el analista declara cuántas personas califican, con nota;
+ * cubierto en parte solo se cobra si quien cotiza declara cuántas personas califican, con nota;
  * un rango sin ninguna edad cubierta no aplica. En «múltiples planes» la población de rangos
  * iguales se suma: el precio del upgrade depende solo de la edad.
  *
@@ -130,9 +131,9 @@ final class IndividualQuoteUpgrades
      *
      * @throws InvalidArgumentException
      */
-    public static function persist(IndividualQuote $quote, array $state, array $rateRows): void
+    public static function persist(IndividualQuote|CorporateQuote $quote, array $state, array $rateRows): void
     {
-        $stored = $quote->upgrades()->get()->map(fn (IndividualQuoteUpgrade $line): array => $line->toLine())->values()->all();
+        $stored = $quote->upgrades()->get()->map(fn (Model $line): array => $line->toLine())->values()->all();
         $result = self::quote($state, $rateRows, $stored);
 
         if ($result['errors'] !== []) {
@@ -143,8 +144,7 @@ final class IndividualQuoteUpgrades
         $actor = trim((string) (Auth::user()?->name ?? '')) ?: 'system';
 
         foreach ($result['upgrades'] as $index => $line) {
-            IndividualQuoteUpgrade::query()->create([
-                'individual_quote_id' => $quote->getKey(),
+            $quote->upgrades()->create([
                 'line_key' => (string) $line['line_key'],
                 'upgrade_id' => $line['upgrade_id'] ?? null,
                 'upgrade_coverage_id' => $line['upgrade_coverage_id'] ?? null,
@@ -172,17 +172,23 @@ final class IndividualQuoteUpgrades
         }
 
         if ($result['upgrades'] !== []) {
-            SecurityAudit::log('AUDIT_BUSINESS_INDIVIDUAL_QUOTE_UPGRADES', 'business.individual-quotes.upgrades', [
-                'individual_quote_id' => $quote->getKey(),
-                'code' => $quote->code,
-                'upgrades' => array_map(static fn (array $line): array => [
-                    'upgrade' => $line['upgrade_name'],
-                    'coverage_id' => $line['upgrade_coverage_id'] ?? null,
-                    'persons' => $line['persons'],
-                    'annual' => $line['annual'],
-                    'manual_ranges' => count((array) ($line['manual_ranges'] ?? [])),
-                ], $result['upgrades']),
-            ]);
+            $isCorporate = $quote instanceof CorporateQuote;
+
+            SecurityAudit::log(
+                $isCorporate ? 'AUDIT_BUSINESS_CORPORATE_QUOTE_UPGRADES' : 'AUDIT_BUSINESS_INDIVIDUAL_QUOTE_UPGRADES',
+                $isCorporate ? 'business.corporate-quotes.upgrades' : 'business.individual-quotes.upgrades',
+                [
+                    $isCorporate ? 'corporate_quote_id' : 'individual_quote_id' => $quote->getKey(),
+                    'code' => $quote->code,
+                    'upgrades' => array_map(static fn (array $line): array => [
+                        'upgrade' => $line['upgrade_name'],
+                        'coverage_id' => $line['upgrade_coverage_id'] ?? null,
+                        'persons' => $line['persons'],
+                        'annual' => $line['annual'],
+                        'manual_ranges' => count((array) ($line['manual_ranges'] ?? [])),
+                    ], $result['upgrades']),
+                ],
+            );
         }
     }
 
@@ -194,7 +200,7 @@ final class IndividualQuoteUpgrades
      *
      * @return array{lines: list<array{name: string, coverage: string, persons: int, annual: float, rows: list<array<string, mixed>>, services: list<array<string, mixed>>, logo: array{image: ?string, color: string, initials: string}}>, annual_total: float}
      */
-    public static function summary(IndividualQuote $quote): array
+    public static function summary(IndividualQuote|CorporateQuote $quote): array
     {
         $upgrades = $quote->relationLoaded('upgrades') ? $quote->upgrades : $quote->upgrades()->get();
         $catalog = Upgrade::query()

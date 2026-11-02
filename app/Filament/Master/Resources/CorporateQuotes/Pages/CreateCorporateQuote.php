@@ -2,22 +2,19 @@
 
 namespace App\Filament\Master\Resources\CorporateQuotes\Pages;
 
-use App\Models\Fee;
-use App\Models\User;
-use App\Models\AgeRange;
-use Filament\Actions\Action;
-use Illuminate\Support\Facades\DB;
-use App\Models\DetailCorporateQuote;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Crypt;
-use Filament\Notifications\Notification;
-use App\Http\Controllers\UtilsController;
-use Filament\Resources\Pages\CreateRecord;
-use App\Http\Controllers\NotificationController;
+use App\Filament\Concerns\HandlesQuoteUpgrades;
 use App\Filament\Master\Resources\CorporateQuotes\CorporateQuoteResource;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UtilsController;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Auth;
 
 class CreateCorporateQuote extends CreateRecord
 {
+    use HandlesQuoteUpgrades;
+
     protected static string $resource = CorporateQuoteResource::class;
 
     protected static ?string $title = 'Formulario de Cotización Corporativa';
@@ -39,30 +36,36 @@ class CreateCorporateQuote extends CreateRecord
         return [];
     }
 
+    protected function quotesForNetwork(): bool
+    {
+        return true;
+    }
+
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
     }
 
-    //mutateFormDataBeforeSave()
+    // mutateFormDataBeforeSave()
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $data = $this->captureQuoteUpgrades($data);
 
-        if (!isset($data['observation_dress_tailor'])) {
+        if (! isset($data['observation_dress_tailor'])) {
             if ($data['plan'] == 1) {
-                //guardar en la variable de sesion los detalles de la cotizacion
+                // guardar en la variable de sesion los detalles de la cotizacion
                 session()->put('details_quote', $data['details_quote_plan_inicial']);
             }
             if ($data['plan'] == 2) {
-                //guardar en la variable de sesion los detalles de la cotizacion
+                // guardar en la variable de sesion los detalles de la cotizacion
                 session()->put('details_quote', $data['details_quote_plan_ideal']);
             }
             if ($data['plan'] == 3) {
-                //guardar en la variable de sesion los detalles de la cotizacion
+                // guardar en la variable de sesion los detalles de la cotizacion
                 session()->put('details_quote', $data['details_quote_plan_especial']);
             }
             if ($data['plan'] == 'CM') {
-                //guardar en la variable de sesion los detalles de la cotizacion
+                // guardar en la variable de sesion los detalles de la cotizacion
                 session()->put('details_quote', $data['details_quote']);
             }
 
@@ -75,14 +78,16 @@ class CreateCorporateQuote extends CreateRecord
 
     protected function afterCreate(): void
     {
+        $this->persistQuoteUpgrades($this->getRecord());
+
         try {
 
-            //Validacion para cotizacion Dress-Tailor
+            // Validacion para cotizacion Dress-Tailor
             if (isset($this->data['observation_dress_tailor'])) {
                 return;
             }
 
-            //recupero la varaiable de sesion con los detalles de la cotizacion
+            // recupero la varaiable de sesion con los detalles de la cotizacion
             $details_quote = session()->get('details_quote');
 
             if ($details_quote[0]['plan_id'] == null) {
@@ -128,7 +133,7 @@ class CreateCorporateQuote extends CreateRecord
                 UtilsController::createCorporateQuoteEspecific($record, $array_form, $array_details, $details_quote);
             }
 
-            //Notificacion por whatsapp al telefono de cotizaciones
+            // Notificacion por whatsapp al telefono de cotizaciones
             $sendNotificationWp = NotificationController::createdCorporateQuote($record->code, Auth::user()->name);
         } catch (\Throwable $th) {
             Notification::make()
@@ -141,7 +146,7 @@ class CreateCorporateQuote extends CreateRecord
         }
     }
 
-    //getCreatedNotification
+    // getCreatedNotification
     protected function getCreatedNotification(): Notification
     {
         return Notification::make()

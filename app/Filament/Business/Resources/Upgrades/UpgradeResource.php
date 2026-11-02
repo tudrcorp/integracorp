@@ -65,8 +65,9 @@ class UpgradeResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['activeCoverages.activeAgeRanges'])
+            ->with(['activeCoverages.activeAgeRanges', 'plan'])
             ->withCount([
+                'networkTargets',
                 'activeServices as active_services_count',
                 'activeCoverages as active_coverages_count',
                 'corporateAssignments as active_corporate_assignments_count' => fn (Builder $query): Builder => $query->where('status', AffiliateCorporateUpgrade::STATUS_ACTIVE),

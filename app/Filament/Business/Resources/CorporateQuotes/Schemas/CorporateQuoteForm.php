@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\CorporateQuotes\Schemas;
 
+use App\Filament\Shared\Quotes\QuoteUpgradesSection;
 use App\Http\Controllers\UtilsController;
 use App\Models\Agency;
 use App\Models\Agent;
@@ -394,6 +395,8 @@ class CorporateQuoteForm
                                                         'min' => 'La cantidad de personas debe ser como mínimo una (1) persona.',
                                                     ]),
                                             ])->columns(3),
+
+                                        QuoteUpgradesSection::make(),
                                     ]),
                             ]),
                     ]),

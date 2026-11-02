@@ -33,7 +33,7 @@
 @endonce
 
 @if ($cards === [])
-    <p class="iqc-empty">No hay upgrades activos. Se administran en Configuración → Upgrades.</p>
+    <p class="iqc-empty">{{ $emptyMessage ?? 'No hay upgrades disponibles.' }}</p>
 @else
     <div class="iqc" role="group" aria-label="Upgrades disponibles">
         @foreach ($cards as $iqcCard)

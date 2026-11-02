@@ -5,6 +5,8 @@
 @source '../../../../resources/views/filament/agents/**/*';
 @source '../../../../resources/views/filament/agents/pages/**/*';
 @source '../../../../resources/views/filament/shared/**/*';
+@source '../../../../resources/views/filament/business/individual-quotes/partials/**/*';
+@source '../../../../resources/views/filament/business/plan-generators/partials/upgrade-population.blade.php';
 
 
 /* .fi-simple-main {

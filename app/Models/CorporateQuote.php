@@ -2,18 +2,18 @@
 
 namespace App\Models;
 
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\Eloquent\Model;
 use App\Jobs\SendEmailPropuestaEconomica;
-use App\Jobs\SendEmailPropuestaEconomicaIdealCor;
-use App\Jobs\SendEmailPropuestaEconomicaMultiple;
-use App\Jobs\SendEmailPropuestaEconomicaPlanIdeal;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use App\Jobs\SendEmailPropuestaEconomicaInicialCor;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Jobs\SendEmailPropuestaEconomicaEspecialCor;
+use App\Jobs\SendEmailPropuestaEconomicaIdealCor;
+use App\Jobs\SendEmailPropuestaEconomicaInicialCor;
+use App\Jobs\SendEmailPropuestaEconomicaMultiple;
 use App\Jobs\SendEmailPropuestaEconomicaPlanEspecial;
+use App\Jobs\SendEmailPropuestaEconomicaPlanIdeal;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class CorporateQuote extends Model
 {
@@ -42,7 +42,7 @@ class CorporateQuote extends Model
         'data_doc',
         'observation_dress_tailor',
         'type',
-        'ownerAccountManagers'
+        'ownerAccountManagers',
 
     ];
 
@@ -51,6 +51,16 @@ class CorporateQuote extends Model
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
+    /**
+     * Upgrades cotizados (copia congelada del catálogo).
+     *
+     * @return HasMany<CorporateQuoteUpgrade, $this>
+     */
+    public function upgrades(): HasMany
+    {
+        return $this->hasMany(CorporateQuoteUpgrade::class, 'corporate_quote_id', 'id')->orderBy('sort_order')->orderBy('id');
+    }
+
     public function accountManager()
     {
         return $this->hasOne(User::class, 'id', 'ownerAccountManagers');
@@ -58,8 +68,6 @@ class CorporateQuote extends Model
 
     /**
      * Get all of the comments for the IndividualQuote
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function detailCoporateQuotes(): HasMany
     {
@@ -68,8 +76,6 @@ class CorporateQuote extends Model
 
     /**
      * Get all of the comments for the IndividualQuote
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function corporateQuoteData(): HasMany
     {
@@ -78,8 +84,6 @@ class CorporateQuote extends Model
 
     /**
      * Get all of the comments for the IndividualQuote
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function statusLogs(): HasMany
     {
@@ -91,7 +95,7 @@ class CorporateQuote extends Model
         return $this->belongsTo(CorporateQuoteRequest::class);
     }
 
-    //hasOne
+    // hasOne
     public function agent(): HasOne
     {
         return $this->hasOne(Agent::class, 'id', 'agent_id');
@@ -105,11 +109,11 @@ class CorporateQuote extends Model
     /**
      * Funciones para la ejecucion de jobs
      * para el envio de los correos de propuesta economica
-     * 
-     * @return void
+     *
      * @author TuDrEnCasa
-     * 
-     * @param array $details
+     *
+     * @param  array  $details
+     * @return void
      */
     public function sendPropuestaEconomicaPlanInicial($details)
     {
@@ -125,11 +129,11 @@ class CorporateQuote extends Model
     /**
      * Funciones para la ejecucion de jobs
      * para el envio de los correos de propuesta economica
-     * 
-     * @return void
+     *
      * @author TuDrEnCasa
-     * 
-     * @param array $details
+     *
+     * @param  array  $details
+     * @return void
      */
     public function sendPropuestaEconomicaPlanIdeal($details)
     {
@@ -145,11 +149,11 @@ class CorporateQuote extends Model
     /**
      * Funciones para la ejecucion de jobs
      * para el envio de los correos de propuesta economica
-     * 
-     * @return void
+     *
      * @author TuDrEnCasa
-     * 
-     * @param array $details
+     *
+     * @param  array  $details
+     * @return void
      */
     public function sendPropuestaEconomicaPlanEspecial($details)
     {
@@ -193,22 +197,21 @@ class CorporateQuote extends Model
             }
 
             SendEmailPropuestaEconomicaMultiple::dispatch($collect_final, $details_generals, Auth::user());
-            //code...
+            // code...
         } catch (\Throwable $th) {
             dd($th);
         }
     }
 
-
     /**
      * Funciones para la ejecucion de jobs
      * para el envio de los correos de propuesta economica
-     * 
-     * @return void
+     *
      * @author TuDrEnCasa
-     * 
-     * @param array $details
-     * -----------------------------------------------------------------
+     *
+     * @param  array  $details
+     *                          -----------------------------------------------------------------
+     * @return void
      */
     // public function sendPropuestaEconomicaPlanInicial($details)
     // {
@@ -270,5 +273,5 @@ class CorporateQuote extends Model
     //         dd($th);
     //     }
     // }
-    /*------------------------------------------------------------------- */
+    /* ------------------------------------------------------------------- */
 }

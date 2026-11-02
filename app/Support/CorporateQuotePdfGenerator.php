@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Http\Controllers\CorporateQuoteController;
+use App\Http\Controllers\IndividualQuoteController;
 use App\Models\Agency;
 use App\Models\CorporateQuote;
+use App\Support\Quotes\IndividualQuoteUpgrades;
 use App\Support\TuDrQuote\QuoteDocumentLayout;
 use App\Support\TuDrQuote\QuoteServiceAttempt;
 use Illuminate\Support\Facades\Auth;
@@ -26,7 +28,7 @@ class CorporateQuotePdfGenerator
         }
 
         $planId = (int) $record->plan;
-        $layout = IndividualQuotePdfLayout::resolve($planId);
+        $layout = self::layoutFor($record, $planId);
         $details = self::buildDetailsPayload($record, $planId, $layout, $agentName);
 
         if ($details === null) {
@@ -45,6 +47,30 @@ class CorporateQuotePdfGenerator
         CorporateQuoteController::generatePdf($details, Auth::id(), $layout);
 
         return true;
+    }
+
+    /**
+     * Con upgrades, la página del plan se compone desde su estructura, que es la que los muestra
+     * debajo de las tarifas. Sin ellos, la cotización sigue con su plantilla de siempre.
+     */
+    private static function layoutFor(CorporateQuote $record, int $planId): string
+    {
+        return self::hasUpgrades($record)
+            ? IndividualQuotePdfLayout::resolveForIndividual($planId)
+            : IndividualQuotePdfLayout::resolve($planId);
+    }
+
+    public static function hasUpgrades(CorporateQuote $record): bool
+    {
+        return $record->upgrades()->exists();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public static function detailsPayload(CorporateQuote $record, int $planId, string $layout): ?array
+    {
+        return self::buildDetailsPayload($record, $planId, $layout, self::resolveAgentName($record));
     }
 
     public static function regenerateIfMissing(CorporateQuote $record): bool
@@ -87,7 +113,7 @@ class CorporateQuotePdfGenerator
             }
 
             $processedPlanIds[] = $planId;
-            $layout = IndividualQuotePdfLayout::resolve($planId);
+            $layout = self::layoutFor($record, $planId);
             $details = self::buildDetailsPayload($record, $planId, $layout, $agentName);
 
             if ($details !== null) {
@@ -108,6 +134,12 @@ class CorporateQuotePdfGenerator
          * entera el generador local, nunca a medias.
          */
         if (QuoteServiceAttempt::generateMultiple((int) $record->id, QuoteDocumentLayout::SCOPE_CORPORATE, $groupDetails)) {
+            return true;
+        }
+
+        if (self::hasUpgrades($record)) {
+            IndividualQuoteController::generatePdfStructureMultiple($groupDetails, Auth::id());
+
             return true;
         }
 
@@ -157,6 +189,7 @@ class CorporateQuotePdfGenerator
             'agent_name' => $agentName,
             'date' => $record->created_at->format('d-m-Y'),
             'data' => $data,
+            'upgrades' => IndividualQuoteUpgrades::summary($record),
         ];
     }
 

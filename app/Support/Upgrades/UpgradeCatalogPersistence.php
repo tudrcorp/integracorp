@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Upgrades;
 
+use App\Enums\UpgradeNetworkVisibility;
 use App\Models\AffiliateCorporateUpgrade;
 use App\Models\AffiliateUpgrade;
 use App\Models\Upgrade;
@@ -44,14 +45,20 @@ final class UpgradeCatalogPersistence
 
         return DB::transaction(function () use ($upgrade, $data, $actor): Upgrade {
             $isNew = $upgrade === null || ! $upgrade->exists;
+            $previousVisibility = $isNew ? null : $upgrade->network_visibility;
+            $wasPlan = ! $isNew && (bool) $upgrade->is_plan;
             $record = $isNew
                 ? self::createHeader($data, $actor)
                 : self::updateHeader($upgrade, $data, $actor);
+
+            self::syncNetworkVisibility($record, $previousVisibility, $data, $actor);
 
             $changes = [
                 'services' => self::syncServices($record, $data['services'], $actor),
                 'coverages' => self::syncCoverages($record, $data['coverages'], $actor),
             ];
+
+            self::syncPlan($record, $wasPlan, $actor);
 
             SecurityAudit::log(
                 $isNew ? 'AUDIT_BUSINESS_UPGRADE_CREATED' : 'AUDIT_BUSINESS_UPGRADE_UPDATED',
@@ -69,6 +76,68 @@ final class UpgradeCatalogPersistence
 
             return $record->refresh();
         });
+    }
+
+    /**
+     * Mantiene el plan enlazado: marcado se crea o actualiza; desmarcado queda INACTIVO, sin borrar
+     * nada, porque puede haber afiliaciones y cotizaciones con ese plan.
+     */
+    private static function syncPlan(Upgrade $record, bool $wasPlan, string $actor): void
+    {
+        if ($record->is_plan) {
+            UpgradePlanProjection::sync($record, $actor);
+
+            return;
+        }
+
+        if ($wasPlan && ($plan = UpgradePlanProjection::planOf($record)) !== null) {
+            UpgradePlanProjection::refreshStatus($plan);
+
+            SecurityAudit::log('AUDIT_BUSINESS_UPGRADE_PLAN_DISABLED', 'business.upgrades.plan', [
+                'panel' => 'business',
+                'module' => 'upgrades',
+                'upgrade_id' => $record->getKey(),
+                'plan_id' => $plan->getKey(),
+                'plan_code' => $plan->code,
+            ]);
+        }
+    }
+
+    /**
+     * Sin selección válida no quedan agencias ni agentes colgando: solo «Red seleccionada» los usa.
+     * Si el formulario no trae la visibilidad, no se toca.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private static function syncNetworkVisibility(Upgrade $record, ?UpgradeNetworkVisibility $previous, array $data, string $actor): void
+    {
+        if ($data['network_visibility'] === null) {
+            return;
+        }
+
+        $visibility = UpgradeNetworkVisibility::from($data['network_visibility']);
+        $isSelected = $visibility === UpgradeNetworkVisibility::Selected;
+        $targets = UpgradeNetworkAudience::syncTargets(
+            $record,
+            $isSelected ? $data['network_agency_ids'] : [],
+            $isSelected ? $data['network_agent_ids'] : [],
+            $actor,
+        );
+
+        if ($previous === $visibility && ! $targets['changed']) {
+            return;
+        }
+
+        SecurityAudit::log('AUDIT_BUSINESS_UPGRADE_NETWORK_VISIBILITY_CHANGED', 'business.upgrades.network-visibility', [
+            'panel' => 'business',
+            'module' => 'upgrades',
+            'upgrade_id' => $record->getKey(),
+            'code' => $record->code,
+            'previous_visibility' => $previous?->value,
+            'visibility' => $visibility->value,
+            'previous_targets' => $targets['before'],
+            'targets' => $targets['after'],
+        ]);
     }
 
     /**
@@ -92,6 +161,10 @@ final class UpgradeCatalogPersistence
             }
 
             $locked->forceFill(['status' => $status, 'updated_by' => $actor])->save();
+
+            if ($locked->is_plan && ($plan = UpgradePlanProjection::planOf($locked)) !== null) {
+                UpgradePlanProjection::refreshStatus($plan);
+            }
 
             SecurityAudit::log('AUDIT_BUSINESS_UPGRADE_STATUS_CHANGED', 'business.upgrades.status', [
                 'panel' => 'business',
@@ -120,6 +193,11 @@ final class UpgradeCatalogPersistence
             'description' => $upgrade->description,
             'image_path' => $upgrade->image_path,
             'status' => $upgrade->status,
+            'network_visibility' => $upgrade->network_visibility?->value ?? UpgradeNetworkVisibility::BusinessOnly->value,
+            'network_agency_ids' => $upgrade->networkTargets()->whereNotNull('agency_id')->pluck('agency_id')->map(fn (mixed $id): int => (int) $id)->all(),
+            'network_agent_ids' => $upgrade->networkTargets()->whereNotNull('agent_id')->pluck('agent_id')->map(fn (mixed $id): int => (int) $id)->all(),
+            'is_plan' => (bool) $upgrade->is_plan,
+            'plan_business_unit_id' => $upgrade->plan_business_unit_id,
             'services' => $upgrade->activeServices
                 ->mapWithKeys(fn (UpgradeService $service): array => ['service-'.$service->getKey() => [
                     'id' => (int) $service->getKey(),
@@ -166,6 +244,9 @@ final class UpgradeCatalogPersistence
             'name' => $data['name'],
             'description' => $data['description'],
             'status' => $data['status'],
+            'network_visibility' => $data['network_visibility'] ?? UpgradeNetworkVisibility::BusinessOnly->value,
+            'is_plan' => $data['is_plan'] ?? false,
+            'plan_business_unit_id' => $data['plan_business_unit_id'],
             'created_by' => $actor,
             'updated_by' => $actor,
             ...self::imageAttributes($data),
@@ -190,6 +271,8 @@ final class UpgradeCatalogPersistence
             'status' => $data['status'],
             'updated_by' => $actor,
             ...self::imageAttributes($data),
+            ...($data['network_visibility'] !== null ? ['network_visibility' => $data['network_visibility']] : []),
+            ...($data['is_plan'] !== null ? ['is_plan' => $data['is_plan'], 'plan_business_unit_id' => $data['plan_business_unit_id']] : []),
         ])->save();
 
         return $locked;

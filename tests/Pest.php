@@ -348,9 +348,21 @@ function createUpgradeCatalogTestSchema(bool $withFixture = true): void
         $table->string('name', 120);
         $table->text('description')->nullable();
         $table->string('status', 20)->default('ACTIVO');
+        $table->string('network_visibility', 20)->default('SOLO_NEGOCIOS');
+        $table->boolean('is_plan')->default(false);
+        $table->unsignedBigInteger('plan_business_unit_id')->nullable();
         $table->unsignedBigInteger('legacy_upgrade_benefit_id')->nullable();
         $table->string('created_by')->nullable();
         $table->string('updated_by')->nullable();
+        $table->timestamps();
+    });
+
+    $schema->create('upgrade_network_targets', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->unsignedBigInteger('upgrade_id');
+        $table->unsignedBigInteger('agency_id')->nullable();
+        $table->unsignedBigInteger('agent_id')->nullable();
+        $table->string('created_by')->nullable();
         $table->timestamps();
     });
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Upgrades\Tables;
 
+use App\Enums\UpgradeNetworkVisibility;
 use App\Models\Upgrade;
 use App\Models\UpgradeCoverage;
 use App\Support\Upgrades\UpgradeCatalogPersistence;
@@ -25,7 +26,7 @@ class UpgradesTable
         return $table
             ->defaultSort('name')
             ->heading('Upgrades')
-            ->description('Catálogo de upgrades que se agregan a afiliados individuales y corporativos. El precio depende de la cobertura y de la edad del afiliado.')
+            ->description('Catálogo de upgrades que se agregan a afiliados individuales y corporativos. El precio depende de la cobertura y de la edad del afiliado. La columna «Red comercial» dice quién más puede cotizarlos.')
             ->emptyStateHeading('Todavía no hay upgrades')
             ->emptyStateDescription('Cree el primero con el botón «Nuevo upgrade»: nombre, servicios, coberturas y precio por rango de edad.')
             ->emptyStateIcon(Heroicon::Sparkles)
@@ -69,6 +70,23 @@ class UpgradesTable
                     ->badge()
                     ->color(fn (?string $state): string => $state === Upgrade::STATUS_ACTIVE ? 'success' : 'danger')
                     ->sortable(),
+                TextColumn::make('network_visibility')
+                    ->label('Red comercial')
+                    ->badge()
+                    ->formatStateUsing(fn (?UpgradeNetworkVisibility $state): string => $state?->label() ?? UpgradeNetworkVisibility::BusinessOnly->label())
+                    ->color(fn (?UpgradeNetworkVisibility $state): string => $state?->color() ?? 'gray')
+                    ->description(fn (Upgrade $record): ?string => $record->network_visibility === UpgradeNetworkVisibility::Selected
+                        ? (int) $record->getAttribute('network_targets_count').' elegidos'
+                        : null),
+                TextColumn::make('plan.code')
+                    ->label('Plan')
+                    ->badge()
+                    ->color(fn (Upgrade $record): string => $record->plan?->status === 'ACTIVO' ? 'success' : 'warning')
+                    ->description(fn (Upgrade $record): ?string => $record->is_plan
+                        ? ($record->plan?->status === 'ACTIVO' ? 'Se puede cotizar' : 'Falta uso clínico')
+                        : null)
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('updated_at')
                     ->label('Actualizado')
                     ->dateTime('d/m/Y h:i a')
@@ -83,6 +101,9 @@ class UpgradesTable
                         Upgrade::STATUS_ACTIVE => 'Activo',
                         Upgrade::STATUS_INACTIVE => 'Inactivo',
                     ]),
+                SelectFilter::make('network_visibility')
+                    ->label('Red comercial')
+                    ->options(UpgradeNetworkVisibility::options()),
             ])
             ->recordActions([
                 ActionGroup::make([

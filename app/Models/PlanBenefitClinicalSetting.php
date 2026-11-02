@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\ClinicalQuotaScope;
 use App\Enums\ClinicalServiceChannel;
+use App\Support\Upgrades\UpgradePlanProjection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -37,6 +38,17 @@ class PlanBenefitClinicalSetting extends Model
             'quota_scope' => ClinicalQuotaScope::class,
             'quota' => 'integer',
         ];
+    }
+
+    /**
+     * Un plan nacido de un upgrade solo se cotiza con el uso clínico completo.
+     */
+    protected static function booted(): void
+    {
+        $refresh = static fn (self $setting) => UpgradePlanProjection::refreshStatusOfPlanId($setting->plan_id);
+
+        static::saved($refresh);
+        static::deleted($refresh);
     }
 
     public function plan(): BelongsTo

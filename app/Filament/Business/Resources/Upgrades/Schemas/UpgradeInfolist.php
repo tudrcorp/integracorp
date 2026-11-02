@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\Upgrades\Schemas;
 
+use App\Enums\UpgradeNetworkVisibility;
+use App\Filament\Business\Resources\Plans\PlanResource;
 use App\Models\Upgrade;
 use App\Models\UpgradeCoverage;
 use App\Models\UpgradeCoverageAgeRange;
 use App\Models\UpgradeService;
+use App\Support\Upgrades\UpgradeNetworkAudience;
+use App\Support\Upgrades\UpgradePlanProjection;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
@@ -41,6 +45,27 @@ class UpgradeInfolist
                             ->label('Estatus')
                             ->badge()
                             ->color(fn (?string $state): string => $state === Upgrade::STATUS_ACTIVE ? 'success' : 'danger'),
+                        TextEntry::make('network_visibility')
+                            ->label('Red comercial')
+                            ->badge()
+                            ->formatStateUsing(fn (?UpgradeNetworkVisibility $state): string => $state?->label() ?? UpgradeNetworkVisibility::BusinessOnly->label())
+                            ->color(fn (?UpgradeNetworkVisibility $state): string => $state?->color() ?? 'gray'),
+                        TextEntry::make('network_targets')
+                            ->label('Agencias y agentes elegidos')
+                            ->state(fn (Upgrade $record): array => UpgradeNetworkAudience::targetLabels($record))
+                            ->helperText('Su red también lo ve.')
+                            ->badge()
+                            ->visible(fn (Upgrade $record): bool => $record->network_visibility === UpgradeNetworkVisibility::Selected)
+                            ->columnSpan(3),
+                        TextEntry::make('linked_plan')
+                            ->label('Plan')
+                            ->state(fn (Upgrade $record): string => self::planState($record))
+                            ->badge()
+                            ->color(fn (Upgrade $record): string => $record->plan?->status === 'ACTIVO' ? 'success' : 'warning')
+                            ->url(fn (Upgrade $record): ?string => $record->plan !== null ? PlanResource::getUrl('uso-clinico', ['record' => $record->plan]) : null)
+                            ->helperText(fn (Upgrade $record): ?string => self::planPending($record))
+                            ->visible(fn (Upgrade $record): bool => (bool) $record->is_plan)
+                            ->columnSpan(3),
                         TextEntry::make('description')
                             ->label('Descripción')
                             ->placeholder('Sin descripción.')
@@ -115,5 +140,27 @@ class UpgradeInfolist
                             ]),
                     ]),
             ]);
+    }
+
+    private static function planState(Upgrade $record): string
+    {
+        $plan = $record->plan;
+
+        if ($plan === null) {
+            return 'Sin plan';
+        }
+
+        return $plan->code.' · '.($plan->status === 'ACTIVO' ? 'Se puede cotizar' : 'Falta completar');
+    }
+
+    private static function planPending(Upgrade $record): ?string
+    {
+        $plan = $record->plan;
+
+        if ($plan === null || $plan->status === 'ACTIVO') {
+            return null;
+        }
+
+        return 'Toque para completar el uso clínico de: '.implode(', ', UpgradePlanProjection::pendingLabels($plan)).'.';
     }
 }

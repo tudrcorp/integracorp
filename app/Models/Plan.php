@@ -52,6 +52,14 @@ class Plan extends Model
         });
     }
 
+    /**
+     * Plan nacido de un upgrade: su estructura y su estatus los manda el upgrade.
+     */
+    public function comesFromUpgrade(): bool
+    {
+        return $this->source_upgrade_id !== null;
+    }
+
     public function pricingMode(): PlanPricingMode
     {
         return $this->pricing_mode instanceof PlanPricingMode

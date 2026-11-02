@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\CorporateQuotes\Pages;
 
 use App\Enums\QuoteWhatsAppNotification;
 use App\Filament\Business\Resources\CorporateQuotes\CorporateQuoteResource;
+use App\Filament\Concerns\HandlesQuoteUpgrades;
 use App\Http\Controllers\UtilsController;
 use App\Models\Agency;
 use App\Support\Quotes\QuoteWhatsAppDispatcher;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Auth;
 
 class CreateCorporateQuote extends CreateRecord
 {
+    use HandlesQuoteUpgrades;
+
     protected static string $resource = CorporateQuoteResource::class;
 
     protected static ?string $title = 'Formulario de Cotizacion Corporativa';
@@ -38,6 +41,7 @@ class CreateCorporateQuote extends CreateRecord
     // mutateFormDataBeforeSave()
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $data = $this->captureQuoteUpgrades($data);
 
         if (! isset($data['observation_dress_tailor'])) {
             if ($data['plan'] === 'CM') {
@@ -82,6 +86,8 @@ class CreateCorporateQuote extends CreateRecord
 
     protected function afterCreate(): void
     {
+        $this->persistQuoteUpgrades($this->getRecord());
+
         try {
 
             // Validacion para cotizacion Dress-Tailor
